@@ -1,7 +1,7 @@
-import { LIST_FIELD } from "@fiftyone/utilities";
+import { FRAME_SUPPORT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
-import React, { useMemo, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -37,6 +37,11 @@ const ScalarValueEntry = ({
   });
   const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
   const none = value === null || value === undefined;
+  const { ftype } = useRecoilValue(schemaAtoms.field(path));
+
+  if (ftype === FRAME_SUPPORT_FIELD && value) {
+    value = `[${value[0]}, ${value[1]}]`;
+  }
 
   return (
     <RegularEntry
@@ -81,11 +86,26 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
   const expandable = values && values.length;
   const count = prettify(values.length);
   const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const theme = useTheme();
+  const { backgroundColor } = useSpring({
+    backgroundColor: theme.backgroundLight,
+  });
+
+  const canExpand = Boolean(values.length);
+
+  useLayoutEffect(() => {
+    !canExpand && expanded && setExpanded(false);
+  }, [canExpand, expanded]);
+
+  if (!data) {
+    return <ScalarValueEntry value={null} path={path} />;
+  }
 
   return (
     <RegularEntry
       title={`${path}: ${count}`}
-      borderTop={color}
+      backgroundColor={backgroundColor}
+      color={color}
       heading={
         <NameAndCountContainer>
           <span key="path">{path}</span>
@@ -120,15 +140,23 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
 };
 
 const PathValueEntry = ({ path }: { path: string }) => {
-  const field = useRecoilValue(schemaAtoms.field(path));
+  const keys = path.split(".");
+
+  let field = useRecoilValue(schemaAtoms.field(keys[0]));
   let { sample: data } = useRecoilValue(atoms.modal);
 
-  for (const key of path.split(".")) {
+  for (let index = 0; index < keys.length; index++) {
+    const key = keys[index];
+
+    data = data[field.dbField || key];
+
     if (data === undefined) {
       break;
     }
 
-    data = data[field.dbField || key];
+    if (keys[index + 1]) {
+      field = field.fields[keys[index + 1]];
+    }
   }
 
   if (field.ftype !== LIST_FIELD) {

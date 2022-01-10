@@ -370,7 +370,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
           ? await snapshot.getPromise(selectors.hiddenLabelsArray)
           : null;
 
-      const response = await fetch(url, {
+      const { samples, ok } = await fetch(url, {
         method: "POST",
         cache: "no-cache",
         headers: {
@@ -390,12 +390,22 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
             ? [...selectedSamples]
             : null,
           labels:
-            selectedLabels && selectedLabels.length ? selectedLabels : null,
+            selectedLabels && selectedLabels.length
+              ? toSnakeCase(selectedLabels)
+              : null,
           hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
         }),
       });
 
-      if (response.ok) {
+      if (ok) {
+        samples.forEach((sample) => {
+          modal.sample._id === sample._id &&
+            lookerRef.current &&
+            lookerRef.current.updateSample(sample);
+        });
+        set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+        set(selectors.anyTagging, false);
+
         refresh();
         refreshExtended();
         refreshTagStats();

@@ -10,6 +10,7 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   LABELS,
+  LABELS_MAP,
   LABELS_PATH,
   LABEL_LISTS,
   LABEL_LISTS_MAP,
@@ -460,6 +461,7 @@ export abstract class Looker<
         value: sample,
         filter: this.state.options.filter,
         schema: this.state.config.fieldSchema,
+        active: this.state.options.activePaths,
       })
     );
   }
@@ -1240,6 +1242,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
                   },
                   schema: this.state.config.fieldSchema.frames.fields,
                   keys: ["frames"],
+                  active: this.state.options.activePaths,
                 }),
               },
             ],
@@ -1362,6 +1365,9 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
 };
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
+const LABEL_LIST_KEY = Object.fromEntries(
+  Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [withPath(LABELS_PATH, k), v])
+);
 const LABELS_SET = new Set(LABELS);
 
 const mapFields = (value, schema: Schema, ftype: string) => {
@@ -1375,15 +1381,30 @@ const mapFields = (value, schema: Schema, ftype: string) => {
 
   const result = {};
   for (let fieldName in schema) {
-    const { embeddedDocType, dbField, subfield, ftype } = schema[fieldName];
+    const { dbField, ftype } = schema[fieldName];
     const key = dbField || fieldName;
 
     if (value[key] === undefined) continue;
 
+    if (value[key] === null) {
+      result[fieldName] = null;
+      continue;
+    }
+
     if (ftype === LIST_FIELD) {
-      result[fieldName] = value[key].map();
+      result[fieldName] = value[key].map((v) =>
+        mapFields(v, schema[fieldName].fields, schema[fieldName].subfield)
+      );
+    } else {
+      result[fieldName] = mapFields(
+        value[key],
+        schema[fieldName].fields,
+        schema[fieldName].ftype
+      );
     }
   }
+
+  return result;
 };
 
 const f = <T extends {}>({
@@ -1391,7 +1412,9 @@ const f = <T extends {}>({
   filter,
   value,
   keys = [],
+  active,
 }: {
+  active: string[];
   value: T;
   schema: Schema;
   keys?: string[];
@@ -1401,35 +1424,33 @@ const f = <T extends {}>({
   for (let fieldName in schema) {
     if (fieldName.startsWith("_")) continue;
 
-    const { embeddedDocType, dbField, subfield, ftype } = schema[fieldName];
-    const key = dbField || fieldName;
-
     const path = [...keys, fieldName].join(".");
 
-    if (LABELS_SET.has(embeddedDocType)) {
-      if (LABEL_LISTS_PATH.has(embeddedDocType)) {
-      } else {
-        if (!filter(path, value)) continue;
+    const { dbField, embeddedDocType } = schema[fieldName];
+
+    if (LABEL_LISTS_PATH.has(embeddedDocType)) {
+      if (!active.includes(path)) continue;
+
+      result[dbField || fieldName] = value[dbField || fieldName];
+
+      if (result[dbField || fieldName][LABEL_LIST_KEY[embeddedDocType]]) {
+        result[dbField || fieldName][LABEL_LIST_KEY[embeddedDocType]] = result[
+          dbField || fieldName
+        ][LABEL_LIST_KEY[embeddedDocType]].filter((v) => filter(path, v));
       }
-    } else {
-      result[fieldName] = value[key];
-    }
-
-    result[fieldName] = value[fieldName];
-
-    if (result[fieldName] === undefined) continue;
-
-    if (
-      ftype === LIST_FIELD &&
-      [DATE_TIME_FIELD, DATE_FIELD].includes(subfield) &&
-      value[fieldName]
+    } else if (
+      LABELS_SET.has(embeddedDocType) &&
+      filter(path, value[dbField || fieldName])
     ) {
-      result[fieldName] = result[fieldName].map((v) => new Date(v.datetime));
-      continue;
+      if (!active.includes(path)) continue;
+
+      result[dbField || fieldName] = value[dbField || fieldName];
+    } else {
+      result[dbField || fieldName] = value[dbField || fieldName];
     }
   }
 
-  return result as T;
+  return mapFields(result, schema, null) as T;
 };
 
 const shouldReloadSample = (

@@ -71,6 +71,8 @@ export const excludeAtom = selectorFamily<
     setFilter(get, set, modal, path, "exclude", value),
 });
 
+const NONE = new Set([undefined, null]);
+
 export const filter = selectorFamily<
   (value: string | null) => boolean,
   { modal: boolean; path: string }
@@ -82,9 +84,10 @@ export const filter = selectorFamily<
     }
     const exclude = get(excludeAtom(params));
     const values = get(selectedValuesAtom(params));
+    const none = values.includes(null);
 
     return (value) => {
-      const result = values.includes(value);
+      const result = values.includes(value) || (none && NONE.has(value));
       return exclude ? !result : result;
     };
   },

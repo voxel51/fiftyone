@@ -116,7 +116,9 @@ export const tagStatistics = selectorFamily<
         sample_ids: modal
           ? [get(atoms.modal).sample._id]
           : [...get(atoms.selectedSamples)],
-        labels: modal ? get(selectedLabels) : [],
+        labels: modal
+          ? toSnakeCase(get(atoms.stateDescription).selectedLabels)
+          : [],
         count_labels: labels,
         filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
         hidden_labels:

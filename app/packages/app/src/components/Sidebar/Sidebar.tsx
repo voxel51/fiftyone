@@ -397,7 +397,7 @@ const InteractiveSidebar = ({
   const [width, setWidth] = useRecoilState(sidebarWidth(modal));
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
-  const disabled = modal ? new Set<string>() : useRecoilValue(disabledPaths);
+  const disabled = useRecoilValue(disabledPaths);
   const [containerContoller] = useState(() => new Controller({ minHeight: 0 }));
 
   let group = null;

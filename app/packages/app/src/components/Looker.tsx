@@ -19,6 +19,7 @@ import { getSampleSrc, lookerType } from "../recoil/utils";
 import { pathFilter } from "./Filters";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
+import { LIST_FIELD } from "@fiftyone/utilities";
 
 const Header = styled.div`
   position: absolute;
@@ -436,6 +437,8 @@ const Looker = ({
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
 
+  const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
+
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
     const etc = isClips ? { support: sample.support } : {};
@@ -449,8 +452,15 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
-        fieldSchema,
-        frameFieldSchema,
+        fieldSchema: hasFrames
+          ? {
+              ...fieldSchema,
+              frames: {
+                fields: frameFieldSchema,
+                ftype: LIST_FIELD,
+              },
+            }
+          : fieldSchema,
         ...etc,
       },
       {
