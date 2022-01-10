@@ -1080,7 +1080,7 @@ class MediaExporter(object):
                     self._outpaths.append(outpath)
             elif self.export_mode == True:
                 etau.copy_file(media_path, outpath)
-            if self.export_mode == "move":
+            elif self.export_mode == "move":
                 etau.move_file(media_path, outpath)
             elif self.export_mode == "symlink":
                 etau.symlink_file(media_path, outpath)
@@ -2298,7 +2298,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
     def setup(self):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
-        self._media_exporter = ImageExporter(
+        self._media_exporter = VideoExporter(
             self.export_media, supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
