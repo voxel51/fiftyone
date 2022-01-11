@@ -16,6 +16,7 @@ import re
 import six
 import shutil
 import tempfile
+import threading
 import urllib.parse as urlparse
 
 import bson
@@ -37,6 +38,7 @@ s3_client = None
 gcs_client = None
 minio_client = None
 http_client = None
+client_lock = threading.Lock()
 
 minio_alias_prefix = None
 minio_endpoint_prefix = None
@@ -236,6 +238,13 @@ def get_client(fs):
     Returns:
         a :class:`eta.core.storage.StorageClient`
     """
+    # Client creation may not be thread-safe, so we lock for safety
+    # https://stackoverflow.com/a/61943955/16823653
+    with client_lock:
+        return _get_client(fs)
+
+
+def _get_client(fs):
     if fs == FileSystem.S3:
         global s3_client
 
