@@ -723,6 +723,13 @@ def _transform_video(
                 )
 
             did_transform = True
+        elif not etav.is_video_mime_type(outpath):
+            inpath = fos.to_readable(inpath)
+            with fos.LocalDir(outpath, "w", quiet=True) as local_path:
+                with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                    ffmpeg.run(inpath, local_path, verbose=verbose)
+
+            did_transform = True
         elif should_reencode:
             inpath = fos.to_readable(inpath)
             outpath = fos.to_writeable(outpath)
