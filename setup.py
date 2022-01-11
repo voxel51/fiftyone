@@ -98,6 +98,7 @@ setup(
         "tornado>=5.1.1,<7",
         "wcmatch",
         "xmltodict",
+        "yarl",
         "universal-analytics-python3>=1.0.1,<2",
         "boto3>=1.15",
         "google-api-python-client",

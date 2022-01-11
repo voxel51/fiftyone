@@ -10,9 +10,11 @@ import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
+import urllib.parse as urlparse
 
 import aiofiles
 import aiohttp
+import yarl
 
 import eta.core.utils as etau
 
@@ -700,7 +702,9 @@ async def _do_async_download_media(arg):
         return local_path
 
     etau.ensure_basedir(local_path)
+
     url = _get_url(client, remote_path)
+    url = _safe_aiohttp_url(url)
 
     success = True
     checksum = None
@@ -727,6 +731,17 @@ async def _do_async_download_media(arg):
     await _async_write_cache_result(remote_path, local_path, success, checksum)
 
     return local_path
+
+
+def _safe_aiohttp_url(url):
+    if urlparse.unquote(url) == url:
+        return url
+
+    # The `aiohttp` library improperly handles things like signed URLs for
+    # objects containing special characters like `:`, so we must mark the URL
+    # as already encoded
+    # https://docs.aiohttp.org/en/stable/client_quickstart.html#passing-parameters-in-urls
+    return yarl.URL(url, encoded=True)
 
 
 async def _async_write_cache_result(filepath, local_path, success, checksum):
