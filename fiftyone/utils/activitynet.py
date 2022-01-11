@@ -58,7 +58,7 @@ def download_activitynet_split(
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
             relevant when a ``source_dir`` is provided
-        num_workers (None): the number of processes to use when downloading
+        num_workers (None): the number of threads to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
         shuffle (False): whether to randomly shuffle the order in which samples
@@ -631,19 +631,18 @@ class ActivityNetDatasetManager(object):
         self, videos_dir, ids, samples_info, num_samples, num_workers
     ):
         download_ids = []
-        download_urls = []
+        download_urls = {}
         url_id_map = {}
         for sample_id in ids:
             sample_info = samples_info[sample_id]
             url = sample_info["url"]
             url_id_map[url] = sample_id
-            download_urls.append(url)
-            download_ids.append("v_" + sample_id)
+            sample_fn = "v_%s.mp4" % sample_id
+            sample_fp = os.path.join(videos_dir, sample_fn)
+            download_urls[url] = sample_fp
 
         downloaded_urls, errors = fouy.download_from_youtube(
-            videos_dir=videos_dir,
             urls=download_urls,
-            ids=download_ids,
             max_videos=num_samples,
             num_workers=num_workers,
             ext=".mp4",
