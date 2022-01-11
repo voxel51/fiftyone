@@ -474,7 +474,7 @@ class LocalDir(object):
 
         tmpdir = make_temp_dir(basedir=self._basedir)
 
-        if os.path.splitext(self._path):
+        if os.path.splitext(self._path)[1]:
             dirpath = os.path.dirname(self._path)
             local_path = os.path.join(tmpdir, os.path.basename(self._path))
         else:
@@ -488,7 +488,7 @@ class LocalDir(object):
             progress = not self.quiet
 
             if progress:
-                logger.info("Uploading %s...", self._type_str)
+                logger.info("Downloading %s...", self._type_str)
 
             copy_dir(
                 self._dirpath,
@@ -508,11 +508,12 @@ class LocalDir(object):
                 progress = not self.quiet
 
                 if progress:
-                    logger.info("Downloading %s...", self._type_str)
+                    logger.info("Uploading %s...", self._type_str)
 
                 copy_dir(
                     self._tmpdir,
                     self._dirpath,
+                    overwrite=False,
                     skip_failures=self._skip_failures,
                     progress=progress,
                 )
@@ -815,21 +816,22 @@ class FileWriter(object):
         return self
 
     def __exit__(self, *args):
-        if self._inpaths:
-            progress = not self.quiet
+        try:
+            if self._inpaths:
+                progress = not self.quiet
 
-            if progress:
-                logger.info("Uploading %s...", self._type_str)
+                if progress:
+                    logger.info("Uploading %s...", self._type_str)
 
-            copy_files(
-                self._inpaths,
-                self._outpaths,
-                skip_failures=self._skip_failures,
-                progress=progress,
-            )
-
-        if self._tmpdir is not None:
-            etau.delete_dir(self._tmpdir)
+                copy_files(
+                    self._inpaths,
+                    self._outpaths,
+                    skip_failures=self._skip_failures,
+                    progress=progress,
+                )
+        finally:
+            if self._tmpdir is not None:
+                etau.delete_dir(self._tmpdir)
 
     def get_local_path(self, filepath):
         """Returns a local path on disk to write the given file.
@@ -1129,8 +1131,8 @@ def make_archive(dirpath, archive_path, cleanup=False):
         archive_path: the archive path to write
         cleanup (False): whether to delete the directory after archiving it
     """
-    with LocalDir(dirpath, "w") as local_dir:
-        with LocalFile(archive_path, "r") as local_path:
+    with LocalDir(dirpath, "r") as local_dir:
+        with LocalFile(archive_path, "w") as local_path:
             etau.make_archive(local_dir, local_path)
 
     if cleanup:

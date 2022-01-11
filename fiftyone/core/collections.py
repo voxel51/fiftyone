@@ -6042,13 +6042,16 @@ class SampleCollection(object):
         """
         archive_path = None
         local_archive_path = None
+        tmp_dir = None
 
+        # @todo refactor this into a context manager?
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
             export_dir, ext = etau.split_archive(archive_path)
 
             if not fost.is_local(export_dir):
-                export_dir = fost.make_temp_dir()
+                tmp_dir = fost.make_temp_dir()
+                export_dir = fost.join(tmp_dir, os.path.basename(export_dir))
                 local_archive_path = export_dir + ext
 
         if dataset_type is None and dataset_exporter is None:
@@ -6114,8 +6117,9 @@ class SampleCollection(object):
 
         # Archive, if requested
         if local_archive_path is not None:
-            etau.make_archive(export_dir, local_archive_path, cleanup=True)
-            fost.move_file(local_archive_path, archive_path)
+            etau.make_archive(export_dir, local_archive_path)
+            fost.copy_file(local_archive_path, archive_path)
+            etau.delete_dir(tmp_dir)
         elif archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 

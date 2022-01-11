@@ -5837,8 +5837,7 @@ def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
     if not fost.isdir(dataset_dir):
-        outdir = os.path.dirname(dataset_dir)
-        fost.extract_archive(archive_path, outdir=outdir, cleanup=cleanup)
+        fost.extract_archive(archive_path, cleanup=cleanup)
 
         if not fost.isdir(dataset_dir):
             raise ValueError(
