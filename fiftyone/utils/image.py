@@ -337,8 +337,8 @@ def _transform_images_multi(
 
 
 def _do_transform(args):
-    sample_id, inpath, outpath = args[:2]
-    did_transform = _transform_image(inpath, outpath, *args[2:])
+    sample_id, inpath, outpath = args[:3]
+    did_transform = _transform_image(inpath, outpath, *args[3:])
     return sample_id, inpath, outpath, did_transform
 
 
