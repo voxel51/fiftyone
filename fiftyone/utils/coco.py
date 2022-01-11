@@ -934,7 +934,7 @@ class COCOObject(object):
             a :class:`fiftyone.core.labels.Polyline`, or None if no
             segmentation data is available
         """
-        if self.segmentation is None:
+        if not self.segmentation:
             return None
 
         label, attributes = self._get_object_label_and_attributes(
@@ -1017,7 +1017,7 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        if load_segmentation and self.segmentation is not None:
+        if load_segmentation and self.segmentation:
             mask = _coco_segmentation_to_mask(
                 self.segmentation, self.bbox, frame_size
             )
