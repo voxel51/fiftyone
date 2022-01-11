@@ -102,7 +102,12 @@ class ImageIngestor(object):
 
     def _close(self):
         if self._inpaths:
-            fos.copy_files(self._inpaths, self._outpaths)
+            progress = fo.config.show_progress_bars
+
+            if progress:
+                logger.info("Ingesting images...")
+
+            fos.copy_files(self._inpaths, self._outpaths, progress=progress)
 
         if self._tmpdir is not None:
             etau.delete_dir(self._tmpdir)

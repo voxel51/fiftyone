@@ -1121,11 +1121,19 @@ class MediaExporter(object):
             fos.write_json(self._manifest, self._manifest_path)
 
         if self._inpaths:
-            logger.info("Exporting %s...", self._MEDIA_TYPE)
+            progress = fo.config.show_progress_bars
+
+            if progress:
+                logger.info("Exporting %s...", self._MEDIA_TYPE)
+
             if self.export_mode == "move":
-                fos.move_files(self._inpaths, self._outpaths)
+                fos.move_files(
+                    self._inpaths, self._outpaths, progress=progress
+                )
             else:
-                fos.copy_files(self._inpaths, self._outpaths)
+                fos.copy_files(
+                    self._inpaths, self._outpaths, progress=progress
+                )
 
         if self._tmpdir is not None:
             etau.delete_dir(self._tmpdir)

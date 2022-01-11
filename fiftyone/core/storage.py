@@ -485,14 +485,16 @@ class LocalDir(object):
         self._tmpdir = tmpdir
 
         if self._mode == "r":
-            if not self.quiet:
+            progress = not self.quiet
+
+            if progress:
                 logger.info("Uploading %s...", self._type_str)
 
             copy_dir(
                 self._dirpath,
                 self._tmpdir,
                 skip_failures=self._skip_failures,
-                quiet=self.quiet,
+                progress=progress,
             )
 
         return local_path
@@ -503,14 +505,16 @@ class LocalDir(object):
 
         try:
             if self._mode == "w":
-                if not self.quiet:
+                progress = not self.quiet
+
+                if progress:
                     logger.info("Downloading %s...", self._type_str)
 
                 copy_dir(
                     self._tmpdir,
                     self._dirpath,
                     skip_failures=self._skip_failures,
-                    quiet=self.quiet,
+                    progress=progress,
                 )
         finally:
             etau.delete_dir(self._tmpdir)
@@ -709,14 +713,16 @@ class LocalFiles(object):
         self._remote_paths = remote_paths
 
         if self._mode == "r" and self._remote_paths:
-            if not self.quiet:
+            progress = not self.quiet
+
+            if progress:
                 logger.info("Downloading %s...", self._type_str)
 
             copy_files(
                 self._remote_paths,
                 self._local_paths,
                 skip_failures=self._skip_failures,
-                quiet=self.quiet,
+                progress=progress,
             )
 
         return _paths
@@ -727,14 +733,16 @@ class LocalFiles(object):
 
         try:
             if self._mode == "w" and self._local_paths:
-                if not self.quiet:
+                progress = not self.quiet
+
+                if progress:
                     logger.info("Uploading %s...", self._type_str)
 
                 copy_files(
                     self._local_paths,
                     self._remote_paths,
                     skip_failures=self._skip_failures,
-                    quiet=self.quiet,
+                    progress=progress,
                 )
         finally:
             etau.delete_dir(self._tmpdir)
@@ -808,14 +816,16 @@ class FileWriter(object):
 
     def __exit__(self, *args):
         if self._inpaths:
-            if not self.quiet:
+            progress = not self.quiet
+
+            if progress:
                 logger.info("Uploading %s...", self._type_str)
 
             copy_files(
                 self._inpaths,
                 self._outpaths,
                 skip_failures=self._skip_failures,
-                quiet=self.quiet,
+                progress=progress,
             )
 
         if self._tmpdir is not None:
@@ -1439,7 +1449,7 @@ def copy_file(inpath, outpath):
     _copy_file(inpath, outpath, cleanup=False)
 
 
-def copy_files(inpaths, outpaths, skip_failures=False, quiet=None):
+def copy_files(inpaths, outpaths, skip_failures=False, progress=False):
     """Copies the files to the given locations.
 
     Args:
@@ -1447,16 +1457,17 @@ def copy_files(inpaths, outpaths, skip_failures=False, quiet=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
-        _run(_do_copy_file, tasks, quiet=quiet)
+        _run(_do_copy_file, tasks, progress=progress)
 
 
-def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
+def copy_dir(
+    indir, outdir, overwrite=True, skip_failures=False, progress=False
+):
     """Copies the input directory to the output directory.
 
     Args:
@@ -1466,9 +1477,8 @@ def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
     """
     if overwrite and isdir(outdir):
         delete_dir(outdir)
@@ -1478,7 +1488,9 @@ def copy_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
     )
     inpaths = [join(indir, f) for f in files]
     outpaths = [join(outdir, f) for f in files]
-    copy_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
+    copy_files(
+        inpaths, outpaths, skip_failures=skip_failures, progress=progress
+    )
 
 
 def move_file(inpath, outpath):
@@ -1491,7 +1503,7 @@ def move_file(inpath, outpath):
     _copy_file(inpath, outpath, cleanup=True)
 
 
-def move_files(inpaths, outpaths, skip_failures=False, quiet=None):
+def move_files(inpaths, outpaths, skip_failures=False, progress=False):
     """Moves the files to the given locations.
 
     Args:
@@ -1499,16 +1511,17 @@ def move_files(inpaths, outpaths, skip_failures=False, quiet=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
-        _run(_do_move_file, tasks, quiet=quiet)
+        _run(_do_move_file, tasks, progress=progress)
 
 
-def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
+def move_dir(
+    indir, outdir, overwrite=True, skip_failures=False, progress=False
+):
     """Moves the contents of the given directory into the given output
     directory.
 
@@ -1519,9 +1532,8 @@ def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
     """
     if overwrite and isdir(outdir):
         delete_dir(outdir)
@@ -1536,7 +1548,9 @@ def move_dir(indir, outdir, overwrite=True, skip_failures=False, quiet=None):
     )
     inpaths = [join(indir, f) for f in files]
     outpaths = [join(outdir, f) for f in files]
-    move_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
+    move_files(
+        inpaths, outpaths, skip_failures=skip_failures, progress=progress
+    )
 
 
 def delete_file(path):
@@ -1551,7 +1565,7 @@ def delete_file(path):
     _delete_file(path)
 
 
-def delete_files(paths, skip_failures=False, quiet=None):
+def delete_files(paths, skip_failures=False, progress=False):
     """Deletes the files from the given locations.
 
     For local paths, any empty directories are also recursively deleted from
@@ -1561,13 +1575,12 @@ def delete_files(paths, skip_failures=False, quiet=None):
         paths: a list of paths
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
     """
     tasks = [(p, skip_failures) for p in paths]
     if tasks:
-        _run(_do_delete_file, tasks, quiet=quiet)
+        _run(_do_delete_file, tasks, progress=progress)
 
 
 def delete_dir(dirpath):
@@ -1594,7 +1607,7 @@ def upload_media(
     update_filepaths=False,
     overwrite=True,
     skip_failures=False,
-    quiet=None,
+    progress=False,
 ):
     """Uploads the source media files for the given collection to the given
     remote directory.
@@ -1616,9 +1629,8 @@ def upload_media(
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the upload
 
     Returns:
         the list of remote paths
@@ -1643,7 +1655,9 @@ def upload_media(
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
     inpaths, outpaths = zip(*paths_map.items())
-    copy_files(inpaths, outpaths, skip_failures=skip_failures, quiet=quiet)
+    copy_files(
+        inpaths, outpaths, skip_failures=skip_failures, progress=progress
+    )
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
@@ -1651,7 +1665,7 @@ def upload_media(
     return remote_paths
 
 
-def run(fcn, tasks, num_workers=None, quiet=None):
+def run(fcn, tasks, num_workers=None, progress=False):
     """Applies the given function to each element of the given tasks.
 
     Args:
@@ -1659,9 +1673,8 @@ def run(fcn, tasks, num_workers=None, quiet=None):
         tasks: an iterable of function aguments
         num_workers (None): the number of threads to use. By default,
             ``fiftyone.media_cache_config.num_workers`` is used
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of the operation. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (False): whether to render a progress bar tracking the status
+            of the operation
 
     Returns:
         the list of function outputs
@@ -1674,9 +1687,7 @@ def run(fcn, tasks, num_workers=None, quiet=None):
     except:
         num_tasks = None
 
-    kwargs = dict(total=num_tasks, iters_str="files")
-    if quiet is not None:
-        kwargs["quiet"] = quiet
+    kwargs = dict(total=num_tasks, iters_str="files", quiet=not progress)
 
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
@@ -1739,7 +1750,7 @@ def _load_minio_credentials():
     return credentials
 
 
-def _run(fcn, tasks, quiet=None, num_workers=None):
+def _run(fcn, tasks, num_workers=None, progress=False):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
@@ -1748,9 +1759,7 @@ def _run(fcn, tasks, quiet=None, num_workers=None):
     except:
         num_tasks = None
 
-    kwargs = dict(total=num_tasks, iters_str="files")
-    if quiet is not None:
-        kwargs["quiet"] = quiet
+    kwargs = dict(total=num_tasks, iters_str="files", quiet=not progress)
 
     if not num_workers or num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
