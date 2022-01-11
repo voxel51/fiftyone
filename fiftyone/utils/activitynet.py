@@ -604,7 +604,7 @@ class ActivityNetDatasetManager(object):
                 self.a100_info.data_dir(split),
                 a100_ids,
                 samples_info,
-                num_a100_ids,
+                min(num_a100_ids, num_samples),
                 num_workers,
             )
             remaining_samples -= len(downloaded_ids)
