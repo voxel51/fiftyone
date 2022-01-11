@@ -1573,19 +1573,16 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples = self._preprocess_list(samples)
 
         if self.rel_dir is not None:
-            # If a `rel_dir` was provided, prepend it to all relative paths
+            # Prepend `rel_dir` to all relative paths
             rel_dir = fos.normalize_path(self.rel_dir)
-            for sample in samples:
-                filepath = sample["filepath"]
-                if not fos.isabs(filepath):
-                    sample["filepath"] = fos.join(rel_dir, filepath)
         else:
-            # Prepend `dataset_dir` to all filepaths, which were stored as
-            # relative to `dataset_dir` during export
-            for sample in samples:
-                sample["filepath"] = fos.join(
-                    self.dataset_dir, sample["filepath"]
-                )
+            # Prepend `dataset_dir` to all relative paths
+            rel_dir = self.dataset_dir
+
+        for sample in samples:
+            filepath = sample["filepath"]
+            if not fos.isabs(filepath):
+                sample["filepath"] = fos.join(rel_dir, filepath)
 
         if tags is not None:
             for sample in samples:
