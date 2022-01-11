@@ -428,12 +428,12 @@ class LocalDir(object):
     Args:
         path: a directory path
         mode ("r"): the mode. Supported values are ``("r", "w")``
-        type_str ("files"): the type of file being processed. Used only for
-            log messages
         basedir (None): an optional directory in which to create temporary
             local directories
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote upload/download fails
+        type_str ("files"): the type of file being processed. Used only for
+            log messages. If None/empty, nothing will be logged
         quiet (None): whether to display (False) or not display (True) a
             progress bar tracking the status of any uploads/downloads. By
             default, ``fiftyone.config.show_progress_bars`` is used to set this
@@ -443,9 +443,9 @@ class LocalDir(object):
         self,
         path,
         mode="r",
-        type_str="files",
         basedir=None,
         skip_failures=False,
+        type_str="files",
         quiet=None,
     ):
         if mode not in ("r", "w"):
@@ -456,9 +456,9 @@ class LocalDir(object):
 
         self._path = path
         self._mode = mode
-        self._type_str = type_str
         self._basedir = basedir
         self._skip_failures = skip_failures
+        self._type_str = type_str
         self._quiet = quiet
         self._dirpath = None
         self._tmpdir = None
@@ -487,7 +487,7 @@ class LocalDir(object):
         if self._mode == "r":
             progress = not self.quiet
 
-            if progress:
+            if progress and self._type_str:
                 logger.info("Downloading %s...", self._type_str)
 
             copy_dir(
@@ -507,7 +507,7 @@ class LocalDir(object):
             if self._mode == "w":
                 progress = not self.quiet
 
-                if progress:
+                if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
 
                 copy_dir(
@@ -634,12 +634,12 @@ class LocalFiles(object):
     Args:
         paths: a list of filepaths, or a dict mapping keys to filepaths
         mode ("r"): the mode. Supported values are ``("r", "w")``
-        type_str ("files"): the type of file being processed. Used only for
-            log messages
         basedir (None): an optional directory in which to create temporary
             local files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote upload/download fails
+        type_str ("files"): the type of file being processed. Used only for
+            log messages. If None/empty, nothing will be logged
         quiet (None): whether to display (False) or not display (True) a
             progress bar tracking the status of any uploads/downloads. By
             default, ``fiftyone.config.show_progress_bars`` is used to set this
@@ -649,9 +649,9 @@ class LocalFiles(object):
         self,
         paths,
         mode="r",
-        type_str="files",
         basedir=None,
         skip_failures=False,
+        type_str="files",
         quiet=None,
     ):
         if mode not in ("r", "w"):
@@ -662,9 +662,9 @@ class LocalFiles(object):
 
         self._paths = paths
         self._mode = mode
-        self._type_str = type_str
         self._basedir = basedir
         self._skip_failures = skip_failures
+        self._type_str = type_str
         self._quiet = quiet
         self._tmpdir = None
         self._filename_maker = None
@@ -716,7 +716,7 @@ class LocalFiles(object):
         if self._mode == "r" and self._remote_paths:
             progress = not self.quiet
 
-            if progress:
+            if progress and self._type_str:
                 logger.info("Downloading %s...", self._type_str)
 
             copy_files(
@@ -736,7 +736,7 @@ class LocalFiles(object):
             if self._mode == "w" and self._local_paths:
                 progress = not self.quiet
 
-                if progress:
+                if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
 
                 copy_files(
@@ -777,26 +777,26 @@ class FileWriter(object):
                     f.write("Hello, world!")
 
     Args:
-        type_str ("files"): the type of file being processed. Used only for
-            log messages
         basedir (None): an optional directory in which to create temporary
             local files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote upload fails
+        type_str ("files"): the type of file being processed. Used only for
+            log messages. If None/empty, nothing will be logged
         quiet (None): whether to display (False) or not display (True) a
             progress bar tracking the status of any uploads. By default,
             ``fiftyone.config.show_progress_bars`` is used to set this
     """
 
     def __init__(
-        self, type_str="files", basedir=None, skip_failures=False, quiet=None
+        self, basedir=None, skip_failures=False, type_str="files", quiet=None
     ):
         if basedir is not None and not is_local(basedir):
             raise ValueError("basedir must be local; found '%s'" % basedir)
 
-        self._type_str = type_str
         self._basedir = basedir
         self._skip_failures = skip_failures
+        self._type_str = type_str
         self._quiet = quiet
         self._tmpdir = None
         self._filename_maker = None
@@ -820,7 +820,7 @@ class FileWriter(object):
             if self._inpaths:
                 progress = not self.quiet
 
-                if progress:
+                if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
 
                 copy_files(
@@ -1131,8 +1131,9 @@ def make_archive(dirpath, archive_path, cleanup=False):
         archive_path: the archive path to write
         cleanup (False): whether to delete the directory after archiving it
     """
-    with LocalDir(dirpath, "r") as local_dir:
+    with LocalDir(dirpath, "r", type_str=None) as local_dir:
         with LocalFile(archive_path, "w") as local_path:
+            logger.info("Making archive...")
             etau.make_archive(local_dir, local_path)
 
     if cleanup:
@@ -1159,7 +1160,8 @@ def extract_archive(archive_path, outdir=None, cleanup=False):
         outdir = os.path.dirname(archive_path) or "."
 
     with LocalFile(archive_path, "r") as local_path:
-        with LocalDir(outdir, "w") as local_dir:
+        with LocalDir(outdir, "w", type_str=None) as local_dir:
+            logger.info("Extracting archive...")
             etau.extract_archive(local_path, outdir=local_dir)
 
     if cleanup:
