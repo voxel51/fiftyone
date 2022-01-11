@@ -6044,84 +6044,42 @@ class SampleCollection(object):
         local_archive_path = None
         tmp_dir = None
 
-        # @todo refactor this into a context manager?
-        if export_dir is not None and etau.is_archive(export_dir):
-            archive_path = export_dir
-            export_dir, ext = etau.split_archive(archive_path)
+        try:
+            # If the user requested an archive, first populate a directory
+            if export_dir is not None and etau.is_archive(export_dir):
+                archive_path = export_dir
+                export_dir, ext = etau.split_archive(archive_path)
 
-            if not fost.is_local(export_dir):
-                tmp_dir = fost.make_temp_dir()
-                export_dir = fost.join(tmp_dir, os.path.basename(export_dir))
-                local_archive_path = export_dir + ext
+                if not fost.is_local(export_dir):
+                    tmp_dir = fost.make_temp_dir()
+                    archive_name = os.path.basename(export_dir)
+                    export_dir = fost.join(tmp_dir, archive_name)
+                    local_archive_path = export_dir + ext
 
-        if dataset_type is None and dataset_exporter is None:
-            raise ValueError(
-                "Either `dataset_type` or `dataset_exporter` must be provided"
-            )
-
-        # If no dataset exporter was provided, construct one
-        if dataset_exporter is None:
-            _handle_existing_dirs(
-                export_dir, data_path, labels_path, export_media, overwrite
-            )
-
-            dataset_exporter, kwargs = foud.build_dataset_exporter(
-                dataset_type,
-                warn_unused=False,  # don't warn yet, might be patches kwargs
+            # Perform the export
+            _export(
+                self,
                 export_dir=export_dir,
+                dataset_type=dataset_type,
                 data_path=data_path,
                 labels_path=labels_path,
                 export_media=export_media,
+                dataset_exporter=dataset_exporter,
+                label_field=label_field,
+                frame_labels_field=frame_labels_field,
+                overwrite=overwrite,
                 **kwargs,
             )
 
-        # Get label field(s) to export
-        if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
-            # Labeled images
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=True,
-            )
-            frame_labels_field = None
-        elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
-            # Labeled videos
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-            frame_labels_field = self._parse_frame_labels_field(
-                frame_labels_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-
-            if label_field is None and frame_labels_field is None:
-                raise ValueError(
-                    "Unable to locate compatible sample or frame-level "
-                    "field(s) to export"
-                )
-
-        # Perform the export
-        foud.export_samples(
-            self,
-            dataset_exporter=dataset_exporter,
-            label_field=label_field,
-            frame_labels_field=frame_labels_field,
-            **kwargs,
-        )
-
-        # Archive, if requested
-        if local_archive_path is not None:
-            etau.make_archive(export_dir, local_archive_path)
-            fost.copy_file(local_archive_path, archive_path)
-            etau.delete_dir(tmp_dir)
-        elif archive_path is not None:
-            etau.make_archive(export_dir, archive_path, cleanup=True)
+            # Make archive, if requested
+            if local_archive_path is not None:
+                fost.make_archive(export_dir, local_archive_path)
+                fost.copy_file(local_archive_path, archive_path)
+            elif archive_path is not None:
+                fost.make_archive(export_dir, archive_path, cleanup=True)
+        finally:
+            if tmp_dir is not None:
+                etau.delete_dir(tmp_dir)
 
     def annotate(
         self,
@@ -7979,6 +7937,81 @@ def _get_non_none_value(values):
             return value
 
     return None
+
+
+def _export(
+    sample_collection,
+    export_dir=None,
+    dataset_type=None,
+    data_path=None,
+    labels_path=None,
+    export_media=None,
+    dataset_exporter=None,
+    label_field=None,
+    frame_labels_field=None,
+    overwrite=False,
+    **kwargs,
+):
+    if dataset_type is None and dataset_exporter is None:
+        raise ValueError(
+            "Either `dataset_type` or `dataset_exporter` must be provided"
+        )
+
+    # If no dataset exporter was provided, construct one
+    if dataset_exporter is None:
+        _handle_existing_dirs(
+            export_dir, data_path, labels_path, export_media, overwrite
+        )
+
+        dataset_exporter, kwargs = foud.build_dataset_exporter(
+            dataset_type,
+            warn_unused=False,  # don't warn yet, might be patches kwargs
+            export_dir=export_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
+            **kwargs,
+        )
+
+    # Get label field(s) to export
+    if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
+        # Labeled images
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=True,
+        )
+        frame_labels_field = None
+    elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
+        # Labeled videos
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+        frame_labels_field = sample_collection._parse_frame_labels_field(
+            frame_labels_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+
+        if label_field is None and frame_labels_field is None:
+            raise ValueError(
+                "Unable to locate compatible sample or frame-level "
+                "field(s) to export"
+            )
+
+    # Perform the export
+    foud.export_samples(
+        sample_collection,
+        dataset_exporter=dataset_exporter,
+        label_field=label_field,
+        frame_labels_field=frame_labels_field,
+        **kwargs,
+    )
 
 
 def _handle_existing_dirs(
