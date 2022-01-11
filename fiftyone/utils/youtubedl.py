@@ -89,9 +89,8 @@ def download_from_youtube(
             `clip_segments` is provided
 
     Returns:
-        ids or names or successfully downloaded videos
-        a dict of the videos unsuccessfully downloaded and the corresponding
-            errors
+        urls of successfully downloaded videos
+        a dict of download errors and the corresponding video urls
     """
     num_workers = _parse_num_workers(num_workers)
     tasks = _build_tasks_list(
@@ -130,6 +129,11 @@ def _parse_num_workers(num_workers):
 def _build_tasks_list(
     urls, clip_segments, download_dir, ext, buffer_seconds=5
 ):
+    if isinstance(urls, str):
+        urls = [urls]
+    if isinstance(clip_segments, tuple):
+        clip_segments = [clip_segments]
+
     if isinstance(urls, list):
         if download_dir is None:
             raise ValueError(
