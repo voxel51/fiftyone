@@ -9,10 +9,21 @@ FiftyOne 0.14.3
 ---------------
 *Released January 12, 2021*
 
-App
-
 Core
 
+- Added hollow support for 32-bit systems. A
+  :ref:`database_uri <configuring-mongodb-connection>` in such cases
+- Fixed a bug that would arise when importing segmentation data from a COCO
+  JSON that contains an object with `segmentation: []`. It is now gracefully
+  handled as missing segmentation data
+- Fixed expressions containing near-epoch dates
+- Added support for setting frame-level fields by `frame_number`` in
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>``
+- Fixes a bug that prevented
+  :meth:`set_values(field_name, values, key_field="id") <fiftyone.core.collections.SampleCollection.set_values>`
+  from working as expected.
+- Fixed bug that occurred when computing patch embeddings defined by
+  :class:`polylines <fiftyone.cor.labels.Polyline>`
 - Added support for directly passing a `filename -> filepath` mapping `dict` to
   the `data_path` parameter of importers
 - Added graceful casting of `int`-like and `float`-like values, e.g.
@@ -27,10 +38,9 @@ Core
     - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
     - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
 
-Brain
-
 Annotation
-
+- Added support for downloading media from existing CVAT tasks and projects
+- Added support for importing existing CVAT datasets into FiftyOne
 - Added an `unexpected` keyword argument to
   :meth:`load_annotations() <fiftyone.core.dataset.Dataset.load_annotations>`
   for handling unexpected annotations returned by the CVAT API
