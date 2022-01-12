@@ -10,18 +10,6 @@ import os
 from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import setup, find_packages
 import re
-from wheel.bdist_wheel import bdist_wheel
-
-
-class BdistWheelCustom(bdist_wheel):
-    def finalize_options(self):
-        bdist_wheel.finalize_options(self)
-        # make just the wheel require these packages, since they aren't needed
-        # for a development installation
-        self.distribution.install_requires += [
-            "fiftyone-brain>=0.7.2,<0.8",
-            "fiftyone-db>=0.3,<0.4",
-        ]
 
 
 VERSION = "0.14.2"
@@ -72,6 +60,8 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
+    "fiftyone-brain>=0.7.2,<0.8",
+    "fiftyone-db>=0.3,<0.4",
     "voxel51-eta>=0.6.1,<0.7",
 ]
 
@@ -160,5 +150,4 @@ setup(
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.6",
-    cmdclass={"bdist_wheel": BdistWheelCustom},
 )
