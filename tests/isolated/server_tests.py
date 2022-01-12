@@ -7,7 +7,7 @@ To run a single test, modify the main code to::
     singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
     unittest.TextTestRunner().run(singletest)
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
