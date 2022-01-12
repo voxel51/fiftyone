@@ -47,7 +47,7 @@ def reencode_images(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _transform_images(
             sample_collection,
             ext=ext,
@@ -113,7 +113,7 @@ def transform_images(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _transform_images(
             sample_collection,
             size=size,
