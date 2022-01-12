@@ -120,12 +120,14 @@ setup(
     license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
+    packages=find_packages(
+        exclude=["app", "eta", "package", "requirements", "tests", "tools"]
+    )
+    + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",
         "fiftyone.tutorials": "docs/source/tutorials",
     },
-    include_package_data=True,
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
     ),
