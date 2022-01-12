@@ -4113,6 +4113,8 @@ class SampleCollection(object):
 
                 -   a sample ID
                 -   an iterable of sample IDs
+                -   an iterable of booleans of same length as the collection
+                    encoding which samples to select
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
                 -   an iterable of sample IDs

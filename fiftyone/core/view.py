@@ -16,6 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -82,6 +83,12 @@ class DatasetView(foc.SampleCollection):
 
         if isinstance(id_filepath_slice, slice):
             return self._slice(id_filepath_slice)
+
+        if isinstance(id_filepath_slice, foe.ViewExpression):
+            return self.match(id_filepath_slice)
+
+        if etau.is_container(id_filepath_slice):
+            return self.select(id_filepath_slice, ordered=True)
 
         try:
             oid = ObjectId(id_filepath_slice)
