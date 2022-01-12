@@ -38,6 +38,14 @@ Core
     - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
     - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
 
+Brain
+
+- Edgecase handling in
+  :func:`find_duplicates() <fiftyone.brain.find_duplicates>`, e.g.
+  `fraction=-1`
+- Graceful handling of missing/uncomputable embeddings in
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+
 Annotation
 
 - Added a :ref:`Labelbox integration <labelbox-integration>`
