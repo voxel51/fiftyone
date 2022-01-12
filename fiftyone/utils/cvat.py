@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

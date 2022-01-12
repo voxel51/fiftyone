@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,6 +20,7 @@ import logging
 import os
 import platform
 import signal
+import struct
 import subprocess
 import timeit
 import types
@@ -1236,6 +1237,15 @@ def is_arm_mac():
     return platform.system() == "Darwin" and any(
         proc in plat for proc in {"aarch64", "arm64"}
     )
+
+
+def is_32_bit():
+    """Determines whether the system is 32-bit.
+
+    Returns:
+        True/False
+    """
+    return struct.calcsize("P") * 8 == 32
 
 
 def datetime_to_timestamp(dt):
