@@ -50,7 +50,7 @@ jobs:
           fi
       - name: Build dist
         run: |
-          python setup.py bdist_wheel
+          python setup.py bdist_wheel sdist
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
@@ -216,4 +216,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/*.whl
+          python3 -m twine upload downloads/*
