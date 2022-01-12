@@ -39,6 +39,7 @@ Core
     - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
 
 Annotation
+- Added a :ref:`Labelbox integration <labelbox-integration>`
 - Added support for downloading media from existing CVAT tasks and projects
 - Added support for importing existing CVAT datasets into FiftyOne
 - Added an `unexpected` keyword argument to
