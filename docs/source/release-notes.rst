@@ -33,12 +33,13 @@ Core
 - Added support for importing and exporting `confidence` in YOLO formats
 - Added decision thresholds to the tooltips of PR/ROC curves plotted via the
   following methods:
-    - :meth:`BinaryClassification.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassification.plot_pr_curve>`
-    - :meth:`BinaryClassification.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassification.plot_roc_curve>`
+    - :meth:`BinaryClassificationResults.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_pr_curve>`
+    - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassification.plot_roc_curve>`
     - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
     - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
 
 Annotation
+
 - Added a :ref:`Labelbox integration <labelbox-integration>`
 - Added support for downloading media from existing CVAT tasks and projects
 - Added support for importing existing CVAT datasets into FiftyOne
