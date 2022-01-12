@@ -18,12 +18,12 @@ Core
   handled as missing segmentation data
 - Fixed expressions containing near-epoch dates
 - Added support for setting frame-level fields by `frame_number`` in
-  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>``
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>()`
 - Fixes a bug that prevented
   :meth:`set_values(field_name, values, key_field="id") <fiftyone.core.collections.SampleCollection.set_values>`
   from working as expected.
 - Fixed bug that occurred when computing patch embeddings defined by
-  :class:`polylines <fiftyone.cor.labels.Polyline>`
+  :class:`polylines <fiftyone.core.labels.Polyline>`
 - Added support for directly passing a `filename -> filepath` mapping `dict` to
   the `data_path` parameter of importers
 - Added graceful casting of `int`-like and `float`-like values, e.g.
@@ -34,7 +34,7 @@ Core
 - Added decision thresholds to the tooltips of PR/ROC curves plotted via the
   following methods:
     - :meth:`BinaryClassificationResults.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_pr_curve>`
-    - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassification.plot_roc_curve>`
+    - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_roc_curve>`
     - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
     - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
 
