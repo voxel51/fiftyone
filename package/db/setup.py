@@ -12,7 +12,7 @@ import shutil
 import tarfile
 import zipfile
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
 try:
@@ -26,9 +26,11 @@ except ImportError:
 # arm64 is not available for ubuntu1604 and debian9
 MONGODB_DOWNLOAD_URLS = {
     "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.2.tgz",
+    "linux-i686": None,
     "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
     "mac-arm64": None,
     "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
+    "win-32": None,
     "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
     "debian9": {
         "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
@@ -73,7 +75,9 @@ class CustomBdistWheel(bdist_wheel):
             not isa or platform.endswith(isa)
         )
 
-        if is_platform("linux", "aarch64"):
+        if is_platform("linux", "i686"):
+            self.plat_name = "manylinux1_i686"
+        elif is_platform("linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
         elif is_platform("linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
@@ -81,8 +85,10 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_11_0_arm64"
         elif is_platform("mac", "x86_64"):
             self.plat_name = "macosx_10_13_x86_64"
-        elif is_platform("win"):
+        elif is_platform("win", "amd64"):
             self.plat_name = "win_amd64"
+        elif is_platform("win", "32"):
+            self.plat_name = "win32"
         else:
             raise ValueError(
                 "Unsupported target platform: %r" % self.plat_name

@@ -589,11 +589,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_dates(self):
         dataset = fo.Dataset()
 
-        date1 = date(1970, 1, 1)
-        date2 = date(1970, 1, 2)
-        date3 = date(1970, 1, 3)
+        date1 = date(1970, 1, 2)
+        date2 = date(1970, 1, 3)
+        date3 = date(1970, 1, 4)
 
-        query_date = datetime(1970, 1, 2, 1, 0, 0)
+        query_date = datetime(1970, 1, 3, 1, 0, 0)
         query_delta = timedelta(hours=2)
 
         dataset.add_samples(
@@ -626,11 +626,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_datetimes(self):
         dataset = fo.Dataset()
 
-        date1 = datetime(1970, 1, 1, 1, 0, 0)
-        date2 = datetime(1970, 1, 1, 2, 0, 0)
-        date3 = datetime(1970, 1, 1, 3, 0, 0)
+        date1 = datetime(1970, 1, 1, 2, 0, 0)
+        date2 = datetime(1970, 1, 1, 3, 0, 0)
+        date3 = datetime(1970, 1, 1, 4, 0, 0)
 
-        query_date = datetime(1970, 1, 1, 2, 1, 0)
+        query_date = datetime(1970, 1, 1, 3, 1, 0)
         query_delta = timedelta(minutes=30)
 
         dataset.add_samples(
