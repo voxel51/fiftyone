@@ -3,7 +3,7 @@ Utilities for working with
 `Amazon Web Services <https://aws.amazon.com/>`
 S3 storage buckets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
