@@ -36,6 +36,18 @@ pytest unittests/<file>.py -s -k <test_function_name>
 
 The `-s` flag is optional and prints all stdout from the test case.
 
+## Cloud I/O tests
+
+Currently, import/export tests for cloud-backed datasets must be run manually
+like so:
+
+```shell
+BASEDIR=s3://voxel51-test/io
+# BASEDIR=gs://voxel51-test/io
+
+python tests/unittests/import_export_tests.py --basedir $BASEDIR
+```
+
 ## Copyright
 
 Copyright 2017-2021, Voxel51, Inc.<br> voxel51.com
