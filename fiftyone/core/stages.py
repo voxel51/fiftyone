@@ -16,6 +16,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+import numpy as np
 
 import eta.core.utils as etau
 
@@ -5986,7 +5987,7 @@ def _parse_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids], False
 
-    if isinstance(samples_or_ids[0], bool):
+    if isinstance(samples_or_ids[0], (bool, np.bool_)):
         return samples_or_ids, True
 
     return samples_or_ids, False
