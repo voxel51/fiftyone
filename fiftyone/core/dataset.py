@@ -18,7 +18,6 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
-import numpy as np
 from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
@@ -31,6 +30,7 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -256,10 +256,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
+
+        if isinstance(id_filepath_slice, foex.ViewExpression):
+            return self.view()[id_filepath_slice]
+
+        if etau.is_container(id_filepath_slice):
             return self.view()[id_filepath_slice]
 
         try:
@@ -5802,16 +5809,15 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    samples_or_ids = list(samples_or_ids)
 
     if not samples_or_ids:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
+    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]
 
-    return list(samples_or_ids)
+    return samples_or_ids
 
 
 def _parse_fields(field_names):
