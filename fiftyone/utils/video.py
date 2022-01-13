@@ -547,16 +547,22 @@ def concat_videos(input_paths, output_path, verbose=False):
         output_path: the path to write the output video
         verbose (False): whether to log the ``ffmpeg`` command that is executed
     """
-    with etau.TempDir() as tmp_dir:
-        input_list_path = os.path.join(tmp_dir, "input_list.txt")
-        with open(input_list_path, "w") as f:
-            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+    with fos.LocalFiles(input_paths, "r", type_str="videos") as local_inpaths:
+        with fos.LocalFile(output_path, "w") as local_outpath:
+            with etau.TempDir() as tmp_dir:
+                input_list_path = os.path.join(tmp_dir, "input_list.txt")
+                with open(input_list_path, "w") as f:
+                    f.write(
+                        "\n".join(
+                            ["file '%s'" % path for path in local_inpaths]
+                        )
+                    )
 
-        in_opts = ["-f", "concat", "-safe", "0"]
-        out_opts = ["-c", "copy"]
+                in_opts = ["-f", "concat", "-safe", "0"]
+                out_opts = ["-c", "copy"]
 
-        with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
-            ffmpeg.run(input_list_path, output_path, verbose=verbose)
+                with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
+                    ffmpeg.run(input_list_path, local_outpath, verbose=verbose)
 
 
 def _transform_videos(
