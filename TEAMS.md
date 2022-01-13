@@ -228,13 +228,13 @@ with open(local_path, "r") as f:
 etau.write_file("Hello, world!", local_path)
 s = etau.read_file(local_path)
 
-etau.ensure_dir(local_dir)
-etau.ensure_empty_dir(local_dir)
-etau.ensure_basedir(local_path)
-
 d = etas.load_json(local_path_or_str)
 d = etas.read_json(local_path)
 etas.write_json(local_path)
+
+etau.ensure_dir(local_dir)
+etau.ensure_empty_dir(local_dir)
+etau.ensure_basedir(local_path)
 
 paths = etau.list_files(local_dir, abs_paths=True, recursive=True)
 paths = etau.get_glob_matches(local_glob_patt)
