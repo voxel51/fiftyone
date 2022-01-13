@@ -1615,7 +1615,8 @@ class ExtractClipsMixin(object):
 
         if self.export_media:
             if self.clip_dir is None:
-                self.clip_dir = fos.make_temp_dir()
+                # @todo need to clean this up?
+                self.clip_dir = etau.make_temp_dir()
 
             dirname = self.clip_dir
             ext = self.video_format

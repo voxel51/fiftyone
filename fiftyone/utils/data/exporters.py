@@ -1117,26 +1117,27 @@ class MediaExporter(object):
 
     def close(self):
         """Performs any necessary actions to complete the export."""
-        if self.export_mode == "manifest":
-            fos.write_json(self._manifest, self._manifest_path)
+        try:
+            if self.export_mode == "manifest":
+                fos.write_json(self._manifest, self._manifest_path)
 
-        if self._inpaths:
-            progress = fo.config.show_progress_bars
+            if self._inpaths:
+                progress = fo.config.show_progress_bars
 
-            if progress:
-                logger.info("Exporting %s...", self._MEDIA_TYPE)
+                if progress:
+                    logger.info("Exporting %s...", self._MEDIA_TYPE)
 
-            if self.export_mode == "move":
-                fos.move_files(
-                    self._inpaths, self._outpaths, progress=progress
-                )
-            else:
-                fos.copy_files(
-                    self._inpaths, self._outpaths, progress=progress
-                )
-
-        if self._tmpdir is not None:
-            etau.delete_dir(self._tmpdir)
+                if self.export_mode == "move":
+                    fos.move_files(
+                        self._inpaths, self._outpaths, progress=progress
+                    )
+                else:
+                    fos.copy_files(
+                        self._inpaths, self._outpaths, progress=progress
+                    )
+        finally:
+            if self._tmpdir is not None:
+                etau.delete_dir(self._tmpdir)
 
 
 class ImageExporter(MediaExporter):

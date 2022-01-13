@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.14.3
 ---------------
-*Released January 12, 2021*
+*Released January 13, 2022*
 
 Core
 

@@ -101,16 +101,19 @@ class ImageIngestor(object):
         )
 
     def _close(self):
-        if self._inpaths:
-            progress = fo.config.show_progress_bars
+        try:
+            if self._inpaths:
+                progress = fo.config.show_progress_bars
 
-            if progress:
-                logger.info("Ingesting images...")
+                if progress:
+                    logger.info("Ingesting images...")
 
-            fos.copy_files(self._inpaths, self._outpaths, progress=progress)
-
-        if self._tmpdir is not None:
-            etau.delete_dir(self._tmpdir)
+                fos.copy_files(
+                    self._inpaths, self._outpaths, progress=progress
+                )
+        finally:
+            if self._tmpdir is not None:
+                etau.delete_dir(self._tmpdir)
 
 
 class UnlabeledImageDatasetIngestor(
