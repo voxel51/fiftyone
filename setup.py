@@ -53,6 +53,7 @@ INSTALL_REQUIRES = [
     "pytz",
     "PyYAML",
     "retrying",
+    "schedule",
     "scikit-learn",
     "scikit-image",
     "setuptools",
