@@ -3,6 +3,82 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.3:
+
+FiftyOne 0.14.3
+---------------
+*Released January 12, 2021*
+
+Core
+
+- Added hollow support for 32-bit systems. A
+  :ref:`database_uri <configuring-mongodb-connection>` in such cases
+- Fixed a bug that would arise when importing segmentation data from a COCO
+  JSON that contains an object with `segmentation: []`. It is now gracefully
+  handled as missing segmentation data
+- Fixed expressions containing near-epoch dates
+- Added support for setting frame-level fields by `frame_number`` in
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>()`
+- Fixes a bug that prevented
+  :meth:`set_values(field_name, values, key_field="id") <fiftyone.core.collections.SampleCollection.set_values>`
+  from working as expected.
+- Fixed bug that occurred when computing patch embeddings defined by
+  :class:`polylines <fiftyone.core.labels.Polyline>`
+- Added support for directly passing a `filename -> filepath` mapping `dict` to
+  the `data_path` parameter of importers
+- Added graceful casting of `int`-like and `float`-like values, e.g.
+  `np.float(1.0)`, to their respective Python primitives for storage
+  in the database
+- Fixed edge cases in evaluation (#1453)
+- Added support for importing and exporting `confidence` in YOLO formats
+- Added decision thresholds to the tooltips of PR/ROC curves plotted via the
+  following methods:
+    - :meth:`BinaryClassificationResults.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_pr_curve>`
+    - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_roc_curve>`
+    - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
+    - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
+
+Brain
+
+- Edgecase handling in
+  :func:`find_duplicates() <fiftyone.brain.find_duplicates>`, e.g.
+  `fraction=-1`
+- Graceful handling of missing/uncomputable embeddings in
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+
+Annotation
+
+- Added a :ref:`Labelbox integration <labelbox-integration>`
+- Added support for downloading media from existing CVAT tasks and projects
+- Added support for importing existing CVAT datasets into FiftyOne
+- Added an `unexpected` keyword argument to
+  :meth:`load_annotations() <fiftyone.core.dataset.Dataset.load_annotations>`
+  for handling unexpected annotations returned by the CVAT API
+- Added support for passing request headers to the CVAT API
+- Added handling of deleted tasks during annoation with CVAT
+- Added `task_size` parameter to the CVAT backend
+- Fixed a bug when annotating multiple track segments in CVAT and the first
+  segment is of length 1
+
+Zoo
+
+- Fixed loading of Torch/TF zoo datasets
+- Added the following TF2 models:
+    - `centernet-hg104-1024-coco-tf2`
+    - `centernet-resnet101-v1-fpn-512-coco-tf2`
+    - `centernet-resnet50-v2-512-coco-tf2`
+    - `centernet-mobilenet-v2-fpn-512-coco-tf2``
+    - `efficientdet-d0-512-coco-tf2`
+    - `efficientdet-d1-640-coco-tf2`
+    - `efficientdet-d2-768-coco-tf2`
+    - `efficientdet-d3-896-coco-tf2`
+    - `efficientdet-d4-1024-coco-tf2`
+    - `efficientdet-d5-1280-coco-tf2`
+    - `efficientdet-d6-1280-coco-tf2`
+    - `efficientdet-d7-1536-coco-tf2`
+    - `ssd-mobilenet-v2-320-coco17`
+    - `ssd-mobilenet-v1-fpn-640-coco17`
+
 .. _release-notes-v0.14.2:
 
 FiftyOne 0.14.2

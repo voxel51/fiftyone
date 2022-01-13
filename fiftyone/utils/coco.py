@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -256,6 +256,7 @@ class COCODetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -933,7 +934,7 @@ class COCOObject(object):
             a :class:`fiftyone.core.labels.Polyline`, or None if no
             segmentation data is available
         """
-        if self.segmentation is None:
+        if not self.segmentation:
             return None
 
         label, attributes = self._get_object_label_and_attributes(
@@ -1016,7 +1017,7 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        if load_segmentation and self.segmentation is not None:
+        if load_segmentation and self.segmentation:
             mask = _coco_segmentation_to_mask(
                 self.segmentation, self.bbox, frame_size
             )

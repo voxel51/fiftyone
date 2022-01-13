@@ -1,7 +1,7 @@
 """
 Video utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -517,6 +517,26 @@ def sample_frames_uniform(
         sample_frames.append(last)
 
     return sample_frames
+
+
+def concat_videos(input_paths, output_path, verbose=False):
+    """Concatenates the given list of videos, in order, into a single video.
+
+    Args:
+        input_paths: a list of video paths
+        output_path: the path to write the output video
+        verbose (False): whether to log the ``ffmpeg`` command that is executed
+    """
+    with etau.TempDir() as tmp_dir:
+        input_list_path = os.path.join(tmp_dir, "input_list.txt")
+        with open(input_list_path, "w") as f:
+            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+
+        in_opts = ["-f", "concat", "-safe", "0"]
+        out_opts = ["-c", "copy"]
+
+        with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
+            ffmpeg.run(input_list_path, output_path, verbose=verbose)
 
 
 def _transform_videos(

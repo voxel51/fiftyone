@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1052,6 +1052,11 @@ class TorchImageDataset(Dataset):
         sample_ids=None,
         include_ids=False,
     ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
         if image_paths is None:
             image_paths = samples.get_local_paths()
 
@@ -1168,6 +1173,11 @@ class TorchImageClassificationDataset(Dataset):
         sample_ids=None,
         include_ids=False,
     ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
         if image_paths is None:
             image_paths = samples.get_local_paths()
 
@@ -1197,7 +1207,7 @@ class TorchImagePatchesDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of image patch tensors
     extracted from a list of images.
 
-    Provide either ``image_paths`` and ``detections`` or ``samples`` and
+    Provide either ``image_paths`` and ``patches`` or ``samples`` and
     ``patches_field`` in order to use this dataset.
 
     Instances of this dataset emit image patches for each sample, or
@@ -1217,9 +1227,13 @@ class TorchImagePatchesDataset(Dataset):
 
     Args:
         image_paths (None): an iterable of image paths
-        detections (None): a list of :class:`fiftyone.core.labels.Detections`
-            instances specifying the image patch(es) to extract from each
-            image. Elements can be ``None`` if an image has no patches
+        patches (None): a list of labels of type
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines` specifying the image
+            patch(es) to extract from each image. Elements can be ``None`` if
+            an image has no patches
         samples (None): a :class:`fiftyone.core.collections.SampleCollection`
             from which to extract patches
         patches_field (None): the name of the field defining the image patches
@@ -1261,7 +1275,7 @@ class TorchImagePatchesDataset(Dataset):
     def __init__(
         self,
         image_paths=None,
-        detections=None,
+        patches=None,
         samples=None,
         patches_field=None,
         handle_missing="skip",
@@ -1277,7 +1291,7 @@ class TorchImagePatchesDataset(Dataset):
     ):
         image_paths, sample_ids, patch_edges, patches = self._parse_inputs(
             image_paths=image_paths,
-            detections=detections,
+            patches=patches,
             samples=samples,
             patches_field=patches_field,
             handle_missing=handle_missing,
@@ -1362,13 +1376,18 @@ class TorchImagePatchesDataset(Dataset):
     def _parse_inputs(
         self,
         image_paths=None,
-        detections=None,
+        patches=None,
         samples=None,
         patches_field=None,
         handle_missing="skip",
         sample_ids=None,
         include_ids=False,
     ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
         if image_paths is None:
             image_paths = samples.get_local_paths()
 
@@ -1380,22 +1399,56 @@ class TorchImagePatchesDataset(Dataset):
         if sample_ids is not None:
             sample_ids = _to_bytes_array(sample_ids)
 
-        if detections is not None:
+        if patches is not None:
             bboxes = []
-            for dets in detections:
-                if dets is not None:
-                    boxes = [d.bounding_box for d in dets.detections]
-                else:
+
+            for p in patches:
+                if p is None:
                     boxes = None
+                elif isinstance(p, fol.Detection):
+                    boxes = [p.bounding_box]
+                elif isinstance(p, fol.Detections):
+                    boxes = [d.bounding_box for d in p.detections]
+                elif isinstance(p, fol.Polyline):
+                    boxes = [p.to_detection().bounding_box]
+                elif isinstance(p, fol.Polylines):
+                    boxes = [
+                        _p.to_detection().bounding_box for _p in p.polylines
+                    ]
+                else:
+                    raise ValueError("Unsupported patches type %s" % type(p))
 
                 bboxes.append(boxes)
-        else:
-            label_type, bbox_path = samples._get_label_field_path(
-                patches_field, "bounding_box"
-            )
-            bboxes = samples.values(bbox_path)
+        elif patches_field is not None:
+            label_type = samples._get_label_field_type(patches_field)
+
+            if issubclass(label_type, (fol.Detection, fol.Detections)):
+                _, bbox_path = samples._get_label_field_path(
+                    patches_field, "bounding_box"
+                )
+                bboxes = samples.values(bbox_path)
+            elif issubclass(label_type, (fol.Polyline, fol.Polylines)):
+                _, points_path = samples._get_label_field_path(
+                    patches_field, "points"
+                )
+                points = samples.values(points_path)
+
+                if issubclass(label_type, fol.Polyline):
+                    bboxes = [_polyline_to_bbox(p) for p in points]
+                else:
+                    bboxes = [_polylines_to_bboxes(p) for p in points]
+            else:
+                raise ValueError(
+                    "Patches field '%s' has unsupported type %s"
+                    % (patches_field, label_type)
+                )
+
             if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
-                bboxes = [[b] if b is not None else b for b in bboxes]
+                bboxes = [[b] if b is not None else None for b in bboxes]
+        else:
+            raise ValueError(
+                "Either `patches` or `patches_field` must be provided"
+            )
 
         num_patches = 0
         patch_edges = [0]
@@ -1423,6 +1476,25 @@ class TorchImagePatchesDataset(Dataset):
 def _to_eta_bbox(bounding_box):
     tlx, tly, w, h = bounding_box
     return etag.BoundingBox.from_coords(tlx, tly, tlx + w, tly + h)
+
+
+def _polylines_to_bboxes(points):
+    if points is None:
+        return None
+
+    return [_polyline_to_bbox(p) for p in points]
+
+
+def _polyline_to_bbox(points):
+    if points is None:
+        return None
+
+    x, y = zip(*list(itertools.chain(*points)))
+    xtl = min(x)
+    ytl = min(y)
+    xbr = max(x)
+    ybr = max(y)
+    return [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
 
 def from_image_classification_dir_tree(dataset_dir):

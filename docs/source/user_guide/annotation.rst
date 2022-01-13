@@ -915,6 +915,18 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
+Some annotation backends like CVAT cannot explicitly prevent annotators from
+creating labels that don't obey the run's label schema. You can pass the
+optional `unexpected` parameter to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+to configure how to deal with any such unexpected labels that are found. The
+supported values are:
+
+-   `"prompt"` (**default**): present an interactive prompt to direct/discard
+    unexpected labels
+-   `"ignore"`: automatically ignore any unexpected labels
+-   `"return"`: return a dict containing all unexpected labels, if any
+
 .. _managing-annotation-runs:
 
 Managing annotation runs

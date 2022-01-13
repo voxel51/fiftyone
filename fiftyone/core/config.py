@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -361,7 +361,11 @@ class AnnotationConfig(EnvConfig):
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
             "url": "https://cvat.org",
-        }
+        },
+        "labelbox": {
+            "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
+            "url": "https://labelbox.com",
+        },
     }
 
     def __init__(self, d=None):

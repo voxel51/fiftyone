@@ -1,18 +1,18 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from datetime import date, datetime
+import numbers
 
 from bson import SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
 import pytz
-import six
 
 import eta.core.utils as etau
 
@@ -61,7 +61,11 @@ class Field(mongoengine.fields.BaseField):
 class IntField(mongoengine.fields.IntField, Field):
     """A 32 bit integer field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return int(value)
 
 
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
@@ -115,6 +119,12 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
 
 class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return float(value)
 
     def validate(self, value):
         try:
@@ -256,7 +266,7 @@ class IntDictField(DictField):
         if not isinstance(value, dict):
             self.error("Value must be a dict")
 
-        if not all(map(lambda k: isinstance(k, six.integer_types), value)):
+        if not all(map(lambda k: isinstance(k, numbers.Integral), value)):
             self.error("Int dict fields must have integer keys")
 
         if self.field is not None:
