@@ -47,7 +47,7 @@ MONGODB_DOWNLOAD_URLS = {
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
-VERSION = "0.2.1"
+VERSION = "0.3"
 
 
 def get_version():
