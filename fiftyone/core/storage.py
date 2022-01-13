@@ -469,7 +469,6 @@ class LocalDir(object):
         self._skip_failures = skip_failures
         self._type_str = type_str
         self._quiet = quiet
-        self._dirpath = None
         self._tmpdir = None
 
     @property
@@ -481,17 +480,7 @@ class LocalDir(object):
         if is_local(self._path):
             return self._path
 
-        tmpdir = make_temp_dir(basedir=self._basedir)
-
-        if os.path.splitext(self._path)[1]:
-            dirpath = os.path.dirname(self._path)
-            local_path = os.path.join(tmpdir, os.path.basename(self._path))
-        else:
-            dirpath = self._path
-            local_path = tmpdir
-
-        self._dirpath = dirpath
-        self._tmpdir = tmpdir
+        self._tmpdir = make_temp_dir(basedir=self._basedir)
 
         if self._mode == "r":
             progress = not self.quiet
@@ -500,13 +489,14 @@ class LocalDir(object):
                 logger.info("Downloading %s...", self._type_str)
 
             copy_dir(
-                self._dirpath,
+                self._path,
                 self._tmpdir,
+                overwrite=False,
                 skip_failures=self._skip_failures,
                 progress=progress,
             )
 
-        return local_path
+        return self._tmpdir
 
     def __exit__(self, *args):
         if self._tmpdir is None:
@@ -521,7 +511,7 @@ class LocalDir(object):
 
                 copy_dir(
                     self._tmpdir,
-                    self._dirpath,
+                    self._path,
                     overwrite=False,
                     skip_failures=self._skip_failures,
                     progress=progress,
@@ -1409,7 +1399,7 @@ def get_glob_matches(glob_patt):
 
     Args:
         glob_patt: a glob pattern like ``/path/to/files-*.jpg`` or
-            ``/path/to/files-*-*.jpg``
+            ``s3://path/to/files-*-*.jpg``
 
     Returns:
         a list of file paths
@@ -1421,10 +1411,10 @@ def get_glob_matches(glob_patt):
 
     client = get_client(fs)
 
-    root, found_special_chars = _parse_cloud_glob_patt(glob_patt)
+    root, found_special = get_glob_root(glob_patt)
 
-    if not found_special_chars:
-        return [root]
+    if not found_special:
+        return [glob_patt]
 
     filepaths = client.list_files_in_folder(root, recursive=True)
     return sorted(
@@ -1434,7 +1424,20 @@ def get_glob_matches(glob_patt):
     )
 
 
-def _parse_cloud_glob_patt(glob_patt):
+def get_glob_root(glob_patt):
+    """Finds the root directory of the given glob pattern, i.e., the deepest
+    subdirectory that contains no glob characters.
+
+    Args:
+        glob_patt: a glob pattern like ``/path/to/files-*.jpg`` or
+            ``s3://path/to/files-*-*.jpg``
+
+    Returns:
+        a tuple of:
+
+        -   the root
+        -   True/False whether the pattern contains any special characters
+    """
     special_chars = "*?[]"
 
     # Remove escapes around special characters
@@ -1446,10 +1449,10 @@ def _parse_cloud_glob_patt(glob_patt):
     split_patt = "|".join(map(re.escape, special_chars))
     root = re.split(split_patt, glob_patt, 1)[0]
 
-    if root == glob_patt:
-        return glob_patt, False
+    found_special = root != glob_patt
+    root = os.path.dirname(root)
 
-    return os.path.dirname(root), True
+    return root, found_special
 
 
 def copy_file(inpath, outpath):

@@ -233,8 +233,10 @@ class TFRecordsWriter(object):
     def __enter__(self):
         self._idx = -1
 
-        self._local_dir = fos.LocalDir(self.tf_records_path, "w")
-        tf_records_path = self._local_dir.__enter__()
+        export_dir, name = os.path.split(self.tf_records_path)
+        self._local_dir = fos.LocalDir(export_dir, "w")
+        local_dir = self._local_dir.__enter__()
+        tf_records_path = os.path.join(local_dir, name)
 
         etau.ensure_basedir(tf_records_path)
 
@@ -551,8 +553,17 @@ class TFRecordsLabeledImageDatasetImporter(
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        self._tf_records_dir = fos.LocalDir(self.tf_records_path, "r")
-        tf_records_path = self._tf_records_dir.__enter__()
+        dataset_dir, name_or_patt = os.path.split(self.tf_records_path)
+        if not fos.is_local(dataset_dir) and fos.get_glob_root(dataset_dir)[1]:
+            raise ValueError(
+                "Invalid TFRecords path '%s'; remote paths that contain glob "
+                "patterns in their directory component are not supported"
+                % self.tf_records_path,
+            )
+
+        self._tf_records_dir = fos.LocalDir(dataset_dir, "r")
+        local_dir = self._tf_records_dir.__enter__()
+        tf_records_path = os.path.join(local_dir, name_or_patt)
 
         self._images_dir = fos.LocalDir(self.images_dir, "w")
         images_dir = self._images_dir.__enter__()
