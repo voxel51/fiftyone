@@ -11,6 +11,7 @@ kaleido==0.2.1
 matplotlib==3.2.1
 mongoengine==0.20.0
 motor==2.3.0
+ndjson==0.3.1
 packaging==20.3
 pandas==1.1.5
 plotly==4.14.3
@@ -25,5 +26,6 @@ setuptools==45.2.0
 tabulate==0.8.5
 tornado>=5.1.0
 universal-analytics-python3==1.0.1
+wcmatch==8.3
 xmltodict==0.12.0
 yarl==1.7.2
