@@ -296,12 +296,13 @@ class YOLOv4DatasetImporter(
 
                 image_paths.append(path)
         else:
-            logger.warning(
-                "Images file '%s' not found. Listing data directory '%s' "
-                "instead",
-                self.images_path,
-                self.data_path,
-            )
+            if self.images_path is not None:
+                logger.warning(
+                    "Images file '%s' not found. Listing data directory '%s' "
+                    "instead",
+                    self.images_path,
+                    self.data_path,
+                )
 
             image_paths = [
                 p
