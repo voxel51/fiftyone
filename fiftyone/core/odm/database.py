@@ -1,7 +1,7 @@
 """
 Database utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -81,15 +81,23 @@ def establish_db_conn(config):
             os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
         except fos.ServiceExecutableNotFound as error:
-            if not fou.is_arm_mac():
-                raise error
+            if fou.is_32_bit():
+                raise FiftyOneConfigError(
+                    "MongoDB is not supported on 32-bit systems. Please "
+                    "define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to define a "
+                    "connection to your own MongoDB instance or cluster "
+                )
 
-            raise FiftyOneConfigError(
-                "MongoDB is not yet supported on Apple Silicon Macs. Please"
-                "define a `database_uri` in your"
-                "`fiftyone.core.config.FiftyOneConfig` to define a connection"
-                "to your own MongoDB instance or cluster"
-            )
+            if fou.is_arm_mac():
+                raise FiftyOneConfigError(
+                    "MongoDB is not yet supported on Apple Silicon Macs. "
+                    "Please define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to define a "
+                    "connection to your own MongoDB instance or cluster"
+                )
+
+            raise error
 
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)

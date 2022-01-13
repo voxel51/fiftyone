@@ -1,7 +1,7 @@
 """
 Plotly plots.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -397,13 +397,20 @@ def plot_regressions(
 
 
 def plot_pr_curve(
-    precision, recall, label=None, style="area", figure=None, **kwargs
+    precision,
+    recall,
+    thresholds=None,
+    label=None,
+    style="area",
+    figure=None,
+    **kwargs,
 ):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
+        thresholds (None): an optional array of decision thresholds
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
@@ -431,7 +438,25 @@ def plot_pr_curve(
     if style == "area":
         params["fill"] = "tozeroy"
 
-    figure.add_trace(go.Scatter(x=recall, y=precision, **params))
+    hover_lines = [
+        "recall: %{x:.3f}",
+        "precision: %{y:.3f}",
+    ]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    figure.add_trace(
+        go.Scatter(
+            x=recall,
+            y=precision,
+            hovertemplate=hovertemplate,
+            customdata=thresholds,
+            **params,
+        )
+    )
 
     # Add 50/50 line
     figure.add_shape(
@@ -459,7 +484,9 @@ def plot_pr_curve(
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
+def plot_pr_curves(
+    precisions, recall, classes, thresholds=None, figure=None, **kwargs
+):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -467,6 +494,8 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
             precision values
         recall: an array of recall values
         classes: the list of classes
+        thresholds (None): an optional ``num_classes x num_recalls`` array of
+            decision thresholds
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
             to which to add the plots
         **kwargs: optional keyword arguments for
@@ -489,9 +518,12 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
 
     hover_lines = [
         "<b>class: %{text}</b>",
-        "recall: %{x}",
-        "precision: %{y}",
+        "recall: %{x:.3f}",
+        "precision: %{y:.3f}",
     ]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
@@ -507,6 +539,11 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
         avg_precision = avg_precisions[idx]
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
+        if thresholds is not None:
+            customdata = thresholds[idx]
+        else:
+            customdata = None
+
         line = go.Scatter(
             x=recall,
             y=precision,
@@ -515,6 +552,7 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
             line_color=color,
             text=np.full(recall.shape, _class),
             hovertemplate=hovertemplate,
+            customdata=customdata,
         )
 
         figure.add_trace(line)
@@ -538,13 +576,20 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
 
 
 def plot_roc_curve(
-    fpr, tpr, roc_auc=None, style="area", figure=None, **kwargs
+    fpr,
+    tpr,
+    thresholds=None,
+    roc_auc=None,
+    style="area",
+    figure=None,
+    **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
+        thresholds (None): an optional array of decision thresholds
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
@@ -572,7 +617,22 @@ def plot_roc_curve(
     if style == "area":
         params["fill"] = "tozeroy"
 
-    figure.add_trace(go.Scatter(x=fpr, y=tpr, **params))
+    hover_lines = ["fpr: %{x:.3f}", "tpr: %{y:.3f}"]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    figure.add_trace(
+        go.Scatter(
+            x=fpr,
+            y=tpr,
+            hovertemplate=hovertemplate,
+            customdata=thresholds,
+            **params,
+        )
+    )
 
     # Add 50/50 line
     figure.add_shape(

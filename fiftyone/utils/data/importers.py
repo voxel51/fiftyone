@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -615,6 +615,9 @@ class ImportPathsMixin(object):
             if dataset_dir is not None:
                 data_path = default
 
+        if isinstance(data_path, dict):
+            return data_path
+
         if data_path is not None:
             data_path = os.path.expanduser(data_path)
 
@@ -655,32 +658,33 @@ class ImportPathsMixin(object):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
+        if ignore_exts:
+            to_uuid = lambda p: os.path.splitext(p)[0]
+        else:
+            to_uuid = lambda p: p
+
+        if isinstance(data_path, dict):
+            return {to_uuid(k): v for k, v in data_path.items()}
+
         if not data_path:
-            data_map = {}
-        elif data_path.endswith(".json"):
+            return {}
+
+        if data_path.endswith(".json"):
             if not fos.isfile(data_path):
                 raise ValueError(
                     "Data manifest '%s' does not exist" % data_path
                 )
 
             data_map = fos.read_json(data_path)
-        else:
-            if not fos.isdir(data_path):
-                raise ValueError(
-                    "Data directory '%s' does not exist" % data_path
-                )
+            return {to_uuid(k): v for k, v in data_map.items()}
 
-            if ignore_exts:
-                to_uuid = lambda p: os.path.splitext(p)[0]
-            else:
-                to_uuid = lambda p: p
+        if not fos.isdir(data_path):
+            raise ValueError("Data directory '%s' does not exist" % data_path)
 
-            data_map = {
-                to_uuid(p): fos.join(data_path, p)
-                for p in fos.list_files(data_path, recursive=recursive)
-            }
-
-        return data_map
+        return {
+            to_uuid(p): fos.join(data_path, p)
+            for p in fos.list_files(data_path, recursive=recursive)
+        }
 
 
 class DatasetImporter(object):
@@ -1901,6 +1905,7 @@ class FiftyOneImageClassificationDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2334,6 +2339,7 @@ class FiftyOneImageDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2518,6 +2524,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2706,6 +2713,7 @@ class ImageSegmentationDirectoryImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 import { getColor } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";

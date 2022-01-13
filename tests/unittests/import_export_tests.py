@@ -18,7 +18,7 @@ You can run specific test(s) as follows::
         ClassName.method_name \
         --basedir $BASEDIR
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1053,6 +1053,29 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
 
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_field="predictions",
+            include_all_data=True,
+        )
+
+        bounds = dataset.bounds("predictions.detections.confidence")
+        bounds2 = dataset2.bounds("predictions.detections.confidence")
+        self.assertAlmostEqual(bounds[0], bounds2[0])
+        self.assertAlmostEqual(bounds[1], bounds2[1])
+
         # Labels-only
 
         data_path = os.path.dirname(dataset.first().filepath)
@@ -1102,6 +1125,27 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset.count("predictions.detections"),
             dataset2.count("predictions.detections"),
         )
+
+        # Include confidence
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            include_confidence=True,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_field="predictions",
+        )
+
+        bounds = dataset.bounds("predictions.detections.confidence")
+        bounds2 = dataset2.bounds("predictions.detections.confidence")
+        self.assertAlmostEqual(bounds[0], bounds2[0])
+        self.assertAlmostEqual(bounds[1], bounds2[1])
 
 
 class ImageSegmentationDatasetTests(ImageDatasetTests):

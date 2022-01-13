@@ -49,7 +49,7 @@ jobs:
           fi
       - name: Build dist
         run: |
-          python setup.py bdist_wheel
+          python setup.py bdist_wheel sdist
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
@@ -207,4 +207,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/*.whl
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/*
