@@ -33,8 +33,6 @@ class Metadata(DynamicEmbeddedDocument):
         mime_type (None): the MIME type of the media
     """
 
-    meta = {"allow_inheritance": True}
-
     size_bytes = fof.IntField()
     mime_type = fof.StringField()
 

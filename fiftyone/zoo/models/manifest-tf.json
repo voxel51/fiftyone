@@ -1112,7 +1112,7 @@
             "base_name": "ssd-mobilenet-v1-coco-tf",
             "base_filename": "ssd-mobilenet-v1-coco.pb",
             "version": null,
-            "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
+            "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "size_bytes": 29185289,
             "manager": {
@@ -1148,7 +1148,7 @@
             "base_name": "ssd-mobilenet-v1-fpn-coco-tf",
             "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
             "version": null,
-            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
+            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
             "size_bytes": 51346898,
             "manager": {
@@ -1376,7 +1376,7 @@
             "base_name": "centernet-resnet50-v1-fpn-512-coco-tf2",
             "base_filename": "centernet_resnet50_v1_fpn_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-50-v1 backbone + FPN trained on COCO resized to 512x512",
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50-v1 backbone + FPN trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 204067969,
             "manager": {
@@ -1410,11 +1410,11 @@
             "tags": ["detection", "coco", "tf2"],
             "date_added": "2021-12-27 14:45:23"
         },
-                {
+        {
             "base_name": "centernet-resnet101-v1-fpn-512-coco-tf2",
             "base_filename": "centernet_resnet101_v1_fpn_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-101v1 backbone + FPN trained on COCO resized to 512x512",
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-101v1 backbone + FPN trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 345992335,
             "manager": {
@@ -1452,7 +1452,7 @@
             "base_name": "centernet-resnet50-v2-512-coco-tf2",
             "base_filename": "centernet_resnet50_v2_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Resnet-50v2 backbone trained on COCO resized to 512x512",
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50v2 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 237977273,
             "manager": {
@@ -1486,11 +1486,11 @@
             "tags": ["detection", "coco", "tf2"],
             "date_added": "2021-12-27 14:59:23"
         },
-         {
+        {
             "base_name": "centernet-mobilenet-v2-fpn-512-coco-tf2",
             "base_filename": "centernet_mobilenetv2fpn_512x512_coco17_od.tar.gz",
             "version": null,
-            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Mobilenet v2 backbone trained on COCO resized to 512x512",
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the MobileNetV2 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 44016454,
             "manager": {
@@ -1528,7 +1528,7 @@
             "base_name": "efficientdet-d0-512-coco-tf2",
             "base_filename": "efficientdet_d0_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 512x512",
+            "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 30736482,
             "manager": {
@@ -1566,7 +1566,7 @@
             "base_name": "efficientdet-d1-640-coco-tf2",
             "base_filename": "efficientdet_d1_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 640x640",
+            "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 640x640",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 51839363,
             "manager": {
@@ -1604,7 +1604,7 @@
             "base_name": "efficientdet-d2-768-coco-tf2",
             "base_filename": "efficientdet_d2_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 768x768",
+            "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 768x768",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 62929273,
             "manager": {
@@ -1642,9 +1642,9 @@
             "base_name": "efficientdet-d3-896-coco-tf2",
             "base_filename": "efficientdet_d3_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 896x896",
+            "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 896x896",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
-            "size_bytes": 92858658 ,
+            "size_bytes": 92858658,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1680,7 +1680,7 @@
             "base_name": "efficientdet-d4-1024-coco-tf2",
             "base_filename": "efficientdet_d4_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1024x1024",
+            "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 158496448,
             "manager": {
@@ -1718,7 +1718,7 @@
             "base_name": "efficientdet-d5-1280-coco-tf2",
             "base_filename": "efficientdet_d5_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1280x1280",
+            "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 256286417,
             "manager": {
@@ -1756,9 +1756,9 @@
             "base_name": "efficientdet-d6-1280-coco-tf2",
             "base_filename": "efficientdet_d6_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1280x1280",
+            "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
-            "size_bytes": 393872877 ,
+            "size_bytes": 393872877,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1794,7 +1794,7 @@
             "base_name": "efficientdet-d7-1536-coco-tf2",
             "base_filename": "efficientdet_d7_coco17_tpu-32.tar.gz",
             "version": null,
-            "description": "EfficientDet: Scalable and Efficient Object Detection<https://arxiv.org/abs/1911.09070> images are resized 1536x1536",
+            "description": "EfficientDet-D7 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1536x1536",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 394474998,
             "manager": {
@@ -1832,7 +1832,7 @@
             "base_name": "ssd-mobilenet-v2-320-coco17",
             "base_filename": "ssd_mobilenet_v2_320x320_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "MobileNetV2: Inverted Residuals and Linear Bottlenecks<https://arxiv.org/pdf/1801.04381.pdf> images are resized 320x320",
+            "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 320x320",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 46042990,
             "manager": {
@@ -1870,7 +1870,7 @@
             "base_name": "ssd-mobilenet-v1-fpn-640-coco17",
             "base_filename": "ssd_mobilenet_v1_fpn_640x640_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "MobileNetV2: Inverted Residuals and Linear Bottlenecks<https://arxiv.org/pdf/1801.04381.pdf> images are resized 640x640",
+            "description": "MobileNetV1 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 640x640",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
             "size_bytes": 46042990,
             "manager": {
