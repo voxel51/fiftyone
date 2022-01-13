@@ -92,6 +92,9 @@ class FiftyOneConfig(EnvConfig):
         self.model_zoo_dir = self.parse_path(
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
+        self.module_path = self.parse_string_array(
+            d, "module_path", env_var="FIFTYONE_MODULE_PATH", default=None,
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
@@ -175,8 +178,7 @@ class FiftyOneConfig(EnvConfig):
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
 
-        self._set_defaults()
-        self._validate()
+        self._init()
 
     @property
     def show_progress_bars(self):
@@ -195,7 +197,7 @@ class FiftyOneConfig(EnvConfig):
         # Includes `show_progress_bars`
         return super().custom_attributes(dynamic=True)
 
-    def _set_defaults(self):
+    def _init(self):
         if self.default_dataset_dir is None:
             self.default_dataset_dir = os.path.join(
                 os.path.expanduser("~"), "fiftyone"
@@ -217,9 +219,19 @@ class FiftyOneConfig(EnvConfig):
             elif "tensorflow" in installed_packages:
                 self.default_ml_backend = "tensorflow"
 
-    def _validate(self):
         if self.default_ml_backend is not None:
             self.default_ml_backend = self.default_ml_backend.lower()
+
+        if self.module_path is not None:
+            for idx, module_name in enumerate(self.module_path):
+                try:
+                    __import__(module_name)
+                except ImportError as e:
+                    logger.warning(
+                        "Failed to import fiftyone.config.module_path[%d]: %s",
+                        idx,
+                        e,
+                    )
 
         if self.timezone and self.timezone.lower() not in {"local", "utc"}:
             try:
@@ -294,7 +306,7 @@ class AppConfig(EnvConfig):
             default=False,
         )
 
-        self._validate()
+        self._init()
 
     def get_colormap(self, colorscale=None, n=256, hex_strs=False):
         """Generates a continuous colormap with the specified number of colors
@@ -339,11 +351,12 @@ class AppConfig(EnvConfig):
 
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
-    def _validate(self):
+    def _init(self):
         if self.grid_zoom < 0 or self.grid_zoom > 10:
-            raise AppConfigError(
-                "`grid_zoom` must be in [0, 10]; found %d" % self.grid_zoom
+            logger.warning(
+                "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
+            self.grid_zoom = 5
 
 
 class AppConfigError(etac.EnvConfigError):

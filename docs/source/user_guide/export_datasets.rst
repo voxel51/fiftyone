@@ -2911,7 +2911,7 @@ as follows:
         import fiftyone as fo
 
         export_dir = "/path/for/cvat-video-dataset"
-        label_field = "frames.ground_truth"  # for example
+        label_field = "ground_truth"  # for example
 
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
@@ -2920,7 +2920,7 @@ as follows:
         dataset_or_view.export(
             export_dir=export_dir,
             dataset_type=fo.types.CVATVideoDataset,
-            label_field=label_field,
+            frame_labels_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -2929,13 +2929,13 @@ as follows:
 
         NAME=my-dataset
         EXPORT_DIR=/path/for/cvat-video-dataset
-        LABEL_FIELD=frames.ground_truth  # for example
+        LABEL_FIELD=ground_truth  # for example
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.CVATVideoDataset
+            --type fiftyone.types.CVATVideoDataset \
+            --kwargs frame_labels_field=$LABEL_FIELD
 
 You can also perform labels-only exports of CVAT-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
@@ -2950,7 +2950,7 @@ the `labels_path` parameter instead of `export_dir`:
         import fiftyone as fo
 
         labels_path = "/path/for/cvat-labels"
-        label_field = "frames.ground_truth"  # for example
+        label_field = "ground_truth"  # for example
 
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
@@ -2959,7 +2959,7 @@ the `labels_path` parameter instead of `export_dir`:
         dataset_or_view.export(
             dataset_type=fo.types.CVATVideoDataset,
             labels_path=labels_path,
-            label_field=label_field,
+            frame_labels_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -2968,13 +2968,13 @@ the `labels_path` parameter instead of `export_dir`:
 
         NAME=my-dataset
         LABELS_PATH=/path/for/cvat-labels
-        LABEL_FIELD=frames.ground_truth  # for example
+        LABEL_FIELD=ground_truth  # for example
 
         # Export labels
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATVideoDataset \
-            --kwargs labels_path=$LABELS_PATH
+            --kwargs frames_labels_path=$LABELS_PATH
 
 .. _FiftyOneImageLabelsDataset-export:
 

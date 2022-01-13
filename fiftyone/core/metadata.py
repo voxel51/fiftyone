@@ -34,8 +34,6 @@ class Metadata(DynamicEmbeddedDocument):
         mime_type (None): the MIME type of the media
     """
 
-    meta = {"allow_inheritance": True}
-
     size_bytes = fof.IntField()
     mime_type = fof.StringField()
 
@@ -247,7 +245,7 @@ def compute_metadata(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(

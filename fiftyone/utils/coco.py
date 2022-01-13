@@ -1824,7 +1824,7 @@ def _get_existing_ids(images_dir, images, image_ids):
 
 
 def _download_images(images_dir, image_ids, images, num_workers):
-    if num_workers is None or num_workers < 1:
+    if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
     tasks = []
@@ -1837,7 +1837,7 @@ def _download_images(images_dir, image_ids, images, num_workers):
     if not tasks:
         return
 
-    if num_workers == 1:
+    if num_workers <= 1:
         with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)

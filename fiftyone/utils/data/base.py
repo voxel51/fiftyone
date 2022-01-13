@@ -175,7 +175,7 @@ def download_images(image_urls, output_dir, num_workers=None):
         outpath = os.path.join(output_dir, filename)
         inputs.append((url, outpath))
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _download_images(inputs)
     else:
         _download_images_multi(inputs, num_workers)

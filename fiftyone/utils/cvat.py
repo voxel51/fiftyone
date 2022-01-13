@@ -311,11 +311,11 @@ def _parse_task_metadata(
 
 
 def _download_media(tasks, num_workers):
-    if num_workers is None or num_workers < 1:
+    if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
     logger.info("Downloading media...")
-    if num_workers == 1:
+    if num_workers <= 1:
         with fou.ProgressBar() as pb:
             for task in pb(tasks):
                 _do_download_media(task)
