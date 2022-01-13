@@ -246,7 +246,7 @@ def compute_metadata(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
