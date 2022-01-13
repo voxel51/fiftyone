@@ -133,6 +133,8 @@ async def read_url_metadata(url, is_video):
     return {"width": width, "height": height}
     """
 
+    url = foc._safe_aiohttp_url(url)
+
     async with aiohttp.ClientSession() as sess, sess.get(url) as resp:
         width, height = await get_image_dimensions(Reader(resp.content))
         return {"width": width, "height": height}

@@ -5,14 +5,66 @@ Image utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import multiprocessing
 import os
 
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.media as fom
+import fiftyone.core.cache as foc
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
+
+
+logger = logging.getLogger(__name__)
+
+
+def read(path, include_alpha=False, flag=None):
+    """Reads the image from the given path as a numpy array.
+
+    Color images are returned as RGB arrays.
+
+    Args:
+        path: the path to the image
+        include_alpha (False): whether to include the alpha channel of the
+            image, if present, in the returned array
+        flag (None): an optional OpenCV image format flag to use. If provided,
+            this flag takes precedence over ``include_alpha``
+
+    Returns:
+        a uint8 numpy array containing the image
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        return etai.read(path, include_alpha=include_alpha, flag=flag)
+
+    client = fos.get_client(fs)
+    b = client.download_bytes(path)
+
+    return etai.decode(b, include_alpha=include_alpha, flag=flag)
+
+
+def write(img, path):
+    """Writes image to file.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        etai.write(img, path)
+        return
+
+    ext = os.path.splitext(path)[1]
+    b = etai.encode(img, ext)
+
+    client = fos.get_client(fs)
+    client.upload_bytes(b, path)
 
 
 def reencode_images(
@@ -21,6 +73,7 @@ def reencode_images(
     force_reencode=True,
     delete_originals=False,
     num_workers=None,
+    skip_failures=False,
 ):
     """Re-encodes the images in the sample collection to the given format.
 
@@ -37,31 +90,19 @@ def reencode_images(
             re-encoding
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an image cannot be re-encoded
     """
-    if sample_collection.media_type != fom.IMAGE:
-        raise ValueError(
-            "Sample collection '%s' does not contain images (media_type = "
-            "'%s')" % (sample_collection.name, sample_collection.media_type)
-        )
+    fov.validate_image_collection(sample_collection)
 
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if num_workers <= 1:
-        _transform_images(
-            sample_collection,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
-    else:
-        _transform_images_multi(
-            sample_collection,
-            num_workers,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
+    _transform_images(
+        sample_collection,
+        ext=ext,
+        force_reencode=force_reencode,
+        delete_originals=delete_originals,
+        num_workers=num_workers,
+        skip_failures=skip_failures,
+    )
 
 
 def transform_images(
@@ -73,6 +114,7 @@ def transform_images(
     force_reencode=False,
     delete_originals=False,
     num_workers=None,
+    skip_failures=False,
 ):
     """Transforms the images in the sample collection according to the provided
     parameters.
@@ -101,39 +143,22 @@ def transform_images(
             transformation was applied
         num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
+        skip_failures (False): whether to gracefully continue without raising
+            an error if an image cannot be transformed
     """
-    if sample_collection.media_type != fom.IMAGE:
-        raise ValueError(
-            "Sample collection '%s' does not contain images (media_type = "
-            "'%s')" % (sample_collection.name, sample_collection.media_type)
-        )
+    fov.validate_image_collection(sample_collection)
 
-    ext = _parse_ext(ext)
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if num_workers <= 1:
-        _transform_images(
-            sample_collection,
-            size=size,
-            min_size=min_size,
-            max_size=max_size,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
-    else:
-        _transform_images_multi(
-            sample_collection,
-            num_workers,
-            size=size,
-            min_size=min_size,
-            max_size=max_size,
-            ext=ext,
-            force_reencode=force_reencode,
-            delete_originals=delete_originals,
-        )
+    _transform_images(
+        sample_collection,
+        size=size,
+        min_size=min_size,
+        max_size=max_size,
+        ext=ext,
+        force_reencode=force_reencode,
+        delete_originals=delete_originals,
+        num_workers=num_workers,
+        skip_failures=skip_failures,
+    )
 
 
 def reencode_image(input_path, output_path):
@@ -172,16 +197,6 @@ def transform_image(
     )
 
 
-def _parse_ext(ext):
-    if ext is None:
-        return None
-
-    if not ext.startswith("."):
-        ext = "." + ext
-
-    return ext.lower()
-
-
 def _transform_images(
     sample_collection,
     size=None,
@@ -190,9 +205,54 @@ def _transform_images(
     ext=None,
     force_reencode=False,
     delete_originals=False,
+    num_workers=None,
+    skip_failures=False,
 ):
+    ext = _parse_ext(ext)
+
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    if num_workers <= 1:
+        _transform_images_single(
+            sample_collection,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            ext=ext,
+            force_reencode=force_reencode,
+            delete_originals=delete_originals,
+            skip_failures=skip_failures,
+        )
+    else:
+        _transform_images_multi(
+            sample_collection,
+            num_workers,
+            size=size,
+            min_size=min_size,
+            max_size=max_size,
+            ext=ext,
+            force_reencode=force_reencode,
+            delete_originals=delete_originals,
+            skip_failures=skip_failures,
+        )
+
+
+def _transform_images_single(
+    sample_collection,
+    size=None,
+    min_size=None,
+    max_size=None,
+    ext=None,
+    force_reencode=False,
+    delete_originals=False,
+    skip_failures=False,
+):
+    view = sample_collection.select_fields()
+    stale_paths = []
+
     with fou.ProgressBar() as pb:
-        for sample in pb(sample_collection.select_fields()):
+        for sample in pb(view):
             inpath = sample.filepath
 
             if ext is not None:
@@ -200,7 +260,7 @@ def _transform_images(
             else:
                 outpath = inpath
 
-            _transform_image(
+            did_transform = _transform_image(
                 inpath,
                 outpath,
                 size=size,
@@ -208,10 +268,18 @@ def _transform_images(
                 max_size=max_size,
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
+                skip_failures=skip_failures,
             )
 
-            sample.filepath = outpath
-            sample.save()
+            if outpath != inpath:
+                sample.filepath = outpath
+                sample.save()
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_images_multi(
@@ -223,11 +291,12 @@ def _transform_images_multi(
     ext=None,
     force_reencode=False,
     delete_originals=False,
+    skip_failures=False,
 ):
-    inputs = []
-    for sample in sample_collection.select_fields():
-        inpath = sample.filepath
+    sample_ids, filepaths = sample_collection.values(["id", "filepath"])
 
+    inputs = []
+    for sample_id, inpath in zip(sample_ids, filepaths):
         if ext is not None:
             outpath = os.path.splitext(inpath)[0] + ext
         else:
@@ -235,7 +304,7 @@ def _transform_images_multi(
 
         inputs.append(
             (
-                sample.id,
+                sample_id,
                 inpath,
                 outpath,
                 size,
@@ -243,22 +312,34 @@ def _transform_images_multi(
                 max_size,
                 force_reencode,
                 delete_originals,
+                skip_failures,
             )
         )
 
+    view = sample_collection.select_fields()
+    stale_paths = []
+
     with fou.ProgressBar(inputs) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
-            for sample_id, outpath in pb(
+            for sample_id, inpath, outpath, did_transform in pb(
                 pool.imap_unordered(_do_transform, inputs)
             ):
-                sample = sample_collection[sample_id]
-                sample.filepath = outpath
-                sample.save()
+                if outpath != inpath:
+                    sample = view[sample_id]
+                    sample.filepath = outpath
+                    sample.save()
+                    if delete_originals:
+                        stale_paths.append(inpath)
+                elif did_transform:
+                    stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _do_transform(args):
-    _transform_image(*args[1:])
-    return args[0], args[2]
+    sample_id, inpath, outpath = args[:3]
+    did_transform = _transform_image(inpath, outpath, *args[3:])
+    return sample_id, inpath, outpath, did_transform
 
 
 def _transform_image(
@@ -269,42 +350,56 @@ def _transform_image(
     max_size=None,
     force_reencode=False,
     delete_original=False,
+    skip_failures=False,
 ):
-    inpath = os.path.abspath(os.path.expanduser(inpath))
-    outpath = os.path.abspath(os.path.expanduser(outpath))
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
-    if (
-        size is not None
-        or min_size is not None
-        or max_size is not None
-        or in_ext != out_ext
-        or force_reencode
-    ):
-        img = etai.read(inpath)
-        size = _parse_parameters(img, size, min_size, max_size)
+    did_transform = False
 
-    diff_params = size is not None
-    should_reencode = diff_params or force_reencode
+    try:
+        if (
+            size is not None
+            or min_size is not None
+            or max_size is not None
+            or in_ext != out_ext
+            or force_reencode
+        ):
+            img = read(inpath)
+            size = _parse_parameters(img, size, min_size, max_size)
 
-    if (inpath == outpath) and should_reencode and not delete_original:
-        _inpath = inpath
-        inpath = etau.make_unique_path(inpath, suffix="-original")
-        etau.move_file(_inpath, inpath)
+        diff_params = size is not None
+        should_reencode = diff_params or force_reencode
 
-    diff_path = inpath != outpath
+        if (inpath == outpath) and should_reencode and not delete_original:
+            _inpath = inpath
+            inpath = etau.make_unique_path(inpath, suffix="-original")
+            fos.move_file(_inpath, inpath)
 
-    if diff_params:
-        img = etai.resize(img, width=size[0], height=size[1])
-        etai.write(img, outpath)
-    elif force_reencode or (in_ext != out_ext):
-        etai.write(img, outpath)
-    elif diff_path:
-        etau.copy_file(inpath, outpath)
+        diff_path = inpath != outpath
 
-    if delete_original and diff_path:
-        etau.delete_file(inpath)
+        if diff_params:
+            img = etai.resize(img, width=size[0], height=size[1])
+            write(img, outpath)
+            did_transform = True
+        elif force_reencode or (in_ext != out_ext):
+            write(img, outpath)
+            did_transform = True
+        elif diff_path:
+            fos.copy_file(inpath, outpath)
+
+        if delete_original and diff_path:
+            fos.delete_file(inpath)
+
+    except Exception as e:
+        if not skip_failures:
+            raise
+
+        logger.warning(e)
+
+    return did_transform
 
 
 def _parse_parameters(img, size, min_size, max_size):
@@ -318,3 +413,13 @@ def _parse_parameters(img, size, min_size, max_size):
     osize = etai.clip_frame_size(osize, min_size=min_size, max_size=max_size)
 
     return osize if osize != isize else None
+
+
+def _parse_ext(ext):
+    if ext is None:
+        return None
+
+    if not ext.startswith("."):
+        ext = "." + ext
+
+    return ext.lower()

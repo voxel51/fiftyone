@@ -654,7 +654,7 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                :func:`fiftyone.core.storage.normalize_path`. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory

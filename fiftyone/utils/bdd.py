@@ -11,12 +11,12 @@ import logging
 import os
 import warnings
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -115,6 +115,7 @@ class BDDDatasetImporter(
         self.extra_attrs = extra_attrs
 
         self._image_paths_map = None
+        self._metadata_map = None
         self._anno_dict_map = None
         self._filenames = None
         self._iter_filenames = None
@@ -130,12 +131,14 @@ class BDDDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        if os.path.isabs(filename):
+        if fos.isabs(filename):
             image_path = filename
         else:
             image_path = self._image_paths_map[filename]
 
-        image_metadata = fom.ImageMetadata.build_for(image_path)
+        image_metadata = self._metadata_map.get(image_path, None)
+        if image_metadata is None:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
 
         anno_dict = self._anno_dict_map.get(filename, None)
         if anno_dict is not None:
@@ -167,27 +170,34 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            self._anno_dict_map = load_bdd_annotations(self.labels_path)
+        if self.labels_path is not None and fos.isfile(self.labels_path):
+            anno_dict_map = load_bdd_annotations(self.labels_path)
         else:
-            self._anno_dict_map = {}
+            anno_dict_map = {}
 
-        filenames = set(self._anno_dict_map.keys())
+        filenames = set(anno_dict_map.keys())
 
         if self.include_all_data:
-            filenames.update(self._image_paths_map.keys())
+            filenames.update(image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(sorted(filenames))
-        self._num_samples = len(self._filenames)
+        filenames = self._preprocess_list(sorted(filenames))
+
+        metadata_map = self._get_remote_metadata(
+            image_paths_map, keys=filenames
+        )
+
+        self._image_paths_map = image_paths_map
+        self._metadata_map = metadata_map
+        self._anno_dict_map = anno_dict_map
+        self._filenames = filenames
+        self._num_samples = len(filenames)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(os.path.join(dataset_dir, "data")))
+        return len(fos.list_files(fos.join(dataset_dir, "data")))
 
 
 class BDDDatasetExporter(
@@ -330,7 +340,7 @@ class BDDDatasetExporter(
         self._annotations.append(annotation)
 
     def close(self, *args):
-        etas.write_json(self._annotations, self.labels_path)
+        fos.write_json(self._annotations, self.labels_path)
         self._media_exporter.close()
 
 
@@ -345,7 +355,7 @@ def load_bdd_annotations(json_path):
     Returns:
         a dict mapping filenames to BDD annotation dicts
     """
-    annotations = etas.load_json(json_path)
+    annotations = fos.read_json(json_path)
     return {d["name"]: d for d in annotations}
 
 

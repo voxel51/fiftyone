@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "matplotlib",
     "mongoengine==0.20.0",
     "motor>=2.3,<3",
+    "ndjson",
     "numpy",
     "packaging",
     "pandas",
@@ -57,7 +58,9 @@ INSTALL_REQUIRES = [
     "setuptools",
     "tabulate",
     "tornado>=5.1.1,<7",
+    "wcmatch",
     "xmltodict",
+    "yarl",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
     "fiftyone-brain>=0.7.2,<0.8",

@@ -5,14 +5,7 @@ Sample media utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import multiprocessing
-import os
-
-import eta.core.utils as etau
 import eta.core.video as etav
-
-import fiftyone.core.cache as foc
-import fiftyone.core.utils as fou
 
 
 # Valid media types
@@ -20,25 +13,6 @@ import fiftyone.core.utils as fou
 VIDEO = "video"
 IMAGE = "image"
 MEDIA_TYPES = {IMAGE, VIDEO}
-
-
-def normalize_filepath(filepath):
-    """Normalizes the given filepath.
-
-    Local paths are converted to absolute paths via
-    ``os.path.abspath(os.path.expanduser(filepath))``, while remote paths are
-    returned unchanged.
-
-    Args:
-        filepath: a filepath
-
-    Returns:
-        the normalized filepath
-    """
-    if foc.media_cache.is_local(filepath):
-        return os.path.abspath(os.path.expanduser(filepath))
-
-    return filepath
 
 
 def get_media_type(filepath):
@@ -56,58 +30,6 @@ def get_media_type(filepath):
 
     # @todo don't assume all non-video samples are images!
     return IMAGE
-
-
-def export_media(inpaths, outpaths, mode="copy", num_workers=None):
-    """Exports the media at the given input paths to the given output paths.
-
-    Args:
-        inpaths: the list of input paths
-        outpaths: the list of output paths
-        mode ("copy"): the export mode to use. Supported values are
-            ``("copy", "move", "symlink")``
-        num_workers (None): the number of processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
-    """
-    num_files = len(inpaths)
-    if num_files == 0:
-        return
-
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    inputs = list(zip(inpaths, outpaths))
-    if mode == "copy":
-        op = _do_copy_file
-    elif mode == "move":
-        op = _do_move_file
-    elif mode == "symlink":
-        op = _do_symlink_file
-    else:
-        raise ValueError(
-            "Unsupported mode '%s'. Supported values are %s"
-            % (mode, ("copy", "move", "symlink"))
-        )
-
-    with fou.ProgressBar(total=num_files, iters_str="files") as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
-            for _ in pb(pool.imap_unordered(op, inputs)):
-                pass
-
-
-def _do_move_file(args):
-    inpath, outpath = args
-    etau.move_file(inpath, outpath)
-
-
-def _do_copy_file(args):
-    inpath, outpath = args
-    etau.copy_file(inpath, outpath)
-
-
-def _do_symlink_file(args):
-    inpath, outpath = args
-    etau.symlink_file(inpath, outpath)
 
 
 class MediaTypeError(TypeError):
