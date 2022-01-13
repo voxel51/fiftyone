@@ -8,11 +8,11 @@ Installs FiftyOne.
 """
 import os
 from pkg_resources import DistributionNotFound, get_distribution
-from setuptools import setup, find_packages
 import re
+from setuptools import setup, find_packages
 
 
-VERSION = "0.14.2"
+VERSION = "0.14.3"
 
 
 def get_version():
@@ -60,9 +60,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.7.2,<0.8",
+    "fiftyone-brain>=0.7.3,<0.8",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.6.1,<0.7",
+    "voxel51-eta>=0.6.2,<0.7",
 ]
 
 
@@ -131,6 +131,7 @@ setup(
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
     ),
+    include_package_data=True,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
