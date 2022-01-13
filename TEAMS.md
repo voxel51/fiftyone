@@ -5,7 +5,7 @@ of [FiftyOne](https://github.com/voxel51/fiftyone).
 
 The
 [FiftyOne Teams User Manual](https://docs.google.com/document/d/1Y4lZpMxlajj20EeIvDu7cRGPcjWwT4rTnG-vtjVilUc)
-currently contains the bublic-facing documentation for Teams.
+currently contains the public-facing documentation for Teams.
 
 ## Pulling changes from FiftyOne
 
