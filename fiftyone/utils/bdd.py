@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -46,6 +46,7 @@ class BDDDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory

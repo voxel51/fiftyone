@@ -3,6 +3,98 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.3:
+
+FiftyOne 0.14.3
+---------------
+*Released January 12, 2021*
+
+Core
+
+- Added hollow support for 32-bit systems (a
+  :ref:`database_uri <configuring-mongodb-connection>` must be used in such
+  cases)
+- Added support for indexing into datasets using boolean arrays or view
+  expressions via new `dataset[bool_array]` and `dataset[bool_expr]` syntaxes
+- Added support for registering custom
+  :class:`EmbeddedDocument <fiftyone.core.odm.document.EmbeddedDocument>`
+  classes that can be used to populate fields and embedded fields of datasets
+- Added support for importing and exporting `confidence` in YOLO formats
+- Added support for directly passing a `filename -> filepath` mapping dict to
+  the `data_path` parameter to
+  :ref:`dataset importers <loading-datasets-from-disk>`
+- Added graceful casting of `int`-like and `float`-like values like
+  `np.float(1.0)` to their respective Python primitives for storage in the
+  database
+- Changed the default to `num_workers=0` when using methods like
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+  to apply Torch models on Windows, which avoids multiprocessing issues
+- Fixed a bug when calling
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  with both the `classes` and `compute_mAP=True` arguments provided
+- Fixed a bug that could arise when importing segmentation data from a COCO
+  JSON that contains objects with `[]` segmentation data
+- Fixed a bug in expressions containing near-epoch dates
+- Added support for setting frame-level fields by passing frame number dicts to
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+- Fixes a bug that prevented
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  from working as expected when `key_field="id"` argument is used
+- Fixed a bug that occurred when computing patch embeddings defined by
+  :ref:`polylines <polylines>`
+- Added decision thresholds to the tooltips of PR/ROC curves plotted via the
+  following methods:
+    - :meth:`BinaryClassificationResults.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_pr_curve>`
+    - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_roc_curve>`
+    - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
+    - :meth:`OpenImagesDetectionResults.plot_pr_curves() <fiftyone.utils.eval.openimages.OpenImagesDetectionResults.plot_pr_curves>`
+
+Brain
+
+- Graceful handling of missing/uncomputable embeddings in
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
+- Graceful handling of edge cases like `fraction <= 0` in
+  :meth:`find_duplicates() <fiftyone.brain.similarity.SimilarityResults.find_duplicates>`,
+- Removed a spurious warning message that was previously logged when computing
+  patch embeddings for a collection containing samples with no patches
+
+Annotation
+
+- Added a new :ref:`Labelbox integration <labelbox-integration>`!
+- Added an :func:`import_annotations() <fiftyone.utils.cvat.import_annotations>`
+  method for importing existing CVAT projects or task(s) into FiftyOne
+- Added support for :ref:`configuring the size of CVAT tasks <cvat-large-runs>`
+  via a new `task_size` parameter
+- Added graceful handling of deleted tasks when importing annotations from CVAT
+  via
+  :meth:`load_annotations() <fiftyone.core.dataset.Dataset.load_annotations>`
+- Added an `unexpected` parameter that provides
+  :ref:`a variety of options <cvat-unexpected-annotations>` for handling
+  unexpected annotations returned by the CVAT API
+- Added support for passing request headers to the CVAT API
+- Fixed a bug that occured when importing single frame track segments from CVAT
+
+Zoo
+
+- Fixed a regression in `fiftyone==0.14.1` that prevented
+  :ref:`zoo datasets <dataset-zoo>` that use the Torch backend from being
+  downloaded
+- Added the following TF2 models to the Model Zoo!
+    - :ref:`centernet-hg104-1024-coco-tf2 <model-zoo-centernet-hg104-1024-coco-tf2>`
+    - :ref:`centernet-resnet101-v1-fpn-512-coco-tf2 <model-zoo-centernet-resnet101-v1-fpn-512-coco-tf2>`
+    - :ref:`centernet-resnet50-v2-512-coco-tf2 <model-zoo-centernet-resnet50-v2-512-coco-tf2>`
+    - :ref:`centernet-mobilenet-v2-fpn-512-coco-tf2 <model-zoo-centernet-mobilenet-v2-fpn-512-coco-tf2>`
+    - :ref:`efficientdet-d0-512-coco-tf2 <model-zoo-efficientdet-d0-512-coco-tf2>`
+    - :ref:`efficientdet-d1-640-coco-tf2 <model-zoo-efficientdet-d1-640-coco-tf2>`
+    - :ref:`efficientdet-d2-768-coco-tf2 <model-zoo-efficientdet-d2-768-coco-tf2>`
+    - :ref:`efficientdet-d3-896-coco-tf2 <model-zoo-efficientdet-d3-896-coco-tf2>`
+    - :ref:`efficientdet-d4-1024-coco-tf2 <model-zoo-efficientdet-d4-1024-coco-tf2>`
+    - :ref:`efficientdet-d5-1280-coco-tf2 <model-zoo-efficientdet-d5-1280-coco-tf2>`
+    - :ref:`efficientdet-d6-1280-coco-tf2 <model-zoo-efficientdet-d6-1280-coco-tf2>`
+    - :ref:`efficientdet-d7-1536-coco-tf2 <model-zoo-efficientdet-d7-1536-coco-tf2>`
+    - :ref:`ssd-mobilenet-v2-320-coco17 <model-zoo-ssd-mobilenet-v2-320-coco17>`
+    - :ref:`ssd-mobilenet-v1-fpn-640-coco17 <model-zoo-ssd-mobilenet-v1-fpn-640-coco17>`
+
 .. _release-notes-v0.14.2:
 
 FiftyOne 0.14.2

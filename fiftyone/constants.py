@@ -1,7 +1,7 @@
 """
 Package-wide constants.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -33,7 +33,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.14.2"  # open source compatibility version
+VERSION = "0.14.3"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]

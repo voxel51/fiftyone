@@ -1,13 +1,14 @@
 """
 View stages.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
+import itertools
 import random
 import reprlib
 import uuid
@@ -317,7 +318,15 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+
+        if bools:
+            raise ValueError(
+                "Excluding samples via boolean indexing is not supported; use "
+                "select() instead"
+            )
+
+        self._sample_ids = sample_ids
 
     @property
     def sample_ids(self):
@@ -619,7 +628,7 @@ class ExcludeFrames(ViewStage):
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -4023,6 +4032,8 @@ class Select(ViewStage):
 
             -   a sample ID
             -   an iterable of sample IDs
+            -   an iterable of booleans of same length as the collection
+                encoding which samples to select
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
             -   an iterable of sample IDs
@@ -4035,7 +4046,9 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids, ordered=False):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+        self._sample_ids = sample_ids
+        self._bools = bools
         self._ordered = ordered
 
     @property
@@ -4049,6 +4062,11 @@ class Select(ViewStage):
         return self._ordered
 
     def to_mongo(self, _):
+        if self._bools:
+            raise ValueError(
+                "`validate()` must be called before using this stage"
+            )
+
         ids = [ObjectId(_id) for _id in self._sample_ids]
 
         if not self._ordered:
@@ -4079,6 +4097,13 @@ class Select(ViewStage):
                 "placeholder": "ordered (default=False)",
             },
         ]
+
+    def validate(self, sample_collection):
+        if self._bools:
+            ids = sample_collection.values("id")
+            selectors = self._sample_ids
+            self._sample_ids = list(itertools.compress(ids, selectors))
+            self._bools = False
 
 
 class SelectBy(ViewStage):
@@ -4406,7 +4431,7 @@ class SelectFrames(ViewStage):
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -5942,31 +5967,33 @@ class ToFrames(ViewStage):
         ]
 
 
-def _get_sample_ids(samples_or_ids):
+def _parse_sample_ids(samples_or_ids):
     from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+        return [samples_or_ids], False
 
     if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+        return [samples_or_ids.id], False
 
     if isinstance(samples_or_ids, SampleCollection):
-        return samples_or_ids.values("id")
+        return samples_or_ids.values("id"), False
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    samples_or_ids = list(samples_or_ids)
 
     if not samples_or_ids:
-        return []
+        return [], False
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
+        return [s.id for s in samples_or_ids], False
 
-    return list(samples_or_ids)
+    if isinstance(samples_or_ids[0], (bool, np.bool_)):
+        return samples_or_ids, True
+
+    return samples_or_ids, False
 
 
-def _get_frame_ids(frames_or_ids):
+def _parse_frame_ids(frames_or_ids):
     from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(frames_or_ids):
@@ -5978,16 +6005,15 @@ def _get_frame_ids(frames_or_ids):
     if isinstance(frames_or_ids, SampleCollection):
         return frames_or_ids.values("frames.id", unwind=True)
 
-    if isinstance(frames_or_ids, np.ndarray):
-        return list(frames_or_ids)
+    frames_or_ids = list(frames_or_ids)
 
     if not frames_or_ids:
         return []
 
-    if isinstance(next(iter(frames_or_ids)), (fofr.Frame, fofr.FrameView)):
+    if isinstance(frames_or_ids[0], (fofr.Frame, fofr.FrameView)):
         return [s.id for s in frames_or_ids]
 
-    return list(frames_or_ids)
+    return frames_or_ids
 
 
 def _get_rng(seed):

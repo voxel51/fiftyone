@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,7 +16,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from pymongo import UpdateOne
+from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -971,6 +971,7 @@ class SampleCollection(object):
         expand_schema=True,
         _allow_missing=False,
         _sample_ids=None,
+        _frame_ids=None,
     ):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -982,7 +983,7 @@ class SampleCollection(object):
                 sample.embedded.field.name = value
                 sample.save()
 
-        When modifying a sample field that contains an array, say
+        When setting an embedded field that contains an array, say
         ``embedded.array.field.name``, this function is an efficient
         implementation of the following loop::
 
@@ -1001,7 +1002,7 @@ class SampleCollection(object):
 
                 sample.save()
 
-        When modifying a frame field that contains an array, say
+        When setting an embedded frame field that contains an array, say
         ``frames.embedded.array.field.name``, this function is an efficient
         implementation of the following loop::
 
@@ -1020,9 +1021,23 @@ class SampleCollection(object):
                 sample.embedded.field.name = value
                 sample.save()
 
-        You can also update list/frame fields using the dict ``values`` syntax,
-        in which case this method is an efficient implementation of the natural
-        nested list/frame modifications to the above loop.
+        When setting frame fields using the dict ``values`` syntax, each value
+        in ``values`` may either be a list corresponding to the frames of the
+        sample matching the given key, or each value may itself be a dict
+        mapping frame numbers to values. In the latter case, this function
+        is an efficient implementation of the following loop::
+
+            for key, frame_values in values.items():
+                sample = sample_collection.one(F(key_field) == key)
+                for frame_number, value in frame_values.items():
+                    frame = sample[frame_number]
+                    frame.embedded.field.name = value
+
+                sample.save()
+
+        You can also update list fields using the dict ``values`` syntax, in
+        which case this method is an efficient implementation of the natural
+        nested list modifications of the above sample/frame loops.
 
         The dual function of :meth:`set_values` is :meth:`values`, which can be
         used to efficiently extract the values of a field or embedded field of
@@ -1075,13 +1090,14 @@ class SampleCollection(object):
         Args:
             field_name: a field or ``embedded.field.name``
             values: an iterable of values, one for each sample in the
-                collection. When setting frame fields, each element should
-                itself be an iterable of values, one for each frame of the
-                sample. If ``field_name`` contains array fields, the elements
-                of ``values`` must be arrays of the same lengths. This argument
-                can also be a dict mapping keys to values (each value as
-                described previously), in which case the keys are used to match
-                samples by their ``key_field``
+                collection. When setting frame fields, each element can either
+                be an iterable of values (one for each existing frame of the
+                sample) or a dict mapping frame numbers to values. If
+                ``field_name`` contains array fields, the corresponding
+                elements of ``values`` must be arrays of the same lengths. This
+                argument can also be a dict mapping keys to values (each value
+                as described previously), in which case the keys are used to
+                match samples by their ``key_field``
             key_field (None): a key field to use when choosing which samples to
                 update when ``values`` is a dict
             skip_none (False): whether to treat None data in ``values`` as
@@ -1098,16 +1114,17 @@ class SampleCollection(object):
 
             _sample_ids, values = _parse_values_dict(self, key_field, values)
 
+        is_frame_field = self._is_frame_field(field_name)
+
+        if is_frame_field:
+            _frame_ids, values = _parse_frame_values_dicts(
+                self, _sample_ids, values
+            )
+
         if expand_schema:
             self._expand_schema_from_values(field_name, values)
 
-        (
-            field_name,
-            is_frame_field,
-            list_fields,
-            _,
-            id_to_str,
-        ) = self._parse_field_name(
+        field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
@@ -1116,9 +1133,7 @@ class SampleCollection(object):
             to_mongo = lambda _id: ObjectId(_id)
         else:
             field_type = self._get_field_type(
-                field_name,
-                is_frame_field=is_frame_field,
-                ignore_primitives=True,
+                field_name, is_frame_field=is_frame_field
             )
             if field_type is not None:
                 to_mongo = field_type.to_mongo
@@ -1156,6 +1171,7 @@ class SampleCollection(object):
                     expand_schema=expand_schema,
                     _allow_missing=_allow_missing,
                     _sample_ids=_sample_ids,
+                    _frame_ids=_frame_ids,
                 )
 
         # If we're directly updating a document list field of a dataset view,
@@ -1173,6 +1189,7 @@ class SampleCollection(object):
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
+                frame_ids=_frame_ids,
                 to_mongo=to_mongo,
                 skip_none=skip_none,
             )
@@ -1289,7 +1306,7 @@ class SampleCollection(object):
             else:
                 sample_ids = self.values("_id")
 
-            self._set_values(
+            self._set_doc_values(
                 field_name,
                 sample_ids,
                 values,
@@ -1303,6 +1320,7 @@ class SampleCollection(object):
         values,
         list_fields,
         sample_ids=None,
+        frame_ids=None,
         to_mongo=None,
         skip_none=False,
     ):
@@ -1319,7 +1337,13 @@ class SampleCollection(object):
         if list_fields:
             list_field = list_fields[0]
             elem_id_field = "frames." + list_field + "._id"
-            frame_ids, elem_ids = view.values(["frames._id", elem_id_field])
+
+            if frame_ids is None:
+                frame_ids, elem_ids = view.values(
+                    ["frames._id", elem_id_field]
+                )
+            else:
+                elem_ids = view.values(elem_id_field)
 
             frame_ids = itertools.chain.from_iterable(frame_ids)
             elem_ids = itertools.chain.from_iterable(elem_ids)
@@ -1336,12 +1360,13 @@ class SampleCollection(object):
                 frames=True,
             )
         else:
-            frame_ids = view.values("frames._id")
+            if frame_ids is None:
+                frame_ids = view.values("frames._id")
 
             frame_ids = itertools.chain.from_iterable(frame_ids)
             values = itertools.chain.from_iterable(values)
 
-            self._set_values(
+            self._set_doc_values(
                 field_name,
                 frame_ids,
                 values,
@@ -1350,7 +1375,7 @@ class SampleCollection(object):
                 frames=True,
             )
 
-    def _set_values(
+    def _set_doc_values(
         self,
         field_name,
         ids,
@@ -1363,6 +1388,9 @@ class SampleCollection(object):
         for _id, value in zip(ids, values):
             if value is None and skip_none:
                 continue
+
+            if etau.is_str(_id):
+                _id = ObjectId(_id)
 
             if to_mongo is not None:
                 value = to_mongo(value)
@@ -1395,6 +1423,9 @@ class SampleCollection(object):
             if not _elem_ids:
                 continue
 
+            if etau.is_str(_id):
+                _id = ObjectId(_id)
+
             for _elem_id, value in zip(_elem_ids, _values):
                 if value is None and skip_none:
                     continue
@@ -1406,6 +1437,9 @@ class SampleCollection(object):
                     raise ValueError(
                         "Can only set values of array documents with IDs"
                     )
+
+                if etau.is_str(_elem_id):
+                    _elem_id = ObjectId(_elem_id)
 
                 ops.append(
                     UpdateOne(
@@ -1430,13 +1464,16 @@ class SampleCollection(object):
                 if not _docs:
                     continue
 
+                if etau.is_str(_id):
+                    _id = ObjectId(_id)
+
                 if not isinstance(_docs, (list, tuple)):
                     _docs = [_docs]
 
                 for doc in _docs:
                     ops.append(
                         UpdateOne(
-                            {"_id": ObjectId(_id), elem_id: doc["_id"]},
+                            {"_id": _id, elem_id: doc["_id"]},
                             {"$set": {set_path: doc}},
                         )
                     )
@@ -1444,9 +1481,12 @@ class SampleCollection(object):
             elem_id = field_name + "._id"
 
             for _id, doc in zip(sample_ids, label_docs):
+                if etau.is_str(_id):
+                    _id = ObjectId(_id)
+
                 ops.append(
                     UpdateOne(
-                        {"_id": ObjectId(_id), elem_id: doc["_id"]},
+                        {"_id": _id, elem_id: doc["_id"]},
                         {"$set": {field_name: doc}},
                     )
                 )
@@ -4133,6 +4173,8 @@ class SampleCollection(object):
 
                 -   a sample ID
                 -   an iterable of sample IDs
+                -   an iterable of booleans of same length as the collection
+                    encoding which samples to select
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
                 -   an iterable of sample IDs
@@ -6132,6 +6174,7 @@ class SampleCollection(object):
         The natively provided backends and their associated config classes are:
 
         -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+        -   ``"labelbox"``: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
         See :ref:`this page <requesting-annotations>` for more information
         about using this method, including how to define label schemas and how
@@ -6325,7 +6368,7 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6336,21 +6379,26 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
-            skip_unexpected (False): whether to skip any unexpected labels that
-                don't match the run's label schema when merging. If False and
-                unexpected labels are encountered, you will be presented an
-                interactive prompt to deal with them
+            unexpected ("prompt"): how to deal with any unexpected labels that
+                don't match the run's label schema when importing. The
+                supported values are:
+
+                -   ``"prompt"``: present an interactive prompt to
+                    direct/discard unexpected labels
+                -   ``"ignore"``: automatically ignore any unexpected labels
+                -   ``"return"``: return a dict containing all unexpected
+                    labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
+
+        Returns:
+            ``None``, unless ``unexpected=="return"`` and unexpected labels are
+            found, in which case a dict containing the extra labels is returned
         """
-        foua.load_annotations(
-            self,
-            anno_key,
-            skip_unexpected=skip_unexpected,
-            cleanup=cleanup,
-            **kwargs,
+        return foua.load_annotations(
+            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
@@ -7584,16 +7632,21 @@ def _get_matching_label_field(label_schema, label_type_or_types):
 
 
 def _parse_values_dict(sample_collection, key_field, values):
+    if key_field == "id":
+        return zip(*values.items())
+
+    if key_field == "_id":
+        sample_ids, values = zip(*values.items())
+        return [str(_id) for _id in sample_ids], values
+
     _key_field = key_field
     (
         key_field,
         is_frame_field,
         list_fields,
         other_list_fields,
-        _,
+        id_to_str,
     ) = sample_collection._parse_field_name(key_field)
-
-    field_type = sample_collection._get_field_type(key_field)
 
     if is_frame_field:
         raise ValueError(
@@ -7605,17 +7658,17 @@ def _parse_values_dict(sample_collection, key_field, values):
             "Invalid key field '%s'; keys cannot be list fields" % _key_field
         )
 
-    if isinstance(field_type, fof.ObjectIdField):
+    keys = list(values.keys())
+
+    if id_to_str:
         keys = [ObjectId(k) for k in keys]
 
-    pipeline = [{"$match": {key_field: {"$in": list(values.keys())}}}]
-    view = sample_collection.mongo(pipeline)
-
+    view = sample_collection.mongo([{"$match": {key_field: {"$in": keys}}}])
     id_map = {k: v for k, v in zip(*view.values([key_field, "id"]))}
 
     sample_ids = []
     bad_keys = []
-    for key in values.keys():
+    for key in keys:
         sample_id = id_map.get(key, None)
         if sample_id is not None:
             sample_ids.append(sample_id)
@@ -7631,6 +7684,53 @@ def _parse_values_dict(sample_collection, key_field, values):
     values = list(values.values())
 
     return sample_ids, values
+
+
+def _parse_frame_values_dicts(sample_collection, sample_ids, values):
+    value = _get_non_none_value(values)
+    if not isinstance(value, dict):
+        return None, values
+
+    if sample_ids is not None:
+        view = sample_collection.select(sample_ids, ordered=True)
+        frame_ids, frame_numbers = view.values(
+            ["frames._id", "frames.frame_number"]
+        )
+    else:
+        sample_ids, frame_ids, frame_numbers = sample_collection.values(
+            ["id", "frames._id", "frames.frame_number"]
+        )
+
+    id_map = {}
+    dicts = []
+    for _id, _fids, _fns, _vals in zip(
+        sample_ids, frame_ids, frame_numbers, values
+    ):
+        for _fid, fn in zip(_fids, _fns):
+            id_map[(_id, fn)] = _fid
+
+        for fn in set(_vals.keys()) - set(_fns):
+            dicts.append({"_sample_id": ObjectId(_id), "frame_number": fn})
+
+    # Insert frame documents for new frame numbers
+    if dicts:
+        sample_collection._dataset._bulk_write(
+            [InsertOne(d) for d in dicts], frames=True
+        )  # adds `_id` to each dict
+
+        for d in dicts:
+            id_map[(str(d["_sample_id"]), d["frame_number"])] = d["_id"]
+
+    _frame_ids = []
+    _values = []
+    for _id, _frame_values in zip(sample_ids, values):
+        _fns, _vals = zip(*_frame_values.items())
+        _fids = [id_map[(_id, fn)] for fn in _fns]
+
+        _frame_ids.append(_fids)
+        _values.append(_vals)
+
+    return _frame_ids, _values
 
 
 def _parse_field_name(
@@ -7804,6 +7904,9 @@ def _get_field_type(
     else:
         root, field_path = field_name.split(".", 1)
 
+    if root == "_id":
+        root = "id"
+
     if root not in schema:
         return None
 
@@ -7835,6 +7938,9 @@ def _do_get_field_type(field, field_path):
         root, field_path = field_path, None
     else:
         root, field_path = field_path.split(".", 1)
+
+    if root == "id":
+        root = "_id"
 
     try:
         field = getattr(field, root)
