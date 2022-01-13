@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
