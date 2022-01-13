@@ -78,7 +78,8 @@ class DatasetView(foc.SampleCollection):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
@@ -88,7 +89,7 @@ class DatasetView(foc.SampleCollection):
             return self.match(id_filepath_slice)
 
         if etau.is_container(id_filepath_slice):
-            return self.select(id_filepath_slice, ordered=True)
+            return self.select(id_filepath_slice)
 
         try:
             oid = ObjectId(id_filepath_slice)

@@ -256,7 +256,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
