@@ -9,6 +9,7 @@ import logging
 import multiprocessing
 import requests
 import os
+import pathlib
 import urllib
 
 import eta.core.image as etai
@@ -77,20 +78,21 @@ def parse_image_classification_dir_tree(dataset_dir):
         samples: a list of ``(image_path, target)`` pairs
         classes: a list of class label strings
     """
-    # Get classes
-    classes = sorted(etau.list_subdirs(dataset_dir))
-    labels_map_rev = {c: i for i, c in enumerate(classes)}
-
-    # Generate dataset
-    glob_patt = os.path.join(dataset_dir, "*", "*")
     samples = []
-    for path in etau.get_glob_matches(glob_patt):
-        chunks = path.split(os.path.sep)
-        if any(s.startswith(".") for s in chunks[-2:]):
+    for filepath in etau.list_files(dataset_dir, recursive=True):
+        chunks = pathlib.PurePath(filepath).parts
+
+        if any(c.startswith(".") for c in chunks):
             continue
 
-        target = labels_map_rev[chunks[-2]]
-        samples.append((path, target))
+        samples.append((filepath, chunks[0]))
+
+    classes = sorted(set(s[1] for s in samples))
+    labels_map_rev = {c: i for i, c in enumerate(classes)}
+
+    samples = [
+        (os.path.join(dataset_dir, f), labels_map_rev[c]) for f, c in samples
+    ]
 
     return samples, classes
 

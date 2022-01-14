@@ -31,6 +31,9 @@ class ImageIngestor(object):
 
     Args:
         dataset_dir: the directory where input images will be ingested into
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
     def __init__(self, dataset_dir, image_format=None):
@@ -39,6 +42,7 @@ class ImageIngestor(object):
 
         self.dataset_dir = dataset_dir
         self.image_format = image_format
+
         self._filename_maker = None
 
     def _ingest_image(self, sample_parser):
@@ -305,6 +309,7 @@ class VideoIngestor(object):
 
     def __init__(self, dataset_dir):
         self.dataset_dir = dataset_dir
+
         self._filename_maker = None
 
     def _ingest_video(self, sample_parser):
