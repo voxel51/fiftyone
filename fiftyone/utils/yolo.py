@@ -350,13 +350,6 @@ class YOLOv4DatasetImporter(
         local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
         labels_paths_map = local_files.__enter__()
 
-        filepaths = set(labels_paths_map.keys())
-
-        if self.include_all_data:
-            filepaths.update(image_paths)
-
-        filepaths = self._preprocess_list(sorted(filepaths))
-
         if self.classes is not None:
             classes = self.classes
         elif self.objects_path is not None and fos.isfile(self.objects_path):
@@ -537,13 +530,6 @@ class YOLOv5DatasetImporter(
 
         local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
         labels_paths_map = local_files.__enter__()
-
-        filepaths = set(labels_paths_map.keys())
-
-        if self.include_all_data:
-            filepaths.update(image_paths)
-
-        filepaths = self._preprocess_list(sorted(filepaths))
 
         info = {}
         if classes is not None:
