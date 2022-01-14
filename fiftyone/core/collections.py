@@ -24,6 +24,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
+import fiftyone.core.cache as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
@@ -35,6 +36,7 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -1516,6 +1518,73 @@ class SampleCollection(object):
             num_workers=num_workers,
             skip_failures=skip_failures,
         )
+
+    def download_media(self, update=False, skip_failures=True):
+        """Downloads the source media files for all samples in the collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+        """
+        filepaths = self.values("filepath")
+        if update:
+            foc.media_cache.update(
+                filepaths=filepaths, skip_failures=skip_failures
+            )
+        else:
+            foc.media_cache.get_local_paths(
+                filepaths, download=True, skip_failures=skip_failures
+            )
+
+    def get_local_paths(self, download=True, skip_failures=True):
+        """Returns a list of local paths to the media files in this collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Args:
+            download (True): whether to download any non-cached media files
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            a list of local filepaths
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.get_local_paths(
+            filepaths, download=download, skip_failures=skip_failures
+        )
+
+    def clear_media(self):
+        """Deletes any local copies of media files in this collection from the
+        media cache.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+        """
+        filepaths = self.values("filepath")
+        foc.media_cache.clear(filepaths=filepaths)
+
+    def cache_stats(self):
+        """Returns a dictionary of stats about the cached media files in this
+        collection.
+
+        This method is only useful for collections that contain at least one
+        remote media file.
+
+        Returns:
+            a stats dict
+        """
+        filepaths = self.values("filepath")
+        return foc.media_cache.stats(filepaths=filepaths)
 
     def apply_model(
         self,
@@ -5810,9 +5879,9 @@ class SampleCollection(object):
         Returns:
             the list of paths to the rendered media
         """
-        if os.path.isdir(output_dir):
+        if fost.isdir(output_dir):
             if overwrite:
-                etau.delete_dir(output_dir)
+                fost.delete_dir(output_dir)
             else:
                 logger.warning(
                     "Directory '%s' already exists; outputs will be merged "
@@ -6014,30 +6083,45 @@ class SampleCollection(object):
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
         archive_path = None
+        local_archive_path = None
+        tmp_dir = None
 
-        # If the user requested an archive, first populate a directory
-        if export_dir is not None and etau.is_archive(export_dir):
-            archive_path = export_dir
-            export_dir, _ = etau.split_archive(archive_path)
+        try:
+            # If the user requested an archive, first populate a directory
+            if export_dir is not None and etau.is_archive(export_dir):
+                archive_path = export_dir
+                export_dir, ext = etau.split_archive(archive_path)
 
-        # Perform the export
-        _export(
-            self,
-            export_dir=export_dir,
-            dataset_type=dataset_type,
-            data_path=data_path,
-            labels_path=labels_path,
-            export_media=export_media,
-            dataset_exporter=dataset_exporter,
-            label_field=label_field,
-            frame_labels_field=frame_labels_field,
-            overwrite=overwrite,
-            **kwargs,
-        )
+                if not fost.is_local(export_dir):
+                    tmp_dir = fost.make_temp_dir()
+                    archive_name = os.path.basename(export_dir)
+                    export_dir = fost.join(tmp_dir, archive_name)
+                    local_archive_path = export_dir + ext
 
-        # Make archive, if requested
-        if archive_path is not None:
-            etau.make_archive(export_dir, archive_path, cleanup=True)
+            # Perform the export
+            _export(
+                self,
+                export_dir=export_dir,
+                dataset_type=dataset_type,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+                dataset_exporter=dataset_exporter,
+                label_field=label_field,
+                frame_labels_field=frame_labels_field,
+                overwrite=overwrite,
+                **kwargs,
+            )
+
+            # Make archive, if requested
+            if local_archive_path is not None:
+                fost.make_archive(export_dir, local_archive_path)
+                fost.copy_file(local_archive_path, archive_path)
+            elif archive_path is not None:
+                fost.make_archive(export_dir, archive_path, cleanup=True)
+        finally:
+            if tmp_dir is not None:
+                etau.delete_dir(tmp_dir)
 
     def annotate(
         self,
@@ -6528,9 +6612,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
-                case for this argument is that your source data lives in a
-                single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.storage.normalize_path`. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6545,7 +6629,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir) + os.path.sep
+            rel_dir = fost.normalize_path(rel_dir) + fost.sep(rel_dir)
 
         is_video = self.media_type == fom.VIDEO
         write_frame_labels = is_video and frame_labels_dir is not None
@@ -6576,20 +6660,24 @@ class SampleCollection(object):
 
         # Serialize samples
         samples = []
-        for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+        with fost.FileWriter() as writer:
+            for sample in self.iter_samples(progress=True):
+                sd = sample.to_dict(include_frames=True)
 
-            if write_frame_labels:
-                frames = {"frames": sd.pop("frames", {})}
-                filename = sample.id + ".json"
-                sd["frames"] = filename
-                frames_path = os.path.join(frame_labels_dir, filename)
-                etas.write_json(frames, frames_path, pretty_print=pretty_print)
+                if write_frame_labels:
+                    frames = {"frames": sd.pop("frames", {})}
+                    filename = sample.id + ".json"
+                    sd["frames"] = filename
+                    frames_path = fost.join(frame_labels_dir, filename)
+                    local_path = writer.get_local_path(frames_path)
+                    etas.write_json(
+                        frames, local_path, pretty_print=pretty_print
+                    )
 
-            if rel_dir and sd["filepath"].startswith(rel_dir):
-                sd["filepath"] = sd["filepath"][len(rel_dir) :]
+                if rel_dir and sd["filepath"].startswith(rel_dir):
+                    sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
-            samples.append(sd)
+                samples.append(sd)
 
         d["samples"] = samples
 
@@ -6605,9 +6693,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
-                case for this argument is that your source data lives in a
-                single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.storage.normalize_path`. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6641,9 +6729,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
-                case for this argument is that your source data lives in a
-                single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.storage.normalize_path`. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6658,7 +6746,7 @@ class SampleCollection(object):
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
-        etas.write_json(d, json_path, pretty_print=pretty_print)
+        fost.write_json(d, json_path, pretty_print=pretty_print)
 
     def _add_view_stage(self, stage):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -8035,9 +8123,9 @@ def _export(
 def _handle_existing_dirs(
     export_dir, data_path, labels_path, export_media, overwrite
 ):
-    if export_dir is not None and os.path.isdir(export_dir):
+    if export_dir is not None and fost.isdir(export_dir):
         if overwrite:
-            etau.delete_dir(export_dir)
+            fost.delete_dir(export_dir)
         else:
             logger.warning(
                 "Directory '%s' already exists; export will be merged with "
@@ -8048,39 +8136,43 @@ def _handle_existing_dirs(
     # When `export_media=False`, `data_path` is used as a relative directory
     # for filename purposes, not a sink for writing data
     if data_path is not None and export_media != False:
-        if os.path.isabs(data_path) or export_dir is None:
+        if fost.isabs(data_path) or export_dir is None:
             _data_path = data_path
         else:
-            _data_path = os.path.join(export_dir, data_path)
+            _data_path = fost.join(export_dir, data_path)
 
-        if os.path.isdir(_data_path):
+        if fost.isdir(_data_path):
             if overwrite:
-                etau.delete_dir(_data_path)
+                fost.delete_dir(_data_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _data_path,
                 )
-        elif os.path.isfile(_data_path):
-            if overwrite:
-                etau.delete_file(_data_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_data_path)
+            except:
+                pass
 
     if labels_path is not None:
-        if os.path.isabs(labels_path) or export_dir is None:
+        if fost.isabs(labels_path) or export_dir is None:
             _labels_path = labels_path
         else:
-            _labels_path = os.path.join(export_dir, labels_path)
+            _labels_path = fost.join(export_dir, labels_path)
 
-        if os.path.isdir(_labels_path):
+        if fost.isdir(_labels_path):
             if overwrite:
-                etau.delete_dir(_labels_path)
+                fost.delete_dir(_labels_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _labels_path,
                 )
-        elif os.path.isfile(_labels_path):
-            if overwrite:
-                etau.delete_file(_labels_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_labels_path)
+            except:
+                pass

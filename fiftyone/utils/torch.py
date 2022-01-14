@@ -1064,7 +1064,7 @@ class TorchImageDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.values("filepath")
+            image_paths = samples.get_local_paths()
 
         image_paths = _to_bytes_array(image_paths)
 
@@ -1185,7 +1185,7 @@ class TorchImageClassificationDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.values("filepath")
+            image_paths = samples.get_local_paths()
 
         image_paths = _to_bytes_array(image_paths)
 
@@ -1395,7 +1395,7 @@ class TorchImagePatchesDataset(Dataset):
             )
 
         if image_paths is None:
-            image_paths = samples.values("filepath")
+            image_paths = samples.get_local_paths()
 
         image_paths = _to_bytes_array(image_paths)
 

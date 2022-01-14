@@ -34,6 +34,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
@@ -536,7 +537,7 @@ class CVATImageDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        if os.path.isabs(filename):
+        if fos.isabs(filename):
             image_path = filename
         else:
             image_path = self._image_paths_map[filename]
@@ -572,7 +573,7 @@ class CVATImageDatasetImporter(
     def setup(self):
         image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
+        if self.labels_path is not None and fos.isfile(self.labels_path):
             info, _, cvat_images = load_cvat_image_annotations(
                 self.labels_path
             )
@@ -586,7 +587,7 @@ class CVATImageDatasetImporter(
         cvat_images_map = {}
         for i in cvat_images:
             if i.subset:
-                key = os.path.join(i.subset, i.name)
+                key = fos.join(i.subset, i.name)
             else:
                 key = i.name
 
@@ -695,6 +696,7 @@ class CVATVideoDatasetImporter(
         self._cvat_task_labels = None
         self._video_paths_map = None
         self._labels_paths_map = None
+        self._local_files = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -756,10 +758,10 @@ class CVATVideoDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isdir(self.labels_path):
+        if self.labels_path is not None and fos.isdir(self.labels_path):
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: fos.join(self.labels_path, p)
+                for p in fos.list_files(self.labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}
@@ -771,11 +773,27 @@ class CVATVideoDatasetImporter(
 
         uuids = self._preprocess_list(sorted(uuids))
 
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
+
+        self._info = None
         self._cvat_task_labels = CVATTaskLabels()
         self._video_paths_map = video_paths_map
         self._labels_paths_map = labels_paths_map
+        self._local_files = local_files
         self._uuids = uuids
         self._num_samples = len(uuids)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
     def get_dataset_info(self):
         return self._info
@@ -1028,6 +1046,7 @@ class CVATVideoDatasetExporter(
         self._num_samples = 0
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_video_metadata(self):
@@ -1052,6 +1071,9 @@ class CVATVideoDatasetExporter(
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         self._task_labels = sample_collection.info.get("task_labels", None)
 
@@ -1063,10 +1085,6 @@ class CVATVideoDatasetExporter(
 
         if metadata is None:
             metadata = fomt.VideoMetadata.build_for(video_path)
-
-        out_anno_path = os.path.join(
-            self.labels_path, os.path.splitext(filename)[0] + ".xml"
-        )
 
         # Generate object tracks
         frame_size = (metadata.frame_width, metadata.frame_height)
@@ -1083,19 +1101,25 @@ class CVATVideoDatasetExporter(
             # Use task labels from logged collection info
             cvat_task_labels = CVATTaskLabels(labels=self._task_labels)
 
+        out_labels_path = fos.join(
+            self.labels_path, os.path.splitext(filename)[0] + ".xml"
+        )
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
+
         # Write annotations
         self._num_samples += 1
         self._writer.write(
             cvat_task_labels,
             cvat_tracks,
             metadata,
-            out_anno_path,
+            local_path,
             id=self._num_samples - 1,
             name=filename,
         )
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 class CVATTaskLabels(object):
@@ -2830,7 +2854,7 @@ class CVATImageAnnotationWriter(object):
                 "images": cvat_images,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 class CVATVideoAnnotationWriter(object):
@@ -2884,7 +2908,7 @@ class CVATVideoAnnotationWriter(object):
                 "tracks": cvat_tracks,
             }
         )
-        etau.write_file(xml_str, xml_path)
+        fos.write_file(xml_str, xml_path)
 
 
 class CVATBackendConfig(foua.AnnotationBackendConfig):
@@ -3072,6 +3096,9 @@ class CVATBackend(foua.AnnotationBackend):
 
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
+
+        # @todo support passing native cloud paths to CVAT
+        samples.download_media()
 
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
@@ -4656,10 +4683,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         task_ids.append(task_id)
 
+        if media_field == "filepath":
+            # @todo support passing native cloud paths to CVAT
+            media_paths = samples_batch.get_local_paths()
+        else:
+            media_paths = samples_batch.values(media_field)
+
         # Upload media
         job_ids[task_id] = self.upload_data(
             task_id,
-            samples_batch.values(media_field),
+            media_paths,
             image_quality=image_quality,
             use_cache=use_cache,
             use_zip_chunks=use_zip_chunks,

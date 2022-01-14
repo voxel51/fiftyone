@@ -5,20 +5,20 @@ FiftyOne Tornado server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
 import argparse
+import concurrent.futures
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 import math
 import os
 import traceback
 
+import asyncio
 import tornado.escape
 import tornado.ioloop
 import tornado.iostream
 import tornado.options
 import tornado.web
-from tornado.web import HTTPError
 import tornado.websocket
 
 import eta.core.serial as etas
@@ -45,8 +45,11 @@ import fiftyone.core.uid as fou
 import fiftyone.core.utils as fout
 import fiftyone.core.view as fov
 
+import fiftyone.server.base as fosb
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
+from fiftyone.server.media import MediaHandler
+import fiftyone.server.metadata as fosm
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.metadata as fosm
 import fiftyone.server.utils as fosu
@@ -99,7 +102,7 @@ class FiftyOneHandler(RequestHandler):
             submitted = False
 
         return {
-            "version": foc.VERSION,
+            "version": foc.TEAMS_VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
             "teams": {"submitted": submitted, "minimized": isfile},
@@ -1446,46 +1449,6 @@ async def _numeric_histograms(view, schema, prefix=""):
     return aggregations, fields, ticks, nonfinites
 
 
-class FileHandler(tornado.web.StaticFileHandler):
-    def set_headers(self):
-        super().set_headers()
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.set_header("content-length", self.get_content_size())
-        self.set_header("x-colab-notebook-cache-control", "no-cache")
-
-    def get_content_type(self):
-        if self.absolute_path.endswith(".js"):
-            return "text/javascript"
-
-        return super().get_content_type()
-
-
-class MediaHandler(FileHandler):
-    @classmethod
-    def get_absolute_path(cls, root, path):
-        if os.name != "nt":
-            path = os.path.join("/", path)
-
-        return path
-
-    def validate_absolute_path(self, root, absolute_path):
-        if os.path.isdir(absolute_path) and self.default_filename is not None:
-            if not self.request.path.endswith("/"):
-                self.redirect(self.request.path + "/", permanent=True)
-                return None
-
-            absolute_path = os.path.join(absolute_path, self.default_filename)
-        if not os.path.exists(absolute_path):
-            raise HTTPError(404)
-
-        if not os.path.isfile(absolute_path):
-            raise HTTPError(403, "%s is not a file", self.path)
-
-        return absolute_path
-
-
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
@@ -1507,7 +1470,7 @@ class Application(tornado.web.Application):
             (r"/teams", TeamsHandler),
             (
                 r"/(.*)",
-                FileHandler,
+                fosb.FileHandler,
                 {"path": web_path, "default_filename": "index.html"},
             ),
         ]
@@ -1523,4 +1486,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
     app.listen(args.port, address=args.address)
+
+    loop = asyncio.get_event_loop()
+    loop.set_default_executor(concurrent.futures.ThreadPoolExecutor(20))
+
     tornado.ioloop.IOLoop.current().start()

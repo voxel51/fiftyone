@@ -89,7 +89,7 @@ def log_import_if_allowed(test=False):
                     "event",
                     "import",
                     kind,
-                    label="%s-%s" % (foc.VERSION, _get_context()),
+                    label="TEAMS-%s-%s" % (foc.TEAMS_VERSION, _get_context()),
                 )
 
             global _import_logged

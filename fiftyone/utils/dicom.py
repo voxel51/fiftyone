@@ -13,6 +13,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -112,7 +113,7 @@ class DICOMSampleParser(foud.LabeledImageSampleParser):
             if isinstance(self.current_sample, FileInstance):
                 self._ds = self.current_sample.load()
             else:
-                with open(self.current_sample, "rb") as f:
+                with fos.open_file(self.current_sample, "rb") as f:
                     self._ds = pydicom.dcmread(f)
 
 
@@ -198,6 +199,7 @@ class DICOMDatasetImporter(
         self._sample_parser = DICOMSampleParser(
             keywords=keywords, parsers=parsers
         )
+        self._local_files = None
         self._dataset_ingestor = None
         self._iter_dataset_ingestor = None
         self._num_samples = None
@@ -225,10 +227,12 @@ class DICOMDatasetImporter(
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        if os.path.isfile(self.dicom_path):
+        is_glob_patt = False
+
+        if fos.isfile(self.dicom_path):
             if not os.path.splitext(self.dicom_path)[1]:
                 # DICOMDIR file
-                with open(self.dicom_path, "rb") as f:
+                with fos.open_file(self.dicom_path, "rb") as f:
                     ds = pydicom.dcmread(f)
 
                 samples = list(FileSet(ds))
@@ -237,10 +241,15 @@ class DICOMDatasetImporter(
                 samples = [self.dicom_path]
         else:
             # Glob pattern of DICOM files
-            samples = etau.get_glob_matches(self.dicom_path)
+            samples = fos.get_glob_matches(self.dicom_path)
+            is_glob_patt = True
 
         samples = self._preprocess_list(samples)
         self._num_samples = len(samples)
+
+        if is_glob_patt:
+            self._local_files = fos.LocalFiles(samples)
+            samples = self._local_files.__enter__()
 
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
             self.images_dir,
@@ -252,6 +261,8 @@ class DICOMDatasetImporter(
 
     def close(self, *args):
         self._dataset_ingestor.close(*args)
+        if self._local_files is not None:
+            self._local_files.__exit__(*args)
 
 
 def _get_image(ds):

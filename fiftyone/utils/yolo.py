@@ -9,11 +9,10 @@ import logging
 import os
 import warnings
 
-import yaml
-
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -62,15 +61,17 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
 
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
-        labels = [load_yolo_annotations(p, classes) for p in labels_path]
+        with fos.LocalFiles(labels_path, "r", type_str="labels") as paths:
+            labels = [load_yolo_annotations(p, classes) for p in paths]
+
         sample_collection.set_values(label_field, labels)
         return
 
     if etau.is_str(labels_path):
         # Directory of label files matching image filenames (less extension)
         txt_map = {
-            os.path.splitext(p)[0]: os.path.join(labels_path, p)
-            for p in etau.list_files(labels_path, recursive=True)
+            os.path.splitext(p)[0]: fos.join(labels_path, p)
+            for p in fos.list_files(labels_path, recursive=True)
         }
         match_type = "uuid"
     elif isinstance(labels_path, dict):
@@ -79,7 +80,7 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
         if not txt_map:
             return
 
-        if os.path.isabs(next(iter(txt_map.keys()))):
+        if fos.isabs(next(iter(txt_map.keys()))):
             match_type = "filepath"
         else:
             match_type = "basename"
@@ -125,8 +126,10 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
             mtype,
         )
 
+    with fos.LocalFiles(matched_paths, "r", type_str="labels") as paths:
+        labels = [load_yolo_annotations(p, classes) for p in paths]
+
     view = sample_collection.select(matched_ids, ordered=True)
-    labels = [load_yolo_annotations(p, classes) for p in matched_paths]
     view.set_values(label_field, labels)
 
 
@@ -249,6 +252,7 @@ class YOLOv4DatasetImporter(
         self._info = None
         self._classes = None
         self._labels_paths_map = None
+        self._local_files = None
         self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
@@ -286,13 +290,13 @@ class YOLOv4DatasetImporter(
         return fol.Detections
 
     def setup(self):
-        if self.images_path is not None and os.path.isfile(self.images_path):
+        if self.images_path is not None and fos.isfile(self.images_path):
             root_dir = os.path.dirname(self.images_path)
 
             image_paths = []
             for path in _read_file_lines(self.images_path):
-                if not os.path.isabs(path):
-                    path = os.path.join(root_dir, path)
+                if not fos.isabs(path):
+                    path = fos.join(root_dir, path)
 
                 image_paths.append(path)
         else:
@@ -306,24 +310,45 @@ class YOLOv4DatasetImporter(
 
             image_paths = [
                 p
-                for p in etau.list_files(
+                for p in fos.list_files(
                     self.data_path, abs_paths=True, recursive=True
                 )
                 if not p.endswith(".txt")
             ]
 
-        labels_paths_map = {}
+        labels_paths = []
         for image_path in image_paths:
             if self.labels_path is not None:
                 # Labels directory was manually specified
                 uuid = os.path.splitext(os.path.basename(image_path))[0]
-                labels_path = os.path.join(self.labels_path, uuid + ".txt")
+                labels_path = fos.join(self.labels_path, uuid + ".txt")
             else:
                 # Labels are in same directory as images
                 labels_path = os.path.splitext(image_path)[0] + ".txt"
 
-            if os.path.isfile(labels_path):
-                labels_paths_map[image_path] = labels_path
+            labels_paths.append(labels_path)
+
+        exists = fos.run(fos.isfile, labels_paths)
+
+        labels_paths_map = {
+            i: l for i, l, e in zip(image_paths, labels_paths, exists) if e
+        }
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
+
+        if self.max_samples is not None:
+            _filepaths = set(filepaths)
+            labels_paths_map = {
+                i: l for i, l in labels_paths_map.items() if i in _filepaths
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         filepaths = set(labels_paths_map.keys())
 
@@ -334,9 +359,7 @@ class YOLOv4DatasetImporter(
 
         if self.classes is not None:
             classes = self.classes
-        elif self.objects_path is not None and os.path.isfile(
-            self.objects_path
-        ):
+        elif self.objects_path is not None and fos.isfile(self.objects_path):
             classes = _read_file_lines(self.objects_path)
         else:
             classes = None
@@ -348,8 +371,12 @@ class YOLOv4DatasetImporter(
         self._info = info
         self._classes = classes
         self._labels_paths_map = labels_paths_map
+        self._local_files = local_files
         self._filepaths = filepaths
         self._num_samples = len(filepaths)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
     def get_dataset_info(self):
         return self._info
@@ -421,6 +448,7 @@ class YOLOv5DatasetImporter(
 
         self._info = None
         self._classes = None
+        self._local_files = None
         self._labels_paths_map = None
         self._filepaths = None
         self._iter_filepaths = None
@@ -459,7 +487,7 @@ class YOLOv5DatasetImporter(
         return fol.Detections
 
     def setup(self):
-        d = _read_yaml_file(self.yaml_path)
+        d = fos.read_yaml(self.yaml_path)
 
         if self.split not in d:
             raise ValueError(
@@ -483,14 +511,32 @@ class YOLOv5DatasetImporter(
             for data_dir in data_dirs:
                 data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
                 image_paths.extend(
-                    etau.list_files(data_dir, abs_paths=True, recursive=True)
+                    fos.list_files(data_dir, abs_paths=True, recursive=True)
                 )
 
-        labels_paths_map = {}
-        for image_path in image_paths:
-            labels_path = _get_yolo_v5_labels_path(image_path)
-            if os.path.isfile(labels_path):
-                labels_paths_map[image_path] = labels_path
+        labels_paths = [_get_yolo_v5_labels_path(p) for p in image_paths]
+
+        exists = fos.run(fos.isfile, labels_paths)
+
+        labels_paths_map = {
+            i: l for i, l, e in zip(image_paths, labels_paths, exists) if e
+        }
+
+        filepaths = set(labels_paths_map.keys())
+
+        if self.include_all_data:
+            filepaths.update(image_paths)
+
+        filepaths = self._preprocess_list(sorted(filepaths))
+
+        if self.max_samples is not None:
+            _filepaths = set(filepaths)
+            labels_paths_map = {
+                i: l for i, l in labels_paths_map.items() if i in _filepaths
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
 
         filepaths = set(labels_paths_map.keys())
 
@@ -505,9 +551,13 @@ class YOLOv5DatasetImporter(
 
         self._info = info
         self._classes = classes
+        self._local_files = local_files
         self._labels_paths_map = labels_paths_map
         self._filepaths = filepaths
         self._num_samples = len(filepaths)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
     def get_dataset_info(self):
         return self._info
@@ -649,6 +699,7 @@ class YOLOv4DatasetExporter(
         self._images = None
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -683,6 +734,9 @@ class YOLOv4DatasetExporter(
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         if self.classes is None:
             if sample_collection.default_classes:
@@ -707,11 +761,12 @@ class YOLOv4DatasetExporter(
         if detections is None:
             return
 
-        out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
+        out_labels_path = fos.join(self.labels_path, uuid + ".txt")
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         self._writer.write(
             detections,
-            out_labels_path,
+            local_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
             include_confidence=self.include_confidence,
@@ -719,6 +774,7 @@ class YOLOv4DatasetExporter(
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
         if self.export_media == False:
             return
@@ -856,6 +912,7 @@ class YOLOv5DatasetExporter(
         self._images = None
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -882,6 +939,9 @@ class YOLOv5DatasetExporter(
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         if self.classes is None:
             if sample_collection.default_classes:
@@ -903,11 +963,12 @@ class YOLOv5DatasetExporter(
         if detections is None:
             return
 
-        out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
+        out_labels_path = fos.join(self.labels_path, uuid + ".txt")
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         self._writer.write(
             detections,
-            out_labels_path,
+            local_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
             include_confidence=self.include_confidence,
@@ -915,12 +976,13 @@ class YOLOv5DatasetExporter(
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
         if self.export_media == False or self.data_path is None:
             return
 
-        if os.path.isfile(self.yaml_path):
-            d = _read_yaml_file(self.yaml_path)
+        if fos.isfile(self.yaml_path):
+            d = fos.read_yaml(self.yaml_path)
         else:
             d = {}
 
@@ -933,7 +995,7 @@ class YOLOv5DatasetExporter(
         d["nc"] = len(classes)
         d["names"] = list(classes)
 
-        _write_yaml_file(d, self.yaml_path, default_flow_style=False)
+        fos.write_yaml(d, self.yaml_path, default_flow_style=False)
 
     def _parse_classes(self):
         if self.classes is not None:
@@ -1022,27 +1084,29 @@ def load_yolo_annotations(txt_path, classes):
 
 
 def _parse_yolo_v5_data_path(data_path, yaml_path):
-    if os.path.isabs(data_path):
+    if fos.isabs(data_path):
         return data_path
 
     # Interpret relative to YAML file
     root_dir = os.path.dirname(yaml_path)
-    return os.path.normpath(os.path.join(root_dir, data_path))
+    return fos.normpath(fos.join(root_dir, data_path))
 
 
 def _make_yolo_v5_data_path(data_path, yaml_path):
     # Save path relative to YAML file
+    sep = fos.sep(data_path)
     root_dir = os.path.dirname(yaml_path)
-    data_path = os.path.relpath(data_path, root_dir) + os.path.sep
+    data_path = os.path.relpath(data_path, root_dir) + sep
     if not data_path.startswith("."):
-        data_path = "." + os.path.sep + data_path
+        data_path = "." + sep + data_path
 
     return data_path
 
 
 def _get_yolo_v5_labels_path(image_path):
-    old = os.path.sep + "images" + os.path.sep
-    new = os.path.sep + "labels" + os.path.sep
+    sep = fos.sep(image_path)
+    old = sep + "images" + sep
+    new = sep + "labels" + sep
 
     chunks = image_path.rsplit(old, 1)
     if len(chunks) == 1:
@@ -1098,24 +1162,14 @@ def _make_yolo_row(bounding_box, target, confidence=None):
     return row
 
 
-def _read_yaml_file(path):
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
-
-
-def _write_yaml_file(d, path, **kwargs):
-    s = yaml.dump(d, **kwargs)
-    etau.write_file(s, path)
-
-
 def _read_file_lines(path):
-    with open(path, "r") as f:
+    with fos.open_file(path, "r") as f:
         lines = [l.strip() for l in f.read().splitlines()]
         return [l for l in lines if l]
 
 
 def _write_file_lines(lines, outpath):
-    etau.write_file("\n".join(lines), outpath)
+    fos.write_file("\n".join(lines), outpath)
 
 
 def _to_labels_map_rev(classes):

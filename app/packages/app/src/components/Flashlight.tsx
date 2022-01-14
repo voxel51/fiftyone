@@ -279,6 +279,7 @@ export default React.memo(() => {
     dimensions,
     frameNumber,
     frameRate,
+    url,
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
@@ -286,7 +287,7 @@ export default React.memo(() => {
     return new constructor(
       sample,
       {
-        src: getSampleSrc(sample.filepath, sample._id),
+        src: getSampleSrc(sample.filepath, sample._id, url),
         thumbnail: true,
         dimensions,
         sampleId: sample._id,
@@ -407,6 +408,7 @@ export default React.memo(() => {
                 dimensions: [result.width, result.height],
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
+                url: result.url,
               };
               samples.set(result.sample._id, data);
               sampleIndices.set(nextIndex, result.sample._id);
