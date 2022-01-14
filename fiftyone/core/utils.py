@@ -291,19 +291,6 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
-def normalize_path(path):
-    """Normalizes the given path by converting it to an absolute path and
-    expanding the user directory, if necessary.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    return os.path.abspath(os.path.expanduser(path))
-
-
 def ensure_package(
     requirement_str, error_level=None, error_msg=None, log_success=False
 ):
