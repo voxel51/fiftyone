@@ -1,7 +1,7 @@
 """
 FiftyOne extended view.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -234,6 +234,10 @@ def _is_datetime(field):
     return isinstance(field, (fof.DateField, fof.DateTimeField))
 
 
+def _is_float(field):
+    return isinstance(field, fof.FloatField)
+
+
 def _make_scalar_expression(f, args, field):
     expr = None
     cls = args["_CLS"]
@@ -262,6 +266,7 @@ def _make_scalar_expression(f, args, field):
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
+
     elif cls == _STR_FILTER:
         values = args["values"]
         if not values:
@@ -284,7 +289,36 @@ def _make_scalar_expression(f, args, field):
 
         return expr
 
-    none = args["none"]
+    return _apply_others(expr, f, args)
+
+
+def _apply_others(expr, f, args):
+    nonfinites = {
+        "nan": float("nan"),
+        "ninf": -float("inf"),
+        "inf": float("inf"),
+    }
+    include = []
+    for k, v in nonfinites.items():
+        if k in args and args[k]:
+            include.append(v)
+
+    if expr is None:
+        expr = f.is_in(include)
+    else:
+        expr |= f.is_in(include)
+
+    if "none" in args:
+        expr = _apply_none(expr, f, args["none"])
+
+    if "exclude" in args and args["exclude"]:
+        # pylint: disable=invalid-unary-operand-type
+        expr = ~expr
+
+    return expr
+
+
+def _apply_none(expr, f, none):
     if not none:
         if expr is not None:
             expr &= f.exists()

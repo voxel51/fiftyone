@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
-import { INFO_COLOR } from "../constants";
+import { INFO_COLOR, NONFINITES } from "../constants";
 import { NumpyResult } from "../numpy";
-import { BaseState, BoundingBox, Coordinates } from "../state";
+import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
@@ -166,9 +166,17 @@ export default class DetectionOverlay<
       text += `${Number(this.label.index).toLocaleString()}`;
     }
 
-    if (state.options.showConfidence && !isNaN(this.label.confidence)) {
+    if (
+      state.options.showConfidence &&
+      (!isNaN(this.label.confidence as number) ||
+        NONFINITES.has(this.label.confidence as NONFINITE))
+    ) {
       text.length && (text += " ");
-      text += `(${Number(this.label.confidence).toFixed(2)})`;
+      text += `(${
+        typeof this.label.confidence === "number"
+          ? Number(this.label.confidence).toFixed(2)
+          : this.label.confidence
+      })`;
     }
 
     return text;

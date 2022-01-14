@@ -1,7 +1,7 @@
 """
 DICOM utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -123,9 +123,8 @@ class DICOMDatasetImporter(
     See :ref:`this page <DICOMDataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
-        images_dir (None): the directory in which the images will be written.
-            If not provided, the images will be unpacked into ``dataset_dir``
+        dataset_dir (None): the dataset directory. If omitted, ``dicom_path``
+            must be provided
         dicom_path (None): an optional parameter that enables explicit control
             over the location of the DICOM files. Can be any of the following:
 
@@ -136,6 +135,8 @@ class DICOMDatasetImporter(
                 a DICOMDIR file. In this case, ``dataset_dir`` has no effect
 
             If None, the parameter will default to ``*.dcm``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         keywords (None): an optional keyword or list of keywords from
             :meth:`pydicom:pydicom.dataset.Dataset.dir` to load from the DICOM
             files. By default, all available fields are loaded
@@ -155,8 +156,8 @@ class DICOMDatasetImporter(
     def __init__(
         self,
         dataset_dir=None,
-        images_dir=None,
         dicom_path=None,
+        images_dir=None,
         keywords=None,
         parsers=None,
         image_format=None,
@@ -166,8 +167,7 @@ class DICOMDatasetImporter(
     ):
         if dataset_dir is None and dicom_path is None:
             raise ValueError(
-                "At least one of `dataset_dir` and `dicom_path` must be "
-                "provided"
+                "Either `dataset_dir` or `dicom_path` must be provided"
             )
 
         dicom_path = self._parse_labels_path(

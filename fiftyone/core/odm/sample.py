@@ -42,7 +42,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
     dataset.add_sample(sample)
     sample._doc  # my_dataset(DatasetSampleDocument)
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -124,7 +124,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     def __init__(self, **kwargs):
         filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))
 
-        kwargs["id"] = None
+        kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
         kwargs["_rand"] = _generate_rand(filepath=filepath)
         kwargs["_media_type"] = fomm.get_media_type(filepath)

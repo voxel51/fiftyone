@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { getColor } from "../color";
@@ -7,6 +7,7 @@ import {
   MOMENT_CLASSIFICATIONS,
   TEMPORAL_DETECTION,
   INFO_COLOR,
+  REGRESSION,
 } from "../constants";
 import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
 import {
@@ -22,7 +23,7 @@ import { sizeBytes } from "./util";
 export interface Classification extends RegularLabel {}
 
 interface ClassificationLabel extends Classification {
-  _cls: "Classification";
+  _cls: "Classification" | "Regression";
 }
 
 export type Labels<T> = [string, T[]][];
@@ -41,7 +42,12 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    const key = state.options.coloring.byLabel ? label.label : field;
+    const key =
+      label._cls === REGRESSION
+        ? field
+        : state.options.coloring.byLabel
+        ? label.label
+        : field;
     return getColor(
       state.options.coloring.pool,
       state.options.coloring.seed,
@@ -94,7 +100,7 @@ export class ClassificationsOverlay<
           result = {
             field: field,
             label,
-            type: "Classification",
+            type: label._cls,
             color: this.getColor(state, field, label),
           };
         }
@@ -155,8 +161,7 @@ export class ClassificationsOverlay<
       labels.filter(
         (label) =>
           MOMENT_CLASSIFICATIONS.includes(label._cls) &&
-          isShown(state, field, label) &&
-          label.label
+          isShown(state, field, label)
       ),
     ]);
   }
@@ -271,7 +276,7 @@ export class ClassificationsOverlay<
   }
 
   private getLabelText(state: Readonly<State>, label: Label): string {
-    let text = label.label && state.options.showLabel ? `${label.label}` : "";
+    let text = state.options.showLabel ? `${getText(label)}` : "";
 
     if (state.options.showConfidence && !isNaN(label.confidence as number)) {
       text.length && (text += " ");
@@ -343,4 +348,12 @@ export const getClassificationPoints = (
   labels: ClassificationLabel[]
 ): Coordinates[] => {
   return [];
+};
+
+const getText = (label) => {
+  if (label._cls === REGRESSION) {
+    return label.value;
+  }
+
+  return label.label;
 };

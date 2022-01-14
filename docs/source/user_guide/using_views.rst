@@ -418,6 +418,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("imagenet-sample")
 
@@ -435,6 +436,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -460,6 +462,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             # The path to the source files that you manually downloaded
             source_dir = "/path/to/dir-with-bdd100k-files"
@@ -487,6 +490,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -1549,6 +1553,7 @@ view:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.untag_samples("validation") # remove pre-existing tags

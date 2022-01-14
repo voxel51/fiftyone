@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,6 +20,7 @@ import logging
 import os
 import platform
 import signal
+import struct
 import subprocess
 import timeit
 import types
@@ -1238,6 +1239,15 @@ def is_arm_mac():
     )
 
 
+def is_32_bit():
+    """Determines whether the system is 32-bit.
+
+    Returns:
+        True/False
+    """
+    return struct.calcsize("P") * 8 == 32
+
+
 def datetime_to_timestamp(dt):
     """Converts a `datetime.date` or `datetime.datetime` to milliseconds since
     epoch.
@@ -1246,7 +1256,7 @@ def datetime_to_timestamp(dt):
         dt: a `datetime.date` or `datetime.datetime`
 
     Returns:
-        the number of milliseconds since epoch
+        the float number of milliseconds since epoch
     """
     if type(dt) is date:
         dt = datetime(dt.year, dt.month, dt.day)
@@ -1254,7 +1264,7 @@ def datetime_to_timestamp(dt):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
 
-    return int(1000 * dt.timestamp())
+    return 1000.0 * dt.timestamp()
 
 
 def timestamp_to_datetime(ts):
@@ -1267,7 +1277,7 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.utcfromtimestamp(ts / 1000)
+    dt = datetime.utcfromtimestamp(ts / 1000.0)
 
     if fo.config.timezone is None:
         return dt
@@ -1283,8 +1293,59 @@ def timedelta_to_ms(td):
         td: a `datetime.timedelta`
 
     Returns:
-        the number of milliseconds
+        the float number of milliseconds
     """
-    return int(
-        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
+    return (
+        86400000.0 * td.days + 1000.0 * td.seconds + td.microseconds / 1000.0
     )
+
+
+class ResponseStream(object):
+    """Wrapper around a ``requests.Response`` that provides a file-like object
+    interface with ``read()``, ``seek()``, and ``tell()`` methods.
+
+    Source:
+        https://gist.github.com/obskyr/b9d4b4223e7eaf4eedcd9defabb34f13
+
+    Args:
+        response: a ``requests.Response``
+        chunk_size (64): the chunk size to use to read the response's content
+    """
+
+    def __init__(self, response, chunk_size=64):
+        self._response = response
+        self._iterator = response.iter_content(chunk_size)
+        self._bytes = io.BytesIO()
+
+    def read(self, size=None):
+        left_off_at = self._bytes.tell()
+        if size is None:
+            self._load_all()
+        else:
+            goal_position = left_off_at + size
+            self._load_until(goal_position)
+
+        self._bytes.seek(left_off_at)
+        return self._bytes.read(size)
+
+    def seek(self, position, whence=io.SEEK_SET):
+        if whence == io.SEEK_END:
+            self._load_all()
+        else:
+            self._bytes.seek(position, whence)
+
+    def tell(self):
+        return self._bytes.tell()
+
+    def _load_all(self):
+        self._bytes.seek(0, io.SEEK_END)
+        for chunk in self._iterator:
+            self._bytes.write(chunk)
+
+    def _load_until(self, goal_position):
+        current_position = self._bytes.seek(0, io.SEEK_END)
+        while current_position < goal_position:
+            try:
+                current_position += self._bytes.write(next(self._iterator))
+            except StopIteration:
+                break

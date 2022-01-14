@@ -2,7 +2,7 @@
 Script for generating the model zoo docs page contents
 ``docs/source/user_guide/model_zoo/models.rst``.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

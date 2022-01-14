@@ -1,7 +1,7 @@
 """
 Video frame views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -579,7 +579,10 @@ def _populate_frames(
         # note: [] means no frames, None means all frames
         if sample_frame_numbers != []:
             id_map[video_path] = str(sample["_id"])
-            sample_map[video_path].update(sample_frame_numbers)
+            if sample_frame_numbers is None:
+                sample_map[video_path] = None
+            elif sample_map[video_path] is not None:
+                sample_map[video_path].update(sample_frame_numbers)
 
         for frame_number in doc_frame_numbers:
             if is_clips:
@@ -617,7 +620,10 @@ def _populate_frames(
     frames_to_sample = []
     for video_path, sample_frame_numbers in sample_map.items():
         ids_to_sample.append(id_map[video_path])
-        frames_to_sample.append(sorted(sample_frame_numbers))
+        if sample_frame_numbers is not None:
+            sample_frame_numbers = sorted(sample_frame_numbers)
+
+        frames_to_sample.append(sample_frame_numbers)
 
     if not docs:
         return ids_to_sample, frames_to_sample

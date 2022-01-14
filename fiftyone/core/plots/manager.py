@@ -1,14 +1,13 @@
 """
 Session plot manager.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import datetime
 import itertools
 import logging
-import warnings
 
 import eta.core.utils as etau
 
@@ -25,7 +24,7 @@ class PlotManager(object):
     :class:`fiftyone.core.session.Session` and one or more
     :class:`ResponsivePlot` instances.
 
-    Each plot can be linked to either the view, samples, or labels of a
+    Each plot can be linked to either the view, samples, frames, or labels of a
     session:
 
     -   **View links:** When a plot has ``link_type == "view"``, then, when the
@@ -34,6 +33,11 @@ class PlotManager(object):
 
     -   **Sample links:** When points are selected in a plot with
         ``link_type == "samples"``, a view containing the corresponding samples
+        is loaded in the App. Conversely, when the session's view changes, the
+        corresponding points are selected in the plot
+
+    -   **Frame links:** When points are selected in a plot with
+        ``link_type == "frames"``, a view containing the corresponding frames
         is loaded in the App. Conversely, when the session's view changes, the
         corresponding points are selected in the plot
 
@@ -55,6 +59,7 @@ class PlotManager(object):
         self._plots = {}
         self._aggs = {}
         self._current_sample_ids = None
+        self._current_frame_ids = None
         self._current_labels = None
         self._last_session_view = None
         self._last_update = None
@@ -186,6 +191,15 @@ class PlotManager(object):
         """Whether this manager has plots linked to samples."""
         return any(
             plot.link_type == "samples"
+            for plot in self._plots.values()
+            if plot.is_connected
+        )
+
+    @property
+    def has_frame_links(self):
+        """Whether this manager has plots linked to frames."""
+        return any(
+            plot.link_type == "frames"
             for plot in self._plots.values()
             if plot.is_connected
         )
@@ -396,10 +410,35 @@ class PlotManager(object):
         else:
             plot_view = self._session.dataset.view()
 
+        sample_ids = None
+        frame_ids = None
+        labels = None
+
         if ids is None:
-            # Plot is in default state, so reset things here
-            self._current_sample_ids = None
-            self._current_labels = None
+            # Plot is in default state
+            pass
+        elif plot.link_type == "samples":
+            # Create a view that contains only the selected samples in the plot
+            plot_view = plot_view.select(ids)
+
+            sample_ids = ids
+
+            if self.has_frame_links:
+                frame_ids = plot_view.values("frames.id", unwind=True)
+
+            if self.has_label_links:
+                labels = plot_view._get_selected_labels()
+        elif plot.link_type == "frames":
+            # Create a view that contains only the selected frames in the plot
+            plot_view = plot_view.select_frames(ids)
+
+            if self.has_sample_links:
+                sample_ids = plot_view.values("id")
+
+            frame_ids = ids
+
+            if self.has_label_links:
+                labels = plot_view._get_selected_labels()
         elif plot.link_type == "labels":
             if plot.selection_mode == "select":
                 # Create a view that contains only the selected labels in the
@@ -430,30 +469,22 @@ class PlotManager(object):
             if field is not None and not etau.is_str(field):
                 field = None  # multiple fields; unclear which one to use
 
-            self._current_sample_ids = plot_view.values("id")
-            self._current_labels = [
-                {"field": field, "label_id": _id} for _id in ids
-            ]
-        elif plot.link_type == "samples":
-            # Create a view that contains only the selected samples in the plot
-            plot_view = plot_view.select(ids)
+            if self.has_sample_links:
+                sample_ids = plot_view.values("id")
 
-            if self.has_label_links:
-                # Other plots need labels, so we need to record all labels in
-                # `plot_view` as well
-                labels = plot_view._get_selected_labels()
-            else:
-                labels = None
+            if self.has_frame_links:
+                frame_ids = plot_view.values("frames.id", unwind=True)
 
-            self._current_sample_ids = ids
-            self._current_labels = labels
+            labels = [{"field": field, "label_id": _id} for _id in ids]
         else:
-            msg = (
-                "Ignoring update from plot '%s' with unsupported link type "
-                "'%s'"
-            ) % (name, plot.link_type)
-            warnings.warn(msg)
+            raise ValueError(
+                "Plot '%s' has unsupported link type '%s'"
+                % (name, plot.link_type)
+            )
 
+        self._current_sample_ids = sample_ids
+        self._current_frame_ids = frame_ids
+        self._current_labels = labels
         self._update_session(plot_view)
         self._update_plots_from_session(exclude=[name])
 
@@ -466,13 +497,32 @@ class PlotManager(object):
         # If no view is loaded and nothing is selected, reset all plots
         if not has_view and not has_selections:
             self._current_sample_ids = None
+            self._current_frame_ids = None
             self._current_labels = None
             return
 
-        # If labels are selected in the App, only record those
-        # If samples are selected in the App, only record their labels
-        # Otherwise, record all labels in the current view
+        if self.has_sample_links:
+            # If samples are selected in the App, only record those
+            # Otherwise, record all samples in the view
+            if session.selected:
+                self._current_sample_ids = session.selected
+            else:
+                self._current_sample_ids = current_view.values("id")
+
+        if self.has_frame_links:
+            # If samples are selected in the App, only record their frame IDs
+            # Otherwise, record all frame IDs in the view
+            if session.selected:
+                _view = current_view.select(session.selected)
+            else:
+                _view = current_view
+
+            self._current_frame_ids = _view.values("frames.id", unwind=True)
+
         if self.has_label_links:
+            # If labels are selected in the App, only record those
+            # If samples are selected in the App, only record their labels
+            # Otherwise, record all labels in the current view
             if session.selected_labels:
                 self._current_labels = session.selected_labels
             elif session.selected:
@@ -480,14 +530,6 @@ class PlotManager(object):
                 self._current_labels = selected_view._get_selected_labels()
             else:
                 self._current_labels = current_view._get_selected_labels()
-
-        # If samples are selected in the App, only record those
-        # Otherwise, record all samples in the view
-        if self.has_sample_links:
-            if session.selected:
-                self._current_sample_ids = session.selected
-            else:
-                self._current_sample_ids = current_view.values("id")
 
     def _update_session(self, view):
         if not self._needs_update("session"):
@@ -524,7 +566,7 @@ class PlotManager(object):
 
             if plot.link_type == "view":
                 view_plot_names.append(name)
-            elif plot.link_type in ("samples", "labels"):
+            elif plot.link_type in ("samples", "frames", "labels"):
                 interactive_plot_names.append(name)
             else:
                 raise ValueError(
@@ -582,6 +624,8 @@ class PlotManager(object):
 
         if plot.link_type == "samples":
             plot.select_ids(self._current_sample_ids, view=view)
+        elif plot.link_type == "frames":
+            plot.select_ids(self._current_frame_ids, view=view)
         elif plot.link_type == "labels":
             label_ids = self._get_current_label_ids_for_plot(plot)
             plot.select_ids(label_ids, view=view)

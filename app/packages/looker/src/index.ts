@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 import LRU from "lru-cache";
 import { v4 as uuid } from "uuid";
@@ -105,7 +105,23 @@ const workerCallbacks = {
   ],
 };
 
-const labelsWorker = createWorker(workerCallbacks);
+const getLabelsWorker = (() => {
+  // one labels worker seems to be best
+  // const numWorkers = navigator.hardwareConcurrency || 4;
+  const numWorkers = 1;
+
+  const workers = [];
+  for (let i = 0; i < numWorkers; i++) {
+    workers.push(createWorker(workerCallbacks));
+  }
+
+  let next = -1;
+  return () => {
+    next++;
+    next %= numWorkers;
+    return workers[next];
+  };
+})();
 
 export abstract class Looker<
   State extends BaseState = BaseState,
@@ -517,6 +533,7 @@ export abstract class Looker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
+    const worker = getLabelsWorker();
     const listener = ({ data: { sample, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
@@ -526,11 +543,11 @@ export abstract class Looker<
           disabled: false,
           reloading: false,
         });
-        labelsWorker.removeEventListener("message", listener);
+        worker.removeEventListener("message", listener);
       }
     };
-    labelsWorker.addEventListener("message", listener);
-    labelsWorker.postMessage({
+    worker.addEventListener("message", listener);
+    worker.postMessage({
       method: "processSample",
       coloring: this.state.options.coloring,
       sample,
@@ -787,7 +804,8 @@ const { aquireReader, addFrame } = (() => {
         addFrame(i, frame);
       }
 
-      for (const frameSample of frames) {
+      for (let i = 0; i < frames.length; i++) {
+        const frameSample = frames[i];
         const prefixedFrameSample = Object.fromEntries(
           Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
         );

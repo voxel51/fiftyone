@@ -1,7 +1,7 @@
 """
 FiftyOne server json utilies.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ from bson import ObjectId, json_util
 from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
+import math
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -44,6 +45,13 @@ def _handle_date(dt):
     }
 
 
+def _is_invalid_number(value):
+    if not isinstance(value, float):
+        return False
+
+    return math.isnan(value) or math.isinf(value)
+
+
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
@@ -55,6 +63,8 @@ def convert(d):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
+            elif _is_invalid_number(v):
+                d[k] = str(v)
 
     if isinstance(d, list):
         for idx, i in enumerate(d):
@@ -70,6 +80,8 @@ def convert(d):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):
                 convert(i)
+            elif _is_invalid_number(i):
+                d[idx] = str(i)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):

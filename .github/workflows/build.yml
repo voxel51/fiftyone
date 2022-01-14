@@ -50,7 +50,7 @@ jobs:
           fi
       - name: Build dist
         run: |
-          python setup.py bdist_wheel
+          python setup.py bdist_wheel sdist
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
@@ -122,7 +122,7 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
-          pip install scikit-learn scikit-image shapely pydicom
+          pip install -r requirements/extras.txt
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source
@@ -216,4 +216,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/*.whl
+          python3 -m twine upload downloads/*

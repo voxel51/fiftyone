@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -11,6 +11,8 @@ from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import multiprocessing
+import multiprocessing.dummy
 import os
 import warnings
 import webbrowser
@@ -23,6 +25,7 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -30,12 +33,409 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
+import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
+import fiftyone.utils.video as fouv
 
 
 logger = logging.getLogger(__name__)
+
+
+def import_annotations(
+    sample_collection,
+    project_name=None,
+    project_id=None,
+    task_ids=None,
+    data_path=None,
+    label_types=None,
+    insert_new=True,
+    download_media=False,
+    num_workers=None,
+    occluded_attr=None,
+    backend="cvat",
+    **kwargs,
+):
+    """Imports annotations from the specified CVAT project or task(s) into the
+    given sample collection.
+
+    Provide one of ``project_name``, ``project_id``, or ``task_ids`` to perform
+    an import.
+
+    This method can be configured in any of the following three ways:
+
+    1.  Pass the ``data_path`` argument to define a mapping between media
+        filenames in CVAT and local filepaths to the same media.
+
+    2.  Pass the ``download_media=True`` option to download both the
+        annotations and the media files themselves, which are stored in a
+        directory you specify via the ``data_path`` argument.
+
+    3.  Don't provide ``data_path`` or ``download_media=True``, in which case
+        it is assumed that the CVAT filenames correspond to the base filenames
+        of existing sample filepaths in the provided ``sample_collection``.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        project_name (None): the name of a CVAT project to import
+        project_id (None): the ID of a CVAT project to import
+        task_ids (None): a CVAT task ID or iterable of CVAT task IDs to import
+        data_path (None): a parameter that defines the correspondence between
+            the filenames in CVAT and the filepaths of ``sample_collection``.
+            Can be any of the following:
+
+            -   a directory on disk where the media files reside. In this case,
+                the filenames must match those in CVAT
+            -   a dict mapping CVAT filenames to absolute filepaths to the
+                corresponding media on disk
+            -   the path to a JSON manifest on disk containing a mapping
+                between CVAT filenames and absolute filepaths to the media on
+                disk
+
+            By default, only annotations whose filename matches an existing
+            filepath in ``sample_collection`` will be imported
+        label_types (None): an optional parameter specifying the label types to
+            import. Can be any of the following:
+
+            -   ``None`` (default): all label types will be stored in fields of
+                the same name on ``sample_collection``
+            -   a list of label types to load. In this case, the labels will be
+                stored in fields of the same names in ``sample_collection``
+            -   a dict mapping label types to field names of
+                ``sample_collection`` in which to store the labels
+            -   ``"prompt"``: present an interactive prompt to decide/discard
+                field names in which to store each label type
+        insert_new (True): whether to create new samples for any media for
+            which annotations are found in CVAT but which do not exist in
+            ``sample_collection``
+        download_media (False): whether to download the images or videos found
+            in CVAT to the directory or filepaths in ``data_path`` if not
+            already present
+        num_workers (None): the number of processes to use when downloading
+            media. By default, ``multiprocessing.cpu_count()`` is used
+        occluded_attr (None): an optional attribute name in which to store the
+            occlusion information for all spatial labels
+        backend ("cvat"): the name of the CVAT backend to use
+        **kwargs: CVAT authentication credentials to pass to
+            :class:`CVATBackendConfig`
+    """
+    if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
+        raise ValueError(
+            "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
+            "be provided"
+        )
+
+    config = foua._parse_config(
+        backend, None, occluded_attr=occluded_attr, **kwargs
+    )
+    anno_backend = config.build()
+    api = anno_backend.connect_to_api()
+
+    if project_name is not None:
+        project_id = api.get_project_id(project_name)
+
+    if project_id is not None:
+        task_ids = api.get_project_tasks(project_id)
+
+    if etau.is_str(task_ids):
+        task_ids = [task_ids]
+    else:
+        task_ids = list(task_ids)
+
+    # Build mapping from CVAT filenames to local filepaths
+    data_dir = None
+    existing_filepaths = sample_collection.values("filepath")
+    if data_path is None:
+        data_map = {os.path.basename(f): f for f in existing_filepaths}
+    elif etau.is_str(data_path) and data_path.endswith(".json"):
+        data_map = etas.read_json(data_path)
+    elif etau.is_str(data_path):
+        if os.path.isdir(data_path):
+            data_map = {
+                os.path.basename(f): f
+                for f in etau.list_files(
+                    data_path, abs_paths=True, recursive=True
+                )
+            }
+        else:
+            data_map = {}
+
+        data_dir = data_path
+    else:
+        data_map = data_path
+
+    # Determine what filepaths we have annotations for
+    cvat_id_map = {}
+    task_filepaths = []
+    ignored_filenames = []
+    download_tasks = []
+    for task_id in task_ids:
+        cvat_id_map[task_id] = _parse_task_metadata(
+            api,
+            task_id,
+            data_map,
+            task_filepaths,
+            ignored_filenames,
+            download_tasks,
+            data_dir=data_dir,
+            download_media=download_media,
+        )
+
+    # Download media from CVAT, if requested
+    if download_tasks:
+        _download_media(download_tasks, num_workers)
+
+    if ignored_filenames:
+        logger.warning(
+            "Ignoring annotations for %d files in CVAT (eg %s) that do not "
+            "appear in the provided data map",
+            len(ignored_filenames),
+            ignored_filenames[0],
+        )
+
+    if not task_filepaths:
+        logger.warning("No applicable annotations found to download")
+        return
+
+    dataset = sample_collection._dataset
+
+    new_filepaths = set(task_filepaths) - set(existing_filepaths)
+
+    # Insert samples for new filepaths, if necessary and we're allowed to
+    if new_filepaths:
+        if insert_new:
+            dataset.add_samples(
+                [fos.Sample(filepath=fp) for fp in new_filepaths]
+            )
+        else:
+            logger.warning(
+                "Ignoring annotations for %d filepaths (eg %s) that do not "
+                "appear in the input collection",
+                len(new_filepaths),
+                new_filepaths[0],
+            )
+
+    if dataset.media_type == fom.VIDEO:
+        # The download implementation requires IDs for all possible frames
+        dataset.select_by("filepath", task_filepaths).ensure_frames()
+
+    anno_key = "tmp_" + str(ObjectId())
+    anno_backend.register_run(dataset, anno_key, overwrite=False)
+
+    # Download annotations
+    try:
+        if project_id is not None:
+            # CVAT projects share a label schema, so we can download all tasks
+            # in one batch
+            label_schema = api._get_label_schema(
+                project_id=project_id, occluded_attr=occluded_attr
+            )
+
+            _download_annotations(
+                dataset,
+                task_ids,
+                cvat_id_map,
+                label_schema,
+                label_types,
+                anno_backend,
+                anno_key,
+                **kwargs,
+            )
+        else:
+            # Each task may have a different label schema, so we must download
+            # each task separately
+            for task_id in task_ids:
+                label_schema = api._get_label_schema(
+                    task_id=task_id, occluded_attr=occluded_attr
+                )
+
+                _download_annotations(
+                    dataset,
+                    [task_id],
+                    cvat_id_map,
+                    label_schema,
+                    label_types,
+                    anno_backend,
+                    anno_key,
+                    **kwargs,
+                )
+    finally:
+        anno_backend.delete_run(dataset, anno_key)
+
+
+def _parse_task_metadata(
+    api,
+    task_id,
+    data_map,
+    task_filepaths,
+    ignored_filenames,
+    download_tasks,
+    data_dir=None,
+    download_media=False,
+):
+    resp = api.get(api.task_data_meta_url(task_id)).json()
+    start_frame = resp.get("start_frame", None)
+    stop_frame = resp.get("stop_frame", None)
+    chunk_size = resp.get("chunk_size", None)
+
+    cvat_id_map = {}
+    for frame_id, frame in enumerate(resp["frames"]):
+        filename = frame["name"]
+        filepath = data_map.get(filename, None)
+        if download_media:
+            if filepath is None and data_dir:
+                filepath = os.path.join(data_dir, filename)
+
+            if filepath and not os.path.exists(filepath):
+                download_tasks.append(
+                    (
+                        api,
+                        task_id,
+                        frame_id,
+                        filepath,
+                        start_frame,
+                        stop_frame,
+                        chunk_size,
+                    )
+                )
+
+        if filepath is not None:
+            cvat_id_map[filepath] = frame_id
+            task_filepaths.append(filepath)
+        else:
+            ignored_filenames.append(filename)
+
+    return cvat_id_map
+
+
+def _download_media(tasks, num_workers):
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    logger.info("Downloading media...")
+    if num_workers <= 1:
+        with fou.ProgressBar() as pb:
+            for task in pb(tasks):
+                _do_download_media(task)
+    else:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=len(tasks)) as pb:
+                for _ in pb(pool.imap_unordered(_do_download_media, tasks)):
+                    pass
+
+
+def _do_download_media(task):
+    (
+        api,
+        task_id,
+        frame_id,
+        filepath,
+        start_frame,
+        stop_frame,
+        chunk_size,
+    ) = task
+
+    if fom.get_media_type(filepath) == fom.VIDEO:
+        ext = os.path.splitext(filepath)[1]
+        num_chunks = int(np.ceil((stop_frame - start_frame) / chunk_size))
+
+        # CVAT stores videos in chunks, so we must download them individually
+        # and then concatenate them...
+        with etau.TempDir() as tmp_dir:
+            chunk_paths = []
+            for chunk_id in range(num_chunks):
+                resp = api.get(
+                    api.task_data_download_url(
+                        task_id, chunk_id, data_type="chunk"
+                    )
+                )
+                chunk_path = os.path.join(tmp_dir, "%d.%s" % (chunk_id, ext))
+                etau.write_file(resp._content, chunk_path)
+                chunk_paths.append(chunk_path)
+
+            fouv.concat_videos(chunk_paths, filepath)
+    else:
+        resp = api.get(api.task_data_download_url(task_id, frame_id))
+        etau.write_file(resp._content, filepath)
+
+
+def _download_annotations(
+    dataset,
+    task_ids,
+    cvat_id_map,
+    label_schema,
+    label_types,
+    anno_backend,
+    anno_key,
+    **kwargs,
+):
+    config = anno_backend.config
+    config.label_schema = label_schema
+    anno_backend.update_run_config(dataset, anno_key, config)
+
+    id_map = {}
+    server_id_map = {}
+    project_ids = []
+    job_ids = []
+    frame_id_map = {
+        task_id: _build_sparse_frame_id_map(dataset, cvat_id_map[task_id])
+        for task_id in task_ids
+    }
+    labels_task_map = {None: task_ids}
+
+    results = CVATAnnotationResults(
+        dataset,
+        config,
+        id_map,
+        server_id_map,
+        project_ids,
+        task_ids,
+        job_ids,
+        frame_id_map,
+        labels_task_map,
+        backend=anno_backend,
+    )
+    anno_backend.save_run_results(dataset, anno_key, results)
+
+    if label_types is None:
+        unexpected = "keep"
+    else:
+        unexpected = label_types
+
+    dataset.load_annotations(
+        anno_key, unexpected=unexpected, cleanup=False, **kwargs
+    )
+
+
+def _build_sparse_frame_id_map(dataset, cvat_id_map):
+    task_filepaths = list(cvat_id_map.keys())
+    samples = dataset.select_by("filepath", task_filepaths)
+
+    frame_id_map = {}
+
+    if samples.media_type == fom.VIDEO:
+        # Video tasks have exactly one video, and we download labels for all
+        # of its frames
+        frame_id = -1
+        sample_ids, frame_ids = samples.values(["id", "frames.id"])
+        for sample_id, _frame_ids in zip(sample_ids, frame_ids):
+            for _frame_id in _frame_ids:
+                frame_id += 1
+                frame_id_map[frame_id] = {
+                    "sample_id": sample_id,
+                    "frame_id": _frame_id,
+                }
+    else:
+        # For image tasks, only allow downloads for filepaths in `cvat_id_map`
+        sample_ids, filepaths = samples.values(["id", "filepath"])
+        for sample_id, filepath in zip(sample_ids, filepaths):
+            frame_id = cvat_id_map.get(filepath, None)
+            if frame_id is not None:
+                frame_id_map[frame_id] = {"sample_id": sample_id}
+
+    return frame_id_map
 
 
 class CVATImageDatasetImporter(
@@ -46,7 +446,8 @@ class CVATImageDatasetImporter(
     See :ref:`this page <CVATImageDataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -60,6 +461,7 @@ class CVATImageDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -92,6 +494,12 @@ class CVATImageDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -210,7 +618,8 @@ class CVATVideoDatasetImporter(
     See :ref:`this page <CVATVideoDataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -224,6 +633,7 @@ class CVATVideoDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -256,6 +666,12 @@ class CVATVideoDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -1132,15 +1548,17 @@ class CVATImageAnno(object):
     def _to_attributes(self):
         attributes = {a.name: a.value for a in self.attributes}
 
-        if self.occluded is not None:
-            attributes["occluded"] = self.occluded
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
         attrs = dict(label.iter_attributes())
-        occluded = attrs.pop("occluded", None)
+
+        occluded = _to_int_bool(attrs.pop("occluded", None))
+
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
@@ -1151,12 +1569,18 @@ class CVATImageAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        occluded = _parse_value(d.get("@occluded", None))
+        occluded = _from_int_bool(d.get("@occluded", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -1608,24 +2032,28 @@ class CVATTrack(object):
         # Only one of these will actually contain labels
 
         for frame_number, box in self.boxes.items():
-            detection = box.to_detection(frame_size)
-            detection.index = self.id
-            labels[frame_number + 1] = detection
+            if box.outside != 1:
+                detection = box.to_detection(frame_size)
+                detection.index = self.id
+                labels[frame_number + 1] = detection
 
         for frame_number, polygon in self.polygons.items():
-            polyline = polygon.to_polyline(frame_size)
-            polyline.index = self.id
-            labels[frame_number + 1] = polyline
+            if polygon.outside != 1:
+                polyline = polygon.to_polyline(frame_size)
+                polyline.index = self.id
+                labels[frame_number + 1] = polyline
 
         for frame_number, polyline in self.polylines.items():
-            polyline = polyline.to_polyline(frame_size)
-            polyline.index = self.id
-            labels[frame_number + 1] = polyline
+            if polyline.outside != 1:
+                polyline = polyline.to_polyline(frame_size)
+                polyline.index = self.id
+                labels[frame_number + 1] = polyline
 
         for frame_number, points in self.points.items():
-            keypoint = points.to_keypoint(frame_size)
-            keypoint.index = self.id
-            labels[frame_number + 1] = keypoint
+            if points.outside != 1:
+                keypoint = points.to_keypoint(frame_size)
+                keypoint.index = self.id
+                labels[frame_number + 1] = keypoint
 
         return labels
 
@@ -1672,6 +2100,14 @@ class CVATTrack(object):
             elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
                 warnings.warn(msg)
+
+        # CVAT uses `outside=1` to mark the end of track segments, while
+        # FiftyOne implicitly represents this by missing labels. So, we need to
+        # convert to CVAT format here
+        cls._add_outside_shapes(boxes)
+        cls._add_outside_shapes(polygons)
+        cls._add_outside_shapes(polylines)
+        cls._add_outside_shapes(points)
 
         return cls(
             id,
@@ -1732,12 +2168,39 @@ class CVATTrack(object):
             points=points,
         )
 
+    @staticmethod
+    def _add_outside_shapes(shapes):
+        if not shapes:
+            return
+
+        use_keyframes = any(s.keyframe for s in shapes.values())
+
+        def _make_outside_shape(shape):
+            shape = deepcopy(shape)
+            shape.outside = 1
+            if use_keyframes:
+                shape.keyframe = 1
+
+            return shape
+
+        # Add "outside" shapes to represent gaps of >= 1 frame in tracks
+        fns = sorted(shapes.keys())
+        last_fn = fns[0]
+        for fn in fns:
+            if fn > last_fn + 1:
+                shapes[last_fn + 1] = _make_outside_shape(shapes[last_fn])
+
+            last_fn = fn
+
+        # Always add an "outside" shape to the end of each track
+        shapes[last_fn + 1] = _make_outside_shape(shapes[last_fn])
+
 
 class CVATVideoAnno(object):
     """Mixin for annotations in CVAT video format.
 
     Args:
-        outside (None): whether the object is truncated by the frame edge
+        outside (None): whether the object is outside (invisible)
         occluded (None): whether the object is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -1754,23 +2217,25 @@ class CVATVideoAnno(object):
     def _to_attributes(self):
         attributes = {a.name: a.value for a in self.attributes}
 
-        if self.outside is not None:
-            attributes["outside"] = self.outside
+        # We don't include `outside` here because shapes marked as `outside`
+        # are completely omitted
 
-        if self.occluded is not None:
-            attributes["occluded"] = self.occluded
+        if self.occluded == 1:
+            attributes["occluded"] = True
 
-        if self.keyframe is not None:
-            attributes["keyframe"] = self.keyframe
+        if self.keyframe == 1:
+            attributes["keyframe"] = True
 
         return attributes
 
     @staticmethod
     def _parse_attributes(label):
         attrs = dict(label.iter_attributes())
-        occluded = attrs.pop("occluded", None)
-        outside = attrs.pop("outside", None)
-        keyframe = attrs.pop("keyframe", None)
+
+        outside = 0  # any FiftyOne label is implicitly not `outside`
+        occluded = _to_int_bool(attrs.pop("occluded", None))
+        keyframe = _to_int_bool(attrs.pop("keyframe", None))
+
         attributes = [
             CVATAttribute(k, v)
             for k, v in attrs.items()
@@ -1781,14 +2246,20 @@ class CVATVideoAnno(object):
 
     @staticmethod
     def _parse_anno_dict(d):
-        outside = _parse_value(d.get("@outside", None))
-        occluded = _parse_value(d.get("@occluded", None))
-        keyframe = _parse_value(d.get("@keyframe", None))
+        outside = _from_int_bool(d.get("@outside", None))
+        occluded = _from_int_bool(d.get("@occluded", None))
+        keyframe = _from_int_bool(d.get("@keyframe", None))
 
         attributes = []
         for attr in _ensure_list(d.get("attribute", [])):
             if "#text" in attr:
                 name = attr["@name"].lstrip("@")
+                if name == "label_id":
+                    # We assume that this is a `label_id` exported from an
+                    # CVAT annotation run created by our annotation API, which
+                    # should be ignored since we're not using the API here
+                    continue
+
                 value = _parse_value(attr["#text"])
                 attributes.append(CVATAttribute(name, value))
 
@@ -1805,7 +2276,7 @@ class CVATVideoBox(CVATVideoAnno):
         ytl: the top-left y-coordinate of the box, in pixels
         xbr: the bottom-right x-coordinate of the box, in pixels
         ybr: the bottom-right y-coordinate of the box, in pixels
-        outside (None): whether the object is truncated by the frame edge
+        outside (None): whether the object is outside (invisible)
         occluded (None): whether the object is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -1947,7 +2418,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         label: the polygon label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polygon
-        outside (None): whether the polygon is truncated by the frame edge
+        outside (None): whether the polygon is outside (invisible)
         occluded (None): whether the polygon is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -2062,7 +2533,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         label: the polyline label string
         points: a list of ``(x, y)`` pixel coordinates defining the vertices of
             the polyline
-        outside (None): whether the polyline is truncated by the frame edge
+        outside (None): whether the polyline is outside (invisible)
         occluded (None): whether the polyline is occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -2178,7 +2649,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         frame: the 0-based frame number
         label: the keypoints label string
         points: a list of ``(x, y)`` pixel coordinates defining the keypoints
-        outside (None): whether the keypoints are truncated by the frame edge
+        outside (None): whether the keypoints is outside (invisible)
         occluded (None): whether the keypoints are occluded
         keyframe (None): whether the frame is a keyframe
         attributes (None): a list of :class:`CVATAttribute` instances
@@ -2427,6 +2898,10 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url (None): the url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all CVAT API
+            requests
+        task_size (None): an optional maximum number of images to upload per
+            task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
         image_quality (75): an int in `[0, 100]` determining the image quality
@@ -2445,8 +2920,15 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
             assigned
-        project_name (None): an optional project name in which to store the
-            annotation tasks. By default, no project is created
+        project_name (None): an optional project name to which to upload the
+            created CVAT task. If a project with this name is found, it will be
+            used, otherwise a new project with this name is created. By
+            default, no project is used
+        project_id (None): an optional ID of an existing CVAT project to which
+            to upload the annotation tasks. By default, no project is used
+        occluded_attr (None): an optional attribute name containing existing
+            occluded values and/or in which to store downloaded occluded values
+            for all objects in the annotation run
     """
 
     def __init__(
@@ -2457,6 +2939,8 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         url=None,
         username=None,
         password=None,
+        headers=None,
+        task_size=None,
         segment_size=None,
         image_quality=75,
         use_cache=True,
@@ -2466,10 +2950,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         job_assignees=None,
         job_reviewers=None,
         project_name=None,
+        project_id=None,
+        occluded_attr=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
         self.url = url
+        self.task_size = task_size
         self.segment_size = segment_size
         self.image_quality = image_quality
         self.use_cache = use_cache
@@ -2479,10 +2966,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.job_assignees = job_assignees
         self.job_reviewers = job_reviewers
         self.project_name = project_name
+        self.project_id = project_id
+        self.occluded_attr = occluded_attr
 
         # store privately so these aren't serialized
         self._username = username
         self._password = password
+        self._headers = headers
 
     @property
     def username(self):
@@ -2499,6 +2989,14 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @password.setter
     def password(self, value):
         self._password = value
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @headers.setter
+    def headers(self, value):
+        self._headers = value
 
 
 class CVATBackend(foua.AnnotationBackend):
@@ -2546,6 +3044,10 @@ class CVATBackend(foua.AnnotationBackend):
     def supports_keyframes(self):
         return True
 
+    @property
+    def requires_label_schema(self):
+        return False  # schemas can be inferred from existing CVAT projects
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             if name == "occluded":
@@ -2564,6 +3066,7 @@ class CVATBackend(foua.AnnotationBackend):
             self.config.url,
             username=self.config.username,
             password=self.config.password,
+            headers=self.config.headers,
         )
 
     def upload_annotations(self, samples, launch_editor=False):
@@ -2598,6 +3101,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         samples,
         config,
         id_map,
+        server_id_map,
         project_ids,
         task_ids,
         job_ids,
@@ -2607,13 +3111,16 @@ class CVATAnnotationResults(foua.AnnotationResults):
     ):
         super().__init__(samples, config, id_map, backend=backend)
 
+        self.server_id_map = server_id_map
         self.project_ids = project_ids
         self.task_ids = task_ids
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
 
-    def load_credentials(self, url=None, username=None, password=None):
+    def load_credentials(
+        self, url=None, username=None, password=None, headers=None
+    ):
         """Load the CVAT credentials from the given keyword arguments or the
         FiftyOne annotation config.
 
@@ -2621,9 +3128,11 @@ class CVATAnnotationResults(foua.AnnotationResults):
             url (None): the url of the CVAT server
             username (None): the CVAT username
             password (None): the CVAT password
+            headers (None): an optional dict of headers to add to all CVAT API
+                requests
         """
         self._load_config_parameters(
-            url=url, username=username, password=password
+            url=url, username=username, password=password, headers=headers
         )
 
     def connect_to_api(self):
@@ -2659,13 +3168,22 @@ class CVATAnnotationResults(foua.AnnotationResults):
         return self._get_status()
 
     def print_status(self):
-        """Print the status of the assigned tasks and jobs."""
+        """Prints the status of the assigned tasks and jobs."""
         self._get_status(log=True)
 
-    def cleanup(self):
-        """Deletes all tasks associated with this annotation run from the
-        CVAT server.
+    def delete_tasks(self, task_ids):
+        """Deletes the given tasks from both the CVAT server and this run.
+
+        Args:
+            task_ids: an iterable of task IDs
         """
+        api = self.connect_to_api()
+        api.delete_tasks(task_ids)
+
+        self._forget_tasks(task_ids)
+
+    def cleanup(self):
+        """Deletes all tasks and created projects associated with this run."""
         api = self.connect_to_api()
 
         if self.task_ids:
@@ -2673,13 +3191,28 @@ class CVATAnnotationResults(foua.AnnotationResults):
             api.delete_tasks(self.task_ids)
 
         if self.project_ids:
-            logger.info("Deleting projects...")
-            api.delete_projects(self.project_ids)
+            projects_to_delete = api.get_empty_projects(self.project_ids)
+            if projects_to_delete:
+                logger.info("Deleting projects...")
+                api.delete_projects(self.project_ids)
 
-        # @todo save updated results to DB?
         self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
+        self.id_map = {}
+        self.frame_id_map = {}
+
+    def _forget_tasks(self, task_ids):
+        for task_id in task_ids:
+            self.job_ids.pop(task_id, None)
+            _frame_id_map = self.frame_id_map.pop(task_id, {})
+            sample_ids = set(fd["sample_id"] for fd in _frame_id_map.values())
+            for _id_map in self.id_map.values():
+                for sample_id in sample_ids:
+                    _id_map.pop(sample_id, None)
+
+        task_ids = set(task_ids)
+        self.task_ids = [_id for _id in self.task_ids if _id not in task_ids]
 
     def _get_status(self, log=False):
         api = self.connect_to_api()
@@ -2778,6 +3311,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
             samples,
             config,
             d["id_map"],
+            d.get("server_id_map", {}),
             d.get("project_ids", []),
             d["task_ids"],
             job_ids,
@@ -2803,16 +3337,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         url: url of the CVAT server
         username (None): the CVAT username
         password (None): the CVAT password
+        headers (None): an optional dict of headers to add to all requests
     """
 
-    def __init__(self, name, url, username=None, password=None):
+    def __init__(self, name, url, username=None, password=None, headers=None):
         self._name = name
-        self._url = url
+        self._url = url.rstrip("/")
         self._username = username
         self._password = password
+        self._headers = headers
 
         self._session = None
         self._user_id_map = {}
+        self._project_id_map = {}
 
         self._setup()
 
@@ -2849,6 +3386,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def task_data_url(self, task_id):
         return "%s/data" % self.task_url(task_id)
 
+    def task_data_download_url(
+        self, task_id, frame_id, data_type="frame", quality="original"
+    ):
+        return "%s/data?type=%s&quality=%s&number=%d" % (
+            self.task_url(task_id),
+            data_type,
+            quality,
+            frame_id,
+        )
+
     def task_data_meta_url(self, task_id):
         return "%s/data/meta" % self.task_url(task_id)
 
@@ -2879,8 +3426,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def base_job_url(self, task_id, job_id):
         return "%s/tasks/%d/jobs/%d" % (self.base_url, task_id, job_id)
 
+    def task_id_search_url(self, task_id):
+        return "%s/tasks?id=%d" % (self.base_api_url, task_id)
+
     def user_search_url(self, username):
         return "%s/users?search=%s" % (self.base_api_url, username)
+
+    def project_search_url(self, project_name):
+        return "%s/projects?search=%s" % (self.base_api_url, project_name)
+
+    def project_id_search_url(self, project_id):
+        return "%s/projects?id=%d" % (self.base_api_url, project_id)
 
     def _setup(self):
         if not self._url:
@@ -2899,6 +3455,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         self._session = requests.Session()
+
+        if self._headers:
+            self._session.headers.update(self._headers)
+
         response = self.post(
             self.login_url, data={"username": username, "password": password}
         )
@@ -2987,28 +3547,72 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the user ID, or None if the user was not found
         """
-        if username is None:
-            return
+        user_id = self._get_value_update_map(
+            username, self._user_id_map, "username", self.user_search_url,
+        )
 
-        if username in self._user_id_map:
-            return self._user_id_map[username]
+        if username is not None and user_id is None:
+            logger.warning("User '%s' not found", username)
 
-        search_url = self.user_search_url(username)
-        resp = self.get(search_url).json()
-        for user_info in resp["results"]:
-            if user_info["username"] == username:
-                user_id = user_info["id"]
-                self._user_id_map[username] = user_id
-                return user_id
+        return user_id
 
-        logger.warning("User '%s' not found in %s", username, search_url)
+    def get_project_id(self, project_name):
+        """Retrieves the CVAT project ID for the first instance of the given
+        project name.
+
+        Args:
+            project_name: the name of the project
+
+        Returns:
+            the project ID, or None if no project with the given name was found
+        """
+        return self._get_value_update_map(
+            project_name,
+            self._project_id_map,
+            "name",
+            self.project_search_url,
+        )
+
+    def get_project_name(self, project_id):
+        """Retrieves the CVAT project name for the given project ID.
+
+        Args:
+            project_id: the ID of the project
+
+        Returns:
+            the project name, or None if no project with the given ID was found
+        """
+        id_map = {i: n for n, i in self._project_id_map.items()}
+        project_name = id_map.get(project_id)
+        if project_name:
+            return project_name
+
+        return self._get_value_from_search(
+            self.project_id_search_url, project_id, "id", "name",
+        )
+
+    def get_empty_projects(self, project_ids):
+        """Check all given project ids to determine if they are empty or if
+        they contain at least one task.
+
+        Args:
+            project_ids: a list of project ids to check
+
+        Returns:
+            a list of empty project ids
+        """
+        return [pid for pid in project_ids if self._is_empty_project(pid)]
+
+    def _is_empty_project(self, project_id):
+        resp = self.get(self.project_url(project_id)).json()
+        return not resp["tasks"]
 
     def create_project(self, name, schema=None):
         """Creates a project on the CVAT server using the given label schema.
 
         Args:
             name: a name for the project
-            schema (None): the label schema to use for the created project 
+            schema (None): the label schema to use for the created project
 
         Returns:
             the ID of the created project in CVAT
@@ -3028,6 +3632,61 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         project_resp = self.post(self.projects_url, json=project_json).json()
         return project_resp["id"]
+
+    def list_projects(self):
+        """Returns the list of project IDs.
+
+        Returns:
+            the list of project IDs
+        """
+        return self._get_paginated_results(self.projects_url, value="id")
+
+    def project_exists(self, project_id):
+        """Checks if the given project exists.
+
+        Args:
+            project_id: the project ID
+
+        Returns:
+            True/False
+        """
+        return (
+            self._get_value_from_search(
+                self.project_id_search_url, project_id, "id", "id",
+            )
+            is not None
+        )
+
+    def delete_project(self, project_id):
+        """Deletes the given project from the CVAT server.
+
+        Args:
+            project_id: the project ID
+        """
+        if self.project_exists(project_id):
+            self.delete(self.project_url(project_id))
+
+    def delete_projects(self, project_ids):
+        """Deletes the given projects from the CVAT server.
+
+        Args:
+            project_ids: an iterable of project IDs
+        """
+        with fou.ProgressBar() as pb:
+            for project_id in pb(list(project_ids)):
+                self.delete_project(project_id)
+
+    def get_project_tasks(self, project_id):
+        """Returns the IDs of the tasks in the given project.
+
+        Args:
+            project_id: a project ID
+
+        Returns:
+            the list of task IDs
+        """
+        resp = self.get(self.project_url(project_id)).json()
+        return [task["id"] for task in resp.get("tasks", [])]
 
     def create_task(
         self,
@@ -3102,23 +3761,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return task_id, class_id_map, attr_id_map
 
-    def delete_project(self, project_id):
-        """Deletes the given project from the CVAT server.
+    def list_tasks(self):
+        """Returns the list of task IDs.
+
+        Returns:
+            the list of task IDs
+        """
+        return self._get_paginated_results(self.tasks_url, value="id")
+
+    def task_exists(self, task_id):
+        """Checks if the given task exists.
 
         Args:
-            project_id: the project ID
-        """
-        self.delete(self.project_url(project_id))
+            task_id: the task ID
 
-    def delete_projects(self, project_ids):
-        """Deletes the given projects from the CVAT server.
-
-        Args:
-            project_ids: an iterable of project IDs
+        Returns:
+            True/False
         """
-        with fou.ProgressBar() as pb:
-            for project_id in pb(list(project_ids)):
-                self.delete_project(project_id)
+        return (
+            self._get_value_from_search(
+                self.task_id_search_url, task_id, "id", "id",
+            )
+            is not None
+        )
 
     def delete_task(self, task_id):
         """Deletes the given task from the CVAT server.
@@ -3126,7 +3791,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_id: the task ID
         """
-        self.delete(self.task_url(task_id))
+        if self.task_exists(task_id):
+            self.delete(self.task_url(task_id))
 
     def delete_tasks(self, task_ids):
         """Deletes the given tasks from the CVAT server.
@@ -3192,12 +3858,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["chunk_size"] = chunk_size
 
         files = {}
-        for idx, path in enumerate(paths):
-            # IMPORTANT: CVAT organizes media within a task alphabetically by
-            # filename, so we must give CVAT filenames whose alphabetical order
-            # matches the order of `paths`
-            filename = "%06d%s" % (idx, os.path.splitext(path)[1])
-            files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            files["client_files[0]"] = (filename, open(paths[0], "rb"))
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+                files["client_files[%d]" % idx] = (filename, open(path, "rb"))
 
         self.post(self.task_data_url(task_id), data=data, files=files)
 
@@ -3245,16 +3918,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         config = backend.config
         label_schema = config.label_schema
-        media_field = config.media_field
-        segment_size = config.segment_size
-        image_quality = config.image_quality
-        use_cache = config.use_cache
-        use_zip_chunks = config.use_zip_chunks
-        chunk_size = config.chunk_size
-        task_assignee = config.task_assignee
-        job_assignees = config.job_assignees
-        job_reviewers = config.job_reviewers
-        project_name = config.project_name
+        occluded_attr = config.occluded_attr
+        task_size = config.task_size
+        project_name, project_id = self._parse_project_details(
+            config.project_name, config.project_id
+        )
+
+        # When using an existing project, we cannot support multiple label
+        # fields of the same type, since it would not be clear which field
+        # labels should be downloaded into
+        if project_id is not None:
+            self._ensure_one_field_per_type(label_schema)
 
         id_map = {}
         project_ids = []
@@ -3263,200 +3937,108 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map = {}
         labels_task_map = {}
 
+        (
+            cvat_schema,
+            assign_scalar_attrs,
+            occluded_attrs,
+            _,
+        ) = self._get_cvat_schema(
+            label_schema, project_id=project_id, occluded_attr=occluded_attr
+        )
+
+        # When adding to an existing project, its label schema is inherited, so
+        # we need to store the updated one
+        if project_id is not None or occluded_attr is not None:
+            config.label_schema = label_schema
+
         num_samples = len(samples)
-        is_video = samples.media_type == fom.VIDEO
+        batch_size = self._get_batch_size(samples, task_size)
 
-        if is_video:
-            # CVAT only allows for one video per task
-            batch_size = 1
+        samples.compute_metadata()
 
-            # The current implementation (both upload and download) requires
-            # frame IDs for all frames that might get labels
+        if samples.media_type == fom.VIDEO:
+            # The current implementation requires frame IDs for all frames that
+            # might get labels
             samples.ensure_frames()
-        else:
-            batch_size = num_samples
-            samples.compute_metadata()
 
-        # Create a new task for every label field to annotate
-        for label_field, label_info in label_schema.items():
-            label_type = label_info["type"]
-            is_existing_field = label_info["existing_field"]
-            only_keyframes = label_info.get("only_keyframes", False)
+        for idx, offset in enumerate(range(0, num_samples, batch_size)):
+            samples_batch = samples[offset : (offset + batch_size)]
+            anno_tags = []
+            anno_shapes = []
+            anno_tracks = []
 
-            (
-                cvat_schema,
-                assign_scalar_attrs,
-                occluded_attrs,
-            ) = self._build_cvat_schema(label_field, label_info)
+            for label_field, label_info in label_schema.items():
+                _tags = []
+                _shapes = []
+                _tracks = []
 
-            id_map[label_field] = {}
-            labels_task_map[label_field] = []
+                if label_field not in id_map:
+                    id_map[label_field] = {}
 
-            project_id = None
-            if project_name is not None:
-                _project_name = project_name
-                if project_ids:
-                    _project_name += "_%d" % (len(project_ids) + 1)
+                if label_field not in labels_task_map:
+                    labels_task_map[label_field] = []
 
-                project_id = self.create_project(_project_name, cvat_schema)
+                if label_info.get("existing_field", False):
+                    label_type = label_info["type"]
+                    only_keyframes = label_info.get("only_keyframes", False)
+
+                    self._update_shapes_tags_tracks(
+                        _tags,
+                        _shapes,
+                        _tracks,
+                        id_map,
+                        label_type,
+                        samples_batch,
+                        label_field,
+                        label_info,
+                        cvat_schema,
+                        assign_scalar_attrs,
+                        only_keyframes,
+                        occluded_attrs,
+                    )
+
+                anno_tags.extend(_tags)
+                anno_shapes.extend(_shapes)
+                anno_tracks.extend(_tracks)
+
+            # We must do this here because `cvat_schema` may be altered the
+            # first time shapes are created
+            if project_id is None and project_name is not None:
+                project_id = self.create_project(project_name, cvat_schema)
                 project_ids.append(project_id)
 
-            # Create a new task for every video sample
-            for idx, offset in enumerate(range(0, num_samples, batch_size)):
-                samples_batch = samples[offset : (offset + batch_size)]
+            _dataset_name = samples_batch._dataset.name.replace(" ", "_")
+            task_name = "FiftyOne_%s" % _dataset_name
 
-                anno_tags = []
-                anno_shapes = []
-                anno_tracks = []
+            task_id, class_id_map, attr_id_map = self._create_task_upload_data(
+                config,
+                idx,
+                task_name,
+                cvat_schema,
+                project_id,
+                samples_batch,
+                task_ids,
+                job_ids,
+                frame_id_map,
+            )
 
-                if is_existing_field:
-                    if label_type in (
-                        "classification",
-                        "classifications",
-                        "scalar",
-                    ):
-                        # Tag annotations
-                        (
-                            _id_map,
-                            anno_tags,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            assign_scalar_attrs=assign_scalar_attrs,
-                        )
-                    elif is_video and label_type != "segmentation":
-                        # Video track annotations
-                        (
-                            _id_map,
-                            anno_shapes,
-                            anno_tracks,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            load_tracks=True,
-                            only_keyframes=only_keyframes,
-                            occluded_attrs=occluded_attrs,
-                        )
-                    else:
-                        # Shape annotations
-                        (
-                            _id_map,
-                            anno_shapes,
-                        ) = self._create_shapes_tags_tracks(
-                            samples_batch,
-                            label_field,
-                            label_info,
-                            cvat_schema,
-                            occluded_attrs=occluded_attrs,
-                        )
-
-                    id_map[label_field].update(_id_map)
-
-                current_job_assignees = job_assignees
-                current_job_reviewers = job_reviewers
-                current_task_assignee = task_assignee
-                if is_video:
-                    # Videos are uploaded in multiple tasks with 1 job per task
-                    # Assign the correct users for the current task
-                    if job_assignees is not None:
-                        job_assignee_ind = idx % len(job_assignees)
-                        current_job_assignees = [
-                            job_assignees[job_assignee_ind]
-                        ]
-
-                    if job_reviewers is not None:
-                        job_reviewer_ind = idx % len(job_reviewers)
-                        current_job_reviewers = [
-                            job_reviewers[job_reviewer_ind]
-                        ]
-
-                if task_assignee is not None:
-                    if isinstance(task_assignee, str):
-                        current_task_assignee = task_assignee
-                    else:
-                        task_assignee_ind = idx % len(task_assignee)
-                        current_task_assignee = task_assignee[
-                            task_assignee_ind
-                        ]
-
-                task_name = "FiftyOne_%s_%s" % (
-                    samples_batch._root_dataset.name.replace(" ", "_"),
-                    label_field.replace(" ", "_"),
-                )
-
-                # Create task
-                task_id, class_id_map, attr_id_map = self.create_task(
-                    task_name,
-                    schema=cvat_schema,
-                    segment_size=segment_size,
-                    image_quality=image_quality,
-                    task_assignee=current_task_assignee,
-                    project_id=project_id,
-                )
-
-                task_ids.append(task_id)
+            for label_field in label_schema.keys():
                 labels_task_map[label_field].append(task_id)
 
-                # Upload media
-                job_ids[task_id] = self.upload_data(
-                    task_id,
-                    samples_batch.values(media_field),
-                    image_quality=image_quality,
-                    use_cache=use_cache,
-                    use_zip_chunks=use_zip_chunks,
-                    chunk_size=chunk_size,
-                    job_assignees=current_job_assignees,
-                    job_reviewers=current_job_reviewers,
-                )
-                frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
-
-                # Remap annotations to use the class/attribute IDs generated
-                # when the CVAT task was created
-                anno_shapes = self._remap_ids(
-                    anno_shapes, class_id_map, attr_id_map
-                )
-                anno_tags = self._remap_ids(
-                    anno_tags, class_id_map, attr_id_map
-                )
-                anno_tracks = self._remap_track_ids(
-                    anno_tracks, class_id_map, attr_id_map
-                )
-
-                anno_json = {
-                    "version": 0,
-                    "shapes": anno_shapes,
-                    "tags": anno_tags,
-                    "tracks": anno_tracks,
-                }
-                num_shapes = len(anno_shapes)
-                num_tags = len(anno_tags)
-                num_tracks = len(anno_tracks)
-
-                # Upload annotations
-                # @todo is this loop really needed?
-                num_uploaded_shapes = 0
-                num_uploaded_tags = 0
-                num_uploaded_tracks = 0
-                while (
-                    num_uploaded_shapes != num_shapes
-                    or num_uploaded_tags != num_tags
-                    or num_uploaded_tracks != num_tracks
-                ):
-                    anno_resp = self.put(
-                        self.task_annotation_url(task_id), json=anno_json
-                    ).json()
-                    num_uploaded_shapes = len(anno_resp["shapes"])
-                    num_uploaded_tags = len(anno_resp["tags"])
-                    num_uploaded_tracks = len(anno_resp["tracks"])
+            server_id_map = self._upload_annotations(
+                anno_shapes,
+                anno_tags,
+                anno_tracks,
+                class_id_map,
+                attr_id_map,
+                task_id,
+            )
 
         return CVATAnnotationResults(
             samples,
             config,
             id_map,
+            server_id_map,
             project_ids,
             task_ids,
             job_ids,
@@ -3476,134 +4058,789 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the annotations dict
         """
         label_schema = results.config.label_schema
+        occluded_attr = results.config.occluded_attr
         id_map = results.id_map
+        server_id_map = results.server_id_map
         task_ids = results.task_ids
         frame_id_map = results.frame_id_map
         labels_task_map = results.labels_task_map
 
-        assigned_scalar_attrs = {}
-        occluded_attrs = {}
-        for label_field, label_info in label_schema.items():
-            _, scalar_attrs, occ_attrs = self._build_cvat_schema(
-                label_field, label_info
-            )
+        _, project_id = self._parse_project_details(
+            results.config.project_name, results.config.project_id
+        )
 
-            assigned_scalar_attrs[label_field] = scalar_attrs
-            occluded_attrs[label_field] = occ_attrs
+        if results.project_ids:
+            # This task created the project, so we know that `label_schema` is
+            # already complete and we don't need `project_id` to help us here
+            project_id = None
 
-        labels_task_map_rev = {}
+        (
+            _,
+            assigned_scalar_attrs,
+            occluded_attrs,
+            label_field_classes,
+        ) = self._get_cvat_schema(
+            label_schema, project_id=project_id, occluded_attr=occluded_attr
+        )
+
+        labels_task_map_rev = defaultdict(list)
         for lf, tasks in labels_task_map.items():
             for task in tasks:
-                labels_task_map_rev[task] = lf
+                labels_task_map_rev[task].append(lf)
 
         annotations = {}
+        deleted_tasks = []
+
+        existing_tasks = set(self.list_tasks())
 
         for task_id in task_ids:
-            label_field = labels_task_map_rev[task_id]
-            label_info = label_schema[label_field]
-            label_type = label_info["type"]
-            scalar_attrs = assigned_scalar_attrs.get(label_field, False)
-            occ_attrs = occluded_attrs.get(label_field, {})
-            _id_map = id_map.get(label_field, {})
+            if task_id not in existing_tasks:
+                deleted_tasks.append(task_id)
+                logger.warning(
+                    "Skipping task %d, which no longer exists", task_id
+                )
+                continue
 
             # Download task data
             task_json = self.get(self.task_url(task_id)).json()
             attr_id_map = {}
-            class_map = {}
+            _class_map = {}
             labels = task_json["labels"]
             for label in labels:
-                class_map[label["id"]] = label["name"]
+                _class_map[label["id"]] = label["name"]
                 attr_id_map[label["id"]] = {
                     i["name"]: i["id"] for i in label["attributes"]
                 }
 
+            _class_map_rev = {n: i for i, n in _class_map.items()}
+
             task_resp = self.get(self.task_annotation_url(task_id)).json()
-            shapes = task_resp["shapes"]
-            tags = task_resp["tags"]
-            tracks = task_resp["tracks"]
+            all_shapes = task_resp["shapes"]
+            all_tags = task_resp["tags"]
+            all_tracks = task_resp["tracks"]
 
             data_resp = self.get(self.task_data_meta_url(task_id)).json()
             frames = data_resp["frames"]
 
-            label_field_results = {}
-
-            tag_results = self._parse_shapes_tags(
-                "tags",
-                tags,
-                frame_id_map[task_id],
-                label_type,
-                _id_map,
-                class_map,
-                attr_id_map,
-                frames,
-                assigned_scalar_attrs=scalar_attrs,
-            )
-            label_field_results = self._merge_results(
-                label_field_results, tag_results
+            label_fields = labels_task_map_rev[task_id]
+            label_types = self._get_return_label_types(
+                label_schema, label_fields
             )
 
-            shape_results = self._parse_shapes_tags(
-                "shapes",
-                shapes,
-                frame_id_map[task_id],
-                label_type,
-                _id_map,
-                class_map,
-                attr_id_map,
-                frames,
-                assigned_scalar_attrs=scalar_attrs,
-                occluded_attrs=occ_attrs,
-            )
-            label_field_results = self._merge_results(
-                label_field_results, shape_results
-            )
+            for lf_ind, label_field in enumerate(label_fields):
+                label_info = label_schema[label_field]
+                label_type = label_info.get("type", None)
+                scalar_attrs = assigned_scalar_attrs.get(label_field, False)
+                _occluded_attrs = occluded_attrs.get(label_field, {})
+                _id_map = id_map.get(label_field, {})
 
-            for track_index, track in enumerate(tracks, 1):
-                label_id = track["label_id"]
-                shapes = track["shapes"]
-                for shape in shapes:
-                    shape["label_id"] = label_id
+                label_field_results = {}
 
-                immutable_attrs = track["attributes"]
+                # Dict mapping class labels to the classes used in CVAT.
+                # These are equal unless a class appears in multiple fields
+                _classes = label_field_classes[label_field]
 
-                track_shape_results = self._parse_shapes_tags(
-                    "track",
+                # Maps CVAT IDs to FiftyOne labels
+                class_map = {
+                    _class_map_rev[name_lf]: name
+                    for name, name_lf in _classes.items()
+                }
+
+                _cvat_classes = class_map.keys()
+                tags, shapes, tracks = self._filter_field_classes(
+                    all_tags, all_shapes, all_tracks, _cvat_classes,
+                )
+
+                is_last_field = lf_ind == len(label_fields) - 1
+                ignore_types = self._get_ignored_types(
+                    project_id, label_types, label_type, is_last_field
+                )
+
+                tag_results = self._parse_shapes_tags(
+                    "tags",
+                    tags,
+                    frame_id_map[task_id],
+                    label_type,
+                    _id_map,
+                    server_id_map.get("tags", {}),
+                    class_map,
+                    attr_id_map,
+                    frames,
+                    ignore_types,
+                    assigned_scalar_attrs=scalar_attrs,
+                )
+                label_field_results = self._merge_results(
+                    label_field_results, tag_results
+                )
+
+                shape_results = self._parse_shapes_tags(
+                    "shapes",
                     shapes,
                     frame_id_map[task_id],
                     label_type,
                     _id_map,
+                    server_id_map.get("shapes", {}),
                     class_map,
                     attr_id_map,
                     frames,
+                    ignore_types,
                     assigned_scalar_attrs=scalar_attrs,
-                    track_index=track_index,
-                    immutable_attrs=immutable_attrs,
-                    occluded_attrs=occ_attrs,
+                    occluded_attrs=_occluded_attrs,
                 )
                 label_field_results = self._merge_results(
-                    label_field_results, track_shape_results
+                    label_field_results, shape_results
                 )
 
-            frames_metadata = {}
-            for cvat_frame_id, frame_data in frame_id_map[task_id].items():
-                sample_id = frame_data["sample_id"]
-                if "frame_id" in frame_data and len(frames) == 1:
-                    frames_metadata[sample_id] = frames[0]
-                    break
+                for track_index, track in enumerate(tracks, 1):
+                    label_id = track["label_id"]
+                    shapes = track["shapes"]
+                    for shape in shapes:
+                        shape["label_id"] = label_id
 
-                frames_metadata[sample_id] = frames[cvat_frame_id]
+                    immutable_attrs = track["attributes"]
 
-            # Polyline(s) corresponding to instance/semantic masks need to be
-            # converted to their final format
-            self._convert_polylines_to_masks(
-                label_field_results, label_info, frames_metadata
-            )
+                    track_shape_results = self._parse_shapes_tags(
+                        "track",
+                        shapes,
+                        frame_id_map[task_id],
+                        label_type,
+                        _id_map,
+                        server_id_map.get("tracks", {}),
+                        class_map,
+                        attr_id_map,
+                        frames,
+                        ignore_types,
+                        assigned_scalar_attrs=scalar_attrs,
+                        track_index=track_index,
+                        immutable_attrs=immutable_attrs,
+                        occluded_attrs=_occluded_attrs,
+                    )
+                    label_field_results = self._merge_results(
+                        label_field_results, track_shape_results
+                    )
 
-            annotations = self._merge_results(
-                annotations, {label_field: label_field_results}
-            )
+                frames_metadata = {}
+                for cvat_frame_id, frame_data in frame_id_map[task_id].items():
+                    sample_id = frame_data["sample_id"]
+                    if "frame_id" in frame_data and len(frames) == 1:
+                        frames_metadata[sample_id] = frames[0]
+                        break
+
+                    frames_metadata[sample_id] = frames[cvat_frame_id]
+
+                # Polyline(s) corresponding to instance/semantic masks need to
+                # be converted to their final format
+                self._convert_polylines_to_masks(
+                    label_field_results, label_info, frames_metadata
+                )
+
+                annotations = self._merge_results(
+                    annotations, {label_field: label_field_results}
+                )
+
+        if deleted_tasks:
+            results._forget_tasks(deleted_tasks)
 
         return annotations
+
+    def _get_paginated_results(self, url, value=None):
+        results = []
+        page = url
+        while page is not None:
+            response = self.get(page).json()
+            for result in response["results"]:
+                if value is not None:
+                    results.append(result[value])
+                else:
+                    results.append(result)
+
+            page = response["next"]
+
+        return results
+
+    def _get_value_from_search(
+        self, search_url_fcn, target, target_key, value_key
+    ):
+        search_url = search_url_fcn(target)
+        resp = self.get(search_url).json()
+        for info in resp["results"]:
+            if info[target_key] == target:
+                return info[value_key]
+
+        return None
+
+    def _get_value_update_map(self, name, id_map, result_name, search_url_fcn):
+        if name is None:
+            return None
+
+        if name in id_map:
+            return id_map[name]
+
+        _id = self._get_value_from_search(
+            search_url_fcn, name, result_name, "id"
+        )
+
+        if _id is not None:
+            id_map[name] = _id
+
+        return _id
+
+    def _get_project_labels(self, project_id):
+        if not self.project_exists(project_id):
+            raise ValueError("Project '%s' not found" % project_id)
+
+        resp = self.get(self.project_url(project_id)).json()
+        return resp["labels"]
+
+    def _get_task_labels(self, task_id):
+        resp = self.get(self.task_url(task_id)).json()
+        if "labels" not in resp:
+            raise ValueError("Task '%s' not found" % task_id)
+
+        return resp["labels"]
+
+    def _parse_project_details(self, project_name, project_id):
+        if project_id is not None:
+            project_name = self.get_project_name(project_id)
+            if not project_name:
+                raise ValueError("Project '%d' not found" % project_id)
+
+        elif project_name is not None:
+            project_id = self.get_project_id(project_name)
+
+        return project_name, project_id
+
+    def _get_label_schema(
+        self, project_id=None, task_id=None, occluded_attr=None
+    ):
+        label_schema = {None: {"type": "tmp"}}
+        self._convert_cvat_schema(
+            label_schema,
+            project_id=project_id,
+            task_id=task_id,
+            occluded_attr=occluded_attr,
+        )
+        label_schema[None].pop("type")
+        return label_schema
+
+    def _get_cvat_schema(
+        self, label_schema, project_id=None, occluded_attr=None
+    ):
+        if project_id is not None:
+            return self._convert_cvat_schema(
+                label_schema,
+                project_id=project_id,
+                occluded_attr=occluded_attr,
+            )
+
+        return self._build_cvat_schema(
+            label_schema, occluded_attr=occluded_attr
+        )
+
+    def _convert_cvat_schema(
+        self,
+        label_schema,
+        project_id=None,
+        task_id=None,
+        occluded_attr=None,
+        update_server=True,
+    ):
+        if project_id is None and task_id is None:
+            raise ValueError(
+                "Either `project_id` or `task_id` must be provided"
+            )
+
+        if project_id is not None:
+            labels = self._get_project_labels(project_id)
+        else:
+            labels = self._get_task_labels(task_id)
+
+        cvat_schema = {}
+        labels_to_update = []
+        occluded_attrs = {}
+        assign_scalar_attrs = {}
+        classes_and_attrs = []
+        for label in labels:
+            name = label["name"]
+            attrs = label["attributes"]
+            cvat_schema[name] = {a["name"]: a for a in attrs}
+
+            if "label_id" not in cvat_schema[name]:
+                labels_to_update.append(label)
+                cvat_schema[name]["label_id"] = {
+                    "name": "label_id",
+                    "input_type": "text",
+                    "mutable": True,
+                }
+
+            label_attrs = {}
+            for attr_name, attr in cvat_schema[name].items():
+                if attr_name != "label_id":
+                    input_type = attr["input_type"]
+                    label_attrs[attr_name] = {"type": input_type}
+                    default_value = attr["default_value"]
+                    values = attr["values"]
+                    if default_value:
+                        label_attrs[attr_name]["default"] = default_value
+
+                    if values and values[0] != "":
+                        label_attrs[attr_name]["values"] = values
+
+            if occluded_attr is not None:
+                label_attrs[occluded_attr] = {}
+
+            classes_and_attrs.append(
+                {"classes": [name], "attributes": label_attrs,}
+            )
+
+        label_field_classes = {}
+        class_names = {n: n for n in cvat_schema.keys()}
+        for label_field, label_info in label_schema.items():
+            label_type = label_info.get("type", None)
+            classes = label_info.get("classes", [])
+
+            if label_type == "scalar":
+                # True: scalars are annotated as tag attributes
+                # False: scalars are annotated as tag labels
+                assign_scalar_attrs[label_field] = not bool(classes)
+            else:
+                if label_type is not None:
+                    label_schema[label_field]["attributes"] = {}
+                    label_schema[label_field]["classes"] = classes_and_attrs
+
+                assign_scalar_attrs[label_field] = None
+
+            label_field_classes[label_field] = deepcopy(class_names)
+            if occluded_attr is not None:
+                occluded_attrs[label_field] = {
+                    c: occluded_attr for c in class_names.keys()
+                }
+
+        if project_id is not None and labels_to_update and update_server:
+            self._add_project_label_ids(project_id, list(labels_to_update))
+
+        return (
+            cvat_schema,
+            assign_scalar_attrs,
+            occluded_attrs,
+            label_field_classes,
+        )
+
+    def _build_cvat_schema(self, label_schema, occluded_attr=None):
+        cvat_schema = {}
+        assign_scalar_attrs = {}
+        occluded_attrs = defaultdict(dict)
+        label_field_classes = defaultdict(dict)
+
+        _class_label_fields = {}
+        _duplicate_classes = set()
+        _prev_field_classes = set()
+
+        for label_field, label_info in label_schema.items():
+            _field_classes = set()
+            label_type = label_info.get("type", None)
+            is_existing_field = label_info.get("existing_field", False)
+            classes = label_info["classes"]
+            attributes, occluded_attr_name = self._to_cvat_attributes(
+                label_info["attributes"]
+            )
+            if occluded_attr_name is None and occluded_attr is not None:
+                occluded_attr_name = occluded_attr
+                label_schema[label_field]["attributes"][occluded_attr] = {}
+
+            # Must track label IDs for existing label fields
+            if is_existing_field and label_type != "scalar":
+                if "label_id" in attributes:
+                    raise ValueError(
+                        "Label field '%s' attribute schema cannot use "
+                        "reserved name 'label_id'" % label_field
+                    )
+
+                attributes["label_id"] = {
+                    "name": "label_id",
+                    "input_type": "text",
+                    "mutable": True,
+                }
+
+            if label_type == "scalar":
+                # True: scalars are annotated as tag attributes
+                # False: scalars are annotated as tag labels
+                assign_scalar_attrs[label_field] = not bool(classes)
+            else:
+                assign_scalar_attrs[label_field] = None
+
+            if not classes:
+                classes = [label_field]
+
+                if not attributes:
+                    attributes["value"] = {
+                        "name": "value",
+                        "input_type": "text",
+                        "mutable": True,
+                    }
+
+            # Handle class name clashes and global attributes
+            for _class in classes:
+                if etau.is_str(_class):
+                    _classes = [_class]
+                else:
+                    _classes = _class["classes"]
+
+                for name in _classes:
+                    # If two label fields share a class name, we must append
+                    # `label_field` to all instances of `name` to disambiguate
+                    if (
+                        name in _prev_field_classes
+                        and name not in _duplicate_classes
+                    ):
+                        _duplicate_classes.add(name)
+
+                        prev_field = _class_label_fields[name]
+
+                        new_name = "%s_%s" % (name, prev_field)
+                        cvat_schema[new_name] = cvat_schema.pop(name)
+
+                        label_field_classes[prev_field][name] = new_name
+
+                        if name in occluded_attrs[label_field]:
+                            attr_name = occluded_attrs[label_field].pop(name)
+                            occluded_attrs[label_field][new_name] = attr_name
+
+                    _field_classes.add(name)
+
+                    if name in _duplicate_classes:
+                        new_name = "%s_%s" % (name, label_field)
+                        label_field_classes[label_field][name] = new_name
+                        name = new_name
+                    else:
+                        _class_label_fields[name] = label_field
+                        label_field_classes[label_field][name] = name
+
+                    cvat_schema[name] = deepcopy(attributes)
+                    if occluded_attr_name is not None:
+                        occluded_attrs[label_field][name] = occluded_attr_name
+
+            _prev_field_classes |= _field_classes
+
+            # Class-specific attributes
+            for _class in classes:
+                if etau.is_str(_class):
+                    continue
+
+                _classes = _class["classes"]
+                _attrs, _occluded_attr_name = self._to_cvat_attributes(
+                    _class["attributes"]
+                )
+                if _occluded_attr_name is None and occluded_attr is not None:
+                    _occluded_attr_name = occluded_attr
+
+                if "label_id" in _attrs:
+                    raise ValueError(
+                        "Label field '%s' attribute schema cannot use "
+                        "reserved name 'label_id'" % label_field
+                    )
+
+                for name in _classes:
+                    if name in _duplicate_classes:
+                        name = "%s_%s" % (name, label_field)
+
+                    cvat_schema[name].update(_attrs)
+                    if _occluded_attr_name is not None:
+                        occluded_attrs[label_field][name] = _occluded_attr_name
+
+        return (
+            cvat_schema,
+            assign_scalar_attrs,
+            dict(occluded_attrs),
+            dict(label_field_classes),
+        )
+
+    def _add_project_label_ids(self, project_id, labels):
+        labels_patch = {"labels": []}
+        for label in labels:
+            label["attributes"].append(
+                {"name": "label_id", "input_type": "text", "mutable": True}
+            )
+            labels_patch["labels"].append(label)
+
+        self.patch(self.project_url(project_id), json=labels_patch)
+
+    def _ensure_one_field_per_type(self, label_schema, verbose=True):
+        _seen_label_types = []
+        for label_field in list(label_schema.keys()):  # list b/c we may edit
+            if label_field is None:
+                continue
+
+            label_type = label_schema[label_field]["type"]
+            if label_type == "scalar":
+                _label_type = "classifications"
+            else:
+                _label_type = foua._RETURN_TYPES_MAP[label_type]
+
+            if _label_type not in _seen_label_types:
+                _seen_label_types.append(_label_type)
+            elif verbose:
+                label_schema.pop(label_field)
+                logger.warning(
+                    "A field with label type '%s' is already being annotated. "
+                    "Ignoring field '%s'...",
+                    _label_type,
+                    label_field,
+                )
+
+    def _get_batch_size(self, samples, task_size):
+        if samples.media_type == fom.VIDEO:
+            # CVAT only allows for one video per task
+            return 1
+
+        num_samples = len(samples)
+
+        if task_size is None:
+            # Put all image samples in one task
+            return num_samples
+
+        return min(task_size, num_samples)
+
+    def _create_task_upload_data(
+        self,
+        config,
+        idx,
+        task_name,
+        cvat_schema,
+        project_id,
+        samples_batch,
+        task_ids,
+        job_ids,
+        frame_id_map,
+    ):
+        media_field = config.media_field
+        segment_size = config.segment_size
+        image_quality = config.image_quality
+        use_cache = config.use_cache
+        use_zip_chunks = config.use_zip_chunks
+        chunk_size = config.chunk_size
+        task_assignee = config.task_assignee
+        job_assignees = config.job_assignees
+        job_reviewers = config.job_reviewers
+
+        is_video = samples_batch.media_type == fom.VIDEO
+
+        _task_assignee = task_assignee
+        _job_assignees = job_assignees
+        _job_reviewers = job_reviewers
+
+        if is_video:
+            # Videos are uploaded in multiple tasks with 1 job per task
+            # Assign the correct users for the current task
+            if job_assignees is not None:
+                _job_assignees = [job_assignees[idx % len(job_assignees)]]
+
+            if job_reviewers is not None:
+                _job_reviewers = [job_reviewers[idx % len(job_reviewers)]]
+
+        if task_assignee is not None:
+            if isinstance(task_assignee, str):
+                _task_assignee = task_assignee
+            else:
+                _task_assignee = task_assignee[idx % len(task_assignee)]
+
+        # Create task
+        task_id, class_id_map, attr_id_map = self.create_task(
+            task_name,
+            schema=cvat_schema,
+            segment_size=segment_size,
+            image_quality=image_quality,
+            task_assignee=_task_assignee,
+            project_id=project_id,
+        )
+        task_ids.append(task_id)
+
+        # Upload media
+        job_ids[task_id] = self.upload_data(
+            task_id,
+            samples_batch.values(media_field),
+            image_quality=image_quality,
+            use_cache=use_cache,
+            use_zip_chunks=use_zip_chunks,
+            chunk_size=chunk_size,
+            job_assignees=_job_assignees,
+            job_reviewers=_job_reviewers,
+        )
+        frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
+
+        return task_id, class_id_map, attr_id_map
+
+    def _upload_annotations(
+        self,
+        anno_shapes,
+        anno_tags,
+        anno_tracks,
+        class_id_map,
+        attr_id_map,
+        task_id,
+    ):
+        # Remap annotations to use the CVAT class/attribute IDs
+        anno_shapes = self._remap_ids(anno_shapes, class_id_map, attr_id_map)
+        anno_tags = self._remap_ids(anno_tags, class_id_map, attr_id_map)
+        anno_tracks = self._remap_track_ids(
+            anno_tracks, class_id_map, attr_id_map
+        )
+
+        anno_json = {
+            "version": 0,
+            "shapes": anno_shapes,
+            "tags": anno_tags,
+            "tracks": anno_tracks,
+        }
+        num_shapes = len(anno_shapes)
+        num_tags = len(anno_tags)
+        num_tracks = len(anno_tracks)
+
+        # @todo is this loop really needed?
+        num_uploaded_shapes = 0
+        num_uploaded_tags = 0
+        num_uploaded_tracks = 0
+        anno_resp = {}
+        while (
+            num_uploaded_shapes != num_shapes
+            or num_uploaded_tags != num_tags
+            or num_uploaded_tracks != num_tracks
+        ):
+            anno_resp = self.put(
+                self.task_annotation_url(task_id), json=anno_json
+            ).json()
+            num_uploaded_shapes = len(anno_resp["shapes"])
+            num_uploaded_tags = len(anno_resp["tags"])
+            num_uploaded_tracks = len(anno_resp["tracks"])
+
+        return self._create_server_id_map(anno_resp, attr_id_map)
+
+    def _create_server_id_map(self, anno_resp, attr_id_map):
+        label_id_map = {}
+        for class_id, class_attr_map in attr_id_map.items():
+            for attr_name, attr_id in class_attr_map.items():
+                if attr_name == "label_id":
+                    label_id_map[class_id] = attr_id
+
+        server_id_map = {}
+        for anno_type, anno_list in anno_resp.items():
+            if anno_type not in ("tags", "shapes", "tracks"):
+                continue
+
+            id_map = {}
+            for anno in anno_list:
+                server_id = anno["id"]
+                label_id = anno["label_id"]
+                if label_id in label_id_map:
+                    label_attr_id = label_id_map[label_id]
+                    for attr in anno["attributes"]:
+                        if attr["spec_id"] == label_attr_id:
+                            id_map[server_id] = attr["value"]
+
+            server_id_map[anno_type] = id_map
+
+        return server_id_map
+
+    def _update_shapes_tags_tracks(
+        self,
+        tags,
+        shapes,
+        tracks,
+        id_map,
+        label_type,
+        samples_batch,
+        label_field,
+        label_info,
+        cvat_schema,
+        assign_scalar_attrs,
+        only_keyframes,
+        occluded_attrs,
+    ):
+        is_video = samples_batch.media_type == fom.VIDEO
+
+        anno_tags = []
+        anno_shapes = []
+        anno_tracks = []
+
+        if label_type in ("classification", "classifications", "scalar"):
+            # Tag annotations
+            _id_map, anno_tags = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                assign_scalar_attrs=assign_scalar_attrs,
+            )
+        elif is_video and label_type != "segmentation":
+            # Video track annotations
+            (
+                _id_map,
+                anno_shapes,
+                anno_tracks,
+            ) = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                load_tracks=True,
+                only_keyframes=only_keyframes,
+                occluded_attrs=occluded_attrs,
+            )
+        else:
+            # Shape annotations
+            _id_map, anno_shapes = self._create_shapes_tags_tracks(
+                samples_batch,
+                label_field,
+                label_info,
+                cvat_schema,
+                occluded_attrs=occluded_attrs,
+            )
+
+        id_map[label_field].update(_id_map)
+        tags.extend(anno_tags)
+        shapes.extend(anno_shapes)
+        tracks.extend(anno_tracks)
+
+    def _filter_field_classes(self, tags, shapes, tracks, _cvat_classes):
+        _tags = [t for t in tags if t["label_id"] in _cvat_classes]
+        _shapes = [s for s in shapes if s["label_id"] in _cvat_classes]
+        _tracks = [t for t in tracks if t["label_id"] in _cvat_classes]
+        return _tags, _shapes, _tracks
+
+    def _get_return_label_types(self, label_schema, label_fields):
+        label_types = []
+        for label_field in label_fields:
+            label_type = label_schema[label_field].get("type", None)
+            if label_type:
+                label_types.append(foua._RETURN_TYPES_MAP[label_type])
+
+        return label_types
+
+    def _get_ignored_types(
+        self, project_id, label_types, label_type, is_last_field
+    ):
+        """When uploading multiple fields to an existing project, each field
+        must have a different type but can have overlapping class names.
+        Therefore, when loading annotations, if a field exists for a found
+        label type, that label will not be loaded with any other fields.
+        """
+        if not project_id or len(label_types) < 2:
+            # Not relevant unless uploading to a project and there are multiple
+            # types of labels
+            return []
+
+        # The last label field being loaded stores all unexpected label types
+        # Ignore only the other label types that have been loaded
+        label_type = foua._RETURN_TYPES_MAP[label_type]
+        if is_last_field:
+            ignored_types = set(label_types) - {label_type}
+        else:
+            # Other fields only load the expected type
+            # Ignore all other types
+            all_label_types = foua._RETURN_TYPES_MAP.values()
+            ignored_types = set(all_label_types) - {label_type}
+
+        return ignored_types
 
     def _convert_polylines_to_masks(
         self, results, label_info, frames_metadata
@@ -3637,9 +4874,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             ] = label
                     else:
                         label_id = _id
-                        label = _content
                         label = self._convert_polylines(
-                            label_id, label, label_info, frame_size
+                            label_id, _content, label_info, frame_size
                         )
                         results[label_type][sample_id][label_id] = label
 
@@ -3678,9 +4914,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map,
         label_type,
         id_map,
+        server_id_map,
         class_map,
         attr_id_map,
         frames,
+        ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
@@ -3714,9 +4952,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 frame_id_map,
                 label_type,
                 id_map,
+                server_id_map,
                 class_map,
                 attr_id_map,
                 frames,
+                ignore_types,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
                 immutable_attrs=immutable_attrs,
@@ -3726,7 +4966,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # For non-outside tracked objects, the last track goes to the end of
         # the video, so fill remaining frames with copies of the last instance
         if prev_frame is not None and not prev_outside:
-            for frame in range(prev_frame + 1, len(frame_id_map)):
+            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
@@ -3739,9 +4979,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id_map,
                     label_type,
                     id_map,
+                    server_id_map,
                     class_map,
                     attr_id_map,
                     frames,
+                    ignore_types,
                     assigned_scalar_attrs=assigned_scalar_attrs,
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
@@ -3759,22 +5001,25 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id_map,
         expected_label_type,
         id_map,
+        server_id_map,
         class_map,
         attr_id_map,
         frames,
+        ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
         immutable_attrs=None,
         occluded_attrs=None,
     ):
         frame = anno["frame"]
-        if len(frames) > frame:
-            metadata = frames[frame]
-        else:
-            metadata = frames[0]
 
         if frame not in frame_id_map:
             return prev_type
+
+        try:
+            metadata = frames[frame]
+        except IndexError:
+            metadata = frames[0]
 
         frame_data = frame_id_map[frame]
         sample_id = frame_data["sample_id"]
@@ -3799,6 +5044,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno,
                 class_map,
                 attr_id_map,
+                server_id_map,
                 metadata,
                 index=track_index,
                 immutable_attrs=immutable_attrs,
@@ -3854,28 +5100,34 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if expected_label_type == "scalar":
                 label_type = "scalar"
                 if assigned_scalar_attrs:
-                    label = _parse_value(anno["attributes"][0]["value"])
-                    if label is not None:
-                        if prev_type is str:
-                            label = str(label)
+                    num_attrs = len(anno["attributes"])
+                    attr_ind = 0
+                    while label is None and attr_ind < num_attrs:
+                        label = _parse_value(
+                            anno["attributes"][attr_ind]["value"]
+                        )
+                        attr_ind += 1
+                        if label is not None:
+                            if prev_type is str:
+                                label = str(label)
 
-                        if prev_type is None:
-                            prev_type = type(label)
-                        elif not isinstance(label, prev_type):
-                            msg = (
-                                "Ignoring scalar of type %s that does not "
-                                "match previously inferred scalar type %s"
-                            ) % (type(label), prev_type)
-                            warnings.warn(msg)
-                            label = None
+                            if prev_type is None:
+                                prev_type = type(label)
+                            elif not isinstance(label, prev_type):
+                                msg = (
+                                    "Ignoring scalar of type %s that does not "
+                                    "match previously inferred scalar type %s"
+                                ) % (type(label), prev_type)
+                                warnings.warn(msg)
+                                label = None
                 else:
                     label = class_map[anno["label_id"]]
             else:
                 label_type = "classifications"
-                cvat_tag = CVATTag(anno, class_map, attr_id_map)
+                cvat_tag = CVATTag(anno, class_map, attr_id_map, server_id_map)
                 label = cvat_tag.to_classification()
 
-        if label is None:
+        if label is None or label_type in ignore_types:
             return prev_type
 
         if label_type not in results:
@@ -3970,83 +5222,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return arg
 
-    def _build_cvat_schema(self, label_field, label_info):
-        label_type = label_info["type"]
-        is_existing_field = label_info["existing_field"]
-        classes = label_info["classes"]
-        attributes, occluded_attr_name = self._to_cvat_attributes(
-            label_info["attributes"]
-        )
-
-        # Must track label IDs for existing label fields
-        if is_existing_field and label_type != "scalar":
-            if "label_id" in attributes:
-                raise ValueError(
-                    "Label field '%s' attribute schema cannot use reserved "
-                    "name 'label_id'" % label_field
-                )
-
-            attributes["label_id"] = {
-                "name": "label_id",
-                "input_type": "text",
-                "mutable": True,
-            }
-
-        if label_type == "scalar":
-            # True: scalars are annotated as tag attributes
-            # False: scalars are annotated as tag labels
-            assign_scalar_attrs = not bool(classes)
-        else:
-            assign_scalar_attrs = None
-
-        if not classes:
-            classes = [label_field]
-
-            if not attributes:
-                attributes["value"] = {
-                    "name": "value",
-                    "input_type": "text",
-                    "mutable": True,
-                }
-
-        cvat_schema = {}
-        occluded_attrs = {}
-
-        # Global attributes
-        for _class in classes:
-            if etau.is_str(_class):
-                _classes = [_class]
-            else:
-                _classes = _class["classes"]
-
-            for name in _classes:
-                cvat_schema[name] = deepcopy(attributes)
-                if occluded_attr_name is not None:
-                    occluded_attrs[name] = occluded_attr_name
-
-        # Class-specific attributes
-        for _class in classes:
-            if etau.is_str(_class):
-                continue
-
-            _classes = _class["classes"]
-            _attrs, _occluded_attr_name = self._to_cvat_attributes(
-                _class["attributes"]
-            )
-
-            if "label_id" in _attrs:
-                raise ValueError(
-                    "Label field '%s' attribute schema cannot use "
-                    "reserved name 'label_id'" % label_field
-                )
-
-            for name in _classes:
-                cvat_schema[name].update(_attrs)
-                if _occluded_attr_name is not None:
-                    occluded_attrs[name] = _occluded_attr_name
-
-        return cvat_schema, assign_scalar_attrs, occluded_attrs
-
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
         occluded_attr_name = None
@@ -4087,6 +5262,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         classes = label_info["classes"]
         mask_targets = label_info.get("mask_targets", None)
 
+        if occluded_attrs is not None:
+            occluded_attrs = occluded_attrs.get(label_field, None)
+
         id_map = {}
         tags_or_shapes = []
         tracks = {}
@@ -4097,9 +5275,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         is_video = samples.media_type == fom.VIDEO
+        samples = samples.select_fields(label_field)
 
         if is_video:
-            label_field, _ = samples._handle_frame_field(label_field)
+            field, _ = samples._handle_frame_field(label_field)
+        else:
+            field = label_field
 
         frame_id = -1
         for sample in samples:
@@ -4115,7 +5296,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             for image in images:
                 frame_id += 1
 
-                label = image[label_field]
+                label = image[field]
 
                 if label is None:
                     continue
@@ -4129,13 +5310,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "segmentation",
                 ):
                     kwargs["load_tracks"] = load_tracks
-                    kwargs["only_keyframes"] = only_keyframes
                     kwargs["occluded_attrs"] = occluded_attrs
 
                 if label_type == "scalar":
                     labels = label
                     kwargs["assign_scalar_attrs"] = assign_scalar_attrs
-                    kwargs["label_field"] = label_field
                     func = self._create_scalar_tags
                 elif label_type == "classification":
                     labels = [label]
@@ -4174,6 +5353,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ids, _tags_or_shapes, _tracks, _remapped_attrs = func(
                     labels,
                     cvat_schema,
+                    label_field,
                     frame_id,
                     frame_size,
                     label_type=label_type,
@@ -4197,10 +5377,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # stored in attributes dicts rather than as dynamic fields
         for attr_schema in cvat_schema.values():
             for name, attr in attr_schema.items():
-                attr["name"] = remapped_attrs.get(name, name)
+                if name in remapped_attrs:
+                    attr["name"] = remapped_attrs[name]
 
         if load_tracks:
-            tracks = self._finalize_tracks(tracks, frame_id)
+            tracks = self._finalize_tracks(tracks, frame_id, only_keyframes)
             return id_map, tags_or_shapes, tracks
 
         return id_map, tags_or_shapes
@@ -4209,16 +5390,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         label,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
         assign_scalar_attrs=False,
-        label_field=None,
     ):
         if label is None:
             label = ""
 
-        if assign_scalar_attrs:
+        if assign_scalar_attrs[label_field]:
+            if label_field not in cvat_schema:
+                return False, [], {}, {}
+
             scalar_attr_name = next(iter(cvat_schema[label_field].keys()))
 
             class_name = label_field
@@ -4230,6 +5414,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ]
         else:
             class_name = _stringify_value(label)
+            if class_name not in cvat_schema:
+                return False, [], {}, {}
+
             attributes = []
 
         tags = [
@@ -4248,6 +5435,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         classifications,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
@@ -4263,7 +5451,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _,
                 _remapped_attrs,
                 _,
-            ) = self._create_attributes(cn, cvat_schema)
+            ) = self._parse_label(cn, cvat_schema, label_field)
 
             if class_name is None:
                 continue
@@ -4289,12 +5477,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         detections,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
         label_id=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4309,25 +5497,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
+            ) = self._parse_label(
                 det,
                 cvat_schema,
+                label_field,
                 label_id=label_id,
                 occluded_attrs=occluded_attrs,
             )
 
             if class_name is None:
-                continue
-
-            if (
-                load_tracks
-                and only_keyframes
-                and det.index is not None
-                and not det.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(det.id)
                 continue
 
             curr_shapes = []
@@ -4391,6 +5569,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and det.index is not None:
+                keyframe = det.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     curr_shapes,
@@ -4398,6 +5577,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     det.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -4408,11 +5588,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         keypoints,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4427,22 +5607,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
-                kp, cvat_schema, occluded_attrs=occluded_attrs
+            ) = self._parse_label(
+                kp, cvat_schema, label_field, occluded_attrs=occluded_attrs
             )
 
             if class_name is None:
-                continue
-
-            if (
-                load_tracks
-                and only_keyframes
-                and kp.index is not None
-                and not kp.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(kp.id)
                 continue
 
             abs_points = HasCVATPoints._to_abs_points(kp.points, frame_size)
@@ -4464,6 +5633,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and kp.index is not None:
+                keyframe = kp.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     [shape],
@@ -4471,6 +5641,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     kp.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.append(shape)
@@ -4481,11 +5652,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         polylines,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
         load_tracks=False,
-        only_keyframes=False,
         occluded_attrs=None,
     ):
         ids = []
@@ -4500,22 +5671,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
-            ) = self._create_attributes(
-                poly, cvat_schema, occluded_attrs=occluded_attrs
+            ) = self._parse_label(
+                poly, cvat_schema, label_field, occluded_attrs=occluded_attrs
             )
 
             if class_name is None:
-                continue
-
-            if (
-                load_tracks
-                and only_keyframes
-                and poly.index is not None
-                and not poly.get_attribute_value("keyframe", False)
-            ):
-                # Record the ID even though we don't upload non-keyframes
-                # because the downloaded annotations still supercede this label
-                ids.append(poly.id)
                 continue
 
             curr_shapes = []
@@ -4549,6 +5709,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             remapped_attrs.update(_remapped_attrs)
 
             if load_tracks and poly.index is not None:
+                keyframe = poly.get_attribute_value("keyframe", False)
                 self._add_shapes_to_tracks(
                     tracks,
                     curr_shapes,
@@ -4556,6 +5717,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     poly.index,
                     frame_id,
                     immutable_attrs,
+                    keyframe,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -4566,6 +5728,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self,
         segmentation,
         cvat_schema,
+        label_field,
         frame_id,
         frame_size,
         label_type=None,
@@ -4577,6 +5740,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _, shapes, tracks, remapped_attrs = self._create_detection_shapes(
             detections.detections,
             cvat_schema,
+            label_field,
             frame_id,
             frame_size,
             label_type="instances",
@@ -4585,13 +5749,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return label_id, shapes, tracks, remapped_attrs
 
-    def _create_attributes(
-        self, label, cvat_schema, label_id=None, occluded_attrs=None
+    def _parse_label(
+        self,
+        label,
+        cvat_schema,
+        label_field,
+        label_id=None,
+        occluded_attrs=None,
     ):
-        if label.label not in cvat_schema:
+        # If the class is a duplicate, it will have this name
+        dup_class_name = "%s_%s" % (label.label, label_field)
+
+        if label.label in cvat_schema:
+            class_name = label.label
+        elif dup_class_name in cvat_schema:
+            class_name = dup_class_name
+        else:
             return None, None, None, None, None
 
-        class_name = label.label
         attr_schema = cvat_schema[class_name]
 
         if label_id is None:
@@ -4602,6 +5777,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         for name, attr in attr_schema.items():
+            if name.startswith("attribute:"):
+                name = name[len("attribute:") :]
+
             value = label.get_attribute_value(name, None)
             if value is None:
                 continue
@@ -4623,7 +5801,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if occluded_attrs is not None:
             attr_name = occluded_attrs.get(class_name, None)
             if attr_name is not None:
-                is_occluded = bool(label.get_attribute_value(attr_name, False))
+                is_occluded = _parse_occlusion_value(
+                    label.get_attribute_value(attr_name, False)
+                )
 
         return (
             class_name,
@@ -4634,7 +5814,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
 
     def _add_shapes_to_tracks(
-        self, tracks, shapes, class_name, index, frame_id, immutable_attrs
+        self,
+        tracks,
+        shapes,
+        class_name,
+        index,
+        frame_id,
+        immutable_attrs,
+        keyframe,
     ):
         if class_name not in tracks:
             tracks[class_name] = {}
@@ -4652,6 +5839,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         for shape in shapes:
             shape["outside"] = False
+            shape["keyframe"] = keyframe
             del shape["label_id"]
             _shapes.append(shape)
 
@@ -4669,37 +5857,96 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     _track["shapes"].extend(track["shapes"])
                     _track["frame"] = max(track["frame"], _track["frame"])
 
-    def _finalize_tracks(self, tracks, last_frame):
+    def _finalize_tracks(self, tracks, frame_count, only_keyframes):
         formatted_tracks = []
         for class_tracks in tracks.values():
             for track in class_tracks.values():
-                last_shape = track["shapes"][-1]
-                if last_shape["frame"] < last_frame - 1:
-                    new_shape = deepcopy(last_shape)
-                    new_shape["frame"] += 1
-                    new_shape["outside"] = True
-                    track["shapes"].append(new_shape)
-
+                formatted_track = self._finalize_track(
+                    track, frame_count, only_keyframes
+                )
                 formatted_tracks.append(track)
 
         return formatted_tracks
 
+    def _finalize_track(self, track, frame_count, only_keyframes):
+        shapes = track["shapes"]
+        new_shapes = []
+        prev_frame_shape_inds = []
+        prev_frame = None
+        next_is_keyframe = True
+
+        for ind, shape in enumerate(shapes):
+            frame = shape["frame"]
+            if prev_frame is None:
+                prev_frame = frame
+
+            if frame != prev_frame:
+                if only_keyframes and next_is_keyframe:
+                    # The first frame of a new segment is always a keyframe
+                    next_is_keyframe = False
+                    for ind in prev_frame_shape_inds:
+                        shapes[ind]["keyframe"] = True
+
+                # If there is a gap between shapes, we must mark the end of the
+                # previous segment as "outside"
+                if frame > prev_frame + 1:
+                    for prev_ind in prev_frame_shape_inds:
+                        last_shape = shapes[prev_ind]
+                        new_shape = deepcopy(last_shape)
+                        new_shape["frame"] += 1
+                        new_shape["outside"] = True
+                        if only_keyframes:
+                            new_shape["keyframe"] = True
+
+                        new_shapes.append(
+                            (max(prev_frame_shape_inds), new_shape)
+                        )
+                        next_is_keyframe = True
+
+                prev_frame_shape_inds = []
+                prev_frame = frame
+
+            prev_frame_shape_inds.append(ind)
+
+        # The shapes in the last frame in the track must be set to "outside"
+        last_shape = shapes[-1]
+        if last_shape["frame"] < frame_count:
+            new_shape = deepcopy(last_shape)
+            new_shape["frame"] += 1
+            new_shape["outside"] = True
+            if only_keyframes:
+                new_shape["keyframe"] = True
+
+            new_shapes.append((len(shapes), new_shape))
+
+        # Insert new shapes into track
+        for ind, shape in new_shapes[::-1]:
+            shapes.insert(ind + 1, shape)
+
+        # Remove non-keyframes if necessary
+        if only_keyframes:
+            track["shapes"] = [s for s in shapes if s["keyframe"]]
+
+        return track
+
     def _build_frame_id_map(self, samples):
-        is_video = samples.media_type == fom.VIDEO
+        frame_id_map = {}
         frame_id = -1
 
-        frame_id_map = {}
-        for sample in samples:
-            if is_video:
-                images = sample.frames.values()
-            else:
-                images = [sample]
-
-            for image in images:
+        if samples.media_type == fom.VIDEO:
+            sample_ids, frame_ids = samples.values(["id", "frames.id"])
+            for _sample_id, _frame_ids in zip(sample_ids, frame_ids):
+                for _frame_id in _frame_ids:
+                    frame_id += 1
+                    frame_id_map[frame_id] = {
+                        "sample_id": _sample_id,
+                        "frame_id": _frame_id,
+                    }
+        else:
+            sample_ids = samples.values("id")
+            for _sample_id in sample_ids:
                 frame_id += 1
-                frame_id_map[frame_id] = {"sample_id": sample.id}
-                if is_video:
-                    frame_id_map[frame_id]["frame_id"] = image.id
+                frame_id_map[frame_id] = {"sample_id": _sample_id}
 
         return frame_id_map
 
@@ -4709,9 +5956,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             class_id = class_id_map[label_name]
             obj["label_id"] = class_id
             attr_map = attr_id_map[class_id]
+            attrs = []
             for attr in obj["attributes"]:
                 attr_name = attr["spec_id"]
-                attr["spec_id"] = attr_map[attr_name]
+                if attr_name in attr_map:
+                    attr["spec_id"] = attr_map[attr_name]
+                    attrs.append(attr)
+
+            obj["attributes"] = attrs
 
         return shapes_or_tags
 
@@ -4722,13 +5974,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             track["label_id"] = class_id
             attr_map = attr_id_map[class_id]
             for shape in track["shapes"]:
+                attrs = []
                 for attr in shape["attributes"]:
                     attr_name = attr["spec_id"]
-                    attr["spec_id"] = attr_map[attr_name]
+                    if attr_name in attr_map:
+                        attr["spec_id"] = attr_map[attr_name]
+                        attrs.append(attr)
 
+                shape["attributes"] = attrs
+
+            attrs = []
             for attr in track["attributes"]:
                 attr_name = attr["spec_id"]
-                attr["spec_id"] = attr_id_map[attr_name]
+                if attr_name in attr_map:
+                    attr["spec_id"] = attr_map[attr_name]
+                    attrs.append(attr)
+
+            track["attributes"] = attrs
 
         return tracks
 
@@ -4761,11 +6023,20 @@ class CVATLabel(object):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
-    def __init__(self, label_dict, class_map, attr_id_map, attributes=None):
+    def __init__(
+        self,
+        label_dict,
+        class_map,
+        attr_id_map,
+        server_id_map,
+        attributes=None,
+    ):
         cvat_id = label_dict["label_id"]
+        server_id = label_dict["id"]
         attrs = label_dict["attributes"]
 
         if attributes is not None:
@@ -4791,11 +6062,20 @@ class CVATLabel(object):
 
         # Parse label ID
         label_id = self.attributes.pop("label_id", None)
+
         if label_id is not None:
-            try:
-                self._id = ObjectId(label_id)
-            except:
-                pass
+            self._set_id(label_id)
+
+        if self._id is None:
+            label_id = server_id_map.get(server_id, None)
+            if label_id is not None:
+                self._set_id(label_id)
+
+    def _set_id(self, label_id):
+        try:
+            self._id = ObjectId(label_id)
+        except:
+            pass
 
     def _set_attributes(self, label):
         if self._id is not None:
@@ -4817,6 +6097,7 @@ class CVATShape(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         metadata: a dictionary containing the width and height of the frame
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
@@ -4830,13 +6111,18 @@ class CVATShape(CVATLabel):
         label_dict,
         class_map,
         attr_id_map,
+        server_id_map,
         metadata,
         index=None,
         immutable_attrs=None,
         occluded_attrs=None,
     ):
         super().__init__(
-            label_dict, class_map, attr_id_map, attributes=immutable_attrs
+            label_dict,
+            class_map,
+            attr_id_map,
+            server_id_map,
+            attributes=immutable_attrs,
         )
 
         self.frame_size = (metadata["width"], metadata["height"])
@@ -4966,6 +6252,7 @@ class CVATTag(CVATLabel):
         class_map: a dictionary mapping label IDs to class strings
         attr_id_map: a dictionary mapping attribute IDs attribute names for
             every label
+        server_id_map: a dictionary mapping server IDs to FiftyOne label IDs
         attributes (None): an optional list of additional attributes
     """
 
@@ -5229,16 +6516,20 @@ def _stringify_value(value):
     return str(value)
 
 
+def _to_int_bool(value):
+    return int(bool(value))
+
+
+def _from_int_bool(value):
+    try:
+        return bool(int(value))
+    except:
+        pass
+
+    return None
+
+
 def _parse_value(value):
-    if value in (None, "None", ""):
-        return None
-
-    if value in {"True", "true"}:
-        return True
-
-    if value in {"False", "false"}:
-        return False
-
     try:
         return int(value)
     except:
@@ -5249,7 +6540,38 @@ def _parse_value(value):
     except:
         pass
 
+    if etau.is_str(value):
+        if value in ("True", "true"):
+            return True
+
+        if value in ("False", "false"):
+            return False
+
+        if value in ("None", ""):
+            return None
+
     return value
+
+
+def _parse_occlusion_value(value):
+    if isinstance(value, bool):
+        return value
+
+    if etau.is_str(value):
+        str_value = "'%s'" % value
+        bool_value = False if value.lower() == "false" else bool(value)
+    else:
+        str_value = str(value)
+        bool_value = bool(value)
+
+    msg = "Casting occlusion value %s of type %s to boolean %s" % (
+        str_value,
+        type(value),
+        bool_value,
+    )
+    warnings.warn(msg)
+
+    return bool_value
 
 
 # Track interpolation code sourced from CVAT:

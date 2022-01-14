@@ -1,7 +1,7 @@
 """
 Base plotting definitions.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -82,12 +82,110 @@ def plot_confusion_matrix(
     return _plot_confusion_matrix(confusion_matrix, labels, **kwargs)
 
 
-def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
+def plot_regressions(
+    ytrue,
+    ypred,
+    samples=None,
+    ids=None,
+    labels=None,
+    sizes=None,
+    classes=None,
+    gt_field=None,
+    pred_field=None,
+    backend="plotly",
+    **kwargs,
+):
+    """Plots the given regression results.
+
+    If IDs are provided and you are working in a notebook environment with the
+    default plotly backend, this method returns an interactive
+    :class:`fiftyone.core.plots.plotly.InteractiveScatter` that you can attach
+    to an App session via its :attr:`fiftyone.core.session.Session.plots`
+    attribute, which will automatically sync the session's view with the
+    currently selected points in the plot.
+
+    Args:
+        ytrue: an array of ground truth values
+        ypred: an array of predicted values
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            for which the results were generated. Only used by the "plotly"
+            backend when IDs are provided
+        ids (None): an array of sample or frame IDs corresponding to the
+            regressions. If not provided but ``samples`` are provided, the
+            appropriate IDs will be extracted from the samples
+        labels (None): data to use to color the points. Can be any of the
+            following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric or string values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric or string values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric or string values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+            -   a list or array-like of numeric values
+            -   a list of lists of numeric or string values, if ``link_field``
+                refers to frames
+        classes (None): an optional list of classes whose points to plot.
+            Only applicable when ``labels`` contains strings
+        gt_field (None): the name of the ground truth field
+        pred_field (None): the name of the predictions field
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.plot_confusion_matrix`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
+
+    Returns:
+        one of the following:
+
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if
+            IDs are provided and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
+            IDs are provided but you are working in a Jupyter notebook with
+            the plotly backend
+        -   a plotly or matplotlib figure, otherwise
+    """
+    backend = _parse_backend(backend)
+
+    if backend == "matplotlib":
+        from .matplotlib import plot_regressions as _plot_regressions
+    else:
+        from .plotly import plot_regressions as _plot_regressions
+
+    return _plot_regressions(
+        ytrue,
+        ypred,
+        samples=samples,
+        ids=ids,
+        labels=labels,
+        sizes=sizes,
+        classes=classes,
+        gt_field=gt_field,
+        pred_field=pred_field,
+        **kwargs,
+    )
+
+
+def plot_pr_curve(
+    precision, recall, thresholds=None, label=None, backend="plotly", **kwargs
+):
     """Plots a precision-recall (PR) curve.
 
     Args:
         precision: an array of precision values
         recall: an array of recall values
+        thresholds (None): an optional array of decision thresholds
         label (None): a label for the curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -107,13 +205,23 @@ def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curve as _plot_pr_curve
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_pr_curve as _plot_pr_curve
+
+        kwargs.update(dict(thresholds=thresholds))
 
     return _plot_pr_curve(precision, recall, label=label, **kwargs)
 
 
-def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
+def plot_pr_curves(
+    precisions, recall, classes, thresholds=None, backend="plotly", **kwargs
+):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
@@ -121,6 +229,8 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
             precision values
         recall: an array of recall values
         classes: the list of classes
+        thresholds (None): an optional ``num_classes x num_recalls`` array of
+            decision thresholds
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -139,18 +249,29 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curves as _plot_pr_curves
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_pr_curves as _plot_pr_curves
+
+        kwargs.update(dict(thresholds=thresholds))
 
     return _plot_pr_curves(precisions, recall, classes, **kwargs)
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
+def plot_roc_curve(
+    fpr, tpr, thresholds=None, roc_auc=None, backend="plotly", **kwargs
+):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
         fpr: an array of false postive rates
         tpr: an array of true postive rates
+        thresholds (None): an optional array of decision thresholds
         roc_auc (None): the area under the ROC curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -170,8 +291,16 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_roc_curve as _plot_roc_curve
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_roc_curve as _plot_roc_curve
+
+        kwargs.update(dict(thresholds=thresholds))
 
     return _plot_roc_curve(fpr, tpr, roc_auc=roc_auc, **kwargs)
 
@@ -179,6 +308,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
 def scatterplot(
     points,
     samples=None,
+    ids=None,
     link_field=None,
     labels=None,
     sizes=None,
@@ -204,13 +334,16 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the points. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
             ``points``. Can be any of the following:
 
             -   None, if the points correspond to samples
+            -   ``"frames"``, if the points correspond to frames
             -   the name of a :class:`fiftyone.core.labels.Label` field, if the
                 points linked to the labels in this field
-
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -223,7 +356,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -236,7 +368,6 @@ def scatterplot(
             -   a list of lists of numeric or string values, if ``link_field``
                 refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -266,6 +397,7 @@ def scatterplot(
     return _scatterplot(
         points,
         samples=samples,
+        ids=ids,
         link_field=link_field,
         labels=labels,
         sizes=sizes,
@@ -277,6 +409,7 @@ def scatterplot(
 def location_scatterplot(
     locations=None,
     samples=None,
+    ids=None,
     labels=None,
     sizes=None,
     classes=None,
@@ -309,9 +442,11 @@ def location_scatterplot(
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
-
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        ids (None): an array of IDs corresponding to the locations. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -321,7 +456,6 @@ def location_scatterplot(
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric or string values
-
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -331,7 +465,6 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   a list or array-like of numeric values
-
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -361,6 +494,7 @@ def location_scatterplot(
     return _location_scatterplot(
         locations=locations,
         samples=samples,
+        ids=ids,
         labels=labels,
         sizes=sizes,
         classes=classes,
@@ -594,8 +728,8 @@ class InteractivePlot(ResponsivePlot):
     external parties by calling its :meth:`select_ids` method.
 
     Args:
-        link_type ("samples"): whether this plot is linked to "samples" or
-            "labels"
+        link_type ("samples"): whether this plot is linked to ``"samples"``,
+            ``"frames"``, or ``"labels"``
         init_view (None): a :class:`fiftyone.core.collections.SampleCollection`
             defining an initial view from which to derive selection views when
             points are selected in the plot. This view will also be shown when
@@ -622,7 +756,7 @@ class InteractivePlot(ResponsivePlot):
         selection_mode=None,
         init_patches_fcn=None,
     ):
-        supported_link_types = ("samples", "labels")
+        supported_link_types = ("samples", "frames", "labels")
         if link_type not in supported_link_types:
             raise ValueError(
                 "Unsupported link_type '%s'; supported values are %s"
@@ -670,7 +804,7 @@ class InteractivePlot(ResponsivePlot):
 
     @selection_mode.setter
     def selection_mode(self, mode):
-        if self.link_type == "samples":
+        if self.link_type != "labels":
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "

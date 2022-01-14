@@ -58,6 +58,29 @@ A successful installation of FiftyOne should result in no output when
 `fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
 install troubleshooting tips.
 
+If you want to work with video datasets, you'll also need to install
+`FFmpeg <https://ffmpeg.org>`_:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
+
 .. _fiftyone-quickstart:
 
 Quickstart

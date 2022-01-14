@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { Overlay } from "./overlays/base";
@@ -241,6 +241,8 @@ export interface VideoState extends BaseState {
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
+
+export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:

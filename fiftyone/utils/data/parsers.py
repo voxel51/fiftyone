@@ -1,7 +1,7 @@
 """
 Sample parsers.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -639,6 +639,9 @@ class LabeledImageSampleParser(SampleParser):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             parser is guaranteed to return labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the parser can produce a single label field of any of
+            these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the parser will return label dictionaries with keys
             and value-types specified by this dictionary. Not all keys need be
@@ -733,6 +736,9 @@ class LabeledVideoSampleParser(SampleParser):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             parser is guaranteed to return sample-level labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the parser can produce a single sample-level label field
+            of any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the parser will return sample-level label
             dictionaries with keys and value-types specified by this
@@ -751,6 +757,9 @@ class LabeledVideoSampleParser(SampleParser):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             parser is guaranteed to return frame labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the parser can produce a single frame label field of any
+            of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the parser will return frame label dictionaries with
             keys and value-types specified by this dictionary. Not all keys
@@ -881,7 +890,7 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
 
 class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
-    """Generic parser for image classification samples whose labels are
+    """Generic parser for image classification(s) samples whose labels are
     represented as :class:`fiftyone.core.labels.Classification` instances.
 
     This implementation supports samples that are ``(image_or_path, target)``
@@ -892,10 +901,10 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
 
         -   ``target`` can be any of the following:
 
-            -   a label string
-            -   a class ID, if ``classes`` is provided
             -   None, for unlabeled images
-            -   a dict of the following form::
+            -   a label string or list of label strings
+            -   a class ID or list of class IDs, if ``classes`` is provided
+            -   a dict or list of dicts of the following form::
 
                     {
                         "label": <label-or-target>,
@@ -904,8 +913,8 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
 
     Args:
         classes (None): an optional list of class label strings. If provided,
-            it is assumed that ``target`` is a class ID that should be mapped
-            to a label string via ``classes[target]``
+            it is assumed that ``target`` contains class ID that should be
+            mapped to label strings via ``classes[target]``
     """
 
     def __init__(self, classes=None):
@@ -914,7 +923,7 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
 
     @property
     def label_cls(self):
-        return fol.Classification
+        return (fol.Classification, fol.Classifications)
 
     def get_label(self):
         """Returns the label for the current sample.
@@ -932,19 +941,36 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         if target is None:
             return None
 
-        if isinstance(target, dict):
-            label = target.get("label", None)
-            confidence = target.get("confidence", None)
-        else:
-            label = target
-            confidence = None
+        is_list = isinstance(target, (list, tuple))
 
-        try:
-            label = self.classes[label]
-        except:
-            label = str(label)
+        if not is_list:
+            target = [target]
 
-        return fol.Classification(label=label, confidence=confidence)
+        classifications = []
+        for _target in target:
+            if isinstance(_target, dict):
+                label = _target.get("label", None)
+                confidence = _target.get("confidence", None)
+                attributes = _target.get("attributes", {})
+            else:
+                label = _target
+                confidence = None
+                attributes = {}
+
+            try:
+                label = self.classes[label]
+            except:
+                label = str(label)
+
+            classification = fol.Classification(
+                label=label, confidence=confidence, **attributes
+            )
+            classifications.append(classification)
+
+        if is_list:
+            return fol.Classifications(classifications=classifications)
+
+        return classifications[0]
 
 
 class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
@@ -1231,12 +1257,14 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
                 label = str(label)
 
             confidence = label_dict.get("confidence", None)
+            attributes = label_dict.get("attributes", {})
 
             if "support" in label_dict:
                 detection = fol.TemporalDetection(
                     label=label,
                     support=label_dict["support"],
                     confidence=confidence,
+                    **attributes,
                 )
             elif "timestamps" in label_dict:
                 if self._current_metadata is not None:
@@ -1250,6 +1278,7 @@ class FiftyOneTemporalDetectionSampleParser(LabeledVideoSampleParser):
                     metadata=metadata,
                     label=label,
                     confidence=confidence,
+                    **attributes,
                 )
             else:
                 raise ValueError(

@@ -1,7 +1,7 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -208,22 +208,23 @@ class MongoEngineBaseDocument(SerializableDocument):
     subclasses that implements the :class:`SerializableDocument` interface.
     """
 
-    def __delattr__(self, field_name):
-        self.clear_field(field_name)
+    def __delattr__(self, name):
+        self.clear_field(name)
 
-    def __delitem__(self, field_name):
-        self.clear_field(field_name)
+    def __delitem__(self, name):
+        self.clear_field(name)
 
     def __deepcopy__(self, memo):
         # pylint: disable=no-member, unsubscriptable-object
         kwargs = {
-            f: deepcopy(self[f], memo)
+            f: deepcopy(self.get_field(f), memo)
             for f in self._fields_ordered
             if f not in ("_cls", "_id", "id")
         }
         return self.__class__(**kwargs)
 
     def has_field(self, field_name):
+        # pylint: disable=no-member
         return field_name in self._fields_ordered
 
     def get_field(self, field_name):
@@ -231,13 +232,17 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def set_field(self, field_name, value, create=False):
         if not create and not self.has_field(field_name):
-            raise AttributeError("Document has no field '%s'" % field_name)
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
         setattr(self, field_name, value)
 
     def clear_field(self, field_name):
         if not self.has_field(field_name):
-            raise AttributeError("Document has no field '%s'" % field_name)
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
         super().__delattr__(field_name)
 
@@ -496,7 +501,7 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -513,7 +518,7 @@ class DynamicEmbeddedDocument(
     Dynamic documents can have arbitrary fields added to them.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

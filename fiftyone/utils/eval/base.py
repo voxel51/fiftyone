@@ -1,7 +1,7 @@
 """
 Base evaluation methods.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -53,9 +53,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         if missing is None:
             missing = "(none)"
 
-        ytrue, ypred, classes, found_missing = _parse_labels(
-            ytrue, ypred, classes, missing
-        )
+        ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
 
         self.ytrue = np.asarray(ytrue)
         self.ypred = np.asarray(ypred)
@@ -74,19 +72,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
         self.missing = missing
 
         self._samples = samples
-        self._has_missing = found_missing
-
-    def _get_labels(self, classes, include_missing=False):
-        if classes is not None:
-            if include_missing and self.missing not in classes:
-                classes = list(classes) + [self.missing]
-
-            return np.asarray(classes)
-
-        if include_missing:
-            return self.classes
-
-        return np.array([c for c in self.classes if c != self.missing])
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -99,7 +84,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        labels = self._get_labels(classes)
+        labels = self._parse_classes(classes)
 
         if self.ytrue.size == 0 or labels.size == 0:
             d = {}
@@ -144,7 +129,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Returns:
             a dict
         """
-        labels = self._get_labels(classes)
+        labels = self._parse_classes(classes)
 
         accuracy = _compute_accuracy(
             self.ytrue, self.ypred, labels=labels, weights=self.weights
@@ -181,7 +166,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 report
             digits (2): the number of digits of precision to print
         """
-        labels = self._get_labels(classes)
+        labels = self._parse_classes(classes)
 
         if labels.size == 0:
             print("No classes to analyze")
@@ -207,58 +192,24 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix. Include ``self.missing`` in this list if you
-                would like to study a subset of classes including missing data
+                would like to include a row/column for unmatched examples
             include_other (False): whether to include an extra row/column at
                 the end of the matrix for labels that do not appear in
-                ``classes``
+                ``classes``. Only applicable if ``classes`` are provided
 
         Returns:
             a ``num_classes x num_classes`` confusion matrix
         """
-        labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, _, _ = self._confusion_matrix(
-            labels, include_other=include_other
+            classes=classes, include_other=include_other, include_missing=False
         )
         return confusion_matrix
-
-    def _confusion_matrix(
-        self,
-        labels,
-        include_other=False,
-        other_label=None,
-        tabulate_ids=False,
-    ):
-        labels = list(labels)
-
-        if include_other:
-            if other_label not in labels:
-                labels.append(other_label)
-
-        if include_other:
-            labels_set = set(labels)
-            ypred = [y if y in labels_set else other_label for y in self.ypred]
-            ytrue = [y if y in labels_set else other_label for y in self.ytrue]
-        else:
-            ypred = self.ypred
-            ytrue = self.ytrue
-
-        confusion_matrix, ids = _compute_confusion_matrix(
-            ytrue,
-            ypred,
-            labels,
-            weights=self.weights,
-            ytrue_ids=self.ytrue_ids,
-            ypred_ids=self.ypred_ids,
-            tabulate_ids=tabulate_ids,
-        )
-
-        return confusion_matrix, labels, ids
 
     def plot_confusion_matrix(
         self,
         classes=None,
+        include_other=None,
         include_missing=None,
-        include_other=True,
         other_label="(other)",
         backend="plotly",
         **kwargs,
@@ -276,6 +227,15 @@ class BaseEvaluationResults(foe.EvaluationResults):
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix
+            include_other (None): whether to include a row/column for examples
+                whose label is in ``classes`` but are matched to labels that
+                do not appear in ``classes``. Only applicable if ``classes``
+                are provided. The supported values are:
+
+                -   None (default): only include a row/column for other labels
+                    if there are any
+                -   True: do include a row/column for other labels
+                -   False: do not include a row/column for other labels
             include_missing (None): whether to include a row/column for missing
                 ground truth/predictions in the confusion matrix. The supported
                 values are:
@@ -284,9 +244,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
                     labels if there are any
                 -   True: do include a row/column for missing labels
                 -   False: do not include a row/column for missing labels
-            include_other (True): whether to include an extra column for
-                **predictions** that are not missing but do not appear in
-                ``classes``. Only applicable if a ``classes`` list is provided
             other_label ("(other)"): the label to use for "other" predictions
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
@@ -302,36 +259,13 @@ class BaseEvaluationResults(foe.EvaluationResults):
                 the plotly backend is used
             -   a matplotlib figure, otherwise
         """
-        if include_missing is None:
-            include_missing = self._has_missing
-
-        _labels = self._get_labels(classes, include_missing=include_missing)
         confusion_matrix, labels, ids = self._confusion_matrix(
-            _labels,
+            classes=classes,
             include_other=include_other,
+            include_missing=include_missing,
             other_label=other_label,
             tabulate_ids=True,
         )
-
-        if include_other:
-            num_labels = len(labels)
-            num_extra = num_labels - len(_labels)
-
-            # Don't include extra ground truth rows
-            if num_extra > 0:
-                confusion_matrix = confusion_matrix[:-num_extra, :]
-                ids = ids[:-num_extra, :]
-
-            # Only include non-trivial extra prediction rows
-            rm_inds = []
-            for idx in range(num_labels - num_extra, num_labels):
-                if not any(confusion_matrix[:, idx]):
-                    rm_inds.append(idx)
-
-            if rm_inds:
-                confusion_matrix = np.delete(confusion_matrix, rm_inds, axis=1)
-                ids = np.delete(ids, rm_inds, axis=1)
-                labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         return fop.plot_confusion_matrix(
             confusion_matrix,
@@ -344,6 +278,89 @@ class BaseEvaluationResults(foe.EvaluationResults):
             backend=backend,
             **kwargs,
         )
+
+    def _parse_classes(self, classes):
+        if classes is not None:
+            return np.asarray(classes)
+
+        return np.array([c for c in self.classes if c != self.missing])
+
+    def _confusion_matrix(
+        self,
+        classes=None,
+        include_other=None,
+        include_missing=None,
+        other_label=None,
+        tabulate_ids=False,
+    ):
+        if classes is not None:
+            labels = list(classes)
+        else:
+            labels = list(self.classes)
+            include_other = False
+
+        if include_other != False and other_label not in labels:
+            added_other = True
+            labels.append(other_label)
+        else:
+            added_other = False
+
+        if include_missing != False and self.missing not in labels:
+            added_missing = True
+            labels.append(self.missing)
+        else:
+            added_missing = False
+
+        if include_other != False:
+            labels_set = set(labels + [self.missing])
+            ypred = [y if y in labels_set else other_label for y in self.ypred]
+            ytrue = [y if y in labels_set else other_label for y in self.ytrue]
+        else:
+            ypred = self.ypred
+            ytrue = self.ytrue
+
+        cmat, ids = _compute_confusion_matrix(
+            ytrue,
+            ypred,
+            labels,
+            weights=self.weights,
+            ytrue_ids=self.ytrue_ids,
+            ypred_ids=self.ypred_ids,
+            tabulate_ids=tabulate_ids,
+        )
+
+        if added_other:
+            # Omit `(other, other)`
+            i = labels.index(other_label)
+            cmat[i, i] = 0
+            ids[i, i] = []
+
+            if added_missing:
+                # Omit `(other, missing)` and `(missing, other)`
+                j = labels.index(self.missing)
+                cmat[i, j] = 0
+                cmat[j, i] = 0
+                ids[i, j] = []
+                ids[j, i] = []
+
+        rm_inds = []
+
+        if include_other == None:
+            idx = labels.index(other_label)
+            if not any(cmat[:, idx]) and not any(cmat[idx, :]):
+                rm_inds.append(idx)
+
+        if include_missing == None:
+            idx = labels.index(self.missing)
+            if not any(cmat[:, idx]) and not any(cmat[idx, :]):
+                rm_inds.append(idx)
+
+        if rm_inds:
+            cmat = np.delete(np.delete(cmat, rm_inds, axis=0), rm_inds, axis=1)
+            ids = np.delete(np.delete(ids, rm_inds, axis=0), rm_inds, axis=1)
+            labels = [l for i, l in enumerate(labels) if i not in rm_inds]
+
+        return cmat, labels, ids
 
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
@@ -383,29 +400,10 @@ def _parse_labels(ytrue, ypred, classes, missing):
     else:
         classes = list(classes)
 
-    ytrue, found_missing_true = _clean_labels(ytrue, missing)
-    ypred, found_missing_pred = _clean_labels(ypred, missing)
+    ytrue = [y if y is not None else missing for y in ytrue]
+    ypred = [y if y is not None else missing for y in ypred]
 
-    found_missing = found_missing_true or found_missing_pred
-
-    if found_missing and missing not in classes:
-        classes.append(missing)
-
-    return ytrue, ypred, classes, found_missing
-
-
-def _clean_labels(y, missing):
-    found_missing = False
-
-    yclean = []
-    for yi in y:
-        if yi is None:
-            found_missing = True
-            yi = missing
-
-        yclean.append(yi)
-
-    return yclean, found_missing
+    return ytrue, ypred, classes
 
 
 def _compute_accuracy(ytrue, ypred, labels=None, weights=None):

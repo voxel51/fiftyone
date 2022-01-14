@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 export const BASE_ALPHA = 0.7;
@@ -18,6 +18,8 @@ export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
 export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
+export const NONFINITES = new Set(["-inf", "inf", "nan"]);
+
 export const CLASSIFICATION = "Classification";
 export const CLASSIFICATIONS = "Classifications";
 export const DETECTION = "Detection";
@@ -29,6 +31,7 @@ export const KEYPOINT = "Keypoint";
 export const KEYPOINTS = "Keypoints";
 export const POLYLINE = "Polyline";
 export const POLYLINES = "Polylines";
+export const REGRESSION = "Regression";
 export const SEGMENTATION = "Segmentation";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
@@ -43,11 +46,16 @@ export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 
-export const MOMENT_CLASSIFICATIONS = [CLASSIFICATION, CLASSIFICATIONS];
+export const MOMENT_CLASSIFICATIONS = [
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  REGRESSION,
+];
 
 export const LABEL_TAGS_CLASSES = [
   CLASSIFICATION,
   CLASSIFICATIONS,
+  REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
 ];
@@ -73,6 +81,7 @@ export const LABELS = {
   [POLYLINE]: POLYLINE,
   [POLYLINES]: POLYLINES,
   [SEGMENTATION]: SEGMENTATION,
+  [REGRESSION]: REGRESSION,
   [TEMPORAL_DETECTION]: TEMPORAL_DETECTION,
   [TEMPORAL_DETECTIONS]: TEMPORAL_DETECTIONS,
 };

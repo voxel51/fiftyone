@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { getColor } from "../../color";
@@ -15,6 +15,7 @@ import {
   LABEL_TAGS_CLASSES,
   MOMENT_CLASSIFICATIONS,
   OBJECT_ID_FIELD,
+  REGRESSION,
   STRING_FIELD,
 } from "../../constants";
 import { BaseState, Sample } from "../../state";
@@ -94,37 +95,51 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         const isList = cls in LABEL_LISTS;
         const labels = isList ? sample[path][LABEL_LISTS[cls]] : [sample[path]];
 
-        elements = [
-          ...elements,
-          ...Object.entries(
-            labels
-              .filter(
-                (label) =>
-                  label.label &&
-                  filter[path](label) &&
-                  (mimetype.includes("video") ||
-                    MOMENT_CLASSIFICATIONS.includes(label._cls))
-              )
-              .map((label) => label.label)
-              .reduce((acc, cur) => {
-                if (!acc[cur]) {
-                  acc[cur] = 0;
-                }
-                acc[cur] += 1;
-                return acc;
-              }, {})
-          ).map(([label, count]) => ({
-            color: getColor(
-              coloring.pool,
-              coloring.seed,
-              coloring.byLabel ? label : path
-            ),
-            title: `${path}: ${label}`,
-            value: isList
-              ? `${prettify(label)}: ${count.toLocaleString()}`
-              : prettify(label),
-          })),
-        ];
+        let show = labels
+          .filter(
+            (label) =>
+              filter[path](label) &&
+              (mimetype.includes("video") ||
+                MOMENT_CLASSIFICATIONS.includes(label._cls))
+          )
+          .map((label) =>
+            label._cls === REGRESSION ? label.value : label.label
+          );
+
+        if (cls !== REGRESSION) {
+          show = Object.entries(
+            show.reduce((acc, cur) => {
+              if (!acc[cur]) {
+                acc[cur] = 0;
+              }
+              acc[cur] += 1;
+              return acc;
+            }, {})
+          );
+          elements = [
+            ...elements,
+            ...show.map(([label, count]) => ({
+              color: getColor(
+                coloring.pool,
+                coloring.seed,
+                coloring.byLabel ? label : path
+              ),
+              title: `${path}: ${label}`,
+              value: isList
+                ? `${prettify(label)}: ${count.toLocaleString()}`
+                : prettify(label),
+            })),
+          ];
+        } else {
+          elements = [
+            ...elements,
+            ...show.map((label) => ({
+              color: getColor(coloring.pool, coloring.seed, path),
+              title: `${path}: ${label}`,
+              value: prettify(label),
+            })),
+          ];
+        }
       } else if (isRendered(fieldSchema[path])) {
         let valuePath = path;
         if (!sample[path] && fieldsMap && fieldsMap[path]) {
@@ -221,7 +236,14 @@ const prettify = (v: boolean | string | null | undefined | number): string => {
   if (typeof v === "string") {
     return v;
   } else if (typeof v === "number") {
-    return Number(v.toFixed(3)).toLocaleString();
+    if (v % 1 === 0) {
+      v = v.toFixed(0);
+    } else if (v < 0.001) {
+      v = v.toFixed(6);
+    } else {
+      v = v.toFixed(3);
+    }
+    return Number(v).toLocaleString();
   } else if (v === true) {
     return "True";
   } else if (v === false) {

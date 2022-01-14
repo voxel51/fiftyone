@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2861,13 +2861,13 @@ def _parse_kwargs_value(value):
     except:
         pass
 
-    if value in {"True", "true"}:
+    if value in ("True", "true"):
         return True
 
-    if value in {"False", "false"}:
+    if value in ("False", "false"):
         return False
 
-    if value == "None":
+    if value in ("None", ""):
         return None
 
     if "," in value:

@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -615,6 +615,9 @@ class ImportPathsMixin(object):
             if dataset_dir is not None:
                 data_path = default
 
+        if isinstance(data_path, dict):
+            return data_path
+
         if data_path is not None:
             data_path = os.path.expanduser(data_path)
 
@@ -651,32 +654,33 @@ class ImportPathsMixin(object):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
+        if ignore_exts:
+            to_uuid = lambda p: os.path.splitext(p)[0]
+        else:
+            to_uuid = lambda p: p
+
+        if isinstance(data_path, dict):
+            return {to_uuid(k): v for k, v in data_path.items()}
+
         if not data_path:
-            data_map = {}
-        elif data_path.endswith(".json"):
+            return {}
+
+        if data_path.endswith(".json"):
             if not os.path.isfile(data_path):
                 raise ValueError(
                     "Data manifest '%s' does not exist" % data_path
                 )
 
             data_map = etas.load_json(data_path)
-        else:
-            if not os.path.isdir(data_path):
-                raise ValueError(
-                    "Data directory '%s' does not exist" % data_path
-                )
+            return {to_uuid(k): v for k, v in data_map.items()}
 
-            if ignore_exts:
-                to_uuid = lambda p: os.path.splitext(p)[0]
-            else:
-                to_uuid = lambda p: p
+        if not os.path.isdir(data_path):
+            raise ValueError("Data directory '%s' does not exist" % data_path)
 
-            data_map = {
-                to_uuid(p): os.path.join(data_path, p)
-                for p in etau.list_files(data_path, recursive=recursive)
-            }
-
-        return data_map
+        return {
+            to_uuid(p): os.path.join(data_path, p)
+            for p in etau.list_files(data_path, recursive=recursive)
+        }
 
 
 class DatasetImporter(object):
@@ -1064,6 +1068,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single label field of any of
+            these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return label dictionaries with keys
             and value-types specified by this dictionary. Not all keys need be
@@ -1143,6 +1150,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return sample-level labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single sample-level label
+            field of any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return sample-level label
             dictionaries with keys and value-types specified by this
@@ -1161,6 +1171,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
             importer is guaranteed to return frame labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single frame label field of
+            any of these types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return frame label dictionaries
             with keys and value-types specified by this dictionary. Not all
@@ -1638,8 +1651,11 @@ def _import_run_results(dataset, run_dir, run_cls, keys=None):
     for key in keys:
         json_path = os.path.join(run_dir, key + ".json")
         if os.path.exists(json_path):
-            results = fors.RunResults.from_json(json_path, dataset)
-            run_cls.save_run_results(dataset, key, results)
+            view = run_cls.load_run_view(dataset, key)
+            run_info = run_cls.get_run_info(dataset, key)
+            config = run_info.config
+            results = fors.RunResults.from_json(json_path, view, config)
+            run_cls.save_run_results(dataset, key, results, cache=False)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -1807,14 +1823,15 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
 class FiftyOneImageClassificationDatasetImporter(
     LabeledImageDatasetImporter, ImportPathsMixin
 ):
-    """Importer for image classification datasets stored on disk in FiftyOne's
-    default format.
+    """Importer for image classification datasets stored on disk in a simple
+    JSON format.
 
     See :ref:`this page <FiftyOneImageClassificationDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -1828,6 +1845,7 @@ class FiftyOneImageClassificationDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -1860,6 +1878,12 @@ class FiftyOneImageClassificationDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -1922,7 +1946,7 @@ class FiftyOneImageClassificationDatasetImporter(
 
     @property
     def label_cls(self):
-        return fol.Classification
+        return (fol.Classification, fol.Classifications)
 
     def setup(self):
         self._sample_parser = FiftyOneImageClassificationSampleParser()
@@ -2203,14 +2227,15 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
 class FiftyOneImageDetectionDatasetImporter(
     LabeledImageDatasetImporter, ImportPathsMixin
 ):
-    """Importer for image detection datasets stored on disk in FiftyOne's
-    default format.
+    """Importer for image detection datasets stored on disk in a simple JSON
+    format.
 
     See :ref:`this page <FiftyOneImageDetectionDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2224,6 +2249,7 @@ class FiftyOneImageDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2256,6 +2282,12 @@ class FiftyOneImageDetectionDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -2366,14 +2398,15 @@ class FiftyOneImageDetectionDatasetImporter(
 class FiftyOneTemporalDetectionDatasetImporter(
     LabeledVideoDatasetImporter, ImportPathsMixin
 ):
-    """Importer for temporal video detection datasets stored on disk in
-    FiftyOne's default format.
+    """Importer for temporal video detection datasets stored on disk in a
+    simple JSON format.
 
     See :ref:`this page <FiftyOneTemporalDetectionDataset-import>` for format
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2387,6 +2420,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2419,6 +2453,12 @@ class FiftyOneTemporalDetectionDatasetImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
@@ -2541,7 +2581,8 @@ class ImageSegmentationDirectoryImporter(
     details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
         data_path (None): an optional parameter that enables explicit control
             over the location of the media. Can be any of the following:
 
@@ -2555,6 +2596,7 @@ class ImageSegmentationDirectoryImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2594,6 +2636,12 @@ class ImageSegmentationDirectoryImporter(
         seed=None,
         max_samples=None,
     ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
         data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )

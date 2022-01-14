@@ -1,7 +1,7 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,7 +18,6 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
-import numpy as np
 from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
@@ -31,6 +30,7 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -256,10 +256,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
+
+        if isinstance(id_filepath_slice, foex.ViewExpression):
+            return self.view()[id_filepath_slice]
+
+        if etau.is_container(id_filepath_slice):
             return self.view()[id_filepath_slice]
 
         try:
@@ -818,11 +825,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.add_implied_field(field_name, value)
         self._reload()
 
-    def _add_implied_sample_field_if_necessary(self, field_name, value):
-        self._add_sample_field_if_necessary(
-            field_name, **foo.get_implied_field_kwargs(value)
-        )
-
     def add_frame_field(
         self,
         field_name,
@@ -889,11 +891,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._frame_doc_cls.add_implied_field(field_name, value)
         self._reload()
-
-    def _add_implied_frame_field_if_necessary(self, field_name, value):
-        self._add_frame_field_if_necessary(
-            field_name, **foo.get_implied_field_kwargs(value)
-        )
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -1447,6 +1444,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
+
+    def _upsert_samples(
+        self, samples, expand_schema=True, validate=True, num_samples=None
+    ):
+        if num_samples is None:
+            try:
+                num_samples = len(samples)
+            except:
+                pass
+
+        # Dynamically size batches so that they are as large as possible while
+        # still achieving a nice frame rate on the progress bar
+        target_latency = 0.2  # in seconds
+        batcher = fou.DynamicBatcher(
+            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+        )
+
+        with fou.ProgressBar(total=num_samples) as pb:
+            for batch in batcher:
+                self._upsert_samples_batch(batch, expand_schema, validate)
+                pb.update(count=len(batch))
 
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
@@ -2247,8 +2265,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2262,6 +2280,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2403,8 +2422,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2418,6 +2437,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2555,8 +2575,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2570,6 +2590,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -2704,8 +2725,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2719,6 +2740,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -3464,8 +3486,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3479,6 +3501,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -3571,8 +3594,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3586,6 +3609,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -4704,8 +4728,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results
-    if (
+    # Clone run results (full datasets only)
+    if view is None and (
         dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
@@ -4993,9 +5017,13 @@ def _clone_runs(dst_dataset, src_doc):
     for anno_key, run_doc in src_doc.annotation_runs.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(dst_dataset, anno_key)
+        results = foan.AnnotationMethod.load_run_results(
+            dst_dataset, anno_key, cache=False
+        )
         _run_doc.results = None
-        foan.AnnotationMethod.save_run_results(dst_dataset, anno_key, results)
+        foan.AnnotationMethod.save_run_results(
+            dst_dataset, anno_key, results, cache=False
+        )
 
     #
     # Clone brain results
@@ -5008,9 +5036,13 @@ def _clone_runs(dst_dataset, src_doc):
     for brain_key, run_doc in src_doc.brain_methods.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(dst_dataset, brain_key)
+        results = fob.BrainMethod.load_run_results(
+            dst_dataset, brain_key, cache=False
+        )
         _run_doc.results = None
-        fob.BrainMethod.save_run_results(dst_dataset, brain_key, results)
+        fob.BrainMethod.save_run_results(
+            dst_dataset, brain_key, results, cache=False
+        )
 
     #
     # Clone evaluation results
@@ -5023,9 +5055,13 @@ def _clone_runs(dst_dataset, src_doc):
     for eval_key, run_doc in src_doc.evaluations.items():
         _run_doc = deepcopy(run_doc)
         dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(dst_dataset, eval_key)
+        results = foe.EvaluationMethod.load_run_results(
+            dst_dataset, eval_key, cache=False
+        )
         _run_doc.results = None
-        foe.EvaluationMethod.save_run_results(dst_dataset, eval_key, results)
+        foe.EvaluationMethod.save_run_results(
+            dst_dataset, eval_key, results, cache=False
+        )
 
     dst_doc.save()
 
@@ -5086,7 +5122,7 @@ def _get_single_index_map(coll):
 def _merge_samples_python(
     dataset,
     samples,
-    key_field=None,
+    key_field="filepath",
     key_fcn=None,
     skip_existing=False,
     insert_new=True,
@@ -5126,18 +5162,10 @@ def _merge_samples_python(
         expand_schema=expand_schema,
     )
 
-    # Dynamically size batches so that they are as large as possible while
-    # still achieving a nice frame rate on the progress bar
-    target_latency = 0.2  # in seconds
-    batcher = fou.DynamicBatcher(
-        _samples, target_latency, init_batch_size=1, max_batch_beta=2.0
-    )
-
     logger.info("Merging samples...")
-    with fou.ProgressBar(total=num_samples) as pb:
-        for batch in batcher:
-            dataset._upsert_samples_batch(batch, expand_schema, True)
-            pb.update(count=len(batch))
+    dataset._upsert_samples(
+        _samples, expand_schema=expand_schema, num_samples=num_samples
+    )
 
 
 def _make_merge_samples_generator(
@@ -5186,7 +5214,6 @@ def _make_merge_samples_generator(
                 )
 
                 yield existing_sample
-
         elif insert_new:
             if insert_fields is not None or insert_omit_fields is not None:
                 sample = sample.copy(
@@ -5782,16 +5809,15 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    samples_or_ids = list(samples_or_ids)
 
     if not samples_or_ids:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
+    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]
 
-    return list(samples_or_ids)
+    return samples_or_ids
 
 
 def _parse_fields(field_names):

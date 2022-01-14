@@ -223,6 +223,7 @@ You can also store your credentials in your
     {
         "backends": {
             "cvat": {
+                ...
                 "username": ...,
                 "password": ...
             }
@@ -247,12 +248,7 @@ that require connections to CVAT:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., username=..., password=...)
 
 **Command line prompt**
 
@@ -296,7 +292,8 @@ you can configure the URL of your server in any of the following ways:
     {
         "backends": {
             "cvat": {
-                "url": "http://localhost:8080"
+                "url": "http://localhost:8080",
+                ...
             }
         }
     }
@@ -307,13 +304,39 @@ you can configure the URL of your server in any of the following ways:
 .. code:: python
     :linenos:
 
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        url="http://localhost:8080",
-        username=...,
-        password=...,
-    )
+    view.annotate(anno_key, ..., url="http://localhost:8080")
+
+If your self-hosted server requires additional headers in order to make HTTP
+requests, you can provide them in either of the following ways:
+
+-   Store your custom headers in a `headers` key of your
+    :ref:`annotation config <annotation-config>` at
+    `~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "cvat": {
+                ...
+                "headers": {
+                    "<name>": "<value>",
+                    ...
+                }
+            }
+        }
+    }
+
+-   Pass the `headers` parameter manually each time you call
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    and
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(anno_key, ... headers=...)
+    view.load_annotations(anno_key, ... headers=...)
 
 .. _cvat-requesting-annotations:
 
@@ -341,11 +364,18 @@ you will provide it to methods like
 :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
 to manage the run in the future.
 
-.. note::
+.. warning::
 
-    Calling
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-    will upload the source media files to the CVAT server.
+    FiftyOne assumes that all labels in an annotation run can fit in memory.
+
+    If you are annotating very large scale video datasets with dense frame
+    labels, you may violate this assumption. Instead, consider breaking the
+    work into multiple smaller annotation runs that each contain limited
+    subsets of the samples you wish to annotate.
+
+    You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
+    to get a sense for the total size of the labels in a dataset as a rule of
+    thumb to estimate the size of a candidate annotation run.
 
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
@@ -420,17 +450,22 @@ details:
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
     applicable when editing existing label fields
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing label
-    fields
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute
+    of existing video tracks to be modified. Only applicable when editing
+    existing frame fields with `index` attributes
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, etc) of labels. Only
-    applicable when editing existing label fields
+    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
+    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, the following CVAT-specific parameters from
 :class:`CVATBackendConfig <fiftyone.utils.cvat.CVATBackendConfig>` can also be
 provided:
 
+-   **task_size** (*None*): an optional maximum number of images to upload per
+    task. Videos are always uploaded one per task
 -   **segment_size** (*None*): the maximum number of images to upload per job.
     Not applicable to videos
 -   **image_quality** (*75*): an int in `[0, 100]` determining the image
@@ -448,8 +483,14 @@ provided:
     video is uploaded to a separate task 
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
--   **project_name** (*None*): an optional project name in which to store the
-    annotation tasks. By default, no project is created
+-   **project_name** (*None*): an optional project name to which to upload the
+    created CVAT task. If a project with this name exists, it will be used,
+    otherwise a new project is created. By default, no project is used
+-   **project_id** (*None*): an optional ID of an existing CVAT project to
+    which to upload the annotation tasks. By default, no project is used
+-   **occluded_attr** (*None*): an optional attribute name containing existing
+    occluded values and/or in which to store downloaded occluded values for all
+    objects in the annotation run
 
 .. _cvat-label-schema:
 
@@ -667,14 +708,6 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. note::
-
-    When uploading existing labels to CVAT, their label IDs in FiftyOne are
-    always uploaded as attributes. This information is used to keep track of
-    modifications to existing labels, and changing or deleting these ID
-    attributes in CVAT will result in labels being overwritten rather than
-    merged when loading annotations back into FiftyOne.
-
 .. _cvat-restricting-edits:
 
 Restricting additions, deletions, and edits
@@ -689,6 +722,8 @@ following flags to
 -   **allow_deletions** (*True*): whether to allow labels to be deleted
 -   **allow_label_edits** (*True*): whether to allow the `label` attribute to
     be modified
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute of
+    video tracks to be modified
 -   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
     properties (bounding boxes, vertices, keypoints, etc) of labels
 
@@ -762,7 +797,13 @@ for this as follows:
         attributes=attributes,
     )
 
-.. note::
+Note that, if you use CVAT projects to organize your annotation tasks, the
+above restrictions must be manually re-specified in your call to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` for
+each annotation task that you add to an existing project, since CVAT does not
+provide support for these settings natively.
+
+.. warning::
 
     The CVAT backend does not support restrictions to additions, deletions,
     spatial edits, and read-only attributes in its editing interface.
@@ -771,6 +812,15 @@ for this as follows:
     still be enforced when you call
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     to merge the annotations back into FiftyOne.
+
+    **IMPORTANT**: When uploading existing labels to CVAT, the `id` of the
+    labels in FiftyOne are stored in a `label_id` attribute of the CVAT shapes.
+    If a `label_id` is modified in CVAT, then FiftyOne may not be able to merge
+    the annotation with its existing |Label| instance; it must instead delete
+    the existing label and create a new |Label| with the shape's contents. In
+    such cases, if `allow_additions` and/or `allow_deletions` were set to
+    `False` on the annotation schema, this can result in CVAT edits being
+    rejected. See :ref:`this section <cvat-limitations>` for details.
 
 .. _cvat-labeling-videos:
 
@@ -834,6 +884,96 @@ will be uploaded to CVAT.
     See :ref:`this section <cvat-annotating-videos>` for video annotation
     examples!
 
+.. warning::
+
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**:  If a `label_id` is modified in CVAT, then FiftyOne may not
+    be able to merge the annotation with its existing |Label| instance; in such
+    cases, it must instead delete the existing label and create a new |Label|
+    with the shape's contents. See :ref:`this section <cvat-limitations>` for
+    details.
+
+.. _cvat-limitations:
+
+CVAT limitations
+----------------
+
+When uploading existing labels to CVAT, FiftyOne uses two sources of provenance
+to associate |Label| instances in FiftyOne with their corresponding CVAT
+shapes:
+
+-   The `id` of each |Label| is stored in a `label_id` attribute of the CVAT
+    shape. When importing annotations from CVAT back into FiftyOne, if the
+    `label_id` of a shape matches the ID of a label that was included in the
+    annotation run, the shape will be merged into the existing |Label|
+
+-   FiftyOne also maintains a mapping between |Label| IDs and the internal
+    CVAT shape IDs that are created when the CVAT tasks are created. If, during
+    download, a CVAT shape whose `label_id` has been deleted or otherwise
+    modified and doesn't match an existing label ID *but does have* a
+    recognized CVAT ID is encountered, this shape will be merged into the
+    existing |Label|
+
+Unfortunately,
+`CVAT does not guarantee <https://github.com/openvinotoolkit/cvat/issues/893#issuecomment-578020576>`_
+that its internal IDs are immutable. Thus, if both the `label_id` attribute and
+(unknown to the user) the internal CVAT ID of a shape are both modified,
+merging the shape with its source |Label| is impossible.
+
+CVAT automatically clears/edits all attributes of a shape, including the
+`label_id` attribute, in the following cases:
+
+-   When using a label schema with
+    :ref:`per-class attributes <cvat-label-schema>`, all attributes of a shape
+    are cleared whenever the class label of the shape is changed to a class
+    whose attribute schema differs from the previous class. The recommended
+    workaround in this case is to manually copy the `label_id` before changing
+    the class and then pasting it back to ensure that the ID doesn't change.
+
+-   When splitting or merging video tracks, CVAT may clear or duplicate the
+    shape's attributes during the process. If this results in missing or
+    duplicate `label_id` values, then, although FiftyOne will gracefully
+    proceed with the import, provenance has still been lost and thus existing
+    |Label| instances whose IDs no longer exist must be deleted and replaced
+    with newly created |Label| instances.
+
+The primary issues that can arise due to modified/deleted `label_id` attributes
+are:
+
+-   If the original |Label| in FiftyOne contained additional attributes that
+    weren't included in the CVAT annotation run, then those attributes will be
+    lost whenever loading annotations requires deleting the existing label and
+    creating a new one.
+
+-   When working with annotation schemas that specify
+    :ref:`edit restrictions <cvat-restricting-edits>`, CVAT edits that cause
+    `label_id` changes may need to be rejected. For example, if
+    `allow_additions` and `allow_deletions` are set to `False` and editing a
+    CVAT shape's class label causes its attributes to be cleared, then this
+    change will be rejected by FiftyOne because it would require both deleting
+    an existing label and creating a new one.
+
+.. note::
+
+    **Pro tip**: if you are editing existing labels and only uploading a subset
+    of their attributes to CVAT,
+    :ref:`restricting label deletions <cvat-restricting-edits>` by setting
+    `allow_deletions=False` provides a helpful guarantee that no labels will be
+    deleted if label provenance snafus occur in CVAT.
+
+.. note::
+
+    **Pro tip**: when working with annotation schemas that include
+    :ref:`per-class attributes <cvat-label-schema>`, be sure that any class
+    label changes that you would reasonably make all share the same attribute
+    schemas so that unwanted `label_id` changes are not caused by CVAT.
+
+    If a schema-altering class change must occur, remember to manually copy the
+    `label_id` before making the change and then paste it back to ensure that
+    the ID doesn't change.
+
 .. _cvat-loading-annotations:
 
 Loading annotations
@@ -864,6 +1004,20 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
+
+Note that CVAT cannot explicitly prevent annotators from creating labels that
+don't obey the run's label schema. However, you can pass the optional
+`unexpected` parameter to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+to configure how to deal with any such unexpected labels that are found. The
+supported values are:
+
+-   `"prompt"` (**default**): present an interactive prompt to direct/discard
+    unexpected labels
+-   `"ignore"`: automatically ignore any unexpected labels
+-   `"return"`: return a dict containing all unexpected labels, if any
+
+See :ref:`this section <cvat-unexpected-annotations>` for more details.
 
 .. _cvat-managing-annotation-runs:
 
@@ -942,6 +1096,8 @@ FiftyOne dataset using the CVAT backend.
     All of the examples below assume you have configured your CVAT server and
     credentials as described in :ref:`this section <cvat-setup>`.
 
+.. _cvat-new-label-fields:
+
 Adding new label fields
 -----------------------
 
@@ -1007,6 +1163,8 @@ labeling task:
 .. image:: /images/integrations/cvat_tag.png
    :alt: cvat-tag
    :align: center
+
+.. _cvat-existing-labels:
 
 Editing existing labels
 -----------------------
@@ -1088,20 +1246,25 @@ can be used to annotate new classes and/or attributes:
    :alt: cvat-new-class
    :align: center
 
-.. note::
+.. warning::
 
-    When uploading existing labels to CVAT, the label IDs are uploaded as
-    attributes. This information is used to keep track of which labels have
-    been modified, added, or deleted, and thus editing these label IDs will
-    result in labels being overwritten when
-    loaded into FiftyOne rather than being merged.
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**:  If a `label_id` is modified in CVAT, then FiftyOne may not
+    be able to merge the annotation with its existing |Label| instance; in such
+    cases, it must instead delete the existing label and create a new |Label|
+    with the shape's contents. See :ref:`this section <cvat-limitations>` for
+    details.
+
+.. _cvat-restricting-label-edits:
 
 Restricting label edits
 -----------------------
 
-You can use the `allow_additions`, `allow_deletions`, `allow_label_edits`, and
-`allow_spatial_edits` parameters to configure whether certain types of edits
-are allowed in your annotation run. See
+You can use the `allow_additions`, `allow_deletions`, `allow_label_edits`,
+`allow_index_edits`, and `allow_spatial_edits` parameters to configure whether
+certain types of edits are allowed in your annotation run. See
 :ref:`this section <cvat-restricting-edits>` for more information about the
 available options.
 
@@ -1204,7 +1367,7 @@ attribute be populated without allowing edits to the vehicle's `type`:
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note::
+.. warning::
 
     The CVAT backend does not support restrictions to additions, deletions,
     spatial edits, and read-only attributes in its editing interface.
@@ -1214,11 +1377,22 @@ attribute be populated without allowing edits to the vehicle's `type`:
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     to merge the annotations back into FiftyOne.
 
+    **IMPORTANT**: When uploading existing labels to CVAT, the `id` of the
+    labels in FiftyOne are stored in a `label_id` attribute of the CVAT shapes.
+    If a `label_id` is modified in CVAT, then FiftyOne may not be able to merge
+    the annotation with its existing |Label| instance; it must instead delete
+    the existing label and create a new |Label| with the shape's contents. In
+    such cases, if `allow_additions` and/or `allow_deletions` were set to
+    `False` on the annotation schema, this can result in CVAT edits being
+    rejected. See :ref:`this section <cvat-limitations>` for details.
+
+.. _cvat-multiple-fields:
+
 Annotating multiple fields
 --------------------------
 
-The `label_schema` argument allows you to define annotation tasks for multiple
-fields at once:
+The `label_schema` argument allows you to define an annotation task that
+involves multiple fields:
 
 .. code:: python
     :linenos:
@@ -1250,32 +1424,48 @@ fields at once:
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
     print(dataset.get_annotation_info(anno_key))
 
-    # Add annotations in both CVAT tasks that were created
+    # Add annotations in CVAT...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
 
-.. note:
+.. note::
 
-    When annotating multiple fields, each field will get its own CVAT task.
+    CVAT annotation schemas do not have a notion of label fields. Therefore,
+    if you define an annotation schema that involves the same class label in
+    multiple fields, the name of the label field will be appended to the class
+    in CVAT in order to distinguish the class labels.
 
 .. image:: /images/integrations/cvat_multiple_fields.png
    :alt: cvat-multiple-fields
    :align: center
+
+.. _cvat-unexpected-annotations:
 
 Unexpected annotations
 ----------------------
 
 The :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 method allows you to define the annotation schema that should be followed in
-CVAT. However, you or your annotators may "violate" this schema by adding
-annotations whose types differ from the pre-configured tasks.
+CVAT. However, CVAT does not explicitly allow for restricting the label types
+that can be created, so it is possible that your annotators may accidentally
+violate a task's intended schema.
+
+You can pass the optional `unexpected` parameter to
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+to configure how to deal with any such unexpected labels that are found. The
+supported values are:
+
+-   `"prompt"` (**default**): present an interactive prompt to direct/discard
+    unexpected labels
+-   `"ignore"`: automatically ignore any unexpected labels
+-   `"return"`: return a dict containing all unexpected labels, if any
 
 For example, suppose you upload a |Detections| field to CVAT for editing, but
-then polyline annotations are added instead. In such cases, the
+then polyline annotations are added instead. When
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-method will present a command prompt asking you what field(s) (if any) to store
-these unexpected new labels in:
+is called, the default behavior is to present a command prompt asking you what
+field(s) (if any) to store these unexpected labels in:
 
 .. code:: python
     :linenos:
@@ -1301,26 +1491,24 @@ these unexpected new labels in:
    :alt: cvat-polyline
    :align: center
 
+.. _cvat-creating-projects:
+
 Creating projects
 -----------------
 
 You can use the optional `project_name` parameter to specify the name of a
-CVAT project to which to upload the task(s) for an annotation run.
+CVAT project to which to upload the task(s) for an annotation run. If a project
+with the given name already exists, the task will be uploaded to the existing
+project and will automatically inherit its annotation schema. Otherwise, a new
+project with the schema you define will be created.
 
 A typical use case for this parameter is video annotation, since in CVAT every
 video must be annotated in a separate task. Creating a project allows all of
 the tasks to be organized together in one place.
 
-As with tasks, you can delete the project(s) associated with an annotation run
-by passing the `cleanup=True` option to
+As with tasks, you can delete the project associated with an annotation run by
+passing the `cleanup=True` option to
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
-
-.. note::
-
-    All tasks within a CVAT project must share the same label schema. Thus, if
-    you specify a `project_name` for an annotation run that includes multiple
-    label fields, a new project (with the same base name) is created for each
-    label field.
 
 .. code:: python
     :linenos:
@@ -1345,6 +1533,101 @@ by passing the `cleanup=True` option to
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
+
+.. _cvat-existing-projects:
+
+Uploading to existing projects
+------------------------------
+
+The `project_name` and `project_id` parameters can both be used to specify an
+existing CVAT project to which to upload the task(s) for an annotation run.
+In this case, the schema of the project is automatically applied to your
+annotation tasks.
+
+A typical use case for this workflow is when you use the same annotation schema
+for multiple datasets, since this allows you to organize the tasks under one
+CVAT project and avoid the need to re-specify the label schema in FiftyOne.
+
+.. note::
+
+    When uploading to existing projects, because the annotation schema is
+    inherited from the CVAT project definition, any class/attribute
+    specifications that you attempt to provide via arguments such as
+    `label_schema`, `classes`, and `attributes` to
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    will be ignored.
+
+    You can, however, use the `label_schema` and `label_field` arguments for
+    the limited purpose of specifying the name of existing label field(s) to
+    upload or the name and type of new field(s) in which you want to store the
+    annotations that will be created. If no label fields are provided, then you
+    will receieve command line prompt(s) at import time to provide label
+    field(s) in which to store the annotations.
+
+    You can also use the `occluded_attr` argument to link the state of CVAT's
+    occlusion widget to a specified attribute of your objects.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(3)
+
+    project_name = "fiftyone_project_example"
+
+    #
+    # Upload existing `ground_truth` labels to a new CVAT project
+    # The label schema is automatically inferred from the existing labels
+    #
+
+    view.annotate(
+        "create_project",
+        label_field="ground_truth",
+        project_name=project_name,
+        launch_editor=True,
+    )
+
+    #
+    # Now upload the `predictions` labels to the same CVAT project
+    # Here the label schema of the existing CVAT project is automatically used
+    #
+
+    anno_key = "cvat_existing_project"
+    view.annotate(
+        anno_key,
+        label_field="predictions",
+        project_name=project_name,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+    #
+    # Now add a task with unspecified label fields to the same CVAT project
+    # In this case you will be prompted for field names at download time
+    #
+
+    anno_key = "cvat_new_fields"
+    view.annotate(
+        anno_key,
+        project_name=project_name,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Annotate in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. _cvat-assigning-users:
 
 Assigning users
 ---------------
@@ -1404,6 +1687,61 @@ will be assigned using a round-robin strategy.
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
 
+.. _cvat-large-runs:
+
+Large annotation runs
+---------------------
+
+The CVAT API imposes a limit on the size of all requests. By default, all
+images are uploaded to a single CVAT task, which can result in errors when
+uploading annotation runs for large sample collections.
+
+.. note::
+
+    The CVAT maintainers are working on
+    `an update <https://github.com/openvinotoolkit/cvat/pull/3692>`_
+    to resolve this issue natively. In the meantime, the following workflow is
+    our recommended approach to circumvent this issue.
+
+You can use the `task_size` parameter to break image annotation runs into
+multiple CVAT tasks, each with a specified maximum number of images. Note that
+we recommend providing a `project_name` whenever you use the `task_size`
+pararmeter so that the created tasks will be grouped together.
+
+The `task_size` parameter can also be used in conjunction with the
+`segment_size` parameter to configure both the number of images per task as
+well as the number of images per job within each task.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=20).clone()
+
+    anno_key = "batch_upload"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        task_size=6,  # 6 images per task
+        segment_size=2,  # 2 images per job
+        project_name="batch_example",
+        launch_editor=True,
+    )
+
+    # Annotate in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+
+.. note::
+
+    The `task_size` parameter only applies to image datasets, since videos are
+    always uploaded one per task.
+
+.. _cvat-scalar-labels:
+
 Scalar labels
 -------------
 
@@ -1453,6 +1791,8 @@ enter the appropriate scalar in the `value` attribute of the tag.
 .. image:: /images/integrations/cvat_scalar.png
    :alt: cvat-scalar
    :align: center
+
+.. _cvat-alternate-media:
 
 Uploading alternate media
 -------------------------
@@ -1515,6 +1855,8 @@ For example, let's upload some blurred images to CVAT for annotation:
    :alt: cvat-alt-media
    :align: center
 
+.. _cvat-occlusion-widget:
+
 Using CVAT's occlusion widget
 -----------------------------
 
@@ -1560,6 +1902,46 @@ linked to the occlusion widget.
     }
 
     view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark occlusions in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+You can also use the `occluded_attr` parameter to sync the state of CVAT's
+occlusion widet with a specified attribute of all spatial fields that are being
+annotated that did not explicitly have an occluded attribute defined in the
+label schema.
+
+This parameter is especially useful when working with existing CVAT projects,
+since CVAT project schemas are not able to retain information about occluded
+attributes between annotation runs.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_occluded_widget_project"
+    project_name = "example_occluded_widget"
+    label_field = "ground_truth"
+
+    # Create project
+    view.annotate("new_proj", label_field=label_field, project_name=project_name)
+
+    # Upload to existing project
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+        occluded_attr="is_occluded",
+        project_name=project_name,
+        launch_editor=True,
+    )
     print(dataset.get_annotation_info(anno_key))
 
     # Mark occlusions in CVAT...
@@ -1719,6 +2101,92 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
     dataset.delete_annotation_run(anno_key)
+
+.. warning::
+
+    When uploading existing labels to CVAT, the `id` of the labels in FiftyOne
+    are stored in a `label_id` attribute of the CVAT shapes.
+
+    **IMPORTANT**:  If a `label_id` is modified in CVAT, then FiftyOne may not
+    be able to merge the annotation with its existing |Label| instance; in such
+    cases, it must instead delete the existing label and create a new |Label|
+    with the shape's contents. See :ref:`this section <cvat-limitations>` for
+    details.
+
+.. _cvat-existing-tasks:
+
+Importing existing tasks
+________________________
+
+FiftyOne's CVAT integration is designed to manage the full annotation workflow,
+from task creation to annotation import.
+
+However, if you have created CVAT tasks outside of FiftyOne, you can use the
+:func:`import_annotations() <fiftyone.utils.cvat.import_annotations>` utility
+to import individual task(s) or an entire project into a FiftyOne dataset.
+
+.. code:: python
+    :linenos:
+
+    import os
+
+    import fiftyone as fo
+    import fiftyone.utils.cvat as fouc
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=3).clone()
+
+    # Create a pre-existing CVAT project
+    results = dataset.annotate(
+        "example_import",
+        label_field="ground_truth",
+        project_name="example_import",
+    )
+
+    #
+    # In the simplest case, you can download both the annotations and the media
+    # from CVAT
+    #
+
+    dataset = fo.Dataset()
+    fouc.import_annotations(
+        dataset,
+        project_name=project_name,
+        data_path="/tmp/cvat_import",
+        download_media=True,
+    )
+
+    session = fo.launch_app(dataset)
+
+    #
+    # If you already have the media stored locally, you can instead provide a
+    # mapping between filenames in the pre-existing CVAT project and the
+    # locations of the media locally on disk for the FiftyOne dataset
+    #
+    # Since we're using a CVAT task uploaded via FiftyOne, the mapping is a bit
+    # weird
+    #
+
+    data_map = {
+        "%06d_%s" % (idx, os.path.basename(p)): p
+        for idx, p in enumerate(dataset.values("filepath"))
+    }
+
+    dataset = fo.Dataset()
+    fouc.import_annotations(
+        dataset,
+        project_name=project_name,
+        data_path=data_map,
+    )
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Another strategy for importing existing CVAT annotations into FiftyOne is
+    to simply export the annotations from the CVAT UI and then import them via
+    the :ref:`CVATImageDataset <CVATImageDataset-import>` or
+    :ref:`CVATVideoDataset <CVATVideoDataset-import>` types.
 
 .. _cvat-utils:
 

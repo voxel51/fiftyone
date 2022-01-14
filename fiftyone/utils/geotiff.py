@@ -1,7 +1,7 @@
 """
 GeoTIFF utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -58,7 +58,8 @@ class GeoTIFFDatasetImporter(
     See :ref:`this page <GeoTIFFDataset-import>` for format details.
 
     Args:
-        dataset_dir (None): the dataset directory
+        dataset_dir (None): the dataset directory. If omitted, ``image_path``
+            must be provided
         image_path (None): an optional parameter that enables explicit control
             over the location of the GeoTIFF images. Can be any of the
             following:
@@ -93,8 +94,7 @@ class GeoTIFFDatasetImporter(
     ):
         if dataset_dir is None and image_path is None:
             raise ValueError(
-                "At least one of `dataset_dir` and `image_path` must be "
-                "provided"
+                "Either `dataset_dir` or `image_path` must be provided"
             )
 
         image_path = self._parse_labels_path(

@@ -9,20 +9,17 @@ import {
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
-import Checkbox from "../Common/Checkbox";
-import { Button } from "../FieldsSidebar";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
 } from "../../utils/labels";
-import { PopoutSectionTitle } from "../utils";
 import * as selectors from "../../recoil/selectors";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "../../utils/hooks";
 import { isDateTimeField } from "./NumericFieldFilter.state";
-import { FRAME_SUPPORT_FIELD } from "@fiftyone/looker/src/constants";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -333,100 +330,5 @@ export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
     />
   );
 };
-
-const NamedRangeSliderContainer = styled.div`
-  padding-bottom: 0.5rem;
-  margin: 3px;
-  font-weight: bold;
-`;
-
-const NamedRangeSliderHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const RangeSliderContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
-`;
-
-type NamedProps = {
-  valueAtom: RecoilState<Range>;
-  boundsAtom: RecoilValueReadOnly<Range>;
-  noneCountAtom: RecoilValueReadOnly<number>;
-  noneAtom: RecoilState<boolean>;
-  fieldType: string;
-  name?: string;
-  color: string;
-};
-
-const isDefaultRange = (range, bounds) => {
-  return bounds.every((b, i) => b === range[i]);
-};
-
-export const NamedRangeSlider = React.memo(
-  React.forwardRef(
-    (
-      { noneCountAtom, name, noneAtom, ...rangeSliderProps }: NamedProps,
-      ref
-    ) => {
-      const none = useRecoilValue(noneCountAtom);
-      const hasNone = none > 0;
-      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
-      const [range, setRange] = useRecoilState(rangeSliderProps.valueAtom);
-      const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
-      const hasDefaultRange = isDefaultRange(range, bounds);
-      const hasBounds = bounds.every((b) => b !== null);
-
-      if (!hasBounds) {
-        return null;
-      }
-
-      return (
-        <NamedRangeSliderContainer ref={ref}>
-          {name && <NamedRangeSliderHeader>{name}</NamedRangeSliderHeader>}
-          <RangeSliderContainer>
-            {hasBounds && (
-              <RangeSlider {...rangeSliderProps} showBounds={false} />
-            )}
-            {((hasNone && hasBounds && hasDefaultRange) ||
-              !hasDefaultRange) && <PopoutSectionTitle />}
-            {hasNone && hasBounds && hasDefaultRange && (
-              <Checkbox
-                color={rangeSliderProps.color}
-                name={null}
-                value={includeNone}
-                setValue={setIncludeNone}
-                count={none}
-              />
-            )}
-            {(!hasDefaultRange || !includeNone) && (
-              <>
-                <Button
-                  text={"Reset"}
-                  color={rangeSliderProps.color}
-                  onClick={() => {
-                    setRange(bounds);
-                    setIncludeNone(true);
-                  }}
-                  style={{
-                    margin: "0.25rem -0.5rem",
-                    height: "2rem",
-                    borderRadius: 0,
-                    textAlign: "center",
-                  }}
-                ></Button>
-              </>
-            )}
-          </RangeSliderContainer>
-        </NamedRangeSliderContainer>
-      );
-    }
-  )
-);
 
 export default RangeSlider;

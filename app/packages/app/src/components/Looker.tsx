@@ -28,10 +28,6 @@ const BorderDiv = styled.div`
 const AttrBlock = styled.div`
   padding: 0.1rem 0 0 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-row-gap: 0.1rem;
-  grid-column-gap: 0.5rem;
 `;
 
 const TooltipDiv = animated(styled(ContentDiv)`
@@ -197,6 +193,14 @@ const KeypointInfo = ({ detail }) => {
   );
 };
 
+const RegressionInfo = ({ detail }) => {
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo label={detail.label} />
+    </AttrBlock>
+  );
+};
+
 const SegmentationInfo = ({ detail }) => {
   const targetValue = useTarget(detail.field, detail.target);
 
@@ -239,6 +243,7 @@ const OVERLAY_INFO = {
   Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
   Polyline: PolylineInfo,
+  Regression: RegressionInfo,
   Segmentation: SegmentationInfo,
 };
 

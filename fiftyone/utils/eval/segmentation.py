@@ -1,7 +1,7 @@
 """
 Segmentation evaluation.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -101,6 +101,8 @@ def evaluate_segmentations(
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
+    eval_method.ensure_requirements()
+
     eval_method.register_run(samples, eval_key)
 
     results = eval_method.evaluate_samples(
@@ -187,7 +189,7 @@ class SegmentationEvaluation(foe.EvaluationMethod):
 
 
 class SimpleEvaluationConfig(SegmentationEvaluationConfig):
-    """Base class for configuring :class:`SimpleEvaluation` instances.
+    """Class for configuring :class:`SimpleEvaluation` instances.
 
     Args:
         pred_field: the name of the field containing the predicted
@@ -215,10 +217,13 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
 
 
 class SimpleEvaluation(SegmentationEvaluation):
-    """Base class for segmentation evaluation methods.
+    """Stardard pixelwise segmentation evaluation.
+
+    This class can optionally be configured to evaluate along only the
+    boundaries of the ground truth segmentation masks.
 
     Args:
-        config: a :class:`SegmentationEvaluationConfig`
+        config: a :class:`SimpleEvaluationConfig`
     """
 
     def evaluate_samples(self, samples, eval_key=None, mask_targets=None):

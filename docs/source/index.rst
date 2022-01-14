@@ -112,7 +112,7 @@ learn how:
     :image_title: CVAT
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.labelbox.html
+    :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
 

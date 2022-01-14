@@ -1,13 +1,11 @@
 """
 Defines the shared state between the FiftyOne App and backend.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
-
-from mongoengine.base import document
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -269,7 +267,11 @@ class DatasetStatistics(object):
                     confidence_path = "%s.confidence" % path
                     aggregations.extend(
                         [
-                            foa.Bounds(confidence_path),
+                            foa.Bounds(
+                                confidence_path,
+                                safe=True,
+                                _count_nonfinites=True,
+                            ),
                             foa.Count(confidence_path),
                         ]
                     )
@@ -293,7 +295,13 @@ class DatasetStatistics(object):
                 if _has_support(field):
                     support_path = "%s.support" % path
                     aggregations.extend(
-                        [foa.Bounds(support_path), foa.Count(support_path)]
+                        [foa.Bounds(support_path), foa.Count(support_path),]
+                    )
+
+                if _has_value(field):
+                    value_path = "%s.value" % path
+                    aggregations.extend(
+                        [foa.Bounds(value_path), foa.Count(value_path),]
                     )
 
             elif _meets_type(
@@ -305,7 +313,14 @@ class DatasetStatistics(object):
                     fof.IntField,
                 ),
             ):
-                aggregations.append(foa.Bounds(field_name))
+                has_nonfinites = _meets_type(field, fof.FloatField)
+                aggregations.append(
+                    foa.Bounds(
+                        field_name,
+                        safe=has_nonfinites,
+                        _count_nonfinites=has_nonfinites,
+                    )
+                )
             elif _meets_type(field, fof.BooleanField):
                 aggregations.append(foa.CountValues(field_name, _first=3))
             elif _meets_type(field, (fof.StringField, fof.ObjectIdField)):
@@ -334,18 +349,6 @@ def _get_categorical_aggregation(path, filters):
     return foa.CountValues(path, _first=200, _include=include)
 
 
-def _meets_type(field, t):
-    return isinstance(field, t) or (
-        isinstance(field, fof.ListField) and isinstance(field.field, t)
-    )
-
-
-def _is_label(field):
-    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-        field.document_type, fol.Label
-    )
-
-
 def _has_confidence(field):
     ltype = (
         fol._LABEL_LIST_TO_SINGLE_MAP[field.document_type]
@@ -371,3 +374,19 @@ def _has_support(field):
         else field.document_type
     )
     return hasattr(ltype, "support")
+
+
+def _has_value(field):
+    return field.document_type == fol.Regression
+
+
+def _is_label(field):
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    )
+
+
+def _meets_type(field, t):
+    return isinstance(field, t) or (
+        isinstance(field, fof.ListField) and isinstance(field.field, t)
+    )

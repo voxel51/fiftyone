@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { get32BitColor } from "./color";
@@ -68,10 +68,9 @@ const DESERIALIZE = {
     if (typeof label.mask === "string") {
       const data = deserialize(label.mask);
       const [height, width] = data.shape;
-
       label.mask = {
         data,
-        image: new ImageData(width, height).data.buffer,
+        image: new ArrayBuffer(width * height * 4),
       };
       buffers.push(data.buffer);
       buffers.push(label.mask.image);
@@ -89,7 +88,7 @@ const DESERIALIZE = {
 
       label.map = {
         data,
-        image: new ImageData(width, height).data.buffer,
+        image: new ArrayBuffer(width * height * 4),
       };
 
       buffers.push(data.buffer);
@@ -103,7 +102,7 @@ const DESERIALIZE = {
 
       label.mask = {
         data,
-        image: new ImageData(width, height).data.buffer,
+        image: new ArrayBuffer(width * height * 4),
       };
 
       buffers.push(data.buffer);
@@ -380,7 +379,8 @@ const UPDATE_LABEL = {
     );
     const bitColor = get32BitColor(color);
 
-    for (const i in overlay) {
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
       if (targets[i]) {
         overlay[i] = bitColor;
       }
@@ -433,7 +433,8 @@ const UPDATE_LABEL = {
           return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         };
 
-    for (const i in overlay) {
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
       if (targets[i] !== 0) {
         overlay[i] = getColor(targets[i]);
       }
@@ -465,14 +466,15 @@ const UPDATE_LABEL = {
     const getColor = (i) => {
       i = Math.round(Math.abs(i)) % coloring.targets.length;
 
-      if (i in cache) {
-        return cache[i];
+      if (!(i in cache)) {
+        cache[i] = get32BitColor(coloring.targets[i]);
       }
 
-      cache[i] = get32BitColor(coloring.targets[i]);
+      return cache[i];
     };
 
-    for (const i in overlay) {
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
       if (targets[i] !== 0) {
         overlay[i] = color ? color : getColor(targets[i]);
       }
