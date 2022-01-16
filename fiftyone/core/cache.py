@@ -628,7 +628,7 @@ def _compute_cache_stats(_media_cache, filepaths=None):
     current_size = 0
 
     if filepaths is not None:
-        for filepath in filepaths:
+        for filepath in set(filepaths):
             fs, local_path, exists, _ = _media_cache._parse_filepath(filepath)
             if fs != fos.FileSystem.LOCAL and exists:
                 try:
