@@ -1047,7 +1047,7 @@ class CacheClearCommand(Command):
         parser.add_argument(
             "name",
             metavar="DATASET_NAME",
-            nargs="+",
+            nargs="*",
             help="specific dataset(s) whose media to clear from the cache",
         )
 
