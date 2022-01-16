@@ -413,6 +413,7 @@ class MediaCache(object):
             if os.path.isdir(self.media_dir):
                 etau.delete_dir(self.media_dir)
         else:
+            # @todo delete empty directories after this operation?
             for filepath in filepaths:
                 fs, local_path, exists, _ = self._parse_filepath(filepath)
                 if fs != fos.FileSystem.LOCAL and exists:
@@ -585,6 +586,8 @@ def _do_garbage_collection(media_dir, cache_size, gc_logger):
         current_size -= size_bytes
         deleted_count += 1
         deleted_size += 1
+
+    # @todo delete empty directories from cache here
 
     if deleted_count > 0:
         gc_logger.info(
