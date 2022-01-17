@@ -600,3 +600,32 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     # Python packages
     pip install --upgrade pip setuptools wheel
     pip install ipython
+
+
+.. _docker:
+
+Docker Containers
+~~~~~~~~~~~~~~~~~
+
+A prebuilt Docker image with FiftyOne can be downloaded `here <...>`_.
+
+A full set of configuration settings defined via environment variables can be
+found :ref:`here <configuring-fiftyone-env>`. These settings can be passed to
+the container either via `--env` or as a file with `--env-file`.
+
+The default command for the container launches the App server on port 5151.
+
+.. code-block:: shell
+
+  docker load < fiftyone.tar.gz
+  docker run -p 5151:5151 fiftyone
+
+
+Alternatively, you can enter into an interactive Python shell:
+
+.. code-block:: shell
+
+  docker run -ti fiftyone python
+
+Or use FiftyOne's CLI, and so on. The base image is Ubuntu 20.04 and the Python
+version is 3.9.
