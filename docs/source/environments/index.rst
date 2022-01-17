@@ -628,4 +628,4 @@ Alternatively, you can enter into an interactive Python shell:
   docker run -ti fiftyone python
 
 Or use FiftyOne's CLI, and so on. The base image is Ubuntu 20.04 and the Python
-version is 3.9.
+version is 3.9. Jupyter Notebook is also installed.

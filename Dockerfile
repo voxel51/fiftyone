@@ -28,7 +28,7 @@ RUN apt install -y \
 
 COPY dist dist
 
-RUN pip install -U pip setuptools wheel
+RUN pip install -U pip setuptools wheel notebook
 RUN pip install dist/*.whl
 RUN rm -rf dist
 
