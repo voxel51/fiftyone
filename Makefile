@@ -1,5 +1,3 @@
-IMAGENAME=fiftyone
-
 .PHONY: app python docker docker-export
 
 .DEFAULT_GOAL := docker-export
@@ -14,4 +12,4 @@ docker: python
 	@docker build -t voxel51/fiftyone .
 
 docker-export: docker
-	@docker save ${IMAGENAME}:latest | gzip > ${IMAGENAME}.tar.gz
+	@docker save voxel51/fiftyone:latest | gzip > fiftyone.tar.gz
