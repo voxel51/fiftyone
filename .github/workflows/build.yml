@@ -7,6 +7,7 @@ on:
       - github-actions-*
     tags:
       - v*
+      - docker-build
   pull_request:
     types: [opened, synchronize]
     branches:
