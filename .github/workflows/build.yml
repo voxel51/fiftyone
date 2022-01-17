@@ -219,6 +219,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docker-build'
     runs-on: ubuntu-20.04
     steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
       - name: Download dist
         uses: actions/download-artifact@v2
         with:
