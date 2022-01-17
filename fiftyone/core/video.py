@@ -373,10 +373,6 @@ def make_frames_dataset(
     """Creates a dataset that contains one sample per video frame in the
     collection.
 
-    By default, samples will be generated for every video frame at full
-    resolution, but this method provides a variety of parameters that can be
-    used to customize the sampling behavior.
-
     The returned dataset will contain all frame-level fields and the ``tags``
     of each video as sample-level fields, as well as a ``sample_id`` field that
     records the IDs of the parent sample for each frame.
@@ -384,8 +380,12 @@ def make_frames_dataset(
     When ``sample_frames`` is True (the default), this method samples each
     video in the collection into a directory of per-frame images with the same
     basename as the input video with frame numbers/format specified by
-    ``frames_patt``. If this method is run multiple times, existing frames will
-    not be resampled unless ``force_sample`` is set to True.
+    ``frames_patt``.
+
+    .. note::
+
+        If this method is run multiple times, existing frames will not be
+        resampled, unless you set ``force_sample`` to True.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -405,6 +405,23 @@ def make_frames_dataset(
             000002.jpg
             ...
 
+    By default, samples will be generated for every video frame at full
+    resolution, but this method provides a variety of parameters that can be
+    used to customize the sampling behavior.
+
+    When ``sample_frames`` is False, no frame sampling is performed. Instead,
+    it is assumed that you have already provided the necessary frames via one
+    of the following methods:
+
+        -   You have populated a ``filepath`` field on each frame of the
+            collection containing the path to the frame's image
+
+        -   You previously sampled the frames to the locations expected by the
+            ``sample_frames == True`` syntax. This option is useful if the
+            sampling process failed to extract certain video frames and you
+            want to work with the available frames rather than trying to
+            resample for videos, and you would prefer to only
+
     .. note::
 
         The returned dataset is independent from the source collection;
@@ -414,9 +431,9 @@ def make_frames_dataset(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         sample_frames (True): whether to sample the video frames (True) or
-            set the ``filepath`` of each sample to the source video (False).
-            Note that datasets generated with this parameter set to False
-            cannot currently be viewed in the App
+            assume that the frames have already been sampled to the expected
+            locations and/or the locations have been specified via ``filepath``
+            fields on the frames of the collection (False)
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
