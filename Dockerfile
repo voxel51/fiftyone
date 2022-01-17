@@ -13,10 +13,14 @@
 #
 # Example usage::
 #
+#   # Build
+#   make python
 #   docker build -t voxel51/fiftyone .
 #
+#   # Run
+#   SHARED_DIR=/path/to/shared/dir
 #   docker run \
-#       -v /path/to/shared/data:/fiftyone \
+#       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
 #       -it fiftyone
 #

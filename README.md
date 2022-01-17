@@ -274,7 +274,7 @@ the following organization:
 Therefore, to run a container, you should mount `/fiftyone` as a local volume
 via `--mount` or `-v`, as shown below:
 
-```py
+```shell
 SHARED_DIR=/path/to/shared/dir
 
 docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it fiftyone
