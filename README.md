@@ -142,10 +142,10 @@ You will need:
     For example:
 
 ```shell
-# Ubuntu 18.04
+# Ubuntu
 sudo apt install libcurl4 openssl
 
-# Fedora 32
+# Fedora
 sudo dnf install libcurl openssl
 ```
 
@@ -156,14 +156,14 @@ We strongly recommend that you install FiftyOne in a
 to maintain a clean workspace. The install script is only supported in
 POSIX-based systems (e.g. Mac and Linux).
 
-1. Clone the repository:
+First, clone the repository:
 
 ```shell
-git clone --recursive https://github.com/voxel51/fiftyone
+git clone https://github.com/voxel51/fiftyone
 cd fiftyone
 ```
 
-2. Run the installation script:
+Then run the install script:
 
 ```shell
 bash install.bash
@@ -202,7 +202,7 @@ bash install.bash -d
 
 You can install from source in
 [Google Colab](https://colab.research.google.com) by running the following in a
-cell and then **RESTARTING THE RUNTIME**:
+cell and then **restarting the runtime**:
 
 ```shell
 %%shell
@@ -217,6 +217,91 @@ bash install.bash
 See the
 [docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/docs_guide.md)
 for information on building and contributing to the documentation.
+
+## Docker installs
+
+Follow the instructions below to build and use a Docker image containing a
+source build of FiftyOne.
+
+### Building an image
+
+First, clone the repository:
+
+```shell
+git clone https://github.com/voxel51/fiftyone
+cd fiftyone
+```
+
+Then build a FiftyOne wheel:
+
+```shell
+make python
+```
+
+and then build the image:
+
+```shell
+docker build -t voxel51/fiftyone .
+```
+
+The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
+via optional build arguments:
+
+```shell
+docker build \
+    --build-arg BASE_IMAGE=ubuntu:18.04 \
+    --build-arg PYTHON_VERSION=3.9 \
+    -t voxel51/fiftyone \
+    .
+```
+
+Refer to the `Dockerfile` itself for additional Python packages that you may
+wish to include in your build.
+
+### Running an image
+
+The image is designed to persist all data in a single `/fityone` directory with
+the following organization:
+
+```
+/fiftyone/
+    db/         # FIFTYONE_DATABASE_DIR
+    default/    # FIFTYONE_DEFAULT_DATASET_DIR
+    zoo/        # FIFTYONE_DATASET_ZOO_DIR
+    models/     # FIFTYONE_MODEL_ZOO_DIR
+```
+
+Therefore, to run a container, you should mount `/fiftyone` as a local volume
+via `--mount` or `-v`, as shown below:
+
+```py
+SHARED_DIR=/path/to/shared/dir
+
+docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it fiftyone
+```
+
+The `-p 5151:5151` option is required so that when you
+[launch the App](https://voxel51.com/docs/fiftyone/user_guide/app.html#sessions)
+from within the container you can connect to it at http://localhost:5151 in
+your browser.
+
+You can also include the `-e` or `--env-file` options if you need to further
+[configure FiftyOne](https://voxel51.com/docs/fiftyone/user_guide/config.html).
+
+By default, running the image launches an IPython shell, which you can use as
+normal:
+
+```py
+import fiftyone as fo
+import fiftyone.zoo as foz
+
+dataset = foz.load_zoo_dataset("quickstart")
+session = fo.launch_app(dataset)
+```
+
+Note that any datasets you create inside the Docker image must refer to media
+files within `SHARED_DIR` or another mounted volume if you intend to work with
+datasets between sessions.
 
 ## Uninstallation
 
