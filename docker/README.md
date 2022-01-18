@@ -1,19 +1,21 @@
-# FiftyOne Teams Docker DIY
+# FiftyOne Teams Relase Docker Images
 
-This document describes how to build a customizable Docker image suitable for
-running a FiftyOne Teams release of your choice.
+This document describes how to build a customizable Docker image with a Teams
+release of your choice installed.
 
 ## Building an image
 
 You can build an image for latest Teams release as follows:
 
 ```shell
+TOKEN=XXXXXXXXX
+
 docker build \
-    --build-arg TOKEN=XXXXXXXXX \
+    --build-arg TOKEN=${TOKEN} \
     -t voxel51/fiftyone-teams .
 ```
 
-where the `TOKEN` arg is your Teams install token.
+where `TOKEN` is your Teams install token.
 
 The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
 and install a specific Teams release via optional build arguments:
@@ -22,7 +24,7 @@ and install a specific Teams release via optional build arguments:
 docker build \
     --build-arg BASE_IMAGE=ubuntu:18.04 \
     --build-arg PYTHON_VERSION=3.9 \
-    --build-arg TOKEN=XXXXXXXXX \
+    --build-arg TOKEN=${TOKEN} \
     --build-arg TEAMS_VERSION=0.6.7 \
     -t voxel51/fiftyone-teams:0.6.7 \
     .
