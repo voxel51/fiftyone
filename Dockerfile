@@ -22,7 +22,7 @@
 #   docker run \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
-#       -it fiftyone
+#       -it voxel51/fiftyone
 #
 # Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
@@ -102,8 +102,8 @@ ARG ROOT_DIR=/fiftyone
 
 ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
-    FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo \
-    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/models
+    FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
+    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
 
 #
 # Default behavior

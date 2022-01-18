@@ -265,10 +265,11 @@ the following organization:
 
 ```
 /fiftyone/
-    db/         # FIFTYONE_DATABASE_DIR
-    default/    # FIFTYONE_DEFAULT_DATASET_DIR
-    zoo/        # FIFTYONE_DATASET_ZOO_DIR
-    models/     # FIFTYONE_MODEL_ZOO_DIR
+    db/             # FIFTYONE_DATABASE_DIR
+    default/        # FIFTYONE_DEFAULT_DATASET_DIR
+    zoo/
+        datasets/   # FIFTYONE_DATASET_ZOO_DIR
+        models/     # FIFTYONE_MODEL_ZOO_DIR
 ```
 
 Therefore, to run a container, you should mount `/fiftyone` as a local volume
@@ -277,7 +278,7 @@ via `--mount` or `-v`, as shown below:
 ```shell
 SHARED_DIR=/path/to/shared/dir
 
-docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it fiftyone
+docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it voxel51/fiftyone
 ```
 
 The `-p 5151:5151` option is required so that when you
