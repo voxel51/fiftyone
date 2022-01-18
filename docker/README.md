@@ -1,6 +1,6 @@
 # FiftyOne Teams Relase Docker Images
 
-This document describes how to build a customizable Docker image with a
+This document describes how to build and run a customizable Docker image with a
 FiftyOne Teams release of your choice installed.
 
 ## Building an image
@@ -26,8 +26,7 @@ docker build \
     --build-arg PYTHON_VERSION=3.9 \
     --build-arg TOKEN=${TOKEN} \
     --build-arg TEAMS_VERSION=0.6.7 \
-    -t voxel51/fiftyone-teams:0.6.7 \
-    .
+    -t voxel51/fiftyone-teams:0.6.7 .
 ```
 
 Refer to the `Dockerfile` itself for additional Python packages that you may
