@@ -1,7 +1,7 @@
 # FiftyOne Teams Relase Docker Images
 
-This document describes how to build a customizable Docker image with a Teams
-release of your choice installed.
+This document describes how to build a customizable Docker image with a
+FiftyOne Teams release of your choice installed.
 
 ## Building an image
 
@@ -88,3 +88,17 @@ import fiftyone as fo
 dataset = fo.Dataset.from_images_dir("s3://bucket/folder")
 session = fo.launch_app(dataset)
 ```
+
+## Miscellaneous
+
+### Connecting to a localhost database
+
+If you are using a local database that you ordinarily connect to via a URI like
+`mongodb://localhost`, then you will need to tweak this slightly when working
+in Docker. See [this question](https://stackoverflow.com/q/24319662) for
+details.
+
+On Linux, include `--network="host"` in your `docker run` command and use
+`mongodb://127.0.0.1` for your URI.
+
+On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
