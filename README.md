@@ -265,10 +265,11 @@ the following organization:
 
 ```
 /fiftyone/
-    db/         # FIFTYONE_DATABASE_DIR
-    default/    # FIFTYONE_DEFAULT_DATASET_DIR
-    zoo/        # FIFTYONE_DATASET_ZOO_DIR
-    models/     # FIFTYONE_MODEL_ZOO_DIR
+    db/             # FIFTYONE_DATABASE_DIR
+    default/        # FIFTYONE_DEFAULT_DATASET_DIR
+    zoo/
+        datasets/   # FIFTYONE_DATASET_ZOO_DIR
+        models/     # FIFTYONE_MODEL_ZOO_DIR
 ```
 
 Therefore, to run a container, you should mount `/fiftyone` as a local volume
