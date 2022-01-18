@@ -9,10 +9,10 @@ const Loading = () => {
   return (
     <CircularProgress
       style={{
-        color: theme.font,
+        color: theme.fontDark,
         height: 16,
         width: 16,
-        margin: 4,
+        margin: 5,
       }}
     />
   );

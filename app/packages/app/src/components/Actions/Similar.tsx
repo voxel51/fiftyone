@@ -21,12 +21,12 @@ import { useTheme } from "../../utils/hooks";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
-import { samples } from "../Flashlight";
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "../utils";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
+import { store } from "../Flashlight.store";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -54,7 +54,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   if (isPatches) {
     if (selectedSamples.size) {
       return [...selectedSamples].map(
-        (id) => samples.get(id).sample[labels_field]._id
+        (id) => store.samples.get(id).sample[labels_field]._id
       );
     }
 

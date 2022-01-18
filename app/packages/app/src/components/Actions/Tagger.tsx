@@ -39,6 +39,7 @@ import { PopoutSectionTitle } from "../utils";
 import { VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { store } from "../Flashlight.store";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -370,7 +371,9 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
           ? await snapshot.getPromise(selectors.hiddenLabelsArray)
           : null;
 
-      const { samples, ok } = await fetch(url, {
+      const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
+
+      const response = await fetch(url, {
         method: "POST",
         cache: "no-cache",
         headers: {
@@ -384,6 +387,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
           active_label_fields: activeLabels,
           target_labels: targetLabels,
           changes,
+          sample_id: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
             : selectedSamples.size
@@ -397,13 +401,23 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
         }),
       });
 
-      if (ok) {
-        samples.forEach((sample) => {
-          modal.sample._id === sample._id &&
-            lookerRef.current &&
-            lookerRef.current.updateSample(sample);
-        });
-        set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
+      if (response.ok) {
+        const { samples } = await response.json();
+        samples &&
+          samples.forEach((sample) => {
+            if (modalData.sample._id === sample._id) {
+              set(atoms.modal, { ...modalData, sample });
+              lookerRef.current.updateSample(sample);
+            }
+
+            store.samples.set(sample._id, {
+              ...samples.get(sample._id),
+              sample,
+            });
+            store.lookers.has(sample._id) &&
+              store.lookers.get(sample._id).updateSample(sample);
+          });
+
         set(selectors.anyTagging, false);
 
         refresh();

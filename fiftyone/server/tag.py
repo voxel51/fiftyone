@@ -9,10 +9,11 @@ import tornado
 
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.json_util import convert
-from fiftyone.server.state import catch_errors
+from fiftyone.server.state import catch_errors, StateHandler
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
@@ -37,10 +38,12 @@ class TagHandler(fosu.AsyncRequestHandler):
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
 
-        sample_ids = set(sample_ids)
+        sample_ids = set(sample_ids or [])
         if labels:
             for label in labels:
                 sample_ids.add(label["sample_id"])
+        elif modal:
+            sample_ids.add(sample_id)
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
@@ -75,5 +78,6 @@ class TagHandler(fosu.AsyncRequestHandler):
                 view._pipeline(attach_frames=True, detach_frames=False),
             ).to_list(len(sample_ids))
             return {"samples": convert(samples)}
+
         else:
             return {"samples": []}

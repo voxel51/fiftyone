@@ -321,6 +321,11 @@ export const NameAndCountContainer = styled.div`
   justify-content: space-between;
   flex: 1;
   min-width: 0;
+  user-select: none;
+
+  & * {
+    user-select: none;
+  }
 
   & > span:first-child {
     flex: 1;

@@ -373,6 +373,7 @@ export abstract class Looker<
         update({
           hovering: false,
           disableControls: false,
+          showOptions: false,
           panning: false,
         });
       },
@@ -473,13 +474,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label._id,
-            sample_id: this.sample._id,
+            labelId: label._id,
+            sampleId: this.sample._id,
           });
         });
       } else {
-        const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample._id });
+        const { id: labelId, field } = overlay.getSelectData(this.state);
+        labels.push({ labelId, field, sampleId: this.sample._id });
       }
     });
 
@@ -1029,13 +1030,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label._id,
-            sample_id: this.sample._id,
+            labelId: label._id,
+            sampleId: this.sample._id,
           });
         });
       } else {
-        const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample._id });
+        const { id: labelId, field } = overlay.getSelectData(this.state);
+        labels.push({ labelId, field, sampleId: this.sample._id });
       }
     });
 
@@ -1051,18 +1052,18 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              label_id: label._id,
-              frame_number: this.frameNumber,
-              sample_id: this.sample._id,
+              labelId: label._id,
+              frameNumber: this.frameNumber,
+              sampleId: this.sample._id,
             });
           });
         } else {
-          const { id: label_id, field } = overlay.getSelectData(this.state);
+          const { id: labelId, field } = overlay.getSelectData(this.state);
           labels.push({
-            label_id,
+            labelId,
             field,
-            sample_id: this.sample._id,
-            frame_number: this.frameNumber,
+            sampleId: this.sample._id,
+            frameNumber: this.frameNumber,
           });
         }
       });

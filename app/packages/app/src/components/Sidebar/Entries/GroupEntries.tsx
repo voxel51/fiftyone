@@ -276,6 +276,10 @@ const GroupHeader = styled.div`
   color: ${({ theme }) => theme.fontDark};
   background: ${({ theme }) => theme.backgroundTransparent};
 
+  * {
+    user-select: none;
+  }
+
   svg {
     font-size: 1.25em;
     vertical-align: middle;

@@ -34,10 +34,10 @@ export interface Sample {
 }
 
 export interface LabelData {
-  label_id: string;
+  labelId: string;
   field: string;
-  frame_number?: number;
-  sample_id: string;
+  frameNumber?: number;
+  sampleId: string;
   index?: number;
 }
 

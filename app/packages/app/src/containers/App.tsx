@@ -41,7 +41,6 @@ const useStateUpdate = () => {
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);
-      const oldState = get(atoms.stateDescription);
 
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);

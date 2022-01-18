@@ -37,6 +37,9 @@ export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
 
 export const filterPaths = (paths: string[], schema: Schema): string[] => {
   return paths.filter((path) => {
+    if (path.startsWith("tags.") || path.startsWith("_label_tags."))
+      return true;
+
     const keys = path.split(".");
     let fields = schema;
 

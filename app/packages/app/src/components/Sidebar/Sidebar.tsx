@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
-import { animated, Controller } from "@react-spring/web";
+import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
@@ -352,6 +352,10 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
+  & * {
+    user-select: none;
+  }
+
   scrollbar-color: ${({ theme }) => theme.fontDarkest}
     ${({ theme }) => theme.background};
   background: ${({ theme }) => theme.background};
@@ -419,6 +423,10 @@ const InteractiveSidebar = ({
           left: -1000,
           scale: 1,
           shadow: 0,
+          config: {
+            ...config.stiff,
+            bounce: 0,
+          },
         }),
         entry,
         active: false,

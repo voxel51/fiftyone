@@ -6,7 +6,7 @@ import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useTheme } from "../utils/hooks";
+import { useEventHandler, useSelect, useTheme } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
@@ -20,13 +20,14 @@ import { pathFilter } from "./Filters";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
 import { LIST_FIELD } from "@fiftyone/utilities";
+import { Checkbox } from "@material-ui/core";
 
 const Header = styled.div`
   position: absolute;
   top: 0;
   display: flex;
   padding: 0.5rem;
-  flex-direction: row-reverse;
+  justify-content: space-between;
   overflow: visible;
   width: 100%;
   z-index: 1000;
@@ -494,6 +495,8 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
+  const onSelect = useSelect();
+  const selected = useRecoilValue(atoms.selectedSamples);
 
   useEffect(() => {
     initialRef.current = false;
@@ -504,6 +507,8 @@ const Looker = ({
   }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
+
+  const isSelected = selected.has(sample._id);
 
   return (
     <div
@@ -518,6 +523,13 @@ const Looker = ({
     >
       {options.showControls && (
         <Header ref={headerRef}>
+          <Checkbox
+            disableRipple
+            title={isSelected ? "Select sample" : "Selected"}
+            onClick={() => onSelect(sample._id)}
+            checked={isSelected}
+            style={{ color: theme.brand }}
+          />
           <ModalActionsRow lookerRef={lookerRef} />
         </Header>
       )}

@@ -41,10 +41,11 @@ import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
-import { useEventHandler, useMessageHandler } from "../utils/hooks";
+import { useEventHandler, useMessageHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
+import { store } from "./Flashlight.store";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -86,19 +87,7 @@ export const gridZoomRange = atom<[number, number]>({
   default: [0, 10],
 });
 
-type Lookers = FrameLooker | ImageLooker | VideoLooker;
-
-const createLookerCache = <L extends Lookers>() => {
-  return new LRU<string, L>({
-    max: 500,
-    dispose: (id, looker) => looker.destroy(),
-  });
-};
-
-export let samples = new Map<string, atoms.SampleData>();
-export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
-let lookers = createLookerCache();
 
 const url = `${http}/page`;
 
@@ -172,11 +161,11 @@ const useThumbnailClick = (
       set(sidebarGroupsDefinition(true), groups);
       const openModal = () => {
         const getIndex = (index) => {
-          const promise = sampleIndices.has(index)
-            ? Promise.resolve(samples.get(sampleIndices.get(index)))
+          const promise = store.indices.has(index)
+            ? Promise.resolve(store.samples.get(store.indices.get(index)))
             : flashlight.current.get()?.then(() => {
-                return sampleIndices.has(index)
-                  ? samples.get(sampleIndices.get(index))
+                return store.indices.has(index)
+                  ? store.samples.get(store.indices.get(index))
                   : null;
               });
 
@@ -189,7 +178,7 @@ const useThumbnailClick = (
             : clearModal();
         };
         set(atoms.modal, {
-          ...samples.get(sampleId),
+          ...store.samples.get(sampleId),
           index: clickedIndex,
           getIndex,
         });
@@ -245,7 +234,7 @@ const useThumbnailClick = (
         );
       };
 
-      if (!selected.size) {
+      if (!selected.size || event.ctrlKey) {
         openModal();
         return;
       }
@@ -261,24 +250,6 @@ const useThumbnailClick = (
           : selected.add(sampleId);
       }
 
-      set(atoms.selectedSamples, selected);
-      socket.send(
-        packageMessage("set_selection", { _ids: Array.from(selected) })
-      );
-    },
-    []
-  );
-};
-
-const useSelect = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async (sampleId: string) => {
-      const selected = new Set(
-        await snapshot.getPromise(atoms.selectedSamples)
-      );
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
       set(atoms.selectedSamples, selected);
       socket.send(
         packageMessage("set_selection", { _ids: Array.from(selected) })
@@ -422,10 +393,8 @@ export default React.memo(() => {
       return;
     }
 
-    samples = new Map();
-    lookers.reset();
+    store.reset();
     freeVideos();
-    sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
   }, [
@@ -462,7 +431,7 @@ export default React.memo(() => {
           };
         },
         onItemResize: (id, dimensions) => {
-          lookers.has(id) && lookers.get(id).resize(dimensions);
+          store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
           const params = await getPageParams();
@@ -483,8 +452,8 @@ export default React.memo(() => {
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
               };
-              samples.set(result.sample._id, data);
-              sampleIndices.set(nextIndex, result.sample._id);
+              store.samples.set(result.sample._id, data);
+              store.indices.set(nextIndex, result.sample._id);
               nextIndex++;
 
               return data;
@@ -507,10 +476,10 @@ export default React.memo(() => {
         },
         render: (sampleId, element, dimensions, soft, hide) => {
           try {
-            const result = samples.get(sampleId);
+            const result = store.samples.get(sampleId);
 
-            if (lookers.has(sampleId)) {
-              const looker = lookers.get(sampleId);
+            if (store.lookers.has(sampleId)) {
+              const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
 
               return null;
@@ -523,7 +492,7 @@ export default React.memo(() => {
                 ({ detail }: { detail: string }) => onSelect(detail)
               );
 
-              lookers.set(sampleId, looker);
+              store.lookers.set(sampleId, looker);
               looker.attach(element, dimensions);
             }
 
@@ -537,7 +506,7 @@ export default React.memo(() => {
     } else {
       flashlight.current.updateOptions(options);
       flashlight.current.updateItems((sampleId) => {
-        const looker = lookers.get(sampleId);
+        const looker = store.lookers.get(sampleId);
         looker &&
           looker.updateOptions({
             ...lookerOptions.contents,
