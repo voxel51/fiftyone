@@ -50,19 +50,19 @@ def init_storage():
     global minio_endpoint_prefix
 
     try:
-        credentials = _load_minio_credentials()
-
-        if "alias" in credentials:
-            minio_alias_prefix = credentials["alias"] + "://"
-        else:
-            minio_alias_prefix = None
-
-        if "endpoint_url" in credentials:
-            minio_endpoint_prefix = credentials["endpoint_url"] + "/"
-        else:
-            minio_endpoint_prefix = None
+        d = _load_minio_credentials()
     except:
-        pass
+        d = {}
+
+    if "alias" in d:
+        minio_alias_prefix = d["alias"] + "://"
+    else:
+        minio_alias_prefix = None
+
+    if "endpoint_url" in d:
+        minio_endpoint_prefix = d["endpoint_url"].rstrip("/") + "/"
+    else:
+        minio_endpoint_prefix = None
 
 
 class FileSystem(object):

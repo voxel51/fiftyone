@@ -23,9 +23,11 @@ import fiftyone.constants as _foc
 __version__ = _foc.TEAMS_VERSION
 
 from fiftyone.__public__ import *
+from fiftyone.core.storage import init_storage as _init_storage
 from fiftyone.core.uid import log_import_if_allowed as _log_import
 from fiftyone.migrations import migrate_database_if_necessary as _migrate
 
+_init_storage()
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _migrate()
