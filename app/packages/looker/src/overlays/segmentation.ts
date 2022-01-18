@@ -31,31 +31,37 @@ export default class SegmentationOverlay<State extends BaseState>
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
-    if (this.label.mask) {
-      this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
-        this.label.mask.data.buffer
-      );
-
-      const [height, width] = this.label.mask.data.shape;
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = width;
-      this.canvas.height = height;
-
-      this.imageData = new ImageData(
-        new Uint8ClampedArray(this.label.mask.image),
-        width,
-        height
-      );
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
+    if (!this.label.mask) {
+      return;
     }
+    const [height, width] = this.label.mask.data.shape;
+
+    if (!height || !width) {
+      return;
+    }
+
+    this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
+      this.label.mask.data.buffer
+    );
+
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = width;
+    this.canvas.height = height;
+
+    this.imageData = new ImageData(
+      new Uint8ClampedArray(this.label.mask.image),
+      width,
+      height
+    );
+    const maskCtx = this.canvas.getContext("2d");
+    maskCtx.imageSmoothingEnabled = false;
+    maskCtx.clearRect(
+      0,
+      0,
+      this.label.mask.data.shape[1],
+      this.label.mask.data.shape[0]
+    );
+    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -76,12 +82,14 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
-    const [tlx, tly] = t(state, 0, 0);
-    const [brx, bry] = t(state, 1, 1);
-    const tmp = ctx.globalAlpha;
-    ctx.globalAlpha = state.options.alpha;
-    ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
-    ctx.globalAlpha = tmp;
+    if (this.imageData) {
+      const [tlx, tly] = t(state, 0, 0);
+      const [brx, bry] = t(state, 1, 1);
+      const tmp = ctx.globalAlpha;
+      ctx.globalAlpha = state.options.alpha;
+      ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+      ctx.globalAlpha = tmp;
+    }
 
     if (this.isSelected(state)) {
       strokeCanvasRect(

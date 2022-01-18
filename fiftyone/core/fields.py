@@ -192,7 +192,13 @@ class HeatmapRangeField(ListField):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=FloatField(), null=True, **kwargs)
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
+        if "field" not in kwargs:
+            kwargs["field"] = FloatField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
