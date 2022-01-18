@@ -36,7 +36,7 @@ import { Button } from "../utils";
 import { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle } from "../utils";
-import { VideoLooker } from "@fiftyone/looker";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { store } from "../Flashlight.store";
@@ -390,7 +390,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
           active_label_fields: activeLabels,
           target_labels: targetLabels,
           changes,
-          sample_id: modal ? modalData.sample._id : null,
+          modal: modal ? modalData.sample._id : null,
           sample_ids: modal
             ? null
             : selectedSamples.size
@@ -406,18 +406,15 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
 
       if (response.ok) {
         const { samples } = await response.json();
-        console.log("SAMPLES", samples);
         samples &&
           samples.forEach((sample) => {
-            console.log(modalData.sample._id, sample._id);
             if (modalData.sample._id === sample._id) {
               set(atoms.modal, { ...modalData, sample });
-              alert("E");
               lookerRef.current.updateSample(sample);
             }
 
             store.samples.set(sample._id, {
-              ...samples.get(sample._id),
+              ...store.samples.get(sample._id),
               sample,
             });
             store.lookers.has(sample._id) &&
@@ -452,7 +449,7 @@ const usePlaceHolder = (
     const selectedSamples = useRecoilValue(atoms.selectedSamples).size;
 
     const selectedLabels = useRecoilValue(selectors.selectedLabelIds).size;
-    if (modal && labels && !selectedSamples) {
+    if (modal && labels && (!selectedSamples || selectedLabels)) {
       const labelCount =
         selectedLabels > 0
           ? selectedLabels
@@ -495,7 +492,7 @@ type TaggerProps = {
   modal: boolean;
   bounds: any;
   close: () => void;
-  lookerRef?: MutableRefObject<VideoLooker>;
+  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
 };
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
@@ -514,7 +511,6 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
 
   const submit = useTagCallback(modal, labels, lookerRef);
   const placeholder = usePlaceHolder(modal, labels, elementNames);
-
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>

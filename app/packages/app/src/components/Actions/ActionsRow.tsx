@@ -167,11 +167,7 @@ const Tag = ({
           modal={modal}
           bounds={bounds}
           close={() => setOpen(false)}
-          lookerRef={
-            lookerRef && lookerRef.current instanceof VideoLooker
-              ? (lookerRef as MutableRefObject<VideoLooker>)
-              : null
-          }
+          lookerRef={lookerRef}
         />
       )}
     </ActionDiv>
