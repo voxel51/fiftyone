@@ -44,6 +44,8 @@ RUN apt -y update \
     && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt -y update \
     && apt -y upgrade \
+    && apt -y --no-install-recommends install tzdata \
+    && TZ=Etc/UTC \
     && apt -y --no-install-recommends install \
         build-essential \
         ca-certificates \
