@@ -1,4 +1,4 @@
-# Dockerfile for building an image with a source FiftyOne install atop a
+# Dockerfile for building an image with a source FiftyOne Teams install atop a
 # Debian-based Linux distribution.
 #
 # By default, Ubuntu 20.04 and Python 3.8 are used, but these can be customized
@@ -15,14 +15,14 @@
 #
 #   # Build
 #   make python
-#   docker build -t voxel51/fiftyone .
+#   docker build -t voxel51/fiftyone-teams .
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
 #   docker run \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
-#       -it voxel51/fiftyone
+#       -it voxel51/fiftyone-teams
 #
 # Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
@@ -86,7 +86,7 @@ RUN apt update \
 RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 
 #
-# Install FiftyOne from source
+# Install FiftyOne Teams from source
 #
 
 COPY dist dist
@@ -100,7 +100,8 @@ RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 # volume-mounted by users to persist data loaded into FiftyOne
 ARG ROOT_DIR=/fiftyone
 
-ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
+ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
+    FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
     FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
     FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
