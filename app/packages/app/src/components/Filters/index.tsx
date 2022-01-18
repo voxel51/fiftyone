@@ -15,6 +15,7 @@ import {
 
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
+import { State } from "../../recoil/types";
 
 import { filter as boolean } from "./booleanState";
 import { filter as string } from "./stringState";
@@ -23,7 +24,7 @@ import { filter as numeric } from "./numericState";
 import BooleanFieldFilter from "./BooleanFieldFilter";
 import NumericFieldFilter from "./NumericFieldFilter";
 import StringFieldFilter from "./StringFieldFilter";
-import { filters, modalFilters } from "../../recoil/filters";
+import { matchedTags } from "../../recoil/filters";
 
 export { BooleanFieldFilter, NumericFieldFilter, StringFieldFilter };
 
@@ -55,6 +56,9 @@ const primitiveFilter = selectorFamily<
 
     return (value) => true;
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const pathFilter = selectorFamily<
@@ -65,8 +69,13 @@ export const pathFilter = selectorFamily<
   get: (modal) => ({ get }) => {
     const paths = get(schemaAtoms.activeFields({ modal }));
     const hidden = get(selectors.hiddenLabelIds);
+    const matchedLabelTags = get(
+      matchedTags({ key: State.TagKey.LABEL, modal })
+    );
 
     const filters = paths.reduce((f, path) => {
+      if (path.startsWith("_")) return f;
+
       const { embeddedDocType } = get(schemaAtoms.field(path));
 
       if (LABELS.includes(embeddedDocType)) {
@@ -91,7 +100,13 @@ export const pathFilter = selectorFamily<
             return false;
           }
 
-          return fs.every((filter) => filter(value));
+          let matched = true;
+          if (matchedLabelTags.size) {
+            matched =
+              value.tags && value.tags.some((tag) => matchedLabelTags.has(tag));
+          }
+
+          return matched && fs.every((filter) => filter(value));
         };
       } else {
         f[path] = get(primitiveFilter({ modal, path }));
@@ -107,5 +122,8 @@ export const pathFilter = selectorFamily<
 
       return filters[path](value);
     };
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });

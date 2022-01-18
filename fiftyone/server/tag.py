@@ -77,6 +77,7 @@ class TagHandler(fosu.AsyncRequestHandler):
                 StateHandler.sample_collection(),
                 view._pipeline(attach_frames=True, detach_frames=False),
             ).to_list(len(sample_ids))
+            print(samples)
             return {"samples": convert(samples)}
 
         else:

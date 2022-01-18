@@ -18,7 +18,6 @@ import * as selectors from "../recoil/selectors";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
-import { useMessageHandler } from "../utils/hooks";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -48,10 +47,6 @@ const ContentColumn = styled.div`
   position: relative;
   overflow: visible;
 `;
-
-type Props = {
-  onClose: () => void;
-};
 
 interface SelectEvent {
   detail: {

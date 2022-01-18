@@ -45,7 +45,7 @@ const labelTagCount = selectorFamily<
         ...MATCH_LABEL_TAGS,
         ...rest,
       })
-    )[tag],
+    )[tag] || 0,
 });
 
 export const tagIsMatched = selectorFamily<

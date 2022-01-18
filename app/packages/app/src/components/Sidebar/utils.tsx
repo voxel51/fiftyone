@@ -58,15 +58,16 @@ export const useTagText = (modal: boolean) => {
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
-  const loading = useLoading({ modal, extended: false });
   const [entries, setEntries] = useRecoilStateLoadable(
     sidebarEntries({ modal, loadingTags: false })
   );
   const loadingEntries = useRecoilValue(
     sidebarEntries({ modal, loadingTags: true })
   );
-
-  return [loading ? loadingEntries : entries.contents, setEntries];
+  return [
+    entries.state === "loading" ? loadingEntries : entries.contents,
+    setEntries,
+  ];
 };
 
 export const MATCH_LABEL_TAGS = {

@@ -1,7 +1,12 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback, selector } from "recoil";
+import {
+  useRecoilValue,
+  useRecoilCallback,
+  selector,
+  useRecoilValueLoadable,
+} from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
@@ -24,6 +29,7 @@ import { Checkbox } from "@material-ui/core";
 
 const Header = styled.div`
   position: absolute;
+  cursor: pointer;
   top: 0;
   display: flex;
   padding: 0.5rem;
@@ -427,7 +433,7 @@ const Looker = ({
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
   const sampleSrc = getSampleSrc(sample.filepath, sample._id);
-  const options = useRecoilValue(lookerOptions);
+  const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
@@ -510,6 +516,8 @@ const Looker = ({
 
   const isSelected = selected.has(sample._id);
 
+  const select = () => onSelect(sample._id);
+
   return (
     <div
       id={id}
@@ -522,13 +530,16 @@ const Looker = ({
       onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
       {options.showControls && (
-        <Header ref={headerRef}>
+        <Header
+          ref={headerRef}
+          onClick={() => event.target === headerRef.current && select()}
+        >
           <Checkbox
             disableRipple
             title={isSelected ? "Select sample" : "Selected"}
-            onClick={() => onSelect(sample._id)}
             checked={isSelected}
             style={{ color: theme.brand }}
+            onClick={select}
           />
           <ModalActionsRow lookerRef={lookerRef} />
         </Header>

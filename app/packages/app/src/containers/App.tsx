@@ -1,4 +1,4 @@
-import React, { useState, useRef, Suspense } from "react";
+import React, { useState, useRef, Suspense, useEffect } from "react";
 import {
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
@@ -81,6 +81,7 @@ const useStateUpdate = () => {
       ) {
         set(atoms.colorPool, state.config.colorPool);
       }
+      set(atoms.connected, true);
     },
     []
   );
@@ -88,9 +89,10 @@ const useStateUpdate = () => {
 
 const useClose = () => {
   const clearModal = useClearModal();
-  return useRecoilCallback(
-    ({ reset }) => async () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ reset, set }) => async () => {
       clearModal();
+      set(atoms.connected, false);
       reset(atoms.stateDescription);
     },
     []
@@ -99,7 +101,7 @@ const useClose = () => {
 
 const Container = () => {
   const addNotification = useRef(null);
-  const connected = useRecoilValue(selectors.connected);
+  const connected = useRecoilValue(atoms.connected);
 
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useStateUpdate());

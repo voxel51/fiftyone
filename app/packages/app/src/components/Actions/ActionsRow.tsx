@@ -131,9 +131,10 @@ const Tag = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
-  const selected = useRecoilValue(
-    modal ? selectors.selectedLabelIds : atoms.selectedSamples
-  );
+  const labels = useRecoilValue(selectors.selectedLabelIds);
+  const samples = useRecoilValue(atoms.selectedSamples);
+
+  const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(selectors.anyTagging);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
@@ -157,7 +158,7 @@ const Tag = ({
         icon={disabled ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && available && setOpen(!open)}
-        highlight={(Boolean(selected.size) || open) && available}
+        highlight={(selected || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
       />
@@ -186,24 +187,28 @@ const Selected = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
-  const selectedObjects = useRecoilValue(selectors.selectedLabels);
+  const samples = useRecoilValue(atoms.selectedSamples);
+  const labels = useRecoilValue(selectors.selectedLabelIds);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-
-  const numItems = modal
-    ? Object.keys(selectedObjects).length
-    : selectedSamples.size;
 
   lookerRef &&
     useEventHandler(lookerRef.current, "buffering", (e) =>
       setLoading(e.detail)
     );
 
-  if (numItems < 1 && !modal) {
+  if (samples.size < 1 && !modal) {
     return null;
   }
+
+  let text = samples.size.toLocaleString();
+  if (samples.size > 0 && labels.size > 0 && modal) {
+    text = `${text} | ${labels.size.toLocaleString()}`;
+  } else if (labels.size > 0 && modal) {
+    text = labels.size.toLocaleString();
+  }
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
@@ -215,12 +220,10 @@ const Selected = ({
           }
           setOpen(!open);
         }}
-        highlight={numItems > 0 || open}
-        text={`${numItems}`}
+        highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
+        text={text}
         ref={mRef}
-        title={`Manage selected ${modal ? "label" : "sample"}${
-          numItems > 1 ? "s" : ""
-        }`}
+        title={`Manage selected`}
         style={{
           cursor: loading ? "default" : "pointer",
         }}

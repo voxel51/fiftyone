@@ -41,7 +41,7 @@ import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
-import { useEventHandler, useMessageHandler, useSelect } from "../utils/hooks";
+import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
@@ -234,7 +234,11 @@ const useThumbnailClick = (
         );
       };
 
-      if (!selected.size || event.ctrlKey) {
+      const selectedopen = selected.size > 0 && event.type === "contextmenu";
+      if (selectedopen) {
+        event.preventDefault();
+      }
+      if (!selected.size || event.ctrlKey || selectedopen) {
         openModal();
         return;
       }

@@ -102,6 +102,7 @@ export const tagStatistics = selectorFamily<
   key: "tagStatistics",
   get: ({ modal, labels }) => async ({ get }) => {
     const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
+    const selected = get(atoms.selectedSamples);
     const { count, tags } = await fetch(url, {
       method: "POST",
       cache: "no-cache",
@@ -113,12 +114,15 @@ export const tagStatistics = selectorFamily<
         dataset: get(datasetName),
         view: get(view),
         active_label_fields: activeLabels,
-        sample_ids: modal
+        sample_ids: selected.size
+          ? [...selected]
+          : modal
           ? [get(atoms.modal).sample._id]
-          : [...get(atoms.selectedSamples)],
-        labels: modal
-          ? toSnakeCase(get(atoms.stateDescription).selectedLabels)
-          : [],
+          : null,
+        labels:
+          modal && !selected.size
+            ? toSnakeCase(get(atoms.stateDescription).selectedLabels)
+            : [],
         count_labels: labels,
         filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
         hidden_labels:

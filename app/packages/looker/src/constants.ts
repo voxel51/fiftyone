@@ -27,7 +27,7 @@ export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
 export const SELECTION_TEXT =
-  "Click to select sample, Shift+Click to select a range, Ctrl+Click to expand";
+  "Click to select sample, Shift+Click to select a range, Right click to expand";
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",

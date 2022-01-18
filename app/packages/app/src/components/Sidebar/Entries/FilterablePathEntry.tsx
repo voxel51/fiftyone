@@ -230,7 +230,11 @@ const FilterableEntry = React.memo(
     return (
       <RegularEntry
         title={`${path} (${
-          field.embeddedDocType ? field.embeddedDocType : field.ftype
+          field.embeddedDocType
+            ? field.embeddedDocType
+            : field.subfield
+            ? `${field.ftype}(${field.subfield})`
+            : field.ftype
         })`}
         color={color}
         heading={

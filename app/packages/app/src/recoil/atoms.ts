@@ -4,6 +4,11 @@ import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 
+export const connected = atom<boolean>({
+  key: "connected",
+  default: true,
+});
+
 interface AppSample extends Sample {
   _id: string;
 }

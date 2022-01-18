@@ -400,11 +400,3 @@ export const similarityKeys = selector<{
     eviction: "most-recent",
   },
 });
-
-export const connected = selector<boolean>({
-  key: "connected",
-  get: ({ get }) => Boolean(get(atoms.stateDescription)),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});

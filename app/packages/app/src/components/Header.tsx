@@ -499,7 +499,7 @@ const DatasetSelector = ({ error }: { error: boolean }) => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
-  const connected = useRecoilValue(selectors.connected);
+  const connected = useRecoilValue(atoms.connected);
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
   useLayoutEffect(() => {

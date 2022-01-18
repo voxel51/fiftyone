@@ -340,17 +340,20 @@ const samplePlaceholder = (elementNames) => {
 const url = `${http}/tag`;
 
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
-  const refreshExtended = useRecoilRefresher_UNSTABLE(
-    aggregationAtoms.aggregations({ modal, extended: true })
+  const refreshers = [true, false]
+    .map((modal) =>
+      [true, false].map((extended) =>
+        useRecoilRefresher_UNSTABLE(
+          aggregationAtoms.aggregations({ modal, extended })
+        )
+      )
+    )
+    .flat();
+  refreshers.push(
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false }))
   );
-  const refresh = useRecoilRefresher_UNSTABLE(
-    aggregationAtoms.aggregations({ modal, extended: false })
-  );
-  const refreshTagStats = useRecoilRefresher_UNSTABLE(
-    tagStatistics({ modal, labels: false })
-  );
-  const refreshTagLabelStats = useRecoilRefresher_UNSTABLE(
-    tagStatistics({ modal, labels: targetLabels })
+  refreshers.push(
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels }))
   );
 
   return useRecoilCallback(
@@ -403,10 +406,13 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
 
       if (response.ok) {
         const { samples } = await response.json();
+        console.log("SAMPLES", samples);
         samples &&
           samples.forEach((sample) => {
+            console.log(modalData.sample._id, sample._id);
             if (modalData.sample._id === sample._id) {
               set(atoms.modal, { ...modalData, sample });
+              alert("E");
               lookerRef.current.updateSample(sample);
             }
 
@@ -420,10 +426,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
 
         set(selectors.anyTagging, false);
 
-        refresh();
-        refreshExtended();
-        refreshTagStats();
-        refreshTagLabelStats();
+        refreshers.forEach((r) => r());
         set(atoms.tagging({ modal, labels: targetLabels }), false);
       }
     },
@@ -446,19 +449,18 @@ const usePlaceHolder = (
   elementNames: { plural: string; singular: string }
 ) => {
   return (): [number, string] => {
-    const selection = useRecoilValue(
-      modal ? selectors.selectedLabelIds : atoms.selectedSamples
-    ).size;
+    const selectedSamples = useRecoilValue(atoms.selectedSamples).size;
 
-    if (modal && labels) {
+    const selectedLabels = useRecoilValue(selectors.selectedLabelIds).size;
+    if (modal && labels && !selectedSamples) {
       const labelCount =
-        selection > 0
-          ? selection
+        selectedLabels > 0
+          ? selectedLabels
           : useRecoilValue(
               aggregationAtoms.labelCount({ modal: true, extended: true })
             );
-      return [labelCount, labelsModalPlaceholder(selection, labelCount)];
-    } else if (modal) {
+      return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
+    } else if (modal && !selectedSamples) {
       return [1, samplePlaceholder(elementNames)];
     } else {
       const totalSamples = useRecoilValue(
@@ -469,7 +471,7 @@ const usePlaceHolder = (
       );
       const count = filteredSamples ?? totalSamples;
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
-      const labelCount = selection
+      const labelCount = selectedSamples
         ? selectedLabelCount
         : useRecoilValue(
             aggregationAtoms.labelCount({ modal, extended: true })
@@ -477,12 +479,12 @@ const usePlaceHolder = (
       if (labels) {
         return [
           labelCount,
-          labelsPlaceholder(selection, labelCount, count, elementNames),
+          labelsPlaceholder(selectedSamples, labelCount, count, elementNames),
         ];
       } else {
         return [
-          selection > 0 ? selection : count,
-          samplesPlaceholder(selection, labelCount, count, elementNames),
+          selectedSamples > 0 ? selectedSamples : count,
+          samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
         ];
       }
     }

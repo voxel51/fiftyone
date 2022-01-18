@@ -37,7 +37,9 @@ const ScalarValueEntry = ({
   });
   const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
   const none = value === null || value === undefined;
-  const { ftype } = useRecoilValue(schemaAtoms.field(path));
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(
+    schemaAtoms.field(path)
+  );
 
   if (ftype === FRAME_SUPPORT_FIELD && value) {
     value = `[${value[0]}, ${value[1]}]`;
@@ -45,7 +47,13 @@ const ScalarValueEntry = ({
 
   return (
     <RegularEntry
-      title={`${path}: ${value}`}
+      title={`${path} (${
+        embeddedDocType
+          ? embeddedDocType
+          : subfield
+          ? `${ftype}(${subfield})`
+          : ftype
+      })${value === undefined ? "" : `: ${value}`}`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
@@ -90,6 +98,9 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(
+    schemaAtoms.field(path)
+  );
 
   const canExpand = Boolean(values.length);
 
@@ -103,7 +114,13 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
 
   return (
     <RegularEntry
-      title={`${path}: ${count}`}
+      title={`${path} (${
+        embeddedDocType
+          ? embeddedDocType
+          : subfield
+          ? `${ftype}(${subfield})`
+          : ftype
+      }): ${count}`}
       backgroundColor={backgroundColor}
       color={color}
       heading={
