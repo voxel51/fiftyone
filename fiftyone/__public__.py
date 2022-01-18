@@ -8,7 +8,6 @@ FiftyOne's public interface.
 import fiftyone.core.cache as foca
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
-import fiftyone.core.storage as fos
 
 config = foc.load_config()
 annotation_config = foc.load_annotation_config()
@@ -16,7 +15,6 @@ app_config = foc.load_app_config()
 media_cache_config = foc.load_media_cache_config()
 
 foo.establish_db_conn(config)
-fos.init_storage()
 foca.init_media_cache(media_cache_config)
 
 from .core.aggregations import (
