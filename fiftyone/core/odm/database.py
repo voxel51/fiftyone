@@ -21,12 +21,11 @@ import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
 
-import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
 
@@ -381,17 +380,17 @@ def count_documents(coll, pipeline):
 
 
 def export_document(doc, json_path):
-    """Exports the document to disk in JSON format.
+    """Exports the document in JSON format.
 
     Args:
         doc: a BSON document dict
         json_path: the path to write the JSON file
     """
-    etau.write_file(json_util.dumps(doc), json_path)
+    fost.write_file(json_util.dumps(doc), json_path)
 
 
 def export_collection(docs, json_path, key="documents", num_docs=None):
-    """Exports the collection to disk in JSON format.
+    """Exports the collection in JSON format.
 
     Args:
         docs: an iteraable containing the documents to export
@@ -403,9 +402,9 @@ def export_collection(docs, json_path, key="documents", num_docs=None):
     if num_docs is None:
         num_docs = len(docs)
 
-    etau.ensure_basedir(json_path)
+    fost.ensure_basedir(json_path)
 
-    with open(json_path, "w") as f:
+    with fost.open_file(json_path, "w") as f:
         f.write('{"%s": [' % key)
         with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
             for idx, doc in pb(enumerate(docs, 1)):
@@ -417,7 +416,7 @@ def export_collection(docs, json_path, key="documents", num_docs=None):
 
 
 def import_document(json_path):
-    """Imports a document from JSON on disk.
+    """Imports a document from JSON.
 
     Args:
         json_path: the path to the document
@@ -425,20 +424,20 @@ def import_document(json_path):
     Returns:
         a BSON document dict
     """
-    with open(json_path, "r") as f:
+    with fost.open_file(json_path, "r") as f:
         return json_util.loads(f.read())
 
 
 def import_collection(json_path):
-    """Imports the collection from JSON on disk.
+    """Imports the collection from JSON.
 
     Args:
-        json_path: the path to the collection on disk
+        json_path: the path to the collection
 
     Returns:
         a BSON dict
     """
-    with open(json_path, "r") as f:
+    with fost.open_file(json_path, "r") as f:
         return json_util.loads(f.read())
 
 

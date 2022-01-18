@@ -15,15 +15,14 @@ import warnings
 
 import numpy as np
 
-import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
-import eta.core.web as etaw
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.image as foui
 
 
 logger = logging.getLogger(__name__)
@@ -210,11 +209,11 @@ def import_from_scale(
             if sample.metadata is None:
                 if is_video:
                     sample.metadata = fom.VideoMetadata.build_for(
-                        sample.filepath
+                        sample.local_path
                     )
                 else:
                     sample.metadata = fom.ImageMetadata.build_for(
-                        sample.filepath
+                        sample.local_path
                     )
 
             if is_video:
@@ -448,16 +447,14 @@ def export_to_scale(
 
             # Write annotations
             if video_labels_dir:
-                anno_path = os.path.join(video_labels_dir, sample.id + ".json")
-                etas.write_json(annotations, anno_path)
+                anno_path = fos.join(video_labels_dir, sample.id + ".json")
+                fos.write_json(annotations, anno_path)
                 anno_dict["annotations"] = {"url": anno_path}
 
             # Write events
             if video_events_dir:
-                events_path = os.path.join(
-                    video_events_dir, sample.id + ".json"
-                )
-                etas.write_json(events, events_path)
+                events_path = fos.join(video_events_dir, sample.id + ".json")
+                fos.write_json(events, events_path)
                 anno_dict["events"] = {"url": events_path}
 
         labels[sample.id] = {
@@ -465,7 +462,7 @@ def export_to_scale(
             "hypothesis": anno_dict,
         }
 
-    etas.write_json(labels, json_path)
+    fos.write_json(labels, json_path)
 
 
 def convert_scale_export_to_import(inpath, outpath):
@@ -484,7 +481,7 @@ def convert_scale_export_to_import(inpath, outpath):
         a dictionary mapping sample IDs to the task IDs that were generated for
         each sample
     """
-    labels = etas.read_json(inpath)
+    labels = fos.read_json(inpath)
 
     id_map = {}
     annos = []
@@ -493,28 +490,29 @@ def convert_scale_export_to_import(inpath, outpath):
         id_map[sample_id] = task_id
         annos.append({"task_id": task_id, "response": task_dict["hypothesis"]})
 
-    etas.write_json(annos, outpath)
+    fos.write_json(annos, outpath)
 
     return id_map
 
 
 def _load_labels(json_path):
-    d_list = etas.read_json(json_path)
+    d_list = fos.read_json(json_path)
     return {d["task_id"]: d for d in d_list}
 
 
 def _load_labels_dir(labels_dir):
     labels = {}
-    json_patt = os.path.join(labels_dir, "*.json")
-    for json_path in etau.get_glob_matches(json_patt):
-        task_id, task_labels = _load_task_labels(json_path)
-        labels[task_id] = task_labels
+    task_paths = fos.get_glob_matches(fos.join(labels_dir, "*.json"))
+    with fos.LocalFiles(task_paths, "r", type_str="labels") as local_paths:
+        for task_path in local_paths:
+            task_id, task_labels = _load_task_labels(task_path)
+            labels[task_id] = task_labels
 
     return labels
 
 
 def _load_task_labels(json_path):
-    d = etas.read_json(json_path)
+    d = fos.read_json(json_path)
 
     if "task_id" in d:
         task_id = d["task_id"]
@@ -844,12 +842,12 @@ def _parse_video_labels(task_labels, metadata):
     anno_dict = task_labels["response"]
 
     if "annotations" in anno_dict:
-        annos = _download_or_load_json(anno_dict["annotations"]["url"])
+        annos = fos.read_json(anno_dict["annotations"]["url"])
     else:
         annos = None
 
     if "events" in anno_dict:
-        events = _download_or_load_json(anno_dict["events"]["url"])
+        events = fos.read_json(anno_dict["events"]["url"])
     else:
         events = None
 
@@ -1125,7 +1123,7 @@ def _parse_point(vertex, frame_size):
 # https://docs.scale.com/reference#segmentannotation-callback-format
 def _parse_mask(anno_dict):
     indexed_image_uri = anno_dict["annotations"]["combined"]["indexedImage"]
-    mask = _download_or_load_image(indexed_image_uri)
+    mask = foui.read(indexed_image_uri)
 
     segmentation = fol.Segmentation(mask=mask)
 
@@ -1142,19 +1140,3 @@ def _parse_mask(anno_dict):
         segmentation.label_map = label_map
 
     return segmentation
-
-
-def _download_or_load_json(url_or_filepath):
-    if url_or_filepath.startswith("http"):
-        json_bytes = etaw.download_file(url_or_filepath, quiet=True)
-        return etas.load_json(json_bytes)
-
-    return etas.read_json(url_or_filepath)
-
-
-def _download_or_load_image(url_or_filepath):
-    if url_or_filepath.startswith("http"):
-        img_bytes = etaw.download_file(url_or_filepath, quiet=True)
-        return etai.decode(img_bytes)
-
-    return etai.read(url_or_filepath)

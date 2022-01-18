@@ -17,7 +17,6 @@ import numpy as np
 import eta.core.datasets as etad
 import eta.core.image as etai
 import eta.core.frameutils as etaf
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -28,6 +27,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.patches as foup
@@ -874,16 +874,16 @@ class ExportPathsMixin(object):
         """
         if data_path is None:
             if export_media == "manifest" and default is not None:
-                data_path = fou.normalize_path(default) + ".json"
+                data_path = fos.normalize_path(default) + ".json"
             elif export_dir is not None:
                 data_path = default
 
         if data_path is not None:
             data_path = os.path.expanduser(data_path)
 
-            if not os.path.isabs(data_path) and export_dir is not None:
-                export_dir = fou.normalize_path(export_dir)
-                data_path = os.path.join(export_dir, data_path)
+            if not fos.isabs(data_path) and export_dir is not None:
+                export_dir = fos.normalize_path(export_dir)
+                data_path = fos.join(export_dir, data_path)
 
         if export_media is None:
             if data_path is None:
@@ -906,9 +906,9 @@ class ExportPathsMixin(object):
         if labels_path is not None:
             labels_path = os.path.expanduser(labels_path)
 
-            if not os.path.isabs(labels_path) and export_dir is not None:
-                export_dir = fou.normalize_path(export_dir)
-                labels_path = os.path.join(export_dir, labels_path)
+            if not fos.isabs(labels_path) and export_dir is not None:
+                export_dir = fos.normalize_path(export_dir)
+                labels_path = fos.join(export_dir, labels_path)
 
         return labels_path
 
@@ -957,6 +957,8 @@ class MediaExporter(object):
             UUIDs for files
     """
 
+    _MEDIA_TYPE = "media"
+
     def __init__(
         self,
         export_mode,
@@ -975,7 +977,17 @@ class MediaExporter(object):
             )
 
         if export_path is not None:
-            export_path = fou.normalize_path(export_path)
+            export_path = fos.normalize_path(export_path)
+
+        if (
+            export_mode == "symlink"
+            and export_path is not None
+            and not fos.is_local(export_path)
+        ):
+            raise ValueError(
+                "Cannot symlink files to non-local export path '%s'"
+                % export_path
+            )
 
         self.export_mode = export_mode
         self.export_path = export_path
@@ -987,12 +999,16 @@ class MediaExporter(object):
         self._manifest = None
         self._manifest_path = None
 
+        self._tmpdir = None
+        self._inpaths = []
+        self._outpaths = []
+
     def _write_media(self, media, outpath):
         raise NotImplementedError("subclass must implement _write_media()")
 
     def _get_uuid(self, media_path):
         if self.export_mode == False and self.export_path is not None:
-            media_path = fou.normalize_path(media_path)
+            media_path = fos.normalize_path(media_path)
             uuid = os.path.relpath(media_path, self.export_path)
         else:
             uuid = os.path.basename(media_path)
@@ -1053,15 +1069,21 @@ class MediaExporter(object):
                 outpath = None
                 uuid = self._get_uuid(media_path)
 
-            if self.export_mode == True:
+            if self.export_mode == "manifest":
+                outpath = None
+                self._manifest[uuid] = media_path
+            elif (
+                outpath is not None and not fos.is_local(outpath)
+            ) or not fos.is_local(media_path):
+                if self.export_mode in (True, "move"):
+                    self._inpaths.append(media_path)
+                    self._outpaths.append(outpath)
+            elif self.export_mode == True:
                 etau.copy_file(media_path, outpath)
             elif self.export_mode == "move":
                 etau.move_file(media_path, outpath)
             elif self.export_mode == "symlink":
                 etau.symlink_file(media_path, outpath)
-            elif self.export_mode == "manifest":
-                outpath = None
-                self._manifest[uuid] = media_path
         else:
             media = media_or_path
 
@@ -1071,7 +1093,20 @@ class MediaExporter(object):
             uuid = self._get_uuid(outpath)
 
             if self.export_mode == True:
-                self._write_media(media, outpath)
+                if fos.is_local(outpath):
+                    local_path = outpath
+                else:
+                    if self._tmpdir is None:
+                        self._tmpdir = fos.make_temp_dir()
+
+                    local_path = os.path.join(
+                        self._tmpdir, os.path.basename(outpath)
+                    )
+
+                    self._inpaths.append(local_path)
+                    self._outpaths.append(outpath)
+
+                self._write_media(media, local_path)
             elif self.export_mode != False:
                 raise ValueError(
                     "Cannot export in-memory media when 'export_mode=%s'"
@@ -1082,8 +1117,27 @@ class MediaExporter(object):
 
     def close(self):
         """Performs any necessary actions to complete the export."""
-        if self.export_mode == "manifest":
-            etas.write_json(self._manifest, self._manifest_path)
+        try:
+            if self.export_mode == "manifest":
+                fos.write_json(self._manifest, self._manifest_path)
+
+            if self._inpaths:
+                progress = fo.config.show_progress_bars
+
+                if progress:
+                    logger.info("Exporting %s...", self._MEDIA_TYPE)
+
+                if self.export_mode == "move":
+                    fos.move_files(
+                        self._inpaths, self._outpaths, progress=progress
+                    )
+                else:
+                    fos.copy_files(
+                        self._inpaths, self._outpaths, progress=progress
+                    )
+        finally:
+            if self._tmpdir is not None:
+                etau.delete_dir(self._tmpdir)
 
 
 class ImageExporter(MediaExporter):
@@ -1091,6 +1145,8 @@ class ImageExporter(MediaExporter):
 
     See :class:`MediaExporter` for details.
     """
+
+    _MEDIA_TYPE = "images"
 
     def __init__(self, *args, default_ext=None, **kwargs):
         if default_ext is None:
@@ -1108,6 +1164,8 @@ class VideoExporter(MediaExporter):
     See :class:`MediaExporter` for details.
     """
 
+    _MEDIA_TYPE = "videos"
+
     def __init__(self, *args, default_ext=None, **kwargs):
         if default_ext is None:
             default_ext = fo.config.default_video_ext
@@ -1116,6 +1174,31 @@ class VideoExporter(MediaExporter):
 
     def _write_media(self, media, outpath):
         raise ValueError("Only video paths can be exported")
+
+
+class LabelsExporter(fos.FileWriter):
+    """Utility class for :class:`DatasetExporter` instances that export
+    multiple label files.
+
+    If the labels are being written to remote locations, this class defers the
+    uploads until :meth:`close` is called, so they can be efficiently uploaded
+    in a threaded batch.
+    """
+
+    def __init__(self, type_str="labels", **kwargs):
+        super().__init__(type_str=type_str, **kwargs)
+
+    def setup(self):
+        """Performs necessary setup to begin exporting labels.
+
+        :class:`DatasetExporter` classes using this class should invoke this
+        method in :meth:`DatasetExporter.setup`.
+        """
+        self.__enter__()
+
+    def close(self):
+        """Performs any necessary actions to complete the export."""
+        self.__exit__()
 
 
 class DatasetExporter(object):
@@ -1131,7 +1214,7 @@ class DatasetExporter(object):
 
     def __init__(self, export_dir=None):
         if export_dir is not None:
-            export_dir = fou.normalize_path(export_dir)
+            export_dir = fos.normalize_path(export_dir)
 
         self.export_dir = export_dir
 
@@ -1505,16 +1588,17 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata = None
         self._samples = None
         self._media_exporter = None
+        self._labels_exporter = None
         self._is_video_dataset = False
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._anno_dir = os.path.join(self.export_dir, "annotations")
-        self._brain_dir = os.path.join(self.export_dir, "brain")
-        self._eval_dir = os.path.join(self.export_dir, "evaluations")
-        self._frame_labels_dir = os.path.join(self.export_dir, "frames")
-        self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
+        self._data_dir = fos.join(self.export_dir, "data")
+        self._anno_dir = fos.join(self.export_dir, "annotations")
+        self._brain_dir = fos.join(self.export_dir, "brain")
+        self._eval_dir = fos.join(self.export_dir, "evaluations")
+        self._frame_labels_dir = fos.join(self.export_dir, "frames")
+        self._metadata_path = fos.join(self.export_dir, "metadata.json")
+        self._samples_path = fos.join(self.export_dir, "samples.json")
         self._metadata = {}
         self._samples = []
 
@@ -1524,6 +1608,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             export_path=self._data_dir,
         )
         self._media_exporter.setup()
+
+        self._labels_exporter = LabelsExporter()
+        self._labels_exporter.setup()
 
     def log_collection(self, sample_collection):
         self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
@@ -1606,18 +1693,22 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def close(self, *args):
         samples = {"samples": self._samples}
-        etas.write_json(
+        fos.write_json(
             self._metadata, self._metadata_path, pretty_print=self.pretty_print
         )
-        etas.write_json(
+        fos.write_json(
             samples, self._samples_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
+        self._labels_exporter.close()
 
     def _export_frame_labels(self, sample, uuid):
         frames_dict = {"frames": sample.frames._to_frames_dict()}
-        outpath = os.path.join(self._frame_labels_dir, uuid + ".json")
-        etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
+
+        outpath = fos.join(self._frame_labels_dir, uuid + ".json")
+        local_path = self._labels_exporter.get_local_path(outpath)
+
+        fos.write_json(frames_dict, local_path, pretty_print=self.pretty_print)
 
         return outpath
 
@@ -1641,7 +1732,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 directory
         rel_dir (None): a relative directory to remove from the ``filepath`` of
             each sample, if possible. The path is converted to an absolute path
-            (if necessary) via :func:`fiftyone.core.utils.normalize_path`.
+            (if necessary) via :func:`fiftyone.core.storage.normalize_path`.
             The typical use case for this argument is that your source data
             lives in a single directory and you wish to serialize relative,
             rather than absolute, paths to the data within that directory.
@@ -1667,13 +1758,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter = None
 
     def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._anno_dir = os.path.join(self.export_dir, "annotations")
-        self._brain_dir = os.path.join(self.export_dir, "brain")
-        self._eval_dir = os.path.join(self.export_dir, "evaluations")
-        self._metadata_path = os.path.join(self.export_dir, "metadata.json")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
-        self._frames_path = os.path.join(self.export_dir, "frames.json")
+        self._data_dir = fos.join(self.export_dir, "data")
+        self._anno_dir = fos.join(self.export_dir, "annotations")
+        self._brain_dir = fos.join(self.export_dir, "brain")
+        self._eval_dir = fos.join(self.export_dir, "evaluations")
+        self._metadata_path = fos.join(self.export_dir, "metadata.json")
+        self._samples_path = fos.join(self.export_dir, "samples.json")
+        self._frames_path = fos.join(self.export_dir, "frames.json")
 
         self._media_exporter = MediaExporter(
             self.export_media,
@@ -1683,7 +1774,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._media_exporter.setup()
 
     def export_samples(self, sample_collection):
-        etau.ensure_dir(self.export_dir)
+        fos.ensure_dir(self.export_dir)
 
         inpaths = sample_collection.values("filepath")
 
@@ -1699,7 +1790,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _outpaths = ["data/" + os.path.basename(p) for p in outpaths]
         elif self.rel_dir is not None:
             # Remove `rel_dir` prefix from filepaths
-            rel_dir = fou.normalize_path(self.rel_dir) + os.path.sep
+            rel_dir = fos.normalize_path(self.rel_dir) + fos.sep(self.rel_dir)
             _outpaths = [
                 p[len(rel_dir) :] if p.startswith(rel_dir) else p
                 for p in inpaths
@@ -1763,26 +1854,26 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
 def _export_annotation_results(sample_collection, anno_dir):
     for anno_key in sample_collection.list_annotation_runs():
-        results_path = os.path.join(anno_dir, anno_key + ".json")
+        results_path = fos.join(anno_dir, anno_key + ".json")
         results = sample_collection.load_annotation_results(anno_key)
         if results is not None:
-            etas.write_json(results, results_path)
+            fos.write_json(results, results_path)
 
 
 def _export_brain_results(sample_collection, brain_dir):
     for brain_key in sample_collection.list_brain_runs():
-        results_path = os.path.join(brain_dir, brain_key + ".json")
+        results_path = fos.join(brain_dir, brain_key + ".json")
         results = sample_collection.load_brain_results(brain_key)
         if results is not None:
-            etas.write_json(results, results_path)
+            fos.write_json(results, results_path)
 
 
 def _export_evaluation_results(sample_collection, eval_dir):
     for eval_key in sample_collection.list_evaluations():
-        results_path = os.path.join(eval_dir, eval_key + ".json")
+        results_path = fos.join(eval_dir, eval_key + ".json")
         results = sample_collection.load_evaluation_results(eval_key)
         if results is not None:
-            etas.write_json(results, results_path)
+            fos.write_json(results, results_path)
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
@@ -2060,7 +2151,7 @@ class FiftyOneImageClassificationDatasetExporter(
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(
+        fos.write_json(
             labels, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
@@ -2130,7 +2221,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self.export_dir)
+        fos.ensure_dir(self.export_dir)
 
     def export_sample(self, image_or_path, classification, metadata=None):
         _label = _parse_classifications(
@@ -2145,7 +2236,6 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         if etau.is_str(image_or_path):
             image_path = image_or_path
         else:
-            img = image_or_path
             image_path = self._default_filename_patt % (
                 self._class_counts[_label]
             )
@@ -2159,7 +2249,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        outpath = os.path.join(self.export_dir, _label, filename)
+        outpath = fos.join(self.export_dir, _label, filename)
 
         self._media_exporter.export(image_or_path, outpath=outpath)
 
@@ -2222,7 +2312,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self.export_dir)
+        fos.ensure_dir(self.export_dir)
 
     def export_sample(self, video_path, classification, _, metadata=None):
         _label = _parse_classifications(
@@ -2243,7 +2333,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        outpath = os.path.join(self.export_dir, _label, filename)
+        outpath = fos.join(self.export_dir, _label, filename)
 
         self._media_exporter.export(video_path, outpath=outpath)
 
@@ -2421,7 +2511,7 @@ class FiftyOneImageDetectionDatasetExporter(
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(
+        fos.write_json(
             labels, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
@@ -2602,7 +2692,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(
+        fos.write_json(
             labels, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()
@@ -2724,6 +2814,7 @@ class ImageSegmentationDirectoryExporter(
         self.thickness = thickness
 
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -2741,6 +2832,9 @@ class ImageSegmentationDirectoryExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
+
+        self._labels_exporter = LabelsExporter(type_str="masks")
+        self._labels_exporter.setup()
 
     def export_sample(self, image_or_path, label, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
@@ -2774,11 +2868,14 @@ class ImageSegmentationDirectoryExporter(
         else:
             raise ValueError("Unsupported label type '%s'" % type(label))
 
-        out_mask_path = os.path.join(self.labels_path, uuid + self.mask_format)
-        _write_mask(mask, out_mask_path)
+        out_mask_path = fos.join(self.labels_path, uuid + self.mask_format)
+        local_mask_path = self._labels_exporter.get_local_path(out_mask_path)
+
+        _write_mask(mask, local_mask_path)
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 def _write_mask(mask, mask_path):
@@ -2842,6 +2939,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._labels_dir = None
         self._description = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -2860,9 +2958,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._dataset_index = etad.LabeledDatasetIndex(
             etau.get_class_name(etad.LabeledImageDataset)
         )
-        self._manifest_path = os.path.join(self.export_dir, "manifest.json")
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_dir = os.path.join(self.export_dir, "labels")
+        self._manifest_path = fos.join(self.export_dir, "manifest.json")
+        self._data_dir = fos.join(self.export_dir, "data")
+        self._labels_dir = fos.join(self.export_dir, "labels")
 
         self._media_exporter = ImageExporter(
             self.export_media,
@@ -2873,16 +2971,20 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-        out_labels_path = os.path.join(self._labels_dir, uuid + ".json")
+        out_labels_path = fos.join(self._labels_dir, uuid + ".json")
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         il = foue.to_image_labels(labels)
-        etas.write_json(il, out_labels_path, pretty_print=self.pretty_print)
+        fos.write_json(il, local_path, pretty_print=self.pretty_print)
 
         self._dataset_index.append(
             etad.LabeledDataRecord(
@@ -2893,11 +2995,12 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     def close(self, *args):
         self._dataset_index.description = self._description or ""
-        etas.write_json(
+        fos.write_json(
             self._dataset_index, self._manifest_path, pretty_print=True
         )
 
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
@@ -2941,6 +3044,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._labels_dir = None
         self._description = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_video_metadata(self):
@@ -2963,9 +3067,9 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         self._dataset_index = etad.LabeledDatasetIndex(
             etau.get_class_name(etad.LabeledVideoDataset)
         )
-        self._manifest_path = os.path.join(self.export_dir, "manifest.json")
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._labels_dir = os.path.join(self.export_dir, "labels")
+        self._manifest_path = fos.join(self.export_dir, "manifest.json")
+        self._data_dir = fos.join(self.export_dir, "data")
+        self._labels_dir = fos.join(self.export_dir, "labels")
 
         self._media_exporter = VideoExporter(
             self.export_media,
@@ -2975,16 +3079,20 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         )
         self._media_exporter.setup()
 
+        self._labels_exporter = LabelsExporter()
+        self._labels_exporter.setup()
+
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, video_path, label, frames, metadata=None):
         out_video_path, uuid = self._media_exporter.export(video_path)
 
-        out_labels_path = os.path.join(self._labels_dir, uuid + ".json")
+        out_labels_path = fos.join(self._labels_dir, uuid + ".json")
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         vl = foue.to_video_labels(label=label, frames=frames)
-        etas.write_json(vl, out_labels_path, pretty_print=self.pretty_print)
+        fos.write_json(vl, local_path, pretty_print=self.pretty_print)
 
         self._dataset_index.append(
             etad.LabeledDataRecord(
@@ -2995,11 +3103,12 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
 
     def close(self, *args):
         self._dataset_index.description = self._description or ""
-        etas.write_json(
+        fos.write_json(
             self._dataset_index, self._manifest_path, pretty_print=True
         )
 
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 def _parse_classifications(

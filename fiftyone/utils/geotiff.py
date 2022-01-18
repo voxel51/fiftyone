@@ -5,13 +5,12 @@ GeoTIFF utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -35,7 +34,7 @@ def get_geolocation(image_path):
     Returns:
         a :class:`fiftyone.core.labels.GeoLocation`
     """
-    with open(image_path, "rb") as f:
+    with fos.open_file(image_path, "rb") as f:
         with rasterio.open(f, "r") as image:
             center = image.transform * (0.5 * image.width, 0.5 * image.height)
 
@@ -112,6 +111,7 @@ class GeoTIFFDatasetImporter(
         self.compute_metadata = compute_metadata
 
         self._filepaths = None
+        self._metadata_map = None
         self._iter_filepaths = None
         self._num_samples = None
 
@@ -125,10 +125,10 @@ class GeoTIFFDatasetImporter(
     def __next__(self):
         image_path = next(self._iter_filepaths)
 
-        if self.compute_metadata:
+        image_metadata = self._metadata_map.get(image_path, None)
+
+        if self.compute_metadata and image_metadata is None:
             image_metadata = fom.ImageMetadata.build_for(image_path)
-        else:
-            image_metadata = None
 
         label = get_geolocation(image_path)
 
@@ -151,22 +151,32 @@ class GeoTIFFDatasetImporter(
             path = self.image_path
 
             if etau.is_str(path):
-                if not os.path.isabs(path) and self.dataset_dir:
-                    path = os.path.join(self.dataset_dir, path)
+                if (
+                    fos.is_local(path)
+                    and not fos.isabs(path)
+                    and self.dataset_dir
+                ):
+                    path = fos.join(self.dataset_dir, path)
 
                 # Glob pattern of images
-                filepaths = etau.get_glob_matches(path)
+                filepaths = fos.get_glob_matches(path)
             else:
                 # List of images
                 filepaths = list(path)
         else:
             # Directory of images
-            filepaths = etau.list_files(
+            filepaths = fos.list_files(
                 self.dataset_dir, abs_paths=True, recursive=self.recursive
             )
             filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
 
         filepaths = self._preprocess_list(filepaths)
 
+        if self.compute_metadata:
+            metadata_map = self._get_remote_metadata(filepaths)
+        else:
+            metadata_map = {}
+
         self._filepaths = filepaths
+        self._metadata_map = metadata_map
         self._num_samples = len(filepaths)

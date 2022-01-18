@@ -291,19 +291,6 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
-def normalize_path(path):
-    """Normalizes the given path by converting it to an absolute path and
-    expanding the user directory, if necessary.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    return os.path.abspath(os.path.expanduser(path))
-
-
 def ensure_package(
     requirement_str, error_level=None, error_msg=None, log_success=False
 ):
@@ -641,7 +628,7 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with open(xml_path, "rb") as f:
+    with fos.open_file(xml_path, "rb") as f:
         return xmltodict.parse(f.read())
 
 
@@ -974,8 +961,8 @@ class UniqueFilenameMaker(object):
         if not self.output_dir:
             return
 
-        etau.ensure_dir(self.output_dir)
-        filenames = etau.list_files(self.output_dir)
+        fos.ensure_dir(self.output_dir)
+        filenames = fos.list_files(self.output_dir)
 
         self._idx = len(filenames)
         for filename in filenames:
@@ -1025,7 +1012,7 @@ class UniqueFilenameMaker(object):
             filename = name + ("-%d" % count) + ext
 
         if self.output_dir:
-            output_path = os.path.join(self.output_dir, filename)
+            output_path = fos.join(self.output_dir, filename)
         else:
             output_path = filename
 
@@ -1050,14 +1037,14 @@ def compute_filehash(filepath, method=None, chunk_size=None):
         the hash
     """
     if method is None:
-        with open(filepath, "rb") as f:
+        with fos.open_file(filepath, "rb") as f:
             return hash(f.read())
 
     if chunk_size is None:
         chunk_size = 65536
 
     hasher = getattr(hashlib, method)()
-    with open(filepath, "rb") as f:
+    with fos.open_file(filepath, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
@@ -1382,3 +1369,6 @@ class ResponseStream(object):
                 current_position += self._bytes.write(next(self._iterator))
             except StopIteration:
                 break
+
+
+fos = lazy_import("fiftyone.core.storage")
