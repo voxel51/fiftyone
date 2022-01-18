@@ -20,3 +20,5 @@ dist/
 
 /docs/build/
 /docs/source/api/
+
+/docker/README.pdf
