@@ -42,10 +42,11 @@ ARG PYTHON_VERSION=3.8
 # Install system packages
 #
 
-RUN apt update \
+RUN apt -y update \
     && apt -y --no-install-recommends install software-properties-common \
     && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt update \
+    && apt -y update \
+    && apt -y upgrade \
     && apt -y --no-install-recommends install \
         build-essential \
         ca-certificates \
@@ -63,12 +64,13 @@ RUN apt update \
         unzip \
         curl \
         wget \
-        python3-distutils \
         python${PYTHON_VERSION} \
         python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-distutils \
         ffmpeg \
     && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
-    && curl https://bootstrap.pypa.io/get-pip.py | python
+    && curl https://bootstrap.pypa.io/get-pip.py | python \
+    && rm -rf /var/lib/apt/lists/*
 
 #
 # Install Python dependencies
