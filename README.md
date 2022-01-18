@@ -278,7 +278,7 @@ via `--mount` or `-v`, as shown below:
 ```shell
 SHARED_DIR=/path/to/shared/dir
 
-docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it fiftyone
+docker run -v ${SHARED_DIR}:/fiftyone -p 5151:5151 -it voxel51/fiftyone
 ```
 
 The `-p 5151:5151` option is required so that when you

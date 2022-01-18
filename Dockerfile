@@ -22,7 +22,7 @@
 #   docker run \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
-#       -it fiftyone
+#       -it voxel51/fiftyone
 #
 # Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
