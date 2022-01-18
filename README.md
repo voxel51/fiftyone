@@ -220,7 +220,7 @@ for information on building and contributing to the documentation.
 
 ## Docker installs
 
-Follow the instructions below to build and use a Docker image containing a
+Follow the instructions below to build and run a Docker image containing a
 source build of FiftyOne.
 
 ### Building an image
@@ -251,8 +251,7 @@ via optional build arguments:
 docker build \
     --build-arg BASE_IMAGE=ubuntu:18.04 \
     --build-arg PYTHON_VERSION=3.9 \
-    -t voxel51/fiftyone \
-    .
+    -t voxel51/fiftyone .
 ```
 
 Refer to the `Dockerfile` itself for additional Python packages that you may
@@ -303,6 +302,19 @@ session = fo.launch_app(dataset)
 Note that any datasets you create inside the Docker image must refer to media
 files within `SHARED_DIR` or another mounted volume if you intend to work with
 datasets between sessions.
+
+### Connecting to a localhost database
+
+If you are using a
+[self-managed database](https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection)
+that you ordinarily connect to via a URI like `mongodb://localhost`, then you
+will need to tweak this slightly when working in Docker. See
+[this question](https://stackoverflow.com/q/24319662) for details.
+
+On Linux, include `--network="host"` in your `docker run` command and use
+`mongodb://127.0.0.1` for your URI.
+
+On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
 
 ## Uninstallation
 
