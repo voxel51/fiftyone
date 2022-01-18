@@ -15,7 +15,7 @@ export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
   PATH = "PATH",
-  TAIL = "TAIL",
+  INPUT = "INPUT",
 }
 
 export interface EmptyEntry {
@@ -24,8 +24,9 @@ export interface EmptyEntry {
   group: string;
 }
 
-export interface TailEntry {
-  kind: EntryKind.TAIL;
+export interface InputEntry {
+  kind: EntryKind.INPUT;
+  type: "add" | "filter";
 }
 
 export interface GroupEntry {
@@ -39,7 +40,7 @@ export interface PathEntry {
   shown: boolean;
 }
 
-export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | TailEntry;
+export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
 
 export const useTagText = (modal: boolean) => {
   const { singular } = useRecoilValue(elementNames);

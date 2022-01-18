@@ -112,7 +112,11 @@ const getFilterData = (
 
   return fields
     .filter(
-      ({ name }) => !label || (name !== "tags" && !excluded.includes(name))
+      ({ name, ftype }) =>
+        !label ||
+        (name !== "tags" &&
+          !excluded.includes(name) &&
+          VALID_PRIMITIVE_TYPES.includes(ftype))
     )
     .map(({ ftype, subfield, name }) => {
       const listField = ftype === LIST_FIELD;

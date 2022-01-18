@@ -89,9 +89,14 @@ const SamplesContainer = React.memo(() => {
               ),
             disabled: false,
           };
-        case EntryKind.TAIL:
+        case EntryKind.INPUT:
           return {
-            children: <Entries.AddGroup />,
+            children:
+              entry.type === "add" ? (
+                <Entries.AddGroup />
+              ) : (
+                <Entries.Filter modal={false} />
+              ),
             disabled: true,
           };
         case EntryKind.EMPTY:

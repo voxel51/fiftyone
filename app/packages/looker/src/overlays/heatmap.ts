@@ -5,7 +5,14 @@ import { get32BitColor, getColor, getRGBA, getRGBAColor } from "../color";
 import { ARRAY_TYPES, NumpyResult, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
-import { BaseLabel, CONTAINS, Overlay, PointInfo, SelectData } from "./base";
+import {
+  BaseLabel,
+  CONTAINS,
+  isShown,
+  Overlay,
+  PointInfo,
+  SelectData,
+} from "./base";
 import { sizeBytes, strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
@@ -156,7 +163,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   isShown(state: Readonly<State>): boolean {
-    return state.options.activePaths.includes(this.field);
+    return isShown(state, this.field, this.label);
   }
 
   getPoints(): Coordinates[] {

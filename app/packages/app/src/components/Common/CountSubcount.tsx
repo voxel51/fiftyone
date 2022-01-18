@@ -12,7 +12,7 @@ const Loading = () => {
         color: theme.fontDark,
         height: 16,
         width: 16,
-        margin: 5,
+        margin: 4,
       }}
     />
   );

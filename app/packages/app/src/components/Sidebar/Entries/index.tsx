@@ -1,5 +1,6 @@
 import AddGroup from "./AddGroupEntry";
 import Empty from "./EmptyEntry";
+import Filter from "./FilterEntry";
 import FilterablePath from "./FilterablePathEntry";
 import FilterableTag from "./FilterableTagEntry";
 import {
@@ -14,6 +15,7 @@ export {
   Empty,
   FilterablePath,
   FilterableTag,
+  Filter,
   PathGroup,
   PathValue,
   TagGroup,

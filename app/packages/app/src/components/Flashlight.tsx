@@ -238,7 +238,7 @@ const useThumbnailClick = (
       if (selectedopen) {
         event.preventDefault();
       }
-      if (!selected.size || event.ctrlKey || selectedopen) {
+      if (!selected.size || selectedopen) {
         openModal();
         return;
       }

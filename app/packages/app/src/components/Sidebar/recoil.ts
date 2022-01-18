@@ -31,7 +31,7 @@ import {
   GroupEntry,
   PathEntry,
   SidebarEntry,
-  TailEntry,
+  InputEntry,
 } from "./utils";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
@@ -285,7 +285,9 @@ export const sidebarEntries = selectorFamily<
 >({
   key: "sidebarEntries",
   get: (params) => ({ get }) => {
+    const f = get(textFilter(params.modal));
     const entries = [
+      { type: "filter", kind: EntryKind.INPUT } as InputEntry,
       ...get(sidebarGroups(params))
         .map(([groupName, paths]) => {
           const group: GroupEntry = { name: groupName, kind: EntryKind.GROUP };
@@ -301,7 +303,7 @@ export const sidebarEntries = selectorFamily<
               group: groupName,
             } as EmptyEntry,
             ...paths
-              .filter((path) => get(pathIsShown(path)))
+              .filter((path) => get(pathIsShown(path)) && path.includes(f))
               .map<PathEntry>((path) => ({
                 path,
                 kind: EntryKind.PATH,
@@ -316,7 +318,7 @@ export const sidebarEntries = selectorFamily<
       return entries;
     }
 
-    return [...entries, { kind: EntryKind.TAIL } as TailEntry];
+    return [...entries, { kind: EntryKind.INPUT, type: "add" } as InputEntry];
   },
   set: (modal) => ({ set }, value) => {
     if (value instanceof DefaultValue) return;
@@ -404,4 +406,9 @@ export const groupIsEmpty = selectorFamily<
         .length
     );
   },
+});
+
+export const textFilter = atomFamily<string, boolean>({
+  key: "textFilter",
+  default: "",
 });

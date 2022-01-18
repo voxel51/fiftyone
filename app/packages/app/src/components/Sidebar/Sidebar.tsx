@@ -77,7 +77,7 @@ const fn = (
     }
 
     const dragging =
-      (activeKey === key || groupActive) && entry.kind !== EntryKind.TAIL;
+      (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
 
     let shown = true;
 
@@ -122,8 +122,11 @@ const getEntryKey = (entry: SidebarEntry) => {
   if (entry.kind === EntryKind.EMPTY) {
     return JSON.stringify([entry.group, ""]);
   }
+  if (entry.kind === EntryKind.INPUT) {
+    return `input-${entry.type}`;
+  }
 
-  return "tail";
+  throw new Error("invalid entry");
 };
 
 const isShown = (entry: SidebarEntry) => {
@@ -135,7 +138,7 @@ const isShown = (entry: SidebarEntry) => {
     return false;
   }
 
-  if (entry.kind === EntryKind.TAIL) {
+  if (entry.kind === EntryKind.INPUT) {
     return false;
   }
 
@@ -183,14 +186,18 @@ const measureGroups = (
   activeHeight: number;
 } => {
   const data = [];
-  let current = { top: -MARGIN, height: 0, key: null };
+  let current = {
+    top: -MARGIN,
+    height: 0,
+    key: getEntryKey(items[order[0]].entry),
+  };
   let activeHeight = -MARGIN;
 
   for (let i = 0; i < order.length; i++) {
     const key = order[i];
     const entry = items[key].entry;
 
-    if (entry.kind === EntryKind.TAIL) break;
+    if (entry.kind === EntryKind.INPUT && entry.type === "add") break;
 
     if (entry.kind === EntryKind.GROUP) {
       data.push(current);
@@ -239,6 +246,10 @@ const isDisabledEntry = (
     );
   }
 
+  if (entry.kind === EntryKind.INPUT) {
+    return true;
+  }
+
   return false;
 };
 
@@ -261,7 +272,7 @@ const getAfterKey = (
     : measureEntries(activeKey, items, order);
 
   data = data.filter(
-    ({ key }) => !key || !isDisabledEntry(items[key].entry, disabled, !isGroup)
+    ({ key }) => !isDisabledEntry(items[key].entry, disabled, !isGroup)
   );
 
   const { top } = items[activeKey].el.getBoundingClientRect();
@@ -295,11 +306,11 @@ const getAfterKey = (
 
   let result = filtered[0].key;
   if (isGroup) {
-    if (result === null) return null;
+    if (result === null) return order[0];
 
     let index = order.indexOf(result) + (up ? -1 : 1);
     if (result === activeKey) up ? index++ : index--;
-    if (index <= 0) return null;
+    if (index <= 0) order[0];
 
     if (order[index] === activeKey) return activeKey;
 
@@ -466,7 +477,7 @@ const InteractiveSidebar = ({
       if (from >= order.current.length) break;
 
       entry = items.current[lastOrder.current[from]].entry;
-    } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.TAIL);
+    } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.INPUT);
 
     if (after === null) {
       return [
