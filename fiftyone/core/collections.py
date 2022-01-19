@@ -4558,7 +4558,7 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query_ids, k=None, reverse=False, brain_key=None
+        self, query_ids, k=None, reverse=False, dist_field=None, brain_key=None
     ):
         """Sorts the samples in the collection by visual similiarity to a
         specified set of query ID(s).
@@ -4591,6 +4591,9 @@ class SampleCollection(object):
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
             reverse (False): whether to sort by least similarity
+            dist_field (None): the name of a float field in which to store the
+                distance of each example to the specified query. The field is
+                created if necessary
             brain_key (None): the brain key of an existing
                 :meth:`fiftyone.brain.compute_similarity` run on the dataset.
                 If not specified, the dataset must have an applicable run,
@@ -4601,7 +4604,11 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SortBySimilarity(
-                query_ids, k=k, reverse=reverse, brain_key=brain_key
+                query_ids,
+                k=k,
+                reverse=reverse,
+                dist_field=dist_field,
+                brain_key=brain_key,
             )
         )
 
