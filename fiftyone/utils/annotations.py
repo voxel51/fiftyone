@@ -1349,8 +1349,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     frame_labels = anno_dict[sample_id][frame_id]
                     label = frame_labels.pop(label_id)
-                    label._id = ObjectId()
-                    new_label_id = str(label._id)
+                    label.id = ObjectId()
+                    new_label_id = str(label.id)
                     frame_labels[new_label_id] = label
                     new_ids.discard((sample_id, frame_id, label_id))
                     new_ids.add((sample_id, frame_id, new_label_id))
@@ -1360,8 +1360,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     sample_labels = anno_dict[sample_id]
                     label = sample_labels.pop(label_id)
-                    label._id = ObjectId()
-                    new_label_id = str(label._id)
+                    label.id = ObjectId()
+                    new_label_id = str(label.id)
                     sample_labels[new_label_id] = label
                     new_ids.discard((sample_id, label_id))
                     new_ids.add((sample_id, new_label_id))
@@ -1631,7 +1631,7 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 #
                 _existing_id = id_map.get((_id, _frame_id, _index), None)
                 if _existing_id is not None:
-                    label._id = ObjectId(_existing_id)
+                    label.id = ObjectId(_existing_id)
                     del frame_annos[_label_id]
                     frame_annos[_existing_id] = label
 
