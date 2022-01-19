@@ -13,6 +13,7 @@ import struct
 import asyncio
 import aiofiles
 import aiohttp
+import backoff
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -29,10 +30,11 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, media_type, metadata=None):
+async def get_metadata(session, filepath, media_type, metadata=None):
     """Gets the metadata for the given local or remote media file.
 
     Args:
+        session: an ``aiohttp.ClientSession`` to use if necessary
         filepath: the path to the file
         media_type: the media type of the collection
         metadata (None): a pre-existing metadata dict to use if possible
@@ -51,8 +53,8 @@ async def get_metadata(filepath, media_type, metadata=None):
     if use_local:
         # Get local path to media on disk, downloading any uncached remote
         # files if necessary
-        local_path = await foc.media_cache.get_local_path(
-            filepath, download=True, coroutine=True
+        local_path = await foc.media_cache._async_get_local_path(
+            filepath, session, download=True
         )
     else:
         # Get a URL to use to retrieve metadata (if necessary) and for the App
@@ -87,7 +89,7 @@ async def get_metadata(filepath, media_type, metadata=None):
             metadata = await read_local_metadata(local_path, is_video)
         else:
             # Retrieve metadata from remote source
-            metadata = await read_url_metadata(url, is_video)
+            metadata = await read_url_metadata(session, url, is_video)
     except:
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -101,10 +103,27 @@ async def get_metadata(filepath, media_type, metadata=None):
     return d
 
 
-async def read_url_metadata(url, is_video):
+class FFProbeRuntimeError(Exception):
+    """Exception raised when an error occurs invoking ffprobe on a video."""
+
+    pass
+
+
+@backoff.on_exception(
+    backoff.expo, FFProbeRuntimeError, factor=0.1, max_tries=10
+)
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=0.1,
+    max_tries=10,
+    giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+)
+async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
 
     Args:
+        session: an ``aiohttp.ClientSession`` to use
         url: a file URL
         is_video: whether the file is a video
 
@@ -135,8 +154,8 @@ async def read_url_metadata(url, is_video):
 
     url = foc._safe_aiohttp_url(url)
 
-    async with aiohttp.ClientSession() as sess, sess.get(url) as resp:
-        width, height = await get_image_dimensions(Reader(resp.content))
+    async with session.get(url) as response:
+        width, height = await get_image_dimensions(Reader(response.content))
         return {"width": width, "height": height}
 
 
@@ -221,7 +240,7 @@ async def get_stream_info(path):
 
     stdout, stderr = await proc.communicate()
     if stderr:
-        raise ValueError(stderr)
+        raise FFProbeRuntimeError(stderr)
 
     info = etas.load_json(stdout.decode("utf8"))
 

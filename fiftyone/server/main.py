@@ -13,6 +13,7 @@ import math
 import os
 import traceback
 
+import aiohttp
 import asyncio
 import tornado.escape
 import tornado.ioloop
@@ -283,12 +284,17 @@ async def _generate_results(samples, media_type):
     metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
 
     filepaths = list(metadata_map.keys())
-    metadatas = await asyncio.gather(
-        *[
-            fosm.get_metadata(f, media_type, metadata=metadata_map[f])
-            for f in filepaths
-        ]
-    )
+
+    async with aiohttp.ClientSession() as session:
+        metadatas = await asyncio.gather(
+            *[
+                fosm.get_metadata(
+                    session, f, media_type, metadata=metadata_map[f]
+                )
+                for f in filepaths
+            ]
+        )
+
     metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
 
     results = []

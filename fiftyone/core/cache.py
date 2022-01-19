@@ -14,6 +14,7 @@ import urllib.parse as urlparse
 
 import aiofiles
 import aiohttp
+import backoff
 import yarl
 
 import eta.core.utils as etau
@@ -245,9 +246,7 @@ class MediaCache(object):
 
         return _get_metadata(tasks, self.num_workers)
 
-    def get_local_path(
-        self, filepath, download=True, skip_failures=True, coroutine=False
-    ):
+    def get_local_path(self, filepath, download=True, skip_failures=True):
         """Retrieves the local path for the given file.
 
         Args:
@@ -255,22 +254,26 @@ class MediaCache(object):
             download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
-            coroutine (False): whether to return a coroutine
 
         Returns:
             the local filepath
         """
         _, local_path, exists, client = self._parse_filepath(filepath)
 
-        if (exists or not download) and not coroutine:
-            return local_path
+        if download and not exists:
+            task = (client, filepath, local_path, skip_failures, False)
+            _do_download_media(task)
 
-        task = (client, filepath, local_path, skip_failures, False)
+        return local_path
 
-        if coroutine:
-            return _do_async_download_media(task)
+    async def _async_get_local_path(
+        self, filepath, session, download=True, skip_failures=True
+    ):
+        _, local_path, exists, client = self._parse_filepath(filepath)
 
-        _do_download_media(task)
+        if download and not exists:
+            task = (client, session, filepath, local_path, skip_failures)
+            await _do_async_download_media(task)
 
         return local_path
 
@@ -699,31 +702,18 @@ def _do_download_media(arg):
 
 
 async def _do_async_download_media(arg):
-    client, remote_path, local_path, skip_failures, force = arg
-
-    if not force and os.path.isfile(local_path):
-        return local_path
-
-    etau.ensure_basedir(local_path)
+    client, session, remote_path, local_path, skip_failures = arg
 
     url = _get_url(client, remote_path)
     url = _safe_aiohttp_url(url)
+
+    etau.ensure_basedir(local_path)
 
     success = True
     checksum = None
 
     try:
-        async with aiohttp.ClientSession() as session, session.get(
-            url
-        ) as response, aiofiles.open(local_path, "wb") as f:
-            checksum = response.headers.get("Etag", None)
-            if checksum:
-                checksum = checksum[1:-1]
-
-            async for chunk, _ in response.content.iter_chunks():
-                await f.write(chunk)
-
-            response.raise_for_status()
+        checksum = await _do_download_file(session, url, local_path)
     except Exception as e:
         if not skip_failures:
             raise
@@ -733,7 +723,27 @@ async def _do_async_download_media(arg):
 
     await _async_write_cache_result(remote_path, local_path, success, checksum)
 
-    return local_path
+
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=0.1,
+    max_tries=10,
+    giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+)
+async def _do_download_file(session, url, local_path):
+    async with session.get(url) as response:
+        checksum = response.headers.get("Etag", None)
+        if checksum:
+            checksum = checksum[1:-1]
+
+        async with aiofiles.open(local_path, "wb") as f:
+            async for chunk, _ in response.content.iter_chunks():
+                await f.write(chunk)
+
+        response.raise_for_status()
+
+    return checksum
 
 
 def _safe_aiohttp_url(url):
