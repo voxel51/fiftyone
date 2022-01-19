@@ -61,6 +61,7 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     # teams specific
     "aiohttp",
+    "backoff",
     "boto3>=1.15",
     "google-api-python-client",
     "google-cloud-storage>=1.36",
