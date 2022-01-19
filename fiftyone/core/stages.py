@@ -5296,7 +5296,7 @@ class SortBySimilarity(ViewStage):
             },
             {
                 "name": "dist_field",
-                "type": "field|str",
+                "type": "NoneType|field|str",
                 "default": "None",
                 "placeholder": "dist_field (default=None)",
             },
