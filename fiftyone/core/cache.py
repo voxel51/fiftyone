@@ -730,6 +730,7 @@ async def _do_async_download_media(arg):
     factor=0.1,
     max_tries=10,
     giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+    logger=None,
 )
 async def _do_download_file(session, url, local_path):
     async with session.get(url) as response:

@@ -103,21 +103,13 @@ async def get_metadata(session, filepath, media_type, metadata=None):
     return d
 
 
-class FFProbeRuntimeError(Exception):
-    """Exception raised when an error occurs invoking ffprobe on a video."""
-
-    pass
-
-
-@backoff.on_exception(
-    backoff.expo, FFProbeRuntimeError, factor=0.1, max_tries=10
-)
 @backoff.on_exception(
     backoff.expo,
     aiohttp.ClientResponseError,
     factor=0.1,
     max_tries=10,
     giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+    logger=None,
 )
 async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
@@ -131,7 +123,7 @@ async def read_url_metadata(session, url, is_video):
         metadata dict
     """
     if is_video:
-        info = await get_stream_info(url)
+        info = await get_stream_info(url, session=session)
         return {
             "width": info.frame_size[0],
             "height": info.frame_size[1],
@@ -208,12 +200,14 @@ class Reader(object):
             self._data += await self._content.read(delta)
 
 
-async def get_stream_info(path):
+async def get_stream_info(path, session=None):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.
 
     Args:
         path: a video filepath or URL
+        session (None): a ``aiohttp.ClientSession`` to use when ``path`` is a
+            URL
 
     Returns:
         a :class:`eta.core.video.VideoStreamInfo`
@@ -239,8 +233,15 @@ async def get_stream_info(path):
     )
 
     stdout, stderr = await proc.communicate()
+
+    # @todo how to feed `response` into subprocess above to avoid this?
+    # We need a status code to determine whether the failure is retryable...
+    if stderr and stdout is not None:
+        async with session.get(path) as response:
+            response.raise_for_status()
+
     if stderr:
-        raise FFProbeRuntimeError(stderr)
+        raise RuntimeError(stderr)
 
     info = etas.load_json(stdout.decode("utf8"))
 
