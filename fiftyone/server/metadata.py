@@ -236,7 +236,7 @@ async def get_stream_info(path, session=None):
 
     # @todo how to feed `response` into subprocess above to avoid this?
     # We need a status code to determine whether the failure is retryable...
-    if stderr and stdout is not None:
+    if stderr and session is not None:
         async with session.get(path) as response:
             response.raise_for_status()
 
