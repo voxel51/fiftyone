@@ -387,6 +387,7 @@ const Container = animated(styled.div`
 `);
 
 type RenderEntry = (
+  key: string,
   group: string,
   entry: SidebarEntry,
   controller: Controller
@@ -658,6 +659,7 @@ const InteractiveSidebar = ({
               key
             ].controller.springs;
             const { children, disabled } = render(
+              key,
               group,
               entry,
               items.current[key].controller

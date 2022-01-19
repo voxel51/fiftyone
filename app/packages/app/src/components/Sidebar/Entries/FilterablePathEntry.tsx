@@ -7,6 +7,7 @@ import {
 } from "@material-ui/icons";
 import { useSpring } from "@react-spring/web";
 import {
+  atomFamily,
   DefaultValue,
   selectorFamily,
   useRecoilState,
@@ -182,6 +183,11 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
+const pathIsExpanded = atomFamily<boolean, { modal: string; path: string }>({
+  key: "pathIsExpanded",
+  default: false,
+});
+
 const FilterableEntry = React.memo(
   ({
     modal,
@@ -197,7 +203,9 @@ const FilterableEntry = React.memo(
     onBlur?: () => void;
     disabled?: boolean;
   }) => {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = useRecoilState(
+      pathIsExpanded({ modal, path })
+    );
     const theme = useTheme();
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
@@ -225,10 +233,9 @@ const FilterableEntry = React.memo(
     const hidden = modal ? useHidden(path) : null;
 
     useLayoutEffect(() => {
-      expandable.state !== "loading" &&
-        !expandable.contents &&
-        expanded &&
+      if (expandable.state !== "loading" && !expandable.contents && expanded) {
         setExpanded(false);
+      }
     }, [expandable.state, expandable.contents, expanded]);
 
     return (

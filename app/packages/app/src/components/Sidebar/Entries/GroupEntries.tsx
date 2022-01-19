@@ -261,7 +261,8 @@ const Pills = ({ entries }: { entries: PillEntry[] }) => {
   );
 };
 
-const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
+const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
+  expanded ? <Remove /> : <Add />;
 
 const GroupHeader = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.border};
@@ -397,7 +398,7 @@ const GroupEntry = React.memo(
           </span>
         )}
         <span>
-          <PlusMinusButton expande={expanded} />
+          <PlusMinusButton expanded={expanded} />
         </span>
       </GroupHeader>
     );

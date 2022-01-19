@@ -302,6 +302,7 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get: (params) => ({ get }) => {
     const paths = get(fieldPaths(params));
+    throw new Error("");
 
     return paths.filter((path) =>
       LABELS.includes(get(field(path)).embeddedDocType)

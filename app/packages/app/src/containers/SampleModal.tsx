@@ -98,7 +98,12 @@ const SampleModal = () => {
   const disabled = useRecoilValue(disabledPaths);
 
   const renderEntry = useCallback(
-    (group: string, entry: SidebarEntry, controller: Controller) => {
+    (
+      key: string,
+      group: string,
+      entry: SidebarEntry,
+      controller: Controller
+    ) => {
       switch (entry.kind) {
         case EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
@@ -107,7 +112,7 @@ const SampleModal = () => {
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
             !isTag && !isLabelTag && !isLabel && !isOther;
-
+          console.log(key);
           return {
             children: (
               <>
@@ -118,12 +123,14 @@ const SampleModal = () => {
                       isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
                     }
                     tag={entry.path.split(".").slice(1).join(".")}
+                    key={key}
                   />
                 )}
                 {isTag && (
                   <Entries.TagValue
                     tag={entry.path.slice("tags.".length)}
                     path={entry.path}
+                    key={key}
                   />
                 )}
                 {(isLabel || isOther) && (
@@ -138,9 +145,12 @@ const SampleModal = () => {
                       controller.set({ zIndex: "0" });
                     }}
                     disabled={isOther}
+                    key={key}
                   />
                 )}
-                {isFieldPrimitive && <Entries.PathValue path={entry.path} />}
+                {isFieldPrimitive && (
+                  <Entries.PathValue path={entry.path} key={key} />
+                )}
               </>
             ),
             disabled: isTag || isLabelTag || isOther,
@@ -157,9 +167,10 @@ const SampleModal = () => {
                     isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
                   }
                   modal={true}
+                  key={key}
                 />
               ) : (
-                <Entries.PathGroup name={entry.name} modal={true} />
+                <Entries.PathGroup name={entry.name} modal={true} key={key} />
               ),
             disabled: false,
           };
@@ -174,8 +185,14 @@ const SampleModal = () => {
                     ? tagText.label
                     : "No fields"
                 }
+                key={key}
               />
             ),
+            disabled: true,
+          };
+        case EntryKind.INPUT:
+          return {
+            children: <Entries.Filter modal={true} key={key} />,
             disabled: true,
           };
         default:

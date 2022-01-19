@@ -43,7 +43,7 @@ import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
-import { sidebarEntries, sidebarGroupsDefinition } from "./Sidebar";
+import { sidebarEntries, sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 
@@ -71,6 +71,7 @@ const setModal = async (
     ],
     [atoms.sidebarWidth(true), atoms.sidebarWidth(false)],
     [atoms.sidebarVisible(true), atoms.sidebarVisible(false)],
+    [textFilter(true), textFilter(false)],
   ];
 
   const results = await Promise.all(

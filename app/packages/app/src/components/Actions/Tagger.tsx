@@ -528,7 +528,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={<Loader />} key={"labels"}>
+        <Suspense fallback={null} key={"labels"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
@@ -540,7 +540,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={<Loader />} key={elementNames.plural}>
+        <Suspense fallback={null} key={elementNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

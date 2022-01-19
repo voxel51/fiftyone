@@ -37,7 +37,12 @@ const SamplesContainer = React.memo(() => {
   const disabled = useRecoilValue(disabledPaths);
 
   const renderGridEntry = useCallback(
-    (group: string, entry: SidebarEntry, controller: Controller) => {
+    (
+      key: string,
+      group: string,
+      entry: SidebarEntry,
+      controller: Controller
+    ) => {
       switch (entry.kind) {
         case EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
@@ -50,6 +55,7 @@ const SamplesContainer = React.memo(() => {
                   modal={false}
                   tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
                   tag={entry.path.split(".").slice(1).join(".")}
+                  key={key}
                 />
               ) : (
                 <Entries.FilterablePath
@@ -63,6 +69,7 @@ const SamplesContainer = React.memo(() => {
                   onBlur={() => {
                     controller.set({ zIndex: "0" });
                   }}
+                  key={key}
                 />
               ),
             disabled: isTag || isLabelTag || disabled.has(entry.path),
@@ -79,12 +86,14 @@ const SamplesContainer = React.memo(() => {
                     isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
                   }
                   modal={false}
+                  key={key}
                 />
               ) : (
                 <Entries.PathGroup
                   name={entry.name}
                   modal={false}
                   mutable={entry.name !== "other"}
+                  key={key}
                 />
               ),
             disabled: false,
@@ -93,9 +102,9 @@ const SamplesContainer = React.memo(() => {
           return {
             children:
               entry.type === "add" ? (
-                <Entries.AddGroup />
+                <Entries.AddGroup key={key} />
               ) : (
-                <Entries.Filter modal={false} />
+                <Entries.Filter modal={false} key={key} />
               ),
             disabled: true,
           };
@@ -110,6 +119,7 @@ const SamplesContainer = React.memo(() => {
                     ? tagText.label
                     : "No fields"
                 }
+                key={key}
               />
             ),
             disabled: true,

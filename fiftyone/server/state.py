@@ -379,21 +379,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.send_updates(ignore=self)
 
     @staticmethod
-    async def on_set_dataset(self, dataset_name):
-        """Event for setting the current dataset by name.
-
-        Args:
-            dataset_name: the dataset name
-        """
-        dataset = fod.load_dataset(dataset_name)
-        config = fos.StateDescription.from_dict(StateHandler.state).config
-        active_handle = StateHandler.state["active_handle"]
-        StateHandler.state = fos.StateDescription(
-            dataset=dataset, config=config, active_handle=active_handle
-        ).serialize()
-        await self.on_update(self, StateHandler.state)
-
-    @staticmethod
     async def on_save_filters(
         caller, filters=None, add_stages=[], with_selected=False
     ):

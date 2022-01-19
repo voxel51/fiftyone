@@ -100,7 +100,7 @@ export const tagStatistics = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStatistics",
-  get: ({ modal, labels }) => async ({ get }) => {
+  get: ({ modal, labels: count_labels }) => async ({ get }) => {
     const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
     const selected = get(atoms.selectedSamples);
 
@@ -126,7 +126,7 @@ export const tagStatistics = selectorFamily<
           ? [get(atoms.modal).sample._id]
           : null,
         labels,
-        count_labels: labels,
+        count_labels,
         filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
         hidden_labels:
           modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,

@@ -495,6 +495,8 @@ const TeamsForm = () => {
   );
 };
 
+const url = `${http}/dataset`;
+
 const DatasetSelector = ({ error }: { error: boolean }) => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
@@ -507,8 +509,16 @@ const DatasetSelector = ({ error }: { error: boolean }) => {
       type: "SET_VALUES",
       value: datasetName ?? "",
       values: datasets,
-      onCommit: (v) => {
-        socket.send(packageMessage("set_dataset", { dataset_name: v }));
+      onCommit: (dataset) => {
+        fetch(url, {
+          method: "POST",
+          cache: "no-cache",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "cors",
+          body: JSON.stringify({ dataset }),
+        });
       },
     });
   }, [datasetName, datasets, socket]);

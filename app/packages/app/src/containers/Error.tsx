@@ -1,14 +1,16 @@
-import { FileCopy, Refresh } from "@material-ui/icons";
+import { Clear, FileCopy, Refresh } from "@material-ui/icons";
 import React from "react";
 import { useCopyToClipboard } from "react-use";
-import { useRecoilState } from "recoil";
+import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import Header from "../components/Header";
 import { scrollbarStyles } from "../components/utils";
+import { stateDescription } from "../recoil/atoms";
 
-import * as selectors from "../recoil/selectors";
-import { useRefresh, useTheme } from "../utils/hooks";
+import socket, { http } from "../shared/connection";
+import { useRefresh } from "../utils/hooks";
+import { packageMessage } from "../utils/socket";
 
 const ErrorWrapper = styled.div`
   width: 100%;
@@ -74,6 +76,7 @@ const Stack = styled.div`
 
 const Error = ({ error = null, resetErrorBoundary }) => {
   const [_, copy] = useCopyToClipboard();
+  const resetState = useResetRecoilState(stateDescription);
 
   const refresh = useRefresh();
   return (
@@ -84,6 +87,28 @@ const Error = ({ error = null, resetErrorBoundary }) => {
           <ErrorHeading>
             <div>{error.kind ? error.kind : "App Error"}</div>
             <div>
+              <div>
+                <span
+                  title={"Clear session"}
+                  onClick={() => {
+                    fetch(`${http}/dataset`, {
+                      method: "POST",
+                      cache: "no-cache",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      mode: "cors",
+                      body: JSON.stringify({ dataset: null }),
+                    }).then(() => {
+                      resetState();
+                      refresh();
+                      resetErrorBoundary();
+                    });
+                  }}
+                >
+                  <Clear />
+                </span>
+              </div>
               <div>
                 <span
                   title={"Refresh page"}

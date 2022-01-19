@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 import os
+from fiftyone.server.set import DatasetHandler
 
 import tornado.escape
 import tornado.ioloop
@@ -282,6 +283,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/aggregations", AggregationsHandler),
             (r"/colorscales", ColorscalesHandler),
+            (r"/dataset", DatasetHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
