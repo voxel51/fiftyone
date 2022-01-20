@@ -71,6 +71,7 @@ class Metadata(DynamicEmbeddedDocument):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
+        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
 
@@ -136,6 +137,7 @@ class ImageMetadata(Metadata):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
+        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
@@ -202,9 +204,11 @@ class VideoMetadata(Metadata):
         if not fos.is_local(video_path):
             video_path = fos.get_url(video_path)
 
+        # @todo need retries for URLs
         stream_info = etav.VideoStreamInfo.build_for(
             video_path, mime_type=mime_type
         )
+
         return cls(
             size_bytes=stream_info.size_bytes,
             mime_type=stream_info.mime_type,

@@ -263,6 +263,7 @@ async def get_stream_info(path, session=None):
 
 
 def _get_image_dimensions(url):
+    # @todo needs retries before being production-ready
     with requests.get(url, stream=True) as r:
         return fome.get_image_info(fou.ResponseStream(r))
 
