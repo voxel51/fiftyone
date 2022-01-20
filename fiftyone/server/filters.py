@@ -25,20 +25,16 @@ class PinHandler(AsyncRequestHandler):
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
-        labels = data.get("labels", None)
         add_stages = data.get("add_stages", None)
 
         view = fosv.get_view(dataset, stages, filters)
-
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        if labels:
-            view = view.select_labels(labels)
-
-        for d in add_stages:
-            stage = fost.ViewStage._from_dict(d)
-            view = view.add_stage(stage)
+        if add_stages:
+            for d in add_stages:
+                stage = fost.ViewStage._from_dict(d)
+                view = view.add_stage(stage)
 
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.selected = []

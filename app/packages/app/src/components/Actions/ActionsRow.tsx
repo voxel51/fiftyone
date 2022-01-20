@@ -28,7 +28,7 @@ import {
 import styled from "styled-components";
 
 import OptionsActions from "./Options";
-import Patcher, { patchesFields, patching } from "./Patcher";
+import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
@@ -286,20 +286,14 @@ const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
   const loading = useRecoilValue(savingFilters);
 
-  const saveFilters = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => () => {
-      const loading = get(savingFilters);
+  const saveFilters = useRecoilCallback(
+    ({ snapshot, set }) => async () => {
+      const loading = await snapshot.getPromise(savingFilters);
       if (loading) {
         return;
       }
-      const filters = get(filterAtoms.filters);
       set(savingFilters, true);
-      set(filterAtoms.filters, {});
-      socket.send(
-        packageMessage("save_filters", {
-          filters,
-        })
-      );
+      sendPatch(snapshot).then(() => set(savingFilters, false));
     },
     []
   );

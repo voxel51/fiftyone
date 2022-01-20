@@ -80,8 +80,18 @@ const numGroupFieldsFiltered = selectorFamily<
   get: (params) => ({ get }) => {
     let count = 0;
 
+    let f = null;
+
+    if (params.modal) {
+      const labels = get(schemaAtoms.labelPaths({ expanded: false }));
+      f = (path) => labels.includes(path);
+    }
+
     for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
-      if (get(filterAtoms.fieldIsFiltered({ path, modal: params.modal })))
+      if (
+        get(filterAtoms.fieldIsFiltered({ path, modal: params.modal })) &&
+        (!f || f(path))
+      )
         count++;
     }
 
@@ -99,9 +109,15 @@ const numGroupFieldsActive = selectorFamily<
     const active = new Set(
       get(schemaAtoms.activeFields({ modal: params.modal }))
     );
+    let f = null;
+
+    if (params.modal) {
+      const labels = get(schemaAtoms.labelPaths({ expanded: false }));
+      f = (path) => labels.includes(path);
+    }
 
     for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
-      if (active.has(path)) count++;
+      if (active.has(path) && (!f || f(path))) count++;
     }
 
     return count;

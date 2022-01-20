@@ -395,7 +395,7 @@ export const mergeUpdates = <State extends BaseState>(
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
-    if (n === null) {
+    if (n === null || o === null) {
       return n;
     }
     return mergeWith(merger, o, n);

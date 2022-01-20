@@ -12,6 +12,7 @@ import TeamsForm from "../components/TeamsForm";
 
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
+import * as filterAtoms from "../recoil/filters";
 import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -51,6 +52,7 @@ const useStateUpdate = () => {
       set(savingFilters, false);
       if (!viewsAreEqual(view, state.view || [])) {
         set(viewAtoms.view, state.view || []);
+        set(filterAtoms.filters, {});
       }
 
       if (state.dataset) {

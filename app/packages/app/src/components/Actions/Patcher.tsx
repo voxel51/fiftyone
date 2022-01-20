@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  atom,
+  selector,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
 import { useSpring } from "@react-spring/web";
 
 import {
@@ -7,6 +13,7 @@ import {
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   PATCHES_FIELDS,
+  toSnakeCase,
 } from "@fiftyone/utilities";
 
 import * as atoms from "../../recoil/atoms";
@@ -26,6 +33,7 @@ import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import { State } from "../../recoil/types";
+import { filters } from "../../recoil/filters";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -78,53 +86,7 @@ const evaluationKeys = selector<string[]>({
   },
 });
 
-const useToPatches = () => {
-  return useRecoilCallback(
-    ({ set }) => async (field) => {
-      set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToPatches",
-              kwargs: [
-                ["field", field],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
-    },
-    []
-  );
-};
-
-const useToClips = () => {
-  return useRecoilCallback(
-    ({ set }) => async (field) => {
-      set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToClips",
-              kwargs: [
-                ["field_or_expr", field],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
-    },
-    []
-  );
-};
-
-const sendPatch = ({}) => {
+export const sendPatch = async (snapshot: Snapshot, addStage?: object) =>
   fetch(`${http}/pin`, {
     method: "POST",
     cache: "no-cache",
@@ -133,32 +95,58 @@ const sendPatch = ({}) => {
     },
     mode: "cors",
     body: JSON.stringify({
-      filters: f,
-      view,
-      dataset,
-      active_label_fields: activeLabels,
-      target_labels: targetLabels,
-      changes,
-      modal: modal ? modalData.sample._id : null,
-      sample_ids: modal
-        ? null
-        : selectedSamples.size
-        ? [...selectedSamples]
-        : null,
-      labels:
-        selectedLabels && selectedLabels.length
-          ? toSnakeCase(selectedLabels)
-          : null,
-      hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
+      filters: await snapshot.getPromise(filters),
+      view: await snapshot.getPromise(viewAtoms.view),
+      dataset: await snapshot.getPromise(selectors.datasetName),
+      sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+      labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
+      add_stages: addStage ? [addStage] : null,
     }),
   });
+
+const useToPatches = () => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (field) => {
+      set(patching, true);
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToPatches",
+        kwargs: [
+          ["field", field],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
+    },
+    []
+  );
+};
+
+const useToClips = () => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (field) => {
+      set(patching, true);
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToClips",
+        kwargs: [
+          ["field_or_expr", field],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
+    },
+    []
+  );
 };
 
 const useToEvaluationPatches = () => {
   return useRecoilCallback(
-    ({ set }) => async (evaluation) => {
+    ({ set, snapshot }) => async (evaluation: string) => {
       set(patching, true);
-      sendPatch();
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToEvaluationPatches",
+        kwargs: [
+          ["eval_key", evaluation],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
     },
     []
   );
