@@ -2166,7 +2166,6 @@ images-and-labels and labels-only data in YOLO format:
         "predictions",
         "/tmp/yolov4/predictions",
         classes=classes,
-        include_missing=False, # or set include_missing=True to treat missing labels as empty detections
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -2342,7 +2341,6 @@ images-and-labels and labels-only data in YOLO format:
         "predictions",
         "/tmp/yolov5/predictions/validation",
         classes=classes,
-        include_missing=False, # or set include_missing=True to treat missing labels as empty detections
     )
 
     # Verify that ground truth and predictions were imported as expected

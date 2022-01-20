@@ -457,7 +457,6 @@ predictions to take advantage of FiftyOne's
             "predictions",
             "/tmp/yolov4/predictions",
             classes=classes,
-            include_missing=False, # or set include_missing=True to treat missing labels as empty detections
         )
 
         # Verify that ground truth and predictions were imported as expected
