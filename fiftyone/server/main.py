@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 import os
+from fiftyone.server.filters import PinHandler
 from fiftyone.server.set import DatasetHandler
 
 import tornado.escape
@@ -288,6 +289,7 @@ class Application(tornado.web.Application):
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
+            (r"/pin", PinHandler),
             (r"/page", PageHandler),
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),

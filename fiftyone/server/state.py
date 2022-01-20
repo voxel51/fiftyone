@@ -378,34 +378,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected_labels"] = selected_labels
         await self.send_updates(ignore=self)
 
-    @staticmethod
-    async def on_save_filters(
-        caller, filters=None, add_stages=[], with_selected=False
-    ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        else:
-            view = state.dataset
-
-        view = get_extended_view(view, filters)
-
-        if with_selected:
-            if state.selected:
-                view = view.select(state.selected)
-            elif state.selected_labels:
-                view = view.select_labels(state.selected_labels)
-
-        for d in add_stages:
-            stage = fosg.ViewStage._from_dict(d)
-            view = view.add_stage(stage)
-
-        state.selected = []
-        state.selected_labels = []
-        state.view = view
-
-        await StateHandler.on_update(caller, state.serialize())
-
     @classmethod
     async def send_samples(
         cls, sample_id, sample_ids, filters=None, current_frame=None, only=None

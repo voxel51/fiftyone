@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  ChangeEvent,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import styled from "styled-components";
 import {
   RecoilState,
   RecoilValueReadOnly,
   useRecoilState,
-  useRecoilStateLoadable,
   useRecoilValue,
 } from "recoil";
 import { Slider as SliderUnstyled } from "@material-ui/core";
@@ -75,119 +79,126 @@ const SliderStyled = styled(SliderUnstyled)`
     background: ${({ theme }) => theme.backgroundDark};
     border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   }
-`;
+` as typeof SliderUnstyled;
 
 type SliderValue = number | undefined;
 
 export type Range = [SliderValue, SliderValue];
 
-type BaseSliderProps = {
+type BaseSliderProps<T extends Range | number> = {
   boundsAtom: RecoilValueReadOnly<Range>;
   color: string;
-  value: Range | number;
-  onChange: (e: Event, v: Range | number) => void;
-  onCommit: (e: Event, v: Range | number) => void;
+  value: T;
+  onChange: (e: ChangeEvent<{}>, v: T) => void;
+  onCommit: (e: ChangeEvent<{}>, v: T) => void;
   persistValue?: boolean;
   showBounds?: boolean;
   fieldType?: string;
-  showValue: boolean;
+  showValue?: boolean;
   int?: boolean;
   style?: React.CSSProperties;
 };
 
-const BaseSlider = React.memo(
-  ({
-    boundsAtom,
-    color,
-    fieldType,
-    onChange,
-    onCommit,
-    persistValue = true,
-    showBounds = true,
-    value,
-    style,
-    showValue = true,
-  }: BaseSliderProps) => {
-    const theme = useTheme();
-    const bounds = useRecoilValue(boundsAtom);
+const BaseSlider = <T extends Range | number>({
+  boundsAtom,
+  color,
+  fieldType,
+  onChange,
+  onCommit,
+  persistValue = true,
+  showBounds = true,
+  value,
+  style,
+  showValue = true,
+}: BaseSliderProps<T>) => {
+  const theme = useTheme();
+  const bounds = useRecoilValue(boundsAtom);
 
-    const timeZone =
-      fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-        ? useRecoilValue(selectors.timeZone)
-        : null;
-    const [clicking, setClicking] = useState(false);
+  const timeZone =
+    fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
+      ? useRecoilValue(selectors.timeZone)
+      : null;
+  const [clicking, setClicking] = useState(false);
 
-    const hasBounds = bounds.every((b) => b !== null);
+  const hasBounds = bounds.every((b) => b !== null);
 
-    if (!hasBounds) {
-      return null;
-    }
-
-    const step = getStep(bounds, fieldType);
-    const { formatter, hasTitle } = getFormatter(
-      fieldType,
-      fieldType === DATE_FIELD ? "UTC" : timeZone,
-      bounds
-    );
-
-    return (
-      <>
-        {hasTitle ? (
-          <>
-            {
-              <div
-                style={{
-                  width: "100%",
-                  textAlign: "center",
-                  padding: "0.25rem",
-                  color: theme.font,
-                }}
-              >
-                {getDateTimeRangeFormattersWithPrecision(
-                  timeZone,
-                  bounds[0],
-                  bounds[1]
-                )[0]
-                  .format(bounds[0])
-                  .replaceAll("/", "-")}
-              </div>
-            }
-          </>
-        ) : null}
-        <SliderContainer style={style}>
-          {showBounds && formatter(bounds[0])}
-          <SliderStyled
-            onMouseDown={() => setClicking(true)}
-            onMouseUp={() => setClicking(false)}
-            value={value}
-            onChange={onChange}
-            onChangeCommitted={(e, v) => {
-              onCommit(e, v);
-              setClicking(false);
-            }}
-            classes={{
-              thumb: "thumb",
-              track: "track",
-              rail: "rail",
-              active: "active",
-              valueLabel: "valueLabel",
-            }}
-            valueLabelFormat={formatter}
-            aria-labelledby="slider"
-            valueLabelDisplay={
-              (clicking || persistValue) && showValue ? "on" : "off"
-            }
-            max={bounds[1]}
-            min={bounds[0]}
-            step={step}
-            theme={{ ...theme, brand: color }}
-          />
-          {showBounds && formatter(bounds[1])}
-        </SliderContainer>
-      </>
-    );
+  if (!hasBounds) {
+    return null;
   }
-);
+
+  const step = getStep(bounds, fieldType);
+  const { formatter, hasTitle } = getFormatter(
+    fieldType,
+    fieldType === DATE_FIELD ? "UTC" : timeZone,
+    bounds
+  );
+
+  return (
+    <>
+      {hasTitle ? (
+        <>
+          {
+            <div
+              style={{
+                width: "100%",
+                textAlign: "center",
+                padding: "0.25rem",
+                color: theme.font,
+              }}
+            >
+              {getDateTimeRangeFormattersWithPrecision(
+                timeZone,
+                bounds[0],
+                bounds[1]
+              )[0]
+                .format(bounds[0])
+                .replaceAll("/", "-")}
+            </div>
+          }
+        </>
+      ) : null}
+      <SliderContainer style={style}>
+        {showBounds && formatter(bounds[0])}
+        <SliderStyled
+          onMouseDown={() => setClicking(true)}
+          onMouseUp={() => setClicking(false)}
+          value={value}
+          onChange={(e, v) => {
+            if (
+              v instanceof Array
+                ? v.some((i, j) => i !== value[j])
+                : v !== value
+            ) {
+              onChange(e, v as T);
+            }
+          }}
+          onChangeCommitted={(e, v) => {
+            onCommit(e, v as T);
+
+            setClicking(false);
+          }}
+          classes={{
+            thumb: "thumb",
+            track: "track",
+            rail: "rail",
+            active: "active",
+            valueLabel: "valueLabel",
+          }}
+          valueLabelFormat={formatter}
+          aria-labelledby="slider"
+          valueLabelDisplay={
+            (clicking || persistValue) && showValue ? "on" : "off"
+          }
+          max={bounds[1]}
+          min={bounds[0]}
+          step={step}
+          theme={{ ...theme, brand: color }}
+        />
+        {showBounds && formatter(bounds[1])}
+      </SliderContainer>
+    </>
+  );
+};
 
 type SliderProps = {
   valueAtom: RecoilState<SliderValue>;
@@ -205,16 +216,19 @@ type SliderProps = {
 export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<SliderValue>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
+  const val = onChange ? value : localValue;
 
   return (
     <BaseSlider
       {...rest}
-      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
-      onCommit={(_, v) => setValue(v)}
+      onChange={(_, v) =>
+        onChange ? val !== v && setValue(v) : setLocalValue(v)
+      }
+      onCommit={(_, v) => val !== v && setValue(v)}
       value={localValue}
     />
   );
@@ -229,19 +243,20 @@ type RangeSliderProps = {
 };
 
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
-  const [value, setValue] = useRecoilStateLoadable(valueAtom);
+  const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
-    value.state !== "loading" &&
-      JSON.stringify(value.contents) !== JSON.stringify(localValue) &&
-      setLocalValue(value.contents);
+    JSON.stringify(value) !== JSON.stringify(localValue) &&
+      setLocalValue(value);
   }, [value]);
 
   return (
     <BaseSlider
       {...rest}
       onChange={(_, v: Range) => setLocalValue(v)}
-      onCommit={(_, v) => setValue(v)}
+      onCommit={(_, v: Range) => {
+        setValue(v);
+      }}
       value={[...localValue]}
     />
   );

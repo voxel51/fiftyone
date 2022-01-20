@@ -13,7 +13,7 @@ import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
-import socket from "../../shared/connection";
+import socket, { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { packageMessage } from "../../utils/socket";
 import {
@@ -124,24 +124,41 @@ const useToClips = () => {
   );
 };
 
+const sendPatch = ({}) => {
+  fetch(`${http}/pin`, {
+    method: "POST",
+    cache: "no-cache",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    mode: "cors",
+    body: JSON.stringify({
+      filters: f,
+      view,
+      dataset,
+      active_label_fields: activeLabels,
+      target_labels: targetLabels,
+      changes,
+      modal: modal ? modalData.sample._id : null,
+      sample_ids: modal
+        ? null
+        : selectedSamples.size
+        ? [...selectedSamples]
+        : null,
+      labels:
+        selectedLabels && selectedLabels.length
+          ? toSnakeCase(selectedLabels)
+          : null,
+      hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
+    }),
+  });
+};
+
 const useToEvaluationPatches = () => {
   return useRecoilCallback(
     ({ set }) => async (evaluation) => {
       set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToEvaluationPatches",
-              kwargs: [
-                ["eval_key", evaluation],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
+      sendPatch();
     },
     []
   );
