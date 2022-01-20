@@ -70,6 +70,10 @@ export interface ControlMap<State extends BaseState> {
   [key: string]: Control<State>;
 }
 
+enum ImageFilter {
+  BRIGHTNESS = "brightness",
+}
+
 interface BaseOptions {
   activePaths: string[];
   filter: (path: string, value: unknown) => boolean;
@@ -92,6 +96,9 @@ interface BaseOptions {
   timeZone: string;
   mimetype: string;
   alpha: number;
+  imageFilters: {
+    [key in ImageFilter]?: number;
+  };
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -267,6 +274,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   timeZone: "UTC",
   mimetype: "",
   alpha: 0.7,
+  imageFilters: {},
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
