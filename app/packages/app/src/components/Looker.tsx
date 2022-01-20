@@ -380,6 +380,12 @@ const lookerOptions = selector({
       timeZone: get(selectors.timeZone),
       coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
+      imageFilters: Object.fromEntries(
+        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
+          filter,
+          get(atoms.imageFilters({ modal: false, filter })),
+        ])
+      ),
     };
   },
 });

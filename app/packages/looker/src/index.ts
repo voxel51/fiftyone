@@ -315,9 +315,6 @@ export abstract class Looker<
         ctx.scale(scale, scale);
 
         const [tlx, tly, w, h] = this.state.canvasBBox;
-        for (let key in this.state.options.imageFilters) {
-          ctx.filter = `${key}(${this.state.options.imageFilters[key]}%)`;
-        }
 
         ctx.drawImage(
           this.getImageSource(),
@@ -330,10 +327,6 @@ export abstract class Looker<
           w,
           h
         );
-
-        for (let key in this.state.options.imageFilters) {
-          ctx.filter = `${key}(100%)`;
-        }
 
         ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
         const numOverlays = this.currentOverlays.length;

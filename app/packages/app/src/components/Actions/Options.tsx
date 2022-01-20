@@ -226,7 +226,6 @@ const Options = ({ modal, bounds }: OptionsProps) => {
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
-      <ImageFilters modal={modal} />
     </Popout>
   );
 };

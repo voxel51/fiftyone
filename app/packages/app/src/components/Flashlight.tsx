@@ -112,6 +112,12 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
+      imageFilters: Object.fromEntries(
+        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
+          filter,
+          get(atoms.imageFilters({ modal: false, filter })),
+        ])
+      ),
     };
   },
 });
