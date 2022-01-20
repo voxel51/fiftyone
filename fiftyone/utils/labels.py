@@ -48,13 +48,15 @@ def objects_to_segmentations(
         (fol.Detection, fol.Detections, fol.Polyline, fol.Polylines),
     )
 
-    for sample in sample_collection.iter_samples(progress=True):
+    if mask_size is None:
+        sample_collection.compute_metadata()
+
+    samples = sample_collection.select_fields(in_field)
+
+    for sample in samples.iter_samples(progress=True):
         if mask_size is not None:
             frame_size = mask_size
         else:
-            if sample.metadata is None:
-                sample.compute_metadata()
-
             frame_size = (sample.metadata.width, sample.metadata.height)
 
         label = sample[in_field]
@@ -143,7 +145,9 @@ def segmentations_to_detections(
         elif sample_collection.default_mask_targets:
             mask_targets = sample_collection.default_mask_targets
 
-    for sample in sample_collection.iter_samples(progress=True):
+    samples = sample_collection.select_fields(in_field)
+
+    for sample in samples.iter_samples(progress=True):
         label = sample[in_field]
         if label is None:
             continue
@@ -151,6 +155,42 @@ def segmentations_to_detections(
         sample[out_field] = label.to_detections(
             mask_targets=mask_targets, mask_types=mask_types
         )
+        sample.save()
+
+
+def instances_to_polylines(
+    sample_collection, in_field, out_field, tolerance=2
+):
+    """Converts the instance segmentations in the specified field of the
+    collection into :class:`fiftyone.core.labels.Polylines` instances.
+
+    For detections with masks, the returned polylines will trace the boundaries
+    of the masks; otherwise, the polylines will trace the bounding boxes
+    themselves.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field to convert
+        out_field: the name of the :class:`fiftyone.core.labels.Polylines`
+            field to populate
+        tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for each region. Typical values are 1-3 pixels
+    """
+    fov.validate_image_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Detections,
+    )
+
+    samples = sample_collection.select_fields(in_field)
+
+    for sample in samples.iter_samples(progress=True):
+        label = sample[in_field]
+        if label is None:
+            continue
+
+        sample[out_field] = label.to_polylines(tolerance=tolerance)
         sample.save()
 
 
@@ -207,7 +247,9 @@ def segmentations_to_polylines(
         elif sample_collection.default_mask_targets:
             mask_targets = sample_collection.default_mask_targets
 
-    for sample in sample_collection.iter_samples(progress=True):
+    samples = sample_collection.select_fields(in_field)
+
+    for sample in samples.iter_samples(progress=True):
         label = sample[in_field]
         if label is None:
             continue
@@ -239,15 +281,16 @@ def classification_to_detections(sample_collection, in_field, out_field):
     )
 
     samples = sample_collection.select_fields(in_field)
+
     for sample in samples.iter_samples(progress=True):
-        classification = sample[in_field]
-        if classification is None:
+        label = sample[in_field]
+        if label is None:
             continue
 
         detection = fol.Detection(
-            label=classification.label,
+            label=label.label,
             bounding_box=[0, 0, 1, 1],  # entire image
-            confidence=classification.confidence,
+            confidence=label.confidence,
         )
         sample[out_field] = fol.Detections(detections=[detection])
         sample.save()
