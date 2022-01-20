@@ -112,7 +112,7 @@ const SampleModal = () => {
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
             !isTag && !isLabelTag && !isLabel && !isOther;
-          console.log(key);
+
           return {
             children: (
               <>

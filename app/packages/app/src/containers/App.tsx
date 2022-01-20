@@ -1,9 +1,5 @@
-import React, { useState, useRef, Suspense, useEffect } from "react";
-import {
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import React, { useState, useRef, Suspense } from "react";
+import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
 import { ErrorBoundary, useErrorHandler } from "react-error-boundary";
 
 import { toCamelCase } from "@fiftyone/utilities";
@@ -12,11 +8,10 @@ import { patching } from "../components/Actions/Patcher";
 import { similaritySorting } from "../components/Actions/Similar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
-import NotificationHub from "../components/NotificationHub";
+import TeamsForm from "../components/TeamsForm";
 
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { useClearModal } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -45,10 +40,6 @@ const useStateUpdate = () => {
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      set(atoms.stateDescription, {
-        ...state,
-        filters: filters as State.Filters,
-      } as State.Description);
 
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>
@@ -63,6 +54,16 @@ const useStateUpdate = () => {
       }
 
       if (state.dataset) {
+        state.dataset.brainMethods = Object.values(
+          state.dataset.brainMethods || {}
+        );
+        state.dataset.evaluations = Object.values(
+          state.dataset.evaluations || {}
+        );
+
+        state.dataset.annotationRuns = Object.values(
+          state.dataset.annotationRuns || {}
+        );
         const groups = resolveGroups(state.dataset);
         const current = get(sidebarGroupsDefinition(false));
 
@@ -82,6 +83,11 @@ const useStateUpdate = () => {
         set(atoms.colorPool, state.config.colorPool);
       }
       set(atoms.connected, true);
+
+      set(atoms.stateDescription, {
+        ...state,
+        filters: filters as State.Filters,
+      } as State.Description);
     },
     []
   );
@@ -116,6 +122,7 @@ const Container = () => {
   useMessageHandler("error", (data) => {
     handleError(data);
   });
+  const { open: teamsOpen } = useRecoilValue(atoms.teams);
 
   return (
     <>
@@ -127,8 +134,7 @@ const Container = () => {
       ) : (
         <Setup />
       )}
-
-      <NotificationHub children={(add) => (addNotification.current = add)} />
+      {teamsOpen && <TeamsForm />}
     </>
   );
 };

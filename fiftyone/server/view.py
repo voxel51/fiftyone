@@ -100,6 +100,9 @@ def get_extended_view(
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
 
+    if filters and "_similarity" in filters:
+        view = view.sort_by_similarity(**filters["_similarity"])
+
     return view
 
 
@@ -172,7 +175,7 @@ def _make_filter_stages(
     cleanup = set()
     filtered_labels = set()
     for path, args in filters.items():
-        if path == "tags":
+        if path == "tags" or path.startswith("_"):
             continue
 
         frames = path.startswith(view._FRAMES_PREFIX)

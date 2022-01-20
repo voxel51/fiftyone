@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -321,180 +321,6 @@ const selectorMachine = Machine({
   },
 });
 
-const Input = styled.input`
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
-  border
-  color: ${({ theme }) => theme.font};
-  line-height: 1rem;
-  border: none;
-  border-bottom: 1px solid ${({ theme }) => theme.brand};
-  font-weight: bold;
-  text-overflow: ellipsis;
-  overflow: hidden;
-
-  &:focus {
-    border-bottom: 1px solid ${({ theme }) => theme.brand};
-    outline: none;
-    font-weight: bold;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.fontDark};
-    font-weight: bold;
-  }
-`;
-
-const TeamsForm = () => {
-  const [formState, setFormState] = useState({
-    email: "",
-    firstname: "",
-    lastname: "",
-    company: "",
-    role: "",
-    discover: "",
-  });
-  const [submitText, setSubmitText] = useState("Submit");
-  const [submitted, setSubmitted] = useRecoilState(atoms.teamsSubmitted);
-  const portalId = 4972700;
-  const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
-  const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
-  const closeTeams = useRecoilValue(atoms.closeTeams);
-
-  const setFormValue = (name) => (e) =>
-    setFormState({
-      ...formState,
-      [name]: e.target.value,
-    });
-  const disabled =
-    !(
-      formState.email?.length &&
-      formState.firstname?.length &&
-      formState.lastname?.length
-    ) || submitted.submitted;
-  const submit = () => {
-    if (disabled) {
-      return;
-    }
-    setSubmitText("Submitting...");
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    const finalize = () => {
-      setSubmitText("Submitted. Thank you!");
-      setSubmitted({ ...submitted, submitted: true });
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
-      setTimeout(() => closeTeams && closeTeams.close(), 2000);
-    };
-
-    fetch(postUrl, {
-      method: "post",
-      headers,
-      mode: "cors",
-      body: JSON.stringify({
-        submittedAt: Date.now(),
-        fields: [
-          {
-            name: "firstname",
-            value: formState.firstname,
-          },
-          {
-            name: "lastname",
-            value: formState.lastname,
-          },
-          {
-            name: "email",
-            value: formState.email,
-          },
-          {
-            name: "company",
-            value: formState.company,
-          },
-          {
-            name: "role",
-            value: formState.role,
-          },
-          {
-            name: "app_how_did_you_hear_about_us",
-            value: formState.discover,
-          },
-        ],
-        context: { pageName: "FiftyOne App" },
-      }),
-    })
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error("Failed submission");
-        }
-        return response.json();
-      })
-      .then(() => {
-        finalize();
-      })
-      .catch((e) => {
-        setSubmitText("Something went wrong");
-      });
-  };
-  return (
-    <>
-      <Input
-        key="firstname"
-        placeholder={"First name*"}
-        value={formState.firstname ?? ""}
-        maxLength={40}
-        onChange={setFormValue("firstname")}
-      />
-      <Input
-        key="lastname"
-        placeholder={"Last name*"}
-        value={formState.lastname ?? ""}
-        maxLength={40}
-        onChange={setFormValue("lastname")}
-      />
-      <Input
-        key="email"
-        placeholder={"Email*"}
-        type="email"
-        value={formState.email ?? ""}
-        onChange={setFormValue("email")}
-      />
-      <Input
-        key="company"
-        placeholder={"Company"}
-        value={formState.company ?? ""}
-        maxLength={100}
-        onChange={setFormValue("company")}
-      />
-      <Input
-        key="role"
-        placeholder={"Role"}
-        value={formState.role ?? ""}
-        maxLength={100}
-        onChange={setFormValue("role")}
-      />
-      <Input
-        key="discover"
-        placeholder={"How did you hear about FiftyOne?"}
-        value={formState.discover ?? ""}
-        maxLength={100}
-        onChange={setFormValue("discover")}
-      />
-      <Button
-        key="submit"
-        onClick={submit}
-        style={{
-          marginBottom: "1rem",
-        }}
-        className={disabled ? "disabled" : ""}
-      >
-        {submitText}
-      </Button>
-    </>
-  );
-};
-
 const url = `${http}/dataset`;
 
 const DatasetSelector = ({ error }: { error: boolean }) => {
@@ -618,10 +444,7 @@ const TeamsButton = ({ addNotification }) => {
   const [appTeamsIsOpen, setAppTeamsIsOpen] = useRecoilState(
     atoms.appTeamsIsOpen
   );
-  const [teamsSubmitted, setTeamsSubmitted] = useRecoilState(
-    atoms.teamsSubmitted
-  );
-  const [closeTeams, setCloseTeams] = useRecoilState(atoms.closeTeams);
+  const setTeams = useSetRecoilState(atoms.teams);
   const text = (
     <span>
       FiftyOne is and will always be open source software that is freely
@@ -638,18 +461,7 @@ const TeamsButton = ({ addNotification }) => {
   const theme = useContext(ThemeContext);
   const showTeamsButton = useRecoilValue(selectors.showTeamsButton);
 
-  const onClick = () => {
-    if (!appTeamsIsOpen) {
-      setAppTeamsIsOpen(true);
-      const callback = addNotification.current({
-        kind: "Get FiftyOne for your team",
-        message: text,
-        children: [<TeamsForm key="teams" />],
-        onClose: () => setAppTeamsIsOpen(false),
-      });
-      setCloseTeams({ close: callback });
-    }
-  };
+  const onClick = () => setTeams((cur) => ({ ...cur, open: true }));
 
   return showTeamsButton === "shown" ? (
     <Button
@@ -671,9 +483,8 @@ const TeamsButton = ({ addNotification }) => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setTeamsSubmitted({ ...teamsSubmitted, minimized: true });
+            setTeams((cur) => ({ ...cur, minimized: true }));
             fetch(`${http}/teams`, { method: "post" });
-            closeTeams && closeTeams.close();
           }}
         />
       </div>

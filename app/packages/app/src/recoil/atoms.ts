@@ -58,14 +58,10 @@ export const fullscreen = atom<boolean>({
   default: false,
 });
 
-export const closeTeams = atom({
-  key: "closeTeams",
-  default: null,
-});
-
-export const teamsSubmitted = atom({
-  key: "teamsSubmitted",
+export const teams = atom({
+  key: "teams",
   default: {
+    open: false,
     submitted: false,
     minimized: false,
   },

@@ -12,9 +12,8 @@ import {
 import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
+import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
 import { useTheme } from "../../utils/hooks";
 
@@ -27,6 +26,8 @@ import { PopoutSectionTitle } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { store } from "../Flashlight.store";
+import { filters } from "../../recoil/filters";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -73,25 +74,17 @@ const useSortBySimilarity = () => {
     ({ snapshot, set }) => async () => {
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot, params.brainKey);
+      const current = await snapshot.getPromise(filters);
       set(similaritySorting, true);
       set(atoms.modal, null);
 
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.SortBySimilarity",
-              kwargs: [
-                ["query_ids", queryIds],
-                ["k", params.k],
-                ["reverse", params.reverse],
-                ["brain_key", params.brainKey],
-                ["_state", null],
-              ],
-            },
-          ],
-        })
-      );
+      set(filters, {
+        ...current,
+        _similarity: toSnakeCase({
+          queryIds,
+          ...params,
+        }),
+      });
     },
     []
   );
@@ -177,13 +170,7 @@ const currentSimilarityKeys = selectorFamily<
   },
 });
 
-interface SortBySimilarityParameters {
-  k: number | null;
-  reverse: boolean;
-  brainKey: string;
-}
-
-const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
+const sortBySimilarityParameters = selector<State.SortBySimilarityParameters>({
   key: "sortBySimilarityParameters",
   get: ({ get }) => {
     return {

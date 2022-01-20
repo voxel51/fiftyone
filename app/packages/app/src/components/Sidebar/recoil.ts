@@ -189,31 +189,19 @@ export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
   }
 );
 
-const visiblePaths = selector<Set<string>>({
-  key: "visibalePaths",
-  get: ({ get }) => {
-    return new Set(
-      get(sidebarGroups({ modal: false, loadingTags: true })).reduce(
-        (paths, [_, groupPaths]) => {
-          paths.push(...groupPaths);
-          return paths;
-        },
-        []
-      )
-    );
-  },
-});
-
 export const sidebarGroups = selectorFamily<
   State.SidebarGroups,
   { modal: boolean; loadingTags: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get: ({ modal, loadingTags, filtered = true }) => ({ get }) => {
+    const f = get(textFilter(modal));
     let groups = get(sidebarGroupsDefinition(modal))
       .map(([name, paths]) => [
         name,
-        filtered ? paths.filter((path) => pathIsShown(path)) : paths,
+        filtered
+          ? paths.filter((path) => pathIsShown(path) && path.includes(f))
+          : paths,
       ])
       .filter(
         ([name, entries]) => entries.length || name !== "other"
@@ -246,18 +234,52 @@ export const sidebarGroups = selectorFamily<
   set: ({ modal }) => ({ set, get }, groups) => {
     if (groups instanceof DefaultValue) return;
 
-    const visible = get(visiblePaths);
-    groups = groups.map(([name, paths]) => [
-      name,
-      ["tags", "label tags"].includes(name)
-        ? []
-        : [
-            ...paths,
-            ...get(
-              sidebarGroup({ group: name, modal, loadingTags: true })
-            ).filter((path) => !visible.has(path)),
-          ],
-    ]);
+    const allPaths = new Set(groups.map(([_, paths]) => paths).flat());
+
+    groups = groups.map(([name, paths]) => {
+      if (["tags", "label tags"].includes(name)) {
+        return [name, []];
+      }
+
+      const result = [];
+      const current = [
+        ...get(
+          sidebarGroup({
+            modal,
+            group: name,
+            loadingTags: false,
+            filtered: false,
+          })
+        ),
+      ];
+
+      const fill = (path?: string) => {
+        while (current.length && current[0] !== path) {
+          const next = current.shift();
+
+          if (!allPaths.has(next)) {
+            result.push(next);
+          }
+        }
+
+        if (current.length && current[0] === path) {
+          current.shift();
+        }
+      };
+
+      paths.forEach((path) => {
+        result.push(path);
+        if (!current.includes(path)) {
+          return;
+        }
+
+        fill(path);
+      });
+
+      fill();
+
+      return [name, result];
+    });
 
     set(sidebarGroupsDefinition(modal), groups);
     !modal &&
@@ -281,11 +303,10 @@ export const sidebarGroups = selectorFamily<
 
 export const sidebarEntries = selectorFamily<
   SidebarEntry[],
-  { modal: boolean; loadingTags: boolean; filter: boolean }
+  { modal: boolean; loadingTags: boolean; filtered?: boolean }
 >({
   key: "sidebarEntries",
-  get: ({ filter = true, ...params }) => ({ get }) => {
-    const f = get(textFilter(params.modal));
+  get: (params) => ({ get }) => {
     const entries = [
       { type: "filter", kind: EntryKind.INPUT } as InputEntry,
       ...get(sidebarGroups(params))
@@ -295,18 +316,14 @@ export const sidebarEntries = selectorFamily<
             groupShown({ name: groupName, modal: params.modal })
           );
 
-          const filtered = filter
-            ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
-            : paths;
-
           return [
             group,
             {
               kind: EntryKind.EMPTY,
-              shown: filtered.length === 0 && shown,
+              shown: paths.length === 0 && shown,
               group: groupName,
             } as EmptyEntry,
-            ...filtered.map<PathEntry>((path) => ({
+            ...paths.map<PathEntry>((path) => ({
               path,
               kind: EntryKind.PATH,
               shown,
@@ -325,26 +342,10 @@ export const sidebarEntries = selectorFamily<
   set: (params) => ({ set, get }, value) => {
     if (value instanceof DefaultValue) return;
 
-    let current: string[];
-    const has = new Set(
-      value
-        .filter((entry) => entry.kind === EntryKind.PATH)
-        .map((entry) => (entry as PathEntry).path)
-    );
-
     set(
       sidebarGroups(params),
       value.reduce((result, entry) => {
         if (entry.kind === EntryKind.GROUP) {
-          current = [
-            ...get(
-              sidebarGroup({
-                ...params,
-                group: entry.name,
-                filtered: true,
-              })
-            ),
-          ];
           return [...result, [entry.name, []]];
         }
 
@@ -357,19 +358,6 @@ export const sidebarEntries = selectorFamily<
           entry.path.startsWith("_label_tags.")
         ) {
           return result;
-        }
-
-        if (current.length && current[0] === entry.path) {
-          current.shift();
-        } else {
-          while (current.length && current[0] !== entry.path) {
-            const next = current.shift();
-
-            console.log(next, has);
-            if (!has.has(next)) {
-              result[result.length - 1][1].push(next);
-            }
-          }
         }
 
         result[result.length - 1][1].push(entry.path);

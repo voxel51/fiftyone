@@ -37,18 +37,57 @@ export namespace State {
 
   export interface Evaluation {}
 
+  export interface Run {
+    key: string;
+    version: string;
+    timestamp: { date: number };
+    config: {};
+    viewStages: string[];
+    result: ID;
+  }
+
+  export interface BrainRun extends Run {
+    config: {
+      cls: "fiftyone.brain.similarity.SimilarityConfig";
+      embeddingsField?: string;
+      method: string;
+      patchesField?: string;
+    };
+  }
+
+  export interface EvaluationRun extends Run {
+    config: {
+      classwise: boolean;
+      cls: "fiftyone.utils.eval.coco.COCOEvaluationConfig";
+      computeMAp: boolean;
+      errorLevel: 0 | 1 | 2 | 3;
+      gtField: string;
+      iou: number;
+      iouThreshs?: number;
+      iscrowd: string;
+      maxPreds?: number;
+      method: string;
+      predField: string;
+      tolerance?: number;
+      useBoxes: boolean;
+      useMasks: boolean;
+    };
+  }
+
+  export interface AnnotationRun extends Run {
+    config: {};
+  }
+
   export interface Dataset {
-    annotationRuns: [];
-    brainRuns: [];
+    annotationRuns: AnnotationRun[];
+    brainMethods: BrainRun[];
     classes: {
       [key: string]: string;
     };
     createdAt: DateTime;
     defaultClasses: string[];
     defaultMaskTargets: Targets;
-    evaluations: {
-      [key: string]: Evaluation;
-    };
+    evaluations: EvaluationRun[];
     frameCollectionName: string;
     frameFields: StrictField[];
     info: object;
@@ -72,9 +111,21 @@ export namespace State {
     LABEL = "label",
   }
 
+  export interface SortBySimilarityParameters {
+    k: number | null;
+    reverse: boolean;
+    brainKey: string;
+  }
+
   export interface Filters {
     tags?: {
       [key in TagKey]?: string[];
+    };
+    _similarity?: {
+      k?: number;
+      reverse?: boolean;
+      brain_key?: string;
+      query_ids: string[];
     };
     [key: string]: Filter;
   }

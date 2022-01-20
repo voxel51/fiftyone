@@ -60,7 +60,7 @@ export const showTeamsButton = selector({
   key: "showTeamsButton",
   get: ({ get }) => {
     const teams = get(fiftyone).teams;
-    const localTeams = get(atoms.teamsSubmitted);
+    const localTeams = get(atoms.teams);
     const storedTeams = window.localStorage.getItem("fiftyone-teams");
     if (storedTeams) {
       window.localStorage.removeItem("fiftyone-teams");
@@ -348,46 +348,23 @@ export const hiddenFieldLabels = selectorFamily<string[], string>({
   },
 });
 
-interface BrainMethod {
-  config: {
-    method: string;
-    patches_field: string;
-  };
-}
-
-interface BrainMethods {
-  [key: string]: BrainMethod;
-}
-
 export const similarityKeys = selector<{
   patches: [string, string][];
   samples: string[];
 }>({
   key: "similarityKeys",
   get: ({ get }) => {
-    const state = get(atoms.stateDescription);
-    const brainKeys = (state?.dataset?.brainMethods || {}) as BrainMethods;
-    return Object.entries(brainKeys)
-      .filter(
-        ([
-          _,
-          {
-            config: { method },
-          },
-        ]) => method === "similarity"
-      )
+    const methods = get(atoms.stateDescription).dataset.brainMethods;
+    return methods
+      .filter(({ config: { method } }) => method === "similarity")
       .reduce(
         (
           { patches, samples },
-          [
-            key,
-            {
-              config: { patches_field },
-            },
-          ]
+
+          { config: { patchesField }, key }
         ) => {
-          if (patches_field) {
-            patches.push([key, patches_field]);
+          if (patchesField) {
+            patches.push([key, patchesField]);
           } else {
             samples.push(key);
           }

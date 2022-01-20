@@ -139,7 +139,7 @@ const isShown = (entry: SidebarEntry) => {
   }
 
   if (entry.kind === EntryKind.INPUT) {
-    return false;
+    return true;
   }
 
   return true;
@@ -519,7 +519,7 @@ const InteractiveSidebar = ({
 
   const exit = useCallback(
     (event) => {
-      if (start.current === event.clientY || down.current == null) {
+      if (down.current == null) {
         down.current = null;
         start.current = null;
         return;

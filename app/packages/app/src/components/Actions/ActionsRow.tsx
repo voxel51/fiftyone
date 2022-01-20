@@ -90,7 +90,6 @@ const hasSimilarityKeys = selectorFamily<boolean, boolean>({
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
-  const loading = useRecoilValue(similaritySorting);
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
   const [mRef, bounds] = useMeasure();
@@ -107,13 +106,13 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={loading ? <Loading /> : <Wallpaper />}
+        icon={<Wallpaper />}
         open={open}
-        onClick={() => !loading && setOpen(!open)}
+        onClick={() => setOpen(!open)}
         highlight={true}
         ref={mRef}
         title={"Sort by similarity"}
-        style={{ cursor: loading ? "default" : "pointer" }}
+        style={{ cursor: "pointer" }}
       />
       {open && (
         <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />

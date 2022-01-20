@@ -72,7 +72,9 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return Object.keys(get(atoms.stateDescription).dataset.evaluations || {});
+    return get(atoms.stateDescription).dataset.evaluations.map(
+      ({ key }) => key
+    );
   },
 });
 

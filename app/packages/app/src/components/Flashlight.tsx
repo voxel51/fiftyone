@@ -1,4 +1,3 @@
-import LRU from "lru-cache";
 import React, {
   useLayoutEffect,
   useRef,
@@ -20,13 +19,7 @@ import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
-import {
-  FrameLooker,
-  freeVideos,
-  ImageLooker,
-  VideoLooker,
-  zoomAspectRatio,
-} from "@fiftyone/looker";
+import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 
 import * as atoms from "../recoil/atoms";
@@ -43,7 +36,7 @@ import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
-import { sidebarEntries, sidebarGroupsDefinition, textFilter } from "./Sidebar";
+import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 
@@ -65,10 +58,7 @@ const setModal = async (
     [atoms.colorSeed(true), atoms.colorSeed(false)],
     [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
     [atoms.alpha(true), atoms.alpha(false)],
-    [
-      sidebarEntries({ modal: true, loadingTags: false }),
-      sidebarEntries({ modal: false, loadingTags: false }),
-    ],
+    [sidebarGroupsDefinition(true), sidebarGroupsDefinition(false)],
     [atoms.sidebarWidth(true), atoms.sidebarWidth(false)],
     [atoms.sidebarVisible(true), atoms.sidebarVisible(false)],
     [textFilter(true), textFilter(false)],

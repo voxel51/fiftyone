@@ -59,7 +59,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def __setattr__(self, name, value):
         custom_fields = self._get_custom_fields()
-        if name in custom_fields:
+        if name in custom_fields and value is not None:
             custom_fields[name].validate(value)
 
         super().__setattr__(name, value)
@@ -71,7 +71,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         if hasattr(self, name) and not self.has_field(name):
             raise ValueError("Cannot use reserved keyword '%s'" % name)
 
-        if not self.has_field(name):
+        if not self.has_field(name) and value is not None:
             if create:
                 self.add_implied_field(name, value)
             else:

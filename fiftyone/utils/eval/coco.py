@@ -353,7 +353,7 @@ class COCODetectionResults(DetectionResults):
         return inds[0]
 
 
-_NO_MATCH_ID = ""
+_NO_MATCH_ID = None
 _NO_MATCH_IOU = None
 
 
