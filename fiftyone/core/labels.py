@@ -1238,9 +1238,9 @@ def _render_polyline(mask, polyline, target, thickness):
 
     if polyline.filled:
         # pylint: disable=no-member
-        mask = cv2.fillPoly(mask, points, target)
+        cv2.fillPoly(mask, points, target)
     else:
-        mask = cv2.polylines(  # pylint: disable=no-member
+        cv2.polylines(  # pylint: disable=no-member
             mask, points, polyline.closed, target, thickness=thickness
         )
 
