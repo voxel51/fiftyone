@@ -217,7 +217,9 @@ export const sidebarGroups = selectorFamily<
     if (!loadingTags) {
       groups[tagsIndex][1] = get(
         aggregationAtoms.values({ extended: false, modal, path: "tags" })
-      ).map((tag) => `tags.${tag}`);
+      )
+        .filter((tag) => !filtered || tag.includes(f))
+        .map((tag) => `tags.${tag}`);
       groups[labelTagsIndex][1] = get(
         aggregationAtoms.cumulativeValues({
           extended: false,
@@ -226,7 +228,9 @@ export const sidebarGroups = selectorFamily<
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
         })
-      ).map((tag) => `_label_tags.${tag}`);
+      )
+        .filter((tag) => !filtered || tag.includes(f))
+        .map((tag) => `_label_tags.${tag}`);
     }
 
     return groups;
@@ -424,7 +428,7 @@ export const groupIsEmpty = selectorFamily<
   get: (params) => ({ get }) => {
     return Boolean(
       get(sidebarGroup({ ...params, loadingTags: true, filtered: false }))
-        .length
+        .length == 0
     );
   },
 });
