@@ -101,8 +101,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ),
         };
       },
-      [DATE_FIELD]: (path, value: number) => {
-        const v = formatDate(value);
+      [DATE_FIELD]: (path, value: { datetime: number }) => {
+        const v = formatDate(value.datetime);
 
         return {
           value: v,
@@ -110,12 +110,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.byLabel ? value.datetime : path
           ),
         };
       },
-      [DATE_TIME_FIELD]: (path, value: number) => {
-        const v = formatDateTime(value, timeZone);
+      [DATE_TIME_FIELD]: (path, value: { datetime: number }) => {
+        const v = formatDateTime(value.datetime, timeZone);
 
         return {
           value: v,
@@ -123,7 +123,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.byLabel ? value.datetime : path
           ),
         };
       },
