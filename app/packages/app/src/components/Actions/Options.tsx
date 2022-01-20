@@ -1,6 +1,17 @@
 import React from "react";
-import { Autorenew, OpacityRounded } from "@material-ui/icons";
-import { constSelector, useRecoilState, useRecoilValue } from "recoil";
+import {
+  Autorenew,
+  Check,
+  Close,
+  OpacityRounded,
+  Restore,
+} from "@material-ui/icons";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import * as atoms from "../../recoil/atoms";
 import * as viewAtoms from "../../recoil/view";
@@ -85,7 +96,7 @@ const Opacity = ({ modal }) => {
             style={{ cursor: "pointer", margin: "0.25rem" }}
             title={"Reset label opacity"}
           >
-            <OpacityRounded />
+            <Check />
           </span>
         )}
       </PopoutSectionTitle>
@@ -101,6 +112,51 @@ const Opacity = ({ modal }) => {
         style={{ padding: 0 }}
         int={false}
       />
+    </>
+  );
+};
+
+const ImageFilter = ({ modal, filter }: { modal: boolean; filter: string }) => {
+  const theme = useTheme();
+  const [value, setFilter] = useRecoilState(
+    atoms.imageFilters({ modal, filter })
+  );
+
+  return (
+    <>
+      <PopoutSectionTitle style={{ display: "flex", height: 33 }}>
+        <span>Image {filter}</span>
+        {value !== atoms.IMAGE_FILTERS[filter].default && (
+          <span
+            onClick={() => setFilter(atoms.IMAGE_FILTERS[filter].default)}
+            style={{ cursor: "pointer", margin: "0.25rem" }}
+            title={"Reset label opacity"}
+          >
+            <Check />
+          </span>
+        )}
+      </PopoutSectionTitle>
+      <Slider
+        valueAtom={atoms.imageFilters({ modal, filter })}
+        boundsAtom={constSelector(atoms.IMAGE_FILTERS[filter].bounds)}
+        color={theme.brand}
+        showBounds={false}
+        persistValue={false}
+        showValue={false}
+        onChange={true}
+        style={{ padding: 0 }}
+        int={false}
+      />
+    </>
+  );
+};
+
+const ImageFilters = ({ modal }) => {
+  return (
+    <>
+      {Object.keys(atoms.IMAGE_FILTERS).map((filter) => (
+        <ImageFilter modal={modal} filter={filter} key={filter} />
+      ))}
     </>
   );
 };
@@ -159,16 +215,18 @@ const Patches = ({ modal }) => {
 
 type OptionsProps = {
   modal: boolean;
+  bounds: [number, number];
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
+      <SortFilterResults modal={modal} />
+      <Patches modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
-      <SortFilterResults modal={modal} />
-      <Patches modal={modal} />
+      <ImageFilters modal={modal} />
     </Popout>
   );
 };

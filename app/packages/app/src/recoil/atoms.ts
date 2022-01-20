@@ -67,6 +67,21 @@ export const teams = atom({
   },
 });
 
+export const IMAGE_FILTERS = {
+  brightness: {
+    default: 100,
+    bounds: [0, 200],
+  },
+};
+
+export const imageFilters = atomFamily<
+  number,
+  { modal: boolean; filter: string }
+>({
+  key: "imageFilters",
+  default: ({ filter }) => IMAGE_FILTERS[filter].default,
+});
+
 export const activePlot = atom({
   key: "activePlot",
   default: "labels",
