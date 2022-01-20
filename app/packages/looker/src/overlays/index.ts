@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 import { LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";

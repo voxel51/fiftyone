@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -63,6 +63,7 @@ def annotate(
     The natively provided backends and their associated config classes are:
 
     -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+    -   ``"labelbox"``: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
     See :ref:`this page <requesting-annotations>` for more information about
     using this method, including how to define label schemas and how to
@@ -180,7 +181,7 @@ def annotate(
             % samples.__class__.__name__
         )
 
-    config = _parse_config(backend, None, media_field, **kwargs)
+    config = _parse_config(backend, None, media_field=media_field, **kwargs)
     anno_backend = config.build()
     anno_backend.ensure_requirements()
 
@@ -231,7 +232,7 @@ def _get_patches_view_label_ids(patches_view):
     return ids
 
 
-def _parse_config(name, label_schema, media_field, **kwargs):
+def _parse_config(name, label_schema, **kwargs):
     if name is None:
         name = fo.annotation_config.default_backend
 
@@ -257,7 +258,7 @@ def _parse_config(name, label_schema, media_field, **kwargs):
         config_cls = etau.get_class(config_cls)
 
     params.update(**kwargs)
-    return config_cls(name, label_schema, media_field=media_field, **params)
+    return config_cls(name, label_schema, **params)
 
 
 # The supported label type strings and their corresponding FiftyOne types
@@ -981,7 +982,7 @@ def _format_attributes(backend, attributes):
 
 
 def load_annotations(
-    samples, anno_key, skip_unexpected=False, cleanup=False, **kwargs
+    samples, anno_key, unexpected="prompt", cleanup=False, **kwargs
 ):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
@@ -993,18 +994,31 @@ def load_annotations(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         anno_key: an annotation key
-        skip_unexpected (False): whether to skip any unexpected labels that
-            don't match the run's label schema when merging. If False and
-            unexpected labels are encountered, you will be presented an
-            interactive prompt to deal with them
+        unexpected ("prompt"): how to deal with any unexpected labels that
+            don't match the run's label schema when importing. The supported
+            values are:
+
+            -   ``"prompt"``: present an interactive prompt to direct/discard
+                unexpected labels
+            -   ``"ignore"``: automatically ignore any unexpected labels
+            -   ``"keep"``: automatically keep all unexpected labels in a field
+                whose name matches the the label type
+            -   ``"return"``: return a dict containing all unexpected labels,
+                or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
+
+    Returns:
+        ``None``, unless ``unexpected=="return"`` and unexpected labels are
+        found, in which case a dict containing the extra labels is returned
     """
     results = samples.load_annotation_results(anno_key, **kwargs)
-    label_schema = results.config.label_schema
     annotations = results.backend.download_annotations(results)
+    label_schema = results.config.label_schema
+
+    unexpected_annos = defaultdict(dict)
 
     for label_field, label_info in label_schema.items():
         label_type = label_info.get("type", None)
@@ -1041,14 +1055,30 @@ def load_annotations(
                     )
             else:
                 # Unexpected labels
-                if skip_unexpected or not allow_additions:
+                if not allow_additions:
                     new_field = None
-                else:
+                elif unexpected == "prompt":
                     new_field = _prompt_field(
                         samples, anno_type, label_field, label_schema
                     )
+                elif unexpected == "return":
+                    new_field = None
+                elif unexpected == "keep":
+                    new_field = anno_type
+                elif isinstance(unexpected, dict):
+                    # Undocumented: allow dict mapping to field names
+                    new_field = unexpected.get(anno_type, None)
+                elif etau.is_container(unexpected) and anno_type in unexpected:
+                    # Undocumented: allow list of label types to keep
+                    new_field = anno_type
+                else:
+                    new_field = None
 
                 if new_field:
+                    new_field = _handle_frame_fields(
+                        new_field, samples, label_field
+                    )
+
                     if anno_type == "scalar":
                         _merge_scalars(samples, annos, results, new_field)
                     else:
@@ -1056,17 +1086,38 @@ def load_annotations(
                             samples, annos, results, new_field, anno_type
                         )
                 else:
-                    logger.info(
-                        "Skipping unexpected labels of type '%s' in field "
-                        "'%s'",
-                        anno_type,
-                        label_field,
-                    )
+                    if label_field:
+                        logger.info(
+                            "Skipping unexpected labels of type '%s' in field "
+                            "'%s'",
+                            anno_type,
+                            label_field,
+                        )
+                    else:
+                        logger.info("Skipping labels of type '%s'", anno_type)
+
+                    if unexpected == "return":
+                        unexpected_annos[label_field][anno_type] = annos
 
     results.backend.save_run_results(samples, anno_key, results)
 
     if cleanup:
         results.cleanup()
+
+    if unexpected == "return":
+        return dict(unexpected_annos) if unexpected_annos else None
+
+
+def _handle_frame_fields(field, samples, ref_field):
+    if samples.media_type != fom.VIDEO:
+        return field
+
+    if (
+        ref_field is None or samples._is_frame_field(ref_field)
+    ) and not samples._is_frame_field(field):
+        field = samples._FRAMES_PREFIX + field
+
+    return field
 
 
 def _parse_attributes(label_info):
@@ -1095,12 +1146,19 @@ def _get_writeable_attributes(attributes):
 
 
 def _prompt_field(samples, label_type, label_field, label_schema):
-    new_field = input(
-        "Found unexpected labels of type '%s' when loading annotations for "
-        "field '%s'.\nPlease enter a new or compatible existing field name in "
-        "which to store these annotations, or empty to skip: "
-        % (label_type, label_field)
-    )
+    if label_field:
+        new_field = input(
+            "Found unexpected labels of type '%s' when loading annotations "
+            "for field '%s'.\nPlease enter a new or compatible existing field "
+            "name in which to store these annotations, or empty to skip: "
+            % (label_type, label_field)
+        )
+    else:
+        new_field = input(
+            "Found labels of type '%s'.\nPlease enter a new or compatible "
+            "existing field name in which to store these annotations, or "
+            "empty to skip: " % label_type
+        )
 
     if not new_field:
         return None
@@ -1154,7 +1212,7 @@ def _prompt_field(samples, label_type, label_field, label_schema):
 
         if not is_good_field:
             new_field = input(
-                "Cannot add unexpected labels to field '%s' because it is "
+                "Cannot add labels to field '%s' because it is already "
                 "involved in this annotation run.\nPlease enter a different "
                 "field name or empty to skip: " % new_field
             )
@@ -1680,8 +1738,11 @@ class AnnotationBackendConfig(foa.AnnotationMethodConfig):
     def serialize(self, *args, **kwargs):
         d = super().serialize(*args, **kwargs)
 
-        # Must serialize mask targets with string keys...
         label_schema = d.get("label_schema", {})
+        if not label_schema:
+            return d
+
+        # Must serialize mask targets with string keys...
         for label_info in label_schema.values():
             mask_targets = label_info.get("mask_targets", None)
             if isinstance(mask_targets, dict):

@@ -4,7 +4,7 @@
 # Usage:
 #   bash install.bash
 #
-# Copyright 2017-2021, Voxel51, Inc.
+# Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -97,8 +97,8 @@ if [ ${BUILD_APP} = true ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
     export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-    nvm install v16.3.0
-    nvm use v16.3.0
+    nvm install v17.3.1
+    nvm use v17.3.1
     npm -g install yarn
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc

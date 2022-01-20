@@ -1,7 +1,7 @@
 """
 Dataset views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -77,11 +78,18 @@ class DatasetView(foc.SampleCollection):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
             return self._slice(id_filepath_slice)
+
+        if isinstance(id_filepath_slice, foe.ViewExpression):
+            return self.match(id_filepath_slice)
+
+        if etau.is_container(id_filepath_slice):
+            return self.select(id_filepath_slice)
 
         try:
             oid = ObjectId(id_filepath_slice)
@@ -779,9 +787,30 @@ class DatasetView(foc.SampleCollection):
             view = stage.load_view(self)
         else:
             view = copy(self)
-            view._stages.append(stage)
+
+            if not self._add_sort_stage(stage, view._stages):
+                view._stages.append(stage)
 
         return view
+
+    @staticmethod
+    def _add_sort_stage(new_stage, stages):
+        if not type(new_stage) == fost.SortBySimilarity:
+            return False
+
+        sort_views = [
+            i for i, x in enumerate(stages) if type(x) == fost.SortBySimilarity
+        ]
+
+        if len(sort_views) > 0:
+            sort_views.reverse()
+            last_sort_view = sort_views[0]
+
+            if stages[last_sort_view].k == new_stage.k:
+                stages[last_sort_view] = new_stage
+                return True
+
+        return False
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

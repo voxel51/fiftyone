@@ -160,7 +160,7 @@ class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -177,7 +177,7 @@ class DynamicEmbeddedDocument(
     Dynamic documents can have arbitrary fields added to them.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

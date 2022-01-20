@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -170,7 +170,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
         fields = None
         if self.fields is not None:
-            fields = [field_doc.to_field() for field_doc in self.fields]
+            fields = [field_doc.to_field() for field_doc in list(self.fields)]
 
         return create_field(
             self.name,
@@ -234,7 +234,7 @@ class SampleFieldDocument(EmbeddedDocument):
         if self.db_field != field.db_field:
             return False
 
-        cur_fields = {f.name: f for f in getattr(self, "fields", [])}
+        cur_fields = {f.name: f for f in list(getattr(self, "fields", []))}
         fields = {f.name: f for f in getattr(field, "fields", [])}
         if cur_fields and fields:
             if len(fields) != len(cur_fields):

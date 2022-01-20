@@ -2,27 +2,17 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import os
+from pkg_resources import DistributionNotFound, get_distribution
+import re
 from setuptools import setup, find_packages
-from wheel.bdist_wheel import bdist_wheel
 
 
-class BdistWheelCustom(bdist_wheel):
-    def finalize_options(self):
-        bdist_wheel.finalize_options(self)
-        # make just the wheel require these packages, since they aren't needed
-        # for a development installation
-        self.distribution.install_requires += [
-            "fiftyone-brain>=0.7.2,<0.8",
-            "fiftyone-db>=0.3,<0.4",
-        ]
-
-
-VERSION = "0.14.2"
+VERSION = "0.14.3"
 
 
 def get_version():
@@ -36,6 +26,77 @@ def get_version():
         return version
 
     return VERSION
+
+
+INSTALL_REQUIRES = [
+    # third-party packages
+    "aiofiles",
+    "argcomplete",
+    "boto3",
+    "Deprecated",
+    "eventlet",
+    "future",
+    "Jinja2",
+    "kaleido",
+    "matplotlib",
+    "mongoengine==0.20.0",
+    "motor>=2.3,<3",
+    "numpy",
+    "packaging",
+    "pandas",
+    "Pillow>=6.2",
+    "plotly>=4.14,<5",
+    "pprintpp",
+    "psutil",
+    "pymongo>=3.11,<4",
+    "pytz",
+    "PyYAML",
+    "retrying",
+    "scikit-learn",
+    "scikit-image",
+    "setuptools",
+    "tabulate",
+    "tornado>=5.1.1,<7",
+    "xmltodict",
+    "universal-analytics-python3>=1.0.1,<2",
+    # internal packages
+    "fiftyone-brain>=0.7.3,<0.8",
+    "fiftyone-db>=0.3,<0.4",
+    "voxel51-eta>=0.6.2,<0.7",
+]
+
+
+CHOOSE_INSTALL_REQUIRES = [
+    (
+        (
+            "opencv-python",
+            "opencv-contrib-python",
+            "opencv-contrib-python-headless",
+        ),
+        "opencv-python-headless",
+    )
+]
+
+
+def choose_requirement(mains, secondary):
+    chosen = secondary
+    for main in mains:
+        try:
+            name = re.split(r"[!<>=]", main)[0]
+            get_distribution(name)
+            chosen = main
+            break
+        except DistributionNotFound:
+            pass
+
+    return str(chosen)
+
+
+def get_install_requirements(install_requires, choose_install_requires):
+    for mains, secondary in choose_install_requires:
+        install_requires.append(choose_requirement(mains, secondary))
+
+    return install_requires
 
 
 EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.1,<0.20"]}
@@ -59,47 +120,18 @@ setup(
     license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
+    packages=find_packages(
+        exclude=["app", "eta", "package", "requirements", "tests", "tools"]
+    )
+    + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",
         "fiftyone.tutorials": "docs/source/tutorials",
     },
+    install_requires=get_install_requirements(
+        INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
+    ),
     include_package_data=True,
-    install_requires=[
-        # third-party packages
-        "aiofiles",
-        "argcomplete",
-        "boto3",
-        "Deprecated",
-        "eventlet",
-        "future",
-        "Jinja2",
-        "kaleido",
-        "matplotlib",
-        "mongoengine==0.20.0",
-        "motor>=2.3,<3",
-        "numpy",
-        "opencv-python-headless",
-        "packaging",
-        "pandas",
-        "Pillow>=6.2",
-        "plotly>=4.14,<5",
-        "pprintpp",
-        "psutil",
-        "pymongo>=3.11,<4",
-        "pytz",
-        "PyYAML",
-        "retrying",
-        "scikit-learn",
-        "scikit-image",
-        "setuptools",
-        "tabulate",
-        "tornado>=5.1.1,<7",
-        "xmltodict",
-        "universal-analytics-python3>=1.0.1,<2",
-        # internal packages
-        "voxel51-eta>=0.6.1,<0.7",
-    ],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -121,5 +153,4 @@ setup(
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.6",
-    cmdclass={"bdist_wheel": BdistWheelCustom},
 )

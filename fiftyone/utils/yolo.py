@@ -1,7 +1,7 @@
 """
 Utilities for working with datasets in YOLO format.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,7 +20,13 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
+def add_yolo_labels(
+    sample_collection,
+    label_field,
+    labels_path,
+    classes=None,
+    include_missing=False,
+):
     """Adds the given YOLO-formatted labels to the collection.
 
     Each YOLO txt file should be a space-delimited file whose rows define
@@ -51,6 +57,10 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
         classes (None): the list of class label strings. If not provided, these
             must be available from
             :meth:`fiftyone.core.collections.SampleCollection.get_classes`
+        include_missing (False): whether to insert empty
+            :class:`Detections <fiftyone.core.labels.Detections>` instances for
+            any samples in the input collection whose ``label_field`` is
+            ``None`` after import
     """
     if classes is None:
         classes = sample_collection.get_classes(label_field)
@@ -128,6 +138,12 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
     view = sample_collection.select(matched_ids, ordered=True)
     labels = [load_yolo_annotations(p, classes) for p in matched_paths]
     view.set_values(label_field, labels)
+
+    if include_missing:
+        missing_labels = sample_collection.exists(label_field, False)
+        missing_labels.set_values(
+            label_field, [fol.Detections()] * len(missing_labels)
+        )
 
 
 class YOLOv4DatasetImporter(
@@ -572,6 +588,8 @@ class YOLOv4DatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        include_confidence (False): whether to include detection confidences in
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -586,6 +604,7 @@ class YOLOv4DatasetExporter(
         images_path=None,
         export_media=None,
         classes=None,
+        include_confidence=False,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -619,6 +638,7 @@ class YOLOv4DatasetExporter(
         self.images_path = images_path
         self.export_media = export_media
         self.classes = classes
+        self.include_confidence = include_confidence
         self.image_format = image_format
 
         self._classes = None
@@ -693,6 +713,7 @@ class YOLOv4DatasetExporter(
             out_labels_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
+            include_confidence=self.include_confidence,
         )
 
     def close(self, *args):
@@ -778,6 +799,8 @@ class YOLOv5DatasetExporter(
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        include_confidence (False): whether to include detection confidences in
+            the export, if they exist
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -792,6 +815,7 @@ class YOLOv5DatasetExporter(
         yaml_path=None,
         export_media=None,
         classes=None,
+        include_confidence=False,
         image_format=None,
     ):
         data_path, export_media = self._parse_data_path(
@@ -821,6 +845,7 @@ class YOLOv5DatasetExporter(
         self.yaml_path = yaml_path
         self.export_media = export_media
         self.classes = classes
+        self.include_confidence = include_confidence
         self.image_format = image_format
 
         self._classes = None
@@ -884,6 +909,7 @@ class YOLOv5DatasetExporter(
             out_labels_path,
             self._labels_map_rev,
             dynamic_classes=self._dynamic_classes,
+            include_confidence=self.include_confidence,
         )
 
     def close(self, *args):
@@ -917,7 +943,12 @@ class YOLOAnnotationWriter(object):
     """Class for writing annotations in YOLO-style TXT format."""
 
     def write(
-        self, detections, txt_path, labels_map_rev, dynamic_classes=False
+        self,
+        detections,
+        txt_path,
+        labels_map_rev,
+        dynamic_classes=False,
+        include_confidence=False,
     ):
         """Writes the detections to disk.
 
@@ -928,6 +959,8 @@ class YOLOAnnotationWriter(object):
                 integers
             dynamic_classes (False): whether to dynamically add new labels to
                 ``labels_map_rev``
+            include_confidence (False): whether to include confidences in the
+                export, if they exist
         """
         rows = []
         for detection in detections.detections:
@@ -946,7 +979,14 @@ class YOLOAnnotationWriter(object):
             else:
                 target = labels_map_rev[label]
 
-            row = _make_yolo_row(detection.bounding_box, target)
+            if include_confidence:
+                confidence = detection.confidence
+            else:
+                confidence = None
+
+            row = _make_yolo_row(
+                detection.bounding_box, target, confidence=confidence
+            )
             rows.append(row)
 
         _write_file_lines(rows, txt_path)
@@ -956,9 +996,10 @@ def load_yolo_annotations(txt_path, classes):
     """Loads the YOLO-style annotations from the given TXT file.
 
     The txt file should be a space-delimited file where each row corresponds
-    to an object in the following format::
+    to an object in one the following formats::
 
         <target> <x-center> <y-center> <width> <height>
+        <target> <x-center> <y-center> <width> <height> <confidence>
 
     where ``target`` is the zero-based integer index of the object class label
     from ``classes`` and the bounding box coordinates are expressed as relative
@@ -1014,7 +1055,8 @@ def _get_yolo_v5_labels_path(image_path):
 
 
 def _parse_yolo_row(row, classes):
-    target, xc, yc, w, h = row.split()
+    row_vals = row.split()
+    target, xc, yc, w, h = row_vals[:5]
 
     try:
         label = classes[int(target)]
@@ -1028,14 +1070,26 @@ def _parse_yolo_row(row, classes):
         float(h),
     ]
 
-    return fol.Detection(label=label, bounding_box=bounding_box)
+    if len(row_vals) > 5:
+        confidence = float(row_vals[5])
+    else:
+        confidence = None
+
+    return fol.Detection(
+        label=label, bounding_box=bounding_box, confidence=confidence
+    )
 
 
-def _make_yolo_row(bounding_box, target):
+def _make_yolo_row(bounding_box, target, confidence=None):
     xtl, ytl, w, h = bounding_box
     xc = xtl + 0.5 * w
     yc = ytl + 0.5 * h
-    return "%d %f %f %f %f" % (target, xc, yc, w, h)
+    row = "%d %f %f %f %f" % (target, xc, yc, w, h)
+
+    if confidence is not None:
+        row += " %f" % confidence
+
+    return row
 
 
 def _read_yaml_file(path):

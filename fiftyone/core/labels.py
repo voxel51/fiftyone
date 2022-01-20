@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -40,8 +40,6 @@ class Label(DynamicEmbeddedDocument):
     Label instances represent a logical collection of data associated with a
     particular task for a sample or frame in a dataset.
     """
-
-    meta = {"allow_inheritance": True}
 
     def iter_attributes(self):
         """Returns an iterator over the custom attributes of the label.
@@ -133,8 +131,6 @@ class Attribute(DynamicEmbeddedDocument):
         value (None): the attribute value
     """
 
-    meta = {"allow_inheritance": True}
-
     value = fof.Field()
 
 
@@ -193,8 +189,6 @@ class _HasAttributesDict(Label):
     """Mixin for :class:`Label` classes that have an :attr:`attributes` field
     that contains a dict of of :class:`Attribute` instances.
     """
-
-    meta = {"allow_inheritance": True}
 
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
@@ -320,8 +314,6 @@ class _HasID(Label):
     property, as well as a ``tags`` attribute.
     """
 
-    meta = {"allow_inheritance": True}
-
     id = fof.ObjectIdField(
         default=ObjectId, required=True, unique=True, db_field="_id"
     )
@@ -351,8 +343,6 @@ class Regression(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the regression
     """
 
-    meta = {"allow_inheritance": True}
-
     value = fof.FloatField()
     confidence = fof.FloatField()
 
@@ -365,8 +355,6 @@ class Classification(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the classification
         logits (None): logits associated with the labels
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     confidence = fof.FloatField()
@@ -381,8 +369,6 @@ class Classifications(_HasLabelList, Label):
     """
 
     _LABEL_LIST_FIELD = "classifications"
-
-    meta = {"allow_inheritance": True}
 
     classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
     logits = fof.VectorField()
@@ -406,8 +392,6 @@ class Detection(_HasID, _HasAttributesDict, Label):
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
@@ -488,6 +472,29 @@ class Detection(_HasID, _HasAttributesDict, Label):
 
         return sg.box(x, y, x + w, y + h)
 
+    @classmethod
+    def from_mask(cls, mask, label, **attributes):
+        """Creates a :class:`Detection` instance with its ``mask`` attribute
+        populated from the given full image mask.
+
+        The instance mask for the object is extracted by computing the bounding
+        rectangle of the non-zero values in the image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            **attributes: additional attributes for the :class:`Detection`
+
+        Returns:
+            a :class:`Detection`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        bbox, mask = _parse_stuff_instance(mask.astype(bool))
+
+        return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
+
 
 class Detections(_HasLabelList, Label):
     """A list of object detections in an image.
@@ -497,8 +504,6 @@ class Detections(_HasLabelList, Label):
     """
 
     _LABEL_LIST_FIELD = "detections"
-
-    meta = {"allow_inheritance": True}
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
@@ -587,8 +592,6 @@ class Polyline(_HasID, _HasAttributesDict, Label):
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances for the polyline
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     points = fof.PolylinePointsField()
@@ -722,6 +725,30 @@ class Polyline(_HasID, _HasAttributesDict, Label):
 
         return sg.MultiLineString(points)
 
+    @classmethod
+    def from_mask(cls, mask, label, tolerance=2, **attributes):
+        """Creates a :class:`Polyline` instance with polygons describing the
+        non-zero region(s) of the given full image mask.
+
+        Args:
+            mask: a boolean or 0/1 numpy array
+            label: the label string
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polygons for each region. Typical values are 1-3 pixels
+            **attributes: additional attributes for the :class:`Polyline`
+
+        Returns:
+            a :class:`Polyline`
+        """
+        if mask.ndim > 2:
+            mask = mask[:, :, 0]
+
+        points = _get_polygons(mask.astype(bool), tolerance)
+
+        return cls(
+            label=label, points=points, filled=True, closed=True, **attributes
+        )
+
 
 class Polylines(_HasLabelList, Label):
     """A list of polylines or polygons in an image.
@@ -731,8 +758,6 @@ class Polylines(_HasLabelList, Label):
     """
 
     _LABEL_LIST_FIELD = "polylines"
-
-    meta = {"allow_inheritance": True}
 
     polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
 
@@ -817,8 +842,6 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
             instances
     """
 
-    meta = {"allow_inheritance": True}
-
     label = fof.StringField()
     points = fof.KeypointsField()
     confidence = fof.FloatField()
@@ -853,8 +876,6 @@ class Keypoints(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "keypoints"
 
-    meta = {"allow_inheritance": True}
-
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
@@ -865,8 +886,6 @@ class Segmentation(_HasID, Label):
         mask (None): a 2D numpy array with integer values encoding the semantic
             labels
     """
-
-    meta = {"allow_inheritance": True}
 
     mask = fof.ArrayField()
 
@@ -948,8 +967,6 @@ class Heatmap(_HasID, Label):
             contains integer values
     """
 
-    meta = {"allow_inheritance": True}
-
     map = fof.ArrayField()
     range = fof.HeatmapRangeField()
 
@@ -963,8 +980,6 @@ class TemporalDetection(_HasID, Label):
         support (None): the ``[first, last]`` frame numbers, inclusive
         confidence (None): a confidence in ``[0, 1]`` for the detection
     """
-
-    meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     support = fof.FrameSupportField()
@@ -1045,8 +1060,6 @@ class TemporalDetections(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "detections"
 
-    meta = {"allow_inheritance": True}
-
     detections = fof.ListField(fof.EmbeddedDocumentField(TemporalDetection))
 
 
@@ -1070,8 +1083,6 @@ class GeoLocation(_HasID, Label):
             where the first outer list describes the boundary of the polygon
             and any remaining entries describe holes
     """
-
-    meta = {"allow_inheritance": True}
 
     point = fof.GeoPointField(auto_index=False)
     line = fof.GeoLineStringField(auto_index=False)
@@ -1110,8 +1121,6 @@ class GeoLocations(_HasID, Label):
         lines (None): a list of lines
         polygons (None): a list of polygons
     """
-
-    meta = {"allow_inheritance": True}
 
     points = fof.GeoMultiPointField(auto_index=False)
     lines = fof.GeoMultiLineStringField(auto_index=False)
