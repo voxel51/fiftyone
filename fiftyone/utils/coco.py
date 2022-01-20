@@ -2138,7 +2138,7 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
 def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
 
     try:
         mask = etai.render_instance_image(
