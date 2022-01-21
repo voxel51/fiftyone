@@ -414,7 +414,7 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
-  const [containerContoller] = useState(() => new Controller({ minHeight: 0 }));
+  const [containerController] = useState(() => new Controller({ height: 0 }));
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -505,7 +505,7 @@ const InteractiveSidebar = ({
       order.current,
       order.current
     );
-    containerContoller.set({ minHeight });
+    containerController.set({ height: minHeight });
     for (const key of order.current) {
       const item = items.current[key];
       if (item.active) {
@@ -586,7 +586,7 @@ const InteractiveSidebar = ({
       down.current,
       realDelta
     );
-    containerContoller.set({ minHeight });
+    containerController.set({ height: minHeight });
 
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
@@ -648,7 +648,7 @@ const InteractiveSidebar = ({
           down.current && animate(last.current);
         }}
       >
-        <Container style={containerContoller.springs}>
+        <Container style={containerController.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;
             if (entry.kind === EntryKind.GROUP) {

@@ -1,9 +1,4 @@
-import React, {
-  ChangeEvent,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { ChangeEvent, useLayoutEffect, useState } from "react";
 import styled from "styled-components";
 import {
   RecoilState,
@@ -220,15 +215,14 @@ export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
-  const val = onChange ? value : localValue;
 
   return (
     <BaseSlider
       {...rest}
-      onChange={(_, v) =>
-        onChange ? val !== v && setValue(v) : setLocalValue(v)
-      }
-      onCommit={(_, v) => val !== v && setValue(v)}
+      onChange={(_, v) => (onChange ? setValue(v) : setLocalValue(v))}
+      onCommit={(_, v) => {
+        setValue(v);
+      }}
       value={localValue}
     />
   );
@@ -245,7 +239,7 @@ type RangeSliderProps = {
 export const RangeSlider = ({ valueAtom, ...rest }: RangeSliderProps) => {
   const [value, setValue] = useRecoilState(valueAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);

@@ -1,3 +1,5 @@
+import { rgba } from "@react-spring/shared";
+
 export const white100 = "hsl(0, 0%, 100%)";
 export const white96 = "hsl(0, 0%, 96%)";
 export const white85 = "hsl(0, 0%, 85%)";
@@ -21,9 +23,6 @@ export const blue90 = "hsl(210, 20%, 90%)";
 export const blue50 = "hsl(210, 20%, 50%)";
 export const blue15 = "hsl(210, 20%, 15%)";
 
-// Dark theme colors
-const black0a16 = "hsla(0, 0%, 0%, 0.16)";
-const black0a25 = "hsla(0, 0%, 0%, 0.25)";
 const grey11 = "hsl(210, 11%, 11%)";
 const grey15 = "hsl(210, 11%, 15%)";
 const grey19 = "hsl(214, 7%, 19%)";
@@ -56,13 +55,6 @@ export type ColorTheme = {
   borderLight: string;
   button: string;
   buttonBorder: string;
-  overlay: string;
-  overlayButton: string;
-  overlayButtonHover: string;
-  menuBackground: string;
-  menuBorder: string;
-  darkShadow: string;
-  darkerShadow: string;
 
   brand: string;
   brandDark: string;
@@ -92,13 +84,6 @@ export const darkTheme: ColorTheme = {
   borderLight: grey24,
   button: grey37,
   buttonBorder: grey24,
-  overlay: grey46a70,
-  overlayButton: grey46a30,
-  overlayButtonHover: grey46a70,
-  menuBackground: grey15,
-  menuBorder: grey11,
-  darkShadow: black0a16,
-  darkerShadow: black0a25,
 
   brand: orange49,
   brandDark: orange45,
@@ -116,10 +101,21 @@ export const darkTheme: ColorTheme = {
   error: red,
 };
 
-// for storybook
-export const lightTheme = {
+export const lightTheme: ColorTheme = {
   ...darkTheme,
-  background: white100,
-  border: white85,
-  font: white20,
+  background: "rgb(250, 250, 250)",
+  backgroundDark: "rgb(242, 242, 242)",
+  backgroundDarker: "rgb(233, 233, 233)",
+  backgroundLight: "rgb(220, 220, 220)",
+  backgroundLightBorder: "rgb(240, 240, 240)",
+  backgroundDarkBorder: "rgb(235, 235, 235))",
+  backgroundTransparent: "rgb(250, 250, 250, 0.7)",
+  border: grey37,
+  borderLight: grey24,
+  button: "rgb(233, 233, 233)",
+  buttonBorder: "rgb(215, 215, 215)",
+
+  font: "rgba(40, 40, 40, 0.9)",
+  fontDark: "rgba(10, 10, 10, 0.9)",
+  fontDarkest: "rgba(0, 0, 0, 0.9)",
 };
