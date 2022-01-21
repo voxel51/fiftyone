@@ -1,4 +1,11 @@
-import { FRAME_SUPPORT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  formatDate,
+  formatDateTime,
+  FRAME_SUPPORT_FIELD,
+  LIST_FIELD,
+} from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
 import React, { useLayoutEffect, useMemo, useState } from "react";
@@ -8,6 +15,7 @@ import styled from "styled-components";
 import * as atoms from "../../../recoil/atoms";
 import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
+import * as selectors from "../../../recoil/selectors";
 import { prettify } from "../../../utils/generic";
 import { useTheme } from "../../../utils/hooks";
 
@@ -24,6 +32,33 @@ const ScalarDiv = styled.div`
   }
 `;
 
+const format = ({
+  ftype,
+  timeZone,
+  value,
+}: {
+  ftype: string;
+  timeZone: string;
+  value: unknown;
+}) => {
+  if (value === undefined) return value;
+
+  if (value === null) return;
+
+  switch (ftype) {
+    case FRAME_SUPPORT_FIELD:
+      value = `[${value[0]}, ${value[1]}]`;
+    case DATE_FIELD:
+      // @ts-ignore
+      value = formatDate(value.datetime as number);
+    case DATE_TIME_FIELD:
+      // @ts-ignore
+      value = formatDateTime(value.datetime as number, timeZone);
+  }
+
+  return prettify(value as string);
+};
+
 const ScalarValueEntry = ({
   value,
   path,
@@ -36,14 +71,13 @@ const ScalarValueEntry = ({
     backgroundColor: theme.backgroundLight,
   });
   const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const timeZone = useRecoilValue(selectors.timeZone);
   const none = value === null || value === undefined;
   const { ftype, subfield, embeddedDocType } = useRecoilValue(
     schemaAtoms.field(path)
   );
 
-  if (ftype === FRAME_SUPPORT_FIELD && value) {
-    value = `[${value[0]}, ${value[1]}]`;
-  }
+  const formatted = format({ ftype, value, timeZone });
 
   return (
     <RegularEntry
@@ -53,15 +87,13 @@ const ScalarValueEntry = ({
           : subfield
           ? `${ftype}(${subfield})`
           : ftype
-      })${value === undefined ? "" : `: ${value}`}`}
+      })${value === undefined ? "" : `: ${formatted}`}`}
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
     >
       <ScalarDiv>
-        <div style={none ? { color } : {}}>
-          {none ? "None" : prettify(value as string)}
-        </div>
+        <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>
         <div
           style={{
             fontSize: "0.8rem",

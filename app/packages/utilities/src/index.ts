@@ -379,3 +379,52 @@ export const prettify = (
   }
   return null;
 };
+
+export const formatDateTime = (timeStamp: number, timeZone: string): string => {
+  const twoDigit = "2-digit";
+  const MS = 1000;
+  const S = 60 * MS;
+  const M = 60 * S;
+  const H = 24 * M;
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone,
+    year: "numeric",
+    day: twoDigit,
+    month: twoDigit,
+    hour: twoDigit,
+    minute: twoDigit,
+    second: twoDigit,
+  };
+
+  if (!(timeStamp % S)) {
+    delete options.second;
+  }
+
+  if (!(timeStamp % M)) {
+    delete options.minute;
+  }
+
+  if (!(timeStamp % H)) {
+    delete options.hour;
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};
+
+export const formatDate = (timeStamp: number): string => {
+  const twoDigit = "2-digit";
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "UTC",
+    year: "numeric",
+    day: twoDigit,
+    month: twoDigit,
+  };
+
+  return new Intl.DateTimeFormat("en-ZA", options)
+    .format(timeStamp)
+    .replaceAll("/", "-");
+};

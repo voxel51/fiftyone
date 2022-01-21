@@ -10,6 +10,8 @@ import {
   DATE_TIME_FIELD,
   Field,
   FLOAT_FIELD,
+  formatDate,
+  formatDateTime,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
@@ -25,7 +27,6 @@ import {
 import { getColor } from "../../color";
 import { Classification, Regression } from "../../overlays/classifications";
 import { BaseState, NONFINITE, Sample } from "../../state";
-import { formatDate, formatDateTime } from "../../util";
 import { BaseElement } from "../base";
 
 import { prettify } from "./util";
