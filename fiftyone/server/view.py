@@ -158,6 +158,34 @@ def get_field(keys, schema):
     return schema[keys[-1]]
 
 
+def _make_expression(field, path, args):
+    if not path:
+        return _make_scalar_expression(F(), args, field)
+
+    keys = path.split(".")
+    rest = ".".join(keys[1:])
+    field = field.get_field_schema()[keys[0]]
+    if isinstance(field, fof.ListField) and not isinstance(
+        field, fof.FrameSupportField
+    ):
+        new_field = field.field
+        expr = (
+            lambda subexpr: F(field.db_field or field.name)
+            .filter(subexpr)
+            .length()
+            > 0
+        )
+    else:
+        new_field = field
+        expr = lambda subexpr: F(field.db_field or field.name).apply(subexpr)
+
+    subexpr = _make_expression(new_field, rest, args)
+    if subexpr is not None:
+        return expr(subexpr)
+
+    return None
+
+
 def _make_filter_stages(
     view, filters, label_tags=None, hide_result=False, only_matches=True
 ):
@@ -191,7 +219,7 @@ def _make_filter_stages(
 
         if _is_label(field):
             parent = field
-            field = get_field(keys, field.get_field_schema())
+            field = get_field(keys, field)
             key = field.db_field if field.db_field else field.name
             view_field = F(key)
             expr = _make_scalar_expression(view_field, args, field)
@@ -215,22 +243,7 @@ def _make_filter_stages(
                 if new_field:
                     cleanup.add(new_field)
         else:
-            if keys:
-                field = get_field(keys, field.get_field_schema())
-                key = field.db_field if field.db_field else field.name
-                view_field = F(f"{'.'.join(path.split('.')[:-1])}.{key}")
-            else:
-                key = field.db_field if field.db_field else field.name
-                view_field = F(key)
-            if isinstance(field, fof.ListField) and not isinstance(
-                field, fof.FrameSupportField
-            ):
-                filter = _make_scalar_expression(F(), args, field.field)
-                if filter is not None:
-                    expr = view_field.filter(filter).length() > 0
-            else:
-                expr = _make_scalar_expression(view_field, args, field)
-
+            expr = _make_expression(view, path, args)
             if expr is not None:
                 stages.append(fosg.Match(expr))
 

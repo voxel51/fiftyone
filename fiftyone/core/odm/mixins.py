@@ -208,7 +208,13 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            self._fields[field_name].validate(value)
+            field = self._fields[field_name]
+            kwargs = (
+                {}
+                if not isinstance(field, fof.EmbeddedDocumentField)
+                else {"expand": create}
+            )
+            field.validate(value, **kwargs)
 
         if isinstance(value, DynamicEmbeddedDocument):
             value._set_parent(self.__class__)
