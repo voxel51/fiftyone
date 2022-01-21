@@ -33,7 +33,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
@@ -206,9 +206,7 @@ def import_annotations(
     # Insert samples for new filepaths, if necessary and we're allowed to
     if new_filepaths:
         if insert_new:
-            dataset.add_samples(
-                [fos.Sample(filepath=fp) for fp in new_filepaths]
-            )
+            dataset.add_samples([Sample(filepath=fp) for fp in new_filepaths])
         else:
             logger.warning(
                 "Ignoring annotations for %d filepaths (eg %s) that do not "
@@ -550,7 +548,7 @@ class CVATImageDatasetImporter(
             labels = cvat_image.to_labels()
         else:
             # Unlabeled image
-            image_metadata = fomt.ImageMetadata.build_for(image_path)
+            image_metadata = None
             labels = None
 
         return image_path, image_metadata, labels
@@ -572,9 +570,7 @@ class CVATImageDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             info, _, cvat_images = load_cvat_image_annotations(
@@ -596,15 +592,17 @@ class CVATImageDatasetImporter(
 
             cvat_images_map[key] = i
 
-        self._cvat_images_map = cvat_images_map
-
-        filenames = set(self._cvat_images_map.keys())
+        filenames = set(cvat_images_map.keys())
 
         if self.include_all_data:
-            filenames.update(self._image_paths_map.keys())
+            filenames.update(image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(sorted(filenames))
-        self._num_samples = len(self._filenames)
+        filenames = self._preprocess_list(sorted(filenames))
+
+        self._image_paths_map = image_paths_map
+        self._cvat_images_map = cvat_images_map
+        self._filenames = filenames
+        self._num_samples = len(filenames)
 
     def get_dataset_info(self):
         return self._info
@@ -754,27 +752,30 @@ class CVATVideoDatasetImporter(
         }
 
     def setup(self):
-        self._video_paths_map = self._load_data_map(
+        video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            self._labels_paths_map = {
+            labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
                 for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
-            self._labels_paths_map = {}
+            labels_paths_map = {}
 
-        uuids = set(self._labels_paths_map.keys())
+        uuids = set(labels_paths_map.keys())
 
         if self.include_all_data:
-            uuids.update(self._video_paths_map.keys())
+            uuids.update(video_paths_map.keys())
 
-        self._info = None
-        self._uuids = self._preprocess_list(sorted(uuids))
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(uuids))
+
         self._cvat_task_labels = CVATTaskLabels()
+        self._video_paths_map = video_paths_map
+        self._labels_paths_map = labels_paths_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
     def get_dataset_info(self):
         return self._info

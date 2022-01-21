@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "matplotlib",
     "mongoengine==0.20.0",
     "motor>=2.3,<3",
+    "ndjson",
     "numpy",
     "packaging",
     "pandas",
