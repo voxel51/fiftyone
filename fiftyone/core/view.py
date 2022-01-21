@@ -654,9 +654,9 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -787,30 +787,9 @@ class DatasetView(foc.SampleCollection):
             view = stage.load_view(self)
         else:
             view = copy(self)
-
-            if not self._add_sort_stage(stage, view._stages):
-                view._stages.append(stage)
+            view._stages.append(stage)
 
         return view
-
-    @staticmethod
-    def _add_sort_stage(new_stage, stages):
-        if not type(new_stage) == fost.SortBySimilarity:
-            return False
-
-        sort_views = [
-            i for i, x in enumerate(stages) if type(x) == fost.SortBySimilarity
-        ]
-
-        if len(sort_views) > 0:
-            sort_views.reverse()
-            last_sort_view = sort_views[0]
-
-            if stages[last_sort_view].k == new_stage.k:
-                stages[last_sort_view] = new_stage
-                return True
-
-        return False
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

@@ -518,9 +518,7 @@ class COCODetectionDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
@@ -575,6 +573,7 @@ class COCODetectionDatasetImporter(
         self._classes = classes
         self._license_map = license_map
         self._supercategory_map = supercategory_map
+        self._image_paths_map = image_paths_map
         self._image_dicts_map = image_dicts_map
         self._annotations = annotations
         self._filenames = filenames

@@ -775,7 +775,7 @@ Populates the `metadata` field of all samples in the dataset.
 
 .. code-block:: text
 
-    fiftyone utils compute-metadata [-h] [-o] DATASET_NAME
+    fiftyone utils compute-metadata [-h] [-o] [-n NUM_WORKERS] [-s] DATASET_NAME
 
 **Arguments**
 
@@ -785,8 +785,13 @@ Populates the `metadata` field of all samples in the dataset.
       NAME                  the name of the dataset
 
     optional arguments:
-      -h, --help       show this help message and exit
-      -o, --overwrite  whether to overwrite existing metadata
+      -h, --help            show this help message and exit
+      -o, --overwrite       whether to overwrite existing metadata
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default
+                            is `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if metadata cannot be computed for a sample
 
 **Examples**
 
@@ -812,7 +817,7 @@ Transforms the images in a dataset per the specified parameters.
     fiftyone utils transform-images [-h] [--size SIZE]
                                     [--min-size MIN_SIZE]
                                     [--max-size MAX_SIZE] [-e EXT] [-f]
-                                    [-d] [-n NUM_WORKERS]
+                                    [-d] [-n NUM_WORKERS] [-s]
                                     DATASET_NAME
 
 **Arguments**
@@ -838,6 +843,8 @@ Transforms the images in a dataset per the specified parameters.
       -n NUM_WORKERS, --num-workers NUM_WORKERS
                             the number of worker processes to use. The default is
                             `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if an image cannot be transformed
 
 **Examples**
 
@@ -864,7 +871,7 @@ Transforms the videos in a dataset per the specified parameters.
                                     [--max-fps MAX_FPS] [--size SIZE]
                                     [--min-size MIN_SIZE]
                                     [--max-size MAX_SIZE] [-r] [-f] [-d]
-                                    [-v]
+                                    [-s] [-v]
                                     DATASET_NAME
 
 **Arguments**
@@ -892,6 +899,8 @@ Transforms the videos in a dataset per the specified parameters.
                             meet the specified values
       -d, --delete-originals
                             whether to delete the original videos after transforming
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if a video cannot be transformed
       -v, --verbose         whether to log the `ffmpeg` commands that are executed
 
 **Examples**
