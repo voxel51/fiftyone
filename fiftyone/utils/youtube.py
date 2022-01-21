@@ -1,6 +1,6 @@
 """
 Utilities for working with
-`youtube-dl <https://github.com/ytdl-org/youtube-dl>`
+`YouTube <https://youtube.com>` videos
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
