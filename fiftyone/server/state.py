@@ -1,3 +1,10 @@
+"""
+FiftyOne Server state.
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import asyncio
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -19,7 +26,7 @@ import fiftyone.core.state as fos
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 
-from fiftyone.server.view import get_extended_view, get_view, get_view_field
+from fiftyone.server.view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.notebook as fosn
 import fiftyone.server.utils as fosu
