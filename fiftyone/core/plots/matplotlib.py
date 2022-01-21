@@ -764,6 +764,23 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         """Shows this plot."""
         super().show()
 
+    def save(self, path, dpi=None, **kwargs):
+        """Saves the plot as an image.
+
+        Args:
+            path: the path to write the image
+            dpi (None): a resolution in dots per inch
+            **kwargs: keyword arguments for ``matplotlib.pyplot.savefig``
+        """
+        if "bbox_inches" not in kwargs:
+            kwargs["bbox_inches"] = "tight"
+
+        if dpi is not None:
+            kwargs["dpi"] = dpi
+
+        etau.ensure_basedir(path)
+        self._figure.savefig(path, **kwargs)
+
     def _show(self, **_):
         plt.show(block=False)
 
