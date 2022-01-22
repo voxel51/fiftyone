@@ -413,11 +413,9 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
-
-        if is_id_field:
+        field = sample_collection.get_field(self._field)
+        path = sample_collection._resolve_field(self._field)
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -425,7 +423,7 @@ class ExcludeBy(ViewStage):
         else:
             values = self._values
 
-        return [{"$match": {field_name: {"$not": {"$in": values}}}}]
+        return [{"$match": {path: {"$not": {"$in": values}}}}]
 
     def _kwargs(self):
         return [["field", self._field], ["values", self._values]]
@@ -4178,11 +4176,9 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
-
-        if is_id_field:
+        field = sample_collection.get_field(self._field)
+        path = sample_collection._resolve_field(self._field)
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -4191,16 +4187,10 @@ class SelectBy(ViewStage):
             values = self._values
 
         if not self._ordered:
-            return [{"$match": {field_name: {"$in": values}}}]
+            return [{"$match": {path: {"$in": values}}}]
 
         return [
-            {
-                "$set": {
-                    "_select_order": {
-                        "$indexOfArray": [values, "$" + field_name]
-                    }
-                }
-            },
+            {"$set": {"_select_order": {"$indexOfArray": [path, "$" + path]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},

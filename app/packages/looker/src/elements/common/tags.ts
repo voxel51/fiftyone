@@ -264,32 +264,15 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         continue;
       }
 
-      const [field, value] = getFieldAndValue(sample, fieldSchema, path);
+      const [field, value, list] = getFieldAndValue(sample, fieldSchema, path);
 
-      if (value === undefined) continue;
-
-      if (LABEL_RENDERERS[field.embeddedDocType]) {
-        elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
-      }
-
-      if (PRIMITIVE_RENDERERS[field.ftype]) {
-        elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
-      } else if (
-        field.ftype === LIST_FIELD &&
-        PRIMITIVE_RENDERERS[field.subfield] &&
-        value
-      ) {
+      const pushList = (ftype: string, value) => {
         let count = 0;
         let rest = 0;
         for (let index = 0; index < (value as Array<unknown>).length; index++) {
-          if (
-            PRIMITIVE_RENDERERS[field.subfield](path, value[index]) &&
-            count < 3
-          ) {
+          if (PRIMITIVE_RENDERERS[ftype](path, value[index]) && count < 3) {
             count++;
-            elements.push(
-              PRIMITIVE_RENDERERS[field.subfield](path, value[index])
-            );
+            elements.push(PRIMITIVE_RENDERERS[ftype](path, value[index]));
           } else {
             rest++;
           }
@@ -302,6 +285,25 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             value: `and ${rest} more`,
           });
         }
+      };
+
+      if (value === undefined) continue;
+
+      if (LABEL_RENDERERS[field.embeddedDocType]) {
+        elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+        continue;
+      }
+
+      if (PRIMITIVE_RENDERERS[field.ftype]) {
+        list
+          ? pushList(field.ftype, value)
+          : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+        continue;
+      }
+
+      if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
+        pushList(field.subfield, value);
+        continue;
       }
     }
 
@@ -352,18 +354,30 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
+const unwind = (name: string, value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((val) => unwind(name, val));
+  }
+
+  return value[name];
+};
+
 const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field, unknown] => {
-  let value = sample;
+): [Field, unknown, boolean] => {
+  let value: unknown = sample;
   let field: Field = null;
+  let list = false;
   for (const key of path.split(".")) {
     field = schema[key];
-    if (![undefined, null].includes(value)) value = value[field.dbField || key];
+    if (![undefined, null].includes(value)) {
+      value = unwind(field.dbField || key, value);
+      list = list || Array.isArray(value);
+    }
     schema = field.fields;
   }
 
-  return [field, value];
+  return [field, value, list];
 };

@@ -6,6 +6,7 @@ Interface for sample collections.
 |
 """
 from collections import defaultdict
+from dataclasses import field
 import fnmatch
 import itertools
 import logging
@@ -16,6 +17,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+from fiftyone.core.odm import document
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -440,6 +442,63 @@ class SampleCollection(object):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
+    def get_field(self, path):
+        """Returns the field instance of the provided path, or ``None`` if one
+        does not exist.
+
+        Args:
+            path: a field path
+
+        Returns:
+            a :class:`fiftyone.core.fields.Field` instance or ``None``
+        """
+        keys = path.split(".")
+
+        if not keys:
+            return None
+
+        if self.media_type == fom.VIDEO and keys[0]:
+            schema = self.get_frame_field_schema()
+            keys = keys[1:]
+        else:
+            schema = self.get_field_schema()
+
+        last = len(keys) - 1
+        for idx, field_name in enumerate(keys):
+            field = schema.get(field_name, None)
+            if field is None:
+                return field
+
+            if idx != last and isinstance(field, (fof.ListField)):
+                field = field.field
+
+            if isinstance(field, fof.EmbeddedDocumentField):
+                schema = field.get_field_schema()
+
+        return field
+
+    def _resolve_field(self, path):
+        keys = path.split(".")
+
+        if not keys:
+            return None
+
+        if self.media_type == fom.VIDEO and keys[0]:
+            schema = self.get_frame_field_schema()
+            keys = keys[1:]
+
+        result = []
+        for field_name in keys:
+            field = schema[field_name]
+            if isinstance(field, (fof.ListField)):
+                field = field.field
+
+            result.append(field.db_field or field.name)
+            if isinstance(field, fof.EmbeddedDocumentField):
+                schema = field.get_field_schema()
+
+        return ".".join(result)
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -602,14 +661,14 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
+        is_frame = _is_frame_field(self, field_name)
+        if is_frame:
             schema = self.get_frame_field_schema()
         else:
             schema = self.get_field_schema()
 
         if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+            ftype = "Frame field" if is_frame else "Field"
             raise ValueError(
                 "%s '%s' does not exist on collection '%s'"
                 % (ftype, field_name, self.name)
@@ -765,7 +824,7 @@ class SampleCollection(object):
 
             level = 1
             level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
-            level += self._is_frame_field(tags_path)
+            level += _is_frame_field(self, tags_path)
 
             # Omit samples/frames with no labels
             view = self.exists(label_field)
@@ -1113,9 +1172,9 @@ class SampleCollection(object):
 
             _sample_ids, values = _parse_values_dict(self, key_field, values)
 
-        is_frame_field = self._is_frame_field(field_name)
+        is_frame = _is_frame_field(self, field_name)
 
-        if is_frame_field:
+        if is_frame:
             _frame_ids, values = _parse_frame_values_dicts(
                 self, _sample_ids, values
             )
@@ -1131,9 +1190,7 @@ class SampleCollection(object):
         if id_to_str:
             to_mongo = lambda _id: ObjectId(_id)
         else:
-            field_type = self._get_field_type(
-                field_name, is_frame_field=is_frame_field
-            )
+            field_type = self.get_field(field_name)
             if field_type is not None:
                 to_mongo = field_type.to_mongo
 
@@ -1147,7 +1204,7 @@ class SampleCollection(object):
             label_type = field_type.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
-            if is_frame_field:
+            if is_frame:
                 path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
@@ -1159,7 +1216,7 @@ class SampleCollection(object):
                 warnings.warn(msg)
 
                 fcn = lambda l: l[list_field]
-                level = 1 + is_frame_field
+                level = 1 + is_frame
                 list_values = _transform_values(values, fcn, level=level)
 
                 return self.set_values(
@@ -1182,7 +1239,7 @@ class SampleCollection(object):
         ):
             list_fields = sorted(set(list_fields + [field_name]))
 
-        if is_frame_field:
+        if is_frame:
             self._set_frame_values(
                 field_name,
                 values,
@@ -1203,10 +1260,10 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(self, field_name, values):
-        field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
-        if is_frame_field:
+        is_frame = _is_frame_field(self, field_name)
+        if is_frame:
             schema = self._dataset.get_frame_field_schema(include_private=True)
 
             if root in schema:
@@ -1451,7 +1508,6 @@ class SampleCollection(object):
 
     def _set_labels(self, field_name, sample_ids, label_docs):
         label_type = self._get_label_field_type(field_name)
-        field_name, is_frame_field = self._handle_frame_field(field_name)
 
         ops = []
         if issubclass(label_type, fol._LABEL_LIST_FIELDS):
@@ -1490,7 +1546,9 @@ class SampleCollection(object):
                     )
                 )
 
-        self._dataset._bulk_write(ops, frames=is_frame_field)
+        self._dataset._bulk_write(
+            ops, frames=_is_frame_field(self, field_name)
+        )
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
@@ -6458,14 +6516,15 @@ class SampleCollection(object):
         if single_field_index:
             field = input_spec[0][0]
 
+            _field = self.get_field(field)
+            is_frame = _is_frame_field(self, field)
+
             index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
                 if _unique or (unique == _unique):
                     # Satisfactory index already exists
                     return field
-
-                _field, is_frame_field = self._handle_frame_field(field)
 
                 if _field == "id":
                     # For some reason ID indexes are not reported by
@@ -6474,7 +6533,7 @@ class SampleCollection(object):
                     # to be done here
                     return field
 
-                if _field in self._get_default_indexes(frames=is_frame_field):
+                if _field in self._get_default_indexes(frames=is_frame):
                     raise ValueError(
                         "Cannot modify default index '%s'" % field
                     )
@@ -6520,9 +6579,10 @@ class SampleCollection(object):
                 index name. Use :meth:`list_indexes` to see the available
                 indexes
         """
-        name, is_frame_index = self._handle_frame_field(field_or_name)
-
-        if is_frame_index:
+        is_frame = _is_frame_field(self, field_or_name)
+        name = field_or_name
+        if is_frame:
+            name = name[len(self._FRAMES_PREFIX) :]
             if name in self._get_default_indexes(frames=True):
                 raise ValueError("Cannot drop default frame index '%s'" % name)
 
@@ -6534,9 +6594,7 @@ class SampleCollection(object):
             coll = self._dataset._sample_collection
 
         index_map = {}
-        fields_map = self._get_db_fields_map(
-            frames=is_frame_index, reverse=True
-        )
+        fields_map = self._get_db_fields_map(frames=is_frame, reverse=True)
         for key, info in coll.index_information().items():
             if len(info["key"]) == 1:
                 # We use field name, not pymongo name, for single field indexes
@@ -6546,7 +6604,7 @@ class SampleCollection(object):
                 index_map[key] = key
 
         if name not in index_map:
-            itype = "frame index" if is_frame_index else "index"
+            itype = "frame index" if is_frame else "index"
             raise ValueError(
                 "%s has no %s '%s'" % (self.__class__.__name__, itype, name)
             )
@@ -7054,28 +7112,8 @@ class SampleCollection(object):
             self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
         )
 
-    def _has_field(self, field_name):
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            return field_name in self.get_frame_field_schema()
-
-        return field_name in self.get_field_schema()
-
-    def _handle_id_fields(self, field_name):
-        return _handle_id_fields(self, field_name)
-
-    def _handle_frame_field(self, field_name):
-        is_frame_field = self._is_frame_field(field_name)
-        if is_frame_field:
-            field_name = field_name[len(self._FRAMES_PREFIX) :]
-
-        return field_name, is_frame_field
-
-    def _is_frame_field(self, field_name):
-        return (self.media_type == fom.VIDEO) and (
-            field_name.startswith(self._FRAMES_PREFIX)
-            or field_name == "frames"
-        )
+    def _has_field(self, field_path):
+        return self.get_field(field_path) is not None
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:
@@ -7125,10 +7163,10 @@ class SampleCollection(object):
         )
 
     def _get_db_field(self, field_name):
-        field, is_frame_field = self._handle_frame_field(field_name)
-        fields_map = self._get_db_fields_map(frames=is_frame_field)
-        db_field = fields_map.get(field, field)
-        return db_field, is_frame_field
+        return (
+            self.get_field(field_name).db_field,
+            _is_frame_field(self, field_name),
+        )
 
     def _get_db_fields_map(
         self, include_private=False, frames=False, reverse=False
@@ -7185,9 +7223,9 @@ class SampleCollection(object):
         )
 
     def _get_root_field_type(self, field_name, include_private=False):
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-
-        if is_frame_field:
+        is_frame = _is_frame_field(self, field_name)
+        if is_frame:
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
@@ -7197,7 +7235,7 @@ class SampleCollection(object):
         root = field_name.split(".", 1)[0]
 
         if root not in schema:
-            ftype = "frame field" if is_frame_field else "field"
+            ftype = "frame field" if is_frame else "field"
             raise ValueError(
                 "%s has no %s '%s'" % (self.__class__.__name__, ftype, root)
             )
@@ -7205,14 +7243,15 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
+        is_frame = _is_frame_field(self, field_name)
+        if is_frame:
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
             schema = self.get_frame_field_schema()
         else:
             schema = self.get_field_schema()
 
         if field_name not in schema:
-            ftype = "frame field" if is_frame_field else "field"
+            ftype = "frame field" if is_frame else "field"
             raise ValueError(
                 "%s has no %s '%s'"
                 % (self.__class__.__name__, ftype, field_name)
@@ -7257,16 +7296,6 @@ class SampleCollection(object):
             )
 
         return next(iter(geo_schema.keys()))
-
-    def _get_field_type(
-        self, field_name, is_frame_field=None, ignore_primitives=False
-    ):
-        return _get_field_type(
-            self,
-            field_name,
-            is_frame_field=is_frame_field,
-            ignore_primitives=ignore_primitives,
-        )
 
     def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:
@@ -7692,15 +7721,7 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
-    # Handle public (string) vs private (ObjectId) ID fields
-    field_name, is_id_field, id_to_str = _handle_id_fields(
-        sample_collection, field_name
-    )
-
-    field_name, is_frame_field = sample_collection._handle_frame_field(
-        field_name
-    )
-
+    is_frame_field = _is_frame_field(sample_collection, field_name)
     if is_frame_field:
         if not field_name:
             return "frames", True, [], [], False
@@ -7708,8 +7729,9 @@ def _parse_field_name(
         prefix = sample_collection._FRAMES_PREFIX
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
 
+    field = sample_collection.get_field(field_name)
     # Validate root field, if requested
-    if not allow_missing and not is_id_field:
+    if not allow_missing and not isinstance(field, fof.ObjectIdField):
         root_field_name = field_name.split(".", 1)[0]
 
         if is_frame_field:
@@ -7728,18 +7750,18 @@ def _parse_field_name(
 
     # Detect list fields in schema
     path = None
+    resolved_keys = []
     for part in field_name.split("."):
         if path is None:
             path = part
         else:
             path += "." + part
 
-        field_type = sample_collection._get_field_type(
-            path, is_frame_field=is_frame_field
-        )
-
+        field_type = sample_collection.get_field(path)
         if field_type is None:
             break
+
+        resolved_keys.append(field_type.db_field or field_type.name)
 
         if isinstance(field_type, fof.ListField):
             if omit_terminal_lists and path == field_name:
@@ -7761,8 +7783,6 @@ def _parse_field_name(
         if auto_unwind:
             unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
-            prefix = sample_collection._FRAMES_PREFIX
-            field_name = prefix + field_name
             unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
             ]
@@ -7779,115 +7799,22 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     return (
-        field_name,
+        ".".join(resolved_keys),
         is_frame_field,
         unwind_list_fields,
         other_list_fields,
-        id_to_str,
+        isinstance(field, fof.ObjectIdField),
     )
 
 
-def _handle_id_fields(sample_collection, field_name):
-    if not field_name:
-        return field_name, False, False
+def _is_frame_field(sample_collection, path):
+    if not path.startswith(sample_collection._FRAMES_PREFIX):
+        return False
 
-    if "." not in field_name:
-        root = None
-        leaf = field_name
-    else:
-        root, leaf = field_name.rsplit(".", 1)
+    if not sample_collection.media_type == fom.VIDEO:
+        return False
 
-    is_private = leaf.startswith("_")
-
-    if is_private:
-        private_field = field_name
-        public_field = leaf[1:]
-        if root is not None:
-            public_field = root + "." + public_field
-    else:
-        public_field = field_name
-        private_field = "_" + leaf
-        if root is not None:
-            private_field = root + "." + private_field
-
-    public_type = sample_collection._get_field_type(public_field)
-    private_type = sample_collection._get_field_type(private_field)
-
-    if isinstance(public_type, fof.ObjectIdField) or isinstance(
-        private_type, fof.ObjectIdField
-    ):
-        id_to_str = not is_private
-        return private_field, True, id_to_str
-
-    return field_name, False, False
-
-
-def _get_field_type(
-    sample_collection,
-    field_name,
-    is_frame_field=None,
-    ignore_primitives=False,
-):
-    if is_frame_field is None:
-        field_name, is_frame_field = sample_collection._handle_frame_field(
-            field_name
-        )
-
-    if is_frame_field:
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        schema = sample_collection.get_field_schema()
-
-    if "." not in field_name:
-        root = field_name
-        field_path = None
-    else:
-        root, field_path = field_name.split(".", 1)
-
-    if root == "_id":
-        root = "id"
-
-    if root not in schema:
-        return None
-
-    field_type = _do_get_field_type(schema[root], field_path)
-
-    if ignore_primitives:
-        if type(field_type) in fof._PRIMITIVE_FIELDS:
-            return None
-
-        if type(field_type) in (fof.ListField, fof.DictField):
-            subfield = field_type.field
-            if subfield is None or type(subfield) in fof._PRIMITIVE_FIELDS:
-                return None
-
-    return field_type
-
-
-def _do_get_field_type(field, field_path):
-    if not field_path:
-        return field
-
-    if isinstance(field, fof.ListField):
-        return _do_get_field_type(field.field, field_path)
-
-    if isinstance(field, fof.EmbeddedDocumentField):
-        return _do_get_field_type(field.document_type, field_path)
-
-    if "." not in field_path:
-        root, field_path = field_path, None
-    else:
-        root, field_path = field_path.split(".", 1)
-
-    if root == "id":
-        root = "_id"
-
-    try:
-        field = getattr(field, root)
-    except AttributeError:
-        return None
-
-    return _do_get_field_type(field, field_path)
+    return sample_collection.get_field(path) is not None
 
 
 def _transform_values(values, fcn, level=1):

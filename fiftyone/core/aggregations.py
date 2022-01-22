@@ -1967,7 +1967,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(field_name)
+    field_type = sample_collection.get_field(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):

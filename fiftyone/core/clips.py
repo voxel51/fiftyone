@@ -459,11 +459,11 @@ def make_clips_dataset(
     return dataset
 
 
-def _is_frame_support_field(sample_collection, field):
-    field_type = sample_collection._get_field_type(field)
-    return isinstance(field_type, fof.FrameSupportField) or (
-        isinstance(field_type, fof.ListField)
-        and isinstance(field_type.field, fof.FrameSupportField)
+def _is_frame_support_field(sample_collection, field_path):
+    field = sample_collection.get_field(field_path)
+    return isinstance(field, fof.FrameSupportField) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, fof.FrameSupportField)
     )
 
 
@@ -474,10 +474,12 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _write_support_clips(dataset, src_collection, field, other_fields=None):
-    field_type = src_collection._get_field_type(field)
-    is_list = isinstance(field_type, fof.ListField) and not isinstance(
-        field_type, fof.FrameSupportField
+def _write_support_clips(
+    dataset, src_collection, field_path, other_fields=None
+):
+    field = src_collection.get_field(field_path)
+    is_list = isinstance(field, fof.ListField) and not isinstance(
+        field, fof.FrameSupportField
     )
 
     src_dataset = src_collection._dataset
