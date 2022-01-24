@@ -1,7 +1,7 @@
 """
 Video frame views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -721,12 +721,9 @@ def _parse_video_frames(
         else:
             sample_frame_numbers = doc_frame_numbers
     else:
-        # @todo is this too expensive?
-        sample_frame_numbers = [
-            fn
-            for fn in doc_frame_numbers
-            if not os.path.isfile(images_patt % fn)
-        ]
+        sample_frame_numbers = _get_non_existent_frame_numbers(
+            images_patt, doc_frame_numbers
+        )
 
         if all_frames and len(sample_frame_numbers) == len(doc_frame_numbers):
             sample_frame_numbers = None  # all frames
@@ -749,3 +746,7 @@ def _parse_video_frames(
             logger.info("Required frames already present for '%s'", video_path)
 
     return doc_frame_numbers, sample_frame_numbers
+
+
+def _get_non_existent_frame_numbers(images_patt, frame_numbers):
+    return [fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)]

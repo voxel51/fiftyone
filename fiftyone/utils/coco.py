@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -518,9 +518,7 @@ class COCODetectionDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
@@ -575,6 +573,7 @@ class COCODetectionDatasetImporter(
         self._classes = classes
         self._license_map = license_map
         self._supercategory_map = supercategory_map
+        self._image_paths_map = image_paths_map
         self._image_dicts_map = image_dicts_map
         self._annotations = annotations
         self._filenames = filenames
@@ -934,7 +933,7 @@ class COCOObject(object):
             a :class:`fiftyone.core.labels.Polyline`, or None if no
             segmentation data is available
         """
-        if self.segmentation is None:
+        if not self.segmentation:
             return None
 
         label, attributes = self._get_object_label_and_attributes(
@@ -1017,7 +1016,7 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        if load_segmentation and self.segmentation is not None:
+        if load_segmentation and self.segmentation:
             mask = _coco_segmentation_to_mask(
                 self.segmentation, self.bbox, frame_size
             )
@@ -1824,7 +1823,7 @@ def _get_existing_ids(images_dir, images, image_ids):
 
 
 def _download_images(images_dir, image_ids, images, num_workers):
-    if num_workers is None or num_workers < 1:
+    if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
     tasks = []
@@ -1837,7 +1836,7 @@ def _download_images(images_dir, image_ids, images, num_workers):
     if not tasks:
         return
 
-    if num_workers == 1:
+    if num_workers <= 1:
         with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)

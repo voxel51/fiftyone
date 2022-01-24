@@ -1,6 +1,15 @@
 global-include *
 global-exclude *.py[cod]
 
+prune .*
+prune app
+prune eta
+prune package
+prune tools
+prune tests
+
+global-exclude .*
+
 recursive-exclude fiftyone *.md
 
 recursive-exclude docs *

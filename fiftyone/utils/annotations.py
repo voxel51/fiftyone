@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -693,55 +693,17 @@ def _get_existing_label_type(samples, backend, label_field, field_type):
 
     fo_label_type = field_type.document_type
 
-    if issubclass(fo_label_type, (fol.Detection, fol.Detections)):
-        # Must check for detections vs instances
-        _, label_path = samples._get_label_field_path(label_field)
-        _, mask_path = samples._get_label_field_path(label_field, "mask")
+    if issubclass(fo_label_type, fol.Detection):
+        return ["detection", "instance"]
 
-        num_labels, num_masks = samples.aggregate(
-            [foag.Count(label_path), foag.Count(mask_path)]
-        )
+    if issubclass(fo_label_type, fol.Detections):
+        return ["detections", "instances"]
 
-        label_types = []
+    if issubclass(fo_label_type, fol.Polyline):
+        return ["polygon", "polyline"]
 
-        if num_labels == 0 or num_labels > num_masks:
-            label_types.append(
-                "detection"
-                if issubclass(fo_label_type, fol.Detection)
-                else "detections"
-            )
-
-        if num_masks > 0:
-            label_types.append(
-                "instance"
-                if issubclass(fo_label_type, fol.Detection)
-                else "instances"
-            )
-
-        return _unwrap(label_types)
-
-    if issubclass(fo_label_type, (fol.Polyline, fol.Polylines)):
-        # Must check for polylines vs polygons
-        _, path = samples._get_label_field_path(label_field, "filled")
-        counts = samples.count_values(path)
-
-        label_types = []
-
-        if counts.get(True, 0) > 0:
-            label_types.append(
-                "polygon"
-                if issubclass(fo_label_type, fol.Polyline)
-                else "polygons"
-            )
-
-        if counts.get(False, 0) > 0:
-            label_types.append(
-                "polyline"
-                if issubclass(fo_label_type, fol.Detection)
-                else "polylines"
-            )
-
-        return _unwrap(label_types)
+    if issubclass(fo_label_type, fol.Polylines):
+        return ["polygons", "polylines"]
 
     if issubclass(fo_label_type, fol.Classification):
         return "classification"
