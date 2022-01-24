@@ -1,7 +1,7 @@
 """
 Dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -328,8 +328,6 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
-        value = os.path.abspath(os.path.expanduser(value))
-
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:
             raise fomm.MediaTypeError(
@@ -371,7 +369,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     Args:
         filepath: the path to the data on disk. The path is converted to an
             absolute path (if necessary) via
-            ``os.path.abspath(os.path.expanduser(filepath))``
+            :func:`fiftyone.core.utils.normalize_path`
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample

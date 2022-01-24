@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -935,8 +935,14 @@ def recommend_num_workers():
     :class:`torch:torch.utils.data.DataLoader`.
 
     Returns:
-        the recommended ``num_workers``
+        the recommended number of workers
     """
+    if sys.platform.startswith("win"):
+        # Windows tends to have multiprocessing issues, so default to 0 workers
+        # https://github.com/voxel51/fiftyone/issues/1531
+        # https://stackoverflow.com/q/20222534
+        return 0
+
     if sys.platform == "darwin" and not torch.cuda.is_available():
         # There is a parallelism bug on macOS with CPU that prevents us from
         # using `num_workers > 0`

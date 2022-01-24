@@ -2,7 +2,7 @@
 """
 Installs the ``fiftyone-db`` package.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -47,7 +47,7 @@ MONGODB_DOWNLOAD_URLS = {
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
-VERSION = "0.2.1"
+VERSION = "0.3"
 
 
 def get_version():

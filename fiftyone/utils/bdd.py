@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -167,22 +167,24 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            self._anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = load_bdd_annotations(self.labels_path)
         else:
-            self._anno_dict_map = {}
+            anno_dict_map = {}
 
-        filenames = set(self._anno_dict_map.keys())
+        filenames = set(anno_dict_map.keys())
 
         if self.include_all_data:
-            filenames.update(self._image_paths_map.keys())
+            filenames.update(image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(sorted(filenames))
-        self._num_samples = len(self._filenames)
+        filenames = self._preprocess_list(sorted(filenames))
+
+        self._image_paths_map = image_paths_map
+        self._anno_dict_map = anno_dict_map
+        self._filenames = filenames
+        self._num_samples = len(filenames)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
