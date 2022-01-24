@@ -34,6 +34,7 @@ FROM $BASE_IMAGE
 
 # The Python version to install
 ARG PYTHON_VERSION=3.8
+ENV PYTHON_VERSION=${PYTHON_VERSION}
 
 #
 # Install system packages
@@ -117,4 +118,4 @@ ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
 CMD ipython
 
 # Use this if you want the default behavior to instead be to launch the App
-# CMD python /usr/local/lib/python${PYTHON_VERSION}/site-packages/fiftyone/server/main.py --port 5151
+# CMD python /usr/local/lib/python${PYTHON_VERSION}/dist-packages/fiftyone/server/main.py --port 5151
