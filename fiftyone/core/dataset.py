@@ -2076,9 +2076,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None, fields=None):
+    def _save(self, view=None, fields=None, hard=False):
         if view is not None:
-            _save_view(view, fields)
+            _save_view(view, fields=fields, hard=hard)
 
         self._doc.save()
 
@@ -4776,12 +4776,22 @@ def _get_frames_pipeline(sample_collection):
     return coll, pipeline
 
 
-def _save_view(view, fields):
+def _save_view(view, fields=None, hard=False):
+    if hard and fields is not None:
+        raise ValueError(
+            "A hard save (hard=%s) is not allowed when you have restricted "
+            "the fields %s that you wish to modify" % (hard, fields)
+        )
+
     dataset = view._dataset
 
-    merge = fields is not None
+    all_fields = fields is None
+
     if fields is None:
         fields = []
+
+    if etau.is_str(fields):
+        fields = [fields]
 
     if dataset.media_type == fom.VIDEO:
         sample_fields = []
@@ -4802,20 +4812,26 @@ def _save_view(view, fields):
 
     pipeline = view._pipeline(detach_frames=True)
 
-    if merge:
-        if sample_fields:
-            # @todo if `view` omits samples, shouldn't we set their field
-            # values to None here, for consistency with the fact that $out
-            # will delete samples that don't appear in `view`?
-            pipeline.append({"$project": {f: True for f in sample_fields}})
-            pipeline.append({"$merge": dataset._sample_collection_name})
-            foo.aggregate(dataset._sample_collection, pipeline)
-    else:
+    if hard:
         pipeline.append({"$out": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
 
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name)
+    elif sample_fields:
+        pipeline.append({"$project": {f: True for f in sample_fields}})
+        pipeline.append({"$merge": dataset._sample_collection_name})
+        foo.aggregate(dataset._sample_collection, pipeline)
+    elif all_fields:
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "replace",
+                }
+            }
+        )
+        foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Save frames
@@ -4836,20 +4852,26 @@ def _save_view(view, fields):
                 ]
             )
 
-        if merge:
-            if frame_fields:
-                # @todo if `view` omits samples, shouldn't we set their field
-                # values to None here, for consistency with the fact that $out
-                # will delete samples that don't appear in `view`?
-                pipeline.append({"$project": {f: True for f in frame_fields}})
-                pipeline.append({"$merge": dataset._frame_collection_name})
-                foo.aggregate(dataset._sample_collection, pipeline)
-        else:
+        if hard:
             pipeline.append({"$out": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
 
             for field_name in view._get_missing_fields(frames=True):
                 dataset._frame_doc_cls._delete_field_schema(field_name)
+        elif frame_fields:
+            pipeline.append({"$project": {f: True for f in frame_fields}})
+            pipeline.append({"$merge": dataset._frame_collection_name})
+            foo.aggregate(dataset._sample_collection, pipeline)
+        elif all_fields:
+            pipeline.append(
+                {
+                    "$merge": {
+                        "into": dataset._frame_collection_name,
+                        "whenMatched": "replace",
+                    }
+                }
+            )
+            foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Reload in-memory documents

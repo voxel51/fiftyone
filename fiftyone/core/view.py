@@ -609,22 +609,32 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._ensure_frames(view=self)
 
-    def save(self, fields=None):
-        """Overwrites the underlying dataset with the contents of the view.
+    def save(self, fields=None, hard=False):
+        """Saves the contents of the view to the database.
 
         .. warning::
 
-            This will permanently delete any omitted, filtered, or otherwise
-            modified contents of the dataset.
+            If a view has excluded fields or filtered list values, this method
+            will permanently delete this data from the dataset, unless
+            ``fields`` is used to omit such fields from the save.
+
+            In addition, if ``hard != False``, this method will delete any
+            samples and/or frames from the dataset that do not appear in this
+            view. See below for details.
 
         Args:
             fields (None): an optional field or list of fields to save. If
-                specified, only these fields are overwritten
-        """
-        if etau.is_str(fields):
-            fields = [fields]
+                specified, only these field's contents are modified
+            hard (False): whether to use ``$out`` rather than ``$merge`` to
+                perform the save, which will cause any samples/frames omitted
+                from the view to be deleted from the dataset. The supported
+                values are:
 
-        self._dataset._save(view=self, fields=fields)
+                -   ``False``: do not delete samples/frames
+                -   ``True``: delete omitted samples and frames
+                -   ``"frames"``: delete omitted frames but not omitted samples
+        """
+        self._dataset._save(view=self, fields=fields, hard=hard)
 
     def clone(self, name=None):
         """Creates a new dataset containing only the contents of the view.
