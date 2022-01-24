@@ -34,7 +34,7 @@ wish to include in your build.
 
 ## Running an image
 
-The image is designed to persist any local data in a single `/fityone`
+The image is designed to persist any local data in a single `/fiftyone`
 directory with the following organization:
 
 ```
