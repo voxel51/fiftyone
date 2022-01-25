@@ -34,6 +34,7 @@ def download_from_youtube(
     ext=None,
 ):
     """Downloads a list of video urls from YouTube.
+
     The `urls` argument either accepts:
 
         * A list of YouTube video urls::
@@ -129,8 +130,6 @@ def _build_tasks_list(urls, clip_segments, download_dir, ext):
                 "found to be `None`."
             )
         urls = {url: None for url in urls}
-
-        etau.ensure_dir(download_dir)
 
     num_videos = len(urls)
 
@@ -230,6 +229,8 @@ def _build_ydl_opts(ext, video_path, clip_segment, download_dir):
 
     if _ext:
         ydl_opts["format"] = _ext
+
+    etau.ensure_dir(os.path.dirname(output_path))
 
     ydl_opts["outtmpl"] = output_path
 
