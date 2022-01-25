@@ -18,11 +18,7 @@ import eta.core.video as etav
 import fiftyone.core.utils as fou
 
 youtube_dl = fou.lazy_import(
-    "youtube_dl",
-    callback=lambda: fou.ensure_import(
-        "youtube_dl",
-        error_msg="youtube_dl not found, run `pip install youtube-dl`",
-    ),
+    "youtube_dl", callback=lambda: fou.ensure_import("youtube-dl"),
 )
 
 
@@ -38,8 +34,7 @@ def download_from_youtube(
     ext=None,
     buffer_seconds=5,
 ):
-    """
-    Attempts to download a list of video urls from YouTube.
+    """Downloads a list of video urls from YouTube.
     The `urls` argument either accepts:
 
         * A list of YouTube video urls::
@@ -49,14 +44,15 @@ def download_from_youtube(
           When `urls` is a list, then the `download_dir` argument is required
           and all videos will be downloaded into that directory
 
-        * A dictionary mapping the video urls to files on disk in which to store that video::
+        * A dictionary mapping the video urls to files on disk in which to
+          store that video::
 
             urls = {
                 "https://www.youtube.com/watch?v=-0URMJE8_PB": "/path/to/local/file1.ext",
                 ...
             }
 
-    The corresponding `clip_segments` argument can then contain a list oftuples of ints
+    The corresponding `clip_segments` argument can then contain a list of tuples of ints
     or floats used to download segment clips of each video. A value of `None`
     can indicate either downloading the entire video, downloading from the
     start or downloading to the end of the video::
