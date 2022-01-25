@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -161,25 +161,29 @@ class KITTIDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            self._labels_paths_map = {
+            labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
                 for p in etau.list_files(self.labels_path, recursive=True)
             }
         else:
-            self._labels_paths_map = {}
+            labels_paths_map = {}
 
-        uuids = set(self._labels_paths_map.keys())
+        uuids = set(labels_paths_map.keys())
 
         if self.include_all_data:
-            uuids.update(self._image_paths_map.keys())
+            uuids.update(image_paths_map.keys())
 
-        self._uuids = self._preprocess_list(sorted(uuids))
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(uuids))
+
+        self._image_paths_map = image_paths_map
+        self._labels_paths_map = labels_paths_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -301,12 +305,12 @@ class KITTIDetectionDatasetExporter(
         if detections is None:
             return
 
-        out_anno_path = os.path.join(self.labels_path, uuid + ".txt")
+        out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        self._writer.write(detections, metadata, out_anno_path)
+        self._writer.write(detections, metadata, out_labels_path)
 
     def close(self, *args):
         self._media_exporter.close()

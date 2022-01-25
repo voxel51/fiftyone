@@ -1,7 +1,7 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,7 +18,6 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
-import numpy as np
 from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
@@ -31,6 +30,7 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
@@ -256,10 +256,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
+
+        if isinstance(id_filepath_slice, foex.ViewExpression):
+            return self.view()[id_filepath_slice]
+
+        if etau.is_container(id_filepath_slice):
             return self.view()[id_filepath_slice]
 
         try:
@@ -3954,8 +3961,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -3968,7 +3974,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = d["name"]
 
         if rel_dir is not None:
-            rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+            rel_dir = fou.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name)
@@ -3994,7 +4000,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         def parse_sample(sd):
-            if rel_dir and not sd["filepath"].startswith(os.path.sep):
+            if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if media_type == fom.VIDEO:
@@ -4015,6 +4021,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         samples = d["samples"]
         num_samples = len(samples)
+
         _samples = map(parse_sample, samples)
         dataset.add_samples(
             _samples, expand_schema=False, num_samples=num_samples
@@ -4041,8 +4048,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -5802,16 +5808,15 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, foc.SampleCollection):
         return samples_or_ids.values("id")
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    samples_or_ids = list(samples_or_ids)
 
     if not samples_or_ids:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
+    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]
 
-    return list(samples_or_ids)
+    return samples_or_ids
 
 
 def _parse_fields(field_names):
@@ -5843,10 +5848,7 @@ def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
     if not os.path.isdir(dataset_dir):
-        outdir = os.path.dirname(dataset_dir)
-        etau.extract_archive(
-            archive_path, outdir=outdir, delete_archive=cleanup
-        )
+        etau.extract_archive(archive_path, delete_archive=cleanup)
 
         if not os.path.isdir(dataset_dir):
             raise ValueError(

@@ -1,7 +1,7 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,9 +13,9 @@ from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 
-import fiftyone.core.utils as fou
-
 import eta.core.serial as etas
+
+import fiftyone.core.utils as fou
 
 
 class SerializableDocument(object):
@@ -501,7 +501,7 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -518,7 +518,7 @@ class DynamicEmbeddedDocument(
     Dynamic documents can have arbitrary fields added to them.
     """
 
-    meta = {"abstract": True}
+    meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

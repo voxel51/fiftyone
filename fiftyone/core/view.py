@@ -1,7 +1,7 @@
 """
 Dataset views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -77,11 +78,18 @@ class DatasetView(foc.SampleCollection):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
             return self._slice(id_filepath_slice)
+
+        if isinstance(id_filepath_slice, foe.ViewExpression):
+            return self.match(id_filepath_slice)
+
+        if etau.is_container(id_filepath_slice):
+            return self.select(id_filepath_slice)
 
         try:
             oid = ObjectId(id_filepath_slice)
@@ -646,9 +654,9 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If

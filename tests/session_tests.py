@@ -1,7 +1,7 @@
 """
 Tests related to Session behavior.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -31,16 +31,6 @@ def _run_helper(*args):
         .decode()
         .replace("\r", "")
     )
-
-
-def test_fast_shutdown(capsys):
-    out = _run_helper()
-    assert fos._WAIT_INSTRUCTIONS in out
-
-
-def test_fast_shutdown_remote(capsys):
-    out = _run_helper("--remote")
-    assert fos._WAIT_INSTRUCTIONS in out
 
 
 def test_slow_shutdown(capsys):

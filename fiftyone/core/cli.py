@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2576,11 +2576,34 @@ class ComputeMetadataCommand(Command):
             action="store_true",
             help="whether to overwrite existing metadata",
         )
+        parser.add_argument(
+            "-n",
+            "--num-workers",
+            default=None,
+            type=int,
+            help=(
+                "the number of worker processes to use. The default is "
+                "`multiprocessing.cpu_count()`"
+            ),
+        )
+        parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "metadata cannot be computed for a sample"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        dataset.compute_metadata(overwrite=args.overwrite)
+        dataset.compute_metadata(
+            overwrite=args.overwrite,
+            num_workers=args.num_workers,
+            skip_failures=args.skip_failures,
+        )
 
 
 class TransformImagesCommand(Command):
@@ -2658,6 +2681,15 @@ class TransformImagesCommand(Command):
                 "`multiprocessing.cpu_count()`"
             ),
         )
+        parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "an image cannot be transformed"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2671,6 +2703,7 @@ class TransformImagesCommand(Command):
             force_reencode=args.force_reencode,
             delete_originals=args.delete_originals,
             num_workers=args.num_workers,
+            skip_failures=args.skip_failures,
         )
 
 
@@ -2768,6 +2801,15 @@ class TransformVideosCommand(Command):
             help="whether to delete the original videos after transforming",
         )
         parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "a video cannot be transformed"
+            ),
+        )
+        parser.add_argument(
             "-v",
             "--verbose",
             action="store_true",
@@ -2788,6 +2830,7 @@ class TransformVideosCommand(Command):
             reencode=args.reencode,
             force_reencode=args.force_reencode,
             delete_originals=args.delete_originals,
+            skip_failures=args.skip_failures,
             verbose=args.verbose,
         )
 
