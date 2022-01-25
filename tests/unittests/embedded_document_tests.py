@@ -234,7 +234,7 @@ class EmbeddedDocumentTests(unittest.TestCase):
             img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
             etai.write(img, image_path)
             dataset.add_sample(fo.Sample(filepath=image_path))
-            dataset.compute_metadata()
+            dataset.compute_metadata(num_workers=1, skip_failures=False)
 
         self.assertIsInstance(
             dataset.get_field("metadata.num_channels"), fo.IntField
