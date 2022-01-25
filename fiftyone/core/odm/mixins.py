@@ -120,19 +120,17 @@ def get_field_kwargs(field):
     Returns:
         a field specification dict
     """
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
+    kwargs = {"ftype": type(field)}
 
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
-        ftype = field.field
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        field = field.field
+        kwargs["subfield"] = type(field)
 
-    if issubclass(ftype, fof.EmbeddedDocumentField):
+    if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        kwargs["fields"] = {
-            k: get_field_kwargs(v)
-            for k, v in getattr(field, "fields", {}).items()
-        }
+        kwargs["fields"] = [
+            get_field_kwargs(field) for field in getattr(field, "fields", [])
+        ]
 
     return kwargs
 
@@ -216,8 +214,9 @@ class DatasetMixin(object):
             )
             field.validate(value, **kwargs)
 
-        if isinstance(value, DynamicEmbeddedDocument):
-            value._set_parent(self.__class__)
+        field = self._fields[field_name]
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field._set_parent(self.__class__)
 
         super().__setattr__(field_name, value)
 
@@ -368,6 +367,9 @@ class DatasetMixin(object):
             validate_fields_match(field_name, kwargs, cls._fields[field_name])
         else:
             cls.add_field(field_name, **kwargs)
+            field = cls._fields[field_name]
+            if isinstance(field, fof.EmbeddedDocumentField):
+                value._set_parent(field)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -734,7 +736,7 @@ class DatasetMixin(object):
             for key in path[1:-1]:
                 doc_field = doc_field.get_field_schema()[key]
 
-            doc_field.fields.append(sample_field)
+            doc_field.fields = list(doc_field.fields) + [sample_field]
 
         dataset_doc.save()
         cls._declare_field(field, path)

@@ -24,6 +24,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     _parent = None
 
     def __init__(self, *args, **kwargs):
+        self._custom_fields = {}
         super().__init__(*args, **kwargs)
         # pylint: disable=no-member
         for name, field in self._fields.items():
@@ -32,24 +33,12 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             if isinstance(field, EmbeddedDocumentField):
                 field.name = name
 
-    def _set_parent(self, parent):
-        self._parent = parent
-        # pylint: disable=no-member
-        for field in self._fields:
-            if isinstance(field, (DictField, ListField)):
-                field = field.field
-            if isinstance(field, EmbeddedDocumentField):
-                field._set_parent(parent)
-
-    def _get_custom_fields(self):
-        if not self._parent:
-            return {}
-
-        fields = getattr(self._parent, "fields", [])
-        return {field.name: field for field in fields}
+        for name in getattr(self, "_dynamic_fields", {}):
+            self.add_implied_field(name, self._data[name])
 
     def has_field(self, name):
-        if super().has_field(name):
+        # pylint: disable=no-member
+        if name in self._fields:
             return True
 
         if name in self._get_custom_fields():
@@ -58,9 +47,10 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         return False
 
     def __setattr__(self, name, value):
-        custom_fields = self._get_custom_fields()
-        if name in custom_fields and value is not None:
-            custom_fields[name].validate(value)
+        if not name.startswith("_"):
+            custom_fields = self._get_custom_fields()
+            if name in custom_fields and value is not None:
+                custom_fields[name].validate(value)
 
         super().__setattr__(name, value)
 
@@ -151,8 +141,36 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         self._declare_field(field)
 
     def _declare_field(self, field):
-        if self._parent is not None:
+        if self._parent is None:
+            self._custom_fields[field.name] = field
+        else:
             self._parent._save_field(field, [field.name])
+
+    def _set_parent(self, parent):
+        self._parent = parent
+        # pylint: disable=no-member
+        for field_name, field in {
+            **self._fields,
+            **self._custom_fields,
+        }.items():
+            set_field = field
+            if isinstance(field, (DictField, ListField)):
+                set_field = field.field
+
+            if isinstance(field, EmbeddedDocumentField):
+                set_field._set_parent(parent)
+
+            if field_name in self._custom_fields:
+                self._declare_field(field)
+
+        self._custom_fields = {}
+
+    def _get_custom_fields(self):
+        if not self._parent:
+            return self._custom_fields
+
+        fields = getattr(self._parent, "fields", [])
+        return {field.name: field for field in fields}
 
 
 class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):

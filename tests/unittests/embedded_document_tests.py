@@ -22,27 +22,6 @@ from decorators import drop_datasets
 
 
 class EmbeddedDocumentTests(unittest.TestCase):
-    def assertField(
-        self, collection, path, ftype, subfield=None, document_type=None
-    ):
-        schema = collection.get_field_schema()
-        keys = path.split(".")
-        for field_name in keys[:-1]:
-            field = schema[field_name]
-            if isinstance(field, (ListField, DictField)):
-                field = field.field
-
-            if isinstance(field, EmbeddedDocumentField):
-                schema = field.get_field_schema()
-
-        field = schema[keys[-1]]
-        self.assertIsInstance(field, ftype)
-        if subfield is not None:
-            self.assertIsInstance(field.field, subfield)
-
-        if document_type is not None:
-            self.assertEqual(field.document_type, document_type)
-
     @drop_datasets
     def test_get_field(self):
         field_value = "custom_value"
@@ -113,19 +92,19 @@ class EmbeddedDocumentTests(unittest.TestCase):
         value = 51
         sample.field["int"] = value
         self.assertEqual(sample.field.int, value)
-        self.assertField(dataset, "field.int", fo.IntField)
+        self.assertIsInstance(dataset.get_field("field.int"), fo.IntField)
 
         sample["after"] = DynamicEmbeddedDocument(int=value)
-        self.assertField(dataset, "after.int", fo.IntField)
-        self.assertField(
-            dataset,
-            "after",
-            EmbeddedDocumentField,
-            document_type=DynamicEmbeddedDocument,
+        self.assertIsInstance(dataset.get_field("after.int"), fo.IntField)
+        self.assertIsInstance(
+            dataset.get_field("after"), EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("after").document_type, DynamicEmbeddedDocument
         )
 
         sample.after["after"] = value
-        self.assertField(dataset, "after.after", fo.IntField)
+        self.assertIsInstance(dataset.get_field("after.after"), fo.IntField)
 
         # update setitem
         value = 52
@@ -152,18 +131,22 @@ class EmbeddedDocumentTests(unittest.TestCase):
 
         # pylint: disable=no-member
         sample.test.detections[0]["tp"] = True
-        self.assertField(dataset, "test.detections.tp", fo.BooleanField)
+        self.assertIsInstance(
+            dataset.get_field("test.detections.tp"), fo.BooleanField
+        )
 
         # pylint: disable=no-member
         sample.test.detections = [
             fo.Detection(label="dog", bounding_box=[0, 0, 1, 1], attr="woof")
         ]
-        self.assertField(dataset, "test.detections.attr", fo.StringField)
+        self.assertIsInstance(
+            dataset.get_field("test.detections.attr"), fo.StringField
+        )
 
         sample.test.detections[0]["ints"] = [1, 2, 3]
-        self.assertField(
-            dataset, "test.detections.ints", fo.ListField, subfield=fo.IntField
-        )
+        test_ints = dataset.get_field("test.detections.ints")
+        self.assertIsInstance(test_ints, fo.ListField)
+        self.assertIsInstance(test_ints.field, fo.IntField)
 
     @drop_datasets
     def test_expansion(self):
@@ -175,6 +158,8 @@ class EmbeddedDocumentTests(unittest.TestCase):
         sample.test = fo.Label(attr="value")
         sample.save()
 
+        self.assertIsInstance(dataset.get_field("test.attr"), fo.StringField)
+
     @drop_datasets
     def test_default_fields(self):
         dataset = fo.Dataset()
@@ -185,19 +170,23 @@ class EmbeddedDocumentTests(unittest.TestCase):
             fo.EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
-        self.assertField(dataset, "test_default.confidence", fo.FloatField)
+        self.assertIsInstance(
+            dataset.get_field("test_default.confidence"), fo.FloatField
+        )
 
         sample = fo.Sample(
             filepath="/path/to/image.jpg",
             test_catch_default=fo.Classification(),
         )
         dataset.add_sample(sample)
-        self.assertField(
-            dataset, "test_catch_default.confidence", fo.FloatField
+        self.assertIsInstance(
+            dataset.get_field("test_catch_default.confidence"), fo.FloatField
         )
 
         sample["test_set_default"] = fo.Classification()
-        self.assertField(dataset, "test_set_default.confidence", fo.FloatField)
+        self.assertIsInstance(
+            dataset.get_field("test_set_default.confidence"), fo.FloatField
+        )
 
         # lists
         dataset.add_sample_field(
@@ -205,9 +194,8 @@ class EmbeddedDocumentTests(unittest.TestCase):
             fo.EmbeddedDocumentField,
             embedded_doc_type=fo.Classifications,
         )
-        self.assertField(
-            dataset,
-            "test_list_default.classifications.confidence",
+        self.assertIsInstance(
+            dataset.get_field("test_list_default.classifications.confidence"),
             fo.FloatField,
         )
 
@@ -216,24 +204,30 @@ class EmbeddedDocumentTests(unittest.TestCase):
             test_catch_list_default=fo.Classifications(),
         )
         dataset.add_sample(sample)
-        self.assertField(
-            dataset,
-            "test_catch_list_default.classifications.confidence",
+        self.assertIsInstance(
+            dataset.get_field(
+                "test_catch_list_default.classifications.confidence"
+            ),
             fo.FloatField,
         )
 
         sample["test_set_list_default"] = fo.Classifications()
-        self.assertField(
-            dataset,
-            "test_set_list_default.classifications.confidence",
+        self.assertIsInstance(
+            dataset.get_field(
+                "test_set_list_default.classifications.confidence"
+            ),
             fo.FloatField,
         )
 
     @drop_datasets
     def test_metadata_fields(self):
         dataset = fo.Dataset()
-        self.assertField(dataset, "metadata.size_bytes", fo.IntField)
-        self.assertField(dataset, "metadata.mime_type", fo.StringField)
+        self.assertIsInstance(
+            dataset.get_field("metadata.size_bytes"), fo.IntField
+        )
+        self.assertIsInstance(
+            dataset.get_field("metadata.mime_type"), fo.StringField
+        )
 
         with etau.TempDir() as tmp_dir:
             image_path = os.path.join(tmp_dir, "image.jpg")
@@ -242,9 +236,13 @@ class EmbeddedDocumentTests(unittest.TestCase):
             dataset.add_sample(fo.Sample(filepath=image_path))
             dataset.compute_metadata()
 
-        self.assertField(dataset, "metadata.num_channels", fo.IntField)
-        self.assertField(dataset, "metadata.width", fo.IntField)
-        self.assertField(dataset, "metadata.height", fo.IntField)
+        self.assertIsInstance(
+            dataset.get_field("metadata.num_channels"), fo.IntField
+        )
+        self.assertIsInstance(dataset.get_field("metadata.width"), fo.IntField)
+        self.assertIsInstance(
+            dataset.get_field("metadata.height"), fo.IntField
+        )
 
 
 if __name__ == "__main__":
