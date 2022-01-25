@@ -51,10 +51,10 @@ def download_from_youtube(
                 ...
             }
 
-    The corresponding `clip_segments` argument can then contain a list of tuples of ints
-    or floats used to download segment clips of each video. A value of `None`
-    can indicate either downloading the entire video, downloading from the
-    start or downloading to the end of the video::
+    The corresponding `clip_segments` argument can then contain a list of
+    tuples of ints or floats used to download segment clips of each video. A
+    value of `None` can indicate either downloading the entire video,
+    downloading from the start or downloading to the end of the video::
 
         clip_segments = [
             (10, 25),
@@ -125,7 +125,8 @@ def _build_tasks_list(urls, clip_segments, download_dir, ext):
     if isinstance(urls, list):
         if download_dir is None:
             raise ValueError(
-                "When `urls` is a list, `download_dir` is required but was found to be `None`."
+                "When `urls` is a list, `download_dir` is required but was "
+                "found to be `None`."
             )
         urls = {url: None for url in urls}
 
@@ -192,9 +193,9 @@ def _multi_thread_download(tasks, max_videos, num_workers):
                 _do_download, tasks
             ):
                 if is_success:
+                    pb.update()
                     if len(downloaded) < max_videos:
                         downloaded.append(url)
-                        pb.update()
                     else:
                         return downloaded, errors
                 else:
