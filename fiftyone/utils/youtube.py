@@ -32,7 +32,6 @@ def download_from_youtube(
     max_videos=None,
     num_workers=None,
     ext=None,
-    buffer_seconds=5,
 ):
     """Downloads a list of video urls from YouTube.
     The `urls` argument either accepts:
@@ -80,18 +79,13 @@ def download_from_youtube(
         ext (None): the extension to use to store the downloaded videos or a
             list of extensions corresponding to the given ``urls``. By default,
             the default extension of each video is used 
-        buffer_seconds (5): the number of additional seconds before and after
-            each clip to download to ensure nearest keyframes are captured if
-            `clip_segments` is provided
 
     Returns:
         urls of successfully downloaded videos
         a dict of download errors and the corresponding video urls
     """
     num_workers = _parse_num_workers(num_workers)
-    tasks = _build_tasks_list(
-        urls, clip_segments, download_dir, ext, buffer_seconds=buffer_seconds
-    )
+    tasks = _build_tasks_list(urls, clip_segments, download_dir, ext)
 
     if max_videos is None:
         max_videos = len(tasks)
@@ -122,9 +116,7 @@ def _parse_num_workers(num_workers):
     return num_workers
 
 
-def _build_tasks_list(
-    urls, clip_segments, download_dir, ext, buffer_seconds=5
-):
+def _build_tasks_list(urls, clip_segments, download_dir, ext):
     if isinstance(urls, str):
         urls = [urls]
     if isinstance(clip_segments, tuple):
@@ -154,17 +146,9 @@ def _build_tasks_list(
     urls_list = _parse_list_arg(list(urls.keys()), num_videos)
     paths_list = _parse_list_arg(list(urls.values()), num_videos)
     download_dir_list = [download_dir] * num_videos
-    buffer_seconds_list = [buffer_seconds] * num_videos
 
     return list(
-        zip(
-            urls_list,
-            paths_list,
-            clip_segments,
-            download_dir_list,
-            ext_list,
-            buffer_seconds_list,
-        )
+        zip(urls_list, paths_list, clip_segments, download_dir_list, ext_list,)
     )
 
 
@@ -252,7 +236,7 @@ def _build_ydl_opts(ext, video_path, clip_segment, download_dir):
 
 
 def _do_download(args):
-    url, video_path, clip_segment, download_dir, ext, buffer_seconds = args
+    url, video_path, clip_segment, download_dir, ext = args
     ydl_opts, output_path = _build_ydl_opts(
         ext, video_path, clip_segment, download_dir
     )
@@ -277,12 +261,7 @@ def _do_download(args):
                 )
                 output_path = output_path.replace("%(ext)s", _ext)
 
-                _download_ffmpeg(
-                    _url,
-                    output_path,
-                    clip_segment,
-                    buffer_seconds=buffer_seconds,
-                )
+                _download_ffmpeg(_url, output_path, clip_segment)
 
         return True, url, None
 
@@ -290,50 +269,21 @@ def _do_download(args):
         if isinstance(e, youtube_dl.utils.DownloadError):
             # pylint: disable=no-member
             return False, url, str(e.exc_info[1])
-        return False, url, "other"
+        return False, url, str(e)
 
 
-def _download_ffmpeg(url, output_path, clip_segment, buffer_seconds=5):
-    # download 5 seconds before and after clip to ensure nearest keyframes are
-    # captured
+def _download_ffmpeg(url, output_path, clip_segment):
     start_time, end_time = clip_segment
+
     if start_time is None:
         start_time = 0
-
-    start_time_buffer = max(0, start_time - buffer_seconds)
-
-    in_opts = []
-    out_opts = []
-    if start_time_buffer:
-        in_opts.extend(["-ss", str(start_time_buffer)])
-
     if end_time:
-        end_time_buffer = end_time + buffer_seconds
-        dur = end_time_buffer - start_time_buffer
-        out_opts.extend(["-t", str(dur)])
-
-    ext = os.path.splitext(output_path)[1].lstrip(".")
-    if ext == "mp4":
-        out_opts.extend(["-c:v", "libx264", "-c:a", "copy"])
+        duration = end_time - start_time
     else:
-        out_opts.extend(["-c:v", "copy", "-c:a", "copy"])
-    out_opts.extend(["-f", ext])
+        duration = None
 
     tmp_output = output_path + ".part"
-
-    ffmpeg_download = etav.FFmpeg(in_opts=in_opts, out_opts=out_opts)
-    ffmpeg_download.run(url, tmp_output)
-
-    in_opts_cut = []
-    out_opts_cut = []
-    start_time_diff = start_time - start_time_buffer
-    if start_time_diff:
-        in_opts_cut.extend(["-ss", str(start_time_diff)])
-
-    if end_time:
-        dur = end_time - start_time
-        out_opts_cut.extend(["-t", str(dur)])
-
-    ffmpeg_cut = etav.FFmpeg(in_opts=in_opts_cut, out_opts=out_opts_cut)
-    ffmpeg_cut.run(tmp_output, output_path)
-    os.remove(tmp_output)
+    etav.extract_clip(
+        url, tmp_output, start_time=start_time, duration=duration
+    )
+    os.rename(tmp_output, output_path)
