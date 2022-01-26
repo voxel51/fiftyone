@@ -116,17 +116,15 @@ def compute_ious(
     return _compute_bbox_ious(preds, gts, iscrowd=iscrowd, classwise=classwise)
 
 
-def compute_segment_ious(
-    preds, gts,
-):
-    """Computes the pairwise temporal IoUs between the predicted and ground
-    truth video classification segments.
+def compute_segment_ious(preds, gts):
+    """Computes the pairwise IoUs between the predicted and ground truth
+    temporal detections.
 
     Args:
         preds: a list of predicted
-            :class:`fiftyone.core.labels.VideoClassification` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         gt_field: a list of ground truth
-            :class:`fiftyone.core.labels.VideoClassification` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
 
     Returns:
         a ``num_preds x num_gts`` array of segment IoUs

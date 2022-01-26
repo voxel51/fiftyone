@@ -358,13 +358,11 @@ class DetectionEvaluation(foe.EvaluationMethod):
             self.config.pred_field
         )
 
-    def evaluate(self, sample_or_frame, eval_key=None):
-        """Evaluates the ground truth and predicted objects/segments in an
-        image or video.
+    def evaluate(self, doc, eval_key=None):
+        """Evaluates the ground truth and predictions in the given document.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
-                :class:`fiftyone.core.frame.Frame`
+            doc: a :class:`fiftyone.core.document.Document`
             eval_key (None): the evaluation key for this evaluation
 
         Returns:

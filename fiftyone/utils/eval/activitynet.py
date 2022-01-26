@@ -28,9 +28,9 @@ class ActivityNetEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detection` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         gt_field: the name of the field containing the ground truth
-            :class:`fiftyone.core.labels.Detection` instances
+            :class:`fiftyone.core.labels.TemporalDetection` instances
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match segments with the same class
             label (True) or allow matches between classes (False)
@@ -99,7 +99,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         classes (False).
 
         Args:
-            sample: a :class:`fiftyone.core.Sample`
+            sample: a :class:`fiftyone.core.sample.Sample`
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
@@ -125,15 +125,15 @@ class ActivityNetEvaluation(DetectionEvaluation):
     ):
         """Generates aggregate evaluation results for the samples.
 
-        If ``self.config.compute_mAP`` is True, this method performs ActivityNet-style
-        evaluation as in :meth:`evaluate_video` to generate precision and
-        recall sweeps over the range of IoU thresholds in
-        ``self.config.iou_threshs``. In this case, a
-        :class:`ActivityNetDetectionResults` instance is returned that can compute
-        mAP and PR curves.
+        If ``self.config.compute_mAP`` is True, this method performs
+        ActivityNet-style evaluation as in :meth:`evaluate` to generate
+        precision and recall sweeps over the range of IoU thresholds in
+        ``self.config.iou_threshs``. In this case, an
+        :class:`ActivityNetDetectionResults` instance is returned that can
+        compute mAP and PR curves.
 
         Args:
-            samples: a :class:`fiftyone.core.SampleCollection`
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             matches: a list of
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
@@ -368,8 +368,8 @@ class ActivityNetDetectionResults(DetectionResults):
         )
 
     def mAP(self, classes=None):
-        """Computes ActivityNet-style mean average precision (mAP) for the specified
-        classes.
+        """Computes ActivityNet-style mean average precision (mAP) for the
+        specified classes.
 
         See `this page <https://github.com/activitynet/ActivityNet/tree/master/Evaluation>`_
         for more details about ActivityNet-style mAP.

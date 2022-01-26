@@ -146,7 +146,7 @@ class COCOEvaluation(DetectionEvaluation):
         it.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
+            sample_or_frame: a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.frame.Frame`
             eval_key (None): the evaluation key for this evaluation
 
@@ -172,14 +172,13 @@ class COCOEvaluation(DetectionEvaluation):
         """Generates aggregate evaluation results for the samples.
 
         If ``self.config.compute_mAP`` is True, this method performs COCO-style
-        evaluation as in :meth:`evaluate_image` to generate precision and
-        recall sweeps over the range of IoU thresholds in
-        ``self.config.iou_threshs``. In this case, a
-        :class:`COCODetectionResults` instance is returned that can compute
-        mAP and PR curves.
+        evaluation as in :meth:`evaluate` to generate precision and recall
+        sweeps over the range of IoU thresholds in ``self.config.iou_threshs``.
+        In this case, a :class:`COCODetectionResults` instance is returned that
+        can compute mAP and PR curves.
 
         Args:
-            samples: a :class:`fiftyone.core.SampleCollection`
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             matches: a list of
                 ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
                 matches. Either label can be ``None`` to indicate an unmatched
