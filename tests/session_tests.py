@@ -33,16 +33,6 @@ def _run_helper(*args):
     )
 
 
-def test_fast_shutdown(capsys):
-    out = _run_helper()
-    assert fos._WAIT_INSTRUCTIONS in out
-
-
-def test_fast_shutdown_remote(capsys):
-    out = _run_helper("--remote")
-    assert fos._WAIT_INSTRUCTIONS in out
-
-
 def test_slow_shutdown(capsys):
     out = _run_helper("--slow")
     assert fos._WAIT_INSTRUCTIONS not in out
