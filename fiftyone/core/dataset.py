@@ -18,7 +18,7 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
-from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
@@ -2076,9 +2076,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None, fields=None, hard=False):
+    def _save(self, view=None, fields=None):
         if view is not None:
-            _save_view(view, fields=fields, hard=hard)
+            _save_view(view, fields=fields)
 
         self._doc.save()
 
@@ -2118,18 +2118,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is not None:
             sample_ids = view.values("id")
 
-        if sample_ids is not None:
-            d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            sample_ids = None
-            d = {}
+        if not sample_ids:
+            return
 
-        self._sample_collection.delete_many(d)
+        self._sample_collection.delete_many(
+            {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        )
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
 
         self._clear_frames(sample_ids=sample_ids)
+
+    def _keep(self, view):
+        self._clear(view=self.exclude(view))
 
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
@@ -2151,15 +2153,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is not None:
             sample_ids = view.values("id")
 
-        if sample_ids is not None:
-            d = {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        else:
-            d = {}
+        if not sample_ids:
+            return
 
-        self._frame_collection.delete_many(d)
+        self._frame_collection.delete_many(
+            {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        )
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
+
+    def _keep_frames(self, view):
+        if self.media_type != fom.VIDEO:
+            return
+
+        sample_ids, frame_numbers = view.values(["id", "frames.frame_numbers"])
+
+        ops = []
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            ops.append(
+                DeleteMany(
+                    {
+                        "_sample_id": ObjectId(sample_id),
+                        "frame_number": {"$not": {"$in": fns}},
+                    }
+                )
+            )
+
+        if not ops:
+            return
+
+        foo.bulk_write(ops, self._frame_collection)
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            fofr.Frame._reset_docs_for_sample(
+                self._frame_collection_name, sample_id, fns, keep=True
+            )
 
     def ensure_frames(self):
         """Ensures that the video dataset contains frame instances for every
@@ -4776,15 +4804,10 @@ def _get_frames_pipeline(sample_collection):
     return coll, pipeline
 
 
-def _save_view(view, fields=None, hard=False):
-    if hard and fields is not None:
-        raise ValueError(
-            "A hard save (hard=%s) is not allowed when you have restricted "
-            "the fields %s that you wish to modify" % (hard, fields)
-        )
-
+def _save_view(view, fields=None):
     dataset = view._dataset
 
+    is_video = dataset.media_type == fom.VIDEO
     all_fields = fields is None
 
     if fields is None:
@@ -4793,18 +4816,14 @@ def _save_view(view, fields=None, hard=False):
     if etau.is_str(fields):
         fields = [fields]
 
-    if dataset.media_type == fom.VIDEO:
-        sample_fields = []
-        frame_fields = []
-        for field in fields:
-            field, is_frame_field = view._handle_frame_field(field)
-            if is_frame_field:
-                frame_fields.append(field)
-            else:
-                sample_fields.append(field)
+    if is_video:
+        sample_fields, frame_fields = fou.split_frame_fields(fields)
     else:
         sample_fields = fields
         frame_fields = []
+
+    save_samples = sample_fields or all_fields
+    save_frames = frame_fields or all_fields
 
     #
     # Save samples
@@ -4812,17 +4831,11 @@ def _save_view(view, fields=None, hard=False):
 
     pipeline = view._pipeline(detach_frames=True)
 
-    if hard:
-        pipeline.append({"$out": dataset._sample_collection_name})
-        foo.aggregate(dataset._sample_collection, pipeline)
-
-        for field_name in view._get_missing_fields():
-            dataset._sample_doc_cls._delete_field_schema(field_name)
-    elif sample_fields:
+    if sample_fields:
         pipeline.append({"$project": {f: True for f in sample_fields}})
         pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
-    elif all_fields:
+    elif save_samples:
         pipeline.append(
             {
                 "$merge": {
@@ -4837,12 +4850,12 @@ def _save_view(view, fields=None, hard=False):
     # Save frames
     #
 
-    if dataset.media_type == fom.VIDEO:
+    if is_video:
         # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
 
-        # Clips views may contain overlapping clips, so we must select only
+        # Clips datasets may contain overlapping clips, so we must select only
         # the first occurrance of each frame
         if dataset._is_clips:
             pipeline.extend(
@@ -4852,17 +4865,11 @@ def _save_view(view, fields=None, hard=False):
                 ]
             )
 
-        if hard:
-            pipeline.append({"$out": dataset._frame_collection_name})
-            foo.aggregate(dataset._sample_collection, pipeline)
-
-            for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name)
-        elif frame_fields:
+        if frame_fields:
             pipeline.append({"$project": {f: True for f in frame_fields}})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
-        elif all_fields:
+        elif save_frames:
             pipeline.append(
                 {
                     "$merge": {
@@ -4877,14 +4884,17 @@ def _save_view(view, fields=None, hard=False):
     # Reload in-memory documents
     #
 
-    # The samples now in the collection
-    sample_ids = dataset.values("id")
+    sample_ids = view.values("id")
 
-    if dataset.media_type == fom.VIDEO:
-        # pylint: disable=unexpected-keyword-arg
-        fofr.Frame._sync_docs(dataset._frame_collection_name, sample_ids)
+    if save_samples:
+        fos.Sample._reload_docs(
+            dataset._sample_collection_name, sample_ids=sample_ids
+        )
 
-    fos.Sample._sync_docs(dataset._sample_collection_name, sample_ids)
+    if is_video and save_frames:
+        fofr.Frame._reload_docs(
+            dataset._frame_collection_name, sample_ids=sample_ids
+        )
 
 
 def _merge_dataset_doc(

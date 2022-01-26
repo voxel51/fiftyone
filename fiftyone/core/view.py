@@ -597,8 +597,22 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear(view=self)
 
     def clear_frames(self):
-        """Removes all frame labels from the samples in the view."""
+        """Removes all frame labels from the samples in the view from the
+        underlying dataset.
+        """
         self._dataset._clear_frames(view=self)
+
+    def keep(self):
+        """Removes all samples that are **not** in the view from the underlying
+        dataset.
+        """
+        self._dataset._keep(self)
+
+    def keep_frames(self):
+        """For each sample in the view, removes all frames labels that are
+        **not** in the view from the underlying dataset.
+        """
+        self._dataset._keep_frames(self)
 
     def ensure_frames(self):
         """Ensures that the video view contains frame instances for every frame
@@ -609,8 +623,11 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._ensure_frames(view=self)
 
-    def save(self, fields=None, hard=False):
+    def save(self, fields=None):
         """Saves the contents of the view to the database.
+
+        This method **does not** delete samples or frames from the underlying
+        dataset that this view excludes.
 
         .. warning::
 
@@ -618,23 +635,11 @@ class DatasetView(foc.SampleCollection):
             will permanently delete this data from the dataset, unless
             ``fields`` is used to omit such fields from the save.
 
-            In addition, if ``hard != False``, this method will delete any
-            samples and/or frames from the dataset that do not appear in this
-            view. See below for details.
-
         Args:
             fields (None): an optional field or list of fields to save. If
                 specified, only these field's contents are modified
-            hard (False): whether to use ``$out`` rather than ``$merge`` to
-                perform the save, which will cause any samples/frames omitted
-                from the view to be deleted from the dataset. The supported
-                values are:
-
-                -   ``False``: do not delete samples/frames
-                -   ``True``: delete omitted samples and frames
-                -   ``"frames"``: delete omitted frames but not omitted samples
         """
-        self._dataset._save(view=self, fields=fields, hard=hard)
+        self._dataset._save(view=self, fields=fields)
 
     def clone(self, name=None):
         """Creates a new dataset containing only the contents of the view.
