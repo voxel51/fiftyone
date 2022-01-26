@@ -1,7 +1,6 @@
 """
 Utilities for working with the
-`ActivityNet <http://activity-net.org/index.html>`
-dataset.
+`ActivityNet dataset <http://activity-net.org/index.html>`.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -38,7 +37,7 @@ def download_activitynet_split(
     version="200",
 ):
     """Utility that downloads full or partial splits of the
-    `ActivityNet <http://activity-net.org/index.html>`_. dataset
+    `ActivityNet dataset <http://activity-net.org/index.html>`_.
 
     See :class:`fiftyone.types.dataset_types.ActivityNetDataset` for the
     format in which ``dataset_dir`` will be arranged.
@@ -53,7 +52,7 @@ def download_activitynet_split(
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
         max_duration (None): only videos with a duration in seconds that is
-            less than or equal to the `max_duration` will be downloaded. By
+            less than or equal to the ``max_duration`` will be downloaded. By
             default, all videos are downloaded
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
@@ -66,10 +65,10 @@ def download_activitynet_split(
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
-        version ("200"): the version of the ActivityNet dataset to download
-            ("200", or "100")
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
+        version ("200"): the ActivityNet dataset version to download. The
+            supported values are ``("100", "200")``
 
     Returns:
         a tuple of:
@@ -105,16 +104,15 @@ def download_activitynet_split(
         num_total = _NUM_TOTAL_SAMPLES[version][split]
         if num_existing != num_total:
             raise ValueError(
-                "Found %d samples out of %d for split `%s`. When loading a "
-                "full split of ActivityNet %s, it is required that you "
-                "download videos directly from the dataset providers to "
-                "account for the videos missing from YouTube."
-                "\n\nFill out this form to gain access and then use the "
-                "`source_dir` argument when loading the dataset: "
-                "https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform"
-                "\n\nAlternatively, provide `max_samples`, `max_duration`, or "
-                "`classes` to download a subset of the dataset from YouTube "
-                "instead." % (num_existing, num_total, split, version)
+                "Found %d samples out of %d for split `%s`. In order to load "
+                "a full ActivityNet split, you must download the source files "
+                "from the ActivityNet maintainers. See "
+                "https://voxel51.com/docs/fiftyone/integrations/activitynet.html#lactivitynet-full-split-downloads"
+                "for more information."
+                "\n\n"
+                "Alternatively, provide the `max_samples`, `max_duration`, "
+                "and/or `classes` parameters to download a subset of the "
+                "dataset from YouTube." % (num_existing, num_total, split)
             )
 
         num_samples = num_existing
@@ -135,7 +133,7 @@ def download_activitynet_split(
 class ActivityNetDatasetImporter(
     foud.FiftyOneTemporalDetectionDatasetImporter
 ):
-    """Base class for importing datasets in ActivityNet format.
+    """Class for importing datasets in ActivityNet format.
 
     See :class:`fiftyone.types.dataset_types.ActivityNetDataset` for format
     details.
@@ -234,14 +232,17 @@ class ActivityNetDatasetImporter(
         info = {}
         if self._classes is not None:
             info["classes"] = self._classes
+
         if self._taxonomy is not None:
             info["taxonomy"] = self._taxonomy
+
         return info
 
 
 class ActivityNetDownloadConfig(object):
-    """Parses and stores the configuration parameters for an ActivityNet
-    download run"""
+    """Configuration class for downloading full or partial splits from the
+    ActivityNet dataset.
+    """
 
     def __init__(
         self,
@@ -269,10 +270,11 @@ class ActivityNetDownloadConfig(object):
 
     @property
     def load_entire_split(self):
-        if self.split == "test":
-            classes = None
-        else:
+        if self.split != "test":
             classes = self.classes
+        else:
+            classes = None
+
         return bool(
             self.max_duration is None
             and self.max_samples is None
@@ -298,8 +300,8 @@ class ActivityNetDownloadConfig(object):
 
 
 class ActivityNetDatasetManager(object):
-    """Manages the sample ids and labels that need to be downloaded using an
-    ActivityNetDatasetDownloader
+    """Class that manages the sample IDs and labels that need to be downloaded
+    to load the specified subset of an ActivityNet dataset.
     """
 
     def __init__(self, foz_dir, version):
@@ -333,10 +335,10 @@ class ActivityNetDatasetManager(object):
         source_dir = os.path.expanduser(source_dir)
         for item in os.listdir(source_dir):
             if item in _SOURCE_ZIPS:
-                logger.info("Processing source zip %s..." % item)
+                logger.info("Processing source zip '%s'...", item)
                 self._process_source_zip(item, source_dir, copy_files)
             elif item in _SOURCE_DIR_NAMES:
-                logger.info("Processing source dir %s..." % item)
+                logger.info("Processing source directory '%s'...", item)
                 self._process_source_dir(item, source_dir, copy_files)
 
         self.a200_info.update_existing_sample_ids()
@@ -363,8 +365,10 @@ class ActivityNetDatasetManager(object):
             splits = []
             if "test" in zip_name:
                 splits.append("test")
+
             if "train" in zip_name:
                 splits.append("train")
+
             if "val" in zip_name:
                 splits.append("validation")
 
@@ -373,6 +377,7 @@ class ActivityNetDatasetManager(object):
             missing_splits.append(
                 self._split_is_missing_videos(version, split)
             )
+
         return any(missing_splits)
 
     def _split_is_missing_videos(self, version, split):
@@ -384,9 +389,7 @@ class ActivityNetDatasetManager(object):
         existing_samples = info.existing_split_sample_ids(split)
         num_existing_samples = len(existing_samples)
         num_required_samples = _NUM_TOTAL_SAMPLES[version][split]
-        if num_existing_samples != num_required_samples:
-            return True
-        return False
+        return num_existing_samples != num_required_samples
 
     def _process_source_dir(self, dir_name, source_dir, copy_files):
         dir_list = []
@@ -403,7 +406,6 @@ class ActivityNetDatasetManager(object):
             if "missing_files" in dir_name:
                 videos_dir = os.path.join(source_dir, dir_name)
                 dir_list.append((videos_dir, version, "test"))
-
             else:
                 version_dir = os.path.join(source_dir, dir_name)
                 for split_dir in os.listdir(version_dir):
@@ -462,6 +464,7 @@ class ActivityNetDatasetManager(object):
     def _get_video_destination(self, video_id, version=None, split=None):
         if version is None:
             version = self.a100_info.get_sample_dataset_version(video_id)
+
         if split is None:
             split = self.a200_info.get_sample_split(video_id)
 
@@ -501,7 +504,7 @@ class ActivityNetDatasetManager(object):
         if shuffle and seed is not None:
             random.seed(seed)
 
-        # 1) Take the all class ids that are downloaded up to max_samples
+        # 1) Take the all class IDs that are downloaded up to max_samples
         dl_all_class_ids = list(set_all_ids.intersection(set_downloaded_ids))
         loaded_samples = self._load_requested_samples(
             dl_all_class_ids, shuffle, requested_num,
@@ -511,7 +514,7 @@ class ActivityNetDatasetManager(object):
         if requested_num is not None:
             requested_num -= num_loaded
 
-        # 2) Take the any class ids that are downloaded up to max_samples
+        # 2) Take the any class IDs that are downloaded up to max_samples
         dl_any_class_ids = list(set_any_ids.intersection(set_downloaded_ids))
         loaded_samples = self._load_requested_samples(
             dl_any_class_ids, shuffle, requested_num,
@@ -521,7 +524,7 @@ class ActivityNetDatasetManager(object):
         if requested_num is not None:
             requested_num -= num_loaded
 
-        # 3) Download all class ids up to max_samples
+        # 3) Download all class IDs up to max_samples
         not_dl_all_class_ids = list(set_all_ids - set(dl_all_class_ids))
         downloaded_samples = self._download_requested_samples(
             not_dl_all_class_ids,
@@ -537,7 +540,7 @@ class ActivityNetDatasetManager(object):
         if requested_num is not None:
             requested_num -= num_downloaded
 
-        # 4) Download any class ids up to max_samples
+        # 4) Download any class IDs up to max_samples
         not_dl_any_class_ids = list(set_any_ids - set(dl_any_class_ids))
         downloaded_samples = self._download_requested_samples(
             not_dl_any_class_ids,
@@ -611,6 +614,7 @@ class ActivityNetDatasetManager(object):
             self._merge_and_write_errors(
                 a100_errors, self.a100_info.error_path(split)
             )
+
         if remaining_samples:
             logger.info("Downloading ActivityNet200-specific videos...")
             a200_downloaded_ids, a200_errors = self._attempt_to_download(
@@ -656,25 +660,25 @@ class ActivityNetDatasetManager(object):
         activitynet_split = _SPLIT_MAP[split]
 
         labels = {}
-        for annot_id, annot_info in self.info.raw_annotations[
+        for anno_id, anno_info in self.info.raw_annotations[
             "database"
         ].items():
-            if sample_ids is not None and annot_id not in sample_ids:
+            if sample_ids is not None and anno_id not in sample_ids:
                 continue
 
-            if annot_info["subset"] != activitynet_split:
+            if anno_info["subset"] != activitynet_split:
                 continue
 
-            fo_annot_labels = []
-            for an_annot_label in annot_info["annotations"]:
-                target = target_map[an_annot_label["label"]]
-                timestamps = an_annot_label["segment"]
-                fo_annot_labels.append(
+            fo_anno_labels = []
+            for an_anno_label in anno_info["annotations"]:
+                target = target_map[an_anno_label["label"]]
+                timestamps = an_anno_label["segment"]
+                fo_anno_labels.append(
                     {"label": target, "timestamps": timestamps}
                 )
 
-            sample_id = "v_" + annot_id
-            labels[sample_id] = fo_annot_labels
+            sample_id = "v_" + anno_id
+            labels[sample_id] = fo_anno_labels
 
         fo_annots = {
             "classes": self.all_classes,
@@ -737,7 +741,9 @@ class ActivityNetDatasetManager(object):
 
 
 class ActivityNetDatasetInfo(object):
-    """Contains information related to paths, labels, and sample ids"""
+    """Class that stores information related to paths, labels, and sample IDs
+    for an ActivityNet dataset download.
+    """
 
     def __init__(self, foz_dir):
         self.foz_dir = os.path.abspath(foz_dir)
@@ -797,9 +803,10 @@ class ActivityNetDatasetInfo(object):
 
     def _parse_sample_ids(self):
         ids = {s: [] for s in self.splits}
-        for annot_id, annot in self.raw_annotations["database"].items():
+        for anno_id, annot in self.raw_annotations["database"].items():
             split = _SPLIT_MAP_REV[annot["subset"]]
-            ids[split].append(annot_id)
+            ids[split].append(anno_id)
+
         return ids
 
     def update_existing_sample_ids(self):
@@ -810,10 +817,7 @@ class ActivityNetDatasetInfo(object):
         )
 
     def _get_existing_sample_ids(self):
-        ids = {}
-        for split in self.splits:
-            ids[split] = self._get_video_files(split)
-        return ids
+        return {s: self._get_video_files(s) for s in self.splits}
 
     def _get_video_files(self, split):
         videos_dir = self.data_dir(split)
@@ -855,9 +859,7 @@ class ActivityNetDatasetInfo(object):
             classes.add(node_name)
             parents.add(parent_name)
 
-        classes = sorted(classes - parents)
-
-        return classes
+        return sorted(classes - parents)
 
     @classmethod
     def get_dir_info(cls, dataset_dir):
@@ -892,35 +894,35 @@ class ActivityNetDatasetInfo(object):
     def get_matching_samples(self, split, max_duration=None, classes=None):
         classes = self._parse_classes(classes, split)
 
-        # sample contains all specified classes
+        # Sample contains all specified classes
         all_class_match = {}
 
-        # sample contains any specified calsses
+        # Sample contains any specified calsses
         any_class_match = {}
 
         activitynet_split = _SPLIT_MAP[split]
 
         if classes is not None:
             class_set = set(classes)
-        for sample_id, annot_info in self.raw_annotations["database"].items():
-            is_correct_split = activitynet_split == annot_info["subset"]
+
+        for sample_id, anno_info in self.raw_annotations["database"].items():
+            is_correct_split = activitynet_split == anno_info["subset"]
             if max_duration is None:
                 is_correct_dur = True
             else:
-                is_correct_dur = max_duration >= annot_info["duration"]
+                is_correct_dur = max_duration >= anno_info["duration"]
+
             if not is_correct_split or not is_correct_dur:
                 continue
 
             if classes is None:
-                any_class_match[sample_id] = annot_info
+                any_class_match[sample_id] = anno_info
             else:
-                annot_labels = set(
-                    [a["label"] for a in annot_info["annotations"]]
-                )
-                if class_set.issubset(annot_labels):
-                    all_class_match[sample_id] = annot_info
-                elif class_set & annot_labels:
-                    any_class_match[sample_id] = annot_info
+                anno_labels = set(a["label"] for a in anno_info["annotations"])
+                if class_set.issubset(anno_labels):
+                    all_class_match[sample_id] = anno_info
+                elif class_set & anno_labels:
+                    any_class_match[sample_id] = anno_info
 
         return any_class_match, all_class_match
 
@@ -932,19 +934,18 @@ class ActivityNetDatasetInfo(object):
                 )
                 return None
 
-            non_existant_classes = list(set(classes) - set(self.all_classes))
-            if non_existant_classes:
+            bad_classes = set(classes) - set(self.all_classes)
+            if bad_classes:
                 raise ValueError(
                     "The following classes were specified but do not exist in "
-                    "the dataset; ",
-                    tuple(non_existant_classes),
+                    "the dataset: %s" % bad_classes,
                 )
 
         return classes
 
 
 class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
-    """ActivityNet100 specific info management"""
+    """ActivityNet-100 dataset info."""
 
     @property
     def version(self):
@@ -964,7 +965,7 @@ class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
 
 
 class ActivityNet200DatasetInfo(ActivityNetDatasetInfo):
-    """ActivityNet200 specific info management"""
+    """ActivityNet-200 dataset info."""
 
     def __init__(self, foz_dir):
         self.a100_info = ActivityNet100DatasetInfo(foz_dir)
@@ -1000,8 +1001,8 @@ def _flatten_list(l):
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {
-    "200": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json",
     "100": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-2.min.json",
+    "200": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json",
 }
 
 _SPLIT_MAP = {
@@ -1029,9 +1030,9 @@ _SOURCE_ZIPS = [
 ]
 
 _SOURCE_DIR_NAMES = {
-    "v1-2": ["test", "train", "val"],
-    "v1-3": ["test", "train_val"],
     "missing_files": [],
     "missing_files_v1-2_test": [],
     "missing_files_v1-3_test": [],
+    "v1-2": ["test", "train", "val"],
+    "v1-3": ["test", "train_val"],
 }
