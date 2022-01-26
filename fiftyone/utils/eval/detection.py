@@ -134,32 +134,23 @@ def evaluate_detections(
         same_type=True,
     )
 
-    if _is_temporal_detections(samples, gt_field):
-        fov.validate_video_collection(samples)
-        is_temporal = True
-        config = _parse_config(
-            pred_field,
-            gt_field,
-            method,
-            is_temporal,
-            iou=iou,
-            classwise=classwise,
-            **kwargs,
-        )
+    label_type = samples._get_label_field_type(gt_field)
+    is_temporal = issubclass(label_type, fol.TemporalDetections)
 
+    if is_temporal:
+        fov.validate_video_collection(samples)
     else:
-        is_temporal = False
-        config = _parse_config(
-            pred_field,
-            gt_field,
-            method,
-            is_temporal,
-            iou=iou,
-            use_masks=use_masks,
-            use_boxes=use_boxes,
-            classwise=classwise,
-            **kwargs,
-        )
+        kwargs.update(dict(use_masks=use_masks, use_boxes=use_boxes))
+
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        is_temporal,
+        iou=iou,
+        classwise=classwise,
+        **kwargs,
+    )
 
     if classes is None:
         if pred_field in samples.classes:
@@ -175,10 +166,10 @@ def evaluate_detections(
     eval_method.register_run(samples, eval_key)
     eval_method.register_samples(samples)
 
-    if not config.requires_additional_fields:
-        _samples = samples.select_fields([gt_field, pred_field])
-    else:
+    if config.requires_additional_fields:
         _samples = samples
+    else:
+        _samples = samples.select_fields([gt_field, pred_field])
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -202,27 +193,25 @@ def evaluate_detections(
     logger.info("Evaluating detections...")
     for sample in _samples.iter_samples(progress=True):
         if processing_frames:
-            images_or_videos = sample.frames.values()
+            docs = sample.frames.values()
         else:
-            images_or_videos = [sample]
+            docs = [sample]
 
         sample_tp = 0
         sample_fp = 0
         sample_fn = 0
-        for image_or_video in images_or_videos:
-            instance_matches = eval_method.evaluate(
-                image_or_video, eval_key=eval_key
-            )
-            matches.extend(instance_matches)
-            tp, fp, fn = _tally_matches(instance_matches)
+        for doc in docs:
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
             sample_tp += tp
             sample_fp += fp
             sample_fn += fn
 
             if processing_frames and eval_key is not None:
-                image_or_video[tp_field] = tp
-                image_or_video[fp_field] = fp
-                image_or_video[fn_field] = fn
+                doc[tp_field] = tp
+                doc[fp_field] = fp
+                doc[fn_field] = fn
 
         if eval_key is not None:
             sample[tp_field] = sample_tp
@@ -622,22 +611,3 @@ def _tally_matches(matches):
             tp += 1
 
     return tp, fp, fn
-
-
-def _is_temporal_detections(sample_collection, field_name):
-    schema = sample_collection.get_field_schema()
-
-    if field_name not in schema:
-        return False
-
-    field = schema[field_name]
-
-    try:
-        label_type = field.document_type
-    except:
-        label_type = field
-
-    if label_type == fol.TemporalDetections:
-        return True
-    else:
-        return False
