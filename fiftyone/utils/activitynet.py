@@ -601,6 +601,7 @@ class ActivityNetDatasetManager(object):
         downloaded_ids = []
         num_a100_ids = len(a100_ids)
         remaining_samples = num_samples
+
         if num_a100_ids:
             logger.info("Downloading videos...")
             downloaded_ids, a100_errors = self._attempt_to_download(
@@ -616,7 +617,7 @@ class ActivityNetDatasetManager(object):
             )
 
         if remaining_samples:
-            logger.info("Downloading ActivityNet200-specific videos...")
+            logger.info("Downloading ActivityNet-200-specific videos...")
             a200_downloaded_ids, a200_errors = self._attempt_to_download(
                 self.a200_info.data_dir(split),
                 a200_ids,

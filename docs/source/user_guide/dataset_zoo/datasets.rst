@@ -81,8 +81,8 @@ version of the dataset.
 
 .. note::
 
-    Check out :ref:`this guide <activitynet>` for more details on using FiftyOne to
-    work with ActivityNet.
+    Check out :ref:`this guide <activitynet>` for more details on using
+    FiftyOne to work with ActivityNet.
 
 **Notes**
 
@@ -285,8 +285,8 @@ version of the dataset.
 
 .. note::
 
-    Check out :ref:`this guide <activitynet>` for more details on using FiftyOne to
-    work with ActivityNet.
+    Check out :ref:`this guide <activitynet>` for more details on using
+    FiftyOne to work with ActivityNet.
 
 **Notes**
 

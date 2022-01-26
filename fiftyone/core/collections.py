@@ -1904,7 +1904,7 @@ class SampleCollection(object):
     ):
         """Evaluates the specified predicted detections in this collection with
         respect to the specified ground truth detections.
-    
+
         This method supports evaluating the following spatial data types:
 
         -   Object detections in :class:`fiftyone.core.labels.Detections` format
@@ -1913,7 +1913,7 @@ class SampleCollection(object):
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
         -   Temporal detections in
             :class:`fiftyone.core.labels.TemporalDetections` format
-    
+
         For spatial object detection evaluation, this method uses COCO-style
         evaluation by default.
 
@@ -1923,39 +1923,39 @@ class SampleCollection(object):
         You can use the ``method`` parameter to select a different method, and
         you can optionally customize the method by passing additional
         parameters for the method's config class as ``kwargs``.
-    
+
         The supported ``method`` values and their associated configs are:
-    
+
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
         -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
-    
+
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
-    
+
         -   True positive (TP), false positive (FP), and false negative (FN)
             counts for the each sample are saved in top-level fields of each
             sample::
-    
+
                 TP: sample.<eval_key>_tp
                 FP: sample.<eval_key>_fp
                 FN: sample.<eval_key>_fn
-    
+
             In addition, when evaluating frame-level objects, TP/FP/FN counts
             are recorded for each frame::
-    
+
                 TP: frame.<eval_key>_tp
                 FP: frame.<eval_key>_fp
                 FN: frame.<eval_key>_fn
-    
+
         -   The fields listed below are populated on each individual object;
             these fields tabulate the TP/FP/FN status of the object, the ID of
             the matching object (if any), and the matching IoU::
-    
+
                 TP/FP/FN: object.<eval_key>
                       ID: object.<eval_key>_id
                      IoU: object.<eval_key>_iou
-    
+
         Args:
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
@@ -1991,7 +1991,7 @@ class SampleCollection(object):
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
-    
+
         Returns:
             a :class:`fiftyone.utils.eval.detection.DetectionResults`
         """
