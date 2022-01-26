@@ -550,7 +550,6 @@ to compute true positives, false positives, and false negatives:
 
 -   Compute precision array by elementwise dividing the TP-FP-sum array by
     the total number of predictions up to that point
-    (e.g. `range(1, len(TP-FP-sum)+1)`)
 
 -   Compute recall array by elementwise dividing the TP-FP-sum array with the
     total number of ground truth objects for the class
