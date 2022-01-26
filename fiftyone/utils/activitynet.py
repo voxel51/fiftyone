@@ -18,7 +18,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-import fiftyone.utils.youtubedl as fouy
+import fiftyone.utils.youtube as fouy
 
 
 logger = logging.getLogger(__name__)
@@ -641,7 +641,7 @@ class ActivityNetDatasetManager(object):
             sample_fp = os.path.join(videos_dir, sample_fn)
             download_urls[url] = sample_fp
 
-        downloaded_urls, errors = fouy.download_from_youtube(
+        downloaded_urls, errors = fouy.download_youtube_videos(
             urls=download_urls,
             max_videos=num_samples,
             num_workers=num_workers,
