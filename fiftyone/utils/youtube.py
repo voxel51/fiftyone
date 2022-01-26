@@ -259,14 +259,22 @@ def _do_download(args):
             ext = os.path.splitext(video_path)[1].lstrip(".")
 
         if ext is not None:
+            ext = ext.lstrip(".")
             stream = (
-                pytube_video.streams.filter(file_extension=ext)
+                pytube_video.streams.filter(
+                    file_extension=ext, progressive=True
+                )
                 .order_by("resolution")
                 .desc()
                 .first()
             )
         else:
-            stream = pytube_video.streams.order_by("resolution").desc().first()
+            stream = (
+                pytube_video.streams.filter(progressive=True)
+                .order_by("resolution")
+                .desc()
+                .first()
+            )
 
         if video_path:
             output_path = video_path
