@@ -395,7 +395,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        view = get_extended_view(view, filters, count_labels_tags=True)
+        view = get_extended_view(view, filters, count_label_tags=True)
         view = fov.make_optimized_select_view(view, sample_ids)
 
         if view.media_type == fom.VIDEO and current_frame is not None:

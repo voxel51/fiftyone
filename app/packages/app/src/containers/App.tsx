@@ -34,6 +34,7 @@ const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
     ({ get, set }) => async ({ state: { filters, ...data } }) => {
       const state = toCamelCase(data) as State.Description;
+      state.view = data.view;
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);

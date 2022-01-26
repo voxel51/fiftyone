@@ -8,6 +8,7 @@ Open Images-style detection evaluation.
 from collections import defaultdict
 from copy import deepcopy
 
+from bson import ObjectId
 import numpy as np
 
 import fiftyone.core.plots as fop
@@ -429,7 +430,7 @@ class OpenImagesDetectionResults(DetectionResults):
         )
 
 
-_NO_MATCH_ID = ""
+_NO_MATCH_ID = ObjectId("000000000000000000000000")
 _NO_MATCH_IOU = None
 
 

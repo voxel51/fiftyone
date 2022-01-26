@@ -8,6 +8,7 @@ COCO-style detection evaluation.
 import logging
 from collections import defaultdict
 
+from bson import ObjectId
 import numpy as np
 
 import eta.core.utils as etau
@@ -419,7 +420,7 @@ class COCODetectionResults(DetectionResults):
         )
 
 
-_NO_MATCH_ID = None
+_NO_MATCH_ID = ObjectId("000000000000000000000000")
 _NO_MATCH_IOU = None
 
 

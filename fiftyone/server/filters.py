@@ -42,3 +42,4 @@ class PinHandler(AsyncRequestHandler):
         state.view = view
 
         await StateHandler.on_update(StateHandler, state.serialize())
+        return {}

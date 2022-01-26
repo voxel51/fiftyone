@@ -920,7 +920,7 @@ class DatasetMixin(object):
         el = el[idx]
         el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
 
-        return el._id, el_filter
+        return el.id, el_filter
 
     @classmethod
     def _get_fields_ordered(cls, include_private=False, use_db_fields=False):

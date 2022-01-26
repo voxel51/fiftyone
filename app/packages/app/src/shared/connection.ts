@@ -24,7 +24,6 @@ class HTTPSSocket {
 
   execute(messages) {
     if ([WebSocket.CLOSED, WebSocket.CONNECTING].includes(this.readyState)) {
-      this.events.open.forEach((h) => h(null));
       this.timeout = this.openTimeout;
       clearInterval(this.interval);
       this.interval = setInterval(() => this.gather(), this.timeout);

@@ -7783,7 +7783,7 @@ def _parse_field_name(
             path += "." + part
 
         field_type = sample_collection.get_field(prefix + path)
-        if field_type is None:
+        if field_type is None and not allow_missing:
             break
 
         resolved_keys.append(getattr(field_type, "db_field", part))

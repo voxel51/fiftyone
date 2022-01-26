@@ -1,7 +1,7 @@
 """
 FiftyOne Tornado server.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -289,8 +289,8 @@ class Application(tornado.web.Application):
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
-            (r"/pin", PinHandler),
             (r"/page", PageHandler),
+            (r"/pin", PinHandler),
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),
             (r"/sidebar", SidebarHandler),

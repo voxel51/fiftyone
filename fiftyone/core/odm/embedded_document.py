@@ -151,7 +151,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         # pylint: disable=no-member
         for field_name, field in {
             **self._fields,
-            **self._custom_fields,
+            **getattr(self, "_custom_fields", {}),
         }.items():
             set_field = field
             if isinstance(field, (DictField, ListField)):
@@ -198,5 +198,6 @@ class DynamicEmbeddedDocument(
     meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
+        self._custom_fields = {}
         super().__init__(*args, **kwargs)
         self.validate()

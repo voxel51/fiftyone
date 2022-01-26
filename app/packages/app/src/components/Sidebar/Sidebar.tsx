@@ -92,8 +92,8 @@ const fn = (
       cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
-      left: shown ? "unset" : -3000,
       scale: dragging ? scale : 1,
+      display: shown ? "block" : "none",
       shadow: dragging ? 8 : 0,
     };
 
@@ -375,7 +375,7 @@ const SidebarColumn = styled.div`
 
 const Container = animated(styled.div`
   position: relative;
-  overflow: visible;
+  min-height: 100%;
   margin: 0 0.25rem 0 1.25rem;
 
   & > div {
@@ -414,7 +414,9 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
-  const [containerController] = useState(() => new Controller({ height: 0 }));
+  const [containerController] = useState(
+    () => new Controller({ maxHeight: 0 })
+  );
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -432,9 +434,9 @@ const InteractiveSidebar = ({
           cursor: "pointer",
           top: 0,
           zIndex: 0,
-          left: -1000,
           scale: 1,
           shadow: 0,
+          display: "block",
           config: {
             ...config.stiff,
             bounce: 0,
@@ -500,21 +502,25 @@ const InteractiveSidebar = ({
   };
 
   const placeItems = useCallback(() => {
-    const { results: placements, minHeight } = fn(
-      items.current,
-      order.current,
-      order.current
-    );
-    containerController.set({ height: minHeight });
-    for (const key of order.current) {
-      const item = items.current[key];
-      if (item.active) {
-        item.controller.start(placements[key]);
-      } else {
-        item.controller.set(placements[key]);
-        item.active = true;
+    requestAnimationFrame(() => {
+      const { results: placements, minHeight } = fn(
+        items.current,
+        order.current,
+        order.current
+      );
+
+      containerController.set({ maxHeight: minHeight });
+      console.log(minHeight);
+      for (const key of order.current) {
+        const item = items.current[key];
+        if (item.active) {
+          item.controller.start(placements[key]);
+        } else {
+          item.controller.set(placements[key]);
+          item.active = true;
+        }
       }
-    }
+    });
   }, []);
 
   const exit = useCallback(
@@ -586,7 +592,7 @@ const InteractiveSidebar = ({
       down.current,
       realDelta
     );
-    containerController.set({ height: minHeight });
+    containerController.set({ maxHeight: minHeight });
 
     for (const key of order.current)
       items.current[key].controller.start(results[key]);

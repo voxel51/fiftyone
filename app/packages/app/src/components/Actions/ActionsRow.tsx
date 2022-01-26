@@ -22,7 +22,6 @@ import {
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
-  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
@@ -35,10 +34,8 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
-import socket from "../../shared/connection";
 import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
-import Similar, { similaritySorting } from "./Similar";
+import Similar from "./Similar";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 const Loading = () => {
@@ -250,7 +247,6 @@ const Options = ({ modal }) => {
         highlight={open}
         ref={mRef}
         title={"Display options"}
-        style={{ flexDirection: modal ? "column" : "row" }}
       />
       {open && <OptionsActions modal={modal} bounds={bounds} />}
     </ActionDiv>

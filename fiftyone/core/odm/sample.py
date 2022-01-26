@@ -50,7 +50,6 @@ from collections import OrderedDict
 import os
 import random
 
-import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm

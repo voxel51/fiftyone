@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
 import { Controller } from "@react-spring/core";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
@@ -19,26 +20,26 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 
-export const ModalWrapper = styled.div`
+const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   z-index: 10000;
-  display: flex;
   align-items: center;
+  display: flex;
   justify-content: center;
   background-color: ${({ theme }) => theme.overlay};
 `;
 
 const Container = styled.div`
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  justify-content: space-between;
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  position: relative;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
 `;
 
 const ContentColumn = styled.div`
@@ -207,7 +208,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
 
-  return (
+  return ReactDOM.createPortal(
     <ModalWrapper
       ref={wrapperRef}
       key={0}
@@ -226,7 +227,8 @@ const SampleModal = () => {
         </ContentColumn>
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>
-    </ModalWrapper>
+    </ModalWrapper>,
+    document.getElementById("modal")
   );
 };
 
