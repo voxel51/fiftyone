@@ -107,7 +107,7 @@ def download_activitynet_split(
                 "Found %d samples out of %d for split `%s`. In order to load "
                 "a full ActivityNet split, you must download the source files "
                 "from the ActivityNet maintainers. See "
-                "https://voxel51.com/docs/fiftyone/integrations/activitynet.html#lactivitynet-full-split-downloads"
+                "https://voxel51.com/docs/fiftyone/integrations/activitynet.html#lactivitynet-full-split-downloads "
                 "for more information."
                 "\n\n"
                 "Alternatively, provide the `max_samples`, `max_duration`, "
