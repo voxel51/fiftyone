@@ -36,35 +36,17 @@ def download_youtube_videos(
 ):
     """Downloads clips from a list of video urls from YouTube.
 
-    The `urls` argument either accepts:
+    The `urls` argument accepts a list of YouTube video urls::
 
-        * A list of YouTube video urls::
+        urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
 
-            urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
 
-          When `urls` is a list, then the `download_dir` argument is required
-          and all videos will be downloaded into that directory
-
-        * A dictionary mapping the video urls to files on disk in which to
-          store that video::
-
-        urls = [
-            "https://www.youtube.com/watch?v=-0URMJE8_PB",
-            ...
-        ]
-        video_paths = [
-            "/path/to/local/file1.ext",
-            ...
-        ]
-        clip_segments = [
-            (10, 25),
-            ...
-        ]
-
-    The corresponding `clip_segments` argument can then contain a list of
-    tuples of ints or floats used to download segment clips of each video. A
-    value of `None` can indicate either downloading the entire video,
-    downloading from the start or downloading to the end of the video::
+    The corresponding `video_paths`, `clip_segments`, and `ext` argument can
+    then contain a list of values matching the order of `urls`. The
+    `clip_segments` argument expects tuples of ints or floats used to download
+    segment clips of each video. A value of `None` can indicate either
+    downloading the entire video, downloading from the start or downloading to
+    the end of the video::
 
         clip_segments = [
             (10, 25),
@@ -73,22 +55,40 @@ def download_youtube_videos(
             (None, 8.3),
         ]
 
+        video_paths = [
+            "/path/to/local/file1.ext",
+            ...
+        ]
+
+        exts = [
+            "mp4",
+            ...
+        ]
+
+    If `video_paths` are not provided, then a `download_dir` must be given.
+    When no `clip_segments` are given and `num_workers` != 1, then threads are
+    be used to download videos. When `clips_segments` are specified, then
+    processes are used to download the videos and cut them using ffmpeg.
+
     Args:
         urls: a list of video urls to download
         download_dir (None): the output directory used to store the downloaded
             videos. This is required if `video_paths` is not provided 
         video_paths (None): a list of filepaths to store videos corresponding
-            to the list of `urls`
+            to the list of `urls`. This is required if `download_dir` is not
+            provided
         clip_segments (None): a list of int or float tuples indicating start
             and end times in seconds for downloading segments of videos
         max_videos (None): the maximum number of videos to download from the
-            given `urls`. By default, all `urls` will be downloaded
-        num_workers (None): the number of processes to use when downloading
+            given `urls` skipping failures. By default, all `urls` will be
+            downloaded
+        num_workers (None): the number of workers to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
         ext (None): the extension to use to store the downloaded videos or a
             list of extensions corresponding to the given `urls`. By default,
-            the default extension of each video is used
+            the default extension of each video is used. This is overridden by
+            extensions given in `video_paths`
 
     Returns:
         urls of successfully downloaded video clips
@@ -99,7 +99,12 @@ def download_youtube_videos(
 
     with etau.TempDir() as tmp_dir:
         tasks = _build_tasks_list(
-            urls, download_dir, ext, tmp_dir, clip_segments=clip_segments
+            urls,
+            download_dir,
+            video_paths,
+            ext,
+            tmp_dir,
+            clip_segments=clip_segments,
         )
         if max_videos is None:
             max_videos = len(tasks)
@@ -130,7 +135,9 @@ def _parse_num_workers(num_workers, threading=False):
     return num_workers
 
 
-def _build_tasks_list(urls, download_dir, ext, tmp_dir, clip_segments=None):
+def _build_tasks_list(
+    urls, download_dir, video_paths, ext, tmp_dir, clip_segments=None
+):
     if isinstance(urls, str):
         urls = [urls]
     if isinstance(clip_segments, tuple):
@@ -164,9 +171,9 @@ def _build_tasks_list(urls, download_dir, ext, tmp_dir, clip_segments=None):
             "iterables must match" % (len(clip_segments), num_videos)
         )
 
+    urls_list = _parse_list_arg(urls, num_videos)
+    paths_list = _parse_list_arg(video_paths, num_videos)
     ext_list = _parse_list_arg(ext, num_videos)
-    urls_list = _parse_list_arg(list(urls.keys()), num_videos)
-    paths_list = _parse_list_arg(list(urls.values()), num_videos)
     download_dir_list = [download_dir] * num_videos
     tmp_dir_list = [tmp_dir] * num_videos
 
@@ -255,44 +262,33 @@ def _do_download(args):
 
             return False, url, messages
 
-        if video_path is not None:
+        if video_path:
             ext = os.path.splitext(video_path)[1].lstrip(".")
 
+        streams = pytube_video.streams
         if ext is not None:
             ext = ext.lstrip(".")
-            stream = (
-                pytube_video.streams.filter(
-                    file_extension=ext, progressive=True
-                )
-                .order_by("resolution")
-                .desc()
-                .first()
-            )
+            streams = streams.filter(file_extension=ext, progressive=True)
         else:
-            stream = (
-                pytube_video.streams.filter(progressive=True)
-                .order_by("resolution")
-                .desc()
-                .first()
-            )
+            streams = streams.filter(progressive=True)
 
-        if video_path:
-            output_path = video_path
-        else:
-            output_path = os.path.join(download_dir, stream.default_filename)
+        stream = streams.order_by("resolution").desc().first()
 
-        etau.ensure_dir(os.path.dirname(output_path))
-        tmp_path = os.path.join(tmp_dir, os.path.basename(output_path))
+        if not video_path:
+            video_path = os.path.join(download_dir, stream.default_filename)
+
+        etau.ensure_dir(os.path.dirname(video_path))
+        tmp_path = os.path.join(tmp_dir, os.path.basename(video_path))
 
         if clip_segment is None:
             stream.download(
-                output_path=tmp_dir, filename=os.path.basename(output_path)
+                video_path=tmp_dir, filename=os.path.basename(video_path)
             )
         else:
             _url = stream.url
             _extract_clip(_url, tmp_path, clip_segment)
 
-        os.rename(tmp_path, output_path)
+        os.rename(tmp_path, video_path)
 
         return True, url, None
 
