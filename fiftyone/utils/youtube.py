@@ -17,8 +17,8 @@ import eta.core.video as etav
 
 import fiftyone.core.utils as fou
 
-youtube_dl = fou.lazy_import(
-    "youtube_dl", callback=lambda: fou.ensure_import("youtube-dl"),
+pytube = fou.lazy_import(
+    "pytube", callback=lambda: fou.ensure_import("pytube"),
 )
 
 
@@ -26,58 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 def download_youtube_videos(
-    urls, download_dir=None, max_videos=None, num_workers=None, ext=None,
-):
-    """Downloads a list of video urls from YouTube.
-
-    The `urls` argument either accepts:
-
-        * A list of YouTube video urls::
-
-            urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
-
-          When `urls` is a list, then the `download_dir` argument is required
-          and all videos will be downloaded into that directory
-
-        * A dictionary mapping the video urls to files on disk in which to
-          store that video::
-
-            urls = {
-                "https://www.youtube.com/watch?v=-0URMJE8_PB": "/path/to/local/file1.ext",
-                ...
-            }
-
-    Args:
-        urls: either a list of video urls, or a dict
-            mapping these urls to locations on disk. If `urls` is a list, then
-            the `download_dir` argument is required
-        download_dir (None): the output directory used to store the downloaded
-            videos. This is only used if `urls` is a list
-        max_videos (None): the maximum number of videos to download from the
-            given ``urls``. By default, all ``urls`` will be downloaded
-        num_workers (None): the number of processes to use when downloading
-            individual video. By default, ``multiprocessing.cpu_count()`` is
-            used
-        ext (None): the extension to use to store the downloaded videos or a
-            list of extensions corresponding to the given ``urls``. By default,
-            the default extension of each video is used
-
-    Returns:
-        urls of successfully downloaded videos
-        a dict of download errors and the corresponding video urls
-    """
-    tasks = _build_tasks_list(urls, download_dir, ext)
-    download_fcn = _do_download_video
-    downloaded, errors = _download(
-        tasks, max_videos, num_workers, download_fcn, threading=True
-    )
-
-    return downloaded, errors
-
-
-def download_youtube_clips(
     urls,
     download_dir=None,
+    video_paths=None,
     clip_segments=None,
     max_videos=None,
     num_workers=None,
@@ -97,10 +48,18 @@ def download_youtube_clips(
         * A dictionary mapping the video urls to files on disk in which to
           store that video::
 
-            urls = {
-                "https://www.youtube.com/watch?v=-0URMJE8_PB": "/path/to/local/file1.ext",
-                ...
-            }
+        urls = [
+            "https://www.youtube.com/watch?v=-0URMJE8_PB",
+            ...
+        ]
+        video_paths = [
+            "/path/to/local/file1.ext",
+            ...
+        ]
+        clip_segments = [
+            (10, 25),
+            ...
+        ]
 
     The corresponding `clip_segments` argument can then contain a list of
     tuples of ints or floats used to download segment clips of each video. A
@@ -115,51 +74,43 @@ def download_youtube_clips(
         ]
 
     Args:
-        urls: either a list of video urls, or a dict
-            mapping these urls to locations on disk. If `urls` is a list, then
-            the `download_dir` argument is required
+        urls: a list of video urls to download
         download_dir (None): the output directory used to store the downloaded
-            videos. This is only used if `urls` is a list
+            videos. This is required if `video_paths` is not provided 
+        video_paths (None): a list of filepaths to store videos corresponding
+            to the list of `urls`
         clip_segments (None): a list of int or float tuples indicating start
             and end times in seconds for downloading segments of videos
         max_videos (None): the maximum number of videos to download from the
-            given ``urls``. By default, all ``urls`` will be downloaded
+            given `urls`. By default, all `urls` will be downloaded
         num_workers (None): the number of processes to use when downloading
             individual video. By default, ``multiprocessing.cpu_count()`` is
             used
         ext (None): the extension to use to store the downloaded videos or a
-            list of extensions corresponding to the given ``urls``. By default,
+            list of extensions corresponding to the given `urls`. By default,
             the default extension of each video is used
 
     Returns:
         urls of successfully downloaded video clips
         a dict of download errors and the corresponding video urls
     """
-    tasks = _build_tasks_list(
-        urls, download_dir, ext, clip_segments=clip_segments
-    )
-    download_fcn = _do_download_clip
-    downloaded, errors = _download(
-        tasks, max_videos, num_workers, download_fcn
-    )
-
-    return downloaded, errors
-
-
-def _download(tasks, max_videos, num_workers, download_fcn, threading=False):
+    threading = clip_segments is None
     num_workers = _parse_num_workers(num_workers, threading=threading)
-    if max_videos is None:
-        max_videos = len(tasks)
 
-    if num_workers == 1:
-        downloaded, errors = _single_worker_download(
-            tasks, max_videos, download_fcn
+    with etau.TempDir() as tmp_dir:
+        tasks = _build_tasks_list(
+            urls, download_dir, ext, tmp_dir, clip_segments=clip_segments
         )
+        if max_videos is None:
+            max_videos = len(tasks)
 
-    else:
-        downloaded, errors = _multi_worker_download(
-            tasks, max_videos, num_workers, download_fcn
-        )
+        if num_workers == 1:
+            downloaded, errors = _single_worker_download(tasks, max_videos)
+
+        else:
+            downloaded, errors = _multi_worker_download(
+                tasks, max_videos, num_workers, threading=threading
+            )
 
     return downloaded, errors
 
@@ -179,7 +130,7 @@ def _parse_num_workers(num_workers, threading=False):
     return num_workers
 
 
-def _build_tasks_list(urls, download_dir, ext, clip_segments=None):
+def _build_tasks_list(urls, download_dir, ext, tmp_dir, clip_segments=None):
     if isinstance(urls, str):
         urls = [urls]
     if isinstance(clip_segments, tuple):
@@ -217,9 +168,17 @@ def _build_tasks_list(urls, download_dir, ext, clip_segments=None):
     urls_list = _parse_list_arg(list(urls.keys()), num_videos)
     paths_list = _parse_list_arg(list(urls.values()), num_videos)
     download_dir_list = [download_dir] * num_videos
+    tmp_dir_list = [tmp_dir] * num_videos
 
     return list(
-        zip(urls_list, paths_list, download_dir_list, ext_list, clip_segments)
+        zip(
+            urls_list,
+            paths_list,
+            download_dir_list,
+            ext_list,
+            tmp_dir_list,
+            clip_segments,
+        )
     )
 
 
@@ -238,12 +197,12 @@ def _parse_list_arg(arg, list_len):
     return arg_list
 
 
-def _single_worker_download(tasks, max_videos, download_fcn):
+def _single_worker_download(tasks, max_videos):
     downloaded = []
     errors = defaultdict(list)
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
         for task in tasks:
-            is_success, url, error_type = download_fcn(task)
+            is_success, url, error_type = _do_download(task)
             if is_success:
                 downloaded.append(url)
                 pb.update()
@@ -251,12 +210,11 @@ def _single_worker_download(tasks, max_videos, download_fcn):
                     return downloaded, errors
             else:
                 errors[error_type].append(url)
+
     return downloaded, errors
 
 
-def _multi_worker_download(
-    tasks, max_videos, num_workers, download_fcn, threading=False
-):
+def _multi_worker_download(tasks, max_videos, num_workers, threading=False):
     downloaded = []
     errors = defaultdict(list)
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
@@ -266,7 +224,7 @@ def _multi_worker_download(
             mp_fcn = multiprocessing.Pool
         with mp_fcn(num_workers) as pool:
             for is_success, url, error_type in pool.imap_unordered(
-                download_fcn, tasks
+                _do_download, tasks
             ):
                 if is_success:
                     pb.update()
@@ -276,58 +234,68 @@ def _multi_worker_download(
                         return downloaded, errors
                 else:
                     errors[error_type].append(url)
+
     return downloaded, errors
 
 
-def _do_download_video(args):
-    url, video_path, download_dir, ext, _ = args
-    ydl_opts, _ = _build_ydl_opts(ext, video_path, download_dir)
+def _do_download(args):
+    url, video_path, download_dir, ext, tmp_dir, clip_segment = args
 
     try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+        pytube_video = pytube.YouTube(url)
+        status, messages = pytube.extract.playability_status(
+            pytube_video.watch_html
+        )
+        if status is not None:
+            if isinstance(messages, list):
+                if messages:
+                    messages = messages[0]
+                else:
+                    messages = status
 
-        return True, url, None
+            return False, url, messages
 
-    except Exception as e:
-        if isinstance(e, youtube_dl.utils.DownloadError):
-            # pylint: disable=no-member
-            return False, url, str(e.exc_info[1])
-        return False, url, str(e)
+        if video_path is not None:
+            ext = os.path.splitext(video_path)[1].lstrip(".")
 
-
-def _do_download_clip(args):
-    url, video_path, download_dir, ext, clip_segment = args
-    ydl_opts, output_path = _build_ydl_opts(ext, video_path, download_dir)
-
-    try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            _url = info_dict.get("url", None)
-            if _url is None:
-                _url = info_dict["requested_formats"][0]["url"]
-
-            _id = info_dict.get("id", None)
-            _title = info_dict.get("title", _id)
-            _ext = info_dict.get("ext", ext)
-
-            output_path = output_path.replace(
-                "%(title)s", _title.replace("/", "")
+        if ext is not None:
+            stream = (
+                pytube_video.streams.filter(file_extension=ext)
+                .order_by("resolution")
+                .desc()
+                .first()
             )
-            output_path = output_path.replace("%(ext)s", _ext)
+        else:
+            stream = pytube_video.streams.order_by("resolution").desc().first()
 
-            _extract_clip(_url, output_path, clip_segment)
+        if video_path:
+            output_path = video_path
+        else:
+            output_path = os.path.join(download_dir, stream.default_filename)
+
+        etau.ensure_dir(os.path.dirname(output_path))
+        tmp_path = os.path.join(tmp_dir, os.path.basename(output_path))
+
+        if clip_segment is None:
+            stream.download(
+                output_path=tmp_dir, filename=os.path.basename(output_path)
+            )
+        else:
+            _url = stream.url
+            _extract_clip(_url, tmp_path, clip_segment)
+
+        os.rename(tmp_path, output_path)
 
         return True, url, None
 
     except Exception as e:
-        if isinstance(e, youtube_dl.utils.DownloadError):
-            # pylint: disable=no-member
-            return False, url, str(e.exc_info[1])
-        return False, url, str(e)
+        if isinstance(e, pytube.exceptions.PytubeError):
+            return False, url, type(e)
+        else:
+            return False, url, str(e)
 
 
-def _extract_clip(url, output_path, clip_segment):
+def _extract_clip(url, vid_path, clip_segment):
     if clip_segment is None:
         start_time, end_time = None, None
     else:
@@ -338,43 +306,4 @@ def _extract_clip(url, output_path, clip_segment):
 
     duration = end_time - start_time if end_time else None
 
-    tmp_output = output_path + ".part"
-    etav.extract_clip(
-        url, tmp_output, start_time=start_time, duration=duration
-    )
-    os.rename(tmp_output, output_path)
-
-
-def _build_ydl_opts(ext, video_path, download_dir):
-    ytdl_logger = logging.getLogger("ytdl-ignore")
-    ytdl_logger.disabled = True
-    ydl_opts = {
-        "age_limit": 99,
-        "logger": ytdl_logger,
-    }
-
-    if video_path:
-        output_path = video_path
-        _ext = os.path.splitext(os.path.basename(video_path))[1]
-        _ext = _ext.lstrip(".")
-
-    else:
-        if ext is not None:
-            _ext = ext.lstrip(".")
-            path_ext = _ext
-        else:
-            _ext = None
-            path_ext = "%(ext)s"
-        path_name = "%(title)s"
-        output_path = os.path.join(
-            download_dir, "%s.%s" % (path_name, path_ext)
-        )
-
-    if _ext:
-        ydl_opts["format"] = _ext
-
-    etau.ensure_dir(os.path.dirname(output_path))
-
-    ydl_opts["outtmpl"] = output_path
-
-    return ydl_opts, output_path
+    etav.extract_clip(url, vid_path, start_time=start_time, duration=duration)
