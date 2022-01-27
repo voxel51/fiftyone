@@ -195,13 +195,14 @@ const PathValueEntry = ({ path }: { path: string }) => {
   let { sample: data } = useRecoilValue(atoms.modal);
 
   for (let index = 0; index < keys.length; index++) {
-    const key = keys[index];
-
-    data = data[field.dbField || key];
-
-    if (data === undefined) {
+    if (!data) {
       break;
     }
+
+    const key = keys[index];
+
+    console.log(key, field, data);
+    data = data[field.dbField || key];
 
     if (keys[index + 1]) {
       field = field.fields[keys[index + 1]];

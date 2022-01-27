@@ -6,6 +6,7 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
+from multiprocessing.sharedctypes import Value
 import shutil
 import struct
 
@@ -24,18 +25,17 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, media_type, metadata=None):
+async def get_metadata(filepath, metadata=None):
     """Gets the metadata for the given media file.
 
     Args:
         filepath: the path to the file
-        media_type: the media type of the collection
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
-    is_video = media_type == fom.VIDEO
+    is_video = fom.get_media_type(filepath) == fom.VIDEO
 
     if metadata:
         if is_video:
@@ -49,6 +49,7 @@ async def get_metadata(filepath, media_type, metadata=None):
                     "height": height,
                     "frame_rate": frame_rate,
                 }
+            raise ValueError("E")
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
