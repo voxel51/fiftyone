@@ -2571,7 +2571,7 @@ CVATImageDataset
 .. admonition:: Supported label types
     :class: note
 
-    |Detections|, |Polylines|, |Keypoints|
+    |Detections|, |Polylines|, |Keypoints|, |Classifications|
 
 The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
 type represents a labeled dataset consisting of images and their associated

@@ -567,6 +567,7 @@ class CVATImageDatasetImporter(
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
+            "classifications": fol.Classifications,
         }
 
     def setup(self):
@@ -883,6 +884,7 @@ class CVATImageDatasetExporter(
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
+            "classifications": fol.Classifications,
         }
 
     def setup(self):
@@ -1292,6 +1294,7 @@ class CVATImage(object):
         polygons (None): a list of :class:`CVATImagePolygon` instances
         polylines (None): a list of :class:`CVATImagePolyline` instances
         points (None): a list of :class:`CVATImagePoints` instances
+        tags (None): a list of :class:`CVATImageTag` instances
         subset (None): the project subset of the image, if any
     """
 
@@ -1305,6 +1308,7 @@ class CVATImage(object):
         polygons=None,
         polylines=None,
         points=None,
+        tags=None,
         subset=None,
     ):
         self.id = id
@@ -1316,6 +1320,7 @@ class CVATImage(object):
         self.polygons = polygons or []
         self.polylines = polylines or []
         self.points = points or []
+        self.tags = tags or []
 
     @property
     def has_boxes(self):
@@ -1331,6 +1336,11 @@ class CVATImage(object):
     def has_points(self):
         """Whether this image has keypoints."""
         return bool(self.points)
+
+    @property
+    def has_tags(self):
+        """Whether this image has tags."""
+        return bool(self.tags)
 
     def iter_annos(self):
         """Returns an iterator over the annotations in the image.
@@ -1376,6 +1386,12 @@ class CVATImage(object):
             keypoints = [k.to_keypoint(frame_size) for k in self.points]
             labels["keypoints"] = fol.Keypoints(keypoints=keypoints)
 
+        if self.tags:
+            tags = [t.to_classification() for t in self.tags]
+            labels["classifications"] = fol.Classifications(
+                classifications=tags
+            )
+
         return labels
 
     @classmethod
@@ -1398,6 +1414,7 @@ class CVATImage(object):
         _polygons = []
         _polylines = []
         _keypoints = []
+        _classifications = []
         for _labels in labels.values():
             if isinstance(_labels, fol.Detection):
                 _detections.append(_labels)
@@ -1418,6 +1435,10 @@ class CVATImage(object):
                 _keypoints.append(_labels)
             elif isinstance(_labels, fol.Keypoints):
                 _keypoints.extend(_labels.keypoints)
+            elif isinstance(_labels, fol.Classification):
+                _classifications.append(_labels)
+            elif isinstance(_labels, fol.Classifications):
+                _classifications.extend(_labels.classifications)
             elif _labels is not None:
                 msg = (
                     "Ignoring unsupported label type '%s'" % _labels.__class__
@@ -1438,6 +1459,8 @@ class CVATImage(object):
             CVATImagePoints.from_keypoint(k, metadata) for k in _keypoints
         ]
 
+        tags = [CVATImageTag.from_classification(c) for c in _classifications]
+
         return cls(
             None,
             None,
@@ -1447,6 +1470,7 @@ class CVATImage(object):
             polygons=polygons,
             polylines=polylines,
             points=points,
+            tags=tags,
         )
 
     @classmethod
@@ -1482,6 +1506,10 @@ class CVATImage(object):
         for pd in _ensure_list(d.get("points", [])):
             points.append(CVATImagePoints.from_points_dict(pd))
 
+        tags = []
+        for td in _ensure_list(d.get("tag", [])):
+            tags.append(CVATImageTag.from_tag_dict(td))
+
         return cls(
             id,
             name,
@@ -1491,6 +1519,7 @@ class CVATImage(object):
             polygons=polygons,
             polylines=polylines,
             points=points,
+            tags=tags,
             subset=subset,
         )
 
@@ -1950,6 +1979,55 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         points = cls._parse_cvat_points_str(d["@points"])
         occluded, attributes = cls._parse_anno_dict(d)
         return cls(label, points, occluded=occluded, attributes=attributes)
+
+
+class CVATImageTag(CVATImageAnno):
+    """A tag in CVAT image format.
+
+    Args:
+        label: the tag string
+    """
+
+    def __init__(self, label):
+        self.label = label
+        CVATImageAnno.__init__(self)
+
+    def to_classification(self):
+        """Returns a :class:`fiftyone.core.labels.Classification` representation of
+        the tag.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Classification`
+        """
+        return fol.Classification(label=self.label)
+
+    @classmethod
+    def from_classification(cls, classification):
+        """Creates a :class:`CVATImageTag` from a
+        :class:`fiftyone.core.labels.Classification`.
+
+        Args:
+            classification: a :class:`fiftyone.core.labels.Classification`
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = classification.label
+        return cls(label)
+
+    @classmethod
+    def from_tag_dict(cls, d):
+        """Creates a :class:`CVATImageTag` from a ``<tag>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<tag>`` tag
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = d["@label"]
+        return cls(label)
 
 
 class CVATTrack(object):

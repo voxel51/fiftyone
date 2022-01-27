@@ -72,6 +72,10 @@
 {% endfor %}
         </points>
 {% endfor %}
+{% for tag in image.tags %}
+        <tag label="{{ tag.label }}">
+        </tag>
+{% endfor %}
     </image>
 {% endfor %}
 </annotations>
