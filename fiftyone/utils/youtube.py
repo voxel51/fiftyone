@@ -40,7 +40,6 @@ def download_youtube_videos(
 
         urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
 
-
     The corresponding `video_paths`, `clip_segments`, and `ext` argument can
     then contain a list of values matching the order of `urls`. The
     `clip_segments` argument expects tuples of ints or floats used to download
@@ -91,8 +90,8 @@ def download_youtube_videos(
             extensions given in `video_paths`
 
     Returns:
-        urls of successfully downloaded video clips
-        a dict of download errors and the corresponding video urls
+        list urls and local paths of successfully downloaded video clips
+        a dict of failed video urls to the corresponding download errors
     """
     threading = clip_segments is None
     num_workers = _parse_num_workers(num_workers, threading=threading)
@@ -143,12 +142,11 @@ def _build_tasks_list(
     if isinstance(clip_segments, tuple):
         clip_segments = [clip_segments]
 
-    if isinstance(urls, list):
-        if not video_paths:
-            if download_dir is None:
-                raise ValueError(
-                    "Either `download_dir` or `video_paths` are required."
-                )
+    if not video_paths:
+        if download_dir is None:
+            raise ValueError(
+                "Either `download_dir` or `video_paths` are required."
+            )
 
     num_videos = len(urls)
 
@@ -181,6 +179,12 @@ def _build_tasks_list(
     ext_list = _parse_list_arg(ext, num_videos)
     download_dir_list = [download_dir] * num_videos
     tmp_dir_list = [tmp_dir] * num_videos
+    for ind, (path, ext) in enumerate(zip(paths_list, ext_list)):
+        if path is not None:
+            ext = os.path.splitext(path)[1]
+        if isinstance(ext, str):
+            ext = ext.lstrip(".")
+        ext_list[ind] = ext
 
     return list(
         zip(
@@ -214,14 +218,14 @@ def _single_worker_download(tasks, max_videos):
     errors = defaultdict(list)
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
         for task in tasks:
-            is_success, url, error_type = _do_download(task)
+            is_success, url, local_path, error_type = _do_download(task)
             if is_success:
-                downloaded.append(url)
+                downloaded.append((url, local_path))
                 pb.update()
                 if len(downloaded) >= max_videos:
                     return downloaded, errors
             else:
-                errors[error_type].append(url)
+                errors[url] = error_type
 
     return downloaded, errors
 
@@ -235,17 +239,17 @@ def _multi_worker_download(tasks, max_videos, num_workers, threading=False):
         else:
             mp_fcn = multiprocessing.Pool
         with mp_fcn(num_workers) as pool:
-            for is_success, url, error_type in pool.imap_unordered(
+            for is_success, url, local_path, error_type in pool.imap_unordered(
                 _do_download, tasks
             ):
                 if is_success:
                     pb.update()
                     if len(downloaded) < max_videos:
-                        downloaded.append(url)
+                        downloaded.append((url, local_path))
                     else:
                         return downloaded, errors
                 else:
-                    errors[error_type].append(url)
+                    errors[url] = error_type
 
     return downloaded, errors
 
@@ -265,21 +269,13 @@ def _do_download(args):
                 else:
                     messages = status
 
-            return False, url, messages
+            return False, url, None, messages
 
-        if video_path:
-            ext = os.path.splitext(video_path)[1].lstrip(".")
-
-        streams = pytube_video.streams
-        if ext is not None:
-            ext = ext.lstrip(".")
-            streams = streams.filter(file_extension=ext, progressive=True)
-        else:
-            streams = streams.filter(progressive=True)
-
-        stream = streams.order_by("resolution").desc().first()
+        stream = _get_stream(pytube_video, ext, progressive=True)
         if stream is None:
-            return False, url, "No stream found"
+            stream = _get_stream(pytube_video, ext)
+            if stream is None:
+                return False, url, None, "No stream found"
 
         if not video_path:
             video_path = os.path.join(download_dir, stream.default_filename)
@@ -297,13 +293,13 @@ def _do_download(args):
 
         os.rename(tmp_path, video_path)
 
-        return True, url, None
+        return True, url, video_path, None
 
     except Exception as e:
         if isinstance(e, pytube.exceptions.PytubeError):
-            return False, url, type(e)
+            return False, url, None, type(e)
         else:
-            return False, url, str(e)
+            return False, url, None, str(e)
 
 
 def _extract_clip(url, vid_path, clip_segment):
@@ -318,3 +314,10 @@ def _extract_clip(url, vid_path, clip_segment):
     duration = end_time - start_time if end_time else None
 
     etav.extract_clip(url, vid_path, start_time=start_time, duration=duration)
+
+
+def _get_stream(pytube_video, ext, progressive=None):
+    streams = pytube_video.streams
+    streams = streams.filter(file_extension=ext, progressive=progressive)
+    stream = streams.order_by("resolution").desc().first()
+    return stream
