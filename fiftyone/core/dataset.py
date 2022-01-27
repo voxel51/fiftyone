@@ -2130,8 +2130,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._clear_frames(sample_ids=sample_ids)
 
-    def _keep(self, view):
-        self._clear(view=self.exclude(view))
+    def _keep(self, view=None, sample_ids=None):
+        if view is not None:
+            clear_view = self.exclude(view)
+        else:
+            clear_view = self.exclude(sample_ids)
+
+        self._clear(view=clear_view)
 
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
@@ -2163,9 +2168,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection_name, sample_ids=sample_ids
         )
 
-    def _keep_frames(self, view):
+    def _keep_frames(self, view=None, frame_ids=None):
         if self.media_type != fom.VIDEO:
             return
+
+        # Clips datasets directly use their source dataset's frame collection,
+        # so don't delete frames
+        if self._is_clips:
+            return
+
+        # @todo implement this
+        if frame_ids is not None:
+            raise NotImplementedError
 
         sample_ids, frame_numbers = view.values(["id", "frames.frame_numbers"])
 

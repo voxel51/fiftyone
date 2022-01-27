@@ -164,8 +164,7 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the frames in the source dataset with the contents of the
-        view.
+        """Saves the frames in this view to the underlying source dataset.
 
         .. warning::
 
@@ -182,6 +181,20 @@ class FramesView(fov.DatasetView):
         super().save(fields=fields)
 
         self._sync_source(fields=fields)
+
+    def keep(self):
+        """Removes all frames that are **not** in this view from the underlying
+        source dataset.
+
+        .. warning::
+
+            This will permanently delete any omitted frames from the source
+            dataset.
+        """
+        super().keep()
+
+        frame_ids = self.values("id")
+        self._source_collection._dataset._keep_frames(frame_ids=frame_ids)
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -224,7 +237,7 @@ class FramesView(fov.DatasetView):
         self._source_collection._delete_labels(ids, fields=frame_fields)
 
     def _sync_source_sample(self, sample):
-        self._sync_source_schema(delete=False)
+        self._sync_source_schema()
 
         default_fields = set(
             self._get_default_sample_fields(
@@ -262,52 +275,39 @@ class FramesView(fov.DatasetView):
             if not fields:
                 return
 
-        self._sync_source_schema(fields=fields, delete=True)
+        self._sync_source_schema(fields=fields)
 
         dst_coll = self._source_collection._dataset._frame_collection_name
 
         pipeline = []
 
-        if fields is None and ids is None:
-            default_fields.discard("_id")
+        if ids is not None:
+            pipeline.append(
+                {"$match": {"_id": {"$in": [ObjectId(_id) for _id in ids]}}}
+            )
+
+        if fields is None:
             default_fields.discard("_sample_id")
             default_fields.discard("frame_number")
 
-            pipeline.extend(
-                [{"$unset": list(default_fields)}, {"$out": dst_coll}]
-            )
+            pipeline.append({"$unset": list(default_fields)})
         else:
-            if ids is not None:
-                pipeline.append(
-                    {
-                        "$match": {
-                            "_id": {"$in": [ObjectId(_id) for _id in ids]}
-                        }
-                    }
-                )
+            project = {f: True for f in fields}
+            project["_id"] = True
+            project["_sample_id"] = True
+            project["frame_number"] = True
+            pipeline.append({"$project": project})
 
-            if fields is None:
-                default_fields.discard("_sample_id")
-                default_fields.discard("frame_number")
-
-                pipeline.append({"$unset": list(default_fields)})
-            else:
-                project = {f: True for f in fields}
-                project["_id"] = True
-                project["_sample_id"] = True
-                project["frame_number"] = True
-                pipeline.append({"$project": project})
-
-            pipeline.append(
-                {
-                    "$merge": {
-                        "into": dst_coll,
-                        "on": ["_sample_id", "frame_number"],
-                        "whenMatched": "merge",
-                        "whenNotMatched": "discard",
-                    }
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": dst_coll,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
                 }
-            )
+            }
+        )
 
         self._frames_dataset._aggregate(pipeline=pipeline)
 

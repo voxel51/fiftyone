@@ -197,16 +197,10 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the object patches in the source dataset with the
-        contents of this view.
+        """Saves the patches in this view to the underlying source dataset.
 
         If this view contains any additional fields that were not extracted
         from the source dataset, these fields are not saved.
-
-        .. warning::
-
-            This will permanently delete any omitted or filtered contents from
-            the source dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -230,6 +224,26 @@ class _PatchesView(fov.DatasetView):
         #
 
         self._sync_source_root(fields)
+
+    def keep(self):
+        """Removes all patches that are **not** in this view from the
+        underlying source dataset.
+
+        .. warning::
+
+            This will permanently delete any omitted or filtered patches from
+            the source dataset.
+        """
+        super().keep()
+
+        #
+        # IMPORTANT: we sync the contents of `_patches_dataset`, not `self`
+        # here because the `save()` call above updated the dataset, which means
+        # this view may no longer have the same contents (e.g., if `skip()` is
+        # involved)
+        #
+
+        self._sync_source_root(self._label_fields)
 
     def reload(self):
         """Reloads this view from the source collection in the database.

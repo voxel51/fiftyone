@@ -593,26 +593,51 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frame_fields(field_names, view=self)
 
     def clear(self):
-        """Removes all samples in the view from the underlying dataset."""
+        """Removes all samples in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
         self._dataset._clear(view=self)
 
     def clear_frames(self):
         """Removes all frame labels from the samples in the view from the
         underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
         self._dataset._clear_frames(view=self)
 
     def keep(self):
         """Removes all samples that are **not** in the view from the underlying
         dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
-        self._dataset._keep(self)
+        self._dataset._keep(view=self)
 
     def keep_frames(self):
         """For each sample in the view, removes all frames labels that are
         **not** in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
-        self._dataset._keep_frames(self)
+        self._dataset._keep_frames(view=self)
 
     def ensure_frames(self):
         """Ensures that the video view contains frame instances for every frame
@@ -620,6 +645,12 @@ class DatasetView(foc.SampleCollection):
 
         Empty frames will be inserted for missing frames, and already existing
         frames are left unchanged.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
         self._dataset._ensure_frames(view=self)
 
@@ -628,6 +659,12 @@ class DatasetView(foc.SampleCollection):
 
         This method **does not** delete samples or frames from the underlying
         dataset that this view excludes.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
@@ -646,10 +683,10 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`get_default_dataset_name` is used
+                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
 
         Returns:
-            the new :class:`Dataset`
+            the new :class:`fiftyone.core.dataset.Dataset`
         """
         return self._dataset._clone(name=name, view=self)
 

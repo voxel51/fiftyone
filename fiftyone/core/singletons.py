@@ -412,7 +412,7 @@ class FrameSingleton(DocumentSingleton):
         frame numbers attached to the specified sample.
 
         When ``keep=True``, all frames whose frame numbers are **not** in
-        ``frame_numbers`` are reset.
+        ``frame_numbers`` are reset instead.
         """
         if collection_name not in cls._instances:
             return
