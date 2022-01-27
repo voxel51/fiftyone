@@ -749,7 +749,6 @@ class ActivityNetDatasetInfo(object):
         self.raw_annotations = self._get_raw_annotations()
         self.taxonomy = self.raw_annotations["taxonomy"]
         self.all_classes = self.get_all_classes(self.taxonomy)
-        self.ensure_data_dirs()
 
         self._splitwise_sample_ids = self._parse_sample_ids()
         self.all_sample_ids = _flatten_list(
@@ -781,7 +780,9 @@ class ActivityNetDatasetInfo(object):
         return self._splitwise_existing_sample_ids[split]
 
     def split_dir(self, split):
-        return os.path.join(self.dataset_dir, split)
+        _split_dir = os.path.join(self.dataset_dir, split)
+        etau.ensure_dir(_split_dir)
+        return _split_dir
 
     def data_dir(self, split):
         return os.path.join(self.split_dir(split), "data")
@@ -794,10 +795,6 @@ class ActivityNetDatasetInfo(object):
 
     def error_path(self, split):
         return os.path.join(self.split_dir(split), "download_errors.json")
-
-    def ensure_data_dirs(self):
-        for split in self.splits:
-            etau.ensure_dir(self.data_dir(split))
 
     def _parse_sample_ids(self):
         ids = {s: [] for s in self.splits}
