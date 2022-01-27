@@ -91,8 +91,8 @@ def download_youtube_videos(
             extensions given in `video_paths`
 
     Returns:
-        urls of successfully downloaded video clips
-        a dict of download errors and the corresponding video urls
+        list urls and local paths of successfully downloaded video clips
+        a dict of failed video urls to the corresponding download errors
     """
     threading = clip_segments is None
     num_workers = _parse_num_workers(num_workers, threading=threading)
@@ -214,14 +214,14 @@ def _single_worker_download(tasks, max_videos):
     errors = defaultdict(list)
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
         for task in tasks:
-            is_success, url, error_type = _do_download(task)
+            is_success, url, local_path, error_type = _do_download(task)
             if is_success:
-                downloaded.append(url)
+                downloaded.append((url, local_path))
                 pb.update()
                 if len(downloaded) >= max_videos:
                     return downloaded, errors
             else:
-                errors[error_type].append(url)
+                errors[url] = error_type
 
     return downloaded, errors
 
@@ -235,17 +235,17 @@ def _multi_worker_download(tasks, max_videos, num_workers, threading=False):
         else:
             mp_fcn = multiprocessing.Pool
         with mp_fcn(num_workers) as pool:
-            for is_success, url, error_type in pool.imap_unordered(
+            for is_success, url, local_path, error_type in pool.imap_unordered(
                 _do_download, tasks
             ):
                 if is_success:
                     pb.update()
                     if len(downloaded) < max_videos:
-                        downloaded.append(url)
+                        downloaded.append((url, local_path))
                     else:
                         return downloaded, errors
                 else:
-                    errors[error_type].append(url)
+                    errors[url] = error_type
 
     return downloaded, errors
 
@@ -265,7 +265,7 @@ def _do_download(args):
                 else:
                     messages = status
 
-            return False, url, messages
+            return False, url, None, messages
 
         if video_path:
             ext = os.path.splitext(video_path)[1].lstrip(".")
@@ -279,7 +279,7 @@ def _do_download(args):
 
         stream = streams.order_by("resolution").desc().first()
         if stream is None:
-            return False, url, "No stream found"
+            return False, url, None, "No stream found"
 
         if not video_path:
             video_path = os.path.join(download_dir, stream.default_filename)
@@ -297,13 +297,13 @@ def _do_download(args):
 
         os.rename(tmp_path, video_path)
 
-        return True, url, None
+        return True, url, video_path, None
 
     except Exception as e:
         if isinstance(e, pytube.exceptions.PytubeError):
-            return False, url, type(e)
+            return False, url, None, type(e)
         else:
-            return False, url, str(e)
+            return False, url, None, str(e)
 
 
 def _extract_clip(url, vid_path, clip_segment):
