@@ -600,14 +600,19 @@ class ActivityNetDatasetManager(object):
         remaining_samples = num_samples
         if num_a100_ids:
             logger.info("Downloading videos...")
+            if num_samples is None:
+                num_to_download = num_a100_ids
+            else:
+                num_to_download = min(num_a100_ids, num_samples)
             downloaded_ids, a100_errors = self._attempt_to_download(
                 self.a100_info.data_dir(split),
                 a100_ids,
                 samples_info,
-                min(num_a100_ids, num_samples),
+                num_to_download,
                 num_workers,
             )
-            remaining_samples -= len(downloaded_ids)
+            if remaining_samples is not None:
+                remaining_samples -= len(downloaded_ids)
             self._merge_and_write_errors(
                 a100_errors, self.a100_info.error_path(split)
             )
