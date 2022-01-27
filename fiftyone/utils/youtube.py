@@ -144,12 +144,11 @@ def _build_tasks_list(
         clip_segments = [clip_segments]
 
     if isinstance(urls, list):
-        if download_dir is None:
-            raise ValueError(
-                "When `urls` is a list, `download_dir` is required but was "
-                "found to be `None`."
-            )
-        urls = {url: None for url in urls}
+        if not video_paths:
+            if download_dir is None:
+                raise ValueError(
+                    "Either `download_dir` or `video_paths` are required."
+                )
 
     num_videos = len(urls)
 
@@ -169,6 +168,12 @@ def _build_tasks_list(
         raise ValueError(
             "Found %d `clip_segments` and %d `urls`, but the lengths of these "
             "iterables must match" % (len(clip_segments), num_videos)
+        )
+
+    if isinstance(ext, list) and len(ext) != num_videos:
+        raise ValueError(
+            "Found %d `ext` and %d `urls`, but the lengths of these "
+            "iterables must match" % (len(ext), num_videos)
         )
 
     urls_list = _parse_list_arg(urls, num_videos)
@@ -273,6 +278,8 @@ def _do_download(args):
             streams = streams.filter(progressive=True)
 
         stream = streams.order_by("resolution").desc().first()
+        if stream is None:
+            return False, url, "No stream found"
 
         if not video_path:
             video_path = os.path.join(download_dir, stream.default_filename)
@@ -282,7 +289,7 @@ def _do_download(args):
 
         if clip_segment is None:
             stream.download(
-                video_path=tmp_dir, filename=os.path.basename(video_path)
+                output_path=tmp_dir, filename=os.path.basename(video_path)
             )
         else:
             _url = stream.url
