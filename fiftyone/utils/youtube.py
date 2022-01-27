@@ -142,12 +142,11 @@ def _build_tasks_list(
     if isinstance(clip_segments, tuple):
         clip_segments = [clip_segments]
 
-    if isinstance(urls, list):
-        if not video_paths:
-            if download_dir is None:
-                raise ValueError(
-                    "Either `download_dir` or `video_paths` are required."
-                )
+    if not video_paths:
+        if download_dir is None:
+            raise ValueError(
+                "Either `download_dir` or `video_paths` are required."
+            )
 
     num_videos = len(urls)
 
@@ -180,6 +179,12 @@ def _build_tasks_list(
     ext_list = _parse_list_arg(ext, num_videos)
     download_dir_list = [download_dir] * num_videos
     tmp_dir_list = [tmp_dir] * num_videos
+    for ind, (path, ext) in enumerate(zip(paths_list, ext_list)):
+        if path is not None:
+            ext = os.path.splitext(path)[1]
+        if isinstance(ext, str):
+            ext = ext.lstrip(".")
+        ext_list[ind] = ext
 
     return list(
         zip(
@@ -266,19 +271,11 @@ def _do_download(args):
 
             return False, url, None, messages
 
-        if video_path:
-            ext = os.path.splitext(video_path)[1].lstrip(".")
-
-        streams = pytube_video.streams
-        if ext is not None:
-            ext = ext.lstrip(".")
-            streams = streams.filter(file_extension=ext, progressive=True)
-        else:
-            streams = streams.filter(progressive=True)
-
-        stream = streams.order_by("resolution").desc().first()
+        stream = _get_stream(pytube_video, ext, progressive=True)
         if stream is None:
-            return False, url, None, "No stream found"
+            stream = _get_stream(pytube_video, ext)
+            if stream is None:
+                return False, url, None, "No stream found"
 
         if not video_path:
             video_path = os.path.join(download_dir, stream.default_filename)
@@ -317,3 +314,10 @@ def _extract_clip(url, vid_path, clip_segment):
     duration = end_time - start_time if end_time else None
 
     etav.extract_clip(url, vid_path, start_time=start_time, duration=duration)
+
+
+def _get_stream(pytube_video, ext, progressive=None):
+    streams = pytube_video.streams
+    streams = streams.filter(file_extension=ext, progressive=progressive)
+    stream = streams.order_by("resolution").desc().first()
+    return stream
