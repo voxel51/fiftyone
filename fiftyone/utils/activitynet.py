@@ -790,7 +790,9 @@ class ActivityNetDatasetInfo(object):
         return _split_dir
 
     def data_dir(self, split):
-        return os.path.join(self.split_dir(split), "data")
+        _data_dir = os.path.join(self.split_dir(split), "data")
+        etau.ensure_dir(_data_dir)
+        return _data_dir
 
     def data_json_path(self, split):
         return os.path.join(self.split_dir(split), "data.json")
