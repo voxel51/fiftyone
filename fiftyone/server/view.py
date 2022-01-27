@@ -272,7 +272,6 @@ def _make_filter_stages(
 
         stages.append(fosg.Match(F.any(match_exprs)))
 
-    print(stages[0]._serialize())
     return stages, cleanup, filtered_labels
 
 

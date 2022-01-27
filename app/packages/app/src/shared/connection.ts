@@ -37,6 +37,9 @@ class HTTPSSocket {
         .then((response) => response.json())
         .then((data) => {
           this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
+        })
+        .catch(() => {
+          console.log(m);
         });
     });
   }

@@ -109,8 +109,6 @@ class PollingHandler(tornado.web.RequestHandler):
         client = self.get_argument("sessionId")
         if client not in PollingHandler.clients:
             PollingHandler.clients[client].add("update")
-            PollingHandler.clients[client].add("statistics")
-            PollingHandler.clients[client].add("extended_statistics")
 
         messages = self.gather_messages(client)
         self.write_message({"messages": messages})
@@ -345,10 +343,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     events.add("deactivate")
                     continue
 
-            if client == ignore_polling_client:
-                events.update({"statistics", "extended_statistics"})
-
-            events.update({"update", "statistics", "extended_statistics"})
+            events.update({"update"})
 
         await StateHandler.send_updates(),
 

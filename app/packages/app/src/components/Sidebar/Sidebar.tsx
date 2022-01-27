@@ -510,7 +510,6 @@ const InteractiveSidebar = ({
       );
 
       containerController.set({ maxHeight: minHeight });
-      console.log(minHeight);
       for (const key of order.current) {
         const item = items.current[key];
         if (item.active) {
