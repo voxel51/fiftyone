@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback } from "react";
+import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";

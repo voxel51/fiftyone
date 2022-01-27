@@ -189,6 +189,28 @@ export const sidebarGroupsDefinition = atomFamily<State.SidebarGroups, boolean>(
   }
 );
 
+export const persistGroups = (
+  dataset: string,
+  view: State.Stage[],
+  groups: State.SidebarGroups
+) => {
+  fetch(`${http}/sidebar`, {
+    method: "POST",
+    cache: "no-cache",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    mode: "cors",
+    body: JSON.stringify({
+      dataset,
+      groups: groups.map(([name, paths]) => ({ name, paths })),
+      view,
+    }),
+  }).catch((error) => {
+    throw error;
+  });
+};
+
 export const sidebarGroups = selectorFamily<
   State.SidebarGroups,
   { modal: boolean; loadingTags: boolean; filtered?: boolean }
@@ -286,22 +308,7 @@ export const sidebarGroups = selectorFamily<
     });
 
     set(sidebarGroupsDefinition(modal), groups);
-    !modal &&
-      fetch(`${http}/sidebar`, {
-        method: "POST",
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        mode: "cors",
-        body: JSON.stringify({
-          dataset: get(datasetName),
-          groups: groups.map(([name, paths]) => ({ name, paths })),
-          view: get(viewAtoms.view),
-        }),
-      }).catch((error) => {
-        throw error;
-      });
+    !modal && persistGroups(get(datasetName), get(viewAtoms.view), groups);
   },
 });
 

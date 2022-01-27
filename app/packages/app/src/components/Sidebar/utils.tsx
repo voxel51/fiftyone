@@ -91,5 +91,6 @@ export const RESERVED_GROUPS = new Set([
   "other",
   "patch tags",
   "sample tags",
+  "clips tags",
   "tags",
 ]);

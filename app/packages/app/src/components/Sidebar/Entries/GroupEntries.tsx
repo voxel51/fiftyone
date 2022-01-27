@@ -24,6 +24,7 @@ import * as aggregationAtoms from "../../../recoil/aggregations";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
+import * as viewAtoms from "../../../recoil/view";
 import { useTheme } from "../../../utils/hooks";
 
 import { PillButton } from "../../utils";
@@ -31,12 +32,16 @@ import { PillButton } from "../../utils";
 import {
   groupIsEmpty,
   groupShown,
+  persistGroups,
   sidebarGroup,
   sidebarGroups,
+  sidebarGroupsDefinition,
+  textFilter,
 } from "../recoil";
 
 import { elementNames } from "../../../recoil/view";
 import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
+import { datasetName } from "../../../recoil/selectors";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
@@ -57,18 +62,9 @@ const numMatchedTags = selectorFamily<
   get: (params) => ({ get }) => {
     let count = 0;
     const active = new Set(get(filterAtoms.matchedTags(params)));
+    const f = get(textFilter(params.modal));
 
-    for (const path of get(
-      sidebarGroup({
-        group: TAGS[params.key],
-        modal: params.modal,
-        loadingTags: true,
-      })
-    )) {
-      if (active.has(path)) count++;
-    }
-
-    return count;
+    return [...active].filter((t) => t.includes(f)).length;
   },
 });
 
@@ -105,22 +101,35 @@ const numGroupFieldsActive = selectorFamily<
 >({
   key: "numGroupFieldsActive",
   get: (params) => ({ get }) => {
-    let count = 0;
-    const active = new Set(
-      get(schemaAtoms.activeFields({ modal: params.modal }))
-    );
+    let active = get(schemaAtoms.activeFields({ modal: params.modal }));
+
     let f = null;
 
     if (params.modal) {
       const labels = get(schemaAtoms.labelPaths({ expanded: false }));
       f = (path) => labels.includes(path);
+      active = active.filter((p) => f(p));
     }
 
-    for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
-      if (active.has(path) && (!f || f(path))) count++;
+    f = get(textFilter(params.modal));
+
+    if (params.group === "tags") {
+      return active.filter(
+        (p) => p.startsWith("tags.") && p.slice("tags.".length).includes(f)
+      ).length;
     }
 
-    return count;
+    if (params.group === "tags") {
+      return active.filter(
+        (p) =>
+          p.startsWith("_label_tags.") &&
+          p.slice("_label_tags.".length).includes(f)
+      ).length;
+    }
+
+    const paths = new Set(get(sidebarGroup({ ...params, loadingTags: true })));
+
+    return active.filter((p) => p.includes(f) && paths.has(p)).length;
   },
 });
 
@@ -133,16 +142,26 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         return;
       }
 
-      const groups = await snapshot.getPromise(
-        sidebarGroups({ modal, loadingTags: true })
+      const groups = await snapshot.getPromise(sidebarGroupsDefinition(modal));
+      const newGroups = groups.map<[string, string[]]>(([name, paths]) => [
+        name === group ? newName : name,
+        paths,
+      ]);
+
+      if (newGroups.filter(([name]) => name === newName).length > 1) {
+        alert(`Group ${newName.toUpperCase()} already exists`);
+
+        return;
+      }
+
+      const dataset = await snapshot.getPromise(datasetName);
+      const view = await snapshot.getPromise(viewAtoms.view);
+      const shown = await snapshot.getPromise(
+        groupShown({ modal, name: group })
       );
-      set(
-        sidebarGroups({ modal, loadingTags: true }),
-        groups.map<[string, string[]]>(([name, paths]) => [
-          name === group ? newName : name,
-          paths,
-        ])
-      );
+      set(groupShown({ name: newName, modal }), shown);
+      set(sidebarGroupsDefinition(modal), newGroups);
+      !modal && persistGroups(dataset, view, newGroups);
     },
     []
   );
@@ -179,6 +198,16 @@ const useClearActive = (modal: boolean, group: string) => {
       const active = await snapshot.getPromise(
         schemaAtoms.activeFields({ modal })
       );
+
+      if (group === "tags") {
+        set(schemaAtoms.activeTags(modal), []);
+        return;
+      }
+
+      if (group === "label tags") {
+        set(schemaAtoms.activeLabelTags(modal), []);
+        return;
+      }
 
       set(
         schemaAtoms.activeFields({ modal }),
@@ -371,6 +400,7 @@ const GroupEntry = React.memo(
             if (event.key === "Enter") {
               setValue(event.target.value);
               setEditing(false);
+              event.target.blur();
             }
             if (event.key === "Escape") {
               event.target.blur();
@@ -428,6 +458,7 @@ export const TagGroupEntry = React.memo(
     );
     const { plural } = useRecoilValue(elementNames);
     const name = `${tagKey === State.TagKey.SAMPLE ? plural : "label"} tags`;
+
     return (
       <GroupEntry
         before={<LocalOffer style={{ marginRight: "0.5rem" }} />}
@@ -464,16 +495,14 @@ export const TagGroupEntry = React.memo(
   }
 );
 
+interface PathGroupProps {
+  name: string;
+  modal: boolean;
+  mutable?: boolean;
+}
+
 export const PathGroupEntry = React.memo(
-  ({
-    name,
-    modal,
-    mutable = true,
-  }: {
-    name: string;
-    modal: boolean;
-    mutable?: boolean;
-  }) => {
+  ({ name, modal, mutable = true }: PathGroupProps) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);

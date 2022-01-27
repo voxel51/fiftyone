@@ -93,8 +93,8 @@ const fn = (
       top: dragging ? currentY[key] + delta : y,
       zIndex: dragging ? 1 : 0,
       scale: dragging ? scale : 1,
-      display: shown ? "block" : "none",
       shadow: dragging ? 8 : 0,
+      left: shown ? 0 : -3000,
     };
 
     if (shown) {
@@ -110,7 +110,7 @@ const fn = (
   return { results, minHeight: y };
 };
 
-const getEntryKey = (entry: SidebarEntry) => {
+export const getEntryKey = (entry: SidebarEntry) => {
   if (entry.kind === EntryKind.GROUP) {
     return JSON.stringify([entry.name]);
   }
@@ -433,10 +433,10 @@ const InteractiveSidebar = ({
         controller: new Controller({
           cursor: "pointer",
           top: 0,
+          left: -3000,
           zIndex: 0,
           scale: 1,
           shadow: 0,
-          display: "block",
           config: {
             ...config.stiff,
             bounce: 0,

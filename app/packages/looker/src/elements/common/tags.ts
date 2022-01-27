@@ -374,7 +374,7 @@ const getFieldAndValue = (
     field = schema[key];
     if (![undefined, null].includes(value)) {
       value = unwind(field.dbField || key, value);
-      list = list || Array.isArray(value);
+      list = list || field.ftype === LIST_FIELD;
     }
     schema = field.fields;
   }
