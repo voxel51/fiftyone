@@ -711,32 +711,36 @@ class ActivityNetDatasetManager(object):
         etas.write_json(prev_errors, error_path, pretty_print=True)
 
     def write_data_json(self, split):
-        to_uuid = lambda p: os.path.splitext(p)[0]
+        a100_start_dir = os.path.dirname(self.a100_info.data_json_path(split))
+        a100_data_map = self._data_map(self.a100_info, split, a100_start_dir)
+        if a100_data_map:
+            etas.write_json(
+                a100_data_map,
+                self.a100_info.data_json_path(split),
+                pretty_print=True,
+            )
 
-        a100_data_path = self.a100_info.data_dir(split)
-        a100_data_map = {
-            to_uuid(p): os.path.join(a100_data_path, p)
-            for p in etau.list_files(a100_data_path, recursive=True)
-            if not (p.endswith(".part") or p.endswith(".ytdl"))
-        }
-        etas.write_json(
-            a100_data_map,
-            self.a100_info.data_json_path(split),
-            pretty_print=True,
-        )
-
-        a200_data_path = self.a200_info.data_dir(split)
-        a200_data_map = {
-            to_uuid(p): os.path.join(a200_data_path, p)
-            for p in etau.list_files(a200_data_path, recursive=True)
-            if not (p.endswith(".part") or p.endswith(".ytdl"))
-        }
+        start_dir = os.path.dirname(self.info.data_json_path(split))
+        a100_data_map = self._data_map(self.a100_info, split, start_dir)
+        a200_data_map = self._data_map(self.a200_info, split, start_dir)
         a200_data_map.update(a100_data_map)
-        etas.write_json(
-            a200_data_map,
-            self.a200_info.data_json_path(split),
-            pretty_print=True,
-        )
+        if a200_data_map:
+            etas.write_json(
+                a200_data_map,
+                self.a200_info.data_json_path(split),
+                pretty_print=True,
+            )
+
+    def _data_map(self, info, split, start_dir):
+        to_rel = lambda fp, d: os.path.relpath(fp, start=d)
+        to_uuid = lambda p: os.path.splitext(p)[0]
+        data_path = info.data_dir(split)
+        data_map = {
+            to_uuid(p): to_rel(os.path.join(data_path, p), start_dir)
+            for p in etau.list_files(data_path, recursive=True)
+            if not (p.endswith(".part") or p.endswith(".ytdl"))
+        }
+        return data_map
 
     @classmethod
     def from_dataset_dir(cls, dataset_dir, version):
