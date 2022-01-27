@@ -164,12 +164,18 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Saves the frames in this view to the underlying source dataset.
+        """Saves the frames in this view to the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
             This will permanently delete any omitted or filtered contents from
-            the source dataset.
+            the frames of the source dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -183,18 +189,18 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=fields)
 
     def keep(self):
-        """Removes all frames that are **not** in this view from the underlying
-        source dataset.
+        """Deletes all frames that are **not** in this view from the underlying
+        dataset.
 
-        .. warning::
+        .. note::
 
-            This will permanently delete any omitted frames from the source
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
             dataset.
         """
         super().keep()
 
-        frame_ids = self.values("id")
-        self._source_collection._dataset._keep_frames(frame_ids=frame_ids)
+        self._sync_source(update=False, delete=True)
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -263,7 +269,7 @@ class FramesView(fov.DatasetView):
             match, {"$set": updates}
         )
 
-    def _sync_source(self, fields=None, ids=None):
+    def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         default_fields = set(
             self._get_default_sample_fields(
                 include_private=True, use_db_fields=True
@@ -275,41 +281,50 @@ class FramesView(fov.DatasetView):
             if not fields:
                 return
 
-        self._sync_source_schema(fields=fields)
+        if update:
+            self._sync_source_schema(fields=fields)
 
-        dst_coll = self._source_collection._dataset._frame_collection_name
+            dst_coll = self._source_collection._dataset._frame_collection_name
 
-        pipeline = []
+            pipeline = []
 
-        if ids is not None:
+            if ids is not None:
+                pipeline.append(
+                    {
+                        "$match": {
+                            "_id": {"$in": [ObjectId(_id) for _id in ids]}
+                        }
+                    }
+                )
+
+            if fields is None:
+                default_fields.discard("_sample_id")
+                default_fields.discard("frame_number")
+
+                pipeline.append({"$unset": list(default_fields)})
+            else:
+                project = {f: True for f in fields}
+                project["_id"] = True
+                project["_sample_id"] = True
+                project["frame_number"] = True
+                pipeline.append({"$project": project})
+
             pipeline.append(
-                {"$match": {"_id": {"$in": [ObjectId(_id) for _id in ids]}}}
+                {
+                    "$merge": {
+                        "into": dst_coll,
+                        "on": ["_sample_id", "frame_number"],
+                        "whenMatched": "merge",
+                        "whenNotMatched": "discard",
+                    }
+                }
             )
 
-        if fields is None:
-            default_fields.discard("_sample_id")
-            default_fields.discard("frame_number")
+            self._frames_dataset._aggregate(pipeline=pipeline)
 
-            pipeline.append({"$unset": list(default_fields)})
-        else:
-            project = {f: True for f in fields}
-            project["_id"] = True
-            project["_sample_id"] = True
-            project["frame_number"] = True
-            pipeline.append({"$project": project})
-
-        pipeline.append(
-            {
-                "$merge": {
-                    "into": dst_coll,
-                    "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
-                }
-            }
-        )
-
-        self._frames_dataset._aggregate(pipeline=pipeline)
+        if delete:
+            frame_ids = self._frames_dataset.exclude(self).values("id")
+            self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
         schema = self.get_field_schema()

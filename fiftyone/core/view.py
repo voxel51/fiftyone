@@ -593,7 +593,7 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frame_fields(field_names, view=self)
 
     def clear(self):
-        """Removes all samples in the view from the underlying dataset.
+        """Deletes all samples in the view from the underlying dataset.
 
         .. note::
 
@@ -604,7 +604,7 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear(view=self)
 
     def clear_frames(self):
-        """Removes all frame labels from the samples in the view from the
+        """Deletes all frame labels from the samples in the view from the
         underlying dataset.
 
         .. note::
@@ -616,7 +616,7 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frames(view=self)
 
     def keep(self):
-        """Removes all samples that are **not** in the view from the underlying
+        """Deletes all samples that are **not** in the view from the underlying
         dataset.
 
         .. note::
@@ -628,7 +628,7 @@ class DatasetView(foc.SampleCollection):
         self._dataset._keep(view=self)
 
     def keep_frames(self):
-        """For each sample in the view, removes all frames labels that are
+        """For each sample in the view, deletes all frames labels that are
         **not** in the view from the underlying dataset.
 
         .. note::

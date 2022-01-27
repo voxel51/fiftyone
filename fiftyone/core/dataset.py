@@ -2118,12 +2118,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is not None:
             sample_ids = view.values("id")
 
-        if not sample_ids:
-            return
+        if sample_ids is not None:
+            self._sample_collection.delete_many(
+                {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+            )
+        else:
+            self._sample_collection.delete_many({})
 
-        self._sample_collection.delete_many(
-            {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        )
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
@@ -2146,7 +2147,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_frames()
 
-    def _clear_frames(self, view=None, sample_ids=None):
+    def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
         if self.media_type != fom.VIDEO:
             return
 
@@ -2155,15 +2156,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._is_clips:
             return
 
+        if frame_ids is not None:
+            self._frame_collection.delete_many(
+                {"_id": {"$in": [ObjectId(_id) for _id in frame_ids]}}
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids
+            )
+            return
+
         if view is not None:
             sample_ids = view.values("id")
 
-        if not sample_ids:
-            return
+        if sample_ids is not None:
+            self._frame_collection.delete_many(
+                {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+            )
+        else:
+            self._frame_collection.delete_many({})
 
-        self._frame_collection.delete_many(
-            {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-        )
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
@@ -2177,9 +2188,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self._is_clips:
             return
 
-        # @todo implement this
         if frame_ids is not None:
-            raise NotImplementedError
+            self._frame_collection.delete_many(
+                {
+                    "_id": {
+                        "$not": {"$in": [ObjectId(_id) for _id in frame_ids]}
+                    }
+                }
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids, keep=True
+            )
+            return
+
+        if view is None:
+            return
 
         sample_ids, frame_numbers = view.values(["id", "frames.frame_numbers"])
 

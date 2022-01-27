@@ -436,3 +436,34 @@ class FrameSingleton(DocumentSingleton):
 
         for frame_number in reset_fns:
             frames.pop(frame_number)
+
+    def _reset_docs_by_frame_id(cls, collection_name, frame_ids, keep=False):
+        """Resets the backing documents for all in-memory frames with the given
+        frame IDs.
+
+        When ``keep=True``, all frames whose IDs are **not** in ``frame_ids``
+        are reset instead.
+        """
+        if collection_name not in cls._instances:
+            return
+
+        samples = cls._instances[collection_name]
+
+        frame_ids = set(frame_ids)
+        reset = []
+
+        if keep:
+            for sample_id, frames in samples.items():
+                for fn, frame in frames.items():
+                    if frame.id not in frame_ids:
+                        frame._reset_backing_doc()
+                        reset.append((sample_id, fn))
+        else:
+            for sample_id, frames in samples.items():
+                for fn, frame in frames.items():
+                    if frame.id in frame_ids:
+                        frame._reset_backing_doc()
+                        reset.append((sample_id, fn))
+
+        for sample_id, fn in reset:
+            samples[sample_id].pop(fn)

@@ -197,10 +197,19 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
-        """Saves the patches in this view to the underlying source dataset.
+        """Saves the patches in this view to the underlying dataset.
 
         If this view contains any additional fields that were not extracted
-        from the source dataset, these fields are not saved.
+        from the underlying dataset, these fields are not saved.
+
+        This method **does not** delete patches from the underlying dataset
+        that this view excludes.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -226,13 +235,14 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_root(fields)
 
     def keep(self):
-        """Removes all patches that are **not** in this view from the
-        underlying source dataset.
+        """Deletes all patches that are **not** in this view from the
+        underlying dataset.
 
-        .. warning::
+        .. note::
 
-            This will permanently delete any omitted or filtered patches from
-            the source dataset.
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
         super().keep()
 

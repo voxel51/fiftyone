@@ -180,12 +180,18 @@ class ClipsView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Saves the clips in this view to the underlying source dataset.
+        """Saves the clips in this view to the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
             This will permanently delete any omitted or filtered contents from
-            the source dataset.
+            the frames of the underlying dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -199,12 +205,13 @@ class ClipsView(fov.DatasetView):
         super().save(fields=fields)
 
     def keep(self):
-        """Removes all clips that are **not** in this view from the underlying
-        source dataset.
+        """Deletes all clips that are **not** in this view from the underlying
+        dataset.
 
-        .. warning::
+        .. note::
 
-            This will permanently delete any omitted clips from the source
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
             dataset.
 
         Args:
