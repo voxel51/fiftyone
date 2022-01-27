@@ -49,7 +49,6 @@ async def get_metadata(filepath, metadata=None):
                     "height": height,
                     "frame_rate": frame_rate,
                 }
-            raise ValueError("E")
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
