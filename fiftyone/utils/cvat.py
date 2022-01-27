@@ -1349,7 +1349,7 @@ class CVATImage(object):
             an iterator that emits :class:`CVATImageAnno` instances
         """
         return itertools.chain(
-            self.boxes, self.polygons, self.polylines, self.points
+            self.boxes, self.polygons, self.polylines, self.points, self.tags
         )
 
     def get_image_metadata(self):
