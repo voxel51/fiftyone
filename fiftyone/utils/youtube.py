@@ -40,7 +40,6 @@ def download_youtube_videos(
 
         urls = ["https://www.youtube.com/watch?v=-0URMJE8_PB", ...]
 
-
     The corresponding `video_paths`, `clip_segments`, and `ext` argument can
     then contain a list of values matching the order of `urls`. The
     `clip_segments` argument expects tuples of ints or floats used to download
