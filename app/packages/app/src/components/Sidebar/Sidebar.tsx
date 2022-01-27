@@ -19,7 +19,8 @@ const fn = (
   currentOrder: string[],
   newOrder: string[],
   activeKey: string = null,
-  delta = 0
+  delta = 0,
+  lastTouched: string = null
 ) => {
   let groupActive = false;
   const currentY = {};
@@ -65,19 +66,23 @@ const fn = (
   let paths = 0;
 
   groupActive = false;
+  let groupRaised = false;
   for (const key of newOrder) {
     const {
       entry,
+      active,
       el,
       controller: { springs },
     } = items[key];
     if (entry.kind === EntryKind.GROUP) {
       groupActive = key === activeKey;
+      groupRaised = lastTouched === key;
       paths = 0;
     }
 
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
+    const raise = dragging || groupRaised || key === lastTouched;
 
     let shown = true;
 
@@ -91,11 +96,15 @@ const fn = (
     results[key] = {
       cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
-      zIndex: dragging ? 1 : 0,
+      zIndex: dragging || raise ? 1 : 0,
       scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
       left: shown ? 0 : -3000,
     };
+
+    if (active) {
+      results[key].immediate = (k) => ["left", "zIndex", "cursor"].includes(k);
+    }
 
     if (shown) {
       y += el.getBoundingClientRect().height / springs.scale.get() + MARGIN;
@@ -500,13 +509,17 @@ const InteractiveSidebar = ({
 
     return [...result, ...section, ...pool.slice(i)];
   };
+  const lastTouched = useRef<string>();
 
   const placeItems = useCallback(() => {
     requestAnimationFrame(() => {
       const { results: placements, minHeight } = fn(
         items.current,
         order.current,
-        order.current
+        order.current,
+        null,
+        0,
+        lastTouched.current
       );
 
       containerController.set({ maxHeight: minHeight });
@@ -536,6 +549,7 @@ const InteractiveSidebar = ({
 
         const newEntries = order.current.map((key) => items.current[key].entry);
 
+        lastTouched.current = down.current;
         down.current = null;
         start.current = null;
         lastDirection.current = null;

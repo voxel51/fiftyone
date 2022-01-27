@@ -133,6 +133,8 @@ const numGroupFieldsActive = selectorFamily<
   },
 });
 
+export const groupIds = {};
+
 export const useRenameGroup = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (newName: string) => {
@@ -159,6 +161,10 @@ export const useRenameGroup = (modal: boolean, group: string) => {
       const shown = await snapshot.getPromise(
         groupShown({ modal, name: group })
       );
+      groupIds[newName] = groupIds[group] || group;
+      if (groupIds[group]) {
+        delete groupIds[group];
+      }
       set(groupShown({ name: newName, modal }), shown);
       set(sidebarGroupsDefinition(modal), newGroups);
       !modal && persistGroups(dataset, view, newGroups);
