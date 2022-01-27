@@ -631,7 +631,8 @@ class ActivityNetDatasetManager(object):
         self, videos_dir, ids, samples_info, num_samples, num_workers
     ):
         download_ids = []
-        download_urls = {}
+        download_urls = []
+        download_paths = []
         url_id_map = {}
         for sample_id in ids:
             sample_info = samples_info[sample_id]
@@ -639,15 +640,16 @@ class ActivityNetDatasetManager(object):
             url_id_map[url] = sample_id
             sample_fn = "v_%s.mp4" % sample_id
             sample_fp = os.path.join(videos_dir, sample_fn)
-            download_urls[url] = sample_fp
+            download_urls.append(url)
+            download_paths.append(sample_fp)
 
         downloaded_urls, errors = fouy.download_youtube_videos(
             urls=download_urls,
+            video_paths=download_paths,
             max_videos=num_samples,
             num_workers=num_workers,
-            ext=".mp4",
         )
-        downloaded_ids = [url_id_map[url] for url in downloaded_urls]
+        downloaded_ids = [url_id_map[url] for url, path in downloaded_urls]
 
         return downloaded_ids, errors
 
@@ -692,14 +694,16 @@ class ActivityNetDatasetManager(object):
         else:
             prev_errors = {}
 
-        for e, videos in prev_errors.items():
-            if e in download_errors:
-                download_errors[e].extend(videos)
-                download_errors[e] = sorted(set(download_errors[e]))
+        for video, e in download_errors.items():
+            if e in prev_errors:
+                prev_errors[e].append(video)
             else:
-                download_errors[e] = videos
+                prev_errors[e] = [video]
 
-        etas.write_json(download_errors, error_path, pretty_print=True)
+        for e, videos in prev_errors.items():
+            prev_errors[e] = sorted(set(videos))
+
+        etas.write_json(prev_errors, error_path, pretty_print=True)
 
     def write_data_json(self, split):
         to_uuid = lambda p: os.path.splitext(p)[0]
