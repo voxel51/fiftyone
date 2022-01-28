@@ -110,6 +110,7 @@ const FiftyOneDiv = styled.div`
   font-size: 1.8rem;
   align-items: center;
   display: flex;
+  white-space: nowrap;
 `;
 
 const DatasetDiv = styled.div`
