@@ -384,6 +384,7 @@ class ActivityNetDatasetManager(object):
                 logger.info("Processing source directory '%s'...", item)
                 self._process_source_dir(item, source_dir, copy_files)
 
+        self.a100_info.update_existing_sample_ids()
         self.a200_info.update_existing_sample_ids()
 
     def _process_source_zip(self, zip_name, source_dir, copy_files):
