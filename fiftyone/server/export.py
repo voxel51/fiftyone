@@ -4,13 +4,17 @@ FiftyOne Server export.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import datetime
+
+import pytz
 import tornado
 
-import fiftyone.core.dataset as fod
-import fiftyone.core.state as fos
+import fiftyone.core.odm as foo
+import fiftyone.core.view as fov
 
-from fiftyone.server.state import catch_errors, StateHandler
+from fiftyone.server.state import catch_errors
 import fiftyone.server.utils as fosu
+import fiftyone.server.view as fosv
 
 
 class ExportHandler(fosu.AsyncRequestHandler):
@@ -27,5 +31,23 @@ class ExportHandler(fosu.AsyncRequestHandler):
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        await StateHandler.on_update(StateHandler, StateHandler.state)
-        return {}
+        now = datetime.now(pytz.utc)
+        datetime.strftime(now, "%Y-%m-%d %H:%M:%S")
+
+        self.set_header("Content-Type", "application/octet-stream")
+        self.set_header(
+            "Content-Disposition", f"attachment; filename={dataset}.csv"
+        )
+
+        collection = foo.get_async_db_conn()[
+            view._dataset._sample_collection_name
+        ]
+        pipeline = view._pipeline() + [{"$project": {"filepath": 1}}]
+
+        idx = 0
+        async for row in foo.aggregate(collection, pipeline):
+            self.write(f"{row['filepath']}\n")
+            idx += 1
+
+            if idx % 1000 == 0:
+                await self.flush()

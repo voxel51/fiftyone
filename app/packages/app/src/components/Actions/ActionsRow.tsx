@@ -9,6 +9,7 @@ import {
   Bookmark,
   Check,
   FlipToBack,
+  ArrowDownward,
   KeyboardArrowLeft,
   KeyboardArrowRight,
   LocalOffer,
@@ -26,6 +27,8 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
 import OptionsActions from "./Options";
 import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
 import Selector from "./Selected";
@@ -34,9 +37,11 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
 import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import Similar from "./Similar";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { http } from "../../shared/connection";
+import { formatDateTime } from "@fiftyone/utilities";
 
 const Loading = () => {
   const theme = useTheme();
@@ -50,6 +55,58 @@ const Loading = () => {
 const ActionDiv = styled.div`
   position: relative;
 `;
+
+const Export = () => {
+  const download = useRecoilCallback(
+    ({ snapshot }) => async () => {
+      const dataset = await snapshot.getPromise(selectors.datasetName);
+      const timeZone = await snapshot.getPromise(selectors.timeZone);
+      fetch(`${http}/export`, {
+        method: "POST",
+        cache: "no-cache",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "cors",
+        body: JSON.stringify({
+          filters: await snapshot.getPromise(filterAtoms.filters),
+          view: await snapshot.getPromise(viewAtoms.view),
+          dataset,
+          sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+        }),
+      })
+        .then((response) => response.blob())
+        .then((blob) => {
+          const url = window.URL.createObjectURL(new Blob([blob]));
+          const link = document.createElement("a");
+          link.style.display = "none";
+          link.href = url;
+          link.setAttribute(
+            "download",
+            `${dataset}-${formatDateTime(Date.now(), timeZone)
+              .replaceAll(":", "-")
+              .replaceAll(", ", "-")}.csv`
+          );
+          document.body.appendChild(link);
+          link.click();
+          link.parentNode.removeChild(link);
+        });
+    },
+    []
+  );
+
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={false}
+        icon={<ArrowDownward />}
+        onClick={download}
+        title={"Download a filepath CSV"}
+      />
+    </ActionDiv>
+  );
+};
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
@@ -358,6 +415,7 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
+      <Export />
     </ActionsRowDiv>
   );
 };

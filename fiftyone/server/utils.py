@@ -56,7 +56,12 @@ class AsyncRequestHandler(RequestHandler):
     """"Base class for Async HTTP request handlers"""
 
     async def get(self):
-        self.write(await self.get_response())
+        response = await self.get_response()
+
+        if response:
+            self.write(response)
+
+        self.flush()
 
     async def get_response(self):
         """Returns the serializable GET response
@@ -67,7 +72,12 @@ class AsyncRequestHandler(RequestHandler):
         raise NotImplementedError("subclass must implement get_response()")
 
     async def post(self):
-        self.write(await self.post_response())
+        response = await self.post_response()
+
+        if response:
+            self.write(response)
+
+        self.flush()
 
     async def post_response(self):
         """Returns the serializable POST response

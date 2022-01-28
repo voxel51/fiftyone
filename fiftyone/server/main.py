@@ -43,9 +43,9 @@ from fiftyone.server.aggregations import (
     TagAggregationsHandler,
 )
 from fiftyone.server.colorscales import ColorscalesHandler
+from fiftyone.server.export import ExportHandler
 import fiftyone.server.view as fosv
 from fiftyone.server.json_util import convert
-
 import fiftyone.server.metadata as fosm
 from fiftyone.server.notebook import NotebookHandler
 from fiftyone.server.sidebar import SidebarHandler
@@ -283,6 +283,7 @@ class Application(tornado.web.Application):
             (r"/aggregations", AggregationsHandler),
             (r"/colorscales", ColorscalesHandler),
             (r"/dataset", DatasetHandler),
+            (r"/export", ExportHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
             (r"/filepath/(.*)", MediaHandler, {"path": ""},),
