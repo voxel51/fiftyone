@@ -198,9 +198,12 @@ class FramesView(fov.DatasetView):
             it immediately writes the requested changes to the underlying
             dataset.
         """
-        super().keep()
 
+        # The `keep()` operation below will delete frames, so we must sync
+        # deletions to the source dataset first
         self._sync_source(update=False, delete=True)
+
+        super().keep()
 
     def reload(self):
         """Reloads this view from the source collection in the database.

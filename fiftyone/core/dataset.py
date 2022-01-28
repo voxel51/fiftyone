@@ -2151,10 +2151,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             return
 
-        # Clips datasets directly use their source dataset's frame collection,
-        # so don't delete frames
         if self._is_clips:
-            return
+            if sample_ids is not None:
+                view = self.select(sample_ids)
+            elif frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
 
         if frame_ids is not None:
             self._frame_collection.delete_many(
@@ -2183,10 +2187,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             return
 
-        # Clips datasets directly use their source dataset's frame collection,
-        # so don't delete frames
         if self._is_clips:
-            return
+            if frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
 
         if frame_ids is not None:
             self._frame_collection.delete_many(

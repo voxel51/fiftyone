@@ -199,15 +199,20 @@ class PatchesTests(unittest.TestCase):
 
         view3.save()
 
+        self.assertEqual(view.count(), 6)
+        self.assertEqual(dataset.count("ground_truth.detections"), 6)
+        self.assertIn("CAT", view.count_values("ground_truth.label"))
+        self.assertIn(
+            "CAT", dataset.count_values("ground_truth.detections.label")
+        )
+
+        view3.keep()
+
         self.assertEqual(view.count(), 2)
         self.assertEqual(dataset.count("ground_truth.detections"), 2)
         self.assertNotIn("cat", view.count_values("ground_truth.label"))
-        self.assertEqual(view.count_values("ground_truth.label")["CAT"], 1)
         self.assertNotIn(
             "cat", dataset.count_values("ground_truth.detections.label")
-        )
-        self.assertEqual(
-            dataset.count_values("ground_truth.detections.label")["CAT"], 1
         )
 
         sample = view.first()
@@ -441,6 +446,17 @@ class PatchesTests(unittest.TestCase):
         )
 
         view3.save()
+
+        self.assertEqual(view.count(), 4)
+        self.assertEqual(dataset.count("ground_truth.detections"), 3)
+        self.assertIn(
+            "CAT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "CAT", dataset.count_values("ground_truth.detections.label")
+        )
+
+        view3.keep()
 
         self.assertEqual(view.count(), 1)
         self.assertEqual(dataset.count("ground_truth.detections"), 1)

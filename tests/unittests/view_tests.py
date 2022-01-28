@@ -178,7 +178,6 @@ class DatasetViewTests(unittest.TestCase):
 
 class ViewFieldTests(unittest.TestCase):
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -203,7 +202,6 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNotNone(sample2.predictions.field)
 
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -281,16 +279,6 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNotNone(sample1["high_conf"])
         self.assertIsNone(sample2["low_conf"])
         self.assertIsNone(sample2["high_conf"])
-
-        save_view = high_conf_view.exclude_fields(
-            ["low_conf", "high_conf"]
-        ).limit(1)
-        save_view.save()
-        schema = dataset.get_field_schema()
-        self.assertTrue(len(dataset), 1)
-        self.assertNotIn("low_conf", schema)
-        self.assertNotIn("high_conf", schema)
-        self.assertEqual(len(sample1["predictions"].detections), 2)
 
 
 class ViewExpressionTests(unittest.TestCase):
@@ -979,6 +967,84 @@ class SetValuesTests(unittest.TestCase):
         _dataset_labels = self.dataset.values("detections.detections.label")
         self.assertListEqual(
             _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+        )
+
+
+class ViewSaveTest(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="test1.png",
+                    int_field=1,
+                    classifications=fo.Classifications(
+                        classifications=[fo.Classification(label="cat")]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="test2.png",
+                    int_field=2,
+                    classifications=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="test3.png",
+                    int_field=3,
+                    classifications=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel"),
+                            fo.Classification(label="frog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="test4.png"),
+            ]
+        )
+
+    def test_view_save(self):
+        view = self.dataset.limit(2).set_field("int_field", F("int_field") + 1)
+        view.save()
+
+        self.assertListEqual(self.dataset.values("int_field"), [2, 3, 3, None])
+
+        view = self.dataset.filter_labels(
+            "classifications", F("label") == "cat", only_matches=False
+        ).set_field("int_field", None)
+        view.save(fields="classifications")
+
+        self.assertEqual(len(self.dataset), 4)
+        self.assertListEqual(
+            self.dataset.distinct("classifications.classifications.label"),
+            ["cat"],
+        )
+        self.assertEqual(len(self.dataset.exists("int_field")), 3)
+
+        view.save()
+        self.assertEqual(len(self.dataset), 4)
+        self.assertEqual(len(self.dataset.exists("int_field")), 0)
+
+    def test_view_keep(self):
+        view = self.dataset.limit(3)
+        view.keep()
+
+        self.assertEqual(len(self.dataset), 3)
+        self.assertEqual(len(self.dataset.exists("int_field")), 3)
+
+        view = self.dataset.filter_labels(
+            "classifications", F("label") == "cat"
+        )
+        view.keep()
+
+        self.assertListEqual(
+            self.dataset.values("classifications.classifications.label"),
+            [["cat"], ["cat", "dog"]],
         )
 
 

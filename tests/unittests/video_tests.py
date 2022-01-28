@@ -1313,6 +1313,19 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
+        self.assertEqual(len(view), 4)
+        self.assertEqual(dataset.count("events.detections"), 4)
+        self.assertIn("MEETING", view.count_values("events.label"))
+        self.assertIn("PARTY", view.count_values("events.label"))
+        self.assertIn(
+            "MEETING", dataset.count_values("events.detections.label")
+        )
+        self.assertIn("PARTY", dataset.count_values("events.detections.label"))
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().id)
+
+        view2.keep()
+
         self.assertEqual(len(view), 2)
         self.assertEqual(dataset.count("events.detections"), 2)
         self.assertDictEqual(
@@ -1577,8 +1590,28 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
+        self.assertEqual(len(view), 9)
+        self.assertEqual(dataset.values(F("frames").length()), [3, 3])
+        self.assertIn(
+            "DOG", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "DOG", dataset.count_values("frames.ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        view2.keep()
+
         self.assertEqual(len(view), 5)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
@@ -1834,8 +1867,28 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
+        self.assertEqual(len(view), 9)
+        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
+        self.assertIn(
+            "DOG", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "DOG", dataset.count_values("frames.ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        view2.keep()
+
         self.assertEqual(len(view), 5)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
@@ -2089,6 +2142,24 @@ class VideoTests(unittest.TestCase):
 
         view3.save()
 
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(frames.count(), 9)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(frames.count("ground_truth.detections"), 4)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertIn(
+            "RABBIT", frames.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.keep()
+
         self.assertEqual(patches.count(), 2)
         self.assertEqual(frames.count(), 9)
         self.assertEqual(dataset.count(), 2)
@@ -2272,6 +2343,19 @@ class VideoTests(unittest.TestCase):
         )
 
         view3.save()
+
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.keep()
 
         self.assertEqual(patches.count(), 2)
         self.assertEqual(dataset.count(), 2)

@@ -276,9 +276,9 @@ class ClipsView(fov.DatasetView):
         else:
             sync_view = self
 
-        del_ids = set()
         update_ids = []
         update_docs = []
+        del_ids = set()
         for label_id, sample_id, support, doc in zip(
             *sync_view.values(["id", "sample_id", "support", field], _raw=True)
         ):
@@ -298,13 +298,13 @@ class ClipsView(fov.DatasetView):
                 if sample_id not in observed_ids:
                     del_ids.add(label_id)
 
+        if update:
+            self._source_collection._set_labels(field, update_ids, update_docs)
+
         if del_ids:
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
-
-        if update:
-            self._source_collection._set_labels(field, update_ids, update_docs)
 
 
 def make_clips_dataset(
