@@ -2208,7 +2208,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view is None:
             return
 
-        sample_ids, frame_numbers = view.values(["id", "frames.frame_numbers"])
+        sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
 
         ops = []
         for sample_id, fns in zip(sample_ids, frame_numbers):

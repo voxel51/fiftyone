@@ -1049,6 +1049,39 @@ class ViewSaveTest(unittest.TestCase):
             [["cat"], ["cat", "dog"]],
         )
 
+    def test_view_keep_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        frame11 = fo.Frame()
+        frame12 = fo.Frame()
+
+        sample1.frames[1] = frame11
+        sample1.frames[2] = frame12
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        frame21 = fo.Frame()
+        frame22 = fo.Frame()
+
+        sample2.frames[1] = frame21
+        sample2.frames[2] = frame22
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.limit(1).match_frames(F("frame_number") == 1)
+
+        self.assertEqual(dataset.count("frames"), 4)
+        self.assertEqual(view.count("frames"), 1)
+
+        view.keep_frames()
+
+        self.assertEqual(dataset.count("frames"), 3)
+        self.assertEqual(view.count("frames"), 1)
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True), [1, 1, 2]
+        )
+        self.assertIsNone(frame12.id)
+        self.assertIsNotNone(frame22.id)
+
 
 class ViewStageTests(unittest.TestCase):
     @drop_datasets
