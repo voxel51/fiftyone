@@ -170,7 +170,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         it.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
+            sample_or_frame: a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.frame.Frame`
             eval_key (None): the evaluation key for this evaluation
 

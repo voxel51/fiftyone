@@ -81,15 +81,17 @@ version of the dataset.
 
 .. note::
 
-    Check out :ref:`this guide <activitynet>` for more details on using FiftyOne to
-    work with ActivityNet.
+    Check out :ref:`this guide <activitynet>` for more details on using
+    FiftyOne to work with ActivityNet.
 
 **Notes**
 
--   ActivityNet-100 and -200 differ in the number of activity classes and videos
-    per split
--   Most videos can be downloaded from YouTube, missing videos can be accessed
-    from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+-   ActivityNet-100 and -200 differ in the number of activity classes and
+    videos per split
+-   Partial downloads will download videos (if still available) from YouTube
+-   Full splits can be loaded by first downloading the official source files
+    from the
+    `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
 -   The test set does not have annotations
 
 **Details**
@@ -108,34 +110,12 @@ version of the dataset.
 -   Test split: 2,480 videos (labels withheld)
 -   Validation split: 2,383 videos (3,582 instances)
 
-**Full dataset download**
-
-Many videos have been removed from YouTube since the creation of ActivityNet.
-Due to this, if you do not specify any partial download parameters 
-`classes`, `max_duration`, or `max_samples` (defined below), then it
-is means that the entire split is requested. 
-In this case, you are required to manually download the entire
-dataset.
-
-In order to manually download the entire source dataset, you must fill out 
-`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
-which will give you access to the dataset through Google Drive
-for 7 days.
-
-If you have downloaded the entire source dataset, then use the `source_dir`
-parameter to avoid downloading videos from YouTube when calling
-:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
-
--   **source_dir** (*None*): the directory containing the manually downloaded
-    ActivityNet files used to avoid downloading videos from YouTube
-
-
 **Partial downloads**
 
 FiftyOne provides parameters that can be used to efficiently download specific
-subsets of the ActivityNet dataset to suit your needs. When new subsets are specified,
-FiftyOne will use existing downloaded data first if possible before resorting
-to downloading additional data from YouTube.
+subsets of the ActivityNet dataset to suit your needs. When new subsets are
+specified, FiftyOne will use existing downloaded data first if possible before
+resorting to downloading additional data from YouTube.
 
 The following parameters are available to configure a partial download of
 ActivityNet-100 by passing them to
@@ -149,31 +129,30 @@ ActivityNet-100 by passing them to
 -   **source_dir** (*None*): the directory containing the manually downloaded
     ActivityNet files used to avoid downloading videos from YouTube
 
--   **classes** (*None*): a string or list of strings specifying required classes
-    to load. If provided, only samples containing at least one instance
+-   **classes** (*None*): a string or list of strings specifying required
+    classes to load. If provided, only samples containing at least one instance
     of a specified class will be loaded
 
 -   **max_duration** (*None*): only videos with a duration in seconds that is
-    less than or equal to the `max_duration` will be downloaded. By
-    default, all videos are downloaded
+    less than or equal to the `max_duration` will be downloaded. By default,
+    all videos are downloaded
 
 -   **copy_files** (*True*): whether to move (False) or create copies (True) of
-    the source files when populating ``dataset_dir``. This is only
-    relevant when a ``source_dir`` is provided
+    the source files when populating ``dataset_dir``. This is only relevant
+    when a ``source_dir`` is provided
 
 -   **num_workers** (*None*): the number of processes to use when downloading
-    individual videos. By default, ``multiprocessing.cpu_count()`` is
-    used
+    individual videos. By default, ``multiprocessing.cpu_count()`` is used
 
--   **shuffle** (*False*): whether to randomly shuffle the order in which samples
-    are chosen for partial downloads
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
 
 -   **seed** (*None*): a random seed to use when shuffling
 
 -   **max_samples** (*None*): a maximum number of samples to load per split. If
-    ``classes`` are also specified, only up to the number of samples
-    that contain at least one specified class will be loaded.
-    By default, all matching samples are loaded
+    ``classes`` are also specified, only up to the number of samples that
+    contain at least one specified class will be loaded. By default, all
+    matching samples are loaded
 
 .. note::
 
@@ -182,6 +161,20 @@ ActivityNet-100 by passing them to
     :class:`ActivityNetDatasetImporter <fiftyone.utils.activitynet.ActivityNetDatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
     pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
+**Full split downloads**
+
+Many videos have been removed from YouTube since the creation of ActivityNet.
+As a result, if you do not specify any partial download parameters defined in
+the previous section, you must first download the official source files from
+the ActivityNet maintainers in order to load a full split into FiftyOne.
+
+To download the source files, you must fill out
+`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to load
+full splits by passing the `source_dir` parameter to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
 **Example usage**
 
@@ -198,7 +191,7 @@ ActivityNet-100 by passing them to
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
     
         dataset = foz.load_zoo_dataset(
@@ -241,13 +234,12 @@ ActivityNet-100 by passing them to
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
 
         fiftyone zoo datasets load activitynet-100 \
             --split validation \
-            --kwargs \
-                max_samples=10
+            --kwargs max_samples=10
 
         fiftyone app launch activitynet-100-validation-10
 
@@ -293,16 +285,18 @@ version of the dataset.
 
 .. note::
 
-    Check out :ref:`this guide <activitynet>` for more details on using FiftyOne to
-    work with ActivityNet.
+    Check out :ref:`this guide <activitynet>` for more details on using
+    FiftyOne to work with ActivityNet.
 
 **Notes**
 
--   ActivityNet-100 and -200 differ in the number of activity classes and videos
-    per split
 -   ActivityNet-200 is a superset of ActivityNet-100 videos
--   Most videos can be downloaded from YouTube, missing videos can be accessed
-    from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+-   ActivityNet-100 and -200 differ in the number of activity classes and
+    videos per split
+-   Partial downloads will download videos (if still available) from YouTube
+-   Full splits can be loaded by first downloading the official source files
+    from the
+    `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
 -   The test set does not have annotations
 
 **Details**
@@ -321,31 +315,12 @@ version of the dataset.
 -   Test split: 5,044 videos (labels withheld)
 -   Validation split: 4,926 videos (7,654 instances)
 
-**Full dataset download**
-
-Many videos have been removed from YouTube since the creation of ActivityNet.
-Due to this, if you do not specify any partial download parameters defined in
-the next section, then you are required to manually download the entire
-dataset.
-
-In order to manually download the entire source dataset, you must fill out 
-`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
-which will give you access to the dataset through Google Drive
-for 7 days.
-
-If you have downloaded the entire source dataset, then use the `source_dir`
-parameter to avoid downloading videos from YouTube when calling
-:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
-
--   **source_dir** (*None*): the directory containing the manually downloaded
-    ActivityNet files used to avoid downloading videos from YouTube
-
 **Partial downloads**
 
 FiftyOne provides parameters that can be used to efficiently download specific
-subsets of the ActivityNet dataset to suit your needs. When new subsets are specified,
-FiftyOne will use existing downloaded data first if possible before resorting
-to downloading additional data from YouTube.
+subsets of the ActivityNet dataset to suit your needs. When new subsets are
+specified, FiftyOne will use existing downloaded data first if possible before
+resorting to downloading additional data from YouTube.
 
 The following parameters are available to configure a partial download of
 ActivityNet-200 by passing them to
@@ -359,31 +334,30 @@ ActivityNet-200 by passing them to
 -   **source_dir** (*None*): the directory containing the manually downloaded
     ActivityNet files used to avoid downloading videos from YouTube
 
--   **classes** (*None*): a string or list of strings specifying required classes
-    to load. If provided, only samples containing at least one instance
+-   **classes** (*None*): a string or list of strings specifying required
+    classes to load. If provided, only samples containing at least one instance
     of a specified class will be loaded
 
 -   **max_duration** (*None*): only videos with a duration in seconds that is
-    less than or equal to the `max_duration` will be downloaded. By
-    default, all videos are downloaded
+    less than or equal to the `max_duration` will be downloaded. By default,
+    all videos are downloaded
 
 -   **copy_files** (*True*): whether to move (False) or create copies (True) of
-    the source files when populating ``dataset_dir``. This is only
-    relevant when a ``source_dir`` is provided
+    the source files when populating ``dataset_dir``. This is only relevant
+    when a ``source_dir`` is provided
 
 -   **num_workers** (*None*): the number of processes to use when downloading
-    individual videos. By default, ``multiprocessing.cpu_count()`` is
-    used
+    individual videos. By default, ``multiprocessing.cpu_count()`` is used
 
--   **shuffle** (*False*): whether to randomly shuffle the order in which samples
-    are chosen for partial downloads
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
 
 -   **seed** (*None*): a random seed to use when shuffling
 
 -   **max_samples** (*None*): a maximum number of samples to load per split. If
-    ``classes`` are also specified, only up to the number of samples
-    that contain at least one specified class will be loaded.
-    By default, all matching samples are loaded
+    ``classes`` are also specified, only up to the number of samples that
+    contain at least one specified class will be loaded. By default, all
+    matching samples are loaded
 
 .. note::
 
@@ -392,6 +366,20 @@ ActivityNet-200 by passing them to
     :class:`ActivityNetDatasetImporter <fiftyone.utils.activitynet.ActivityNetDatasetImporter>`
     for complete descriptions of the optional keyword arguments that you can
     pass to :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
+**Full split downloads**
+
+Many videos have been removed from YouTube since the creation of ActivityNet.
+As a result, if you do not specify any partial download parameters defined in
+the previous section, you must first download the official source files from
+the ActivityNet maintainers in order to load a full split into FiftyOne.
+
+To download the source files, you must fill out
+`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to load
+full splits by passing the `source_dir` parameter to
+:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
 **Example usage**
 
@@ -408,7 +396,7 @@ ActivityNet-200 by passing them to
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
     
         dataset = foz.load_zoo_dataset(
@@ -451,13 +439,12 @@ ActivityNet-200 by passing them to
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
 
         fiftyone zoo datasets load activitynet-200 \
             --split validation \
-            --kwargs \
-                max_samples=10
+            --kwargs max_samples=10
 
         fiftyone app launch activitynet-200-validation-10
 
@@ -483,7 +470,6 @@ ActivityNet-200 by passing them to
                 max_samples=10
 
         fiftyone app launch activitynet-100-validation-10
-
 
 .. image:: /images/dataset_zoo/activitynet-200-validation.png
    :alt: activitynet-200-validation

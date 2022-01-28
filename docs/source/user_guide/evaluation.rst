@@ -38,8 +38,8 @@ FiftyOne's evaluation methods are conveniently exposed as methods on all
 datasets or specific views into them via the same syntax.
 
 Let's illustrate the basic workflow by loading the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo and
-analyzing the object detections in its `predictions` field using the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` and analyzing the object
+detections in its `predictions` field using the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method:
 
@@ -255,8 +255,8 @@ which can take any value supported by
 :class:`SimpleEvaluationConfig <fiftyone.utils.eval.regression.SimpleEvaluationConfig>`.
 
 The example below demonstrates simple evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo with
-some fake regression data added to it to demonstrate the workflow:
+:ref:`quickstart dataset <dataset-zoo-quickstart>` with some fake regression
+data added to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -370,8 +370,8 @@ be populated on each sample that records whether that sample's prediction is
 correct.
 
 The example below demonstrates simple evaluation on the
-:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
-fake predictions added to it to demonstrate the workflow:
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` with some fake predictions added
+to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -562,8 +562,8 @@ false positive, true negative, or false negative.
     :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`.
 
 The example below demonstrates binary evaluation on the
-:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
-fake binary predictions added to it to demonstrate the workflow:
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` with some fake binary predictions
+added to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -683,11 +683,8 @@ method supports all of the following task types:
 The only difference between each task type is in how the IoU between objects is
 calculated. Specifically, for instance segmentations and polygons, IoUs are
 computed between the polgyonal shapes rather than their rectangular bounding
-boxes. For temporal detections, IoU is computed between the 1-D support of two
-temporal segments rather than the 2-D spatial objects of the other types.
-
-For temporal detection tasks, the ground truth and predicted objects should be
-stored in |TemporalDetections| format. 
+boxes. For temporal detections, IoU is computed between the 1D support of two
+temporal segments.
 
 For object detection tasks, the ground truth and predicted objects should be
 stored in |Detections| format.
@@ -715,6 +712,8 @@ polylines).
     ``use_boxes=True`` to
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
 
+For temporal detection tasks, the ground truth and predicted objects should be
+stored in |TemporalDetections| format.
 
 .. _evaluation-patches:
 
@@ -756,7 +755,7 @@ field if the evaluation protocol defines a crowd attribute.
 
 The example below demonstrates loading an evaluation patches view for the
 results of an evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -910,7 +909,7 @@ Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
 The example below demonstrates COCO-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -1139,7 +1138,7 @@ Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
 The example below demonstrates Open Images-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -1316,10 +1315,11 @@ When running ActivityNet-style evaluation using
     threshold (default = 0.50). This threshold can be customized via the
     ``iou`` parameter
 
--   By default, only segments with the same ``label`` will be matched. Classwise
-    matching can be disabled via the ``classwise`` parameter
+-   By default, only segments with the same ``label`` will be matched.
+    Classwise matching can be disabled by passing ``classwise=False``
 
--   As with COCO, an range of IoU values are used to compute mAP
+-   mAP is computed by averaging over the same range of IoU values
+    :ref:`used by COCO <coco-map>`
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth segments:
@@ -1331,9 +1331,9 @@ populated on each sample and its predicted/ground truth segments:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual temporal detection segment;
-    these fields tabulate the TP/FP/FN status of the segment, the ID of the
-    matching segment (if any), and the matching IoU::
+-   The fields listed below are populated on each individual temporal detection
+    segment; these fields tabulate the TP/FP/FN status of the segment, the ID
+    of the matching segment (if any), and the matching IoU::
 
         TP/FP/FN: segment.<eval_key>
               ID: segment.<eval_key>_id
@@ -1349,8 +1349,8 @@ populated on each sample and its predicted/ground truth segments:
 Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
-The example below demonstrates ActivityNet-style temporal detection evaluation on the
-:ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>` from the Dataset Zoo:
+The example below demonstrates ActivityNet-style temporal detection evaluation
+on the :ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>`:
 
 .. code-block:: python
     :linenos:
@@ -1361,23 +1361,8 @@ The example below demonstrates ActivityNet-style temporal detection evaluation o
 
     import random
 
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -1386,8 +1371,19 @@ The example below demonstrates ActivityNet-style temporal detection evaluation o
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Evaluate the segments in the `predictions` field with respect to the
     # segments in the `ground_truth` field
@@ -1446,28 +1442,13 @@ for your segments by passing the ``compute_mAP=True`` flag to
 .. code-block:: python
     :linenos:
 
+    import random
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    import random
-
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -1476,8 +1457,19 @@ for your segments by passing the ``compute_mAP=True`` flag to
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Performs an IoU sweep so that mAP and PR curves can be computed
     results = dataset.evaluate_detections(
@@ -1493,7 +1485,6 @@ for your segments by passing the ``compute_mAP=True`` flag to
     plot = results.plot_pr_curves(classes=classes)
     plot.show()
 
-
 .. image:: /images/evaluation/activitynet_pr_curves.png
    :alt: activitynet-pr-curves
    :align: center
@@ -1506,35 +1497,20 @@ the results of ActivityNet-style evaluations.
 
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
-:class:`classwise <fiftyone.utils.eval.coco.ActivityNetEvaluationConfig>` parameter
-to ``False`` during evaluation so that predicted segments can be matched with
-ground truth segments of different classes.
+:class:`classwise <fiftyone.utils.eval.coco.ActivityNetEvaluationConfig>`
+parameter to ``False`` during evaluation so that predicted segments can be
+matched with ground truth segments of different classes.
 
 .. code-block:: python
     :linenos:
 
+    import random
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    import random
-
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Grooming dog", "Grooming horse", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -1543,8 +1519,19 @@ ground truth segments of different classes.
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Perform evaluation, allowing objects to be matched between classes
     results = dataset.evaluate_detections(
@@ -1564,7 +1551,6 @@ ground truth segments of different classes.
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
     :ref:`interactive plotting features <interactive-plots>`!
-
 
 .. _evaluating-segmentations:
 

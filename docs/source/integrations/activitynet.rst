@@ -5,9 +5,8 @@ ActivityNet Integration
 
 .. default-role:: code
 
-We've endeavored to make it easy to download, visualize, and evaluate on the 
-`ActivityNet dataset <http://activity-net.org/index.html>`_
-natively in FiftyOne!
+With FiftyOne, you can easily download, visualize, and evaluate on the
+`ActivityNet dataset <http://activity-net.org/index.html>`_!
 
 .. image:: /images/dataset_zoo/activitynet-200-validation.png
    :alt: activitynet-200-validation
@@ -47,13 +46,14 @@ and load an ActivityNet split into FiftyOne:
     to only store one copy of every video on disk. Videos in the
     ActivityNet-100 zoo directory are used directly by ActivityNet-200.
 
+.. _activitynet-partial-downloads:
 
 Partial Downloads
 -----------------
 
 In addition, FiftyOne provides parameters that can be used to efficiently
-download specific subsets of the ActivityNet dataset, allowing you to quickly explore
-different slices of the dataset without downloading the entire split.
+download specific subsets of the ActivityNet dataset, allowing you to quickly
+explore different slices of the dataset without downloading the entire split.
 
 When performing partial downloads, FiftyOne will use existing downloaded data
 first if possible before resorting to downloading additional data from YouTube.
@@ -84,10 +84,10 @@ first if possible before resorting to downloading additional data from YouTube.
     # contain the actions "Bathing dog" and "Walking the dog"
     # with a maximum duration of 20 seconds
     #
-    # Videos that contain all `classes` will be prioritized first, followed
-    # by videos that contain at least one of the required `classes`. If
-    # there are not enough videos matching `classes` in the split to meet
-    # `max_samples`, only the available videos will be loaded.
+    # Videos that contain all ``classes`` will be prioritized first, followed
+    # by videos that contain at least one of the required ``classes``. If
+    # there are not enough videos matching ``classes`` in the split to meet
+    # ``max_samples``, only the available videos will be loaded.
     #
     # Videos will only be downloaded if necessary
     #
@@ -114,49 +114,44 @@ ActivityNet-100 and ActivityNet-200 by passing them to
 -   **source_dir** (*None*): the directory containing the manually downloaded
     ActivityNet files used to avoid downloading videos from YouTube
 
--   **classes** (*None*): a string or list of strings specifying required classes
-    to load. If provided, only samples containing at least one instance
+-   **classes** (*None*): a string or list of strings specifying required
+    classes to load. If provided, only samples containing at least one instance
     of a specified class will be loaded
 
 -   **max_duration** (*None*): only videos with a duration in seconds that is
-    less than or equal to the `max_duration` will be downloaded. By
-    default, all videos are downloaded
+    less than or equal to the ``max_duration`` will be downloaded. By default,
+    all videos are downloaded
 
 -   **copy_files** (*True*): whether to move (False) or create copies (True) of
-    the source files when populating ``dataset_dir``. This is only
-    relevant when a ``source_dir`` is provided
+    the source files when populating ``dataset_dir``. This is only applicable
+    when a ``source_dir`` is provided
 
 -   **num_workers** (*None*): the number of processes to use when downloading
-    individual videos. By default, ``multiprocessing.cpu_count()`` is
-    used
+    individual videos. By default, ``multiprocessing.cpu_count()`` is used
 
--   **shuffle** (*False*): whether to randomly shuffle the order in which samples
-    are chosen for partial downloads
+-   **shuffle** (*False*): whether to randomly shuffle the order in which
+    samples are chosen for partial downloads
 
 -   **seed** (*None*): a random seed to use when shuffling
 
 -   **max_samples** (*None*): a maximum number of samples to load per split. If
-    ``classes`` are also specified, only up to the number of samples
-    that contain at least one specified class will be loaded.
-    By default, all matching samples are loaded
+    ``classes`` are also specified, only up to the number of samples that
+    contain at least one specified class will be loaded. By default, all
+    matching samples are loaded
 
+.. _activitynet-full-split-downloads:
 
 Full Split Downloads
 --------------------
 
 Many videos have been removed from YouTube since the creation of ActivityNet.
-Due to this, if you do not specify any partial download parameters 
-`classes`, `max_duration`, or `max_samples` (defined above), then it
-is means that the entire split is requested. 
-In this case, you are required to manually download the entire
-dataset.
+As a result, you must first download the official source files from the
+ActivityNet maintainers in order to load a full split into FiftyOne.
 
-In order to manually download the entire source dataset, you must fill out 
-`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
-which will give you access to the dataset through Google Drive
-for 7 days.
+To download the source files, you must fill out
+`this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
 
-After downloading the full dataset, it can be loaded into FiftyOne:
+After downloading the source files, they can be loaded into FiftyOne like so:
 
 .. code-block:: python
     :linenos:
@@ -171,14 +166,11 @@ After downloading the full dataset, it can be loaded into FiftyOne:
 
     session = fo.launch_app(dataset)
 
-
-The contents of the `source_dir` is expected to contain the data directly
-downloaded from the source. This includes either the zip files
-or the unzipped contents of these files in the following format:
+where ``source_dir`` contains the source files in the following format:
 
 .. code-block:: text
    
-    \source_dir
+    source_dir/
         missing_files.zip
         missing_files_v1-2_test.zip
         missing_files_v1-3_test.zip
@@ -188,43 +180,47 @@ or the unzipped contents of these files in the following format:
         v1-3_test.tar.gz
         v1-3_train_val.tar.gz
 
-        \v1-2
-            \train
+If you have already decompressed the archives, that is okay too:
+
+.. code-block:: text
+
+    source_dir/
+        missing_files/
+            v_<id>.<ext>
+            ...
+        missing_files_v1-2_test/
+            v_<id>.<ext>
+            ...
+        missing_files_v_1-3_test/
+            v_<id>.<ext>
+            ...
+        v1-2/
+            train/
                 v_<id>.<ext>
                 ...
-            \val
+            val/
                 ...
-            \test
+            test/
                 ...
-
-        \v1-3
-            \train_val
+        v1-3/
+            train_val/
                 v_<id>.<ext>
                 ...
-            \test
+            test/
                 ...
 
-        \missing_files
-            v_<id>.<ext>
+If you are only interested in loading specific splits into FiftyOne, the files
+for the other splits do not need to be present.
 
-        \missing_files_v1-2_test
-            v_<id>.<ext>
+.. note::
 
-        \missing_files_v_1-3_test
-            v_<id>.<ext>
-        
-Not all of the above zips or directories are required to be present. Any zip files will
-be unzipped by a call to 
-:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+    When :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
+    is called with the ``source_dir`` parameter, the contents are copied (or
+    moved, if ``copy_files=False``) into the zoo dataset's backing directory.
 
-
-Once :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
-is called with the `source_dir` parameter, all contents will attempt to be moved
-or copied to the FiftyOne Dataset Zoo backing directory depending on the value
-of the `copy_files` parameter. All future calls to 
-:func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
-will not require `source_dir` any longer since the files are in the backing
-directory. 
+    Therefore, future use of the loaded dataset or future calls to
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
+    will not require the ``source_dir`` parameter.
 
 .. _activitynet-evaluation:
 
@@ -235,9 +231,9 @@ The :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.eva
 method provides builtin support for running
 `ActivityNet-style evaluation <https://github.com/activitynet/ActivityNet/tree/master/Evaluation>`_.
 
-ActivityNet-style evaluation is the default for |TemporalDetections| labels,
-but it can still be explicitly requested by setting the ``method`` parameter to
-``actvitynet``.
+ActivityNet-style evaluation is the default method when evaluating
+|TemporalDetections| labels, but you can also explicitly request it by setting
+the ``method`` parameter to ``"actvitynet"``.
 
 .. note::
 
@@ -256,9 +252,10 @@ When running ActivityNet-style evaluation using
     ``iou`` parameter
 
 -   By default, only segments with the same ``label`` will be matched. Classwise
-    matching can be disabled via the ``classwise`` parameter
+    matching can be disabled by passing ``classwise=False``
 
--   As with COCO, an range of IoU values are used to compute mAP
+-   mAP is computed by averaging over the same range of IoU values
+    :ref:`used by COCO <coco-map>`
 
 When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth segments:
@@ -270,9 +267,9 @@ populated on each sample and its predicted/ground truth segments:
         FP: sample.<eval_key>_fp
         FN: sample.<eval_key>_fn
 
--   The fields listed below are populated on each individual temporal detection segment;
-    these fields tabulate the TP/FP/FN status of the segment, the ID of the
-    matching segment (if any), and the matching IoU::
+-   The fields listed below are populated on each individual temporal detection
+    segment; these fields tabulate the TP/FP/FN status of the segment, the ID
+    of the matching segment (if any), and the matching IoU::
 
         TP/FP/FN: segment.<eval_key>
               ID: segment.<eval_key>_id
@@ -288,35 +285,20 @@ populated on each sample and its predicted/ground truth segments:
 Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
-The example below demonstrates ActivityNet-style temporal detection evaluation on the
-:ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>` from the Dataset Zoo:
+The example below demonstrates ActivityNet-style temporal detection evaluation
+on the :ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>`:
 
 .. code-block:: python
     :linenos:
+
+    import random
 
     import fiftyone as fo
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
-    import random
-
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -325,8 +307,19 @@ The example below demonstrates ActivityNet-style temporal detection evaluation o
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Evaluate the segments in the `predictions` field with respect to the
     # segments in the `ground_truth` field
@@ -385,28 +378,13 @@ for your segments by passing the ``compute_mAP=True`` flag to
 .. code-block:: python
     :linenos:
 
+    import random
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    import random
-
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -415,8 +393,19 @@ for your segments by passing the ``compute_mAP=True`` flag to
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Performs an IoU sweep so that mAP and PR curves can be computed
     results = dataset.evaluate_detections(
@@ -444,35 +433,20 @@ the results of ActivityNet-style evaluations.
 
 In order for the confusion matrix to capture anything other than false
 positive/negative counts, you will likely want to set the
-:class:`classwise <fiftyone.utils.eval.coco.ActivityNetEvaluationConfig>` parameter
-to ``False`` during evaluation so that predicted segments can be matched with
-ground truth segments of different classes.
+:class:`classwise <fiftyone.utils.eval.coco.ActivityNetEvaluationConfig>`
+parameter to ``False`` during evaluation so that predicted segments can be
+matched with ground truth segments of different classes.
 
 .. code-block:: python
     :linenos:
 
+    import random
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    import random
-
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        random.seed(51)
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
-
-    # Download subset of ActivityNet 200
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Grooming dog", "Grooming horse", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -481,8 +455,19 @@ ground truth segments of different classes.
     )
     print(dataset)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
 
     # Perform evaluation, allowing objects to be matched between classes
     results = dataset.evaluate_detections(
@@ -530,9 +515,8 @@ official ActivityNet evaluation protocol on some mock model predictions:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Download subset of ActivityNet 200 from the zoo
+    # Load subset of ActivityNet 200
     classes = ["Bathing dog", "Walking the dog"]
-
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -540,23 +524,21 @@ official ActivityNet evaluation protocol on some mock model predictions:
         max_samples=10,
     )
 
-    # Generate fake predictions for this example
-    def add_predictions(dataset, classes):
-        dataset.clone_sample_field("ground_truth", "predictions")
-        for sample in dataset:
-            for det in sample.predictions.detections:
-                det.support[0] -= random.randint(-10,10)
-                det.support[1] -= random.randint(-10,10)
-                det.support[0] = max(1, det.support[0])
-                det.support[1] = max(1, det.support[1])
-                det.confidence = random.random()
-                det.label = random.choice(classes) 
-            sample.save()
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
 
-    # Add model predictions to the dataset 
-    add_predictions(dataset, classes)
+        sample.save()
 
-    # Evaluate your predictions via the official ActivityNet protocol
+    # Evaluate predictions via the official ActivityNet protocol
     results = dataset.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
@@ -571,7 +553,6 @@ official ActivityNet evaluation protocol on some mock model predictions:
     Check out :doc:`this recipe </recipes/adding_detections>` to learn how to
     add your model's predictions to a FiftyOne Dataset.
 
-
 .. _activitynet-map:
 
 mAP protocol
@@ -579,21 +560,21 @@ ____________
 
 The ActivityNet mAP protocol is similar to :ref:`COCO-style mAP <coco-map>`,
 with the primary difference being a different IoU computation using temporal
-segments, a lack of crowds, and the way interpolation of
-precision values is handled.
+segments, a lack of crowds, and the way interpolation of precision values is
+handled.
 
 The steps to compute ActivityNet-style mAP are detailed below.
 
 **Preprocessing**
 
-- Filter ground truth and predicted segments by class
-  (unless ``classwise=False``)
+-   Filter ground truth and predicted segments by class (unless
+    ``classwise=False``)
 
-- Sort predicted segments by confidence score so high confidence segments are
-  matched first
+-   Sort predicted segments by confidence score so high confidence segments are
+    matched first
 
-- Compute IoU between every ground truth and predicted segment within the same
-  class (and between classes if `classwise=False`) in each video 
+-   Compute IoU between every ground truth and predicted segment within the
+    same class (and between classes if ``classwise=False``) in each video
 
 **Matching**
 
@@ -601,8 +582,8 @@ Once IoUs have been computed, predictions and ground truth segments are matched
 to compute true positives, false positives, and false negatives:
 
 -   For each class, start with the highest confidence prediction, match it to
-    the ground truth segment that it overlaps with the highest IoU. A prediction
-    only matches if the IoU is above the specified ``iou`` threshold
+    the ground truth segment that it overlaps with the highest IoU. A
+    prediction only matches if the IoU is above the specified ``iou`` threshold
 
 -   If a prediction maximally overlaps with a ground truth segment that has
     already been matched (by a higher confidence prediction), the prediction is
@@ -613,8 +594,7 @@ to compute true positives, false positives, and false negatives:
 -   Compute matches for 10 IoU thresholds from 0.5 to 0.95 in increments of
     0.05
 
--   The next 6 steps are computed separately for each
-    class and IoU threshold:
+-   The next 6 steps are computed separately for each class and IoU threshold:
 
 -   Construct a boolean array of true positives and false positives, sorted
     by confidence
@@ -622,19 +602,19 @@ to compute true positives, false positives, and false negatives:
 -   Compute the cumlative sum of the true positive and false positive array
 
 -   Compute precision by elementwise dividing the TP-FP-sum array by the total
-    number of predictions up to that point (e.g. `range(1, len(TP-FP-sum)+1)`)
+    number of predictions up to that point
 
 -   Compute recall by elementwise dividing TP-FP-sum array by the number of
     ground truth segments for the class
 
 -   Ensure that precision is a non-increasing array
 
--   (Unlike COCO) DO NOT interpolate precision values onto an 101 evenly spaced recall values. 
-    In FiftyOne, this step is performed anyway with the results stored separately
-    for the purpose of plotting PR curves. It is not factored into mAP
-    calculation
+-   (Unlike COCO) DO NOT interpolate precision values onto an 101 evenly spaced
+    recall values.  In FiftyOne, this step is performed anyway with the results
+    stored separately for the purpose of plotting PR curves. It is not factored
+    into mAP calculation
 
--   For every class that contains at least one ground truth segment, compute the
-    average precision (AP) by averaging the precision values over all 10 IoU
-    thresholds. Then compute mAP by averaging the per-class AP values over all
-    classes
+-   For every class that contains at least one ground truth segment, compute
+    the average precision (AP) by averaging the precision values over all 10
+    IoU thresholds. Then compute mAP by averaging the per-class AP values over
+    all classes

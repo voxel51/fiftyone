@@ -50,17 +50,20 @@ def evaluate_detections(
         format
 
     For spatial object detection evaluation, this method uses COCO-style
-    evaluation by default. For temporal segment detection, this method uses
-    ActivityNet-style evaluation by default. You can use the
-    ``method`` parameter to select a different method, and you can optionally
-    customize the method by passing additional parameters for the method's
-    config class as ``kwargs``.
+    evaluation by default.
+
+    For temporal segment detection, this method uses ActivityNet-style
+    evaluation by default.
+
+    You can use the ``method`` parameter to select a different method, and you
+    can optionally customize the method by passing additional parameters for
+    the method's config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 
-    -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
     -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
     -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
+    -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
 
     If an ``eval_key`` is provided, a number of fields are populated at the
     object- and sample-level recording the results of the evaluation:
@@ -79,9 +82,9 @@ def evaluate_detections(
             FP: frame.<eval_key>_fp
             FN: frame.<eval_key>_fn
 
-    -   The fields listed below are populated on each individual object/segment; these
-        fields tabulate the TP/FP/FN status of the object/segment, the ID of the
-        matching object/segment (if any), and the matching IoU::
+    -   The fields listed below are populated on each individual object; these
+        fields tabulate the TP/FP/FN status of the object, the ID of the
+        matching object (if any), and the matching IoU::
 
             TP/FP/FN: object.<eval_key>
                   ID: object.<eval_key>_id
@@ -100,14 +103,15 @@ def evaluate_detections(
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, classes
             are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-            possible, or else the observed ground truth/predicted labels are
-            used
-        missing (None): a missing label string. Any unmatched objects/segments
-            are given this label for results purposes
+            :meth:`fiftyone.core.dataset.Dataset.default_classes` if possible,
+            or else the observed ground truth/predicted labels are used
+        missing (None): a missing label string. Any unmatched objects are given
+            this label for results purposes
         method (None): a string specifying the evaluation method to use.
-            Supported values are ``("coco", "open-images")`` for spatial object
-            detection and ``("activitynet")`` for temporal segment detection
+            For spatial object detection, the supported values are
+            ``("coco", "open-images")`` and the default is ``"coco"``. For
+            temporal segment detection, the supported values are
+            ``("activitynet")`` and the default is ``"activitynet"``
         iou (0.50): the IoU threshold to use to determine matches
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
@@ -115,7 +119,7 @@ def evaluate_detections(
         use_boxes (False): whether to compute IoUs using the bounding boxes
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
-        classwise (True): whether to only match objects/segments with the same class
+        classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
@@ -130,32 +134,23 @@ def evaluate_detections(
         same_type=True,
     )
 
-    if _is_temporal_detections(samples, gt_field):
-        fov.validate_video_collection(samples)
-        is_temporal = True
-        config = _parse_config(
-            pred_field,
-            gt_field,
-            method,
-            is_temporal,
-            iou=iou,
-            classwise=classwise,
-            **kwargs,
-        )
+    label_type = samples._get_label_field_type(gt_field)
+    is_temporal = issubclass(label_type, fol.TemporalDetections)
 
+    if is_temporal:
+        fov.validate_video_collection(samples)
     else:
-        is_temporal = False
-        config = _parse_config(
-            pred_field,
-            gt_field,
-            method,
-            is_temporal,
-            iou=iou,
-            use_masks=use_masks,
-            use_boxes=use_boxes,
-            classwise=classwise,
-            **kwargs,
-        )
+        kwargs.update(dict(use_masks=use_masks, use_boxes=use_boxes))
+
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        is_temporal,
+        iou=iou,
+        classwise=classwise,
+        **kwargs,
+    )
 
     if classes is None:
         if pred_field in samples.classes:
@@ -171,10 +166,10 @@ def evaluate_detections(
     eval_method.register_run(samples, eval_key)
     eval_method.register_samples(samples)
 
-    if not config.requires_additional_fields:
-        _samples = samples.select_fields([gt_field, pred_field])
-    else:
+    if config.requires_additional_fields:
         _samples = samples
+    else:
+        _samples = samples.select_fields([gt_field, pred_field])
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -198,27 +193,25 @@ def evaluate_detections(
     logger.info("Evaluating detections...")
     for sample in _samples.iter_samples(progress=True):
         if processing_frames:
-            images_or_videos = sample.frames.values()
+            docs = sample.frames.values()
         else:
-            images_or_videos = [sample]
+            docs = [sample]
 
         sample_tp = 0
         sample_fp = 0
         sample_fn = 0
-        for image_or_video in images_or_videos:
-            instance_matches = eval_method.evaluate(
-                image_or_video, eval_key=eval_key
-            )
-            matches.extend(instance_matches)
-            tp, fp, fn = _tally_matches(instance_matches)
+        for doc in docs:
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
             sample_tp += tp
             sample_fp += fp
             sample_fn += fn
 
             if processing_frames and eval_key is not None:
-                image_or_video[tp_field] = tp
-                image_or_video[fp_field] = fp
-                image_or_video[fn_field] = fn
+                doc[tp_field] = tp
+                doc[fp_field] = fp
+                doc[fn_field] = fn
 
         if eval_key is not None:
             sample[tp_field] = sample_tp
@@ -354,13 +347,11 @@ class DetectionEvaluation(foe.EvaluationMethod):
             self.config.pred_field
         )
 
-    def evaluate(self, sample_or_frame, eval_key=None):
-        """Evaluates the ground truth and predicted objects/segments in an
-        image or video.
+    def evaluate(self, doc, eval_key=None):
+        """Evaluates the ground truth and predictions in the given document.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
-                :class:`fiftyone.core.frame.Frame`
+            doc: a :class:`fiftyone.core.document.Document`
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
@@ -620,22 +611,3 @@ def _tally_matches(matches):
             tp += 1
 
     return tp, fp, fn
-
-
-def _is_temporal_detections(sample_collection, field_name):
-    schema = sample_collection.get_field_schema()
-
-    if field_name not in schema:
-        return False
-
-    field = schema[field_name]
-
-    try:
-        label_type = field.document_type
-    except:
-        label_type = field
-
-    if label_type == fol.TemporalDetections:
-        return True
-    else:
-        return False

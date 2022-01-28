@@ -36,23 +36,26 @@ class FiftyOneDataset(fozd.ZooDataset):
 
 
 class ActivityNet100Dataset(FiftyOneDataset):
-    """ActivityNet is a large-scale video dataset for human activity understanding
-    supporting the tasks of global video classification, trimmed activity
-    classification, and temporal activity detection.
-    
-    This version contains videos and temporal activity detections for the 100 class
-    version of the dataset.
-    
+    """ActivityNet is a large-scale video dataset for human activity
+    understanding supporting the tasks of global video classification, trimmed
+    activity classification, and temporal activity detection.
+
+    This version contains videos and temporal activity detections for the 100
+    class version of the dataset.
+
     Notes:
-    
-    -   ActivityNet-100 and -200 differ in the number of activity classes and videos
-        per split
-    -   Most videos can be downloaded from YouTube, missing videos can be accessed
-        from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+
+    -   ActivityNet-100 and -200 differ in the number of activity classes and
+        videos per split
+    -   Partial downloads will download videos (if still available) from
+        YouTube
+    -   Full splits can be loaded by first downloading the official source
+        files from the
+        `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
     -   The test set does not have annotations
-    
+
     Full split stats:
-    
+
     -   Train split: 4,819 videos (7,151 instances)
     -   Test split: 2,480 videos (labels withheld)
     -   Validation split: 2,383 videos (3,582 instances)
@@ -61,38 +64,42 @@ class ActivityNet100Dataset(FiftyOneDataset):
 
     -   You can specify subsets of data to download via the ``max_duration``,
         ``classes``, and ``max_samples`` parameters
-    
-    Full dataset download:
-    
-    In order to manually download the entire source dataset, you must fill out 
-    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
-    which will give you access to the dataset through Google Drive
-    for 7 days.
-    
-    If you have downloaded the entire source dataset, then use the `source_dir`
-    parameter to avoid downloading videos from YouTube when calling
-    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
-    
+
+    Full split downloads:
+
+    Many videos have been removed from YouTube since the creation of
+    ActivityNet. As a result, if you do not specify any partial download
+    parameters described below, you must first download the official source
+    files from the ActivityNet maintainers in order to load a full split into
+    FiftyOne.
+
+    To download the source files, you must fill out
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+    Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to
+    load full splits by passing the ``source_dir`` parameter to
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "activitynet-100",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "Bathing dog" and "Walking the dog"
@@ -107,14 +114,14 @@ class ActivityNet100Dataset(FiftyOneDataset):
         # Subsequent partial loads of the validation split will never require
         # downloading any videos 
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "activitynet-100",
             split="validation",
             classes=["Bathing dog", "Walking the dog"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
@@ -130,7 +137,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
         max_duration (None): only videos with a duration in seconds that is
-            less than or equal to the `max_duration` will be downloaded. By
+            less than or equal to the ``max_duration`` will be downloaded. By
             default, all videos are downloaded
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
@@ -143,8 +150,8 @@ class ActivityNet100Dataset(FiftyOneDataset):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
     """
 
     def __init__(
@@ -208,21 +215,25 @@ class ActivityNet100Dataset(FiftyOneDataset):
 
 
 class ActivityNet200Dataset(FiftyOneDataset):
-    """ActivityNet is a large-scale video dataset for human activity understanding
-    supporting the tasks of global video classification, trimmed activity
-    classification, and temporal activity detection.
-    
-    This version contains videos and temporal activity detections for the 200 class
-    version of the dataset.
-    
+    """ActivityNet is a large-scale video dataset for human activity
+    understanding supporting the tasks of global video classification, trimmed
+    activity classification, and temporal activity detection.
+
+    This version contains videos and temporal activity detections for the 200
+    class version of the dataset.
+
     Notes:
-    
-    -   ActivityNet-100 and -200 differ in the number of activity classes and videos
-        per split
-    -   Most videos can be downloaded from YouTube, missing videos can be accessed
-        from the `dataset maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_  
+
+    -   ActivityNet-200 is a superset of ActivityNet-100 videos
+    -   ActivityNet-100 and -200 differ in the number of activity classes and
+        videos per split
+    -   Partial downloads will download videos (if still available) from
+        YouTube
+    -   Full splits can be loaded by first downloading the official source
+        files from the
+        `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
     -   The test set does not have annotations
-    
+
     Full split stats:
 
     -   Train split: 10,024 videos (15,410 instances)
@@ -233,38 +244,42 @@ class ActivityNet200Dataset(FiftyOneDataset):
 
     -   You can specify subsets of data to download via the ``max_duration``,
         ``classes``, and ``max_samples`` parameters
-    
-    Full dataset download:
-    
-    In order to manually download the entire source dataset, you must fill out 
-    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
-    which will give you access to the dataset through Google Drive
-    for 7 days.
-    
-    If you have downloaded the entire source dataset, then use the `source_dir`
-    parameter to avoid downloading videos from YouTube when calling
-    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`
-    
+
+    Full split downloads:
+
+    Many videos have been removed from YouTube since the creation of
+    ActivityNet. As a result, if you do not specify any partial download
+    parameters described below, you must first download the official source
+    files from the ActivityNet maintainers in order to load a full split into
+    FiftyOne.
+
+    To download the source files, you must fill out
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+    Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to
+    load full splits by passing the ``source_dir`` parameter to
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
-        # Only the required videos will be downloaded (if necessary).
+        # Only the required videos will be downloaded (if necessary)
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "activitynet-200",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "Bathing dog" and "Walking the dog"
@@ -279,14 +294,14 @@ class ActivityNet200Dataset(FiftyOneDataset):
         # Subsequent partial loads of the validation split will never require
         # downloading any videos 
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "activitynet-200",
             split="validation",
             classes=["Bathing dog", "Walking the dog"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
@@ -1872,8 +1887,8 @@ class UCF101Dataset(FiftyOneDataset):
 
 
 AVAILABLE_DATASETS = {
-    "activitynet-200": ActivityNet200Dataset,
     "activitynet-100": ActivityNet100Dataset,
+    "activitynet-200": ActivityNet200Dataset,
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,

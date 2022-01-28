@@ -1904,92 +1904,97 @@ class SampleCollection(object):
     ):
         """Evaluates the specified predicted detections in this collection with
         respect to the specified ground truth detections.
-    
+
         This method supports evaluating the following spatial data types:
-    
+
         -   Object detections in :class:`fiftyone.core.labels.Detections` format
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
-        -   Temporal detections in :class:`fiftyone.core.labels.TemporalDetections`
-            format
-    
+        -   Temporal detections in
+            :class:`fiftyone.core.labels.TemporalDetections` format
+
         For spatial object detection evaluation, this method uses COCO-style
-        evaluation by default. For temporal segment detection, this method uses
-        ActivityNet-style evaluation by default. You can use the
-        ``method`` parameter to select a different method, and you can optionally
-        customize the method by passing additional parameters for the method's
-        config class as ``kwargs``.
-    
+        evaluation by default.
+
+        For temporal segment detection, this method uses ActivityNet-style
+        evaluation by default.
+
+        You can use the ``method`` parameter to select a different method, and
+        you can optionally customize the method by passing additional
+        parameters for the method's config class as ``kwargs``.
+
         The supported ``method`` values and their associated configs are:
-    
-        -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
+
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
-    
+        -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
+
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
-    
-        -   True positive (TP), false positive (FP), and false negative (FN) counts
-            for the each sample are saved in top-level fields of each sample::
-    
+
+        -   True positive (TP), false positive (FP), and false negative (FN)
+            counts for the each sample are saved in top-level fields of each
+            sample::
+
                 TP: sample.<eval_key>_tp
                 FP: sample.<eval_key>_fp
                 FN: sample.<eval_key>_fn
-    
-            In addition, when evaluating frame-level objects, TP/FP/FN counts are
-            recorded for each frame::
-    
+
+            In addition, when evaluating frame-level objects, TP/FP/FN counts
+            are recorded for each frame::
+
                 TP: frame.<eval_key>_tp
                 FP: frame.<eval_key>_fp
                 FN: frame.<eval_key>_fn
-    
-        -   The fields listed below are populated on each individual object/segment; these
-            fields tabulate the TP/FP/FN status of the object/segment, the ID of the
-            matching object/segment (if any), and the matching IoU::
-    
+
+        -   The fields listed below are populated on each individual object;
+            these fields tabulate the TP/FP/FN status of the object, the ID of
+            the matching object (if any), and the matching IoU::
+
                 TP/FP/FN: object.<eval_key>
                       ID: object.<eval_key>_id
                      IoU: object.<eval_key>_iou
-    
+
         Args:
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
-            gt_field ("ground_truth"): the name of the field containing the ground
-                truth :class:`fiftyone.core.labels.Detections`,
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
-            eval_key (None): an evaluation key to use to refer to this evaluation
-            classes (None): the list of possible classes. If not provided, classes
-                are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
+            eval_key (None): a string key to use to refer to this evaluation
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
                 :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels are
-                used
-            missing (None): a missing label string. Any unmatched objects/segments
-                are given this label for results purposes
+                possible, or else the observed ground truth/predicted labels
+                are used
+            missing (None): a missing label string. Any unmatched objects are
+                given this label for results purposes
             method (None): a string specifying the evaluation method to use.
-                Supported values are ``("coco", "open-images")`` for spatial object
-                detection and ``("activitynet")`` for temporal segment detection
+                For spatial object detection, the supported values are
+                ``("coco", "open-images")`` and the default is ``"coco"``. For
+                temporal detection, the supported values are
+                ``("activitynet")`` and the default is ``"activitynet"``
             iou (0.50): the IoU threshold to use to determine matches
-            use_masks (False): whether to compute IoUs using the instances masks in
-                the ``mask`` attribute of the provided objects, which must be
-                :class:`fiftyone.core.labels.Detection` instances
+            use_masks (False): whether to compute IoUs using the instances
+                masks in the ``mask`` attribute of the provided objects, which
+                must be :class:`fiftyone.core.labels.Detection` instances
             use_boxes (False): whether to compute IoUs using the bounding boxes
-                of the provided :class:`fiftyone.core.labels.Polyline` instances
-                rather than using their actual geometries
-            classwise (True): whether to only match objects/segments with the same class
+                of the provided :class:`fiftyone.core.labels.Polyline`
+                instances rather than using their actual geometries
+            classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
-
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
-    
+
         Returns:
             a :class:`fiftyone.utils.eval.detection.DetectionResults`
         """
-
         return foue.evaluate_detections(
             self,
             pred_field,
@@ -2077,59 +2082,6 @@ class SampleCollection(object):
             eval_key=eval_key,
             mask_targets=mask_targets,
             method=method,
-            **kwargs,
-        )
-
-    def evaluate_temporal_detections(
-        self,
-        pred_field,
-        gt_field="ground_truth",
-        eval_key=None,
-        classes=None,
-        missing=None,
-        method="activitynet",
-        iou=0.50,
-        classwise=True,
-        **kwargs,
-    ):
-        """Evaluates the temporal detection predictions in the given collection with
-        respect to the specified ground truth labels. These labels are often used
-        for tasks like temporal action detection.
-    
-        Args:
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.TemporalDetection` instances
-            gt_field ("ground_truth"): the name of the field containing the ground
-                truth :class:`fiftyone.core.labels.TemporalDetection` instances
-            eval_key (None): an evaluation key to use to refer to this evaluation
-            classes (None): the list of possible classes. If not provided, classes
-                are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
-                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels are
-                used
-            missing (None): a missing label string. Any None-valued labels are
-                given this label for results purposes
-            method ("activitynet"): a string specifying the evaluation method to use.
-                Supported values are ``("activitynet")``
-            iou (0.50): the IoU threshold to use to determine segment matches
-            classwise (True): whether to only match segments with the same class
-                label (True) or allow matches between classes (False)
-            **kwargs: optional keyword arguments for the constructor of the
-                :class:`TemporalDetectionEvaluationConfig` being used
-    
-        Returns:
-            a :class:`TemporalDetectionResults`
-        """
-        return foue.evaluate_temporal_detections(
-            self,
-            pred_field,
-            gt_field=gt_field,
-            eval_key=eval_key,
-            classes=classes,
-            missing=missing,
-            method=method,
-            iou=iou,
-            classwise=classwise,
             **kwargs,
         )
 
