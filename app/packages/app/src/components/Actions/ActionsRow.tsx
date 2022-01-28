@@ -61,7 +61,8 @@ const Export = () => {
     ({ snapshot }) => async () => {
       const dataset = await snapshot.getPromise(selectors.datasetName);
       const timeZone = await snapshot.getPromise(selectors.timeZone);
-      fetch(`${http}/export`, {
+      const sample_ids = await snapshot.getPromise(atoms.selectedSamples);
+      const response = await fetch(`${http}/export`, {
         method: "POST",
         cache: "no-cache",
         headers: {
@@ -72,25 +73,28 @@ const Export = () => {
           filters: await snapshot.getPromise(filterAtoms.filters),
           view: await snapshot.getPromise(viewAtoms.view),
           dataset,
-          sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+          sample_ids: [...sample_ids],
         }),
-      })
-        .then((response) => response.blob())
-        .then((blob) => {
-          const url = window.URL.createObjectURL(new Blob([blob]));
-          const link = document.createElement("a");
-          link.style.display = "none";
-          link.href = url;
-          link.setAttribute(
-            "download",
-            `${dataset}-${formatDateTime(Date.now(), timeZone)
-              .replaceAll(":", "-")
-              .replaceAll(", ", "-")}.csv`
-          );
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode.removeChild(link);
-        });
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.style.display = "none";
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `${dataset}-${formatDateTime(Date.now(), timeZone)
+          .replaceAll(":", "-")
+          .replaceAll(", ", "-")}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
     },
     []
   );
