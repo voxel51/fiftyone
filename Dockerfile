@@ -68,6 +68,7 @@ RUN apt -y update \
         python${PYTHON_VERSION}-distutils \
         ffmpeg \
     && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
+    && ln -s /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python \
     && curl https://bootstrap.pypa.io/get-pip.py | python \
     && rm -rf /var/lib/apt/lists/*
 
@@ -116,4 +117,4 @@ ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
 CMD ipython
 
 # Use this if you want the default behavior to instead be to launch the App
-# CMD python /usr/local/lib/python${PYTHON_VERSION}/site-packages/fiftyone/server/main.py --port 5151
+# CMD python /usr/local/lib/python/dist-packages/fiftyone/server/main.py --port 5151
