@@ -1,5 +1,13 @@
-import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 import { atom, atomFamily } from "recoil";
+
+import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+
+import { State } from "./types";
+
+export const connected = atom<boolean>({
+  key: "connected",
+  default: true,
+});
 
 interface AppSample extends Sample {
   _id: string;
@@ -17,6 +25,11 @@ interface ModalSample extends SampleData {
   index: number;
   getIndex: (index: number) => void;
 }
+
+export const sidebarWidth = atomFamily<number, boolean>({
+  key: "sidebarWidth",
+  default: 300,
+});
 
 export const modal = atom<ModalSample | null>({
   key: "modal",
@@ -46,44 +59,33 @@ export const fullscreen = atom<boolean>({
   default: false,
 });
 
-export const connected = atom({
-  key: "connected",
-  default: false,
-});
-
-export const closeTeams = atom({
-  key: "closeTeams",
-  default: null,
-});
-
-export const teamsSubmitted = atom({
-  key: "teamsSubmitted",
+export const teams = atom({
+  key: "teams",
   default: {
+    open: false,
     submitted: false,
     minimized: false,
   },
 });
 
+export const IMAGE_FILTERS = {
+  brightness: {
+    default: 100,
+    bounds: [0, 200],
+  },
+};
+
+export const imageFilters = atomFamily<
+  number,
+  { modal: boolean; filter: string }
+>({
+  key: "imageFilters",
+  default: ({ filter }) => IMAGE_FILTERS[filter].default,
+});
+
 export const activePlot = atom({
   key: "activePlot",
   default: "labels",
-});
-
-export const datasetStatsRaw = atom({
-  key: "datasetStatsRaw",
-  default: {
-    view: null,
-    stats: [],
-  },
-});
-
-export const extendedDatasetStatsRaw = atom({
-  key: "extendedDatasetStatsRaw",
-  default: {
-    view: null,
-    stats: [],
-    filters: null,
-  },
 });
 
 export const loading = atom({
@@ -98,9 +100,9 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom({
+export const stateDescription = atom<State.Description>({
   key: "stateDescription",
-  default: {},
+  default: null,
 });
 
 export const selectedSamples = atom<Set<string>>({
@@ -108,21 +110,7 @@ export const selectedSamples = atom<Set<string>>({
   default: new Set(),
 });
 
-export interface SelectedLabelData {
-  sample_id: string;
-  field: string;
-  frame_number?: number;
-}
-
-export interface SelectedLabel extends SelectedLabelData {
-  label_id: string;
-}
-
-export type SelectedLabelMap = {
-  [label_id: string]: SelectedLabelData;
-};
-
-export const hiddenLabels = atom<SelectedLabelMap>({
+export const hiddenLabels = atom<State.SelectedLabelMap>({
   key: "hiddenLabels",
   default: {},
 });
@@ -132,7 +120,7 @@ export const stageInfo = atom({
   default: undefined,
 });
 
-export const sidebarVisible = atom({
+export const sidebarVisible = atomFamily<boolean, boolean>({
   key: "sidebarVisible",
   default: true,
 });

@@ -1,69 +1,96 @@
 import React, { useState, useRef, Suspense } from "react";
-import { useRecoilCallback } from "recoil";
-import { ErrorBoundary } from "react-error-boundary";
-import NotificationHub from "../components/NotificationHub";
+import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
+import { ErrorBoundary, useErrorHandler } from "react-error-boundary";
 
+import { toCamelCase } from "@fiftyone/utilities";
+
+import { patching } from "../components/Actions/Patcher";
+import { similaritySorting } from "../components/Actions/Similar";
+import { savingFilters } from "../components/Actions/ActionsRow";
 import Header from "../components/Header";
-import Dataset from "./Dataset";
+import TeamsForm from "../components/TeamsForm";
 
+import * as aggregationAtoms from "../recoil/aggregations";
+import * as atoms from "../recoil/atoms";
+import * as filterAtoms from "../recoil/filters";
+import { State } from "../recoil/types";
+import { useClearModal } from "../recoil/utils";
+import * as viewAtoms from "../recoil/view";
+import socket, { handleId, isNotebook } from "../shared/connection";
 import {
   useEventHandler,
   useMessageHandler,
   useSendMessage,
 } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
-import socket, { handleId, isNotebook } from "../shared/connection";
+import { viewsAreEqual } from "../utils/view";
 
-import Error from "./Error";
+import Dataset from "./Dataset";
+import ErrorPage from "./Error";
+import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
+import Loading from "../components/Loading";
 import Setup from "./Setup";
-import "../app.global.css";
-import { patching } from "../components/Actions/Patcher";
-import { similaritySorting } from "../components/Actions/Similar";
-import { savingFilters } from "../components/Actions/ActionsRow";
-import { useClearModal } from "../recoil/utils";
 
 const useStateUpdate = () => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async ({ state }) => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => async ({ state: { filters, ...data } }) => {
+      const state = toCamelCase(data) as State.Description;
+      state.view = data.view;
       const newSamples = new Set<string>(state.selected);
-      const counter = await snapshot.getPromise(atoms.viewCounter);
+      const counter = get(atoms.viewCounter);
+      const view = get(viewAtoms.view);
+
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
       set(atoms.selectedSamples, newSamples);
-      set(atoms.stateDescription, state);
-      set(selectors.anyTagging, false);
+
+      [true, false].forEach((i) =>
+        [true, false].forEach((j) =>
+          set(atoms.tagging({ modal: i, labels: j }), false)
+        )
+      );
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
-
-      const colorPool = await snapshot.getPromise(atoms.colorPool);
-      if (
-        JSON.stringify(state.config.color_pool) !== JSON.stringify(colorPool)
-      ) {
-        set(atoms.colorPool, state.config.color_pool);
+      if (!viewsAreEqual(view, state.view || [])) {
+        set(viewAtoms.view, state.view || []);
+        set(filterAtoms.filters, {});
       }
-    },
-    []
-  );
-};
 
-const useStatisticsUpdate = () => {
-  return useRecoilCallback(
-    ({ set }) => async ({ stats, view, extended, filters }) => {
-      extended && set(atoms.extendedDatasetStatsRaw, { stats, view, filters });
-      !extended && set(atoms.datasetStatsRaw, { stats, view });
-    },
-    []
-  );
-};
+      if (state.dataset) {
+        state.dataset.brainMethods = Object.values(
+          state.dataset.brainMethods || {}
+        );
+        state.dataset.evaluations = Object.values(
+          state.dataset.evaluations || {}
+        );
 
-const useOpen = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async () => {
-      set(atoms.loading, true);
-      const loading = await snapshot.getPromise(atoms.loading);
-      !loading && set(atoms.connected, true);
+        state.dataset.annotationRuns = Object.values(
+          state.dataset.annotationRuns || {}
+        );
+        const groups = resolveGroups(state.dataset);
+        const current = get(sidebarGroupsDefinition(false));
+
+        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+          set(sidebarGroupsDefinition(false), groups);
+          set(
+            aggregationAtoms.aggregationsTick,
+            get(aggregationAtoms.aggregationsTick) + 1
+          );
+        }
+      }
+
+      const colorPool = get(atoms.colorPool);
+      if (
+        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+      ) {
+        set(atoms.colorPool, state.config.colorPool);
+      }
+      set(atoms.connected, true);
+
+      set(atoms.stateDescription, {
+        ...state,
+        filters: filters as State.Filters,
+      } as State.Description);
     },
     []
   );
@@ -71,46 +98,62 @@ const useOpen = () => {
 
 const useClose = () => {
   const clearModal = useClearModal();
-  return useRecoilCallback(
+  return useRecoilTransaction_UNSTABLE(
     ({ reset, set }) => async () => {
       clearModal();
       set(atoms.connected, false);
-
       reset(atoms.stateDescription);
     },
     []
   );
 };
 
-function App() {
+const Container = () => {
   const addNotification = useRef(null);
-  const [reset, setReset] = useState(false);
-
-  useMessageHandler("statistics", useStatisticsUpdate());
-  useEventHandler(socket, "open", useOpen());
+  const connected = useRecoilValue(atoms.connected);
 
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useStateUpdate());
 
-  useMessageHandler("notification", (data) => addNotification.current(data));
   useSendMessage("as_app", {
     notebook: isNotebook,
     handle: handleId,
   });
 
+  const handleError = useErrorHandler();
+
+  useMessageHandler("error", (data) => {
+    handleError(data);
+  });
+  const { open: teamsOpen } = useRecoilValue(atoms.teams);
+
+  return (
+    <>
+      <Header addNotification={addNotification} />
+      {connected ? (
+        <Suspense fallback={<Loading text={"Loading..."} />}>
+          <Dataset />
+        </Suspense>
+      ) : (
+        <Setup />
+      )}
+      {teamsOpen && <TeamsForm />}
+    </>
+  );
+};
+
+const App = () => {
+  const [reset, setReset] = useState(false);
+
   return (
     <ErrorBoundary
-      FallbackComponent={Error}
+      FallbackComponent={ErrorPage}
       onReset={() => setReset(true)}
       resetKeys={[reset]}
     >
-      <Header addNotification={addNotification} />
-      <Suspense fallback={<Setup />}>
-        <Dataset />
-      </Suspense>
-      <NotificationHub children={(add) => (addNotification.current = add)} />
+      <Container />
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

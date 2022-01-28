@@ -1,69 +1,145 @@
-import React from "react";
-import { useRecoilState } from "recoil";
+import React, { useCallback } from "react";
+import { useRecoilValue } from "recoil";
+import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import FieldsSidebar from "../components/FieldsSidebar";
+import FieldsSidebar, {
+  EntryKind,
+  Entries,
+  SidebarEntry,
+  useTagText,
+  disabledPaths,
+} from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
-import ViewBar from "../components/ViewBar/ViewBar";
-import { scrollbarStyles } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
-
-const SidebarContainer = styled.div`
-  display: block;
-  height: 100%;
-  width 286px;
-  padding-left: 1rem;
-  overflow: visible;
-`;
-
-const SidebarColumn = styled.div`
-  max-height: 100%;
-  height: 100%;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  scrollbar-color: ${({ theme }) => theme.fontDarkest}
-    ${({ theme }) => theme.background};
-
-  ${scrollbarStyles}
-`;
+import { State } from "../recoil/types";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
   width: 1px;
+  position: relative;
+  padding-left: 1rem;
 `;
+
 const Container = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
   overflow: hidden;
+  background: ${({ theme }) => theme.backgroundDark};
 `;
 
 const SamplesContainer = React.memo(() => {
-  const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
+  const tagText = useTagText(false);
+  const showSidebar = useRecoilValue(atoms.sidebarVisible(false));
+  const disabled = useRecoilValue(disabledPaths);
+
+  const renderGridEntry = useCallback(
+    (
+      key: string,
+      group: string,
+      entry: SidebarEntry,
+      controller: Controller
+    ) => {
+      switch (entry.kind) {
+        case EntryKind.PATH:
+          const isTag = entry.path.startsWith("tags.");
+          const isLabelTag = entry.path.startsWith("_label_tags.");
+
+          return {
+            children:
+              isTag || isLabelTag ? (
+                <Entries.FilterableTag
+                  modal={false}
+                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                  tag={entry.path.split(".").slice(1).join(".")}
+                  key={key}
+                />
+              ) : (
+                <Entries.FilterablePath
+                  modal={false}
+                  path={entry.path}
+                  group={group}
+                  disabled={disabled.has(entry.path)}
+                  onFocus={() => {
+                    controller.set({ zIndex: "1" });
+                  }}
+                  onBlur={() => {
+                    controller.set({ zIndex: "0" });
+                  }}
+                  key={key}
+                />
+              ),
+            disabled: isTag || isLabelTag || disabled.has(entry.path),
+          };
+        case EntryKind.GROUP:
+          const isTags = entry.name === "tags";
+          const isLabelTags = entry.name === "label tags";
+
+          return {
+            children:
+              isTags || isLabelTags ? (
+                <Entries.TagGroup
+                  tagKey={
+                    isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                  }
+                  modal={false}
+                  key={key}
+                />
+              ) : (
+                <Entries.PathGroup
+                  name={entry.name}
+                  modal={false}
+                  mutable={entry.name !== "other"}
+                  key={key}
+                />
+              ),
+            disabled: false,
+          };
+        case EntryKind.INPUT:
+          return {
+            children:
+              entry.type === "add" ? (
+                <Entries.AddGroup key={key} />
+              ) : (
+                <Entries.Filter modal={false} key={key} />
+              ),
+            disabled: true,
+          };
+        case EntryKind.EMPTY:
+          return {
+            children: (
+              <Entries.Empty
+                text={
+                  group === "tags"
+                    ? tagText.sample
+                    : group === "label tags"
+                    ? tagText.label
+                    : "No fields"
+                }
+                key={key}
+              />
+            ),
+            disabled: true,
+          };
+        default:
+          throw new Error("invalid entry");
+      }
+    },
+    [tagText]
+  );
 
   return (
-    <>
-      <ViewBar key={"bar"} />
-      <ContainerHeader
-        showSidebar={showSidebar}
-        onShowSidebar={setShowSidebar}
-        key={"header"}
-      />
-      <Container>
-        {showSidebar ? (
-          <SidebarContainer>
-            <SidebarColumn>
-              <FieldsSidebar modal={false} />
-            </SidebarColumn>
-          </SidebarContainer>
-        ) : null}
-        <ContentColumn style={{ paddingLeft: showSidebar ? 0 : "1rem" }}>
-          <Flashlight />
-        </ContentColumn>
-      </Container>
-    </>
+    <Container>
+      {showSidebar && <FieldsSidebar render={renderGridEntry} modal={false} />}
+
+      <ContentColumn>
+        <Flashlight key={"flashlight"} />
+        <ContainerHeader key={"header"} />
+      </ContentColumn>
+    </Container>
   );
 });
 

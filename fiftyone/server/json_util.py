@@ -1,5 +1,5 @@
 """
-FiftyOne server JSON utilies.
+FiftyOne Server JSON utilities.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -82,6 +82,8 @@ def convert(d):
                 convert(i)
             elif _is_invalid_number(i):
                 d[idx] = str(i)
+
+    return d
 
 
 class FiftyOneJSONEncoder(JSONEncoder):

@@ -22,7 +22,9 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
-from .document import Document, BaseEmbeddedDocument
+from .document import Document
+from .embedded_document import DynamicEmbeddedDocument
+from .utils import get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -118,100 +120,19 @@ def get_field_kwargs(field):
     Returns:
         a field specification dict
     """
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
+    kwargs = {"ftype": type(field)}
 
-    if issubclass(ftype, fof.EmbeddedDocumentField):
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        field = field.field
+        kwargs["subfield"] = type(field)
+
+    if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
+        kwargs["fields"] = [
+            get_field_kwargs(field) for field in getattr(field, "fields", [])
+        ]
 
     return kwargs
-
-
-def get_implied_field_kwargs(value):
-    """Infers the field keyword arguments dictionary for a field that can hold
-    values of the given type.
-
-    Args:
-        value: a value
-
-    Returns:
-        a field specification dict
-    """
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    if isinstance(value, bool):
-        return {"ftype": fof.BooleanField}
-
-    if isinstance(value, numbers.Integral):
-        return {"ftype": fof.IntField}
-
-    if isinstance(value, numbers.Number):
-        return {"ftype": fof.FloatField}
-
-    if isinstance(value, six.string_types):
-        return {"ftype": fof.StringField}
-
-    if isinstance(value, datetime):
-        return {"ftype": fof.DateTimeField}
-
-    if isinstance(value, date):
-        return {"ftype": fof.DateField}
-
-    if isinstance(value, (list, tuple)):
-        kwargs = {"ftype": fof.ListField}
-
-        value_types = set(_get_list_value_type(v) for v in value)
-
-        if value_types == {fof.IntField, fof.FloatField}:
-            kwargs["subfield"] = fof.FloatField
-        elif len(value_types) == 1:
-            value_type = next(iter(value_types))
-            if value_type is not None:
-                kwargs["subfield"] = value_type
-
-        return kwargs
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError(
-        "Cannot infer an appropriate field type for value '%s'" % value
-    )
-
-
-def _get_list_value_type(value):
-    if isinstance(value, bool):
-        return fof.BooleanField
-
-    if isinstance(value, numbers.Integral):
-        return fof.IntField
-
-    if isinstance(value, numbers.Number):
-        return fof.FloatField
-
-    if isinstance(value, six.string_types):
-        return fof.StringField
-
-    if isinstance(value, datetime):
-        return fof.DateTimeField
-
-    if isinstance(value, date):
-        return fof.DateField
-
-    return None
 
 
 class DatasetMixin(object):
@@ -224,7 +145,10 @@ class DatasetMixin(object):
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
-            self._fields[name].validate(value)
+            if isinstance(self._fields[name], fof.EmbeddedDocumentField):
+                self._fields[name].validate(value, expand=True)
+            else:
+                self._fields[name].validate(value)
 
         super().__setattr__(name, value)
 
@@ -271,6 +195,9 @@ class DatasetMixin(object):
                 % field_name
             )
 
+        if hasattr(self, field_name) and not self.has_field(field_name):
+            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
@@ -279,7 +206,17 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            self._fields[field_name].validate(value)
+            field = self._fields[field_name]
+            kwargs = (
+                {}
+                if not isinstance(field, fof.EmbeddedDocumentField)
+                else {"expand": create}
+            )
+            field.validate(value, **kwargs)
+
+        field = self._fields[field_name]
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field._set_parent(self.__class__)
 
         super().__setattr__(field_name, value)
 
@@ -378,7 +315,13 @@ class DatasetMixin(object):
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        fields=None,
+        **kwargs,
     ):
         """Adds a new field to the document.
 
@@ -394,12 +337,17 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): the field definitions of the
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+                Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
         """
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            fields=fields,
             **kwargs,
         )
 
@@ -419,6 +367,9 @@ class DatasetMixin(object):
             validate_fields_match(field_name, kwargs, cls._fields[field_name])
         else:
             cls.add_field(field_name, **kwargs)
+            field = cls._fields[field_name]
+            if isinstance(field, fof.EmbeddedDocumentField):
+                value._set_parent(field)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -720,15 +671,24 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field_or_doc):
-        if isinstance(field_or_doc, SampleFieldDocument):
-            field = field_or_doc.to_field()
+    def _declare_field(cls, field, path=None):
+        if not path:
+            cls._fields[field.name] = field
+            if field.name not in cls._fields_ordered:
+                cls._fields_ordered += (field.name,)
+            setattr(cls, field.name, field)
         else:
-            field = field_or_doc
+            parent = getattr(cls, path[0])
+            for field_name in path[1:-1]:
+                if isinstance(parent, (fo.DictField, fo.ListField)):
+                    parent = parent.field
 
-        cls._fields[field.name] = field
-        cls._fields_ordered += (field.name,)
-        setattr(cls, field.name, field)
+                parent = parent.get_field_schema()[field_name]
+
+            if isinstance(parent, (fo.DictField, fo.ListField)):
+                parent = parent.field
+
+            parent.fields.append(field)
 
     @classmethod
     def _add_field_schema(
@@ -750,16 +710,36 @@ class DatasetMixin(object):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            parent=cls,
             **kwargs,
         )
 
         cls._declare_field(field)
+        dataset_doc = cls._dataset_doc()
+        fields = dataset_doc[cls._fields_attr()]
+        sample_field = SampleFieldDocument.from_field(field)
+        fields.append(sample_field)
+        dataset_doc.save()
 
+    @classmethod
+    def _save_field(cls, field, path):
         dataset_doc = cls._dataset_doc()
         sample_field = SampleFieldDocument.from_field(field)
+        top_level_fields = dataset_doc[cls._fields_attr()]
+        if len(path) == 1:
+            top_level_fields.append(sample_field)
+        else:
+            for doc_field in top_level_fields:
+                if doc_field.name == path[0]:
+                    break
 
-        dataset_doc[cls._fields_attr()].append(sample_field)
+            for key in path[1:-1]:
+                doc_field = doc_field.get_field_schema()[key]
+
+            doc_field.fields = list(doc_field.fields) + [sample_field]
+
         dataset_doc.save()
+        cls._declare_field(field, path)
 
     @classmethod
     def _rename_field_schema(cls, field_name, new_field_name):
@@ -940,7 +920,7 @@ class DatasetMixin(object):
         el = el[idx]
         el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
 
-        return el._id, el_filter
+        return el.id, el_filter
 
     @classmethod
     def _get_fields_ordered(cls, include_private=False, use_db_fields=False):

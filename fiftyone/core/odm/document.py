@@ -334,14 +334,6 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
 
-class BaseEmbeddedDocument(MongoEngineBaseDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
-    """
-
-    pass
-
-
 class Document(BaseDocument, mongoengine.Document):
     """Base class for documents that are stored in a MongoDB collection.
 
@@ -476,50 +468,3 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = None
 
         return updated_existing
-
-
-class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
-    """Base class for dynamic documents that are stored in a MongoDB
-    collection.
-
-    Dynamic documents can have arbitrary fields added to them.
-
-    The ID of a document is automatically populated when it is added to the
-    database, and the ID of a document is ``None`` if it has not been added to
-    the database.
-
-    Attributes:
-        id: the ID of the document, or ``None`` if it has not been added to the
-            database
-    """
-
-    meta = {"abstract": True}
-
-
-class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
-    """
-
-    meta = {"abstract": True, "allow_inheritance": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()
-
-
-class DynamicEmbeddedDocument(
-    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
-):
-    """Base class for dynamic documents that are embedded within other
-    documents and therefore aren't stored in their own collection in the
-    database.
-
-    Dynamic documents can have arbitrary fields added to them.
-    """
-
-    meta = {"abstract": True, "allow_inheritance": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()

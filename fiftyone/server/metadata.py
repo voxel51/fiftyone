@@ -6,6 +6,7 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
+from multiprocessing.sharedctypes import Value
 import requests
 import shutil
 import struct
@@ -29,17 +30,17 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, media_type, metadata=None):
-    """Gets the metadata for the given local or remote media file.
+async def get_metadata(filepath, metadata=None):
+    """Gets the metadata for the given media file.
 
     Args:
         filepath: the path to the file
-        media_type: the media type of the collection
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
+    media_type = fom.get_media_type(filepath)
     is_video = media_type == fom.VIDEO
 
     use_local = foc.media_cache.is_local_or_cached(filepath)

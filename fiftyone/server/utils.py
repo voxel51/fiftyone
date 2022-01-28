@@ -5,7 +5,77 @@ FiftyOne server utils.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import tornado
+import tornado.web
+
 from fiftyone import ViewField as F
+import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
+
+
+class RequestHandler(tornado.web.RequestHandler):
+    """"Base class for HTTP request handlers"""
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header(
+            "Access-Control-Allow-Headers", "content-type, x-requested-with"
+        )
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self):
+        self.write(self.get_response())
+
+    def get_response(self):
+        """Returns the serializable GET response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement get_response()")
+
+    async def post(self):
+        self.write(self.post_response())
+
+    def post_response(self):
+        """Returns the serializable POST response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement post_response()")
+
+    def options(self):
+        self.clear_header("Content-Type")
+
+
+class AsyncRequestHandler(RequestHandler):
+    """"Base class for Async HTTP request handlers"""
+
+    async def get(self):
+        self.write(await self.get_response())
+
+    async def get_response(self):
+        """Returns the serializable GET response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement get_response()")
+
+    async def post(self):
+        self.write(await self.post_response())
+
+    async def post_response(self):
+        """Returns the serializable POST response
+
+        Returns:
+            dict
+        """
+        raise NotImplementedError("subclass must implement post_response()")
 
 
 def change_sample_tags(sample_collection, changes):
@@ -55,6 +125,43 @@ def change_label_tags(sample_collection, changes, label_fields=None):
             label_field, tag_expr
         )
         tag_view._edit_label_tags(edit_fcn, label_fields=[label_field])
+
+
+def iter_label_fields(view: foc.SampleCollection):
+    """
+    Yields the labels of the
+    :class:`fiftyone.core.collections.SampleCollection`
+
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+    """
+    for field_name, field in view.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield field_name, field
+
+    if view.media_type != fom.VIDEO:
+        return
+
+    for field_name, field in view.get_frame_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield "frames.%s" % field_name, field
+
+
+def meets_type(field: fof.Field, type_or_types):
+    """
+    Determines whether the field meets type or types, or the field
+    is a :class:`fiftyone.core.fields.ListField` that meets the type or types
+
+    Args:
+        field: a class:`fiftyone.core.fields.Field`
+        type: a field type or `tuple` of field types
+    """
+    return isinstance(field, type_or_types) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, type_or_types)
+    )
 
 
 def _get_tag_expr(changes):

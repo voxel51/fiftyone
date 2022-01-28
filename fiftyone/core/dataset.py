@@ -4512,6 +4512,19 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
+def _declare_fields(doc_cls, field_docs):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            doc = foo.SampleFieldDocument.from_field(field)
+            field = doc.to_field()
+            field._set_parent(doc_cls)
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    for field_doc in field_docs or []:
+        doc_cls._declare_field(field_doc.to_field())
+
+
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4538,12 +4551,16 @@ def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(sample_collection_name):
-    return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+def _create_sample_document_cls(sample_collection_name, field_docs=None):
+    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+    _declare_fields(cls, field_docs)
+    return cls
 
 
-def _create_frame_document_cls(frame_collection_name):
-    return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+def _create_frame_document_cls(frame_collection_name, field_docs=None):
+    cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+    _declare_fields(cls, field_docs)
+    return cls
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -4599,14 +4616,9 @@ def _load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
-
-    default_sample_fields = fos.get_default_sample_fields(include_private=True)
-    for sample_field in dataset_doc.sample_fields:
-        if sample_field.name in default_sample_fields:
-            continue
-
-        sample_doc_cls._declare_field(sample_field)
+    sample_doc_cls = _create_sample_document_cls(
+        sample_collection_name, dataset_doc.sample_fields
+    )
 
     frame_collection_name = dataset_doc.frame_collection_name
 
@@ -4624,17 +4636,9 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _src_dataset._frame_doc_cls
         dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
-
-        if dataset_doc.media_type == fom.VIDEO:
-            default_frame_fields = fofr.get_default_frame_fields(
-                include_private=True
-            )
-            for frame_field in dataset_doc.frame_fields:
-                if frame_field.name in default_frame_fields:
-                    continue
-
-                frame_doc_cls._declare_field(frame_field)
+        frame_doc_cls = _create_frame_document_cls(
+            frame_collection_name, dataset_doc.frame_fields
+        )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 

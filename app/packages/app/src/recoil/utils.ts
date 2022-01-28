@@ -1,12 +1,16 @@
 import { selector, useRecoilCallback } from "recoil";
 
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
+import socket, { http } from "../shared/connection";
+import { packageMessage } from "../utils/socket";
+
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
+import { State } from "./types";
+import * as viewAtoms from "./view";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { http } from "../shared/connection";
-
-type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
+type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
 export const getSampleSrc = (filepath: string, id: string, url?: string) => {
   if (url) {
@@ -19,8 +23,8 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
   key: "lookerType",
   get: ({ get }) => {
-    const isFrame = get(selectors.isFramesView);
-    const isPatch = get(selectors.isPatchesView);
+    const isFrame = get(viewAtoms.isFramesView);
+    const isPatch = get(viewAtoms.isPatchesView);
 
     return (mimetype) => {
       const video = mimetype.startsWith("video/");
@@ -53,4 +57,8 @@ export const useClearModal = () => {
     },
     []
   );
+};
+
+export const setState = (state: State.Description) => {
+  socket.send(packageMessage("update", { state }));
 };

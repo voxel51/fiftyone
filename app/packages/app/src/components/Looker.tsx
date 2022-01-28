@@ -1,19 +1,50 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback, selector } from "recoil";
-import { animated, useSpring } from "react-spring";
+import {
+  useRecoilValue,
+  useRecoilCallback,
+  selector,
+  useRecoilValueLoadable,
+} from "recoil";
+import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
-import * as labelAtoms from "./Filters/utils";
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useTheme } from "../utils/hooks";
+import { useEventHandler, useSelect, useTheme } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import * as atoms from "../recoil/atoms";
+import * as colorAtoms from "../recoil/color";
+import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
+import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import { pathFilter } from "./Filters";
+import { ModalActionsRow } from "./Actions";
+import { useErrorHandler } from "react-error-boundary";
+import { LIST_FIELD } from "@fiftyone/utilities";
+import { Checkbox } from "@material-ui/core";
+
+const Header = styled.div`
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  display: flex;
+  padding: 0.5rem;
+  justify-content: space-between;
+  overflow: visible;
+  width: 100%;
+  z-index: 1000;
+
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0),
+    30%,
+    ${({ theme }) => theme.backgroundDark}
+  );
+`;
 
 const TagBlock = styled.div`
   margin: 0;
@@ -317,45 +348,48 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const reverse = (obj) =>
-  Object.fromEntries(Object.entries(obj).map(([k, v]) => [v, k]));
-
 const lookerOptions = selector({
   key: "lookerOptions",
   get: ({ get }) => {
-    const showConfidence = get(selectors.appConfig).show_confidence;
-    const showIndex = get(selectors.appConfig).show_index;
-    const showLabel = get(selectors.appConfig).show_label;
-    const showTooltip = get(selectors.appConfig).show_tooltip;
-    const useFrameNumber = get(selectors.appConfig).use_frame_number;
+    const showConfidence = get(selectors.appConfig).showConfidence;
+    const showIndex = get(selectors.appConfig).showIndex;
+    const showLabel = get(selectors.appConfig).showLabel;
+    const showTooltip = get(selectors.appConfig).showTooltip;
+    const useFrameNumber = get(selectors.appConfig).useFrameNumber;
     const video = get(selectors.isVideoDataset)
-      ? { loop: get(selectors.appConfig).loop_videos }
+      ? { loop: get(selectors.appConfig).loopVideos }
       : {};
-    const zoom = get(selectors.isPatchesView)
+    const zoom = get(viewAtoms.isPatchesView)
       ? get(atoms.cropToContent(true))
       : false;
 
     return {
+      activePaths: get(schemaAtoms.activeFields({ modal: true })),
       showConfidence,
+      showControls: true,
       showIndex,
       showLabel,
       useFrameNumber,
       showTooltip,
       ...video,
       zoom,
-      filter: get(labelFilters(true)),
+      filter: get(pathFilter(true)),
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
-      fieldsMap: reverse(get(selectors.primitivesDbMap("sample"))),
-      frameFieldsMap: reverse(get(selectors.primitivesDbMap("frame"))),
       timeZone: get(selectors.timeZone),
-      coloring: get(selectors.coloring(true)),
+      coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
+      imageFilters: Object.fromEntries(
+        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
+          filter,
+          get(atoms.imageFilters({ modal: false, filter })),
+        ])
+      ),
     };
   },
 });
-
+3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (event: CustomEvent) => {
@@ -402,16 +436,21 @@ const Looker = ({
   const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
     atoms.modal
   );
-  const fullscreen = useRecoilValue(atoms.fullscreen);
-  const isClips = useRecoilValue(selectors.isClipsView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const schema = useRecoilValue(selectors.fieldSchema("sample"));
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
-  const options = useRecoilValue(lookerOptions);
-  const activePaths = useRecoilValue(labelAtoms.activeModalFields);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
+  const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+  const frameFieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
+  );
+
+  const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
 
   const [looker] = useState(() => {
     const constructor = getLookerConstructor(mimetype);
@@ -426,11 +465,18 @@ const Looker = ({
         frameNumber,
         sampleId: sample._id,
         thumbnail: false,
-        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
+        fieldSchema: hasFrames
+          ? {
+              ...fieldSchema,
+              frames: {
+                fields: frameFieldSchema,
+                ftype: LIST_FIELD,
+              },
+            }
+          : fieldSchema,
         ...etc,
       },
       {
-        activePaths,
         ...options,
         hasNext: Boolean(onNext),
         hasPrevious: Boolean(onPrevious),
@@ -439,8 +485,8 @@ const Looker = ({
   });
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions({ ...options, activePaths });
-  }, [options, activePaths]);
+    !initialRef.current && looker.updateOptions(options);
+  }, [options]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
@@ -450,23 +496,33 @@ const Looker = ({
     return () => looker && looker.destroy();
   }, [looker]);
 
+  const handleError = useErrorHandler();
   lookerRef && (lookerRef.current = looker);
-
+  const moveRef = useRef<HTMLElement>();
+  const headerRef = useRef<HTMLElement>();
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
+  useEventHandler(looker, "error", (event) => handleError(event.detail));
+  const onSelect = useSelect();
+  const selected = useRecoilValue(atoms.selectedSamples);
+
   useEffect(() => {
     initialRef.current = false;
   }, []);
 
   useEffect(() => {
-    looker.attach(fullscreen ? "root" : id);
-  }, [id, fullscreen]);
+    looker.attach(id);
+  }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
+
+  const isSelected = selected.has(sample._id);
+
+  const select = () => onSelect(sample._id);
 
   return (
     <div
@@ -477,7 +533,23 @@ const Looker = ({
         background: theme.backgroundDark,
         ...style,
       }}
+      onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
+      {options.showControls && (
+        <Header
+          ref={headerRef}
+          onClick={() => event.target === headerRef.current && select()}
+        >
+          <Checkbox
+            disableRipple
+            title={isSelected ? "Select sample" : "Selected"}
+            checked={isSelected}
+            style={{ color: theme.brand }}
+            onClick={select}
+          />
+          <ModalActionsRow lookerRef={lookerRef} />
+        </Header>
+      )}
       {<TooltipInfo looker={looker} />}
     </div>
   );

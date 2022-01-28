@@ -9,20 +9,25 @@ import {
   useRecoilValue,
 } from "recoil";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
-import Input from "../Common/Input";
-import { Button } from "../FieldsSidebar";
 import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
-import { PopoutSectionTitle } from "../utils";
-import Checkbox from "../Common/Checkbox";
-import RadioGroup from "../Common/RadioGroup";
-import { useTheme } from "../../utils/hooks";
-import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
+import { State } from "../../recoil/types";
+import * as viewAtoms from "../../recoil/view";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { samples } from "../Flashlight";
+import { useTheme } from "../../utils/hooks";
+
+import Checkbox from "../Common/Checkbox";
+import Input from "../Common/Input";
+import RadioGroup from "../Common/RadioGroup";
+import { Button } from "../utils";
+import { PopoutSectionTitle } from "../utils";
+
+import { ActionOption } from "./Common";
+import Popout from "./Popout";
+import { store } from "../Flashlight.store";
+import { filters } from "../../recoil/filters";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -44,13 +49,13 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
     );
   }
   const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-  const isPatches = await snapshot.getPromise(selectors.isPatchesView);
+  const isPatches = await snapshot.getPromise(viewAtoms.isPatchesView);
   const modal = await snapshot.getPromise(atoms.modal);
 
   if (isPatches) {
     if (selectedSamples.size) {
       return [...selectedSamples].map(
-        (id) => samples.get(id).sample[labels_field]._id
+        (id) => store.samples.get(id).sample[labels_field]._id
       );
     }
 
@@ -69,25 +74,17 @@ const useSortBySimilarity = () => {
     ({ snapshot, set }) => async () => {
       const params = await snapshot.getPromise(sortBySimilarityParameters);
       const queryIds = await getQueryIds(snapshot, params.brainKey);
+      const current = await snapshot.getPromise(filters);
       set(similaritySorting, true);
       set(atoms.modal, null);
 
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.SortBySimilarity",
-              kwargs: [
-                ["query_ids", queryIds],
-                ["k", params.k],
-                ["reverse", params.reverse],
-                ["brain_key", params.brainKey],
-                ["_state", null],
-              ],
-            },
-          ],
-        })
-      );
+      set(filters, {
+        ...current,
+        _similarity: toSnakeCase({
+          queryIds,
+          ...params,
+        }),
+      });
     },
     []
   );
@@ -116,13 +113,13 @@ const searchBrainKeyValue = atom<string>({
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
-    const isPatches = get(selectors.isPatchesView);
+    const isPatches = get(viewAtoms.isPatchesView);
     const keys = get(selectors.similarityKeys);
     if (!isPatches && !modal) {
       return keys.samples;
     } else if (!modal) {
       return keys.patches.reduce((acc, [key, field]) => {
-        if (get(selectors.labelPaths).includes(field)) {
+        if (get(schemaAtoms.labelPaths({})).includes(field)) {
           acc = [...acc, key];
         }
         return acc;
@@ -173,13 +170,7 @@ const currentSimilarityKeys = selectorFamily<
   },
 });
 
-interface SortBySimilarityParameters {
-  k: number | null;
-  reverse: boolean;
-  brainKey: string;
-}
-
-const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
+const sortBySimilarityParameters = selector<State.SortBySimilarityParameters>({
   key: "sortBySimilarityParameters",
   get: ({ get }) => {
     return {
@@ -193,7 +184,7 @@ const sortBySimilarityParameters = selector<SortBySimilarityParameters>({
 const sortType = selectorFamily<string, boolean>({
   key: "sortBySimilarityType",
   get: (modal) => ({ get }) => {
-    const isRoot = get(selectors.isRootView);
+    const isRoot = get(viewAtoms.isRootView);
     if (modal) {
       return "labels";
     } else if (isRoot) {

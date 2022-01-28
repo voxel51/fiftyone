@@ -15,7 +15,7 @@ import numpy as np
 import eta.core.frameutils as etaf
 import eta.core.image as etai
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -314,13 +314,10 @@ class _HasID(Label):
     property, as well as a ``tags`` attribute.
     """
 
-    _id = fof.ObjectIdField(default=ObjectId, required=True, unique=True)
+    id = fof.ObjectIdField(
+        default=ObjectId, required=True, unique=True, db_field="_id"
+    )
     tags = fof.ListField(fof.StringField())
-
-    @property
-    def id(self):
-        """The ID of the label."""
-        return str(self._id)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
