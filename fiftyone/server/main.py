@@ -21,9 +21,6 @@ import tornado.websocket
 
 import eta.core.serial as etas
 
-from sidebar import SidebarHandler
-from tag import TagHandler
-
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
 
@@ -49,12 +46,14 @@ import fiftyone.server.view as fosv
 from fiftyone.server.json_util import convert
 import fiftyone.server.metadata as fosm
 from fiftyone.server.notebook import NotebookHandler
+from fiftyone.server.sidebar import SidebarHandler
 from fiftyone.server.state import (
     catch_errors,
     PollingHandler,
     ReactivateHandler,
     StateHandler,
 )
+from fiftyone.server.tag import TagHandler
 import fiftyone.server.utils as fosu
 
 
