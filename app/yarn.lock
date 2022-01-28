@@ -1694,8 +1694,8 @@ __metadata:
     numeral: ^2.0.6
     prettier: 2.2.1
     re-resizable: ^6.8.0
-    react: ^17.0.0
-    react-dom: ^17.0.0
+    react: ^17.0.2
+    react-dom: ^17.0.2
     react-error-boundary: ^3.1.4
     react-ga: ^3.1.2
     react-hotkeys: ^2.0.0
@@ -6210,7 +6210,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"react-dom@npm:^17.0.0":
+"react-dom@npm:^17.0.2":
   version: 17.0.2
   resolution: "react-dom@npm:17.0.2"
   dependencies:
@@ -6415,7 +6415,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"react@npm:^17.0.0":
+"react@npm:^17.0.2":
   version: 17.0.2
   resolution: "react@npm:17.0.2"
   dependencies:

@@ -27,8 +27,16 @@ export const scrollbarStyles = ({ theme }) => `
 scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
   theme.background};
 
+  scrollbar-gutter: stable;
+
+  scrollbar-width: auto;
+
 ::-webkit-scrollbar-track {
   border: solid 4px transparent ${theme.fontDarkest};
+}
+
+@-moz-document url-prefix() {
+  padding-right: 16px;
 }
 
 ::-webkit-scrollbar-thumb {

@@ -374,6 +374,7 @@ const DatasetSelector = ({ error }: { error: boolean }) => {
           onBlur={(e) => {
             state.matches("editing.searchResults.notHovering") && send("BLUR");
           }}
+          style={{ minWidth: 100 }}
           ref={inputRef}
           onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
           onKeyPress={(e) => {

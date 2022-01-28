@@ -11,6 +11,7 @@ import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 import { disabledPaths } from "./recoil";
+import { replace } from "./Entries/GroupEntries";
 
 const MARGIN = 3;
 
@@ -430,19 +431,35 @@ const InteractiveSidebar = ({
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
+    const key = getEntryKey(entry);
     if (entry.kind === EntryKind.GROUP) {
       group = entry.name;
     }
 
-    const key = getEntryKey(entry);
+    if (entry.kind === EntryKind.GROUP && entry.name in replace) {
+      const oldKey = getEntryKey({ ...entry, name: replace[entry.name] });
+      items.current[key] = items.current[oldKey];
 
-    if (!(key in items.current)) {
+      items.current = Object.fromEntries(
+        Object.entries(items.current).filter(([k]) => k !== oldKey)
+      );
+      items.current[key].entry = entry;
+    } else if (entry.kind === EntryKind.EMPTY && entry.group in replace) {
+      const oldKey = getEntryKey({ ...entry, group: replace[entry.group] });
+      items.current[key] = items.current[oldKey];
+
+      items.current = Object.fromEntries(
+        Object.entries(items.current).filter(([k]) => k !== oldKey)
+      );
+      items.current[key].entry = entry;
+      delete replace[entry.group];
+    } else if (!(key in items.current)) {
       items.current[key] = {
         el: null,
         controller: new Controller({
           cursor: "pointer",
           top: 0,
-          left: -3000,
+          left: 0,
           zIndex: 0,
           scale: 1,
           shadow: 0,
@@ -512,27 +529,25 @@ const InteractiveSidebar = ({
   const lastTouched = useRef<string>();
 
   const placeItems = useCallback(() => {
-    requestAnimationFrame(() => {
-      const { results: placements, minHeight } = fn(
-        items.current,
-        order.current,
-        order.current,
-        null,
-        0,
-        lastTouched.current
-      );
+    const { results: placements, minHeight } = fn(
+      items.current,
+      order.current,
+      order.current,
+      null,
+      0,
+      lastTouched.current
+    );
 
-      containerController.set({ maxHeight: minHeight });
-      for (const key of order.current) {
-        const item = items.current[key];
-        if (item.active) {
-          item.controller.start(placements[key]);
-        } else {
-          item.controller.set(placements[key]);
-          item.active = true;
-        }
+    containerController.set({ maxHeight: minHeight });
+    for (const key of order.current) {
+      const item = items.current[key];
+      if (item.active) {
+        item.controller.start(placements[key]);
+      } else {
+        item.controller.set(placements[key]);
+        item.active = true;
       }
-    });
+    }
   }, []);
 
   const exit = useCallback(
@@ -673,7 +688,6 @@ const InteractiveSidebar = ({
             if (entry.kind === EntryKind.GROUP) {
               group = entry.name;
             }
-
             const { shadow, cursor, ...springs } = items.current[
               key
             ].controller.springs;
@@ -689,6 +703,10 @@ const InteractiveSidebar = ({
                 data-key={key}
                 onMouseDown={disabled ? null : trigger}
                 ref={(node) => {
+                  if (!items.current[key]) {
+                    return;
+                  }
+
                   items.current[key].el &&
                     observer.unobserve(items.current[key].el);
                   node && observer.observe(node);

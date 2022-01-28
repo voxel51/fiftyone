@@ -77,10 +77,16 @@ export const MATCH_LABEL_TAGS = {
   embeddedDocType: withPath(LABELS_PATH, LABEL_DOC_TYPES),
 };
 
-export const validateGroupName = (name: string): boolean => {
+export const validateGroupName = (current: string[], name: string): boolean => {
   if (RESERVED_GROUPS.has(name)) {
     alert(`${name.toUpperCase()} is a reserved group`);
     return false;
+  }
+
+  if (current.filter(([cur]) => name === cur).length > 1) {
+    alert(`Group ${name.toUpperCase()} already exists`);
+
+    return;
   }
   return true;
 };

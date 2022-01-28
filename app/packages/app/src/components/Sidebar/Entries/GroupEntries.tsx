@@ -133,38 +133,36 @@ const numGroupFieldsActive = selectorFamily<
   },
 });
 
-export const groupIds = {};
+export const replace = {};
 
 export const useRenameGroup = (modal: boolean, group: string) => {
   return useRecoilCallback(
     ({ set, snapshot }) => async (newName: string) => {
       newName = newName.toLowerCase();
 
-      if (!validateGroupName(newName)) {
+      const current = await snapshot.getPromise(sidebarGroupsDefinition(modal));
+      if (
+        !validateGroupName(
+          current.map(([name]) => name),
+          newName
+        )
+      ) {
         return;
       }
 
-      const groups = await snapshot.getPromise(sidebarGroupsDefinition(modal));
-      const newGroups = groups.map<[string, string[]]>(([name, paths]) => [
+      const newGroups = current.map<[string, string[]]>(([name, paths]) => [
         name === group ? newName : name,
         paths,
       ]);
-
-      if (newGroups.filter(([name]) => name === newName).length > 1) {
-        alert(`Group ${newName.toUpperCase()} already exists`);
-
-        return;
-      }
 
       const dataset = await snapshot.getPromise(datasetName);
       const view = await snapshot.getPromise(viewAtoms.view);
       const shown = await snapshot.getPromise(
         groupShown({ modal, name: group })
       );
-      groupIds[newName] = groupIds[group] || group;
-      if (groupIds[group]) {
-        delete groupIds[group];
-      }
+
+      replace[newName] = group;
+
       set(groupShown({ name: newName, modal }), shown);
       set(sidebarGroupsDefinition(modal), newGroups);
       !modal && persistGroups(dataset, view, newGroups);
@@ -367,10 +365,6 @@ const GroupEntry = React.memo(
     onClick,
     expanded,
   }: GroupEntryProps) => {
-    const [localValue, setLocalValue] = useState(() => title);
-    useLayoutEffect(() => {
-      setLocalValue(title);
-    }, [title]);
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
     const ref = useRef<HTMLInputElement>();
@@ -394,19 +388,18 @@ const GroupEntry = React.memo(
         <GroupInput
           ref={ref}
           maxLength={40}
-          value={localValue}
-          focus={editing}
           style={{
             flexGrow: 1,
             pointerEvents: editing ? "unset" : "none",
             textOverflow: "ellipsis",
           }}
-          onChange={(event) => setLocalValue(event.target.value.toLowerCase())}
+          defaultValue={title}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               setValue(event.target.value);
               setEditing(false);
               event.target.blur();
+              return;
             }
             if (event.key === "Escape") {
               event.target.blur();
@@ -415,7 +408,6 @@ const GroupEntry = React.memo(
           onFocus={() => !editing && setEditing(true)}
           onBlur={() => {
             if (editing) {
-              setLocalValue(title);
               setEditing(false);
             }
           }}
@@ -513,7 +505,6 @@ export const PathGroupEntry = React.memo(
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);
     const empty = useRecoilValue(groupIsEmpty({ modal, group: name }));
-
     return (
       <GroupEntry
         title={name.toUpperCase()}

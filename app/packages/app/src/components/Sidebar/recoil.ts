@@ -310,6 +310,9 @@ export const sidebarGroups = selectorFamily<
     set(sidebarGroupsDefinition(modal), groups);
     !modal && persistGroups(get(datasetName), get(viewAtoms.view), groups);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const sidebarEntries = selectorFamily<
@@ -350,7 +353,7 @@ export const sidebarEntries = selectorFamily<
 
     return [...entries, { kind: EntryKind.INPUT, type: "add" } as InputEntry];
   },
-  set: (params) => ({ set, get }, value) => {
+  set: (params) => ({ set }, value) => {
     if (value instanceof DefaultValue) return;
 
     set(
@@ -375,6 +378,9 @@ export const sidebarEntries = selectorFamily<
         return result;
       }, [])
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -406,6 +412,9 @@ export const disabledPaths = selector<Set<string>>({
 
     return new Set(paths);
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const sidebarGroup = selectorFamily<
@@ -416,6 +425,9 @@ export const sidebarGroup = selectorFamily<
   get: ({ group, ...params }) => ({ get }) => {
     return get(sidebarGroups(params)).filter(([name]) => name === group)[0][1];
   },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
 });
 
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
@@ -424,6 +436,9 @@ export const sidebarGroupNames = selectorFamily<string[], boolean>({
     return get(sidebarGroups({ modal, loadingTags: true })).map(
       ([name]) => name
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -437,6 +452,9 @@ export const groupIsEmpty = selectorFamily<
       get(sidebarGroup({ ...params, loadingTags: true, filtered: false }))
         .length == 0
     );
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 

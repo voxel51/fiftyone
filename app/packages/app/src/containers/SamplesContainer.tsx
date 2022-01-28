@@ -15,8 +15,6 @@ import Flashlight from "../components/Flashlight";
 
 import * as atoms from "../recoil/atoms";
 import { State } from "../recoil/types";
-import { getEntryKey } from "../components/Sidebar/Sidebar";
-import { groupIds } from "../components/Sidebar/Entries/GroupEntries";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
@@ -95,10 +93,7 @@ const SamplesContainer = React.memo(() => {
                   name={entry.name}
                   modal={false}
                   mutable={entry.name !== "other"}
-                  key={getEntryKey({
-                    ...entry,
-                    name: groupIds[entry.name] || entry.name,
-                  })}
+                  key={key}
                 />
               ),
             disabled: false,
