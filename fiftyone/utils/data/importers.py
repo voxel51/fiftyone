@@ -654,7 +654,9 @@ class ImportPathsMixin(object):
         return labels_path
 
     @staticmethod
-    def _load_data_map(data_path, ignore_exts=False, recursive=False):
+    def _load_data_map(
+        data_path, ignore_exts=False, recursive=False, abspath=False
+    ):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
@@ -662,6 +664,11 @@ class ImportPathsMixin(object):
             to_uuid = lambda p: os.path.splitext(p)[0]
         else:
             to_uuid = lambda p: p
+
+        if abspath:
+            to_abspath = lambda p, dir_path: os.path.join(dir_path, p)
+        else:
+            to_abspath = lambda p, dir_path: p
 
         if isinstance(data_path, dict):
             return {to_uuid(k): v for k, v in data_path.items()}
@@ -676,7 +683,11 @@ class ImportPathsMixin(object):
                 )
 
             data_map = etas.read_json(data_path)
-            return {to_uuid(k): v for k, v in data_map.items()}
+            dir_path = os.path.dirname(os.path.abspath(data_path))
+            return {
+                to_uuid(k): to_abspath(v, dir_path)
+                for k, v in data_map.items()
+            }
 
         if not os.path.isdir(data_path):
             raise ValueError("Data directory '%s' does not exist" % data_path)

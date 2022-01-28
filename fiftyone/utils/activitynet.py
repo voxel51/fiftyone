@@ -118,16 +118,13 @@ def download_activitynet_split(
             )
 
         num_samples = num_existing
-        sample_ids = None
     else:
-        (
-            sample_ids,
-            num_downloaded_samples,
-        ) = manager.download_necessary_samples(download_config)
+        (_, num_downloaded_samples,) = manager.download_necessary_samples(
+            download_config
+        )
         num_samples = num_existing + num_downloaded_samples
 
     manager.write_data_json(split)
-    manager.write_annotations(sample_ids, split)
 
     return num_samples, all_classes
 
@@ -167,6 +164,12 @@ class ActivityNetDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to ``labels.json``
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be loaded. By
+            default, all videos are loaded
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
@@ -182,6 +185,8 @@ class ActivityNetDatasetImporter(
         dataset_dir=None,
         data_path=None,
         labels_path=None,
+        classes=None,
+        max_duration=None,
         compute_metadata=False,
         shuffle=False,
         seed=None,
@@ -196,9 +201,16 @@ class ActivityNetDatasetImporter(
             seed=seed,
             max_samples=max_samples,
         )
+        self.classes = classes
+        self.max_duration = max_duration
 
         self.data_path = self._parse_data_path(
             dataset_dir=dataset_dir, data_path=data_path, default="data.json",
+        )
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
         )
         self._taxonomy = None
 
@@ -212,22 +224,56 @@ class ActivityNetDatasetImporter(
         )
 
         self._video_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True
+            self.data_path, ignore_exts=True, recursive=True, abspath=True
         )
 
+        process_uuids = True
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.load_json(self.labels_path)
+            info = ActivityNetInfo(labels)
+            sample_ids = self._video_paths_map.keys()
+            if self.classes or self.max_duration:
+                # Load a subset of data
+                any_sample_ids, all_sample_ids = info.get_matching_samples(
+                    max_duration=self.max_duration,
+                    classes=self.classes,
+                    ids=[i[2:] for i in sample_ids],
+                )
+                any_sample_ids = list(any_sample_ids.keys())
+                all_sample_ids = list(all_sample_ids.keys())
+
+                process_uuids = False
+                if not self.max_samples:
+                    uuids = list(set(any_sample_ids + all_sample_ids))
+                    self._uuids = self._preprocess_list(uuids)
+                elif self.max_samples > len(all_sample_ids):
+                    uuids = all_sample_ids
+                    self.max_samples -= len(all_sample_ids)
+                    any_sample_ids = self._preprocess_list(any_sample_ids)
+                    uuids += any_sample_ids
+                    self._uuids = uuids
+                else:
+                    self._uuids = self._preprocess_list(all_sample_ids)
+
+                self._uuids = ["v_" + i for i in self._uuids]
+                sample_ids = self._uuids
+
+            labels = info.format_annotations([i[2:] for i in sample_ids])
         else:
             labels = {}
 
         self._taxonomy = labels.get("taxonomy", None)
         self._classes = labels.get("classes", None)
-        self._sample_parser.classes = self._classes
         self._labels_map = labels.get("labels", {})
         self._has_labels = any(self._labels_map.values())
 
-        uuids = sorted(self._labels_map.keys())
-        self._uuids = self._preprocess_list(uuids)
+        if process_uuids:
+            uuids = sorted(self._labels_map.keys())
+            self._uuids = self._preprocess_list(uuids)
+        import pdb
+
+        pdb.set_trace()
+
         self._num_samples = len(self._uuids)
 
     def get_dataset_info(self):
@@ -485,7 +531,7 @@ class ActivityNetDatasetManager(object):
         self.info.cleanup_split(split)
 
         any_class_samples, all_class_samples = self.info.get_matching_samples(
-            split, max_duration=max_duration, classes=classes,
+            split=split, max_duration=max_duration, classes=classes,
         )
 
         all_class_ids = list(all_class_samples.keys())
@@ -635,7 +681,6 @@ class ActivityNetDatasetManager(object):
     def _attempt_to_download(
         self, videos_dir, ids, samples_info, num_samples, num_workers
     ):
-        download_ids = []
         download_urls = []
         download_paths = []
         url_id_map = {}
@@ -657,41 +702,6 @@ class ActivityNetDatasetManager(object):
         downloaded_ids = [url_id_map[url] for url, path in downloaded_urls]
 
         return downloaded_ids, errors
-
-    def write_annotations(self, sample_ids, split):
-        target_map = {c: i for i, c in enumerate(self.all_classes)}
-        activitynet_split = _SPLIT_MAP[split]
-
-        labels = {}
-        for annot_id, annot_info in self.info.raw_annotations[
-            "database"
-        ].items():
-            if sample_ids is not None and annot_id not in sample_ids:
-                continue
-
-            if annot_info["subset"] != activitynet_split:
-                continue
-
-            fo_annot_labels = []
-            for an_annot_label in annot_info["annotations"]:
-                target = target_map[an_annot_label["label"]]
-                timestamps = an_annot_label["segment"]
-                fo_annot_labels.append(
-                    {"label": target, "timestamps": timestamps}
-                )
-
-            sample_id = "v_" + annot_id
-            labels[sample_id] = fo_annot_labels
-
-        fo_annots = {
-            "classes": self.all_classes,
-            "labels": labels,
-            "taxonomy": self.info.taxonomy,
-        }
-
-        etas.write_json(
-            fo_annots, self.info.labels_path(split), pretty_print=True
-        )
 
     def _merge_and_write_errors(self, download_errors, error_path):
         if os.path.isfile(error_path):
@@ -749,22 +759,211 @@ class ActivityNetDatasetManager(object):
         return cls(foz_dir, version)
 
 
-class ActivityNetDatasetInfo(object):
-    """Contains information related to paths, labels, and sample ids"""
+class ActivityNetInfo(object):
+    """Necessary information used to parse and format annotations."""
 
-    def __init__(self, foz_dir):
-        self.foz_dir = os.path.abspath(foz_dir)
-
-        self.raw_annotations = self._get_raw_annotations()
+    def __init__(self, raw_annotations):
+        self.raw_annotations = raw_annotations
         self.taxonomy = self.raw_annotations["taxonomy"]
-        self.all_classes = self.get_all_classes(self.taxonomy)
+        self.all_classes = _get_all_classes(self.taxonomy)
 
         self._splitwise_sample_ids = self._parse_sample_ids()
         self.all_sample_ids = _flatten_list(
             self._splitwise_sample_ids.values()
         )
 
+    def _parse_sample_ids(self):
+        ids = {}
+        for annot_id, annot in self.raw_annotations["database"].items():
+            split = _SPLIT_MAP_REV[annot["subset"]]
+            if split not in ids:
+                ids[split] = []
+            ids[split].append(annot_id)
+        return ids
+
+    def get_matching_samples(
+        self, split=None, max_duration=None, classes=None, ids=None
+    ):
+        if split:
+            classes = self._parse_classes(classes, split)
+
+        # sample contains all specified classes
+        all_class_match = {}
+
+        # sample contains any specified calsses
+        any_class_match = {}
+
+        if split:
+            activitynet_split = _SPLIT_MAP[split]
+
+        if classes is not None:
+            class_set = set(classes)
+        for sample_id, annot_info in self.raw_annotations["database"].items():
+            if ids and sample_id not in ids:
+                continue
+
+            if split:
+                is_correct_split = activitynet_split == annot_info["subset"]
+            else:
+                is_correct_split = True
+            if max_duration:
+                is_correct_dur = max_duration >= annot_info["duration"]
+            else:
+                is_correct_dur = True
+
+            if not is_correct_split or not is_correct_dur:
+                continue
+
+            if classes is None:
+                any_class_match[sample_id] = annot_info
+            else:
+                annot_labels = set(
+                    [a["label"] for a in annot_info["annotations"]]
+                )
+                if class_set.issubset(annot_labels):
+                    all_class_match[sample_id] = annot_info
+                elif class_set & annot_labels:
+                    any_class_match[sample_id] = annot_info
+
+        return any_class_match, all_class_match
+
+    def _parse_classes(self, classes, split):
+        if classes is not None:
+            if split == "test":
+                logger.warning(
+                    "Test split is unlabeled but `classes` were provided; "
+                    "Skipping the split..."
+                )
+
+            non_existant_classes = list(set(classes) - set(self.all_classes))
+            if non_existant_classes:
+                raise ValueError(
+                    "The following classes were specified but do not exist in "
+                    "the dataset; ",
+                    tuple(non_existant_classes),
+                )
+
+        return classes
+
+    def format_annotations(self, sample_ids, split=None):
+        if split:
+            activitynet_split = _SPLIT_MAP[split]
+        else:
+            activitynet_split = None
+
+        labels = {}
+        for annot_id, annot_info in self.raw_annotations["database"].items():
+            if sample_ids is not None and annot_id not in sample_ids:
+                continue
+
+            if activitynet_split and annot_info["subset"] != activitynet_split:
+                continue
+
+            fo_annot_labels = []
+            for an_annot_label in annot_info["annotations"]:
+                target = an_annot_label["label"]
+                timestamps = an_annot_label["segment"]
+                fo_annot_labels.append(
+                    {"label": target, "timestamps": timestamps}
+                )
+
+            sample_id = "v_" + annot_id
+            labels[sample_id] = fo_annot_labels
+
+        fo_annots = {
+            "classes": self.all_classes,
+            "labels": labels,
+            "taxonomy": self.taxonomy,
+        }
+        return fo_annots
+
+
+class ActivityNetSplitInfo(ActivityNetInfo):
+    """Contains information related to paths, labels, and sample ids of a
+    single split"""
+
+    def __init__(self, split_dir, version=None):
+        self.split_dir = os.path.abspath(split_dir)
+        self.raw_annotations = self._get_raw_annotations(version=version)
+        super().__init__(self.raw_annotations)
+
         self.update_existing_sample_ids()
+
+    @property
+    def raw_anno_path(self):
+        return os.path.join(self.split_dir, "labels.json")
+
+    @property
+    def data_dir(self):
+        _data_dir = os.path.join(self.split_dir, "data")
+        etau.ensure_dir(_data_dir)
+        return _data_dir
+
+    @property
+    def data_json_path(self):
+        return os.path.join(self.split_dir, "data.json")
+
+    @property
+    def error_path(self):
+        return os.path.join(self.split_dir, "download_errors.json")
+
+    def update_existing_sample_ids(self):
+        self.existing_sample_ids = self._get_video_files()
+
+    def _get_video_files(self):
+        video_filenames = etau.list_files(self.data_dir)
+        video_ids = []
+        for vfn in video_filenames:
+            video_id, ext = os.path.splitext(vfn)
+            if ext not in [".part", ".ytdl"]:
+                vid = video_id[2:]
+                video_ids.append(vid)
+
+        return video_ids
+
+    def cleanup(self):
+        videos_dir = self.data_dir
+        video_filenames = etau.list_files(videos_dir)
+        for vfn in video_filenames:
+            _, ext = os.path.splitext(vfn)
+            if ext in [".part", ".ytdl"]:
+                try:
+                    os.remove(os.path.join(videos_dir, vfn))
+                except FileNotFoundError:
+                    pass
+
+    def _get_raw_annotations(self, version=None):
+        if not os.path.isfile(self.raw_anno_path):
+            if not version:
+                raise ValueError(
+                    "Found `version=None` and no file at `%s`. If raw "
+                    "annotations have not been loaded, then a version must be "
+                    "provided." % self.raw_anno_path
+                )
+            anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
+            etaw.download_file(anno_link, path=self.raw_anno_path)
+
+        return etas.load_json(self.raw_anno_path)
+
+
+class ActivityNetDatasetInfo(ActivityNetInfo):
+    """Contains information related to paths, labels, and sample ids of the
+    entire dataset"""
+
+    def __init__(self, foz_dir):
+        self.foz_dir = os.path.abspath(foz_dir)
+        self._split_infos = {}
+        self.raw_annotations = self._get_raw_annotations()
+        super().__init__(self.raw_annotations)
+
+        self.update_existing_sample_ids()
+
+    def split_info(self, split):
+        if split not in self._split_infos:
+            self._split_infos[split] = ActivityNetSplitInfo(
+                self.split_dir(split), version=self.version
+            )
+        return self._split_infos[split]
 
     @property
     def splits(self):
@@ -780,7 +979,7 @@ class ActivityNetDatasetInfo(object):
 
     @property
     def raw_anno_path(self):
-        return os.path.join(self.dataset_dir, "raw_labels.json")
+        return os.path.join(self.dataset_dir, "labels.json")
 
     def split_sample_ids(self, split):
         return self._splitwise_sample_ids[split]
@@ -789,30 +988,16 @@ class ActivityNetDatasetInfo(object):
         return self._splitwise_existing_sample_ids[split]
 
     def split_dir(self, split):
-        _split_dir = os.path.join(self.dataset_dir, split)
-        etau.ensure_dir(_split_dir)
-        return _split_dir
+        return os.path.join(self.dataset_dir, split)
 
     def data_dir(self, split):
-        _data_dir = os.path.join(self.split_dir(split), "data")
-        etau.ensure_dir(_data_dir)
-        return _data_dir
+        return self.split_info(split).data_dir
 
     def data_json_path(self, split):
-        return os.path.join(self.split_dir(split), "data.json")
-
-    def labels_path(self, split):
-        return os.path.join(self.split_dir(split), "labels.json")
+        return self.split_info(split).data_json_path
 
     def error_path(self, split):
-        return os.path.join(self.split_dir(split), "download_errors.json")
-
-    def _parse_sample_ids(self):
-        ids = {s: [] for s in self.splits}
-        for annot_id, annot in self.raw_annotations["database"].items():
-            split = _SPLIT_MAP_REV[annot["subset"]]
-            ids[split].append(annot_id)
-        return ids
+        return self.split_info(split).error_path
 
     def update_existing_sample_ids(self):
         self._splitwise_existing_sample_ids = None
@@ -824,31 +1009,17 @@ class ActivityNetDatasetInfo(object):
     def _get_existing_sample_ids(self):
         ids = {}
         for split in self.splits:
-            ids[split] = self._get_video_files(split)
+            if os.path.exists(self.split_dir(split)):
+                split_info = self.split_info(split)
+                split_info.update_existing_sample_ids()
+                split_ids = split_info.existing_sample_ids
+            else:
+                split_ids = []
+            ids[split] = split_ids
         return ids
 
-    def _get_video_files(self, split):
-        videos_dir = self.data_dir(split)
-        video_filenames = etau.list_files(videos_dir)
-        video_ids = []
-        for vfn in video_filenames:
-            video_id, ext = os.path.splitext(vfn)
-            if ext not in [".part", ".ytdl"]:
-                vid = video_id[2:]
-                video_ids.append(vid)
-
-        return video_ids
-
     def cleanup_split(self, split):
-        videos_dir = self.data_dir(split)
-        video_filenames = etau.list_files(videos_dir)
-        for vfn in video_filenames:
-            video_id, ext = os.path.splitext(vfn)
-            if ext in [".part", ".ytdl"]:
-                try:
-                    os.remove(os.path.join(videos_dir, vfn))
-                except FileNotFoundError:
-                    pass
+        self.split_info(split).cleanup()
 
     def _get_raw_annotations(self):
         if not os.path.isfile(self.raw_anno_path):
@@ -856,20 +1027,6 @@ class ActivityNetDatasetInfo(object):
             etaw.download_file(anno_link, path=self.raw_anno_path)
 
         return etas.load_json(self.raw_anno_path)
-
-    @classmethod
-    def get_all_classes(cls, taxonomy):
-        classes = set()
-        parents = set()
-        for node in taxonomy:
-            node_name = node["nodeName"]
-            parent_name = node["parentName"]
-            classes.add(node_name)
-            parents.add(parent_name)
-
-        classes = sorted(classes - parents)
-
-        return classes
 
     @classmethod
     def get_dir_info(cls, dataset_dir):
@@ -900,59 +1057,6 @@ class ActivityNetDatasetInfo(object):
         raise NotImplementedError(
             "Subclass must implement `get_sample_dataset_version()`"
         )
-
-    def get_matching_samples(self, split, max_duration=None, classes=None):
-        classes = self._parse_classes(classes, split)
-
-        # sample contains all specified classes
-        all_class_match = {}
-
-        # sample contains any specified calsses
-        any_class_match = {}
-
-        activitynet_split = _SPLIT_MAP[split]
-
-        if classes is not None:
-            class_set = set(classes)
-        for sample_id, annot_info in self.raw_annotations["database"].items():
-            is_correct_split = activitynet_split == annot_info["subset"]
-            if max_duration is None:
-                is_correct_dur = True
-            else:
-                is_correct_dur = max_duration >= annot_info["duration"]
-            if not is_correct_split or not is_correct_dur:
-                continue
-
-            if classes is None:
-                any_class_match[sample_id] = annot_info
-            else:
-                annot_labels = set(
-                    [a["label"] for a in annot_info["annotations"]]
-                )
-                if class_set.issubset(annot_labels):
-                    all_class_match[sample_id] = annot_info
-                elif class_set & annot_labels:
-                    any_class_match[sample_id] = annot_info
-
-        return any_class_match, all_class_match
-
-    def _parse_classes(self, classes, split):
-        if classes is not None:
-            if split == "test":
-                logger.warning(
-                    "Test split is unlabeled; ignoring classes requirement"
-                )
-                return None
-
-            non_existant_classes = list(set(classes) - set(self.all_classes))
-            if non_existant_classes:
-                raise ValueError(
-                    "The following classes were specified but do not exist in "
-                    "the dataset; ",
-                    tuple(non_existant_classes),
-                )
-
-        return classes
 
 
 class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
@@ -1004,6 +1108,20 @@ class ActivityNet200DatasetInfo(ActivityNetDatasetInfo):
         self.existing_sample_ids = _flatten_list(
             self._splitwise_existing_sample_ids.values()
         )
+
+
+def _get_all_classes(taxonomy):
+    classes = set()
+    parents = set()
+    for node in taxonomy:
+        node_name = node["nodeName"]
+        parent_name = node["parentName"]
+        classes.add(node_name)
+        parents.add(parent_name)
+
+    classes = sorted(classes - parents)
+
+    return classes
 
 
 def _flatten_list(l):
