@@ -213,10 +213,6 @@ class ClipsView(fov.DatasetView):
             This method is not a :class:`fiftyone.core.stages.ViewStage`;
             it immediately writes the requested changes to the underlying
             dataset.
-
-        Args:
-            fields (None): an optional field or list of fields to save. If
-                specified, only these fields are overwritten
         """
         self._sync_source(update=False, delete=True)
 

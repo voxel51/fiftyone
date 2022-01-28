@@ -2119,12 +2119,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_ids = view.values("id")
 
         if sample_ids is not None:
-            self._sample_collection.delete_many(
-                {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-            )
+            d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         else:
-            self._sample_collection.delete_many({})
+            d = {}
 
+        self._sample_collection.delete_many(d)
         fos.Sample._reset_docs(
             self._sample_collection_name, sample_ids=sample_ids
         )
@@ -2173,12 +2172,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_ids = view.values("id")
 
         if sample_ids is not None:
-            self._frame_collection.delete_many(
-                {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
-            )
+            d = {"_sample_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         else:
-            self._frame_collection.delete_many({})
+            d = {}
 
+        self._frame_collection.delete_many(d)
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
