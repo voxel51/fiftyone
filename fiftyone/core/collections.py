@@ -7381,7 +7381,10 @@ def _get_default_label_fields_for_exporter(
         return label_field_or_dict
 
     if required:
-        raise ValueError("No compatible field(s) of type %s found" % label_cls)
+        # Strange formatting is because `label_cls` may be a tuple
+        raise ValueError(
+            "No compatible field(s) of type %s found" % (label_cls,)
+        )
 
     return None
 
@@ -7417,8 +7420,10 @@ def _get_default_frame_label_fields_for_exporter(
         return frame_labels_field_or_dict
 
     if required:
+        # Strange formatting is because `frame_labels_cls` may be a tuple
         raise ValueError(
-            "No compatible frame field(s) of type %s found" % frame_labels_cls
+            "No compatible frame field(s) of type %s found"
+            % (frame_labels_cls,)
         )
 
     return None
