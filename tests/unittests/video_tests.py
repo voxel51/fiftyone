@@ -1868,7 +1868,7 @@ class VideoTests(unittest.TestCase):
         view2.save()
 
         self.assertEqual(len(view), 9)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
+        self.assertEqual(dataset.values(F("frames").length()), [3, 3])
         self.assertIn(
             "DOG", view.count_values("ground_truth.detections.label")
         )
