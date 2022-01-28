@@ -917,6 +917,7 @@ For example, you can save a :ref:`histogram view plot <view-plots>`:
 
     import fiftyone as fo
     import fiftyone.brain as fob
+    import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
 
@@ -938,8 +939,6 @@ Or you can save an :ref:`embedding scatterplot <embeddings-plots>`:
 
 .. code-block:: python
     :linenos:
-
-    import fiftyone.zoo as foz
 
     results = fob.compute_visualization(dataset)
 
