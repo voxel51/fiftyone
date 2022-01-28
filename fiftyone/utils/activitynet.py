@@ -268,9 +268,6 @@ class ActivityNetDatasetImporter(
         if process_uuids:
             uuids = sorted(self._labels_map.keys())
             self._uuids = self._preprocess_list(uuids)
-        import pdb
-
-        pdb.set_trace()
 
         self._num_samples = len(self._uuids)
 
@@ -867,7 +864,7 @@ class ActivityNetInfo(object):
                 continue
 
             fo_anno_labels = []
-            for an_anno_label in anno_info["annoations"]:
+            for an_anno_label in anno_info["annotations"]:
                 target = an_anno_label["label"]
                 timestamps = an_anno_label["segment"]
                 fo_anno_labels.append(

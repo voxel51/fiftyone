@@ -10,6 +10,8 @@ from collections import defaultdict
 
 import numpy as np
 
+import eta.core.utils as etau
+
 import fiftyone.core.plots as fop
 
 from .detection import (
@@ -215,8 +217,11 @@ class ActivityNetEvaluation(DetectionEvaluation):
 
         # Compute precision-recall array
         # https://github.com/activitynet/ActivityNet/blob/master/Evaluation/eval_detection.py
-        precision = -np.ones((len(iou_threshs), len(classes), 101))
-        classwise_AP = -np.ones((len(iou_threshs), len(classes)))
+        num_threshs = len(iou_threshs)
+        num_classes = len(classes)
+        precision = -np.ones((num_threshs, num_classes, 101))
+        thresholds = -np.ones((num_threshs, num_classes, 101))
+        classwise_AP = -np.ones((num_threshs, num_classes))
         recall = np.linspace(0, 1, 101)
         for t in thresh_matches.keys():
             for c in thresh_matches[t].keys():
@@ -226,24 +231,24 @@ class ActivityNetEvaluation(DetectionEvaluation):
                 if num_gt == 0:
                     continue
 
-                tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [m[3] for m in tp] + [m[3] for m in fp]
+                tp_fp = np.array([1] * len(tp) + [0] * len(fp))
+                confs = np.array([m[3] for m in tp] + [m[3] for m in fp])
                 if None in confs:
                     raise ValueError(
                         "All predicted segments must have their `confidence` "
                         "attribute populated in order to compute "
                         "precision-recall curves"
                     )
+                inds = np.argsort(-confs, kind="mergesort")
+                tp_fp = tp_fp[inds]
+                confs = confs[inds]
 
-                inds = np.argsort(-np.array(confs), kind="mergesort")
-                tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=float)
                 total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
 
                 pre = tp_sum / total
                 rec = tp_sum / num_gt
 
-                q = np.zeros(101)
                 for i in range(len(pre) - 1, 0, -1):
                     if pre[i] > pre[i - 1]:
                         pre[i - 1] = pre[i]
@@ -255,15 +260,20 @@ class ActivityNetEvaluation(DetectionEvaluation):
                 idx = np.where(mrec[1::] != mrec[0:-1])[0] + 1
                 ap = np.sum((mrec[idx] - mrec[idx - 1]) * mprec[idx])
 
+                q = np.zeros(101)
+                tr = np.zeros(101)
+
                 # Interpolate precision values for PR curve plotting purposes
                 inds = np.searchsorted(rec, recall, side="left")
                 try:
                     for ri, pi in enumerate(inds):
                         q[ri] = pre[pi]
+                        tr[ri] = confs[pi]
                 except:
                     pass
 
                 precision[iou_threshs.index(t)][classes.index(c)] = q
+                thresholds[iou_threshs.index(t)][classes.index(c)] = tr
                 classwise_AP[iou_threshs.index(t)][classes.index(c)] = ap
 
         return ActivityNetDetectionResults(
@@ -273,6 +283,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
             classwise_AP,
             iou_threshs,
             classes,
+            thresholds=thresholds,
             eval_key=eval_key,
             gt_field=gt_field,
             pred_field=pred_field,
@@ -294,8 +305,10 @@ class ActivityNetDetectionResults(DetectionResults):
         recall: an array of recall values
         classwise_AP: an array of average precision values of shape
             ``num_iou_threshs x num_classes``
-        iou_threshs: the list of IoU thresholds
+        iou_threshs: an array of IoU thresholds
         classes: the list of possible classes
+        thresholds (None): an optional array of decision thresholds of shape
+            ``num_iou_threshs x num_classes x num_recall``
         eval_key (None): the evaluation key for this evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -313,6 +326,7 @@ class ActivityNetDetectionResults(DetectionResults):
         classwise_AP,
         iou_threshs,
         classes,
+        thresholds=None,
         eval_key=None,
         gt_field=None,
         pred_field=None,
@@ -328,17 +342,29 @@ class ActivityNetDetectionResults(DetectionResults):
             missing=missing,
             samples=samples,
         )
+
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
+        self.thresholds = (
+            np.asarray(thresholds) if thresholds is not None else None
+        )
+
         self._classwise_AP = classwise_AP.mean(0)
 
-    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
+    def plot_pr_curves(
+        self, classes=None, iou_thresh=None, backend="plotly", **kwargs
+    ):
         """Plots precision-recall (PR) curves for the results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
-                default, top 3 AP classes will be plotted
+                default, the top 3 AP classes will be plotted
+            iou_thresh (None): an optional IoU threshold or list of IoU
+                thresholds for which to plot curves. If multiple thresholds are
+                provided, precision data is averaged across these thresholds.
+                By default, precition data is averaged over all IoU thresholds.
+                Refer to :attr:`iou_threshs` to see the available thresholds
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
@@ -354,17 +380,34 @@ class ActivityNetDetectionResults(DetectionResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        if not classes:
+        if classes is None:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
             classes = self.classes[inds]
 
+        thresh_inds = self._get_iou_thresh_inds(iou_thresh=iou_thresh)
+
         precisions = []
+
+        has_thresholds = self.thresholds is not None
+        thresholds = [] if has_thresholds else None
+
         for c in classes:
             class_ind = self._get_class_index(c)
-            precisions.append(np.mean(self.precision[:, class_ind], axis=0))
+            precisions.append(
+                np.mean(self.precision[thresh_inds, class_ind], axis=0)
+            )
+            if has_thresholds:
+                thresholds.append(
+                    np.mean(self.thresholds[thresh_inds, class_ind], axis=0)
+                )
 
         return fop.plot_pr_curves(
-            precisions, self.recall, classes, backend=backend, **kwargs
+            precisions,
+            self.recall,
+            classes,
+            thresholds=thresholds,
+            backend=backend,
+            **kwargs,
         )
 
     def mAP(self, classes=None):
@@ -392,17 +435,27 @@ class ActivityNetDetectionResults(DetectionResults):
 
         return np.mean(classwise_AP)
 
-    @classmethod
-    def _from_dict(cls, d, samples, config, **kwargs):
-        return super()._from_dict(
-            d,
-            samples,
-            config,
-            precision=d["precision"],
-            recall=d["recall"],
-            iou_threshs=d["iou_threshs"],
-            **kwargs,
-        )
+    def _get_iou_thresh_inds(self, iou_thresh=None):
+        if iou_thresh is None:
+            return np.arange(len(self.iou_threshs))
+
+        if etau.is_numeric(iou_thresh):
+            iou_threshs = [iou_thresh]
+        else:
+            iou_threshs = iou_thresh
+
+        thresh_inds = []
+        for iou_thresh in iou_threshs:
+            inds = np.where(np.abs(iou_thresh - self.iou_threshs) < 1e-6)[0]
+            if inds.size == 0:
+                raise ValueError(
+                    "Invalid IoU threshold %f. Refer to `results.iou_threshs` "
+                    "to see the available values" % iou_thresh
+                )
+
+            thresh_inds.append(inds[0])
+
+        return thresh_inds
 
     def _get_class_index(self, label):
         inds = np.where(self.classes == label)[0]
@@ -410,6 +463,23 @@ class ActivityNetDetectionResults(DetectionResults):
             raise ValueError("Class '%s' not found" % label)
 
         return inds[0]
+
+    @classmethod
+    def _from_dict(cls, d, samples, config, **kwargs):
+        precision = d["precision"]
+        recall = d["recall"]
+        iou_threshs = d["iou_threshs"]
+        thresholds = d.get("thresholds", None)
+        return super()._from_dict(
+            d,
+            samples,
+            config,
+            precision=precision,
+            recall=recall,
+            iou_threshs=iou_threshs,
+            thresholds=thresholds,
+            **kwargs,
+        )
 
 
 _NO_MATCH_ID = ""
