@@ -35,17 +35,16 @@ def get_geolocation(image_path):
     Returns:
         a :class:`fiftyone.core.labels.GeoLocation`
     """
-    image = rasterio.open(image_path, "r")
+    with open(image_path, "rb") as f:
+        with rasterio.open(f, "r") as image:
+            center = image.transform * (0.5 * image.width, 0.5 * image.height)
 
-    center = image.transform * (0.5 * image.width, 0.5 * image.height)
-
-    proj = pyproj.Proj(image.crs)
-    cp = proj(*center, inverse=True)
-    tl = proj(image.bounds.left, image.bounds.top, inverse=True)
-    tr = proj(image.bounds.right, image.bounds.top, inverse=True)
-    br = proj(image.bounds.right, image.bounds.bottom, inverse=True)
-    bl = proj(image.bounds.left, image.bounds.bottom, inverse=True)
-    image.close()
+            proj = pyproj.Proj(image.crs)
+            cp = proj(*center, inverse=True)
+            tl = proj(image.bounds.left, image.bounds.top, inverse=True)
+            tr = proj(image.bounds.right, image.bounds.top, inverse=True)
+            br = proj(image.bounds.right, image.bounds.bottom, inverse=True)
+            bl = proj(image.bounds.left, image.bounds.bottom, inverse=True)
 
     return fol.GeoLocation(point=cp, polygon=[[tl, tr, br, bl, tl]])
 
@@ -167,5 +166,7 @@ class GeoTIFFDatasetImporter(
             )
             filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
 
-        self._filepaths = self._preprocess_list(filepaths)
-        self._num_samples = len(self._filepaths)
+        filepaths = self._preprocess_list(filepaths)
+
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)

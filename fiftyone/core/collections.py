@@ -6083,74 +6083,29 @@ class SampleCollection(object):
                 this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
+        archive_path = None
+
+        # If the user requested an archive, first populate a directory
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
-            export_dir = etau.split_archive(archive_path)[0]
-        else:
-            archive_path = None
-
-        if dataset_type is None and dataset_exporter is None:
-            raise ValueError(
-                "Either `dataset_type` or `dataset_exporter` must be provided"
-            )
-
-        # If no dataset exporter was provided, construct one
-        if dataset_exporter is None:
-            _handle_existing_dirs(
-                export_dir, data_path, labels_path, export_media, overwrite
-            )
-
-            dataset_exporter, kwargs = foud.build_dataset_exporter(
-                dataset_type,
-                warn_unused=False,  # don't warn yet, might be patches kwargs
-                export_dir=export_dir,
-                data_path=data_path,
-                labels_path=labels_path,
-                export_media=export_media,
-                **kwargs,
-            )
-
-        # Get label field(s) to export
-        if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
-            # Labeled images
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=True,
-            )
-            frame_labels_field = None
-        elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
-            # Labeled videos
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-            frame_labels_field = self._parse_frame_labels_field(
-                frame_labels_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-
-            if label_field is None and frame_labels_field is None:
-                raise ValueError(
-                    "Unable to locate compatible sample or frame-level "
-                    "field(s) to export"
-                )
+            export_dir, _ = etau.split_archive(archive_path)
 
         # Perform the export
-        foud.export_samples(
+        _export(
             self,
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
             dataset_exporter=dataset_exporter,
             label_field=label_field,
             frame_labels_field=frame_labels_field,
+            overwrite=overwrite,
             **kwargs,
         )
 
-        # Archive, if requested
+        # Make archive, if requested
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
@@ -6643,9 +6598,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6660,10 +6615,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = (
-                os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
-            )
-            len_rel_dir = len(rel_dir)
+            rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
         is_video = self.media_type == fom.VIDEO
         write_frame_labels = is_video and frame_labels_dir is not None
@@ -6705,7 +6657,7 @@ class SampleCollection(object):
                 etas.write_json(frames, frames_path, pretty_print=pretty_print)
 
             if rel_dir and sd["filepath"].startswith(rel_dir):
-                sd["filepath"] = sd["filepath"][len_rel_dir:]
+                sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
             samples.append(sd)
 
@@ -6723,9 +6675,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6759,9 +6711,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -7476,7 +7428,10 @@ def _get_default_label_fields_for_exporter(
         return label_field_or_dict
 
     if required:
-        raise ValueError("No compatible field(s) of type %s found" % label_cls)
+        # Strange formatting is because `label_cls` may be a tuple
+        raise ValueError(
+            "No compatible field(s) of type %s found" % (label_cls,)
+        )
 
     return None
 
@@ -7512,8 +7467,10 @@ def _get_default_frame_label_fields_for_exporter(
         return frame_labels_field_or_dict
 
     if required:
+        # Strange formatting is because `frame_labels_cls` may be a tuple
         raise ValueError(
-            "No compatible frame field(s) of type %s found" % frame_labels_cls
+            "No compatible frame field(s) of type %s found"
+            % (frame_labels_cls,)
         )
 
     return None
@@ -7947,6 +7904,81 @@ def _get_non_none_value(values):
             return value
 
     return None
+
+
+def _export(
+    sample_collection,
+    export_dir=None,
+    dataset_type=None,
+    data_path=None,
+    labels_path=None,
+    export_media=None,
+    dataset_exporter=None,
+    label_field=None,
+    frame_labels_field=None,
+    overwrite=False,
+    **kwargs,
+):
+    if dataset_type is None and dataset_exporter is None:
+        raise ValueError(
+            "Either `dataset_type` or `dataset_exporter` must be provided"
+        )
+
+    # If no dataset exporter was provided, construct one
+    if dataset_exporter is None:
+        _handle_existing_dirs(
+            export_dir, data_path, labels_path, export_media, overwrite
+        )
+
+        dataset_exporter, kwargs = foud.build_dataset_exporter(
+            dataset_type,
+            warn_unused=False,  # don't warn yet, might be patches kwargs
+            export_dir=export_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
+            **kwargs,
+        )
+
+    # Get label field(s) to export
+    if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
+        # Labeled images
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=True,
+        )
+        frame_labels_field = None
+    elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
+        # Labeled videos
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+        frame_labels_field = sample_collection._parse_frame_labels_field(
+            frame_labels_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+
+        if label_field is None and frame_labels_field is None:
+            raise ValueError(
+                "Unable to locate compatible sample or frame-level "
+                "field(s) to export"
+            )
+
+    # Perform the export
+    foud.export_samples(
+        sample_collection,
+        dataset_exporter=dataset_exporter,
+        label_field=label_field,
+        frame_labels_field=frame_labels_field,
+        **kwargs,
+    )
 
 
 def _handle_existing_dirs(

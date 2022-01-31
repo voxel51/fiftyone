@@ -180,13 +180,18 @@ class ClipsView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the frames in the source dataset with the contents of the
-        view.
+        """Saves the clips in this view to the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
             This will permanently delete any omitted or filtered contents from
-            the source dataset.
+            the frames of the underlying dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -195,9 +200,23 @@ class ClipsView(fov.DatasetView):
         if etau.is_str(fields):
             fields = [fields]
 
-        self._sync_source(fields=fields, delete=True)
+        self._sync_source(fields=fields)
 
         super().save(fields=fields)
+
+    def keep(self):
+        """Deletes all clips that are **not** in this view from the underlying
+        dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source(update=False, delete=True)
+
+        super().keep()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -237,7 +256,7 @@ class ClipsView(fov.DatasetView):
 
         self._source_collection._set_labels(field, [sample.sample_id], [doc])
 
-    def _sync_source(self, fields=None, ids=None, delete=False):
+    def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         if not self._classification_field:
             return
 
@@ -253,9 +272,9 @@ class ClipsView(fov.DatasetView):
         else:
             sync_view = self
 
-        del_ids = set()
         update_ids = []
         update_docs = []
+        del_ids = set()
         for label_id, sample_id, support, doc in zip(
             *sync_view.values(["id", "sample_id", "support", field], _raw=True)
         ):
@@ -275,12 +294,13 @@ class ClipsView(fov.DatasetView):
                 if sample_id not in observed_ids:
                     del_ids.add(label_id)
 
+        if update:
+            self._source_collection._set_labels(field, update_ids, update_docs)
+
         if del_ids:
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
-
-        self._source_collection._set_labels(field, update_ids, update_docs)
 
 
 def make_clips_dataset(

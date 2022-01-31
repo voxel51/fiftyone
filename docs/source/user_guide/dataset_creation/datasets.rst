@@ -2651,7 +2651,7 @@ CVATImageDataset
 
 The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
 type represents a labeled dataset consisting of images and their associated
-object detections stored in
+tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are read in the following format:
@@ -2722,6 +2722,8 @@ where `labels.xml` is an XML file in the following format:
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
         <image id="0" name="<uuid1>.<ext>" width="640" height="480">
+            <tag label="urban"></tag>
+            ...
             <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
                 <attribute name="type">sedan</attribute>
                 ...

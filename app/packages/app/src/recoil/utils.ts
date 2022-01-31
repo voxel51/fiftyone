@@ -13,7 +13,7 @@ import * as viewAtoms from "./view";
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
 export const getSampleSrc = (filepath: string, id: string) => {
-  return `${http}/filepath/${encodeURI(filepath)}?id=${id}`;
+  return `${http}/filepath/${encodeURIComponent(filepath)}?id=${id}`;
 };
 
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
