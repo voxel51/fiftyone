@@ -204,6 +204,18 @@ def _build_tasks_list(
 
     if clip_segments is None:
         clip_segments = itertools.repeat(clip_segments)
+    else:
+        clip_segments = list(clip_segments)
+
+        # Replace all variations of full video downloads with `None` so that
+        # the most optimized download logic is used
+        for idx, clip_segment in enumerate(clip_segments):
+            if (
+                clip_segment is not None
+                and (clip_segment[0] is None or clip_segment[0] <= 0)
+                and clip_segment[1] is None
+            ):
+                clip_segments[idx] = None
 
     return list(
         zip(
