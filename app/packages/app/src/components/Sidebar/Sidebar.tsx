@@ -458,7 +458,7 @@ const InteractiveSidebar = ({
         el: null,
         controller: new Controller({
           cursor: "pointer",
-          top: 0,
+          top: -3000,
           left: 0,
           zIndex: 0,
           scale: 1,
