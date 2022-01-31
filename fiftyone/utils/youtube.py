@@ -383,7 +383,7 @@ def _validate_video(pytube_video):
     )
 
     if status is None:
-        return
+        return None
 
     if not etau.is_container(messages):
         error = messages
@@ -459,6 +459,8 @@ def _download_clip(stream, clip_segment, video_path):
     else:
         duration = None
 
+    # @todo consider using `fast=True` here, or even using an nearest-keyframe
+    # approach to further optimize the clip extraction
     etav.extract_clip(
         stream.url, video_path, start_time=start_time, duration=duration
     )
