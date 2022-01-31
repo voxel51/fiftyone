@@ -5,7 +5,6 @@ Utilities for working with `YouTube <https://youtube.com>`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
@@ -22,7 +21,7 @@ pytube = fou.lazy_import(
 )
 
 
-logger = logging.getLogger(__name__)
+logger = multiprocessing.get_logger()
 
 
 def download_youtube_videos(
@@ -30,7 +29,8 @@ def download_youtube_videos(
     download_dir=None,
     video_paths=None,
     clip_segments=None,
-    ext=None,
+    ext=".mp4",
+    progressive=True,
     resolution="highest",
     max_videos=None,
     num_workers=None,
@@ -55,6 +55,7 @@ def download_youtube_videos(
             (10, 25),
             (11.1, 20.2),
             None,               # entire video
+            (None, 8.0),        # through beginning of video
             (8.0, None),        # through end of video
             ...
         ]
@@ -79,11 +80,16 @@ def download_youtube_videos(
             available stream's format
         clip_segments (None): a list of ``(first, last)`` tuples defining a
             specific segment of each video to download
-        ext (None): an optional video format like ``".mp4"`` to download for
-            each video, if possible. Only applicable when a ``download_dir`` is
-            used. This format will be respected if such a stream exists,
-            otherwise the format of the best available stream is used
-        resolution (None): a desired stream resolution to download. The
+        ext (".mp4"): a video format to download for each video, if possible.
+            Only applicable when a ``download_dir`` is used. This format will
+            be respected if such a stream exists, otherwise the format of the
+            best available stream is used. Set this value to ``None`` if you
+            want to download the stream with the best match for ``resolution``
+            and ``progressive`` regardless of format
+        progressive (True): whether to only download progressive streams, if
+            possible. Progressive streams contain both audio and video tracks
+            and are typically only available for 720p and below
+        resolution ("highest"): a desired stream resolution to download. The
             supported values are:
 
             -   ``"highest"`` (default): download the highest resolution stream
@@ -121,6 +127,7 @@ def download_youtube_videos(
             clip_segments,
             tmp_dir,
             ext,
+            progressive,
             resolution,
         )
 
@@ -146,13 +153,24 @@ def _parse_num_workers(num_workers, use_threads=False):
 
 
 def _build_tasks_list(
-    urls, download_dir, video_paths, clip_segments, tmp_dir, ext, resolution
+    urls,
+    download_dir,
+    video_paths,
+    clip_segments,
+    tmp_dir,
+    ext,
+    progressive,
+    resolution,
 ):
     if video_paths is None and download_dir is None:
         raise ValueError("Either `download_dir` or `video_paths` are required")
 
-    if video_paths is not None and ext is not None:
-        logger.warning("Ignoring ext=%s when `video_paths` are provided", ext)
+    if video_paths is not None and download_dir is not None:
+        raise ValueError(
+            "Only one of `download_dir` or `video_paths` can be provided"
+        )
+
+    if download_dir is None and ext is not None:
         ext = None
 
     if not etau.is_str(resolution) or (
@@ -161,7 +179,7 @@ def _build_tasks_list(
     ):
         raise ValueError(
             "Invalid resolution=%s. The supported values are 'highest', "
-            "'lowest', '1080p', '720p', ..." % resolution
+            "'lowest', and strings like '1080p', '720p', ..." % resolution
         )
 
     if resolution.endswith("p"):
@@ -185,6 +203,7 @@ def _build_tasks_list(
     video_paths_list = _to_list(video_paths, num_videos)
     tmp_dir_list = _to_list(tmp_dir, num_videos)
     ext_list = _to_list(ext, num_videos)
+    progressive_list = _to_list(progressive, num_videos)
     resolution_list = _to_list(resolution, num_videos)
     return list(
         zip(
@@ -195,6 +214,7 @@ def _build_tasks_list(
             clip_segments,
             tmp_dir_list,
             ext_list,
+            progressive_list,
             resolution_list,
         )
     )
@@ -270,22 +290,20 @@ def _do_download(task):
         clip_segment,
         tmp_dir,
         ext,
+        progressive,
         resolution,
     ) = task
 
+    error = None
+
     try:
         pytube_video = pytube.YouTube(url)
-
-        error = _is_playable(pytube_video)
-        if error:
-            return idx, url, None, error
+        _validate_video(pytube_video)
 
         if video_path is not None and ext is None:
             ext = os.path.splitext(video_path)
 
-        stream = _get_stream(pytube_video, ext, resolution)
-        if stream is None:
-            return idx, url, None, "No stream found"
+        stream = _get_stream(pytube_video, ext, progressive, resolution)
 
         if video_path is None:
             filename = stream.default_filename
@@ -294,14 +312,14 @@ def _do_download(task):
 
             video_path = os.path.join(download_dir, filename)
 
-        root, ext = os.path.splitext(video_path)[1]
+        root, ext = os.path.splitext(video_path)
         stream_ext = os.path.splitext(stream.default_filename)[1]
         if ext != stream_ext:
             logger.warning(
-                "Unable to download '%s' to video format '%s'; using "
-                "'%s' instead",
-                url,
+                "Unable to find a '%s' stream for '%s'; downloading '%s' "
+                "instead",
                 ext,
+                url,
                 stream_ext,
             )
             video_path = root + stream_ext
@@ -316,45 +334,44 @@ def _do_download(task):
             _download_clip(stream, clip_segment, tmp_path)
 
         etau.move_file(tmp_path, video_path)
-
-        return idx, url, video_path, None
     except Exception as e:
+        video_path = None
         if isinstance(e, pytube.exceptions.PytubeError):
             error = type(e)
         else:
             error = str(e)
 
-        return idx, url, None, error
+    return idx, url, video_path, error
 
 
-def _is_playable(pytube_video):
+def _validate_video(pytube_video):
     status, messages = pytube.extract.playability_status(
         pytube_video.watch_html
     )
 
     if status is None:
-        return None
+        return
 
     if not etau.is_container(messages):
-        return messages
+        error = messages
+    elif messages:
+        error = messages[0]
+    else:
+        error = status
 
-    if messages:
-        return messages[0]
-
-    return status
+    raise ValueError(error)
 
 
-def _get_stream(pytube_video, ext, resolution):
-    # Try to download an audio + video stream, if possible
-    progressive = True
+def _get_stream(pytube_video, ext, progressive, resolution):
+    if ext is not None:
+        ext = ext[1:]  # remove "."
 
-    # If the user didn't request a particular format, try to find MP4 first
-    if ext is None:
-        ext = ".mp4"
+    if not progressive:
+        progressive = None
 
     while True:
         streams = pytube_video.streams.filter(
-            type="video", progressive=progressive, file_extension=ext[1:]
+            type="video", progressive=progressive, file_extension=ext
         )
 
         if streams:
@@ -368,12 +385,12 @@ def _get_stream(pytube_video, ext, resolution):
 
             return streams.order_by("resolution").desc().first()
 
-        if progressive:
-            progressive = False
-        elif ext is not None:
+        if ext is not None:
             ext = None
+        elif progressive:
+            progressive = None
         else:
-            return None
+            raise ValueError("No video streams found")
 
 
 def _find_nearest(array, target):
@@ -382,7 +399,12 @@ def _find_nearest(array, target):
 
 def _download_video(stream, video_path):
     outdir, filename = os.path.split(video_path)
-    stream.download(output_path=outdir, filename=filename)
+    stream.download(
+        output_path=outdir,
+        filename=filename,
+        skip_existing=False,
+        max_retries=3,
+    )
 
 
 def _download_clip(stream, clip_segment, video_path):
