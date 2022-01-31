@@ -696,15 +696,18 @@ class ActivityNetDatasetManager(object):
             download_urls.append(url)
             download_paths.append(sample_fp)
 
-        downloaded_urls, errors = fouy.download_youtube_videos(
+        downloaded_videos, download_errors = fouy.download_youtube_videos(
             urls=download_urls,
             video_paths=download_paths,
             max_videos=num_samples,
             num_workers=num_workers,
         )
-        downloaded_ids = [url_id_map[url] for url, path in downloaded_urls]
+        downloaded_ids = [ids[ind] for ind in downloaded_videos.keys()]
+        errors_dict = {}
+        for ind, error in download_errors.items():
+            errors_dict[download_urls[ind]] = error
 
-        return downloaded_ids, errors
+        return downloaded_ids, errors_dict
 
     def _merge_and_write_errors(self, download_errors, error_path):
         if os.path.isfile(error_path):
