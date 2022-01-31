@@ -112,9 +112,10 @@ export namespace State {
   }
 
   export interface SortBySimilarityParameters {
-    k: number | null;
-    reverse: boolean;
     brainKey: string;
+    distField?: string;
+    k?: number;
+    reverse?: boolean;
   }
 
   export interface Filters {
@@ -122,10 +123,11 @@ export namespace State {
       [key in TagKey]?: string[];
     };
     _similarity?: {
+      brain_key: string;
+      dist_field?: string;
       k?: number;
-      reverse?: boolean;
-      brain_key?: string;
       query_ids: string[];
+      reverse?: boolean;
     };
     [key: string]: Filter;
   }

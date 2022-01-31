@@ -110,6 +110,11 @@ const searchBrainKeyValue = atom<string>({
   default: "",
 });
 
+const distFieldValue = atom<string>({
+  key: "distFieldValue",
+  default: null,
+});
+
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
   get: (modal) => ({ get }) => {
@@ -177,6 +182,7 @@ const sortBySimilarityParameters = selector<State.SortBySimilarityParameters>({
       k: get(kValue),
       brainKey: get(brainKeyValue),
       reverse: get(reverseValue),
+      distField: get(distFieldValue),
     };
   },
 });
@@ -211,6 +217,7 @@ const SortBySimilarity = React.memo(
     const sortBySimilarity = useSortBySimilarity();
     const [reverse, setReverse] = useRecoilState(reverseValue);
     const [k, setK] = useRecoilState(kValue);
+    const [dist, setDist] = useRecoilState(distFieldValue);
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
@@ -242,6 +249,14 @@ const SortBySimilarity = React.memo(
               value={k === null ? "" : String(k)}
               setter={(value) => {
                 setK(value === "" ? null : Number(value));
+              }}
+            />
+            <Input
+              placeholder={"dist_field (default = None)"}
+              validator={(value) => !value.startsWith("_")}
+              value={dist === null ? "" : String(k)}
+              setter={(value) => {
+                setDist(value === "" ? null : value);
               }}
             />
             <Checkbox name={"reverse"} value={reverse} setValue={setReverse} />
