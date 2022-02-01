@@ -20,7 +20,11 @@ import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
+import {
+  EMBEDDED_DOCUMENT_FIELD,
+  LIST_FIELD,
+  toSnakeCase,
+} from "@fiftyone/utilities";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
@@ -39,6 +43,7 @@ import { pathFilter } from "./Filters";
 import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
+import { similarityParameters } from "./Actions/Similar";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -269,10 +274,12 @@ interface PageParameters {
 const pageParameters = selector<PageParameters>({
   key: "pageParameters",
   get: ({ get }) => {
+    const similarity = get(similarityParameters);
     return {
       filters: get(filterAtoms.filters),
       view: get(viewAtoms.view),
       dataset: get(selectors.datasetName),
+      similarity: similarity ? toSnakeCase(similarity) : null,
     };
   },
 });
@@ -406,6 +413,7 @@ export default React.memo(() => {
     refresh,
     cropToContent,
     tagging,
+    useRecoilValue(pageParameters),
   ]);
 
   useLayoutEffect(() => {

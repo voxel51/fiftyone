@@ -26,6 +26,7 @@ def get_view(
     filters=None,
     count_label_tags=False,
     only_matches=True,
+    similarity=None,
 ):
     """Get the view from request paramters
 
@@ -38,6 +39,7 @@ def get_view(
             with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
+        similarity (None): sort by similarity paramters
     """
     view = fod.load_dataset(dataset_name)
 
@@ -50,13 +52,18 @@ def get_view(
             filters,
             count_label_tags=count_label_tags,
             only_matches=only_matches,
+            similarity=similarity,
         )
 
     return view
 
 
 def get_extended_view(
-    view, filters=None, count_label_tags=False, only_matches=True
+    view,
+    filters=None,
+    count_label_tags=False,
+    only_matches=True,
+    similarity=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -67,6 +74,7 @@ def get_extended_view(
             with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
+        similarity (None): sort by similarity paramters
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -100,8 +108,8 @@ def get_extended_view(
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
 
-    if filters and "_similarity" in filters:
-        view = view.sort_by_similarity(**filters["_similarity"])
+    if similarity:
+        view = view.sort_by_similarity(**similarity)
 
     return view
 

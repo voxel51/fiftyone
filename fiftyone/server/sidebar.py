@@ -8,7 +8,6 @@ FiftyOne Server sidebar ordering.
 import tornado
 
 import fiftyone.core.odm.dataset as food
-import fiftyone.core.dataset as fod
 
 from fiftyone.server.utils import AsyncRequestHandler
 import fiftyone.server.view as fosv

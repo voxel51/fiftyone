@@ -37,6 +37,20 @@ export const styles = css`
     min-width: 600px;
   }
 
+  #modal {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    background-color: ${({ theme }) => theme.backgroundTransparent};
+    top: 0;
+    z-index: 1000;
+    display: none;
+  }
+
+  #modal.modalon {
+    display: block;
+  }
+
   input {
     padding: 0;
   }

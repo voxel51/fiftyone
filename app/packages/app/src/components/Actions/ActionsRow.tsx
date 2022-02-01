@@ -35,7 +35,7 @@ import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
 import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
-import Similar from "./Similar";
+import Similar, { similarityParameters } from "./Similar";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 const Loading = () => {
@@ -89,6 +89,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
+  const hasSorting = useRecoilValue(similarityParameters);
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -96,7 +97,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
-  if (!hasSimilarity) {
+  if (!hasSimilarity && !hasSorting) {
     return null;
   }
 
@@ -280,6 +281,7 @@ export const savingFilters = atom<boolean>({
 
 const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
+  const similarity = useRecoilValue(similarityParameters);
   const loading = useRecoilValue(savingFilters);
 
   const saveFilters = useRecoilCallback(
@@ -289,12 +291,15 @@ const SaveFilters = () => {
         return;
       }
       set(savingFilters, true);
-      sendPatch(snapshot).then(() => set(savingFilters, false));
+      sendPatch(snapshot).then(() => {
+        set(savingFilters, false);
+        set(similarityParameters, null);
+      });
     },
     []
   );
 
-  return hasFiltersValue ? (
+  return hasFiltersValue || similarity ? (
     <ActionDiv>
       <PillButton
         open={false}
@@ -302,7 +307,7 @@ const SaveFilters = () => {
         icon={loading ? <Loading /> : <Bookmark />}
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}
-        title={"Convert current field filters to view stages"}
+        title={"Convert current filters and/or sorting to view stages"}
       />
     </ActionDiv>
   ) : null;

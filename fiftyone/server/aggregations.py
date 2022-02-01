@@ -49,6 +49,7 @@ class AggregationsHandler(AsyncRequestHandler):
         if hidden_labels:
             view = view.exclude_labels(hidden_labels)
 
+        print("HELLOOOO", stages)
         result = await get_app_statistics(view, filters)
         return convert(result)
 
@@ -141,7 +142,6 @@ async def get_app_statistics(view, filters):
 
     ordered = [agg for path in aggregations.values() for agg in path.values()]
     results = await view._async_aggregate(ordered)
-    convert(results)
 
     for aggregation, result in zip(ordered, results):
         aggregations[aggregation.field_name or ""][

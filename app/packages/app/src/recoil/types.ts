@@ -122,13 +122,6 @@ export namespace State {
     tags?: {
       [key in TagKey]?: string[];
     };
-    _similarity?: {
-      brain_key: string;
-      dist_field?: string;
-      k?: number;
-      query_ids: string[];
-      reverse?: boolean;
-    };
     [key: string]: Filter;
   }
 

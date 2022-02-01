@@ -1,12 +1,11 @@
-import React, { useLayoutEffect } from "react";
+import React, { useCallback, useLayoutEffect, useState } from "react";
 import {
   atom,
-  selector,
   selectorFamily,
   Snapshot,
   useRecoilCallback,
-  useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
 } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
@@ -15,7 +14,7 @@ import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useTheme } from "../../utils/hooks";
+import { useStateUpdate, useTheme } from "../../utils/hooks";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -26,12 +25,20 @@ import { PopoutSectionTitle } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { store } from "../Flashlight.store";
-import { filters } from "../../recoil/filters";
+import { http } from "../../shared/connection";
 import { toSnakeCase } from "@fiftyone/utilities";
+import { useErrorHandler } from "react-error-boundary";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
   default: false,
+});
+
+export const similarityParameters = atom<
+  State.SortBySimilarityParameters & { queryIds: string[] }
+>({
+  key: "sortBySimilarityParameters",
+  default: null,
 });
 
 const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
@@ -70,49 +77,50 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 };
 
 const useSortBySimilarity = () => {
+  const update = useStateUpdate();
+  const handleError = useErrorHandler();
   return useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const params = await snapshot.getPromise(sortBySimilarityParameters);
-      const queryIds = await getQueryIds(snapshot, params.brainKey);
-      const current = await snapshot.getPromise(filters);
-      set(similaritySorting, true);
-      set(atoms.modal, null);
+    ({ snapshot, set }) => async (
+      parameters: State.SortBySimilarityParameters
+    ) => {
+      try {
+        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+        set(similaritySorting, true);
 
-      set(filters, {
-        ...current,
-        _similarity: toSnakeCase({
-          queryIds,
-          ...params,
-        }),
-      });
+        const response = await fetch(`${http}/sort`, {
+          method: "POST",
+          cache: "no-cache",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "cors",
+          body: JSON.stringify({
+            dataset: await snapshot.getPromise(selectors.datasetName),
+            similarity: toSnakeCase({
+              ...parameters,
+              queryIds,
+            }),
+          }),
+        });
+
+        const data = await response.json();
+
+        await update(data, (set) => {
+          set(similarityParameters, { ...parameters, queryIds });
+          set(atoms.modal, null);
+          set(similaritySorting, false);
+        });
+      } catch (error) {
+        handleError(error);
+      }
     },
     []
   );
 };
 
-const kValue = atom<number>({
-  key: "kValue",
-  default: null,
-});
-
-const reverseValue = atom<boolean>({
-  key: "reverseValue",
-  default: false,
-});
-
-const brainKeyValue = atom<string>({
-  key: "brainKeyValue",
-  default: null,
-});
-
 const searchBrainKeyValue = atom<string>({
   key: "searchBrainKeyValue",
   default: "",
-});
-
-const distFieldValue = atom<string>({
-  key: "distFieldValue",
-  default: null,
 });
 
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
@@ -175,18 +183,6 @@ const currentSimilarityKeys = selectorFamily<
   },
 });
 
-const sortBySimilarityParameters = selector<State.SortBySimilarityParameters>({
-  key: "sortBySimilarityParameters",
-  get: ({ get }) => {
-    return {
-      k: get(kValue),
-      brainKey: get(brainKeyValue),
-      reverse: get(reverseValue),
-      distField: get(distFieldValue),
-    };
-  },
-});
-
 const sortType = selectorFamily<string, boolean>({
   key: "sortBySimilarityType",
   get: (modal) => ({ get }) => {
@@ -209,21 +205,36 @@ interface SortBySimilarityProps {
 
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
-    const [brainKey, setBrainKey] = useRecoilState(brainKeyValue);
+    const current = useRecoilValue(similarityParameters);
+    const [state, setState] = useState<State.SortBySimilarityParameters>(() =>
+      current
+        ? current
+        : { brainKey: null, distField: null, reverse: false, k: null }
+    );
+
+    const setParameter = useCallback(
+      (name: string, value) =>
+        setState((state) => ({ ...state, [name]: value })),
+      []
+    );
+    const hasSorting = Boolean(current);
+    const reset = useResetRecoilState(similarityParameters);
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
     const choices = useRecoilValue(currentSimilarityKeys(modal));
     const sortBySimilarity = useSortBySimilarity();
-    const [reverse, setReverse] = useRecoilState(reverseValue);
-    const [k, setK] = useRecoilState(kValue);
-    const [dist, setDist] = useRecoilState(distFieldValue);
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
     useLayoutEffect(() => {
-      choices.choices.length === 1 && setBrainKey(choices.choices[0]);
+      choices.choices.length === 1 &&
+        setParameter("brainKey", choices.choices[0]);
     }, [choices]);
+
+    useLayoutEffect(() => {
+      current && setState(current);
+    }, [current]);
 
     return (
       <Popout modal={modal} bounds={bounds}>
@@ -246,29 +257,33 @@ const SortBySimilarity = React.memo(
             <Input
               placeholder={"k (default = None)"}
               validator={(value) => value === "" || /^[0-9\b]+$/.test(value)}
-              value={k === null ? "" : String(k)}
+              value={state.k === null ? "" : String(state.k)}
               setter={(value) => {
-                setK(value === "" ? null : Number(value));
+                setParameter("k", value === "" ? null : Number(value));
               }}
             />
             <Input
               placeholder={"dist_field (default = None)"}
               validator={(value) => !value.startsWith("_")}
-              value={dist === null ? "" : String(k)}
+              value={state.distField === null ? "" : state.distField}
               setter={(value) => {
-                setDist(value === "" ? null : value);
+                setParameter("distField", value === "" ? null : value);
               }}
             />
-            <Checkbox name={"reverse"} value={reverse} setValue={setReverse} />
+            <Checkbox
+              name={"reverse"}
+              value={Boolean(state.reverse)}
+              setValue={(v) => setParameter("reverse", v)}
+            />
             <PopoutSectionTitle style={{ fontSize: 14 }}>
               Brain key
             </PopoutSectionTitle>
             <RadioGroup
               choices={choices.choices}
-              value={brainKey}
-              setValue={setBrainKey}
+              value={state.brainKey}
+              setValue={(v) => setParameter("brainKey", v)}
             />
-            {brainKey && (
+            {state.brainKey && (
               <>
                 <PopoutSectionTitle></PopoutSectionTitle>
                 <Button
@@ -276,7 +291,7 @@ const SortBySimilarity = React.memo(
                   title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {
                     close();
-                    sortBySimilarity();
+                    sortBySimilarity(state);
                   }}
                   style={{
                     margin: "0.25rem -0.5rem",
@@ -287,6 +302,25 @@ const SortBySimilarity = React.memo(
                 ></Button>
               </>
             )}
+          </>
+        )}
+        {hasSorting && (
+          <>
+            <PopoutSectionTitle></PopoutSectionTitle>
+            <Button
+              text={"Reset"}
+              title={`Clear sorting`}
+              onClick={() => {
+                close();
+                reset();
+              }}
+              style={{
+                margin: "0.25rem -0.5rem",
+                height: "2rem",
+                borderRadius: 0,
+                textAlign: "center",
+              }}
+            ></Button>
           </>
         )}
       </Popout>

@@ -14,7 +14,7 @@ import { packageMessage } from "../../utils/socket";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
-const useClearSampleSelection = () => {
+const useClearSampleSelection = (close) => {
   return useRecoilCallback(
     ({ set }) => async () => {
       set(atoms.selectedSamples, new Set());
@@ -27,7 +27,7 @@ const useClearSampleSelection = () => {
 
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(viewAtoms.elementNames);
-  const clearSelection = useClearSampleSelection();
+  const clearSelection = useClearSampleSelection(close);
   const addStage = useRecoilCallback(({ snapshot }) => async (name) => {
     close();
     const state = await snapshot.getPromise(atoms.stateDescription);
@@ -96,9 +96,13 @@ const useUnselectVisible = (
   });
 };
 
-const useClearSelectedLabels = () => {
-  return useRecoilCallback(({ set }) => async () =>
-    set(selectors.selectedLabels, {})
+const useClearSelectedLabels = (close) => {
+  return useRecoilCallback(
+    ({ set }) => async () => {
+      set(selectors.selectedLabels, {});
+      close();
+    },
+    []
   );
 };
 
@@ -140,7 +144,7 @@ const useModalActions = (
   close
 ) => {
   const selected = useRecoilValue(atoms.selectedSamples);
-  const clearSelection = useClearSampleSelection();
+  const clearSelection = useClearSampleSelection(close);
 
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
@@ -206,7 +210,7 @@ const useModalActions = (
     {
       text: "Clear selection",
       hidden: !selectedLabels.size,
-      onClick: closeAndCall(useClearSelectedLabels()),
+      onClick: closeAndCall(useClearSelectedLabels(close)),
     },
     {
       text: "Hide selected",
