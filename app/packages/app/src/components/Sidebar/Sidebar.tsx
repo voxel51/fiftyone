@@ -94,10 +94,6 @@ const fn = (
       shown = paths === 0 && entry.shown;
     }
 
-    const height = Array.from(el.children).reduce((height, child) => {
-      return height + child.getBoundingClientRect().height;
-    }, 0);
-
     results[key] = {
       cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
@@ -105,7 +101,11 @@ const fn = (
       scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
       left: shown ? 0 : -3000,
-      height,
+      height: shown
+        ? Array.from(el.children).reduce((height, child) => {
+            return height + child.getBoundingClientRect().height;
+          }, 0)
+        : 0,
     };
 
     if (active) {
