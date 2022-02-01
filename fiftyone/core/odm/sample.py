@@ -47,12 +47,12 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 |
 """
 from collections import OrderedDict
-import os
 import random
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.utils as fou
 
 from .document import Document, SerializableDocument
 from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
