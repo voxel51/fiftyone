@@ -482,7 +482,7 @@ def make_frames_dataset(
             fo.config.default_sequence_idx + fo.config.default_image_ext
         )
 
-    if not sample_frames:
+    if sample_frames != True:
         l = locals()
         sample_kwargs = (
             "size",
@@ -494,7 +494,9 @@ def make_frames_dataset(
 
         for var in sample_kwargs:
             if l[var]:
-                logger.warning("Ignoring '%s' when sample_frames=False", var)
+                logger.warning(
+                    "Ignoring '%s' when sample_frames=%s", var, sample_frames
+                )
 
     #
     # Create dataset with proper schema
@@ -548,25 +550,37 @@ def make_frames_dataset(
 
     # Merge frame data
     pipeline = sample_collection._pipeline(frames_only=True)
-    pipeline.extend(
-        [
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
-                }
-            },
-        ]
+
+    if sample_frames == "dynamic":
+        pipeline.append({"$unset": "filepath"})
+
+    pipeline.append(
+        {
+            "$merge": {
+                "into": dataset._sample_collection_name,
+                "on": ["_sample_id", "frame_number"],
+                "whenMatched": "merge",
+                "whenNotMatched": "discard",
+            }
+        }
     )
 
     sample_collection._dataset._aggregate(pipeline=pipeline)
 
-    # Delete samples for any frames without filepaths
-    if sample_frames:
+    # Delete samples for frames without filepaths
+    if sample_frames == True:
         dataset._sample_collection.delete_many(
             {"filepath": {"$not": {"$gt": None}}}
+        )
+
+    if sample_frames == False and not dataset:
+        logger.warning(
+            "Your frames view is empty. Note that you must either "
+            "pre-populate the `filepath` field on the frames of your video "
+            "collection or pass `sample_frames=True` to this method to "
+            "perform the sampling.\n\n See "
+            "https://voxel51.com/docs/fiftyone/user_guide/using_views.html#frame-views "
+            "for more information"
         )
 
     return dataset
@@ -590,10 +604,10 @@ def _init_frames(
     force_sample,
     verbose,
 ):
-    if sample_frames or fps is not None or max_fps is not None:
+    if sample_frames == True or fps is not None or max_fps is not None:
         src_collection.compute_metadata()
 
-    if sample_frames and verbose:
+    if sample_frames == True and verbose:
         logger.info("Determining frames to sample...")
 
     #
@@ -604,6 +618,7 @@ def _init_frames(
     id_map = {}
     sample_map = defaultdict(set)
     frame_map = defaultdict(set)
+    missing_filepaths = defaultdict(dict)
 
     is_clips = src_collection._dataset._is_clips
     samples = src_collection.select_fields()._aggregate(attach_frames=True)
@@ -615,22 +630,33 @@ def _init_frames(
         total_frame_count = metadata.get("total_frame_count", -1)
         frames = sample.get("frames", [])
 
-        frame_ids_map = {
-            f["frame_number"]: f["_id"]
-            for f in frames
-            if sample_frames or f.get("filepath", None) is not None
-        }
+        frame_ids_map = {}
+        have_filepaths = set()
+        for frame in frames:
+            _frame_id = frame["_id"]
+            frame_number = frame["frame_number"]
+            filepath = frame.get("filepath", None)
+
+            if sample_frames != False or filepath:
+                frame_ids_map[frame_number] = _frame_id
+
+            if sample_frames == True and filepath:
+                have_filepaths.add(frame_number)
 
         if is_clips:
-            sample_id = sample["_sample_id"]
+            _sample_id = sample["_sample_id"]
             support = sample["support"]
         else:
-            sample_id = sample["_id"]
+            _sample_id = sample["_id"]
             support = None
+
+        sample_id = str(_sample_id)
 
         outdir = os.path.splitext(video_path)[0]
         images_patt = os.path.join(outdir, frames_patt)
 
+        # Determine which frame numbers to include in the frames dataset and
+        # whether any frame images need to be sampled
         doc_frame_numbers, sample_frame_numbers = _parse_video_frames(
             video_path,
             sample_frames,
@@ -646,45 +672,75 @@ def _init_frames(
             verbose,
         )
 
+        # Record things that need to be sampled
         # note: [] means no frames, None means all frames
         if sample_frame_numbers != []:
-            id_map[video_path] = str(sample["_id"])
+            id_map[video_path] = sample_id
+
             if sample_frame_numbers is None:
                 sample_map[video_path] = None
             elif sample_map[video_path] is not None:
                 sample_map[video_path].update(sample_frame_numbers)
 
-        for frame_number in doc_frame_numbers:
+        # Record any already-sampled frames whose `filepath` need to be stored
+        # on the source dataset
+        if sample_frame_numbers:
+            missing_fns = (
+                set(doc_frame_numbers)
+                - set(sample_frame_numbers)
+                - have_filepaths
+            )
+            for fn in missing_fns:
+                missing_filepaths[sample_id][fn] = images_patt % fn
+
+        # Create necessary frame documents
+        for fn in doc_frame_numbers:
             if is_clips:
                 fns = frame_map[video_path]
-                if frame_number in fns:
+                if fn in fns:
                     continue  # frame has already been sampled
 
-                fns.add(frame_number)
+                fns.add(fn)
+
+            if sample_frames == "dynamic":
+                filepath = video_path
+            else:
+                filepath = None  # will be populated later
 
             doc = {
-                "filepath": None,  # will be populated after sampling
+                "filepath": filepath,
                 "tags": tags,
                 "metadata": None,
-                "frame_number": frame_number,
+                "frame_number": fn,
                 "_media_type": "image",
-                "_rand": foos._generate_rand(images_patt % frame_number),
-                "_sample_id": sample_id,
+                "_rand": foos._generate_rand(images_patt % fn),
+                "_sample_id": _sample_id,
             }
 
-            _id = frame_ids_map.get(frame_number, None)
+            _id = frame_ids_map.get(fn, None)
             if _id is not None:
                 doc["_id"] = _id
 
             docs.append(doc)
 
-            if len(docs) >= 100000:
+            # Commit batch of docs to frames dataset
+            if len(docs) >= 100000:  # MongoDB limit for bulk inserts
                 foo.insert_documents(docs, dataset._sample_collection)
                 docs.clear()
 
+    # Add remaining docs to frames dataset
     if docs:
         foo.insert_documents(docs, dataset._sample_collection)
 
+    # Add any missing frame filepaths to source dataset
+    if missing_fns:
+        dataset.set_values(
+            "frames.filepath", missing_filepaths, key_field="id"
+        )
+
+    #
+    # Finalize which frame images need to be sampled, if any
+    #
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
     # views with multiple overlapping clips into the same video
@@ -744,12 +800,12 @@ def _parse_video_frames(
     else:
         doc_frame_numbers = target_frame_numbers
 
-    if sparse or not sample_frames:
+    if sparse or sample_frames == False:
         doc_frame_numbers = [
             fn for fn in doc_frame_numbers if fn in frame_ids_map
         ]
 
-    if not sample_frames:
+    if sample_frames != True:
         return doc_frame_numbers, []
 
     #
