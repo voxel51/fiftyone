@@ -20,7 +20,35 @@ App
 Core
 
 - Added
-  :meth:`InteractivePlot.save() <fiftyone.core.plots.base.InteractivePlot.save>` fmethod that can save any ViewPlot or InteractivePlot as a static image
+  :meth:`InteractivePlot.save() <fiftyone.core.plots.base.InteractivePlot.save>`
+  and
+  :meth:`ViewPlot.save() <fiftyone.core.plots.base.ViewPlot>` methods that can
+  save any plot as a static image
+- Added the
+  :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines()>
+  method that can convert instance segmentations (or just `bboxes`) to Polylines
+  format
+- Added support for frame labels to all conversion methods in the
+  :mod:`fiftyone.utils.labels` module
+- Updated the implementation of
+  :meth:`Detection.to_polyline() <fiftyone.core.labels.Detection.to_polyline>`
+  so that all attributes are included rather than just ETA-supported ones
+- Updated :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>` to save
+  changes to (only) the samples in the view to the underlying dataset
+- Added :meth:`DatasetView.keep() <fiftyone.core.view.DatasetView.keep>` which
+  deletes any samples that are not in the view to the underlying dataset. This
+  is the previous behavior of
+  :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>`
+- Added an official `Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
+- Added support for including empty labels labels via an `include_missing`
+  keyword argument in
+  :func:`add_yolo_labels() >fiftyone.utils.yolo.add_yolo_labels>`
+
+Annotation
+
+- Added imports and exports of CVAT sample-level tags as
+  :class:`Classifications <fiftyone.core.labels.Classification>` labels
+- Fixed a when annotating existing fields with multiple label types
 
 .. _release-notes-v0.14.3:
 
