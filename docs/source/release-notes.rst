@@ -43,6 +43,8 @@ Core
 - Added support for including empty labels labels via an `include_missing`
   keyword argument in
   :func:`add_yolo_labels() >fiftyone.utils.yolo.add_yolo_labels>`
+- Added the utility function
+  :func:`download_youtube_videos() <fiftyone.utils.youtube.download_youtube_videos>`
 
 Annotation
 
