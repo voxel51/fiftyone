@@ -377,13 +377,13 @@ class FramesView(fov.DatasetView):
 def make_frames_dataset(
     sample_collection,
     sample_frames=False,
-    frames_patt=None,
     fps=None,
     max_fps=None,
     size=None,
     min_size=None,
     max_size=None,
     sparse=False,
+    frames_patt=None,
     force_sample=False,
     skip_failures=True,
     verbose=False,
@@ -395,20 +395,16 @@ def make_frames_dataset(
     of each video as sample-level fields, as well as a ``sample_id`` field that
     records the IDs of the parent sample for each frame.
 
-    When ``sample_frames`` is False (the default), this method assumes that the
+    By default, ``sample_frames`` is False and this method assumes that the
     frames of the input collection have ``filepath`` fields populated pointing
-    to each frame image.
+    to each frame image. Any frames without a ``filepath`` populated will be
+    omitted from the frames dataset.
 
     When ``sample_frames`` is True, this method samples each video in the
     collection into a directory of per-frame images with the same basename as
     the input video with frame numbers/format specified by ``frames_patt``, and
     stores the resulting frame paths in a ``filepath`` field of the input
     collection.
-
-    .. note::
-
-        If this method is run multiple times, existing frames will not be
-        resampled unless you set ``force_sample`` to True.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -434,6 +430,12 @@ def make_frames_dataset(
 
     .. note::
 
+        If this method is run multiple times with ``sample_frames`` set to
+        True, existing frames will not be resampled unless you set
+        ``force_sample`` to True.
+
+    .. note::
+
         The returned dataset is independent from the source collection;
         modifying it will not affect the source collection.
 
@@ -444,59 +446,59 @@ def make_frames_dataset(
             already been sampled at locations stored in the ``filepath`` field
             of each frame (False), or whether to sample the video frames now
             according to the specified parameters (True)
-        frames_patt (None): a pattern specifying the filename/format to use to
-            store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
-            is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
         fps (None): an optional frame rate at which to sample each video's
             frames
         max_fps (None): an optional maximum frame rate at which to sample.
             Videos with frame rate exceeding this value are downsampled
-        size (None): an optional ``(width, height)`` for each frame. One
-            dimension can be -1, in which case the aspect ratio is preserved
+        size (None): an optional ``(width, height)`` at which to sample frames.
+            A dimension can be -1, in which case the aspect ratio is preserved.
+            Only applicable when ``sample_frames=True``
         min_size (None): an optional minimum ``(width, height)`` for each
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
-            this constraint
+            this constraint. Only applicable when ``sample_frames=True``
         max_size (None): an optional maximum ``(width, height)`` for each
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
-            this constraint
-        sparse (False): whether to only sample frame images for non-empty
-            frames, i.e., frame numbers for which
-            :class:`fiftyone.core.frame.Frame` instances have explicitly been
-            created
+            this constraint. Only applicable when ``sample_frames=True``
+        sparse (False): whether to only sample frame images for frame numbers
+            for which :class:`fiftyone.core.frame.Frame` instances exist in the
+            input collection. This parameter has no effect when
+            ``sample_frames==False`` since frames must always exist in order to
+            have ``filepath`` information use
+        frames_patt (None): a pattern specifying the filename/format to use to
+            write or check or existing sampled frames, e.g., ``"%%06d.jpg"``.
+            The default value is
+            ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
         force_sample (False): whether to resample videos whose sampled frames
-            already exist
+            already exist. Only applicable when ``sample_frames=True``
         skip_failures (True): whether to gracefully continue without raising
-            an error if a video cannot be sampled
+            an error if a video cannot be sampled. Only applicable when
+            ``sample_frames=True``
         verbose (False): whether to log information about the frames that will
-            be sampled, if any
+            be sampled, if any. Only applicable when ``sample_frames=True``
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
     fova.validate_video_collection(sample_collection)
 
-    if frames_patt is None:
-        frames_patt = (
-            fo.config.default_sequence_idx + fo.config.default_image_ext
-        )
-
     if sample_frames != True:
         l = locals()
-        sample_kwargs = (
-            "size",
-            "min_size",
-            "max_size",
-            "sparse",
-            "force_sample",
-        )
+        ignore_params = ["size", "min_size", "max_size", "verbose"]
+        if sample_frames == False:
+            ignore_params.extend(["sparse", "frames_patt"])
 
-        for var in sample_kwargs:
+        for var in ignore_params:
             if l[var]:
                 logger.warning(
                     "Ignoring '%s' when sample_frames=%s", var, sample_frames
                 )
+
+    if frames_patt is None:
+        frames_patt = (
+            fo.config.default_sequence_idx + fo.config.default_image_ext
+        )
 
     #
     # Create dataset with proper schema
@@ -569,18 +571,16 @@ def make_frames_dataset(
 
     # Delete samples for frames without filepaths
     if sample_frames == True:
-        dataset._sample_collection.delete_many(
-            {"filepath": {"$not": {"$gt": None}}}
-        )
+        dataset._sample_collection.delete_many({"filepath": None})
 
     if sample_frames == False and not dataset:
         logger.warning(
             "Your frames view is empty. Note that you must either "
             "pre-populate the `filepath` field on the frames of your video "
             "collection or pass `sample_frames=True` to this method to "
-            "perform the sampling.\n\n See "
+            "perform the sampling. See "
             "https://voxel51.com/docs/fiftyone/user_guide/using_views.html#frame-views "
-            "for more information"
+            "for more information."
         )
 
     return dataset
@@ -604,7 +604,12 @@ def _init_frames(
     force_sample,
     verbose,
 ):
-    if sample_frames == True or fps is not None or max_fps is not None:
+    if (
+        (sample_frames != False and not sparse)
+        or fps is not None
+        or max_fps is not None
+    ):
+        # We'll need frame counts to determine what frames to include/sample
         src_collection.compute_metadata()
 
     if sample_frames == True and verbose:
@@ -615,23 +620,28 @@ def _init_frames(
     #
 
     docs = []
+    missing_filepaths = defaultdict(dict)
+
     id_map = {}
     sample_map = defaultdict(set)
     frame_map = defaultdict(set)
-    missing_filepaths = defaultdict(dict)
 
     is_clips = src_collection._dataset._is_clips
-    samples = src_collection.select_fields()._aggregate(attach_frames=True)
-    for sample in samples:
+    if src_collection.has_frame_field("filepath"):
+        view = src_collection.select_fields("frames.filepath")
+    else:
+        view = src_collection.select_fields()
+
+    for sample in view._aggregate(attach_frames=True):
         video_path = sample["filepath"]
         tags = sample.get("tags", [])
-        metadata = sample.get("metadata", {})
+        metadata = sample.get("metadata", None) or {}
         frame_rate = metadata.get("frame_rate", None)
         total_frame_count = metadata.get("total_frame_count", -1)
         frames = sample.get("frames", [])
 
         frame_ids_map = {}
-        have_filepaths = set()
+        frames_with_filepaths = set()
         for frame in frames:
             _frame_id = frame["_id"]
             frame_number = frame["frame_number"]
@@ -641,7 +651,7 @@ def _init_frames(
                 frame_ids_map[frame_number] = _frame_id
 
             if sample_frames == True and filepath:
-                have_filepaths.add(frame_number)
+                frames_with_filepaths.add(frame_number)
 
         if is_clips:
             _sample_id = sample["_sample_id"]
@@ -684,11 +694,11 @@ def _init_frames(
 
         # Record any already-sampled frames whose `filepath` need to be stored
         # on the source dataset
-        if sample_frame_numbers:
+        if sample_frames == True and sample_frame_numbers is not None:
             missing_fns = (
                 set(doc_frame_numbers)
                 - set(sample_frame_numbers)
-                - have_filepaths
+                - frames_with_filepaths
             )
             for fn in missing_fns:
                 missing_filepaths[sample_id][fn] = images_patt % fn
@@ -732,9 +742,14 @@ def _init_frames(
     if docs:
         foo.insert_documents(docs, dataset._sample_collection)
 
-    # Add any missing frame filepaths to source dataset
-    if missing_fns:
-        dataset.set_values(
+    # Add any missing frame filepaths to source collection
+    if missing_filepaths:
+        logger.info(
+            "Setting %d frame filepaths on the input collection that exist "
+            "on disk but are not recorded on the dataset",
+            sum(len(d) for d in missing_filepaths.values()),
+        )
+        src_collection.set_values(
             "frames.filepath", missing_filepaths, key_field="id"
         )
 
