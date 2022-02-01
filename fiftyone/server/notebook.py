@@ -1,3 +1,10 @@
+"""
+FiftyOne Server notebook handler and utilities
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import tornado
 
 import fiftyone.server.utils as fosu

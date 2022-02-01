@@ -5,8 +5,6 @@ FiftyOne Server state setters.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import tornado
-
 import fiftyone.core.dataset as fod
 import fiftyone.core.state as fos
 
@@ -16,8 +14,7 @@ import fiftyone.server.utils as fosu
 
 class DatasetHandler(fosu.AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
+    async def post_response(self, data):
         dataset = data.get("dataset", None)
         dataset = fod.load_dataset(dataset) if dataset else None
 

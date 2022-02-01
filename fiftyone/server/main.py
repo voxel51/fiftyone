@@ -167,8 +167,7 @@ class FramesHandler(tornado.web.RequestHandler):
 
 class PageHandler(fosu.AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)

@@ -14,6 +14,8 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 
+from fiftyone.server.json_util import FiftyOneJSONEncoder
+
 
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""
@@ -27,7 +29,8 @@ class RequestHandler(tornado.web.RequestHandler):
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
     async def get(self):
-        self.write(self.get_response())
+        response = self.get_response()
+        self.write(FiftyOneJSONEncoder.process(response))
 
     def get_response(self):
         """Returns the serializable GET response
@@ -38,10 +41,15 @@ class RequestHandler(tornado.web.RequestHandler):
         raise NotImplementedError("subclass must implement get_response()")
 
     async def post(self):
-        self.write(self.post_response())
+        data = FiftyOneJSONEncoder.loads(self.request.body)
+        response = self.post_response(data)
+        self.write(FiftyOneJSONEncoder.dumps(response))
 
-    def post_response(self):
+    def post_response(self, data):
         """Returns the serializable POST response
+
+        Args:
+            data: a data `dict`
 
         Returns:
             dict
@@ -56,7 +64,8 @@ class AsyncRequestHandler(RequestHandler):
     """"Base class for Async HTTP request handlers"""
 
     async def get(self):
-        self.write(await self.get_response())
+        response = await self.get_response()
+        self.write(FiftyOneJSONEncoder.process(response))
 
     async def get_response(self):
         """Returns the serializable GET response
@@ -67,10 +76,15 @@ class AsyncRequestHandler(RequestHandler):
         raise NotImplementedError("subclass must implement get_response()")
 
     async def post(self):
-        self.write(await self.post_response())
+        data = FiftyOneJSONEncoder.loads(self.request.body)
+        response = await self.post_response(data)
+        self.write(FiftyOneJSONEncoder.dumps(response))
 
-    async def post_response(self):
+    async def post_response(self, data):
         """Returns the serializable POST response
+
+        Args:
+            data: a data `dict`
 
         Returns:
             dict

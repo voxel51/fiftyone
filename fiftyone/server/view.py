@@ -109,7 +109,13 @@ def get_extended_view(
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
 
     if similarity:
-        view = view.sort_by_similarity(**similarity)
+        stage = fosg.ViewStage._from_dict(
+            {
+                "_cls": "fiftyone.core.stages.SortBySimilarity",
+                "kwargs": [[k, v] for k, v in similarity.items()],
+            }
+        )
+        view = view.add_stage(stage)
 
     return view
 

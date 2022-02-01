@@ -11,7 +11,6 @@ import tornado
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -32,9 +31,7 @@ class CountExists(foa.Count):
 
 class AggregationsHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -49,16 +46,13 @@ class AggregationsHandler(AsyncRequestHandler):
         if hidden_labels:
             view = view.exclude_labels(hidden_labels)
 
-        print("HELLOOOO", stages)
         result = await get_app_statistics(view, filters)
         return convert(result)
 
 
 class TagAggregationsHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)

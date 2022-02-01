@@ -5,8 +5,6 @@ FiftyOne Server filtering.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import tornado
-
 import fiftyone.core.state as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
@@ -18,9 +16,7 @@ import fiftyone.server.view as fosv
 
 class PinHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", {})
         dataset = data.get("dataset", None)
         stages = data.get("view", None)

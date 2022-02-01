@@ -5,8 +5,6 @@ FiftyOne Server tagging.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import tornado
-
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -20,9 +18,7 @@ import fiftyone.server.view as fosv
 
 class TagHandler(fosu.AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
