@@ -3541,7 +3541,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         response = self._make_request(
             self._session.post,
             self.login_url,
-            print_errors=False,
+            print_error_info=False,
             data={"username": username, "password": password},
         )
 
@@ -3550,9 +3550,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "csrftoken"
             ]
 
-    def _make_request(self, request_method, url, print_errors=True, **kwargs):
+    def _make_request(
+        self, request_method, url, print_error_info=True, **kwargs
+    ):
         response = request_method(url, verify=False, **kwargs)
-        if print_errors:
+        if print_error_info:
             self._validate(response, kwargs)
         else:
             response.raise_for_status()
