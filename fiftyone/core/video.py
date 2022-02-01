@@ -532,8 +532,9 @@ def make_frames_dataset(
     # Sample frames, if necessary
     if ids_to_sample:
         logger.info("Sampling video frames...")
+        dataset = sample_collection._root_dataset
         fouv.sample_videos(
-            sample_collection.select(ids_to_sample, ordered=True),
+            dataset.select(ids_to_sample, ordered=True),
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -744,7 +745,7 @@ def _init_frames(
             "on disk but are not recorded on the dataset",
             sum(len(d) for d in missing_filepaths.values()),
         )
-        src_collection.set_values(
+        src_collection._root_dataset.set_values(
             "frames.filepath", missing_filepaths, key_field="id"
         )
 
