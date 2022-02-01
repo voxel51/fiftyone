@@ -19,12 +19,13 @@ const Filter = ({ modal }: { modal: boolean }) => {
     <InputDiv>
       <input
         type={"text"}
-        placeholder={"Filter"}
+        placeholder={"FILTER"}
         value={value}
         maxLength={140}
         onChange={({ target }) => {
           setValue(target.value);
         }}
+        style={{ textTransform: "unset" }}
       />
     </InputDiv>
   );
