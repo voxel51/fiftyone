@@ -3,6 +3,25 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.14.4:
+
+FiftyOne 0.14.4
+---------------
+*Released February 1, 2022*
+
+App
+
+- Fixed encoding of sample media URLs so image and video filepaths with special
+  characters load
+- Fixed errors resulting from empty
+  :class:`keypoint <fiftyone.core.labels.Keypoint>` can be handled
+- 
+
+Core
+
+- Added
+  :meth:`InteractivePlot.save() <fiftyone.core.plots.base.InteractivePlot.save>` fmethod that can save any ViewPlot or InteractivePlot as a static image
+
 .. _release-notes-v0.14.3:
 
 FiftyOne 0.14.3
