@@ -14,8 +14,7 @@ App
 - Fixed encoding of sample media URLs so image and video filepaths with special
   characters load
 - Fixed errors resulting from empty
-  :class:`keypoint <fiftyone.core.labels.Keypoint>` can be handled
-- 
+  :class:`keypoint <fiftyone.core.labels.Keypoint>`
 
 Core
 
@@ -26,7 +25,7 @@ Core
   save any plot as a static image
 - Added the
   :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines()>
-  method that can convert instance segmentations (or just `bboxes`) to Polylines
+  function that can convert instance segmentations (or just `bboxes`) to Polylines
   format
 - Added support for frame labels to all conversion methods in the
   :mod:`fiftyone.utils.labels` module
