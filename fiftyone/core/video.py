@@ -11,7 +11,6 @@ import logging
 import os
 
 from bson import ObjectId
-from pymongo.errors import BulkWriteError
 
 import eta.core.utils as etau
 
@@ -377,15 +376,16 @@ class FramesView(fov.DatasetView):
 
 def make_frames_dataset(
     sample_collection,
-    sample_frames=True,
+    sample_frames=False,
     frames_patt=None,
     fps=None,
     max_fps=None,
     size=None,
     min_size=None,
     max_size=None,
-    force_sample=False,
     sparse=False,
+    force_sample=False,
+    skip_failures=True,
     verbose=False,
 ):
     """Creates a dataset that contains one sample per video frame in the
@@ -395,15 +395,20 @@ def make_frames_dataset(
     of each video as sample-level fields, as well as a ``sample_id`` field that
     records the IDs of the parent sample for each frame.
 
-    When ``sample_frames`` is True (the default), this method samples each
-    video in the collection into a directory of per-frame images with the same
-    basename as the input video with frame numbers/format specified by
-    ``frames_patt``.
+    When ``sample_frames`` is False (the default), this method assumes that the
+    frames of the input collection have ``filepath`` fields populated pointing
+    to each frame image.
+
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images with the same basename as
+    the input video with frame numbers/format specified by ``frames_patt``, and
+    stores the resulting frame paths in a ``filepath`` field of the input
+    collection.
 
     .. note::
 
         If this method is run multiple times, existing frames will not be
-        resampled, unless you set ``force_sample`` to True.
+        resampled unless you set ``force_sample`` to True.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -427,19 +432,6 @@ def make_frames_dataset(
     resolution, but this method provides a variety of parameters that can be
     used to customize the sampling behavior.
 
-    When ``sample_frames`` is False, no frame sampling is performed. Instead,
-    it is assumed that you have already provided the necessary frames via one
-    of the following methods:
-
-        -   You have populated a ``filepath`` field on each frame of the
-            collection containing the path to the frame's image
-
-        -   You previously sampled the frames to the locations expected by the
-            ``sample_frames == True`` syntax. This option is useful if the
-            sampling process failed to extract certain video frames and you
-            want to work with the available frames rather than trying to
-            resample for videos, and you would prefer to only
-
     .. note::
 
         The returned dataset is independent from the source collection;
@@ -448,10 +440,10 @@ def make_frames_dataset(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        sample_frames (True): whether to sample the video frames (True) or
-            assume that the frames have already been sampled to the expected
-            locations and/or the locations have been specified via ``filepath``
-            fields on the frames of the collection (False)
+        sample_frames (False): whether to assume that the frame images have
+            already been sampled at locations stored in the ``filepath`` field
+            of each frame (False), or whether to sample the video frames now
+            according to the specified parameters (True)
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
@@ -469,11 +461,14 @@ def make_frames_dataset(
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
             this constraint
-        sparse (False): whether to only generate samples for non-empty frames,
-            i.e., frame numbers for which :class:`fiftyone.core.frame.Frame`
-            instances have explicitly been created
+        sparse (False): whether to only sample frame images for non-empty
+            frames, i.e., frame numbers for which
+            :class:`fiftyone.core.frame.Frame` instances have explicitly been
+            created
         force_sample (False): whether to resample videos whose sampled frames
             already exist
+        skip_failures (True): whether to gracefully continue without raising
+            an error if a video cannot be sampled
         verbose (False): whether to log information about the frames that will
             be sampled, if any
 
@@ -482,13 +477,24 @@ def make_frames_dataset(
     """
     fova.validate_video_collection(sample_collection)
 
-    if sample_frames and frames_patt is None:
+    if frames_patt is None:
         frames_patt = (
             fo.config.default_sequence_idx + fo.config.default_image_ext
         )
 
-    # We'll need frame counts
-    sample_collection.compute_metadata()
+    if not sample_frames:
+        l = locals()
+        sample_kwargs = (
+            "size",
+            "min_size",
+            "max_size",
+            "sparse",
+            "force_sample",
+        )
+
+        for var in sample_kwargs:
+            if l[var]:
+                logger.warning("Ignoring '%s' when sample_frames=False", var)
 
     #
     # Create dataset with proper schema
@@ -511,20 +517,20 @@ def make_frames_dataset(
 
     _make_pretty_summary(dataset)
 
-    # Populate frames dataset
-    ids_to_sample, frames_to_sample = _populate_frames(
+    # Initialize frames dataset
+    ids_to_sample, frames_to_sample = _init_frames(
         dataset,
         sample_collection,
-        frames_patt,
-        force_sample,
         sample_frames,
+        frames_patt,
         fps,
         max_fps,
         sparse,
+        force_sample,
         verbose,
     )
 
-    # Sample video frames, if necessary
+    # Sample frames, if necessary
     if ids_to_sample:
         logger.info("Sampling video frames...")
         fouv.sample_videos(
@@ -536,6 +542,31 @@ def make_frames_dataset(
             max_size=max_size,
             original_frame_numbers=True,
             force_sample=True,
+            save_filepaths=True,
+            skip_failures=skip_failures,
+        )
+
+    # Merge frame data
+    pipeline = sample_collection._pipeline(frames_only=True)
+    pipeline.extend(
+        [
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "on": ["_sample_id", "frame_number"],
+                    "whenMatched": "merge",
+                    "whenNotMatched": "discard",
+                }
+            },
+        ]
+    )
+
+    sample_collection._dataset._aggregate(pipeline=pipeline)
+
+    # Delete samples for any frames without filepaths
+    if sample_frames:
+        dataset._sample_collection.delete_many(
+            {"filepath": {"$not": {"$gt": None}}}
         )
 
     return dataset
@@ -548,17 +579,20 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _populate_frames(
+def _init_frames(
     dataset,
     src_collection,
-    frames_patt,
-    force_sample,
     sample_frames,
+    frames_patt,
     fps,
     max_fps,
     sparse,
+    force_sample,
     verbose,
 ):
+    if sample_frames or fps is not None or max_fps is not None:
+        src_collection.compute_metadata()
+
     if sample_frames and verbose:
         logger.info("Determining frames to sample...")
 
@@ -579,8 +613,12 @@ def _populate_frames(
         metadata = sample.get("metadata", {})
         frame_rate = metadata.get("frame_rate", None)
         total_frame_count = metadata.get("total_frame_count", -1)
+        frames = sample.get("frames", [])
+
         frame_ids_map = {
-            f["frame_number"]: f["_id"] for f in sample.get("frames", [])
+            f["frame_number"]: f["_id"]
+            for f in frames
+            if sample_frames or f.get("filepath", None) is not None
         }
 
         if is_clips:
@@ -590,20 +628,17 @@ def _populate_frames(
             sample_id = sample["_id"]
             support = None
 
-        if sample_frames:
-            outdir = os.path.splitext(video_path)[0]
-            images_patt = os.path.join(outdir, frames_patt)
-        else:
-            images_patt = None
+        outdir = os.path.splitext(video_path)[0]
+        images_patt = os.path.join(outdir, frames_patt)
 
         doc_frame_numbers, sample_frame_numbers = _parse_video_frames(
             video_path,
+            sample_frames,
             images_patt,
             support,
             total_frame_count,
             frame_rate,
             frame_ids_map,
-            sample_frames,
             force_sample,
             sparse,
             fps,
@@ -627,18 +662,13 @@ def _populate_frames(
 
                 fns.add(frame_number)
 
-            if sample_frames:
-                _filepath = images_patt % frame_number
-            else:
-                _filepath = video_path
-
             doc = {
-                "filepath": _filepath,
+                "filepath": None,  # will be populated after sampling
                 "tags": tags,
                 "metadata": None,
                 "frame_number": frame_number,
                 "_media_type": "image",
-                "_rand": foos._generate_rand(_filepath),
+                "_rand": foos._generate_rand(images_patt % frame_number),
                 "_sample_id": sample_id,
             }
 
@@ -647,6 +677,13 @@ def _populate_frames(
                 doc["_id"] = _id
 
             docs.append(doc)
+
+            if len(docs) >= 100000:
+                foo.insert_documents(docs, dataset._sample_collection)
+                docs.clear()
+
+    if docs:
+        foo.insert_documents(docs, dataset._sample_collection)
 
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
@@ -660,46 +697,17 @@ def _populate_frames(
 
         frames_to_sample.append(sample_frame_numbers)
 
-    if not docs:
-        return ids_to_sample, frames_to_sample
-
-    try:
-        dataset._sample_collection.insert_many(docs)
-    except BulkWriteError as bwe:
-        msg = bwe.details["writeErrors"][0]["errmsg"]
-        raise ValueError(msg) from bwe
-
-    #
-    # Merge existing frame data
-    #
-
-    pipeline = src_collection._pipeline(frames_only=True)
-    pipeline.extend(
-        [
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
-                }
-            },
-        ]
-    )
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
     return ids_to_sample, frames_to_sample
 
 
 def _parse_video_frames(
     video_path,
+    sample_frames,
     images_patt,
     support,
     total_frame_count,
     frame_rate,
     frame_ids_map,
-    sample_frames,
     force_sample,
     sparse,
     fps,
@@ -736,7 +744,7 @@ def _parse_video_frames(
     else:
         doc_frame_numbers = target_frame_numbers
 
-    if sparse:
+    if sparse or not sample_frames:
         doc_frame_numbers = [
             fn for fn in doc_frame_numbers if fn in frame_ids_map
         ]
