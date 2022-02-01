@@ -94,6 +94,10 @@ const fn = (
       shown = paths === 0 && entry.shown;
     }
 
+    const height = Array.from(el.children).reduce((height, child) => {
+      return height + child.getBoundingClientRect().height;
+    }, 0);
+
     results[key] = {
       cursor: dragging ? "grabbing" : "pointer",
       top: dragging ? currentY[key] + delta : y,
@@ -101,6 +105,7 @@ const fn = (
       scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
       left: shown ? 0 : -3000,
+      height,
     };
 
     if (active) {
@@ -463,6 +468,7 @@ const InteractiveSidebar = ({
           zIndex: 0,
           scale: 1,
           shadow: 0,
+          height: 0,
           config: {
             ...config.stiff,
             bounce: 0,
@@ -541,6 +547,7 @@ const InteractiveSidebar = ({
     containerController.set({ maxHeight: minHeight });
     for (const key of order.current) {
       const item = items.current[key];
+
       if (item.active) {
         item.controller.start(placements[key]);
       } else {
@@ -702,16 +709,6 @@ const InteractiveSidebar = ({
               <animated.div
                 data-key={key}
                 onMouseDown={disabled ? null : trigger}
-                ref={(node) => {
-                  if (!items.current[key]) {
-                    return;
-                  }
-
-                  items.current[key].el &&
-                    observer.unobserve(items.current[key].el);
-                  node && observer.observe(node);
-                  items.current[key].el = node;
-                }}
                 key={key}
                 style={{
                   ...springs,
@@ -719,9 +716,23 @@ const InteractiveSidebar = ({
                     (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                   ),
                   cursor: disabled ? "unset" : cursor,
+                  overflow: "hidden",
                 }}
               >
-                {children}
+                <div
+                  ref={(node) => {
+                    if (!items.current[key]) {
+                      return;
+                    }
+
+                    items.current[key].el &&
+                      observer.unobserve(items.current[key].el);
+                    node && observer.observe(node);
+                    items.current[key].el = node;
+                  }}
+                >
+                  {children}
+                </div>
               </animated.div>
             );
           })}
