@@ -1144,7 +1144,7 @@ Frame views
 -----------
 
 Use :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-to create **image views** into your video datasets that contain one sample per
+to create image views into your video datasets that contain one sample per
 video frame in the dataset.
 
 .. note::
@@ -1170,7 +1170,7 @@ frame of the videos in a |Dataset| or |DatasetView|:
     session = fo.launch_app(dataset)
 
     # Create a frames view for the entire dataset
-    frames = dataset.to_frames()
+    frames = dataset.to_frames(sample_frames=True)
     print(frames)
 
     # Verify that one sample per frame was created
@@ -1197,22 +1197,42 @@ frame of the videos in a |Dataset| or |DatasetView|:
     View stages:
         1. ToFrames(config=None)
 
+The above example passes the `sample_frames=True` option to
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`,
+which causes the necessary frames of the input video collection to be sampled
+into directories of per-frame images when the view is created. **For large
+video datasets, this may take some time and require substantial disk space.**
+The paths to each frame image will also be stored in a `filepath` field of each
+|Frame| of the source collection.
+
+Note that, when using the `sample_frames=True` option, frames that have
+previously been sampled will not be resampled, so creating frame views into the
+same dataset will become faster after the frames have been sampled.
+
 .. note::
 
-    Unless you have configured otherwise,
+    The recommended way to use
     :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-    will sample the necessary frames from the input video collection into
-    directories of per-frame images when the view is created. **For large video
-    datasets, this may take some time and require substantial disk space.**
+    is to first populate the `filepath` field of each |Frame| of your dataset
+    offline, either by running it once with the `sample_frames=True` option or
+    by manually sampling the frames and populating the `filepath` frame field.
 
-    Frames that have previously been sampled will not be resampled, so creating
-    frame views into the same dataset will become faster after the frames have
-    been sampled.
+    Then you can work with frame views efficiently via the default syntax:
+
+    .. code-block:: python
+
+        # Creates a frame view with one sample per frame whose `filepath` field
+        # is populated
+        frames = dataset.to_frames()
 
 More generally,
 :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
 exposes a variety of parameters that you can use to configure the behavior of
-the video-to-image conversion process.
+the video-to-image conversion process. You can also combine
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` with
+prior view stages like
+:meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
+to achieve fine-grained control over the specific frames you want to study.
 
 For example, the snippet below creates a frames view that only contains samples
 for frames with at least 10 objects, sampling at most one frame per second:
@@ -1230,7 +1250,7 @@ for frames with at least 10 objects, sampling at most one frame per second:
     num_objects = F("detections.detections").length()
     view = dataset.match_frames(num_objects > 10)
 
-    frames = view.to_frames(max_fps=1, sparse=True)
+    frames = view.to_frames(sample_frames=True, max_fps=1, sparse=True)
     print(frames)
 
     # Compare the number of frames in each step
@@ -1292,8 +1312,11 @@ sample per object patch in the frames of the dataset!
 
     session = fo.launch_app(dataset)
 
+    # Create a frames view
+    frames = dataset.to_frames(sample_frames=True)
+
     # Create a frame patches view
-    frame_patches = dataset.to_frames().to_patches("detections")
+    frame_patches = frames.to_patches("detections")
     print(frame_patches)
 
     # Verify that one sample per object was created

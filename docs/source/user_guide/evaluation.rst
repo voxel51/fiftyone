@@ -1618,7 +1618,8 @@ You can also view frame-level evaluation results as
     :linenos:
 
     # Convert to frame evaluation patches
-    frame_eval_patches = dataset.to_frames().to_evaluation_patches("eval")
+    frames = dataset.to_frames(sample_frames=True)
+    frame_eval_patches = frames.to_evaluation_patches("eval")
     print(frame_eval_patches)
 
     print(frame_eval_patches.count_values("type"))

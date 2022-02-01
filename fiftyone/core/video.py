@@ -473,10 +473,9 @@ def make_frames_dataset(
         force_sample (False): whether to resample videos whose sampled frames
             already exist. Only applicable when ``sample_frames=True``
         skip_failures (True): whether to gracefully continue without raising
-            an error if a video cannot be sampled. Only applicable when
-            ``sample_frames=True``
+            an error if a video cannot be sampled
         verbose (False): whether to log information about the frames that will
-            be sampled, if any. Only applicable when ``sample_frames=True``
+            be sampled, if any
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -485,11 +484,7 @@ def make_frames_dataset(
 
     if sample_frames != True:
         l = locals()
-        ignore_params = ["size", "min_size", "max_size", "verbose"]
-        if sample_frames == False:
-            ignore_params.extend(["sparse", "frames_patt"])
-
-        for var in ignore_params:
+        for var in ("size", "min_size", "max_size"):
             if l[var]:
                 logger.warning(
                     "Ignoring '%s' when sample_frames=%s", var, sample_frames
