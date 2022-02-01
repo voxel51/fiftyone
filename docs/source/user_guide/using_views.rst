@@ -1143,9 +1143,10 @@ source dataset, there are some differences compared to non-clip views:
 Frame views
 -----------
 
-Use :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+You can use
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
 to create image views into your video datasets that contain one sample per
-video frame in the dataset.
+frame in the dataset.
 
 .. note::
 
@@ -1200,10 +1201,10 @@ frame of the videos in a |Dataset| or |DatasetView|:
 The above example passes the `sample_frames=True` option to
 :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`,
 which causes the necessary frames of the input video collection to be sampled
-into directories of per-frame images when the view is created. **For large
-video datasets, this may take some time and require substantial disk space.**
-The paths to each frame image will also be stored in a `filepath` field of each
-|Frame| of the source collection.
+into directories of per-frame images on disk when the view is created.
+**For large video datasets, this may take some time and require substantial
+disk space.** The paths to each frame image will also be stored in a `filepath`
+field of each |Frame| of the source collection.
 
 Note that, when using the `sample_frames=True` option, frames that have
 previously been sampled will not be resampled, so creating frame views into the
@@ -1215,14 +1216,14 @@ same dataset will become faster after the frames have been sampled.
     :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
     is to first populate the `filepath` field of each |Frame| of your dataset
     offline, either by running it once with the `sample_frames=True` option or
-    by manually sampling the frames and populating the `filepath` frame field.
+    by manually sampling the frames yourself and populating the `filepath`
+    frame field.
 
     Then you can work with frame views efficiently via the default syntax:
 
     .. code-block:: python
 
-        # Creates a frame view with one sample per frame whose `filepath` field
-        # is populated
+        # Creates a view with one sample per frame whose `filepath` is set
         frames = dataset.to_frames()
 
 More generally,
@@ -1230,7 +1231,7 @@ More generally,
 exposes a variety of parameters that you can use to configure the behavior of
 the video-to-image conversion process. You can also combine
 :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` with
-prior view stages like
+view stages like
 :meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
 to achieve fine-grained control over the specific frames you want to study.
 
@@ -1250,7 +1251,7 @@ for frames with at least 10 objects, sampling at most one frame per second:
     num_objects = F("detections.detections").length()
     view = dataset.match_frames(num_objects > 10)
 
-    frames = view.to_frames(sample_frames=True, max_fps=1, sparse=True)
+    frames = view.to_frames(max_fps=1)
     print(frames)
 
     # Compare the number of frames in each step
