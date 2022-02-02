@@ -532,9 +532,11 @@ def make_frames_dataset(
     # Sample frames, if necessary
     if ids_to_sample:
         logger.info("Sampling video frames...")
-        dataset = sample_collection._root_dataset
+        to_sample_view = sample_collection._root_dataset.select(
+            ids_to_sample, ordered=True
+        )
         fouv.sample_videos(
-            dataset.select(ids_to_sample, ordered=True),
+            to_sample_view,
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -823,20 +825,19 @@ def _parse_video_frames(
     # Determine frames that need to be sampled
     #
 
-    all_frames = not sparse and support is None
-
     if force_sample:
-        if all_frames and target_frame_numbers is None:
-            sample_frame_numbers = None  # all frames
-        else:
-            sample_frame_numbers = doc_frame_numbers
+        sample_frame_numbers = doc_frame_numbers
     else:
         sample_frame_numbers = _get_non_existent_frame_numbers(
             images_patt, doc_frame_numbers
         )
 
-        if all_frames and len(sample_frame_numbers) == len(doc_frame_numbers):
-            sample_frame_numbers = None  # all frames
+    if (
+        target_frame_numbers is None
+        and len(sample_frame_numbers) == len(doc_frame_numbers)
+        and len(doc_frame_numbers) >= total_frame_count
+    ):
+        sample_frame_numbers = None  # all frames
 
     if verbose:
         if sample_frame_numbers is None:
