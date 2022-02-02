@@ -970,46 +970,49 @@ class Kinetics400Dataset(FiftyOneDataset):
     least 400/600/700 video clips. Each clip is human annotated with a single
     action class and lasts around 10 seconds.
 
-    This version contains videos and action classifications for the 400 class
+    This dataset contains videos and action classifications for the 400 class
     version of the dataset.
-    
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes`` and
+        ``max_samples`` parameters
+
+    See :ref:`this page <dataset-zoo-kinetics-400>` for more information about
+    partial downloads of this dataset.
+
     Original split stats:
-    
+
     -   Train split: 219,782 videos
     -   Test split: 35,357 videos
     -   Validation split: 18,035 videos
 
     CVDF split stats:
-    
+
     -   Train split: 246,534 videos
     -   Test split: 39,805 videos
     -   Validation split: 19,906 videos
 
-    Partial downloads:
-
-    -   You can specify subsets of data to download via the 
-        ``classes`` and ``max_samples`` parameters
-    
     Example usage::
        
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
         # Only the required videos will be downloaded (if necessary).
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-400",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "springboard diving" and "surfing water"
@@ -1024,14 +1027,14 @@ class Kinetics400Dataset(FiftyOneDataset):
         # Subsequent partial loads of the validation split will never require
         # downloading any videos 
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-400",
             split="validation",
             classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
@@ -1055,8 +1058,8 @@ class Kinetics400Dataset(FiftyOneDataset):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
     """
 
     def __init__(
@@ -1123,46 +1126,49 @@ class Kinetics600Dataset(FiftyOneDataset):
     least 400/600/700 video clips. Each clip is human annotated with a single
     action class and lasts around 10 seconds.
 
-    This version contains videos and action classifications for the 600 class
+    This dataset contains videos and action classifications for the 600 class
     version of the dataset.
-    
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes`` and
+        ``max_samples`` parameters
+
+    See :ref:`this page <dataset-zoo-kinetics-600>` for more information about
+    partial downloads of this dataset.
+
     Original split stats:
-    
+
     -   Train split: 370,582 videos
     -   Test split: 56,618 videos
     -   Validation split: 28,313 videos
 
     CVDF split stats:
-    
+
     -   Train split: 427,549 videos
     -   Test split: 72,924 videos
     -   Validation split: 29,793 videos
 
-    Partial downloads:
-
-    -   You can specify subsets of data to download via the 
-        ``classes`` and ``max_samples`` parameters
-    
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
         # Only the required videos will be downloaded (if necessary).
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-600",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "springboard diving" and "surfing water"
@@ -1177,14 +1183,14 @@ class Kinetics600Dataset(FiftyOneDataset):
         # Subsequent partial loads of the validation split will never require
         # downloading any videos 
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-600",
             split="validation",
             classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
@@ -1208,8 +1214,8 @@ class Kinetics600Dataset(FiftyOneDataset):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
     """
 
     def __init__(
@@ -1276,20 +1282,23 @@ class Kinetics700Dataset(FiftyOneDataset):
     least 400/600/700 video clips. Each clip is human annotated with a single
     action class and lasts around 10 seconds.
 
-    This version contains videos and action classifications for the 700 class
+    This dataset contains videos and action classifications for the 700 class
     version of the dataset.
-    
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes`` and
+        ``max_samples`` parameters
+
+    See :ref:`this page <dataset-zoo-kinetics-700>` for more information about
+    partial downloads of this dataset.
+
     Original split stats:
     
     -   Train split: 529,046 videos
     -   Test split: 67,446 videos
     -   Validation split: 33,925 videos
 
-    Partial downloads:
-
-    -   You can specify subsets of data to download via the 
-        ``classes`` and ``max_samples`` parameters
-    
     Example usage::
        
         import fiftyone as fo
@@ -1355,8 +1364,8 @@ class Kinetics700Dataset(FiftyOneDataset):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
     """
 
     def __init__(
@@ -1424,46 +1433,49 @@ class Kinetics7002020Dataset(FiftyOneDataset):
     action class and lasts around 10 seconds.
 
     This version contains videos and action classifications for the 700 class
-    version of the dataset.
-    
+    version of the dataset that was updated with new videos in 2020. This
+    dataset is a superset of Kinetics 700.
+
+    This dataset supports partial downloads:
+
+    -   You can specify subsets of data to download via the ``classes`` and
+        ``max_samples`` parameters
+
+    See :ref:`this page <dataset-zoo-kinetics-700-2020>` for more information
+    about partial downloads of this dataset.
+
     Original split stats:
-    
+
     -   Train split: 542,352 videos
     -   Test split: 67,433 videos
     -   Validation split: 34,125 videos
 
     CVDF split stats:
-    
+
     -   Train split: 534,073 videos
     -   Test split: 64,260 videos
     -   Validation split: 33,914 videos
 
-
-    Partial downloads:
-
-    -   You can specify subsets of data to download via the 
-        ``classes`` and ``max_samples`` parameters
-    
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
         # Only the required videos will be downloaded (if necessary).
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700-2020",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "springboard diving" and "surfing water"
@@ -1478,14 +1490,14 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         # Subsequent partial loads of the validation split will never require
         # downloading any videos 
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700-2020",
             split="validation",
             classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
@@ -1509,8 +1521,8 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
     """
 
     def __init__(

@@ -1,9 +1,8 @@
 """
 Utilities for working with the
-`Kinetics <https://deepmind.com/research/open-source/kinetics>`
-dataset.
+`Kinetics dataset <https://deepmind.com/research/open-source/kinetics>`.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -38,9 +37,7 @@ def download_kinetics_split(
     version="700-2020",
 ):
     """Utility that downloads full or partial splits of the
-    `Kinetics <https://deepmind.com/research/open-source/kinetics>`_. dataset
-    See :class:`fiftyone.types.dataset_types.KineticsDataset` for the
-    format in which ``dataset_dir`` will be arranged.
+    `Kinetics dataset <https://deepmind.com/research/open-source/kinetics>`_.
 
     Args:
         dataset_dir: the directory to download the dataset
@@ -57,21 +54,23 @@ def download_kinetics_split(
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load per split. If
             ``classes`` are also specified, only up to the number of samples
-            that contain at least one specified class will be loaded.
-            By default, all matching samples are loaded
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
         retry_errors (False): whether to retry downloading samples from YouTube
             that have previously raised an error
         scratch_dir (None): a scratch directory to use to store temporary files
         version ("700-2020"): the version of the Kinetics dataset to download
             ("400", "600", "700", or "700-2020")
+
     Returns:
-        a tuple of:
-        -   num_samples: the total number of downloaded videos, or ``None`` if
-            everything was already downloaded
-        -   classes: the list of all classes, or ``None`` if everything was
+        a tuple of
+
+        -   **num_samples**: the total number of downloaded videos, or ``None``
+            if everything was already downloaded
+        -   **classes**: the list of all classes, or ``None`` if everything was
             already downloaded
-        -   did_download: whether any content was downloaded (True) or if all
-            necessary files were already downloaded (False)
+        -   **did_download**: whether any content was downloaded (True) or if
+            all necessary files were already downloaded (False)
     """
     cleanup = False
     if scratch_dir is None:
@@ -112,17 +111,17 @@ def download_kinetics_split(
 
 
 class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
-    """Importer for a kinetics video classification directory tree stored on disk.
-
-    See :ref:`this page <VideoClassificationDirectoryTree-import>` for format
-    details. The only difference is that this importer allows you to define the
-    specific classes to load.
+    """Importer for a Kinetics dataset stored on disk as a video classification
+    directory tree.
 
     Args:
         dataset_dir: the dataset directory
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples of the given classes will be
+            loaded
         unlabeled ("_unlabeled"): the name of the subdirectory containing
             unlabeled images
         shuffle (False): whether to randomly shuffle the order in which the
@@ -130,20 +129,17 @@ class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
-        classes (None): a string or list of strings specifying required classes
-            to load. If provided, only samples of the given classes will be
-            loaded 
     """
 
     def __init__(
         self,
         dataset_dir,
         compute_metadata=False,
+        classes=None,
         unlabeled="_unlabeled",
         shuffle=False,
         seed=None,
         max_samples=None,
-        classes=None,
     ):
         super().__init__(
             dataset_dir=dataset_dir,
@@ -184,8 +180,8 @@ class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
 
 
 class KineticsDatasetManager(object):
-    """Manages the sample ids and labels that need to be downloaded as well as
-    performing the downloading
+    """Class that manages the sample IDs and labels that need to be downloaded
+    as well as performing the actual downloading.
     """
 
     def __init__(self, info):
@@ -202,7 +198,6 @@ class KineticsDatasetManager(object):
         if config.max_samples is None and self.info.version != "400":
             # Download specific classes from AWS
             self._download_entire_classes(config, downloader)
-
         else:
             # Download up to max_samples from YouTube
             self._download_samples_from_youtube(config)
@@ -321,7 +316,7 @@ class KineticsDatasetManager(object):
 
 
 class KineticsDatasetDownloader(object):
-    """Downloads and extracts Kinetics tars from AWS"""
+    """Clas that downloads and extracts Kinetics tars from AWS."""
 
     def __init__(self, num_workers=None):
         self.num_workers = num_workers
@@ -412,8 +407,7 @@ class KineticsDatasetDownloader(object):
 
 
 class KineticsDownloadConfig(object):
-    """Parses and stores the configuration parameters for a Kinetics 
-    download run"""
+    """Config class for a Kinetics download run."""
 
     def __init__(
         self,
@@ -457,7 +451,9 @@ class KineticsDownloadConfig(object):
 
 
 class KineticsDatasetInfo(object):
-    """Contains information related to paths, labels, and sample ids"""
+    """Class that contains information such as paths, labels, and sample IDs
+    for a Kinetics download.
+    """
 
     def __init__(self, kinetics_dir, scratch_dir, split):
         self.kinetics_dir = os.path.abspath(kinetics_dir)
@@ -741,7 +737,7 @@ class KineticsDatasetInfo(object):
 
 
 class Kinetics400DatasetInfo(KineticsDatasetInfo):
-    """Kinetics400-specific info management"""
+    """Kinetics 400-specific dataset info."""
 
     @property
     def supports_classwise_s3_downloads(self):
@@ -785,11 +781,12 @@ class ClasswiseS3KineticsDatasetInfo(KineticsDatasetInfo):
             url = self.class_url(c)
             if url not in self.prev_loaded_tars:
                 urls.append(url)
+
         return urls
 
 
 class Kinetics600DatasetInfo(ClasswiseS3KineticsDatasetInfo):
-    """Kinetics600-specific info management"""
+    """Kinetics 600-specific dataset info."""
 
     @property
     def version(self):
@@ -797,7 +794,7 @@ class Kinetics600DatasetInfo(ClasswiseS3KineticsDatasetInfo):
 
 
 class Kinetics7002020DatasetInfo(ClasswiseS3KineticsDatasetInfo):
-    """Kinetics700-2020-specific info management"""
+    """Kinetics 700-2020-specific dataset info."""
 
     @property
     def version(self):
@@ -816,7 +813,7 @@ class Kinetics7002020DatasetInfo(ClasswiseS3KineticsDatasetInfo):
 
 
 class Kinetics700DatasetInfo(Kinetics7002020DatasetInfo):
-    """Kinetics700-specific info management"""
+    """Kinetics 700-specific dataset info."""
 
     @property
     def version(self):

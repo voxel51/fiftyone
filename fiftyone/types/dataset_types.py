@@ -632,7 +632,10 @@ class CVATVideoDataset(VideoLabelsDataset):
 
 
 class KineticsDataset(VideoClassificationDataset):
-    """"""
+    """A labeled dataset consisting of video URLs and their associated video
+    classifications saved in
+    `Kinetics format <https://deepmind.com/research/open-source/kinetics>`_.
+    """
 
     def get_dataset_importer_cls(self):
         import fiftyone.utils.kinetics as fouk
