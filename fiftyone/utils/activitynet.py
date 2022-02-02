@@ -652,6 +652,7 @@ class ActivityNetDatasetManager(object):
                 num_to_download = num_a100_ids
             else:
                 num_to_download = min(num_a100_ids, num_samples)
+
             downloaded_ids, a100_errors = self._attempt_to_download(
                 self.a100_info.data_dir(split),
                 a100_ids,
@@ -661,6 +662,7 @@ class ActivityNetDatasetManager(object):
             )
             if remaining_samples is not None:
                 remaining_samples -= len(downloaded_ids)
+
             self._merge_and_write_errors(
                 a100_errors, self.a100_info.error_path(split)
             )
@@ -686,25 +688,21 @@ class ActivityNetDatasetManager(object):
     ):
         download_urls = []
         download_paths = []
-        url_id_map = {}
         for sample_id in ids:
             sample_info = samples_info[sample_id]
-            url = sample_info["url"]
-            url_id_map[url] = sample_id
-            sample_fn = "v_%s.mp4" % sample_id
-            sample_fp = os.path.join(videos_dir, sample_fn)
-            download_urls.append(url)
-            download_paths.append(sample_fp)
+            download_path = os.path.join(videos_dir, "v_%s.mp4" % sample_id)
+            download_urls.append(sample_info["url"])
+            download_paths.append(download_path)
 
-        downloaded_videos, download_errors = fouy.download_youtube_videos(
+        downloaded, errors = fouy.download_youtube_videos(
             urls=download_urls,
             video_paths=download_paths,
             max_videos=num_samples,
             num_workers=num_workers,
         )
-        downloaded_ids = [ids[ind] for ind in downloaded_videos.keys()]
+        downloaded_ids = [ids[ind] for ind in downloaded.keys()]
         errors_dict = {}
-        for ind, error in download_errors.items():
+        for ind, error in errors.items():
             errors_dict[download_urls[ind]] = error
 
         return downloaded_ids, errors_dict
