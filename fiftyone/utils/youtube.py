@@ -101,7 +101,7 @@ def download_youtube_videos(
             -   A target resolution like ``"1080p"``. In this case, the stream
                 whose resolution is closest to this target value is downloaded
         max_videos (None): the maximum number of videos to successfully
-            download. By default, all videos are be downloaded
+            download. By default, all videos are downloaded
         num_workers (None): the number of threads or processes to use when
             downloading videos. By default, ``multiprocessing.cpu_count()`` is
             used
@@ -184,7 +184,7 @@ def _build_tasks_list(
             "Only one of `download_dir` or `video_paths` can be provided"
         )
 
-    if download_dir is None and ext is not None:
+    if download_dir is None:
         ext = None
 
     if not etau.is_str(resolution) or (
@@ -206,6 +206,9 @@ def _build_tasks_list(
         clip_segments = itertools.repeat(clip_segments)
     else:
         clip_segments = list(clip_segments)
+
+        # Replace all variations of full video downloads with `None` so that
+        # the most optimized download logic is used
         for idx, clip_segment in enumerate(clip_segments):
             if (
                 clip_segment is not None
@@ -310,7 +313,7 @@ def _do_download(task):
         _validate_video(pytube_video)
 
         if video_path is not None and ext is None:
-            ext = os.path.splitext(video_path)
+            ext = os.path.splitext(video_path)[1]
 
         stream = _get_stream(pytube_video, ext, only_progressive, resolution)
 
@@ -380,7 +383,7 @@ def _validate_video(pytube_video):
     )
 
     if status is None:
-        return
+        return None
 
     if not etau.is_container(messages):
         error = messages
@@ -456,6 +459,8 @@ def _download_clip(stream, clip_segment, video_path):
     else:
         duration = None
 
+    # @todo consider using `fast=True` here, or even using an nearest-keyframe
+    # approach to further optimize the clip extraction
     etav.extract_clip(
         stream.url, video_path, start_time=start_time, duration=duration
     )
