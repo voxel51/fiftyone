@@ -373,6 +373,7 @@ export const useStateUpdate = () => {
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);
+      const current = get(atoms.stateDescription);
 
       set(atoms.viewCounter, counter + 1);
       set(atoms.loading, false);
@@ -386,7 +387,11 @@ export const useStateUpdate = () => {
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
-      if (!viewsAreEqual(view, state.view || [])) {
+      if (
+        !viewsAreEqual(view, state.view || []) ||
+        state?.dataset?.sampleCollectionName !==
+          current?.dataset?.sampleCollectionName
+      ) {
         set(viewAtoms.view, state.view || []);
         set(filterAtoms.filters, {});
       }

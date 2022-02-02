@@ -28,6 +28,8 @@ import { store } from "../Flashlight.store";
 import { http } from "../../shared/connection";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
+import { aggregationsTick } from "../../recoil/aggregations";
+import { filters } from "../../recoil/filters";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -96,6 +98,8 @@ const useSortBySimilarity = () => {
           mode: "cors",
           body: JSON.stringify({
             dataset: await snapshot.getPromise(selectors.datasetName),
+            view: await snapshot.getPromise(viewAtoms.view),
+            filters: await snapshot.getPromise(filters),
             similarity: toSnakeCase({
               ...parameters,
               queryIds,
@@ -109,6 +113,7 @@ const useSortBySimilarity = () => {
           set(similarityParameters, { ...parameters, queryIds });
           set(atoms.modal, null);
           set(similaritySorting, false);
+          set(aggregationsTick, (cur) => cur + 1);
         });
       } catch (error) {
         handleError(error);

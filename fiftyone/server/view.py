@@ -46,7 +46,7 @@ def get_view(
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters is not None:
+    if filters or similarity:
         view = get_extended_view(
             view,
             filters,

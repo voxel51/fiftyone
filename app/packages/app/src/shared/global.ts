@@ -47,6 +47,12 @@ export const styles = css`
     display: none;
   }
 
+  #results {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
   #modal.modalon {
     display: block;
   }

@@ -1,18 +1,6 @@
-import React, {
-  Suspense,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useContext, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -31,12 +19,10 @@ import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
 import { ExternalLink } from "../utils/generic";
 
 import Logo from "../images/logo.png";
 import { useRefresh } from "../utils/hooks";
-import { filters } from "../recoil/filters";
 
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
@@ -331,7 +317,6 @@ const selectorMachine = Machine({
 const url = `${http}/dataset`;
 
 const DatasetSelector = ({ error }: { error: boolean }) => {
-  const resetFilters = useResetRecoilState(filters);
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
@@ -352,8 +337,6 @@ const DatasetSelector = ({ error }: { error: boolean }) => {
           },
           mode: "cors",
           body: JSON.stringify({ dataset }),
-        }).then(() => {
-          //resetFilters();
         });
       },
     });

@@ -106,6 +106,7 @@ const fn = (
             return height + child.getBoundingClientRect().height;
           }, 0)
         : 0,
+      overflow: "hidden",
     };
 
     if (active) {
@@ -469,6 +470,7 @@ const InteractiveSidebar = ({
           scale: 1,
           shadow: 0,
           height: 0,
+          overflow: "hidden",
           config: {
             ...config.stiff,
             bounce: 0,
@@ -716,7 +718,6 @@ const InteractiveSidebar = ({
                     (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                   ),
                   cursor: disabled ? "unset" : cursor,
-                  overflow: "hidden",
                 }}
               >
                 <div

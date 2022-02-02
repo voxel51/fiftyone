@@ -64,10 +64,10 @@ const SamplesContainer = React.memo(() => {
                   group={group}
                   disabled={disabled.has(entry.path)}
                   onFocus={() => {
-                    controller.set({ zIndex: "1" });
+                    controller.set({ zIndex: "1", overflow: "visible" });
                   }}
                   onBlur={() => {
-                    controller.set({ zIndex: "0" });
+                    controller.set({ zIndex: "0", overflow: "hidden" });
                   }}
                   key={key}
                 />

@@ -7,8 +7,6 @@ FiftyOne Server aggregations.
 """
 from collections import defaultdict
 
-import tornado
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
