@@ -217,12 +217,12 @@ class ActivityNetDatasetImporter(
         return self._classes is not None or self._taxonomy is not None
 
     def setup(self):
-        self._sample_parser = foud.FiftyOneTemporalDetectionSampleParser(
-            compute_metadata=self.compute_metadata
+        self._video_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True, recursive=True
         )
 
-        self._video_paths_map = self._load_data_map(
-            self.data_path, ignore_exts=True, recursive=True, abspath=True
+        self._sample_parser = foud.FiftyOneTemporalDetectionSampleParser(
+            compute_metadata=self.compute_metadata
         )
 
         process_uuids = True
@@ -230,6 +230,7 @@ class ActivityNetDatasetImporter(
             labels = etas.load_json(self.labels_path)
             info = ActivityNetInfo(labels)
             sample_ids = self._video_paths_map.keys()
+
             if self.classes or self.max_duration:
                 # Load a subset of data
                 any_sample_ids, all_sample_ids = info.get_matching_samples(
