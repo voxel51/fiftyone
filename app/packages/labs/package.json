@@ -1,0 +1,36 @@
+{
+    "name": "@fiftyone/labs",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "vite",
+        "relay": "relay-compiler"
+    },
+    "dependencies": {
+        "@auth0/auth0-spa-js": "^1.19.4",
+        "@fiftyone/app": "*",
+        "history": "^5.2.0",
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2",
+        "react-relay": "^13.0.2",
+        "react-router-config": "^5.1.1",
+        "relay-runtime": "^13.0.2"
+    },
+    "devDependencies": {
+        "@types/react": "^17.0.38",
+        "@types/react-dom": "^17.0.11",
+        "@types/react-relay": "^13.0.0",
+        "@types/relay-compiler": "^8.0.2",
+        "@types/relay-runtime": "^13.0.1",
+        "found": "^1.1.1",
+        "relay-compiler": "^13.0.2",
+        "relay-config": "^12.0.1",
+        "typescript": "4.2.4",
+        "vite": "2.4.2",
+        "vite-plugin-relay": "^1.0.7"
+    },
+    "relay": {
+        "src": "./src/",
+        "schema": "./schema.graphql"
+    }
+}

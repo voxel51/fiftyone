@@ -27,13 +27,19 @@ ALGORITHMS = ["RS256"]
 class IsAuthenticated(gqlp.BasePermission):
     message = "Unauthenticated request"
 
-    async def has_permission(self, source: t.Any, info: gqlt.Info, **kwargs) -> bool:
+    async def has_permission(
+        self, source: t.Any, info: gqlt.Info, **kwargs
+    ) -> bool:
         request: srvr.Request = info.context["request"]
 
-        return authenticate_header(request.app.state, request.headers["Authorization"])
+        return authenticate_header(
+            request.app.state, request.headers["Authorization"]
+        )
 
 
-async def authenticate_header(web: aioh.ClientSession, authorization: str) -> bool:
+async def authenticate_header(
+    web: aioh.ClientSession, authorization: str
+) -> bool:
     if not authorization:
         return False
 
@@ -50,9 +56,11 @@ async def authenticate_header(web: aioh.ClientSession, authorization: str) -> bo
 
     token = parts[1]
 
-    async with web.get(f"https://{AUTH0_DOMAIN}/.well-known/jwks.json") as response:
+    async with web.get(
+        f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+    ) as response:
         jwks = response.json()
-    
+
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
     for key in jwks["keys"]:
@@ -62,7 +70,7 @@ async def authenticate_header(web: aioh.ClientSession, authorization: str) -> bo
                 "kid": key["kid"],
                 "use": key["use"],
                 "n": key["n"],
-                "e": key["e"]
+                "e": key["e"],
             }
     if rsa_key:
         try:
@@ -71,8 +79,9 @@ async def authenticate_header(web: aioh.ClientSession, authorization: str) -> bo
                 rsa_key,
                 algorithms=ALGORITHMS,
                 audience=API_AUDIENCE,
-                issuer=f"https://{AUTH0_DOMAIN}/"
+                issuer=f"https://{AUTH0_DOMAIN}/",
             )
+            print("PAYLOAD", payload)
         except jwt.ExpiredSignatureError:
             return False
         except jwt.JWTClaimsError:
@@ -80,24 +89,24 @@ async def authenticate_header(web: aioh.ClientSession, authorization: str) -> bo
         except Exception:
             return False
 
-        _request_ctx_stack.top.current_user = payload
-        return f(*args, **kwargs)
-    raise AuthError({"code": "invalid_header",
-                    "description": "Unable to find appropriate key"}, 401)
+        return True
 
- 
+    return False
+
+
 def has_scope(token: str, scope: str):
     unverified_claims = jwt.get_unverified_claims(token)
     if unverified_claims.get("scope"):
-            token_scopes = unverified_claims["scope"].split()
-            for token_scope in token_scopes:
-                if token_scope == scope:
-                    return True
+        token_scopes = unverified_claims["scope"].split()
+        for token_scope in token_scopes:
+            if token_scope == scope:
+                return True
     return False
+
 
 ID = gql.scalar(
     t.NewType("ID", str),
-    serialize=lambda v:str(v),
+    serialize=lambda v: str(v),
     parse_value=lambda v: ObjectId(v),
 )
 
@@ -107,6 +116,7 @@ class Query:
     @gql.field
     def hello(self) -> str:
         return "Hello World"
+
 
 @gql.interface
 class StageParameter:
@@ -147,6 +157,18 @@ class User:
 class Query:
     sessions: t.List[Session]
 
+
+class GraphQL(gqla.GraphQL):
+    async def get_context(
+        self, request: srvr.Request, response: t.Optional[srvr.Response] = None
+    ) -> t.Any:
+        authenticate_header(
+            request.app.state.web, request.headers["Authorization"]
+        )
+
+        return {"request": request, "response": response}
+
+
 schema = gql.Schema(query=Query)
 graphql_app = gqla.GraphQL(schema)
 
@@ -154,9 +176,11 @@ graphql_app = gqla.GraphQL(schema)
 async def on_startup():
     app.state.web = aioh.ClientSession()
 
+
 async def on_shutdown():
     web: aioh.ClientSession = app.state.web
     await web.close()
+
 
 app = srva.Starlette(on_shutdown=on_shutdown, on_startup=on_startup)
 app.add_route("/graphql", graphql_app)

@@ -8,7 +8,7 @@ import { darkTheme, lightTheme } from "../shared/colors";
 
 const Root = () => {
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={lightTheme}>
       <GlobalStyle />
       <RecoilRoot>
         <App />

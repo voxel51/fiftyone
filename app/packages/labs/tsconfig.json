@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "sourceMap": true,
+        "outDir": "dist",
+        "jsx": "preserve",
+        "types": ["vite/client"],
+        "strict": true
+    },
+    "include": ["index.ts"],
+    "references": [
+        { "path": "../looker" },
+        { "path": "../flashlight" },
+        { "path": "../utilities" }
+    ]
+}
