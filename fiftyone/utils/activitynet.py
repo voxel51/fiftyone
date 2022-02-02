@@ -889,9 +889,16 @@ class ActivityNetSplitInfo(ActivityNetInfo):
     """Contains information related to paths, labels, and sample ids of a
     single split"""
 
-    def __init__(self, split_dir, version=None):
+    def __init__(self, split_dir, version=None, raw_annotations=None):
         self.split_dir = os.path.abspath(split_dir)
-        self.raw_annotations = self._get_raw_annotations(version=version)
+        if raw_annotations:
+            if not os.path.exists(self.raw_anno_path):
+                etas.write_json(raw_annotations, self.raw_anno_path)
+        else:
+            raw_annotations = self._get_raw_annotations(version=version)
+
+        self.raw_annotations = raw_annotations
+
         super().__init__(self.raw_annotations)
 
         self.update_existing_sample_ids()
@@ -948,7 +955,7 @@ class ActivityNetSplitInfo(ActivityNetInfo):
                     "provided." % self.raw_anno_path
                 )
             anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
-            etaw.download_file(anno_link, path=self.raw_anno_path)
+            etaw.download_file(anno_link, path=self.raw_anno_path, quiet=True)
 
         return etas.load_json(self.raw_anno_path)
 
@@ -969,7 +976,9 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
     def split_info(self, split):
         if split not in self._split_infos:
             self._split_infos[split] = ActivityNetSplitInfo(
-                self.split_dir(split), version=self.version
+                self.split_dir(split),
+                version=self.version,
+                raw_annotations=self.raw_annotations,
             )
         return self._split_infos[split]
 
@@ -1032,7 +1041,7 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
     def _get_raw_annotations(self):
         if not os.path.isfile(self.raw_anno_path):
             anno_link = _ANNOTATION_DOWNLOAD_LINKS[self.version]
-            etaw.download_file(anno_link, path=self.raw_anno_path)
+            etaw.download_file(anno_link, path=self.raw_anno_path, quiet=True)
 
         return etas.load_json(self.raw_anno_path)
 
