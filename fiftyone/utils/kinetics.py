@@ -7,7 +7,7 @@ Utilities for working with the
 |
 """
 from collections import defaultdict
-from itertools import chain
+import itertools
 import logging
 import os
 import random
@@ -18,7 +18,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-import fiftyone.utils.youtubedl as fouy
+import fiftyone.utils.youtube as fouy
 
 
 logger = logging.getLogger(__name__)
@@ -72,10 +72,11 @@ def download_kinetics_split(
         -   **did_download**: whether any content was downloaded (True) or if
             all necessary files were already downloaded (False)
     """
-    cleanup = False
     if scratch_dir is None:
         cleanup = True
         scratch_dir = os.path.join(dataset_dir, "scratch")
+    else:
+        cleanup = False
 
     info = KineticsDatasetInfo.build_for_version(
         version, dataset_dir, scratch_dir, split
@@ -149,19 +150,25 @@ class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
             seed=seed,
             max_samples=max_samples,
         )
+
+        if etau.is_str(classes):
+            classes = [classes]
+        else:
+            classes = list(classes)
+
         self.classes = classes
-        if isinstance(self.classes, str):
-            self.classes = [self.classes]
 
     def setup(self):
         samples = []
         classes = set()
+        whitelist = set(self.classes) if self.classes is not None else None
+
         for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
             label = os.path.basename(class_dir)
             if label.startswith("."):
                 continue
 
-            if self.classes is not None and label not in self.classes:
+            if whitelist is not None and label not in whitelist:
                 continue
 
             if label == self.unlabeled:
@@ -174,9 +181,12 @@ class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
             ):
                 samples.append((path, label))
 
-        self._samples = self._preprocess_list(samples)
-        self._num_samples = len(self._samples)
-        self._classes = sorted(classes)
+        samples = self._preprocess_list(samples)
+        classes = sorted(classes)
+
+        self._samples = samples
+        self._num_samples = len(samples)
+        self._classes = classes
 
 
 class KineticsDatasetManager(object):
@@ -225,22 +235,22 @@ class KineticsDatasetManager(object):
             if num_remaining <= 0:
                 return
 
-        urls, clip_segments = self._get_all_matching_urls(
+        urls, video_paths, clip_segments = self._get_all_matching_urls(
             classes, retry_errors=config.retry_errors
         )
 
         if config.shuffle:
             if config.seed is not None:
                 random.seed(config.seed)
-            _urls_segs = list(zip(list(urls.items()), clip_segments))
-            random.shuffle(_urls_segs)
-            _urls, _clip_segments = zip(*_urls_segs)
-            urls = dict(_urls)
-            clip_segments = list(_clip_segments)
+
+            data = list(zip(urls, video_paths, clip_segments))
+            random.shuffle(data)
+            urls, video_paths, clip_segments = zip(*data)
 
         logger.info("Downloading %d videos from YouTube..." % num_remaining)
-        _, errors = fouy.download_from_youtube(
-            urls=urls,
+        _, errors = fouy.download_youtube_videos(
+            urls,
+            video_paths=video_paths,
             clip_segments=clip_segments,
             max_videos=num_remaining,
             num_workers=config.num_workers,
@@ -257,28 +267,26 @@ class KineticsDatasetManager(object):
         return len(existing_samples)
 
     def _get_all_matching_urls(self, classes, retry_errors=False):
-        # Create a dict mapping url to destination filepath for every sample
-        # that matches a specified class
-        urls = {}
+        urls = []
+        video_paths = []
         clip_segments = []
+
         previous_errors = set(self.info.prev_errors.keys())
+
         for c in classes:
             remaining_ids = self._get_remaining_ids(c)
 
-            # If a sample has had a download error in the path, skip it unless
-            # retry_errors is True
             if not retry_errors:
                 remaining_ids = list(set(remaining_ids) - previous_errors)
 
             class_dir = self.info.class_dir(c)
             for _id in remaining_ids:
                 filename = self.info.filename_from_id(_id)
-                url = self.info.url_from_id(_id)
-                filepath = os.path.join(class_dir, filename)
-                urls[url] = filepath
+                urls.append(self.info.url_from_id(_id))
+                video_paths.append(os.path.join(class_dir, filename))
                 clip_segments.append(self.info.segment_from_id(_id))
 
-        return urls, clip_segments
+        return urls, video_paths, clip_segments
 
     def _get_remaining_ids(self, c):
         sample_ids = self.info.class_sample_ids(c)
@@ -340,21 +348,21 @@ class KineticsDatasetDownloader(object):
         urls = info.multisplit_urls
         prev_urls = info.all_prev_loaded_tars["multisplit"]
         urls = list(set(urls) - set(prev_urls))
-        if urls:
-            tar_paths = []
-            urls_to_download = []
-            for url in urls:
-                if url in prev_urls:
-                    tar_path = os.path.join(
-                        info.raw_dir, os.path.basename(url)
-                    )
-                    tar_paths.append(tar_path)
-                else:
-                    urls_to_download.append(url)
-            tar_paths.extend(
-                self._download_tars(urls_to_download, info.raw_dir)
-            )
-            self._process_tars(tar_paths, info)
+        if not urls:
+            return urls
+
+        tar_paths = []
+        urls_to_download = []
+        for url in urls:
+            if url in prev_urls:
+                tar_path = os.path.join(info.raw_dir, os.path.basename(url))
+                tar_paths.append(tar_path)
+            else:
+                urls_to_download.append(url)
+
+        tar_paths.extend(self._download_tars(urls_to_download, info.raw_dir))
+        self._process_tars(tar_paths, info)
+
         return urls
 
     def download_classes(self, info, classes):
@@ -370,6 +378,7 @@ class KineticsDatasetDownloader(object):
             tar_paths = self._download_tars(urls, info.scratch_dir)
             class_tar_map = {c: t for c, t in zip(classes, tar_paths)}
             self._process_class_tars(class_tar_map, info)
+
         return urls
 
     def _download_tars(self, urls, download_dir):
@@ -378,6 +387,7 @@ class KineticsDatasetDownloader(object):
         for url in urls:
             tar_path = os.path.join(download_dir, os.path.basename(url))
             etaw.download_file(url, path=tar_path)
+
         return tar_paths
 
     def _process_tars(self, tar_paths, info):
@@ -389,6 +399,7 @@ class KineticsDatasetDownloader(object):
                     etau.extract_archive(
                         tar_path, extract_dir, delete_archive=True
                     )
+
                 for video_fn in os.listdir(extract_dir):
                     video_id = info.id_from_filename(video_fn)
                     c = info.get_video_class(video_id)
@@ -419,9 +430,10 @@ class KineticsDownloadConfig(object):
         max_samples=None,
         retry_errors=False,
     ):
-        self.split = split
-        if isinstance(classes, str):
+        if etau.is_str(classes):
             classes = [classes]
+
+        self.split = split
         self.classes = classes
         self.num_workers = num_workers
         self.shuffle = shuffle
@@ -437,6 +449,7 @@ class KineticsDownloadConfig(object):
             classes = None
         else:
             classes = self.classes
+
         return bool(self.max_samples is None and classes is None)
 
     def validate(self):
@@ -476,12 +489,10 @@ class KineticsDatasetInfo(object):
         )
 
         self.ensure_class_dirs()
-
         self.update_existing_sample_ids()
 
         self.all_prev_loaded_tars = self._get_prev_loaded_tars()
         self.all_prev_errors = self._get_prev_errors()
-
         self.download_urls = self._get_download_urls()
 
     @property
@@ -514,6 +525,7 @@ class KineticsDatasetInfo(object):
         split = self.split
         if split == "validation":
             split = "val"
+
         version = self.version.replace("-", "_")
         return "https://s3.amazonaws.com/kinetics/%s/%s/k%s_%s_path.txt" % (
             version,
@@ -660,8 +672,10 @@ class KineticsDatasetInfo(object):
             etaw.download_file(
                 self.urls_s3_file, path=self.urls_path,
             )
+
         with open(self.urls_path, "rb") as f:
             data = f.read()
+
         urls = data.decode("utf-8").split("\n")
         return [url for url in urls if url]
 
@@ -676,6 +690,7 @@ class KineticsDatasetInfo(object):
                 _archive_path = os.path.join(self.scratch_dir, _archive_name)
                 if not os.path.isfile(_archive_path):
                     etaw.download_file(anno_link, path=_archive_path)
+
                 etau.extract_archive(_archive_path)
 
             for split in self.splits:
@@ -707,6 +722,7 @@ class KineticsDatasetInfo(object):
             video_id = self.id_from_filename(video_fn)
             if ext not in [".part", ".ytdl"]:
                 video_ids.append(video_id)
+
         return video_ids
 
     def _get_prev_loaded_tars(self):
@@ -824,6 +840,7 @@ class Kinetics700DatasetInfo(Kinetics7002020DatasetInfo):
         split = self.split
         if split == "validation":
             split = "val"
+
         version = "700_2020"
         return "https://s3.amazonaws.com/kinetics/%s/%s/k%s_%s_path.txt" % (
             version,
@@ -834,8 +851,7 @@ class Kinetics700DatasetInfo(Kinetics7002020DatasetInfo):
 
 
 def _flatten_list(l):
-    l = [list(i) for i in l]
-    return list(chain(*l))
+    return list(itertools.chain(*[list(i) for i in l]))
 
 
 _INFO_VERSION_MAP = {
