@@ -840,17 +840,16 @@ def _parse_video_frames(
         sample_frame_numbers = None  # all frames
 
     if verbose:
+        count = total_frame_count if total_frame_count >= 0 else "???"
         if sample_frame_numbers is None:
             logger.info(
-                "Must sample all %d frames of '%s'",
-                total_frame_count,
-                video_path,
+                "Must sample all %s frames of '%s'", count, video_path,
             )
         elif sample_frame_numbers != []:
             logger.info(
-                "Must sample %d/%d frames of '%s'",
+                "Must sample %d/%s frames of '%s'",
                 len(sample_frame_numbers),
-                total_frame_count,
+                count,
                 video_path,
             )
         else:

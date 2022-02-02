@@ -633,10 +633,19 @@ def _transform_videos(
 
             if save_filepaths and sample_frames:
                 if _frames is None:
-                    if sample.metadata is None:
-                        sample.compute_metadata()
+                    try:
+                        if sample.metadata is None:
+                            sample.compute_metadata()
 
-                    _frames = range(1, sample.metadata.total_frame_count + 1)
+                        _frames = range(
+                            1, sample.metadata.total_frame_count + 1
+                        )
+                    except Exception as e:
+                        if not skip_failures:
+                            raise
+
+                        _frames = []
+                        logger.warning(e)
 
                 for fn in _frames:
                     frame_path = outpath % fn
