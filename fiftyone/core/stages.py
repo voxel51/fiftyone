@@ -5197,6 +5197,9 @@ class SortBySimilarity(ViewStage):
         k (None): the number of matches to return. By default, the entire
             collection is sorted
         reverse (False): whether to sort by least similarity
+        dist_field (None): the name of a float field in which to store the
+            distance of each example to the specified query. The field is
+            created if necessary
         brain_key (None): the brain key of an existing
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not specified, the dataset must have an applicable run, which will
@@ -5204,7 +5207,13 @@ class SortBySimilarity(ViewStage):
     """
 
     def __init__(
-        self, query_ids, k=None, reverse=False, brain_key=None, _state=None
+        self,
+        query_ids,
+        k=None,
+        reverse=False,
+        dist_field=None,
+        brain_key=None,
+        _state=None,
     ):
         if etau.is_str(query_ids):
             query_ids = [query_ids]
@@ -5214,6 +5223,7 @@ class SortBySimilarity(ViewStage):
         self._query_ids = query_ids
         self._k = k
         self._reverse = reverse
+        self._dist_field = dist_field
         self._brain_key = brain_key
         self._state = _state
         self._pipeline = None
@@ -5232,6 +5242,11 @@ class SortBySimilarity(ViewStage):
     def reverse(self):
         """Whether to sort by least similiarity."""
         return self._reverse
+
+    @property
+    def dist_field(self):
+        """The field to store similarity distances, if any."""
+        return self._dist_field
 
     @property
     def brain_key(self):
@@ -5254,6 +5269,7 @@ class SortBySimilarity(ViewStage):
             ["query_ids", self._query_ids],
             ["k", self._k],
             ["reverse", self._reverse],
+            ["dist_field", self._dist_field],
             ["brain_key", self._brain_key],
             ["_state", self._state],
         ]
@@ -5279,6 +5295,12 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "reverse (default=False)",
             },
             {
+                "name": "dist_field",
+                "type": "NoneType|field|str",
+                "default": "None",
+                "placeholder": "dist_field (default=None)",
+            },
+            {
                 "name": "brain_key",
                 "type": "NoneType|str",
                 "default": "None",
@@ -5294,6 +5316,7 @@ class SortBySimilarity(ViewStage):
             "query_ids": self._query_ids,
             "k": self._k,
             "reverse": self._reverse,
+            "dist_field": self._dist_field,
             "brain_key": self._brain_key,
         }
 
@@ -5325,7 +5348,11 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids, k=self._k, reverse=self._reverse, _mongo=True
+                self._query_ids,
+                k=self._k,
+                reverse=self._reverse,
+                dist_field=self._dist_field,
+                _mongo=True,
             )
 
 
