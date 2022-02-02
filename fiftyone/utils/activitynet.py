@@ -39,9 +39,6 @@ def download_activitynet_split(
     """Utility that downloads full or partial splits of the
     `ActivityNet dataset <http://activity-net.org/index.html>`_.
 
-    See :class:`fiftyone.types.dataset_types.ActivityNetDataset` for the
-    format in which ``dataset_dir`` will be arranged.
-
     Args:
         dataset_dir: the directory to download the dataset
         split: the split to download. Supported values are
@@ -130,10 +127,8 @@ def download_activitynet_split(
 class ActivityNetDatasetImporter(
     foud.FiftyOneTemporalDetectionDatasetImporter
 ):
-    """Class for importing datasets in ActivityNet format.
-
-    See :class:`fiftyone.types.dataset_types.ActivityNetDataset` for format
-    details.
+    """Class for importing AcitivityNet dataset splits downloaded via
+    :meth:`download_activitynet_split`.
 
     Args:
         dataset_dir (None): the dataset directory
