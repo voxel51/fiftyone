@@ -1,7 +1,7 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -252,6 +252,40 @@ class DatasetMixin(object):
     def _get_field_names(self, include_private=False):
         return self._get_fields_ordered(include_private=include_private)
 
+    def has_field(self, field_name):
+        # pylint: disable=no-member
+        return field_name in self._fields
+
+    def get_field(self, field_name):
+        if not self.has_field(field_name):
+            raise AttributeError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
+        return super().get_field(field_name)
+
+    def set_field(self, field_name, value, create=False):
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
+        if not self.has_field(field_name):
+            if create:
+                self.add_implied_field(field_name, value)
+            else:
+                raise ValueError(
+                    "%s has no field '%s'" % (self._doc_name(), field_name)
+                )
+        elif value is not None:
+            self._fields[field_name].validate(value)
+
+        super().__setattr__(field_name, value)
+
+    def clear_field(self, field_name):
+        self.set_field(field_name, None)
+
     @classmethod
     def get_field_schema(
         cls, ftype=None, embedded_doc_type=None, include_private=False
@@ -342,18 +376,6 @@ class DatasetMixin(object):
             field = schema[field_name]
             cls._add_field_schema(field_name, **get_field_kwargs(field))
 
-    def has_field(self, field_name):
-        # pylint: disable=no-member
-        return field_name in self._fields
-
-    def get_field(self, field_name):
-        if not self.has_field(field_name):
-            raise AttributeError(
-                "%s has no field '%s'" % (self._doc_name(), field_name)
-            )
-
-        return getattr(self, field_name)
-
     @classmethod
     def add_field(
         cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
@@ -397,29 +419,6 @@ class DatasetMixin(object):
             validate_fields_match(field_name, kwargs, cls._fields[field_name])
         else:
             cls.add_field(field_name, **kwargs)
-
-    def set_field(self, field_name, value, create=False):
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                self.add_implied_field(field_name, value)
-            else:
-                raise ValueError(
-                    "%s has no field '%s'" % (self._doc_name(), field_name)
-                )
-
-        self.__setattr__(field_name, value)
-
-    def clear_field(self, field_name):
-        self.set_field(field_name, None)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -970,16 +969,13 @@ class NoDatasetMixin(object):
         except AttributeError:
             pass
 
-        try:
-            return self._data[name]
-        except KeyError as e:
-            raise AttributeError(e.args[0])
+        return self.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
         else:
-            self._data[name] = value
+            self.set_field(name, value)
 
     def _get_field_names(self, include_private=False):
         if include_private:
@@ -1036,33 +1032,26 @@ class NoDatasetMixin(object):
             return False
 
     def get_field(self, field_name):
-        if not self.has_field(field_name):
+        try:
+            return self._data[field_name]
+        except KeyError:
             raise AttributeError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
-        return getattr(self, field_name)
-
     def set_field(self, field_name, value, create=False):
+        if not create and not self.has_field(field_name):
+            raise ValueError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
         if field_name.startswith("_"):
             raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
+                "Invalid field name '%s'. Field names cannot start with '_'"
                 % field_name
             )
 
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                # dummy value so that it is identified by __setattr__
-                self._data[field_name] = None
-            else:
-                raise ValueError(
-                    "%s has no field '%s'" % (self._doc_name(), field_name)
-                )
-
-        self.__setattr__(field_name, value)
+        self._data[field_name] = value
 
     def clear_field(self, field_name):
         if field_name in self.default_fields:
@@ -1070,7 +1059,7 @@ class NoDatasetMixin(object):
             self.set_field(field_name, default_value)
             return
 
-        if field_name not in self._data:
+        if not self.has_field(field_name):
             raise ValueError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
@@ -1111,7 +1100,7 @@ class NoDatasetMixin(object):
 
 
 def _serialize_value(value, extended=False):
-    if hasattr(value, "to_dict"):
+    if hasattr(value, "to_dict") and callable(value.to_dict):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
 

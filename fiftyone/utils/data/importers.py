@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,7 +14,7 @@ import random
 from bson import json_util
 import cv2
 
-import eta.core.datasets as etads
+import eta.core.datasets as etad
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -30,7 +30,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
 import fiftyone.types as fot
@@ -368,7 +368,7 @@ def _build_parse_sample_fcn(
 
         def parse_sample(sample):
             image_path, image_metadata = sample
-            return fos.Sample(
+            return Sample(
                 filepath=image_path, metadata=image_metadata, tags=tags,
             )
 
@@ -380,7 +380,7 @@ def _build_parse_sample_fcn(
 
         def parse_sample(sample):
             video_path, video_metadata = sample
-            return fos.Sample(
+            return Sample(
                 filepath=video_path, metadata=video_metadata, tags=tags,
             )
 
@@ -395,7 +395,7 @@ def _build_parse_sample_fcn(
 
         def parse_sample(sample):
             image_path, image_metadata, label = sample
-            sample = fos.Sample(
+            sample = Sample(
                 filepath=image_path, metadata=image_metadata, tags=tags,
             )
 
@@ -433,7 +433,7 @@ def _build_parse_sample_fcn(
         def parse_sample(sample):
             video_path, video_metadata, label, frames = sample
 
-            sample = fos.Sample(
+            sample = Sample(
                 filepath=video_path, metadata=video_metadata, tags=tags,
             )
 
@@ -615,12 +615,17 @@ class ImportPathsMixin(object):
             if dataset_dir is not None:
                 data_path = default
 
+        if isinstance(data_path, dict):
+            return data_path
+
         if data_path is not None:
             data_path = os.path.expanduser(data_path)
 
             if not os.path.isabs(data_path) and dataset_dir is not None:
-                dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
+                dataset_dir = fou.normalize_path(dataset_dir)
                 data_path = os.path.join(dataset_dir, data_path)
+            else:
+                data_path = fou.normalize_path(data_path)
 
             if not os.path.exists(data_path):
                 if os.path.isfile(data_path + ".json"):
@@ -641,8 +646,10 @@ class ImportPathsMixin(object):
             labels_path = os.path.expanduser(labels_path)
 
             if not os.path.isabs(labels_path) and dataset_dir is not None:
-                dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
+                dataset_dir = fou.normalize_path(dataset_dir)
                 labels_path = os.path.join(dataset_dir, labels_path)
+            else:
+                labels_path = fou.normalize_path(labels_path)
 
         return labels_path
 
@@ -651,32 +658,33 @@ class ImportPathsMixin(object):
         """Helper function that parses either a data directory or a data
         manifest file into a UUID -> filepath map.
         """
+        if ignore_exts:
+            to_uuid = lambda p: os.path.splitext(p)[0]
+        else:
+            to_uuid = lambda p: p
+
+        if isinstance(data_path, dict):
+            return {to_uuid(k): v for k, v in data_path.items()}
+
         if not data_path:
-            data_map = {}
-        elif data_path.endswith(".json"):
+            return {}
+
+        if data_path.endswith(".json"):
             if not os.path.isfile(data_path):
                 raise ValueError(
                     "Data manifest '%s' does not exist" % data_path
                 )
 
-            data_map = etas.load_json(data_path)
-        else:
-            if not os.path.isdir(data_path):
-                raise ValueError(
-                    "Data directory '%s' does not exist" % data_path
-                )
+            data_map = etas.read_json(data_path)
+            return {to_uuid(k): v for k, v in data_map.items()}
 
-            if ignore_exts:
-                to_uuid = lambda p: os.path.splitext(p)[0]
-            else:
-                to_uuid = lambda p: p
+        if not os.path.isdir(data_path):
+            raise ValueError("Data directory '%s' does not exist" % data_path)
 
-            data_map = {
-                to_uuid(p): os.path.join(data_path, p)
-                for p in etau.list_files(data_path, recursive=recursive)
-            }
-
-        return data_map
+        return {
+            to_uuid(p): os.path.join(data_path, p)
+            for p in etau.list_files(data_path, recursive=recursive)
+        }
 
 
 class DatasetImporter(object):
@@ -705,7 +713,7 @@ class DatasetImporter(object):
         self, dataset_dir=None, shuffle=False, seed=None, max_samples=None
     ):
         if dataset_dir is not None:
-            dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
+            dataset_dir = fou.normalize_path(dataset_dir)
 
         self.dataset_dir = dataset_dir
         self.shuffle = shuffle
@@ -1239,10 +1247,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             labels_relpath = d.pop("frames")
             labels_path = os.path.join(self.dataset_dir, labels_relpath)
 
-            sample = fos.Sample.from_dict(d)
+            sample = Sample.from_dict(d)
             self._import_frame_labels(sample, labels_path)
         else:
-            sample = fos.Sample.from_dict(d)
+            sample = Sample.from_dict(d)
 
         return sample
 
@@ -1260,7 +1268,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def setup(self):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.isfile(metadata_path):
-            metadata = etas.load_json(metadata_path)
+            metadata = etas.read_json(metadata_path)
             media_type = metadata.get("media_type", fomm.IMAGE)
             self._metadata = metadata
             self._is_video_dataset = media_type == fomm.VIDEO
@@ -1273,7 +1281,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
-        samples = etas.load_json(samples_path).get("samples", [])
+        samples = etas.read_json(samples_path).get("samples", [])
 
         self._samples = self._preprocess_list(samples)
         self._num_samples = len(self._samples)
@@ -1372,7 +1380,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         if not os.path.isfile(metadata_path):
             return None
 
-        metadata = etas.load_json(metadata_path)
+        metadata = etas.read_json(metadata_path)
 
         classes = metadata.get("default_classes", None)
         if classes:
@@ -1390,7 +1398,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
     def _import_frame_labels(self, sample, labels_path):
-        frames_map = etas.load_json(labels_path).get("frames", {})
+        frames_map = etas.read_json(labels_path).get("frames", {})
         for key, value in frames_map.items():
             sample.frames[int(key)] = fof.Frame.from_dict(value)
 
@@ -1405,7 +1413,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir (None): a relative directory to prepend to the ``filepath``
             of each sample if the filepath is not absolute. This path is
             converted to an absolute path (if necessary) via
-            ``os.path.abspath(os.path.expanduser(rel_dir))``
+            :func:`fiftyone.core.utils.normalize_path`
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -1427,6 +1435,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             seed=seed,
             max_samples=max_samples,
         )
+
         self.rel_dir = rel_dir
 
         self._data_dir = None
@@ -1531,19 +1540,16 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         samples = self._preprocess_list(samples)
 
         if self.rel_dir is not None:
-            # If a `rel_dir` was provided, prepend it to all relative paths
-            rel_dir = os.path.abspath(os.path.expanduser(self.rel_dir))
-            for sample in samples:
-                filepath = sample["filepath"]
-                if not filepath.startswith(os.path.sep):
-                    sample["filepath"] = os.path.join(rel_dir, filepath)
+            # Prepend `rel_dir` to all relative paths
+            rel_dir = fou.normalize_path(self.rel_dir)
         else:
-            # Prepend `dataset_dir` to all filepaths, which were stored as
-            # relative to `dataset_dir` during export
-            for sample in samples:
-                sample["filepath"] = os.path.join(
-                    self.dataset_dir, sample["filepath"]
-                )
+            # Prepend `dataset_dir` to all relative paths
+            rel_dir = self.dataset_dir
+
+        for sample in samples:
+            filepath = sample["filepath"]
+            if not os.path.isabs(filepath):
+                sample["filepath"] = os.path.join(rel_dir, filepath)
 
         if tags is not None:
             for sample in samples:
@@ -1557,7 +1563,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         # Import frames
         #
 
-        if os.path.exists(self._frames_path):
+        if os.path.isfile(self._frames_path):
             logger.info("Importing frames...")
             frames = foo.import_collection(self._frames_path).get("frames", [])
 
@@ -1603,7 +1609,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
     def _get_classes(dataset_dir):
         # Used only by dataset zoo
         metadata_path = os.path.join(dataset_dir, "metadata.json")
-        metadata = etas.load_json(metadata_path)
+        metadata = etas.read_json(metadata_path)
 
         classes = metadata.get("default_classes", None)
         if classes:
@@ -1619,13 +1625,13 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
         samples_path = os.path.join(dataset_dir, "samples.json")
-        samples = etas.load_json(samples_path).get("samples", [])
+        samples = etas.read_json(samples_path).get("samples", [])
         return len(samples)
 
     def _is_legacy_format_data(self):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
-        if os.path.exists(metadata_path):
-            metadata = etas.load_json(metadata_path)
+        if os.path.isfile(metadata_path):
+            metadata = etas.read_json(metadata_path)
         else:
             metadata = {}
 
@@ -1646,11 +1652,12 @@ def _import_run_results(dataset, run_dir, run_cls, keys=None):
 
     for key in keys:
         json_path = os.path.join(run_dir, key + ".json")
-        if os.path.exists(json_path):
+        if os.path.isfile(json_path):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             config = run_info.config
-            results = fors.RunResults.from_json(json_path, view, config)
+            d = etas.read_json(json_path)
+            results = fors.RunResults.from_dict(d, view, config)
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 
@@ -1687,8 +1694,10 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
             seed=seed,
             max_samples=max_samples,
         )
+
         self.recursive = recursive
         self.compute_metadata = compute_metadata
+
         self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
@@ -1723,9 +1732,10 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
             self.dataset_dir, abs_paths=True, recursive=self.recursive
         )
         filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
+        filepaths = self._preprocess_list(filepaths)
 
-        self._filepaths = self._preprocess_list(filepaths)
-        self._num_samples = len(self._filepaths)
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -1768,8 +1778,10 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
             seed=seed,
             max_samples=max_samples,
         )
+
         self.recursive = recursive
         self.compute_metadata = compute_metadata
+
         self._filepaths = None
         self._iter_filepaths = None
         self._num_samples = None
@@ -1804,9 +1816,10 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
             self.dataset_dir, abs_paths=True, recursive=self.recursive
         )
         filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
+        filepaths = self._preprocess_list(filepaths)
 
-        self._filepaths = self._preprocess_list(filepaths)
-        self._num_samples = len(self._filepaths)
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -1841,6 +1854,7 @@ class FiftyOneImageClassificationDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -1921,13 +1935,13 @@ class FiftyOneImageClassificationDatasetImporter(
         image_path = self._image_paths_map[uuid]
         target = self._labels_map[uuid]
 
-        self._sample_parser.with_sample((image_path, target))
-        label = self._sample_parser.get_label()
-
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
         else:
             image_metadata = None
+
+        self._sample_parser.with_sample((image_path, target))
+        label = self._sample_parser.get_label()
 
         return image_path, image_metadata, label
 
@@ -1944,26 +1958,28 @@ class FiftyOneImageClassificationDatasetImporter(
         return (fol.Classification, fol.Classifications)
 
     def setup(self):
-        self._sample_parser = FiftyOneImageClassificationSampleParser()
-
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.load_json(self.labels_path)
+            labels = etas.read_json(self.labels_path)
         else:
             labels = {}
 
-        self._classes = labels.get("classes", None)
+        labels_map = labels.get("labels", {})
+        classes = labels.get("classes", None)
+        uuids = self._preprocess_list(sorted(labels_map.keys()))
+
+        self._classes = classes
+
+        self._sample_parser = FiftyOneImageClassificationSampleParser()
         self._sample_parser.classes = self._classes
 
-        self._labels_map = labels.get("labels", {})
-
-        uuids = sorted(self._labels_map.keys())
-        self._uuids = self._preprocess_list(uuids)
-
-        self._num_samples = len(self._uuids)
+        self._uuids = uuids
+        self._image_paths_map = image_paths_map
+        self._labels_map = labels_map
+        self._num_samples = len(uuids)
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2062,8 +2078,13 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
-            label = os.path.basename(class_dir)
+
+        for relpath in etau.list_files(self.dataset_dir, recursive=True):
+            chunks = relpath.split(os.path.sep, 1)
+            if len(chunks) == 1:
+                continue
+
+            label = chunks[0]
             if label.startswith("."):
                 continue
 
@@ -2072,14 +2093,15 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             else:
                 classes.add(label)
 
-            for path in etau.list_files(
-                class_dir, abs_paths=True, recursive=True
-            ):
-                samples.append((path, label))
+            path = os.path.join(self.dataset_dir, relpath)
+            samples.append((path, label))
 
-        self._samples = self._preprocess_list(samples)
-        self._num_samples = len(self._samples)
-        self._classes = sorted(classes)
+        classes = sorted(classes)
+        samples = self._preprocess_list(samples)
+
+        self._samples = samples
+        self._num_samples = len(samples)
+        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2092,11 +2114,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        num_samples = 0
-        for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
-            num_samples += len(etau.list_files(class_dir, recursive=True))
-
-        return num_samples
+        return len(etau.list_files(dataset_dir, recursive=True))
 
 
 class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
@@ -2182,8 +2200,13 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
-            label = os.path.basename(class_dir)
+
+        for relpath in etau.list_files(self.dataset_dir, recursive=True):
+            chunks = relpath.split(os.path.sep, 1)
+            if len(chunks) == 1:
+                continue
+
+            label = chunks[0]
             if label.startswith("."):
                 continue
 
@@ -2192,14 +2215,15 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             else:
                 classes.add(label)
 
-            for path in etau.list_files(
-                class_dir, abs_paths=True, recursive=True
-            ):
-                samples.append((path, label))
+            path = os.path.join(self.dataset_dir, relpath)
+            samples.append((path, label))
 
-        self._samples = self._preprocess_list(samples)
-        self._num_samples = len(self._samples)
-        self._classes = sorted(classes)
+        samples = self._preprocess_list(samples)
+        classes = sorted(classes)
+
+        self._samples = samples
+        self._num_samples = len(samples)
+        self._classes = classes
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2212,11 +2236,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        num_samples = 0
-        for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
-            num_samples += len(etau.list_files(class_dir, recursive=True))
-
-        return num_samples
+        return len(etau.list_files(dataset_dir, recursive=True))
 
 
 class FiftyOneImageDetectionDatasetImporter(
@@ -2244,6 +2264,7 @@ class FiftyOneImageDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2325,16 +2346,16 @@ class FiftyOneImageDetectionDatasetImporter(
         image_path = self._image_paths_map[uuid]
         target = self._labels_map[uuid]
 
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
         if self._has_labels:
             self._sample_parser.with_sample((image_path, target))
             label = self._sample_parser.get_label()
         else:
             label = None
-
-        if self.compute_metadata:
-            image_metadata = fom.ImageMetadata.build_for(image_path)
-        else:
-            image_metadata = None
 
         return image_path, image_metadata, label
 
@@ -2351,25 +2372,31 @@ class FiftyOneImageDetectionDatasetImporter(
         return fol.Detections
 
     def setup(self):
-        self._sample_parser = FiftyOneImageDetectionSampleParser()
-
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.load_json(self.labels_path)
+            labels = etas.read_json(self.labels_path)
         else:
             labels = {}
 
-        self._classes = labels.get("classes", None)
-        self._sample_parser.classes = self._classes
-        self._labels_map = labels.get("labels", {})
-        self._has_labels = any(self._labels_map.values())
+        classes = labels.get("classes", None)
+        labels_map = labels.get("labels", {})
 
-        uuids = sorted(self._labels_map.keys())
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(labels_map.keys()))
+        has_labels = any(labels_map.values())
+
+        self._classes = classes
+        self._has_labels = has_labels
+
+        self._sample_parser = FiftyOneImageDetectionSampleParser()
+        self._sample_parser.classes = classes
+
+        self._image_paths_map = image_paths_map
+        self._labels_map = labels_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2414,6 +2441,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2473,12 +2501,12 @@ class FiftyOneTemporalDetectionDatasetImporter(
         self.labels_path = labels_path
         self.compute_metadata = compute_metadata
 
-        self._classes = None
-        self._sample_parser = None
         self._video_paths_map = None
         self._labels_map = None
         self._uuids = None
         self._iter_uuids = None
+        self._classes = None
+        self._sample_parser = None
         self._num_samples = None
         self._has_labels = False
 
@@ -2495,16 +2523,17 @@ class FiftyOneTemporalDetectionDatasetImporter(
         video_path = self._video_paths_map[uuid]
         labels = self._labels_map[uuid]
 
-        if self._has_labels:
-            self._sample_parser.with_sample((video_path, labels))
-            label = self._sample_parser.get_label()
-        else:
-            label = None
-
         if self.compute_metadata:
             video_metadata = self._sample_parser.get_video_metadata()
         else:
             video_metadata = None
+
+        if self._has_labels:
+            sample = (video_path, labels)
+            self._sample_parser.with_sample(sample, metadata=video_metadata)
+            label = self._sample_parser.get_label()
+        else:
+            label = None
 
         return video_path, video_metadata, label, None
 
@@ -2525,27 +2554,31 @@ class FiftyOneTemporalDetectionDatasetImporter(
         return None
 
     def setup(self):
-        self._sample_parser = FiftyOneTemporalDetectionSampleParser(
-            compute_metadata=self.compute_metadata
-        )
-
-        self._video_paths_map = self._load_data_map(
+        video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.load_json(self.labels_path)
+            labels = etas.read_json(self.labels_path)
         else:
             labels = {}
 
-        self._classes = labels.get("classes", None)
-        self._sample_parser.classes = self._classes
-        self._labels_map = labels.get("labels", {})
-        self._has_labels = any(self._labels_map.values())
+        classes = labels.get("classes", None)
+        labels_map = labels.get("labels", {})
+        has_labels = any(labels_map.values())
 
-        uuids = sorted(self._labels_map.keys())
-        self._uuids = self._preprocess_list(uuids)
-        self._num_samples = len(self._uuids)
+        uuids = sorted(labels_map.keys())
+        uuids = self._preprocess_list(uuids)
+
+        self._sample_parser = FiftyOneTemporalDetectionSampleParser()
+        self._sample_parser.classes = classes
+
+        self._classes = classes
+        self._video_paths_map = video_paths_map
+        self._labels_map = labels_map
+        self._has_labels = has_labels
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
     def get_dataset_info(self):
         return {"classes": self._classes}
@@ -2589,6 +2622,7 @@ class ImageSegmentationDirectoryImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -2658,7 +2692,7 @@ class ImageSegmentationDirectoryImporter(
         self.include_all_data = include_all_data
 
         self._image_paths_map = None
-        self._mask_paths_map = None
+        self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
         self._num_samples = None
@@ -2674,18 +2708,18 @@ class ImageSegmentationDirectoryImporter(
         uuid = next(self._iter_uuids)
 
         image_path = self._image_paths_map[uuid]
-        mask_path = self._mask_paths_map.get(uuid, None)
+        mask_path = self._labels_paths_map.get(uuid, None)
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
         else:
             image_metadata = None
 
-        if mask_path is None:
-            return image_path, image_metadata, None
-
-        mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
-        label = fol.Segmentation(mask=mask)
+        if mask_path is not None:
+            mask = _read_mask(mask_path, force_grayscale=self.force_grayscale)
+            label = fol.Segmentation(mask=mask)
+        else:
+            label = None
 
         return image_path, image_metadata, label
 
@@ -2702,22 +2736,26 @@ class ImageSegmentationDirectoryImporter(
         return fol.Segmentation
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        self._mask_paths_map = {
+        labels_paths_map = {
             os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
             for p in etau.list_files(self.labels_path, recursive=True)
         }
 
-        uuids = set(self._mask_paths_map.keys())
+        uuids = set(labels_paths_map.keys())
 
         if self.include_all_data:
-            uuids.update(self._image_paths_map.keys())
+            uuids.update(image_paths_map.keys())
 
-        self._uuids = self._preprocess_list(sorted(uuids))
-        self._num_samples = len(self._uuids)
+        uuids = self._preprocess_list(sorted(uuids))
+
+        self._image_paths_map = image_paths_map
+        self._labels_paths_map = labels_paths_map
+        self._uuids = uuids
+        self._num_samples = len(uuids)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -2754,6 +2792,9 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
             :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -2766,10 +2807,15 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
+        shuffle=False,
+        seed=None,
         max_samples=None,
     ):
         super().__init__(
-            dataset_dir=dataset_dir, max_samples=max_samples,
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
         )
 
         self.compute_metadata = compute_metadata
@@ -2780,30 +2826,19 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
         self._description = None
         self._sample_parser = None
-        self._labeled_dataset = None
-        self._iter_labeled_dataset = None
+        self._samples = None
+        self._iter_samples = None
         self._num_samples = None
-        self._num_imported = None
 
     def __iter__(self):
-        self._num_imported = 0
-        self._iter_labeled_dataset = zip(
-            self._labeled_dataset.iter_data_paths(),
-            self._labeled_dataset.iter_labels(),
-        )
+        self._iter_samples = iter(self._samples)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        if (
-            self.max_samples is not None
-            and self._num_imported >= self.max_samples
-        ):
-            raise StopIteration
-
-        sample = next(self._iter_labeled_dataset)
+        sample = next(self._iter_samples)
 
         self._sample_parser.with_sample(sample)
         image_path = self._sample_parser.get_image_path()
@@ -2814,7 +2849,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         else:
             image_metadata = None
 
-        self._num_imported += 1
         return image_path, image_metadata, label
 
     @property
@@ -2835,18 +2869,31 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         }
 
     def setup(self):
-        self._sample_parser = FiftyOneImageLabelsSampleParser(
+        sample_parser = FiftyOneImageLabelsSampleParser(
             prefix=self.prefix,
             labels_dict=self.labels_dict,
             multilabel=self.multilabel,
             skip_non_categorical=self.skip_non_categorical,
         )
-        self._labeled_dataset = etads.load_dataset(self.dataset_dir)
-        self._description = self._labeled_dataset.dataset_index.description
 
-        self._num_samples = len(self._labeled_dataset)
-        if self.max_samples is not None:
-            self._num_samples = min(self._num_samples, self.max_samples)
+        index = _load_labeled_dataset_index(self.dataset_dir)
+
+        description = index.description
+        inds = self._preprocess_list(list(range(len(index))))
+
+        image_paths = []
+        label_paths = []
+        for idx in inds:
+            record = index[idx]
+            image_paths.append(os.path.join(self.dataset_dir, record.data))
+            label_paths.append(os.path.join(self.dataset_dir, record.labels))
+
+        samples = list(zip(image_paths, label_paths))
+
+        self._sample_parser = sample_parser
+        self._samples = samples
+        self._num_samples = len(samples)
+        self._description = description
 
     def get_dataset_info(self):
         return {"description": self._description}
@@ -2854,7 +2901,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etads.load_dataset(dataset_dir))
+        return len(_load_labeled_dataset_index(dataset_dir))
 
 
 class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
@@ -2881,6 +2928,9 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
             :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -2894,9 +2944,16 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         frame_labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
+        shuffle=False,
+        seed=None,
         max_samples=None,
     ):
-        super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
 
         self.compute_metadata = compute_metadata
         self.prefix = prefix
@@ -2907,33 +2964,23 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
 
         self._description = None
         self._sample_parser = None
-        self._labeled_dataset = None
-        self._iter_labeled_dataset = None
+        self._samples = None
+        self._iter_samples = None
         self._num_samples = None
-        self._num_imported = None
 
     def __iter__(self):
-        self._num_imported = 0
-        self._iter_labeled_dataset = zip(
-            self._labeled_dataset.iter_data_paths(),
-            self._labeled_dataset.iter_labels(),
-        )
+        self._iter_samples = iter(self._samples)
         return self
 
     def __len__(self):
         return self._num_samples
 
     def __next__(self):
-        if (
-            self.max_samples is not None
-            and self._num_imported >= self.max_samples
-        ):
-            raise StopIteration
-
-        sample = next(self._iter_labeled_dataset)
+        sample = next(self._iter_samples)
 
         self._sample_parser.with_sample(sample)
         video_path = self._sample_parser.get_video_path()
+        label = self._sample_parser.get_label()
         frames = self._sample_parser.get_frame_labels()
 
         if self.compute_metadata:
@@ -2941,8 +2988,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         else:
             video_metadata = None
 
-        self._num_imported += 1
-        return video_path, video_metadata, None, frames
+        return video_path, video_metadata, label, frames
 
     @property
     def has_dataset_info(self):
@@ -2961,19 +3007,32 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         return None
 
     def setup(self):
-        self._sample_parser = FiftyOneVideoLabelsSampleParser(
+        sample_parser = FiftyOneVideoLabelsSampleParser(
             prefix=self.prefix,
             labels_dict=self.labels_dict,
             frame_labels_dict=self.frame_labels_dict,
             multilabel=self.multilabel,
             skip_non_categorical=self.skip_non_categorical,
         )
-        self._labeled_dataset = etads.load_dataset(self.dataset_dir)
-        self._description = self._labeled_dataset.dataset_index.description
 
-        self._num_samples = len(self._labeled_dataset)
-        if self.max_samples is not None:
-            self._num_samples = min(self._num_samples, self.max_samples)
+        index = _load_labeled_dataset_index(self.dataset_dir)
+
+        description = index.description
+        inds = self._preprocess_list(list(range(len(index))))
+
+        video_paths = []
+        label_paths = []
+        for idx in inds:
+            record = index[idx]
+            video_paths.append(os.path.join(self.dataset_dir, record.data))
+            label_paths.append(os.path.join(self.dataset_dir, record.labels))
+
+        samples = list(zip(video_paths, label_paths))
+
+        self._samples = samples
+        self._sample_parser = sample_parser
+        self._num_samples = len(samples)
+        self._description = description
 
     def get_dataset_info(self):
         return {"description": self._description}
@@ -2981,4 +3040,10 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etads.load_dataset(dataset_dir))
+        return len(_load_labeled_dataset_index(dataset_dir))
+
+
+def _load_labeled_dataset_index(dataset_dir):
+    index_path = os.path.join(dataset_dir, "manifest.json")
+    d = etas.read_json(index_path)
+    return etad.LabeledDatasetIndex.from_dict(d)

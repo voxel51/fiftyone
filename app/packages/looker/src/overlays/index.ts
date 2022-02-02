@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 import { LABEL_LISTS, LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";

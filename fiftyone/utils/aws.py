@@ -3,7 +3,7 @@ Utilities for working with
 `Amazon Web Services <https://aws.amazon.com/>`
 S3 storage buckets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -66,7 +66,7 @@ def download_public_s3_files(
     if download_dir:
         etau.ensure_dir(download_dir)
 
-    if num_workers is None or num_workers < 1:
+    if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
     s3_client = boto3.client(
@@ -84,7 +84,7 @@ def download_public_s3_files(
     if not inputs:
         return
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _single_thread_download(inputs)
     else:
         _multi_thread_download(inputs, num_workers)

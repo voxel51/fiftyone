@@ -418,6 +418,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("imagenet-sample")
 
@@ -435,6 +436,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -460,6 +462,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             # The path to the source files that you manually downloaded
             source_dir = "/path/to/dir-with-bdd100k-files"
@@ -487,6 +490,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -709,10 +713,11 @@ in the sense that:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` on an
-    object patches view (typically one that contains additional view stages
-    that filter or modify its contents) will sync any |Label| edits or
-    deletions with the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` or
+    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>` on an object
+    patches view (typically one that contains additional view stages that
+    filter or modify its contents) will sync any |Label| edits or deletions
+    with the source dataset
 
 However, because object patches views only contain a subset of the contents of
 a |Sample| from the source dataset, there are some differences compared to
@@ -822,8 +827,9 @@ Evaluation patches views are just like any other
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
 -   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
-    on an evaluation patches view (typically one that contains additional view
-    stages that filter or modify its contents) will sync any |Label| edits or
+    or :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>` on an
+    evaluation patches view (typically one that contains additional view stages
+    that filter or modify its contents) will sync any |Label| edits or
     deletions with the source dataset
 
 However, because evaluation patches views only contain a subset of the contents
@@ -1116,7 +1122,8 @@ sense that:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` on a clips view
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` or
+    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>` on a clips view
     (typically one that contains additional view stages that filter or modify
     its contents) will sync any frame-level edits or deletions with the source
     dataset
@@ -1253,10 +1260,11 @@ Frame views are just like any other image collection view in the sense that:
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.video.FramesView.save>` on a frames
-    view (typically one that contains additional view stages that filter or
-    modify its contents) will sync any changes to the frames of the underlying
-    video  dataset
+-   Calling :meth:`save() <fiftyone.core.video.FramesView.save>` or
+    :meth:`keep() <fiftyone.core.video.FramesView.keep>` on a frames view
+    (typically one that contains additional view stages that filter or modify
+    its contents) will sync any changes to the frames of the underlying video
+    dataset
 
 The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not
@@ -1549,6 +1557,7 @@ view:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.untag_samples("validation") # remove pre-existing tags
@@ -1791,8 +1800,8 @@ __________________
 
 Ordinarily, when you define a |DatasetView| that extracts a specific subset of
 a dataset and its fields, the underlying |Dataset| is not modified. However,
-you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to overwrite
-the underlying dataset with the contents of a view you've created:
+you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to save the
+contents of a view you've created to the underlying dataset:
 
 .. code-block:: python
     :linenos:
@@ -1803,16 +1812,45 @@ the underlying dataset with the contents of a view you've created:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
+    # Capitalize some labels
+    rename_view = dataset.map_labels("predictions", {"cat": "CAT", "dog": "DOG"})
+    rename_view.save()
+
+    print(dataset.count_values("predictions.detections.label"))
+    # {'CAT': 35, 'DOG': 49, ...}
+
     # Discard all predictions with confidence below 0.3
-    high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
+    high_conf_view = dataset.filter_labels(
+        "predictions", F("confidence") > 0.3, only_matches=False
+    )
     high_conf_view.save()
 
     print(dataset.bounds("predictions.detections.confidence"))
     # (0.3001, 0.9999)
 
-Alternatively, you can create a new |Dataset| that contains only the contents
-of a |DatasetView| using
-:meth:`clone() <fiftyone.core.view.DatasetView.clone>`:
+Note that calling :meth:`save() <fiftyone.core.view.DatasetView.save>` on a
+|DatasetView| will only save modifications to samples that are in the view; all
+other samples are left unchanged.
+
+You can use :meth:`keep() <fiftyone.core.view.DatasetView.keep>` to delete
+samples from the underlying dataset that do not appear in a view you created:
+
+.. code-block:: python
+    :linenos:
+
+    print(len(dataset))
+    # 200
+
+    # Discard all samples with no people
+    people_view = dataset.filter_labels("ground_truth", F("label") == "person")
+    people_view.keep()
+
+    print(len(dataset))
+    # 94
+
+Alternatively, you can use
+:meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new
+|Dataset| that contains only the contents of a |DatasetView|:
 
 .. code-block:: python
     :linenos:

@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -281,16 +281,6 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNotNone(sample1["high_conf"])
         self.assertIsNone(sample2["low_conf"])
         self.assertIsNone(sample2["high_conf"])
-
-        save_view = high_conf_view.exclude_fields(
-            ["low_conf", "high_conf"]
-        ).limit(1)
-        save_view.save()
-        schema = dataset.get_field_schema()
-        self.assertTrue(len(dataset), 1)
-        self.assertNotIn("low_conf", schema)
-        self.assertNotIn("high_conf", schema)
-        self.assertEqual(len(sample1["predictions"].detections), 2)
 
 
 class ViewExpressionTests(unittest.TestCase):
@@ -589,11 +579,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_dates(self):
         dataset = fo.Dataset()
 
-        date1 = date(2021, 8, 24)
-        date2 = date(2021, 8, 25)
-        date3 = date(2021, 8, 26)
+        date1 = date(1970, 1, 2)
+        date2 = date(1970, 1, 3)
+        date3 = date(1970, 1, 4)
 
-        query_date = datetime(2021, 8, 25, 1, 0, 0)
+        query_date = datetime(1970, 1, 3, 1, 0, 0)
         query_delta = timedelta(hours=2)
 
         dataset.add_samples(
@@ -626,11 +616,11 @@ class ViewExpressionTests(unittest.TestCase):
     def test_datetimes(self):
         dataset = fo.Dataset()
 
-        date1 = datetime(2021, 8, 24, 1, 0, 0)
-        date2 = datetime(2021, 8, 24, 2, 0, 0)
-        date3 = datetime(2021, 8, 24, 3, 0, 0)
+        date1 = datetime(1970, 1, 1, 2, 0, 0)
+        date2 = datetime(1970, 1, 1, 3, 0, 0)
+        date3 = datetime(1970, 1, 1, 4, 0, 0)
 
-        query_date = datetime(2021, 8, 24, 2, 1, 0)
+        query_date = datetime(1970, 1, 1, 3, 1, 0)
         query_delta = timedelta(minutes=30)
 
         dataset.add_samples(
@@ -711,6 +701,44 @@ class SetValuesTests(unittest.TestCase):
         values[0] = "0"
         with self.assertRaises(ValueError):
             self.dataset.set_values("str_field", values, key_field="int_field")
+
+    def test_set_values_frames_dicts(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="video1.mp4"),
+                fo.Sample(filepath="video2.mp4"),
+                fo.Sample(filepath="video3.mp4"),
+            ]
+        )
+
+        filepaths = dataset.values("filepath")
+        values = {
+            filepaths[0]: {2: 3, 4: 5},
+            filepaths[1]: {3: 4, 5: 6, 7: 8},
+            filepaths[2]: {4: 5},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 4, 3, 5, 7, 4])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [3, 5, 4, 6, 8, 5])
+
+        values = {
+            filepaths[0]: {2: -1, 3: 4, 4: -1},
+            filepaths[2]: {1: 2, 4: -1, 5: 6},
+        }
+
+        dataset.set_values("frames.int_field", values, key_field="filepath")
+
+        frame_numbers = dataset.values("frames.frame_number", unwind=True)
+        self.assertListEqual(frame_numbers, [2, 3, 4, 3, 5, 7, 1, 4, 5])
+
+        int_fields = dataset.values("frames.int_field", unwind=True)
+        self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
 
     def test_set_values_dataset(self):
         n = len(self.dataset)
@@ -942,6 +970,117 @@ class SetValuesTests(unittest.TestCase):
         self.assertListEqual(
             _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
+
+
+class ViewSaveTest(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="test1.png",
+                    int_field=1,
+                    classifications=fo.Classifications(
+                        classifications=[fo.Classification(label="cat")]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="test2.png",
+                    int_field=2,
+                    classifications=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="cat"),
+                            fo.Classification(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="test3.png",
+                    int_field=3,
+                    classifications=fo.Classifications(
+                        classifications=[
+                            fo.Classification(label="rabbit"),
+                            fo.Classification(label="squirrel"),
+                            fo.Classification(label="frog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(filepath="test4.png"),
+            ]
+        )
+
+    def test_view_save(self):
+        view = self.dataset.limit(2).set_field("int_field", F("int_field") + 1)
+        view.save()
+
+        self.assertListEqual(self.dataset.values("int_field"), [2, 3, 3, None])
+
+        view = self.dataset.filter_labels(
+            "classifications", F("label") == "cat", only_matches=False
+        ).set_field("int_field", None)
+        view.save(fields="classifications")
+
+        self.assertEqual(len(self.dataset), 4)
+        self.assertListEqual(
+            self.dataset.distinct("classifications.classifications.label"),
+            ["cat"],
+        )
+        self.assertEqual(len(self.dataset.exists("int_field")), 3)
+
+        view.save()
+        self.assertEqual(len(self.dataset), 4)
+        self.assertEqual(len(self.dataset.exists("int_field")), 0)
+
+    def test_view_keep(self):
+        view = self.dataset.limit(3)
+        view.keep()
+
+        self.assertEqual(len(self.dataset), 3)
+        self.assertEqual(len(self.dataset.exists("int_field")), 3)
+
+        view = self.dataset.filter_labels(
+            "classifications", F("label") == "cat"
+        )
+        view.keep()
+
+        self.assertListEqual(
+            self.dataset.values("classifications.classifications.label"),
+            [["cat"], ["cat", "dog"]],
+        )
+
+    def test_view_keep_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        frame11 = fo.Frame()
+        frame12 = fo.Frame()
+
+        sample1.frames[1] = frame11
+        sample1.frames[2] = frame12
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        frame21 = fo.Frame()
+        frame22 = fo.Frame()
+
+        sample2.frames[1] = frame21
+        sample2.frames[2] = frame22
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        view = dataset.limit(1).match_frames(F("frame_number") == 1)
+
+        self.assertEqual(dataset.count("frames"), 4)
+        self.assertEqual(view.count("frames"), 1)
+
+        view.keep_frames()
+
+        self.assertEqual(dataset.count("frames"), 3)
+        self.assertEqual(view.count("frames"), 1)
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True), [1, 1, 2]
+        )
+        self.assertIsNone(frame12.id)
+        self.assertIsNotNone(frame22.id)
 
 
 class ViewStageTests(unittest.TestCase):
