@@ -389,7 +389,7 @@ def make_frames_dataset(
     skip_failures=True,
     verbose=False,
 ):
-    """Creates a dataset that contains one sample per video frame in the
+    """Creates a dataset that contains one sample per frame in the video
     collection.
 
     The returned dataset will contain all frame-level fields and the ``tags``
