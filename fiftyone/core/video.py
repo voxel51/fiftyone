@@ -11,6 +11,7 @@ import logging
 import os
 
 from bson import ObjectId
+from pymongo import UpdateOne
 
 import eta.core.utils as etau
 
@@ -618,12 +619,15 @@ def _init_frames(
     #
 
     docs = []
-    missing_filepaths = defaultdict(dict)
+    src_docs = []
+    src_inds = []
+    missing_filepaths = []
 
     id_map = {}
     sample_map = defaultdict(set)
     frame_map = defaultdict(set)
 
+    src_dataset = src_collection._root_dataset
     is_clips = src_collection._dataset._is_clips
     if src_collection.has_frame_field("filepath"):
         view = src_collection.select_fields("frames.filepath")
@@ -642,14 +646,14 @@ def _init_frames(
         frames_with_filepaths = set()
         for frame in frames:
             _frame_id = frame["_id"]
-            frame_number = frame["frame_number"]
+            fn = frame["frame_number"]
             filepath = frame.get("filepath", None)
 
             if sample_frames != False or filepath:
-                frame_ids_map[frame_number] = _frame_id
+                frame_ids_map[fn] = _frame_id
 
             if sample_frames == True and filepath:
-                frames_with_filepaths.add(frame_number)
+                frames_with_filepaths.add(fn)
 
         if is_clips:
             _sample_id = sample["_sample_id"]
@@ -657,8 +661,6 @@ def _init_frames(
         else:
             _sample_id = sample["_id"]
             support = None
-
-        sample_id = str(_sample_id)
 
         outdir = os.path.splitext(video_path)[0]
         images_patt = os.path.join(outdir, frames_patt)
@@ -681,9 +683,9 @@ def _init_frames(
         )
 
         # Record things that need to be sampled
-        # note: [] means no frames, None means all frames
+        # Note: [] means no frames, None means all frames
         if sample_frame_numbers != []:
-            id_map[video_path] = sample_id
+            id_map[video_path] = str(_sample_id)
 
             if sample_frame_numbers is None:
                 sample_map[video_path] = None
@@ -698,8 +700,11 @@ def _init_frames(
                 - set(sample_frame_numbers)
                 - frames_with_filepaths
             )
-            for fn in missing_fns:
-                missing_filepaths[sample_id][fn] = images_patt % fn
+        else:
+            missing_fns = set()
+
+        for fn in missing_fns:
+            missing_filepaths.append((_sample_id, fn, images_patt % fn))
 
         # Create necessary frame documents
         for fn in doc_frame_numbers:
@@ -709,6 +714,8 @@ def _init_frames(
                     continue  # frame has already been sampled
 
                 fns.add(fn)
+
+            _id = frame_ids_map.get(fn, None)
 
             if sample_frames == "dynamic":
                 filepath = video_path
@@ -725,31 +732,41 @@ def _init_frames(
                 "_sample_id": _sample_id,
             }
 
-            _id = frame_ids_map.get(fn, None)
             if _id is not None:
                 doc["_id"] = _id
+            elif fn in missing_fns:
+                # Found a frame whose image is already sampled but for which
+                # there is no frame in the source collection. We now need to
+                # create a frame so that the missing filepath can be added and
+                # the frames dataset can use the same frame ID
+                src_docs.append({"_sample_id": _sample_id, "frame_number": fn})
+                src_inds.append(len(docs))
 
             docs.append(doc)
 
             # Commit batch of docs to frames dataset
             if len(docs) >= 100000:  # MongoDB limit for bulk inserts
-                foo.insert_documents(docs, dataset._sample_collection)
-                docs.clear()
+                _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
 
     # Add remaining docs to frames dataset
-    if docs:
-        foo.insert_documents(docs, dataset._sample_collection)
+    _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
 
-    # Add any missing frame filepaths to source collection
+    # Add missing frame filepaths to source collection
     if missing_filepaths:
         logger.info(
             "Setting %d frame filepaths on the input collection that exist "
             "on disk but are not recorded on the dataset",
-            sum(len(d) for d in missing_filepaths.values()),
+            len(missing_filepaths),
         )
-        src_collection._root_dataset.set_values(
-            "frames.filepath", missing_filepaths, key_field="id"
-        )
+        src_dataset._add_frame_field_if_necessary("filepath", fof.StringField)
+        ops = [
+            UpdateOne(
+                {"_sample_id": _sample_id, "frame_number": fn},
+                {"$set": {"filepath": filepath}},
+            )
+            for _sample_id, fn, filepath in missing_filepaths
+        ]
+        src_dataset._bulk_write(ops, frames=True)
 
     #
     # Finalize which frame images need to be sampled, if any
@@ -767,6 +784,21 @@ def _init_frames(
         frames_to_sample.append(sample_frame_numbers)
 
     return ids_to_sample, frames_to_sample
+
+
+def _insert_docs(docs, src_docs, src_inds, dataset, src_dataset):
+    if src_docs:
+        foo.insert_documents(src_docs, src_dataset._frame_collection)
+
+        for idx, src_doc in enumerate(src_docs):
+            docs[src_inds[idx]]["_id"] = src_doc["_id"]
+
+        src_docs.clear()
+        src_inds.clear()
+
+    if docs:
+        foo.insert_documents(docs, dataset._sample_collection)
+        docs.clear()
 
 
 def _parse_video_frames(
