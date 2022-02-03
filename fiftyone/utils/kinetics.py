@@ -39,6 +39,9 @@ def download_kinetics_split(
     """Utility that downloads full or partial splits of the
     `Kinetics dataset <https://deepmind.com/research/open-source/kinetics>`_.
 
+    The downloaded splits are stored on disk in
+    :ref:`VideoClassificationDirectoryTree format <VideoClassificationDirectoryTree-import>`.
+
     Args:
         dataset_dir: the directory to download the dataset
         split: the split to download. Supported values are
@@ -109,84 +112,6 @@ def download_kinetics_split(
         etau.delete_dir(scratch_dir)
 
     return num_samples, all_classes, did_download
-
-
-class KineticsDatasetImporter(foud.VideoClassificationDirectoryTreeImporter):
-    """Importer for a Kinetics dataset stored on disk as a video classification
-    directory tree.
-
-    Args:
-        dataset_dir: the dataset directory
-        compute_metadata (False): whether to produce
-            :class:`fiftyone.core.metadata.VideoMetadata` instances for each
-            video when importing
-        classes (None): a string or list of strings specifying required classes
-            to load. If provided, only samples of the given classes will be
-            loaded
-        unlabeled ("_unlabeled"): the name of the subdirectory containing
-            unlabeled images
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to import. By default,
-            all samples are imported
-    """
-
-    def __init__(
-        self,
-        dataset_dir,
-        compute_metadata=False,
-        classes=None,
-        unlabeled="_unlabeled",
-        shuffle=False,
-        seed=None,
-        max_samples=None,
-    ):
-        super().__init__(
-            dataset_dir=dataset_dir,
-            compute_metadata=compute_metadata,
-            unlabeled=unlabeled,
-            shuffle=shuffle,
-            seed=seed,
-            max_samples=max_samples,
-        )
-
-        if etau.is_str(classes):
-            classes = [classes]
-        else:
-            classes = list(classes)
-
-        self.classes = classes
-
-    def setup(self):
-        samples = []
-        classes = set()
-        whitelist = set(self.classes) if self.classes is not None else None
-
-        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
-            label = os.path.basename(class_dir)
-            if label.startswith("."):
-                continue
-
-            if whitelist is not None and label not in whitelist:
-                continue
-
-            if label == self.unlabeled:
-                label = None
-            else:
-                classes.add(label)
-
-            for path in etau.list_files(
-                class_dir, abs_paths=True, recursive=True
-            ):
-                samples.append((path, label))
-
-        samples = self._preprocess_list(samples)
-        classes = sorted(classes)
-
-        self._samples = samples
-        self._num_samples = len(samples)
-        self._classes = classes
 
 
 class KineticsDatasetManager(object):

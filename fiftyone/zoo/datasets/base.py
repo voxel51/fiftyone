@@ -1112,7 +1112,7 @@ class Kinetics400Dataset(FiftyOneDataset):
         if not downloaded:
             num_samples = None
 
-        dataset_type = fot.KineticsDataset()
+        dataset_type = fot.VideoClassificationDirectoryTree()
 
         return dataset_type, num_samples, classes
 
@@ -1268,7 +1268,7 @@ class Kinetics600Dataset(FiftyOneDataset):
         if not downloaded:
             num_samples = None
 
-        dataset_type = fot.KineticsDataset()
+        dataset_type = fot.VideoClassificationDirectoryTree()
 
         return dataset_type, num_samples, classes
 
@@ -1418,7 +1418,7 @@ class Kinetics700Dataset(FiftyOneDataset):
         if not downloaded:
             num_samples = None
 
-        dataset_type = fot.KineticsDataset()
+        dataset_type = fot.VideoClassificationDirectoryTree()
 
         return dataset_type, num_samples, classes
 
@@ -1575,7 +1575,7 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         if not downloaded:
             num_samples = None
 
-        dataset_type = fot.KineticsDataset()
+        dataset_type = fot.VideoClassificationDirectoryTree()
 
         return dataset_type, num_samples, classes
 
