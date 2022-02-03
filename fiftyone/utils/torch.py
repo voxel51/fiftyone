@@ -862,6 +862,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             ]
 
             points = [(p[0] / width, p[1] / height) for p in kpts]
+            visible = [(p[3] > 0) for p in kpts]
 
             _detections.append(
                 fol.Detection(
@@ -875,7 +876,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
                 fol.Keypoint(
                     label=self.class_labels[label],
                     points=points,
-                    confidence=score,
+                    visible=visible,
                 )
             )
 
