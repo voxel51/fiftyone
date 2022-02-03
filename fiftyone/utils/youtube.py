@@ -252,6 +252,7 @@ def _download(tasks, max_videos, skip_failures, quiet):
                     raise ValueError(msg)
 
                 errors[idx] = error
+                pb.draw()
             else:
                 pb.update()
                 downloaded[idx] = video_path
@@ -290,6 +291,7 @@ def _download_multi(
                         raise ValueError(msg)
 
                     errors[idx] = error
+                    pb.draw()
                 else:
                     pb.update()
                     downloaded[idx] = video_path

@@ -70,12 +70,12 @@ def download_activitynet_split(
     Returns:
         a tuple of:
 
-        -   num_samples: the total number of downloaded videos, or ``None`` if
-            everything was already downloaded
-        -   classes: the list of all classes, or ``None`` if everything was
+        -   **num_samples**: the total number of downloaded videos, or ``None``
+            if everything was already downloaded
+        -   **classes**: the list of all classes, or ``None`` if everything was
             already downloaded
-        -   did_download: whether any content was downloaded (True) or if all
-            necessary files were already downloaded (False)
+        -   **did_download**: whether any content was downloaded (True) or if
+            all necessary files were already downloaded (False)
     """
     manager = ActivityNetDatasetManager.from_dataset_dir(dataset_dir, version)
 
