@@ -171,7 +171,7 @@ class KineticsDatasetManager(object):
             random.shuffle(data)
             urls, video_paths, clip_segments = zip(*data)
 
-        logger.info("Downloading videos...")
+        logger.info("Downloading videos from YouTube...")
         _, errors = fouy.download_youtube_videos(
             urls,
             video_paths=video_paths,
