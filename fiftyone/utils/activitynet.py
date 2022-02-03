@@ -222,7 +222,7 @@ class ActivityNetDatasetImporter(
 
         process_uuids = True
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.load_json(self.labels_path)
+            labels = etas.read_json(self.labels_path)
             info = ActivityNetInfo(labels)
             sample_ids = self._video_paths_map.keys()
 
@@ -643,7 +643,6 @@ class ActivityNetDatasetManager(object):
         remaining_samples = num_samples
 
         if num_a100_ids:
-            logger.info("Downloading videos...")
             if num_samples is None:
                 num_to_download = num_a100_ids
             else:
@@ -664,7 +663,6 @@ class ActivityNetDatasetManager(object):
             )
 
         if remaining_samples:
-            logger.info("Downloading ActivityNet-200-specific videos...")
             a200_downloaded_ids, a200_errors = self._attempt_to_download(
                 self.a200_info.data_dir(split),
                 a200_ids,
@@ -690,6 +688,7 @@ class ActivityNetDatasetManager(object):
             download_urls.append(sample_info["url"])
             download_paths.append(download_path)
 
+        logger.info("Downloading videos from YouTube...")
         downloaded, errors = fouy.download_youtube_videos(
             urls=download_urls,
             video_paths=download_paths,
@@ -705,7 +704,7 @@ class ActivityNetDatasetManager(object):
 
     def _merge_and_write_errors(self, download_errors, error_path):
         if os.path.isfile(error_path):
-            prev_errors = etas.load_json(error_path)
+            prev_errors = etas.read_json(error_path)
         else:
             prev_errors = {}
 
@@ -881,8 +880,9 @@ class ActivityNetInfo(object):
 
 
 class ActivityNetSplitInfo(ActivityNetInfo):
-    """Contains information related to paths, labels, and sample ids of a
-    single split"""
+    """Class that contains information related to paths, labels, and sample IDs
+    of a single ActivityNet split.
+    """
 
     def __init__(self, split_dir, version=None, raw_annotations=None):
         self.split_dir = os.path.abspath(split_dir)
@@ -949,10 +949,11 @@ class ActivityNetSplitInfo(ActivityNetInfo):
                     "annotations have not been loaded, then a version must be "
                     "provided." % self.raw_anno_path
                 )
-            anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
-            etaw.download_file(anno_link, path=self.raw_anno_path, quiet=True)
 
-        return etas.load_json(self.raw_anno_path)
+            anno_link = _ANNOTATION_DOWNLOAD_LINKS[version]
+            etaw.download_file(anno_link, path=self.raw_anno_path)
+
+        return etas.read_json(self.raw_anno_path)
 
 
 class ActivityNetDatasetInfo(ActivityNetInfo):
@@ -975,6 +976,7 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
                 version=self.version,
                 raw_annotations=self.raw_annotations,
             )
+
         return self._split_infos[split]
 
     @property
@@ -1027,7 +1029,9 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
                 split_ids = split_info.existing_sample_ids
             else:
                 split_ids = []
+
             ids[split] = split_ids
+
         return ids
 
     def cleanup_split(self, split):
@@ -1036,9 +1040,9 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
     def _get_raw_annotations(self):
         if not os.path.isfile(self.raw_anno_path):
             anno_link = _ANNOTATION_DOWNLOAD_LINKS[self.version]
-            etaw.download_file(anno_link, path=self.raw_anno_path, quiet=True)
+            etaw.download_file(anno_link, path=self.raw_anno_path)
 
-        return etas.load_json(self.raw_anno_path)
+        return etas.read_json(self.raw_anno_path)
 
     @classmethod
     def get_dir_info(cls, dataset_dir):
@@ -1072,7 +1076,7 @@ class ActivityNetDatasetInfo(ActivityNetInfo):
 
 
 class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
-    """ActivityNet-100 dataset info."""
+    """ActivityNet 100 dataset info."""
 
     @property
     def version(self):
@@ -1092,7 +1096,7 @@ class ActivityNet100DatasetInfo(ActivityNetDatasetInfo):
 
 
 class ActivityNet200DatasetInfo(ActivityNetDatasetInfo):
-    """ActivityNet-200 dataset info."""
+    """ActivityNet 200 dataset info."""
 
     def __init__(self, foz_dir):
         self.a100_info = ActivityNet100DatasetInfo(foz_dir)

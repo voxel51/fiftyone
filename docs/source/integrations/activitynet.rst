@@ -18,8 +18,8 @@ Loading the ActivityNet dataset
 _______________________________
 
 The FiftyOne Dataset Zoo provides support for loading both the
-:ref:`ActivityNet-100 <dataset-zoo-activitynet-100>` and
-:ref:`ActivityNet-200 <dataset-zoo-activitynet-200>` datasets.
+:ref:`ActivityNet 100 <dataset-zoo-activitynet-100>` and
+:ref:`ActivityNet 200 <dataset-zoo-activitynet-200>` datasets.
 
 Like all other zoo datasets, you can use
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to download
@@ -31,7 +31,7 @@ and load an ActivityNet split into FiftyOne:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Download and load 10 samples from the validation split of ActivityNet-200
+    # Download and load 10 samples from the validation split of ActivityNet 200
     dataset = foz.load_zoo_dataset(
         "activitynet-200",
         split="validation",
@@ -42,9 +42,9 @@ and load an ActivityNet split into FiftyOne:
 
 .. note::
 
-    ActivityNet-200 is a superset of ActivityNet-100 so we have made sure
+    ActivityNet 200 is a superset of ActivityNet 100 so we have made sure
     to only store one copy of every video on disk. Videos in the
-    ActivityNet-100 zoo directory are used directly by ActivityNet-200.
+    ActivityNet 100 zoo directory are used directly by ActivityNet 200.
 
 .. _activitynet-partial-downloads:
 
@@ -103,7 +103,7 @@ first if possible before resorting to downloading additional data from YouTube.
     session.dataset = dataset
 
 The following parameters are available to configure partial downloads of both
-ActivityNet-100 and ActivityNet-200 by passing them to
+ActivityNet 100 and ActivityNet 200 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
 -   **split** (*None*) and **splits** (*None*): a string or list of strings,
@@ -161,7 +161,7 @@ After downloading the source files, they can be loaded into FiftyOne like so:
 
     source_dir = "/path/to/dir-with-activitynet-files"
 
-    # Load the entire ActivityNet-200 dataset into FiftyOne 
+    # Load the entire ActivityNet 200 dataset into FiftyOne
     dataset = foz.load_zoo_dataset("activitynet-200", source_dir=source_dir)
 
     session = fo.launch_app(dataset)
