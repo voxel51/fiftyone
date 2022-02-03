@@ -17,7 +17,6 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.utils.youtube as fouy
 
 
@@ -172,7 +171,7 @@ class KineticsDatasetManager(object):
             random.shuffle(data)
             urls, video_paths, clip_segments = zip(*data)
 
-        logger.info("Downloading %d videos from YouTube..." % num_remaining)
+        logger.info("Downloading videos...")
         _, errors = fouy.download_youtube_videos(
             urls,
             video_paths=video_paths,
@@ -308,7 +307,7 @@ class KineticsDatasetDownloader(object):
 
     def _download_tars(self, urls, download_dir):
         tar_paths = []
-        logger.info("Downloading %d tars..." % len(urls))
+        logger.info("Downloading %d tars...", len(urls))
         for url in urls:
             tar_path = os.path.join(download_dir, os.path.basename(url))
             etaw.download_file(url, path=tar_path)
