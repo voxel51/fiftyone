@@ -10,9 +10,10 @@ import typing as t
 import aiohttp as aioh
 from bson import ObjectId
 import jwt
-
+import motor
 import starlette.applications as srva
 import starlette.requests as srvr
+import starlette.responses as srvre
 import strawberry as gql
 import strawberry.asgi as gqla
 import strawberry.permission as gqlp
@@ -155,15 +156,16 @@ class User:
 
 @gql.type
 class Query:
-    sessions: t.List[Session]
+    users: t.List[User]
+
 
 
 class GraphQL(gqla.GraphQL):
     async def get_context(
-        self, request: srvr.Request, response: t.Optional[srvr.Response] = None
+        self, request: srvr.Request, response: t.Optional[srvre.Response] = None
     ) -> t.Any:
         authenticate_header(
-            request.app.state.web, request.headers["Authorization"]
+            request.app.state.web_session, request.headers["Authorization"]
         )
 
         return {"request": request, "response": response}
@@ -174,13 +176,14 @@ graphql_app = gqla.GraphQL(schema)
 
 
 async def on_startup():
-    app.state.web = aioh.ClientSession()
+    app.state.web_session = aioh.ClientSession()
+    app.state.db_client = motor.motor_asyncio.AsyncIOMotorClient()
 
 
 async def on_shutdown():
-    web: aioh.ClientSession = app.state.web
+    web: aioh.ClientSession = app.state.web_session
     await web.close()
 
 
-app = srva.Starlette(on_shutdown=on_shutdown, on_startup=on_startup)
+app = srva.Starlette(on_shutdown=[on_shutdown], on_startup=[on_startup])
 app.add_route("/graphql", graphql_app)

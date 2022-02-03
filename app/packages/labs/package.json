@@ -7,19 +7,25 @@
         "relay": "relay-compiler"
     },
     "dependencies": {
-        "@auth0/auth0-spa-js": "^1.19.4",
+        "@auth0/auth0-react": "^1.9.0",
         "@fiftyone/app": "*",
-        "history": "^5.2.0",
+        "@fiftyone/utilities": "*",
+        "history": "^4.10.1",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
         "react-relay": "^13.0.2",
+        "react-router": "^5.1.2",
         "react-router-config": "^5.1.1",
+        "recoil": "^0.6.1",
         "relay-runtime": "^13.0.2"
     },
     "devDependencies": {
+        "@types/history": "^5.0.0",
         "@types/react": "^17.0.38",
         "@types/react-dom": "^17.0.11",
         "@types/react-relay": "^13.0.0",
+        "@types/react-router": "^5.1.18",
+        "@types/react-router-config": "^5.0.6",
         "@types/relay-compiler": "^8.0.2",
         "@types/relay-runtime": "^13.0.1",
         "found": "^1.1.1",

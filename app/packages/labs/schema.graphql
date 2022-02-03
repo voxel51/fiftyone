@@ -1,0 +1,29 @@
+type Query {
+  sessions: [Session!]!
+}
+
+type SelectedLabelData {
+  id: String!
+  sampleId: String!
+  field: String!
+  frameNumber: Int
+}
+
+type Session {
+  dataset: String
+  view: [Stage!]
+  selected: [String!]
+  selectedLabels: [SelectedLabelData!]
+  userId: ID!
+}
+
+interface Stage {
+  Cls: String!
+  kwargs: [StageParameter!]!
+}
+
+interface StageParameter {
+  Cls: String!
+  name: String!
+  kind: String!
+}

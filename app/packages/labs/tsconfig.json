@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "ESNext",
-        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "target": "esnext",
+        "module": "esnext",
+        "lib": ["esnext", "dom", "dom.iterable"],
         "sourceMap": true,
         "outDir": "dist",
         "jsx": "preserve",
@@ -11,6 +11,7 @@
     },
     "include": ["index.ts"],
     "references": [
+        { "path": "../app" },
         { "path": "../looker" },
         { "path": "../flashlight" },
         { "path": "../utilities" }

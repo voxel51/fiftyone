@@ -1,39 +1,20 @@
+import { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import { Environment, Network, RecordSource, Store } from "relay-runtime";
-import createAuth0Client, { Auth0Client } from "@auth0/auth0-spa-js";
 
-let auth0: Auth0Client;
-let authenticated = false;
+let auth0Client: Auth0ContextInterface<User>;
 
 async function fetchGraphQL(text, variables) {
-  if (!auth0) {
-    auth0 = await createAuth0Client({
-      domain: "dev-uqppzklh.us.auth0.com",
-      client_id: "pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE",
-    });
+  if (!auth0Client.isAuthenticated) {
+    throw new Error("client is not authenticated");
   }
 
-  if (!authenticated) {
-    const query = window.location.search;
-    if (query.includes("code=") && query.includes("state=")) {
-      await auth0.handleRedirectCallback();
-
-      window.history.replaceState({}, document.title, "/");
-    }
-
-    authenticated = await auth0.isAuthenticated();
-
-    if (!authenticated) {
-      await auth0.loginWithRedirect({
-        redirect_uri: window.location.origin,
-      });
-    }
-  }
+  const token = await auth0Client.getAccessTokenSilently();
 
   // Fetch data from GitHub's GraphQL API:
-  const response = await fetch("https://api.github.com/graphql", {
+  const response = await fetch("http://localhost:5151", {
     method: "POST",
     headers: {
-      Authorization: `bearer ${REACT_APP_GITHUB_AUTH_TOKEN}`,
+      Authorization: `bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -55,8 +36,17 @@ async function fetchRelay(params, variables) {
   return fetchGraphQL(params.text, variables);
 }
 
-// Export a singleton instance of Relay Environment configured with our network function:
-export default new Environment({
+const environment = new Environment({
   network: Network.create(fetchRelay),
   store: new Store(new RecordSource()),
 });
+
+export const getRelayEnvironment = (
+  auth0: Auth0ContextInterface<User>
+): Environment => {
+  auth0Client = auth0;
+
+  return environment;
+};
+
+export default environment;

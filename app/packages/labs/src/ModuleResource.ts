@@ -70,24 +70,7 @@ class Resource {
   }
 }
 
-/**
- * A helper method to create a resource, intended for dynamically loading code.
- *
- * Example:
- * ```
- *    // Before rendering, ie in an event handler:
- *    const resource = JSResource('Foo', () => import('./Foo.js));
- *    resource.load();
- *
- *    // in a React component:
- *    const Foo = resource.read();
- *    return <Foo ... />;
- * ```
- *
- * @param {*} moduleId A globally unique identifier for the resource used for caching
- * @param {*} loader A method to load the resource's data if necessary
- */
-export default function JSResource(moduleId, loader) {
+export default function ModuleResource(moduleId, loader) {
   let resource = resourceMap.get(moduleId);
   if (resource == null) {
     resource = new Resource(loader);
