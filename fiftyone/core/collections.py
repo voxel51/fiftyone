@@ -1895,7 +1895,7 @@ class SampleCollection(object):
         eval_key=None,
         classes=None,
         missing=None,
-        method="coco",
+        method=None,
         iou=0.50,
         use_masks=False,
         use_boxes=False,
@@ -1907,21 +1907,28 @@ class SampleCollection(object):
 
         This method supports evaluating the following spatial data types:
 
-        -   Object detections in :class:`fiftyone.core.labels.Detections`
-            format
+        -   Object detections in :class:`fiftyone.core.labels.Detections` format
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Temporal detections in
+            :class:`fiftyone.core.labels.TemporalDetections` format
 
-        By default, this method uses COCO-style evaluation, but you can use the
-        ``method`` parameter to select a different method, and you can
-        optionally customize the method by passing additional parameters for
-        the method's config class as ``kwargs``.
+        For spatial object detection evaluation, this method uses COCO-style
+        evaluation by default.
+
+        For temporal segment detection, this method uses ActivityNet-style
+        evaluation by default.
+
+        You can use the ``method`` parameter to select a different method, and
+        you can optionally customize the method by passing additional
+        parameters for the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
+        -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
@@ -1951,11 +1958,13 @@ class SampleCollection(object):
 
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                ground truth :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
@@ -1964,9 +1973,12 @@ class SampleCollection(object):
                 possible, or else the observed ground truth/predicted labels
                 are used
             missing (None): a missing label string. Any unmatched objects are
-                given this label for evaluation purposes
-            method ("coco"): a string specifying the evaluation method to use.
-                Supported values are ``("coco")``
+                given this label for results purposes
+            method (None): a string specifying the evaluation method to use.
+                For spatial object detection, the supported values are
+                ``("coco", "open-images")`` and the default is ``"coco"``. For
+                temporal detection, the supported values are
+                ``("activitynet")`` and the default is ``"activitynet"``
             iou (0.50): the IoU threshold to use to determine matches
             use_masks (False): whether to compute IoUs using the instances
                 masks in the ``mask`` attribute of the provided objects, which

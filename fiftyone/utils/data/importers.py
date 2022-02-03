@@ -676,7 +676,11 @@ class ImportPathsMixin(object):
                 )
 
             data_map = etas.read_json(data_path)
-            return {to_uuid(k): v for k, v in data_map.items()}
+            data_root = os.path.dirname(data_path)
+            return {
+                to_uuid(k): os.path.join(data_root, v)
+                for k, v in data_map.items()
+            }
 
         if not os.path.isdir(data_path):
             raise ValueError("Data directory '%s' does not exist" % data_path)
