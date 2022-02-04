@@ -1,5 +1,5 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { RelayEnvironmentProvider } from "react-relay/hooks";
 import { ThemeProvider as LegacyThemeContext } from "styled-components";
@@ -9,23 +9,34 @@ import Loading from "@fiftyone/app/src/components/Loading";
 import "./index.css";
 
 import { getRelayEnvironment } from "./RelayEnvironment";
-import routes from "./routes";
-import RoutingContext from "./routing/RoutingContext";
-import createRouter from "./routing/createRouter";
+import routes from "./routing/routes";
+import RoutingContext, { createRouter } from "./routing/RoutingContext";
 import RouterRenderer from "./routing/RouteRenderer";
 import { ThemeContext, useTheme } from "./Theme";
 import { RecoilRoot } from "recoil";
 
-const router = createRouter(routes);
-
 const App = () => {
   const theme = useTheme();
+
   return (
     <LegacyThemeContext theme={theme}>
       <ThemeContext>
         <Environment />
       </ThemeContext>
     </LegacyThemeContext>
+  );
+};
+
+const Router = () => {
+  const [router] = useState(() => createRouter(routes));
+  const auth0 = useAuth0();
+
+  return (
+    <RelayEnvironmentProvider environment={getRelayEnvironment(auth0)}>
+      <RoutingContext.Provider value={router.context}>
+        <RouterRenderer />
+      </RoutingContext.Provider>
+    </RelayEnvironmentProvider>
   );
 };
 
@@ -44,13 +55,7 @@ const Environment = () => {
     return <Loading text={"Loading..."} />;
   }
 
-  return (
-    <RelayEnvironmentProvider environment={getRelayEnvironment(auth0)}>
-      <RoutingContext.Provider value={router.context}>
-        <RouterRenderer />
-      </RoutingContext.Provider>
-    </RelayEnvironmentProvider>
-  );
+  return <Router />;
 };
 
 const Root = () => {

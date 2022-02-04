@@ -125,6 +125,4 @@ export const appContext = isElectron()
   ? "notebook"
   : "browser";
 
-export default isColab
-  ? new HTTPSSocket(`${http}/polling?sessionId=${sessionId}`)
-  : new ReconnectingWebSocket(ws);
+export default {};

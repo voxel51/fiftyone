@@ -1,7 +1,7 @@
 import { Auth0ContextInterface, User } from "@auth0/auth0-react";
 import { Environment, Network, RecordSource, Store } from "relay-runtime";
 
-let auth0Client: Auth0ContextInterface<User>;
+var auth0Client: Auth0ContextInterface<User>;
 
 async function fetchGraphQL(text, variables) {
   if (!auth0Client.isAuthenticated) {
@@ -10,8 +10,7 @@ async function fetchGraphQL(text, variables) {
 
   const token = await auth0Client.getAccessTokenSilently();
 
-  // Fetch data from GitHub's GraphQL API:
-  const response = await fetch("http://localhost:5151", {
+  const response = await fetch("http://localhost:5151/graphql", {
     method: "POST",
     headers: {
       Authorization: `bearer ${token}`,
@@ -23,16 +22,10 @@ async function fetchGraphQL(text, variables) {
     }),
   });
 
-  // Get the response as JSON
   return await response.json();
 }
 
-// Relay passes a "params" object with the query name and text. So we define a helper function
-// to call our fetchGraphQL utility with params.text.
 async function fetchRelay(params, variables) {
-  console.log(
-    `fetching query ${params.name} with ${JSON.stringify(variables)}`
-  );
   return fetchGraphQL(params.text, variables);
 }
 

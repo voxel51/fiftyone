@@ -5,13 +5,18 @@ FiftyOne Labs
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import dataclass
 import typing as t
+
+import fiftyone.constants as foc
 
 import aiohttp as aioh
 from bson import ObjectId
 import jwt
 import motor
 import starlette.applications as srva
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 import starlette.requests as srvr
 import starlette.responses as srvre
 import strawberry as gql
@@ -25,17 +30,34 @@ API_AUDIENCE = "api.dev.fiftyone.ai"
 ALGORITHMS = ["RS256"]
 
 
+@dataclass
+class Context:
+    request: srvr.Request
+    response: srvre.Response
+    db: motor.MotorDatabase
+
+
+Info = gqlt.Info[Context, None]
+
+
 class IsAuthenticated(gqlp.BasePermission):
     message = "Unauthenticated request"
 
     async def has_permission(
-        self, source: t.Any, info: gqlt.Info, **kwargs
+        self, source: t.Any, info: Info, **kwargs
     ) -> bool:
-        request: srvr.Request = info.context["request"]
+        return info.context.user is not None
 
-        return authenticate_header(
-            request.app.state, request.headers["Authorization"]
-        )
+
+def decode(token: str, rsa_key: str):
+    payload = jwt.decode(
+        token,
+        rsa_key,
+        algorithms=ALGORITHMS,
+        audience=API_AUDIENCE,
+        issuer=f"https://{AUTH0_DOMAIN}/",
+    )
+    print(payload)
 
 
 async def authenticate_header(
@@ -57,11 +79,6 @@ async def authenticate_header(
 
     token = parts[1]
 
-    async with web.get(
-        f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
-    ) as response:
-        jwks = response.json()
-
     unverified_header = jwt.get_unverified_header(token)
     rsa_key = {}
     for key in jwks["keys"]:
@@ -75,14 +92,7 @@ async def authenticate_header(
             }
     if rsa_key:
         try:
-            payload = jwt.decode(
-                token,
-                rsa_key,
-                algorithms=ALGORITHMS,
-                audience=API_AUDIENCE,
-                issuer=f"https://{AUTH0_DOMAIN}/",
-            )
-            print("PAYLOAD", payload)
+            decode(token, rsa_key)
         except jwt.ExpiredSignatureError:
             return False
         except jwt.JWTClaimsError:
@@ -146,44 +156,74 @@ class Session:
     view: t.Optional[t.List[Stage]]
     selected: t.Optional[t.List[str]]
     selected_labels: t.Optional[t.List[SelectedLabelData]]
-    user_id: ID
+    user_id: gql.ID
 
 
 @gql.type
 class User:
-    id: ID
+    id: gql.ID
 
 
 @gql.type
 class Query:
     users: t.List[User]
 
+    @gql.field
+    def viewer(self, info: gqlt.Info) -> User:
+        return User(id=ObjectId("000000000000000000000000"))
 
 
 class GraphQL(gqla.GraphQL):
     async def get_context(
-        self, request: srvr.Request, response: t.Optional[srvre.Response] = None
-    ) -> t.Any:
+        self,
+        request: srvr.Request,
+        response: t.Optional[srvre.Response] = None,
+    ) -> Context:
         authenticate_header(
             request.app.state.web_session, request.headers["Authorization"]
         )
 
-        return {"request": request, "response": response}
+        return Context(request=request, response=response, db=db)
 
 
+db_client = motor.MotorClient()
+db = db_client[foc.DEFAULT_DATABASE]
 schema = gql.Schema(query=Query)
-graphql_app = gqla.GraphQL(schema)
+jwks: str = None
+web: aioh.ClientSession = None
+
+
+async def get_jwks():
+    global web
+
+    if web is None:
+        web = aioh.ClientSession()
+
+    async with web.get(
+        f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+    ) as response:
+        return await response.json()
 
 
 async def on_startup():
-    app.state.web_session = aioh.ClientSession()
-    app.state.db_client = motor.motor_asyncio.AsyncIOMotorClient()
+    global jwks
+    jwks = await get_jwks()
 
 
 async def on_shutdown():
-    web: aioh.ClientSession = app.state.web_session
+    global web
     await web.close()
 
 
 app = srva.Starlette(on_shutdown=[on_shutdown], on_startup=[on_startup])
-app.add_route("/graphql", graphql_app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
+    allow_headers=[
+        "access-control-allow-origin",
+        "authorization",
+        "content-type",
+    ],
+)
+app.add_route("/graphql", gqla.GraphQL(schema, graphiql=foc.DEV_INSTALL))

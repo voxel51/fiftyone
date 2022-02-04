@@ -1,9 +1,29 @@
 import React from "react";
+import { PreloadedQuery } from "react-relay";
+import { OperationType } from "relay-runtime";
+import Resource from "./Resource";
+import { RouteComponent } from "./RouteComponent";
 import RoutingContext from "./RoutingContext";
 
 const { useContext, useEffect, Suspense, useState } = React;
 
-export default function RouterRenderer() {
+const RouteComponent: React.FC<{
+  component: Resource<RouteComponent>;
+  prepared: Resource<PreloadedQuery<OperationType>>;
+  routeData: { params: unknown };
+}> = (props) => {
+  const Component = props.component.read();
+  const { routeData, prepared } = props;
+  return (
+    <Component
+      routeData={routeData}
+      prepared={prepared.read()}
+      children={props.children}
+    />
+  );
+};
+
+const RouterRenderer: React.FC<{}> = () => {
   const router = useContext(RoutingContext);
   const [routeEntry, setRouteEntry] = useState(router.get());
   useEffect(() => {
@@ -18,7 +38,7 @@ export default function RouterRenderer() {
     return () => dispose();
   }, [router]);
 
-  const reversedItems = [].concat(routeEntry.entries).reverse(); // reverse is in place, but we want a copy so concat
+  const reversedItems = [].concat(routeEntry.entries).reverse();
   const firstItem = reversedItems[0];
   let routeComponent = (
     <RouteComponent
@@ -41,16 +61,6 @@ export default function RouterRenderer() {
   }
 
   return <Suspense fallback={"Loading fallback..."}>{routeComponent}</Suspense>;
-}
-
-const RouteComponent = (props) => {
-  const Component = props.component.read();
-  const { routeData, prepared } = props;
-  return (
-    <Component
-      routeData={routeData}
-      prepared={prepared}
-      children={props.children}
-    />
-  );
 };
+
+export default RouterRenderer;

@@ -1,10 +1,27 @@
 import React from "react";
+import { usePreloadedQuery } from "react-relay";
+import { graphql } from "relay-runtime";
 
-export default ({ children }) => {
+import { RouteComponent } from "../routing";
+
+const Root: RouteComponent = ({ children, prepared }) => {
+  const data = usePreloadedQuery(
+    graphql`
+      query RootQuery {
+        viewer {
+          id
+        }
+      }
+    `,
+    prepared
+  );
+
   return (
     <>
-      <div>hello</div>
+      <div></div>
       <div>{children}</div>
     </>
   );
 };
+
+export default Root;
