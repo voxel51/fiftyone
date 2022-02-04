@@ -45,7 +45,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
 
     Notes:
 
-    -   ActivityNet-100 and -200 differ in the number of activity classes and
+    -   ActivityNet 100 and 200 differ in the number of activity classes and
         videos per split
     -   Partial downloads will download videos (if still available) from
         YouTube
@@ -224,8 +224,8 @@ class ActivityNet200Dataset(FiftyOneDataset):
 
     Notes:
 
-    -   ActivityNet-200 is a superset of ActivityNet-100 videos
-    -   ActivityNet-100 and -200 differ in the number of activity classes and
+    -   ActivityNet 200 is a superset of ActivityNet 100
+    -   ActivityNet 100 and 200 differ in the number of activity classes and
         videos per split
     -   Partial downloads will download videos (if still available) from
         YouTube

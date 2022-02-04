@@ -69,7 +69,7 @@ This page lists all of the datasets available in the Dataset Zoo.
 
 .. _dataset-zoo-activitynet-100:
 
-ActivityNet-100
+ActivityNet 100
 ---------------
 
 ActivityNet is a large-scale video dataset for human activity understanding
@@ -86,7 +86,7 @@ version of the dataset.
 
 **Notes**
 
--   ActivityNet-100 and -200 differ in the number of activity classes and
+-   ActivityNet 100 and 200 differ in the number of activity classes and
     videos per split
 -   Partial downloads will download videos (if still available) from YouTube
 -   Full splits can be loaded by first downloading the official source files
@@ -118,7 +118,7 @@ specified, FiftyOne will use existing downloaded data first if possible before
 resorting to downloading additional data from YouTube.
 
 The following parameters are available to configure a partial download of
-ActivityNet-100 by passing them to
+ActivityNet 100 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
 -   **split** (*None*) and **splits** (*None*): a string or list of strings,
@@ -273,7 +273,7 @@ full splits by passing the `source_dir` parameter to
 
 .. _dataset-zoo-activitynet-200:
 
-ActivityNet-200
+ActivityNet 200
 ---------------
 
 ActivityNet is a large-scale video dataset for human activity understanding
@@ -290,9 +290,9 @@ version of the dataset.
 
 **Notes**
 
--   ActivityNet-200 is a superset of ActivityNet-100 videos
--   ActivityNet-100 and -200 differ in the number of activity classes and
-    videos per split
+-   ActivityNet 200 is a superset of ActivityNet 100
+-   ActivityNet 100 and 200 differ in the number of activity classes and videos
+    per split
 -   Partial downloads will download videos (if still available) from YouTube
 -   Full splits can be loaded by first downloading the official source files
     from the
@@ -323,7 +323,7 @@ specified, FiftyOne will use existing downloaded data first if possible before
 resorting to downloading additional data from YouTube.
 
 The following parameters are available to configure a partial download of
-ActivityNet-200 by passing them to
+ActivityNet 200 by passing them to
 :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`:
 
 -   **split** (*None*) and **splits** (*None*): a string or list of strings,
