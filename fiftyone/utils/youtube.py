@@ -22,12 +22,12 @@ import fiftyone.core.utils as fou
 
 
 def _ensure_pytube():
-    pytube_exists = fou.ensure_package("pytube>=11.0.2")
+    fou.ensure_package("pytube>=11.0.2")
     if pkg_resources.get_distribution("pytube").version == "11.0.2":
         _patch_pytube_cypher()
 
 
-pytube = fou.lazy_import("pytube", callback=_ensure_pytube,)
+pytube = fou.lazy_import("pytube", callback=_ensure_pytube)
 
 
 logger = logging.getLogger(__name__)
@@ -259,6 +259,7 @@ def _download(tasks, max_videos, skip_failures, quiet):
                     raise ValueError(msg)
 
                 errors[idx] = error
+                pb.draw()
             else:
                 pb.update()
                 downloaded[idx] = video_path
@@ -297,6 +298,7 @@ def _download_multi(
                         raise ValueError(msg)
 
                     errors[idx] = error
+                    pb.draw()
                 else:
                     pb.update()
                     downloaded[idx] = video_path
@@ -482,10 +484,13 @@ def _download_clip(stream, clip_segment, video_path):
 
 
 def _patch_pytube_cypher():
-    pytube_location = importlib.util.find_spec("pytube").origin
     filepath = os.path.normpath(
-        os.path.join(os.path.dirname(pytube_location), "cipher.py")
+        os.path.join(
+            os.path.dirname(importlib.util.find_spec("pytube").origin),
+            "cipher.py",
+        )
     )
+
     find = """
     function_patterns = [
         # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
@@ -502,6 +507,8 @@ def _patch_pytube_cypher():
             return function_match.group(1)"""
 
     replace = """
+    # Patched by FiftyOne: https://github.com/voxel51/fiftyone
+    # PR: https://github.com/pytube/pytube/pull/1222
     function_patterns = [
         # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
         # https://github.com/yt-dlp/yt-dlp/commit/48416bc4a8f1d5ff07d5977659cb8ece7640dcd8
@@ -547,7 +554,6 @@ def _patch_pytube_cypher():
             logger.debug("Already patched '%s'", filepath)
         else:
             logger.debug("Unable to patch '%s'", filepath)
-
     except Exception as e:
         logger.debug(e)
         logger.debug("Unable to patch '%s'", filepath)
