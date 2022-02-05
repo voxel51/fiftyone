@@ -5,11 +5,13 @@ Utilities for working with `YouTube <https://youtube.com>`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
+import importlib
 import itertools
+import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
+import pkg_resources
 
 import numpy as np
 
@@ -18,9 +20,14 @@ import eta.core.video as etav
 
 import fiftyone.core.utils as fou
 
-pytube = fou.lazy_import(
-    "pytube", callback=lambda: fou.ensure_package("pytube"),
-)
+
+def _ensure_pytube():
+    fou.ensure_package("pytube>=11.0.2")
+    if pkg_resources.get_distribution("pytube").version == "11.0.2":
+        _patch_pytube_cypher()
+
+
+pytube = fou.lazy_import("pytube", callback=_ensure_pytube)
 
 
 logger = logging.getLogger(__name__)
@@ -474,3 +481,79 @@ def _download_clip(stream, clip_segment, video_path):
     etav.extract_clip(
         stream.url, video_path, start_time=start_time, duration=duration
     )
+
+
+def _patch_pytube_cypher():
+    filepath = os.path.normpath(
+        os.path.join(
+            os.path.dirname(importlib.util.find_spec("pytube").origin),
+            "cipher.py",
+        )
+    )
+
+    find = """
+    function_patterns = [
+        # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
+        # a.C&&(b=a.get("n"))&&(b=Dea(b),a.set("n",b))}};
+        # In above case, `Dea` is the relevant function name
+        r'a\.[A-Z]&&\(b=a\.get\("n"\)\)&&\(b=([^(]+)\(b\)',
+    ]
+    logger.debug('Finding throttling function name')
+    for pattern in function_patterns:
+        regex = re.compile(pattern)
+        function_match = regex.search(js)
+        if function_match:
+            logger.debug("finished regex search, matched: %s", pattern)
+            return function_match.group(1)"""
+
+    replace = """
+    # Patched by FiftyOne: https://github.com/voxel51/fiftyone
+    # PR: https://github.com/pytube/pytube/pull/1222
+    function_patterns = [
+        # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
+        # https://github.com/yt-dlp/yt-dlp/commit/48416bc4a8f1d5ff07d5977659cb8ece7640dcd8
+        # var Bpa = [iha];
+        # ...
+        # a.C && (b = a.get("n")) && (b = Bpa[0](b), a.set("n", b),
+        # Bpa.length || iha("")) }};
+        # In the above case, `iha` is the relevant function name
+        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*'
+        r'\([a-z]\s*=\s*([a-zA-Z0-9$]{3})(\[\d+\])?\([a-z]\)',
+    ]
+    logger.debug('Finding throttling function name')
+    for pattern in function_patterns:
+        regex = re.compile(pattern)
+        function_match = regex.search(js)
+        if function_match:
+            logger.debug("finished regex search, matched: %s", pattern)
+            if len(function_match.groups()) == 1:
+                return function_match.group(1)
+            idx = function_match.group(2)
+            if idx:
+                idx = idx.strip("[]")
+                array = re.search(
+                    r'var {nfunc}\s*=\s*(\[.+?\]);'.format(
+                        nfunc=function_match.group(1)),
+                    js
+                )
+                if array:
+                    array = array.group(1).strip("[]").split(",")
+                    array = [x.strip() for x in array]
+                    return array[int(idx)]"""
+
+    try:
+        with open(filepath, "r") as f:
+            code = f.read()
+
+        if find in code:
+            logger.debug("Patching '%s'", filepath)
+            fixed = code.replace(find, replace)
+            with open(filepath, "w") as f:
+                f.write(fixed)
+        elif replace in code:
+            logger.debug("Already patched '%s'", filepath)
+        else:
+            logger.debug("Unable to patch '%s'", filepath)
+    except Exception as e:
+        logger.debug(e)
+        logger.debug("Unable to patch '%s'", filepath)
