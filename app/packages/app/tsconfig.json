@@ -7,9 +7,10 @@
         "outDir": "dist",
         "jsx": "preserve",
         "types": ["vite/client"],
-        "strict": true
+        "strict": true,
+        "composite": true
     },
-    "include": ["index.ts"],
+    "include": ["./src"],
     "references": [
         { "path": "../looker" },
         { "path": "../flashlight" },

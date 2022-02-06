@@ -1,9 +1,18 @@
 import { Auth0ContextInterface, User } from "@auth0/auth0-react";
-import { Environment, Network, RecordSource, Store } from "relay-runtime";
+import {
+  Environment,
+  FetchFunction,
+  Network,
+  RecordSource,
+  Store,
+} from "relay-runtime";
 
 var auth0Client: Auth0ContextInterface<User>;
 
-async function fetchGraphQL(text, variables) {
+async function fetchGraphQL(
+  text: string | null | undefined,
+  variables: object
+) {
   if (!auth0Client.isAuthenticated) {
     throw new Error("client is not authenticated");
   }
@@ -25,9 +34,9 @@ async function fetchGraphQL(text, variables) {
   return await response.json();
 }
 
-async function fetchRelay(params, variables) {
+const fetchRelay: FetchFunction = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
-}
+};
 
 const environment = new Environment({
   network: Network.create(fetchRelay),

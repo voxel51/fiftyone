@@ -1748,7 +1748,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.12.1, @babel/runtime@npm:^7.12.13, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.15.4, @babel/runtime@npm:^7.16.5, @babel/runtime@npm:^7.7.2, @babel/runtime@npm:^7.7.6, @babel/runtime@npm:^7.9.2":
+"@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.12.1, @babel/runtime@npm:^7.12.13, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.7.2, @babel/runtime@npm:^7.7.6":
   version: 7.16.7
   resolution: "@babel/runtime@npm:7.16.7"
   dependencies:
@@ -1982,6 +1982,7 @@ __metadata:
     react-use: ^17.3.1
     tsc-silent: ^1.2.1
     typescript: 4.2.4
+    typescript-plugin-css-modules: ^3.4.0
   languageName: unknown
   linkType: soft
 
@@ -2006,6 +2007,7 @@ __metadata:
     "@auth0/auth0-react": ^1.9.0
     "@fiftyone/app": "*"
     "@fiftyone/utilities": "*"
+    "@react-spring/web": ^9.4.2
     "@types/history": ^5.0.0
     "@types/react": ^17.0.38
     "@types/react-dom": ^17.0.11
@@ -2014,10 +2016,12 @@ __metadata:
     "@types/react-router-config": ^5.0.6
     "@types/relay-compiler": ^8.0.2
     "@types/relay-runtime": ^13.0.1
-    found: ^1.1.1
     history: ^4.10.1
+    re-resizable: ^6.9.1
     react: ^17.0.2
     react-dom: ^17.0.2
+    react-error-boundary: ^3.1.4
+    react-icons: ^4.3.1
     react-relay: ^13.0.2
     react-router: ^5.1.2
     react-router-config: ^5.1.1
@@ -2243,6 +2247,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-spring/animated@npm:~9.4.0":
+  version: 9.4.2
+  resolution: "@react-spring/animated@npm:9.4.2"
+  dependencies:
+    "@react-spring/shared": ~9.4.0
+    "@react-spring/types": ~9.4.0
+  peerDependencies:
+    react: ^16.8.0  || ^17.0.0
+  checksum: 21c27860af8b9f36e39bb1c997cf3c1364c21302a2000f6dbfc1a306d4f528491dd8ff18a640613c3dd691a0b1973b8cd453f307c37858fe4b017f6e369944e6
+  languageName: node
+  linkType: hard
+
 "@react-spring/core@npm:~9.3.0":
   version: 9.3.0
   resolution: "@react-spring/core@npm:9.3.0"
@@ -2256,10 +2272,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-spring/core@npm:~9.4.0":
+  version: 9.4.2
+  resolution: "@react-spring/core@npm:9.4.2"
+  dependencies:
+    "@react-spring/animated": ~9.4.0
+    "@react-spring/rafz": ~9.4.0
+    "@react-spring/shared": ~9.4.0
+    "@react-spring/types": ~9.4.0
+  peerDependencies:
+    react: ^16.8.0  || ^17.0.0
+  checksum: 9530e2cf352db59dba2f48d63377b1718245adbf40fafcd4f207bdcda9616574bfdbedb562a86030a41e71f49dc629272b5d868906e085d2e4d5ce509fad8687
+  languageName: node
+  linkType: hard
+
 "@react-spring/rafz@npm:~9.3.0":
   version: 9.3.0
   resolution: "@react-spring/rafz@npm:9.3.0"
   checksum: de3e98a5ce92d8d8a778a23cecb70d402e6d0d18f3d0f7f6708b881c8c0b63f3792578db157330f2960852ec4878baec988c4b493f2691f32055ec92d2f2175c
+  languageName: node
+  linkType: hard
+
+"@react-spring/rafz@npm:~9.4.0":
+  version: 9.4.2
+  resolution: "@react-spring/rafz@npm:9.4.2"
+  checksum: ca934db8e25ffb0bdf2ffa473f83c8fbbf45a5a65a308f42d5598f37e6f42d8a3a6f4250a11c83fd8329c9e7c40838440167c4bafc5b12373848d1b17c2ebdd1
   languageName: node
   linkType: hard
 
@@ -2275,10 +2312,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-spring/shared@npm:~9.4.0":
+  version: 9.4.2
+  resolution: "@react-spring/shared@npm:9.4.2"
+  dependencies:
+    "@react-spring/rafz": ~9.4.0
+    "@react-spring/types": ~9.4.0
+  peerDependencies:
+    react: ^16.8.0  || ^17.0.0
+  checksum: 4b70c973f8db1b82b8c923afa5c6ac7a470bcde579f31b8c27d3ef0dc454947570a43b16eb6b1209e888e437742d51ef140dda97ee7a91a9f3d17976a14049e2
+  languageName: node
+  linkType: hard
+
 "@react-spring/types@npm:~9.3.0":
   version: 9.3.0
   resolution: "@react-spring/types@npm:9.3.0"
   checksum: 87edf43c40cb6c9671f3282fdae586ec864535e192aeb82679776d0b9fcead0b03660a2ea2e3a919b6a52eb2568cbe01072627a43381d6a7d36c443ab705ec03
+  languageName: node
+  linkType: hard
+
+"@react-spring/types@npm:~9.4.0":
+  version: 9.4.2
+  resolution: "@react-spring/types@npm:9.4.2"
+  checksum: 6242ccb9dd7aeb0337492720e39f9ee3aefe876e1ee51f8a8cbb4d57730a83dff1f7a68bfb328ddbaf6dcd548650e5abda2fcb75e07e1b6b50017b8e34c3fbe0
   languageName: node
   linkType: hard
 
@@ -2297,23 +2353,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@restart/context@npm:^2.1.4":
-  version: 2.1.4
-  resolution: "@restart/context@npm:2.1.4"
-  peerDependencies:
-    react: ">=16.3.2"
-  checksum: f9dd1416c16988b5bd66d3306dedfc9b95665d3af2c5b88cd2040b0825dfcf778eb9bd992c6e810c62187f981a78ea34923fb582a023f896079634edb3b1bc2c
-  languageName: node
-  linkType: hard
-
-"@restart/hooks@npm:^0.4.5":
-  version: 0.4.5
-  resolution: "@restart/hooks@npm:0.4.5"
+"@react-spring/web@npm:^9.4.2":
+  version: 9.4.2
+  resolution: "@react-spring/web@npm:9.4.2"
   dependencies:
-    dequal: ^2.0.2
+    "@react-spring/animated": ~9.4.0
+    "@react-spring/core": ~9.4.0
+    "@react-spring/shared": ~9.4.0
+    "@react-spring/types": ~9.4.0
   peerDependencies:
-    react: ">=16.8.0"
-  checksum: bd645c3b43f7feddc782779451cf88d2c2d62bcac7d78f3c71dea30fe4980bbf61f53a5bb9ca8a39ec04e0fe261e30b3efff178420bc0b1f39496a6360837eb0
+    react: ^16.8.0  || ^17.0.0
+    react-dom: ^16.8.0  || ^17.0.0
+  checksum: b56577921bb4197f9998883a2cdaf8f3377044a2c0d3dc966882a263b04127cafcd5e84ae53493cccf3834e34b8e5127123ea64b4e41cbc72d4e9eb71d3c0375
   languageName: node
   linkType: hard
 
@@ -2466,16 +2517,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/hoist-non-react-statics@npm:^3.3.0":
-  version: 3.3.1
-  resolution: "@types/hoist-non-react-statics@npm:3.3.1"
-  dependencies:
-    "@types/react": "*"
-    hoist-non-react-statics: ^3.3.0
-  checksum: 16ab4c45d4920fa378c8be76554b10061247fc04d2c8af11bdb7d520b3967e9c06d7ad5efd9b0f1657fbc4d095f62c6e1325f03b9141eb1ef2c8095b96fd42f8
-  languageName: node
-  linkType: hard
-
 "@types/js-cookie@npm:^2.2.6":
   version: 2.2.7
   resolution: "@types/js-cookie@npm:2.2.7"
@@ -2576,18 +2617,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-redux@npm:^7.1.20":
-  version: 7.1.22
-  resolution: "@types/react-redux@npm:7.1.22"
-  dependencies:
-    "@types/hoist-non-react-statics": ^3.3.0
-    "@types/react": "*"
-    hoist-non-react-statics: ^3.3.0
-    redux: ^4.0.0
-  checksum: a260afe024362f4e633c70d94d371f06bd1e607cc68e6c0b17d581c4b722726942b8d853720900379564aecbd47803d30ed2f1faa4b697a4a01146c108d1677b
-  languageName: node
-  linkType: hard
-
 "@types/react-relay@npm:^13.0.0":
   version: 13.0.0
   resolution: "@types/react-relay@npm:13.0.0"
@@ -2636,17 +2665,6 @@ __metadata:
     "@types/scheduler": "*"
     csstype: ^3.0.2
   checksum: 3c5373845b0869d9ce3db16917c87707cdfdb6c08d9ca7ed90a2a097cb3cbec8d037d37e81c3cf5af721d92f8fdc62431405f1874f9a02dea6ec05e5d81e77fe
-  languageName: node
-  linkType: hard
-
-"@types/react@npm:>=17.0.37":
-  version: 17.0.38
-  resolution: "@types/react@npm:17.0.38"
-  dependencies:
-    "@types/prop-types": "*"
-    "@types/scheduler": "*"
-    csstype: ^3.0.2
-  checksum: b04dcee8a5e530ec22d9d624c76ad198130b29751b28d66678def14d2def8be9c6fc1e3515d4700f23feb765a8eae7e278f27eaf841b006670a41b421c0a6866
   languageName: node
   linkType: hard
 
@@ -4256,13 +4274,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dequal@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "dequal@npm:2.0.2"
-  checksum: 3b5b019a873da282a25512c632c077e5e8e2a019e71c5b6968836443b861e44176ee3934facfecdc14994d553c1ff4a6c7232278d6aef87baf65e2413d41760c
-  languageName: node
-  linkType: hard
-
 "detect-node@npm:^2.0.4":
   version: 2.1.0
   resolution: "detect-node@npm:2.1.0"
@@ -4677,19 +4688,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"farce@npm:^0.4.5":
-  version: 0.4.5
-  resolution: "farce@npm:0.4.5"
-  dependencies:
-    invariant: ^2.2.4
-    is-promise: ^4.0.0
-    query-string: ^5.1.1
-    redux: ^4.0.4
-    warning: ^4.0.3
-  checksum: d05072ac0f382d21e1ee44292912ef33860ea02a02395a36939bd616e4ef7789084e98d50742ba383dca73b555772f6eaeab69c03cc685589ab7cd3db36f4624
-  languageName: node
-  linkType: hard
-
 "fast-deep-equal@npm:^3.1.1, fast-deep-equal@npm:^3.1.3":
   version: 3.1.3
   resolution: "fast-deep-equal@npm:3.1.3"
@@ -4831,29 +4829,6 @@ __metadata:
   dependencies:
     micromatch: ^4.0.2
   checksum: 21c2b76621c58ecb0aadfeb128ece1ece979a9c43aac6f91bb422b20ca5744e63300d175692bc1a9e7b9f2f949f865e0f3ec05efeeabb81447146e6b4ccf003a
-  languageName: node
-  linkType: hard
-
-"found@npm:^1.1.1":
-  version: 1.1.1
-  resolution: "found@npm:1.1.1"
-  dependencies:
-    "@babel/runtime": ^7.16.5
-    "@restart/context": ^2.1.4
-    "@restart/hooks": ^0.4.5
-    "@types/react": ">=17.0.37"
-    dequal: ^2.0.2
-    farce: ^0.4.5
-    is-promise: ^4.0.0
-    prop-types: ^15.7.2
-    react-redux: ^7.2.6
-    redux: ^4.1.2
-    tiny-set-immediate: ^1.0.2
-    tiny-warning: ^1.0.3
-  peerDependencies:
-    react: ">=16.8.0"
-    react-dom: ">=16.8.0"
-  checksum: a0dcc7a8215a85caa736c8eb21bba1d97103076400c5c0dac2012a164b478f715e3c891c1265965c8484d8dc27207cb6320cf72a90c45a370ce8dd30a4a6bc8d
   languageName: node
   linkType: hard
 
@@ -5202,7 +5177,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.0, hoist-non-react-statics@npm:^3.3.2":
+"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.2":
   version: 3.3.2
   resolution: "hoist-non-react-statics@npm:3.3.2"
   dependencies:
@@ -5647,13 +5622,6 @@ fsevents@~2.3.2:
   dependencies:
     isobject: ^3.0.1
   checksum: 2f3232267366f3cdf13d53deda1b282ba7959f28ccb2ee8e0ca168f859f0d7126c27c846ebb7c2b9821a09bbda2e1835fd4020337ba666cf3c03dc256aab7ba1
-  languageName: node
-  linkType: hard
-
-"is-promise@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "is-promise@npm:4.0.0"
-  checksum: 7085bdc4eaff389c5730a1d54f014880e90ca1e4b7f0a49de9f3c5f5d2fb9e0c3a878ac226d3aa9190bfe4a78400e66d911427ef4812455756293cdb02fb05cf
   languageName: node
   linkType: hard
 
@@ -7110,17 +7078,6 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"query-string@npm:^5.1.1":
-  version: 5.1.1
-  resolution: "query-string@npm:5.1.1"
-  dependencies:
-    decode-uri-component: ^0.2.0
-    object-assign: ^4.1.0
-    strict-uri-encode: ^1.0.0
-  checksum: 68d4ad519a9fc288bc9ade3e515ce89a6806b88fd92e1459277570dca753665bb1b43e4cc7747012fc3b19b3d4283a724d519b568859943f57aaa3668c4d5b4b
-  languageName: node
-  linkType: hard
-
 "raf@npm:^3.4.0":
   version: 3.4.1
   resolution: "raf@npm:3.4.1"
@@ -7153,6 +7110,18 @@ fsevents@~2.3.2:
     react: ^16.13.1 || ^17.0.0
     react-dom: ^16.13.1 || ^17.0.0
   checksum: 941121f15d7f352a42e00cdd3a253c7a5a6fb19776e94f2b71fd7a6fdbe305914c7b36ed7dcf918a11f28387e8e8689039b06d72ca571a9517075dfb2dd9814c
+  languageName: node
+  linkType: hard
+
+"re-resizable@npm:^6.9.1":
+  version: 6.9.1
+  resolution: "re-resizable@npm:6.9.1"
+  dependencies:
+    fast-memoize: ^2.5.1
+  peerDependencies:
+    react: ^16.13.1 || ^17.0.0
+    react-dom: ^16.13.1 || ^17.0.0
+  checksum: 9cb6db6fe4c48622182b2b019de8d9d27cfab284f7313b1403d6e71a6be4a30ba223f5d1316bc2574633294b24df427afa80e126868256933cff8ee3b90b71fc
   languageName: node
   linkType: hard
 
@@ -7201,6 +7170,15 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
+"react-icons@npm:^4.3.1":
+  version: 4.3.1
+  resolution: "react-icons@npm:4.3.1"
+  peerDependencies:
+    react: "*"
+  checksum: f79f43257de99b082731ebb5814bb3688d7e896d4497344c6f207480a21a7de6a3ca8b80a4bba3142d4096532179619056bbdd6cfc1214a6769068256ca5c995
+  languageName: node
+  linkType: hard
+
 "react-input-autosize@npm:^3.0.0":
   version: 3.0.0
   resolution: "react-input-autosize@npm:3.0.0"
@@ -7226,7 +7204,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"react-is@npm:^16.8.0 || ^17.0.0, react-is@npm:^17.0.1, react-is@npm:^17.0.2":
+"react-is@npm:^16.8.0 || ^17.0.0, react-is@npm:^17.0.1":
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 3eff23f410d40ab9bc5177f147a92c7f42c356a21ecea340e0554566956d67e5e1ba56f26cc7fa22339ac3c7151744177bd6305eaa26d3cbf15f354358c9d9b6
@@ -7237,27 +7215,6 @@ fsevents@~2.3.2:
   version: 3.0.4
   resolution: "react-lifecycles-compat@npm:3.0.4"
   checksum: 82176a55ef7526414d770d5e07dc1d28b4c7f20281f22c6f53f3a98df9dbbb5d70c94bebee57b4ea8ccc2eee430b907ca7b564a42fbdd0ed21e7c43bfee35404
-  languageName: node
-  linkType: hard
-
-"react-redux@npm:^7.2.6":
-  version: 7.2.6
-  resolution: "react-redux@npm:7.2.6"
-  dependencies:
-    "@babel/runtime": ^7.15.4
-    "@types/react-redux": ^7.1.20
-    hoist-non-react-statics: ^3.3.2
-    loose-envify: ^1.4.0
-    prop-types: ^15.7.2
-    react-is: ^17.0.2
-  peerDependencies:
-    react: ^16.8.3 || ^17
-  peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
-      optional: true
-  checksum: 32952c3fa1fbc12a28e93a6a116f320319c3d82ded71af053e7d405d760e96bccbc1d939ad06848ed6f088819d490f3180a31975c53ce23248934de906f2b27c
   languageName: node
   linkType: hard
 
@@ -7555,15 +7512,6 @@ fsevents@~2.3.2:
     css-unit-converter: ^1.1.1
     postcss-value-parser: ^3.3.0
   checksum: 9db44f858fcad6dc58e55d269b639b2225a9ec9753307d5bc55db4115bcf3692d8697027559e7350b9253420249f049e1b5a0e30a51b57a76e650d876003d175
-  languageName: node
-  linkType: hard
-
-"redux@npm:^4.0.0, redux@npm:^4.0.4, redux@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "redux@npm:4.1.2"
-  dependencies:
-    "@babel/runtime": ^7.9.2
-  checksum: 39aba0fc41c0187cb46b38e52dcb9dc039b785cae772bad9c30cd1d24c67942739285fc013bf804d286aad3c660c1d74cdab5923e1c1535839c5f996d1491365
   languageName: node
   linkType: hard
 
@@ -8265,13 +8213,6 @@ resolve@^1.12.0:
   languageName: node
   linkType: hard
 
-"strict-uri-encode@npm:^1.0.0":
-  version: 1.1.0
-  resolution: "strict-uri-encode@npm:1.1.0"
-  checksum: 6c80f6998a45414d7c124772383cc10ce7bd22586af80762407cded1569666564fb8c0a4c9c997ac39a1116d46dfffc5d57135e759a0acb66a4da1191f5a3a4a
-  languageName: node
-  linkType: hard
-
 "string-width@npm:^1.0.1":
   version: 1.0.2
   resolution: "string-width@npm:1.0.2"
@@ -8490,13 +8431,6 @@ resolve@^1.12.0:
   version: 1.2.0
   resolution: "tiny-invariant@npm:1.2.0"
   checksum: 101ae6dd08d4a26fb81788de6266e345da687de905b6a4c55f372ba8405d3cb5826208863a9c8ce42efb3a031f82fa1317787023fc9dccc562bb7be27f81dc7c
-  languageName: node
-  linkType: hard
-
-"tiny-set-immediate@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "tiny-set-immediate@npm:1.0.2"
-  checksum: 29f1a76071b26da7ec0c555c20a6c1bc7f86e4dceddacbff728a05aa2bed663493fc89769dd68ad2efb9544b1fbd656570e805e6d3c7c2142d6246a8e741a74e
   languageName: node
   linkType: hard
 
@@ -8940,15 +8874,6 @@ typescript@4.2.4:
   bin:
     vite: bin/vite.js
   checksum: 59949bfcc490ffcc499dcd4a93cb56b2d8aa0b2063cf1f1e83aaa9a38cd11de59e1acd987bfec2542c68da886bd82d63b7539f538824b16260875178e260b8b7
-  languageName: node
-  linkType: hard
-
-"warning@npm:^4.0.3":
-  version: 4.0.3
-  resolution: "warning@npm:4.0.3"
-  dependencies:
-    loose-envify: ^1.0.0
-  checksum: 20ef5d29ff9c20af3060e504914a00d5a90ce346e75e6691efbedb540481cdc82070c966d75195f812de64bb0bd7f1b02315fcb52469db151c0f15e29002781c
   languageName: node
   linkType: hard
 

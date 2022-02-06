@@ -7,11 +7,10 @@ FiftyOne Teams main.
 """
 import starlette.applications as stra
 from starlette.middleware.cors import CORSMiddleware
-import strawberry.asgi as gqla
 
 import fiftyone.constants as foc
 
-from .context import on_shutdown, on_startup
+from .context import on_shutdown, on_startup, GraphQL
 from .schema import schema
 
 
@@ -26,4 +25,4 @@ app.add_middleware(
         "content-type",
     ],
 )
-app.add_route("/graphql", gqla.GraphQL(schema, graphiql=foc.DEV_INSTALL))
+app.add_route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL))

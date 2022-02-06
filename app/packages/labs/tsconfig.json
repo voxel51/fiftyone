@@ -7,13 +7,16 @@
         "outDir": "dist",
         "jsx": "preserve",
         "types": ["vite/client"],
-        "strict": true
+        "strict": true,
+        "plugins": [{ "name": "typescript-plugin-css-modules" }],
+        "moduleResolution": "Node",
+        "allowSyntheticDefaultImports": true
     },
-    "include": ["index.ts"],
     "references": [
         { "path": "../app" },
         { "path": "../looker" },
         { "path": "../flashlight" },
         { "path": "../utilities" }
-    ]
+    ],
+    "include": ["./src"]
 }

@@ -57,7 +57,7 @@ class GraphQL(gqla.GraphQL):
         response: t.Optional[strp.Response] = None,
     ) -> Context:
         token = get_token(request.headers["Authorization"])
-        authenticated = authenticate_header(token, _jwks)
+        authenticated = await authenticate_header(token, _jwks)
 
         return Context(
             authenticated=authenticated,

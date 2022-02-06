@@ -13,7 +13,7 @@ export interface Entry {
   entries: {
     component: Resource<RouteComponent>;
     prepared: Resource<PreloadedQuery<OperationType>>;
-    routeData: unknown;
+    routeData: { params: unknown };
   }[];
 }
 
@@ -28,8 +28,9 @@ export interface RoutingContext {
 export const createRouter = (routes: Route[], options = {}) => {
   const history = createBrowserHistory(options);
 
-  const initialMatches = matchRoute(routes, history.location);
+  const initialMatches = matchRoute(routes, history.location.pathname);
   const initialEntries = prepareMatches(initialMatches);
+
   let currentEntry: Entry = {
     pathname: history.location.pathname,
     entries: initialEntries,
@@ -58,11 +59,11 @@ export const createRouter = (routes: Route[], options = {}) => {
       return currentEntry;
     },
     preloadCode(pathname) {
-      const matches = matchRoute(routes, pathname);
+      const matches = matchRoutes(routes, pathname);
       matches.forEach(({ route }) => route.component.load());
     },
     preload(pathname) {
-      const matches = matchRoute(routes, pathname);
+      const matches = matchRoutes(routes, pathname);
       prepareMatches(matches);
     },
     subscribe(cb) {
@@ -86,6 +87,7 @@ const matchRoute = (
     (routes as unknown) as RouteConfig[],
     pathname
   );
+
   if (!Array.isArray(matchedRoutes) || matchedRoutes.length === 0) {
     throw new Error("No route for " + pathname);
   }
@@ -120,4 +122,4 @@ const prepareMatches = (
   });
 };
 
-export default React.createContext<RoutingContext>(null);
+export default React.createContext<RoutingContext | null>(null);

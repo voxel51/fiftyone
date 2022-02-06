@@ -65,6 +65,7 @@ def get_token(authorization: str):
 
 async def authenticate_header(token: str, jwks: JWKS) -> bool:
     unverified_header = jwt.get_unverified_header(token)
+    has_scope(token, "Eee")
     rsa_key = {}
     for key in jwks.keys:
         if key.kid == unverified_header["kid"]:
@@ -93,6 +94,7 @@ async def authenticate_header(token: str, jwks: JWKS) -> bool:
 
 def has_scope(token: str, scope: str):
     unverified_claims = jwt.get_unverified_claims(token)
+    print(unverified_claims)
     if unverified_claims.get("scope"):
         token_scopes = unverified_claims["scope"].split()
         for token_scope in token_scopes:

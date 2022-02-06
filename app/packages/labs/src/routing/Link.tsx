@@ -3,7 +3,12 @@ import React from "react";
 
 const { useCallback, useContext } = React;
 
-const Link: React.FC<{ to: string }> = (props) => {
+const Link: React.FC<{
+  to: string;
+  title: string;
+  className?: string;
+  style?: React.CSSProperties;
+}> = (props) => {
   const router = useContext(RoutingContext);
 
   const changeRoute = useCallback(
@@ -28,6 +33,9 @@ const Link: React.FC<{ to: string }> = (props) => {
       onClick={changeRoute}
       onMouseEnter={preloadRouteCode}
       onMouseDown={preloadRoute}
+      style={props.style}
+      className={props.className}
+      title={props.title}
     >
       {props.children}
     </a>

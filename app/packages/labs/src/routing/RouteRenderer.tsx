@@ -7,7 +7,7 @@ import RoutingContext from "./RoutingContext";
 
 const { useContext, useEffect, Suspense, useState } = React;
 
-const RouteComponent: React.FC<{
+const RouteHandler: React.FC<{
   component: Resource<RouteComponent>;
   prepared: Resource<PreloadedQuery<OperationType>>;
   routeData: { params: unknown };
@@ -38,10 +38,11 @@ const RouterRenderer: React.FC<{}> = () => {
     return () => dispose();
   }, [router]);
 
-  const reversedItems = [].concat(routeEntry.entries).reverse();
+  const reversedItems = [...routeEntry.entries].reverse();
+
   const firstItem = reversedItems[0];
   let routeComponent = (
-    <RouteComponent
+    <RouteHandler
       component={firstItem.component}
       prepared={firstItem.prepared}
       routeData={firstItem.routeData}
@@ -50,17 +51,17 @@ const RouterRenderer: React.FC<{}> = () => {
   for (let ii = 1; ii < reversedItems.length; ii++) {
     const nextItem = reversedItems[ii];
     routeComponent = (
-      <RouteComponent
+      <RouteHandler
         component={nextItem.component}
         prepared={nextItem.prepared}
         routeData={nextItem.routeData}
       >
         {routeComponent}
-      </RouteComponent>
+      </RouteHandler>
     );
   }
 
-  return <Suspense fallback={"Loading fallback..."}>{routeComponent}</Suspense>;
+  return <Suspense fallback={null}>{routeComponent}</Suspense>;
 };
 
 export default RouterRenderer;
