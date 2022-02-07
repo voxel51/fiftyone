@@ -20,8 +20,7 @@ App
 
 - Fixed encoding of sample media URLs so image and video filepaths with special
   characters are supported
-- Fixed errors that would occur when rendering empty
-  :class:`Keypoint <fiftyone.core.labels.Keypoint>` instances
+- Fixed an error that would occur when rendering empty |Keypoint| instances
 
 Core
 
@@ -35,36 +34,38 @@ Core
 - Updated :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>` to
   save changes to (only) the samples in the view to the underlying dataset
 - Added a new :meth:`DatasetView.keep() <fiftyone.core.view.DatasetView.keep>`
-  method that deletes any samples that are not in the view to the underlying
+  method that deletes any samples that are not in the view from the underlying
   dataset
 - Added
   :meth:`InteractivePlot.save() <fiftyone.core.plots.base.InteractivePlot.save>`
   and
   :meth:`ViewPlot.save() <fiftyone.core.plots.base.ViewPlot>` methods that can
   be used to save plots as static images
+- Added support for populating query distances on a dataset when using
+  :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+  to query by visual similarity
 - Added a
-  :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines()>
+  :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines>`
   utility that converts instance segmentations to |Polylines| format
 - Added support for frame labels to all conversion methods in the
   :mod:`fiftyone.utils.labels` module
 - Updated the implementation of
   :meth:`Detection.to_polyline() <fiftyone.core.labels.Detection.to_polyline>`
   so that all attributes are included rather than just ETA-supported ones
-- Added support for populating query distances on a dataset when using
-  :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
-  to query by visual similarity
 - Added support for including empty labels labels via an `include_missing`
   keyword argument in
-  :func:`add_yolo_labels() >fiftyone.utils.yolo.add_yolo_labels>`
-- Added the utility function
+  :func:`add_yolo_labels() <fiftyone.utils.yolo.add_yolo_labels>`
+- Added a
   :func:`download_youtube_videos() <fiftyone.utils.youtube.download_youtube_videos>`
-- Added `skip_failures` flags to
+  utility for efficiently and robustly downloading videos or specific segments
+  from YouTube
+- Added a `skip_failures` flag to
   :func:`transform_images() <fiftyone.utils.image.transform_images>` and
   :func:`transform_videos() <fiftyone.utils.video.transform_videos>`
 - Added `shuffle` and `seed` parameters to
-  :class:`FiftyOneImageLabelsImporter <fiftyone.utils.data.importers.FiftyOneImageLabelsImporter>`
+  :class:`FiftyOneImageLabelsDatasetImporter <fiftyone.utils.data.importers.FiftyOneImageLabelsDatasetImporter>`
   and
-  :class:`FiftyOneVideoLabelsImporter <fiftyone.utils.data.importers.FiftyOneVideoLabelsImporter>`
+  :class:`FiftyOneVideoLabelsDatasetImporter <fiftyone.utils.data.importers.FiftyOneVideoLabelsDatasetImporter>`
 - Added an `include_all_data` parameter to
   :class:`YOLOv5DatasetImporter <fiftyone.utils.yolo.YOLOv5DatasetImporter>`
 - Resolved a bug that would previously cause an error when writing aggregations
