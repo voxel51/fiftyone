@@ -116,6 +116,47 @@ def compute_ious(
     return _compute_bbox_ious(preds, gts, iscrowd=iscrowd, classwise=classwise)
 
 
+def compute_segment_ious(preds, gts):
+    """Computes the pairwise IoUs between the predicted and ground truth
+    temporal detections.
+
+    Args:
+        preds: a list of predicted
+            :class:`fiftyone.core.labels.TemporalDetection` instances
+        gt_field: a list of ground truth
+            :class:`fiftyone.core.labels.TemporalDetection` instances
+
+    Returns:
+        a ``num_preds x num_gts`` array of segment IoUs
+    """
+    if not preds or not gts:
+        return np.zeros((len(preds), len(gts)))
+
+    ious = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        gst, get = gt.support
+        gt_len = get - gst
+
+        for i, pred in enumerate(preds):
+            pst, pet = pred.support
+            pred_len = pet - pst
+
+            if pred_len == 0 and gt_len == 0:
+                iou = float(pet == get)
+            else:
+                # Length of temporal intersection
+                inter = min(get, pet) - max(gst, pst)
+                if inter <= 0:
+                    continue
+
+                union = pred_len + gt_len - inter
+                iou = min(etan.safe_divide(inter, union), 1)
+
+            ious[i, j] = iou
+
+    return ious
+
+
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     num_pred = len(preds)
     num_gt = len(gts)

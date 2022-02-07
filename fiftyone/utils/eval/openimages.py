@@ -154,7 +154,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 "Open Images evaluation"
             )
 
-    def evaluate_image(self, sample_or_frame, eval_key=None):
+    def evaluate(self, sample_or_frame, eval_key=None):
         """Performs Open Images-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
@@ -170,7 +170,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         it.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
+            sample_or_frame: a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.frame.Frame`
             eval_key (None): the evaluation key for this evaluation
 

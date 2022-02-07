@@ -90,8 +90,7 @@ Core
   from working as expected when `key_field="id"` argument is used
 - Fixed a bug that occurred when computing patch embeddings defined by
   :ref:`polylines <polylines>`
-- Added decision thresholds to the tooltips of PR/ROC curves plotted via the
-  following methods:
+- Added decision thresholds to the tooltips of PR/ROC curves plotted via the following methods:
     - :meth:`BinaryClassificationResults.plot_pr_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_pr_curve>`
     - :meth:`BinaryClassificationResults.plot_roc_curve() <fiftyone.utils.eval.classification.BinaryClassificationResults.plot_roc_curve>`
     - :meth:`COCODetectionResults.plot_pr_curves() <fiftyone.utils.eval.coco.COCODetectionResults.plot_pr_curves>`
