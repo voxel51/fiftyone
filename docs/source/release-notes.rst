@@ -7,49 +7,90 @@ FiftyOne Release Notes
 
 FiftyOne 0.14.4
 ---------------
-*Released February 1, 2022*
+*Released February 7, 2022*
+
+News
+
+- With support from the `ActivityNet team <http://activity-net.org/download.html>`_,
+  FiftyOne is now a recommended tool for downloading, visualizing, and
+  evaluating on the Activitynet dataset! Check out
+  :ref:`this guide <activitynet>` for more details
 
 App
 
 - Fixed encoding of sample media URLs so image and video filepaths with special
-  characters load
-- Fixed errors resulting from empty
-  :class:`keypoint <fiftyone.core.labels.Keypoint>`
+  characters are supported
+- Fixed errors that would occur when rendering empty
+  :class:`Keypoint <fiftyone.core.labels.Keypoint>` instances
 
 Core
 
+- Added an official
+  `Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
+- Changed the default implementation of
+  :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` to
+  assume that the user has already sampled the frames offline and stored their
+  locations in a `filepath` field of each |Frame| in their video dataset. See
+  :ref:`this section <frame-views>` for more details
+- Updated :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>` to
+  save changes to (only) the samples in the view to the underlying dataset
+- Added a new :meth:`DatasetView.keep() <fiftyone.core.view.DatasetView.keep>`
+  method that deletes any samples that are not in the view to the underlying
+  dataset
 - Added
   :meth:`InteractivePlot.save() <fiftyone.core.plots.base.InteractivePlot.save>`
   and
   :meth:`ViewPlot.save() <fiftyone.core.plots.base.ViewPlot>` methods that can
-  save any plot as a static image
-- Added the
+  be used to save plots as static images
+- Added a
   :func:`instances_to_polylines() <fiftyone.utils.labels.instances_to_polylines()>
-  function that can convert instance segmentations (or just `bboxes`) to Polylines
-  format
+  utility that converts instance segmentations to |Polylines| format
 - Added support for frame labels to all conversion methods in the
   :mod:`fiftyone.utils.labels` module
 - Updated the implementation of
   :meth:`Detection.to_polyline() <fiftyone.core.labels.Detection.to_polyline>`
   so that all attributes are included rather than just ETA-supported ones
-- Updated :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>` to save
-  changes to (only) the samples in the view to the underlying dataset
-- Added :meth:`DatasetView.keep() <fiftyone.core.view.DatasetView.keep>` which
-  deletes any samples that are not in the view to the underlying dataset. This
-  is the previous behavior of
-  :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>`
-- Added an official `Dockerfile <https://github.com/voxel51/fiftyone/blob/develop/Dockerfile>`_
+- Added support for populating query distances on a dataset when using
+  :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+  to query by visual similarity
 - Added support for including empty labels labels via an `include_missing`
   keyword argument in
   :func:`add_yolo_labels() >fiftyone.utils.yolo.add_yolo_labels>`
 - Added the utility function
   :func:`download_youtube_videos() <fiftyone.utils.youtube.download_youtube_videos>`
+- Added `skip_failures` flags to
+  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>`
+- Added `shuffle` and `seed` parameters to
+  :class:`FiftyOneImageLabelsImporter <fiftyone.utils.data.importers.FiftyOneImageLabelsImporter>`
+  and
+  :class:`FiftyOneVideoLabelsImporter <fiftyone.utils.data.importers.FiftyOneVideoLabelsImporter>`
+- Added an `include_all_data` parameter to
+  :class:`YOLOv5DatasetImporter <fiftyone.utils.yolo.YOLOv5DatasetImporter>`
+- Resolved a bug that would previously cause an error when writing aggregations
+  on video datasets that involve applying expressions directly to `"frames"`
 
 Annotation
 
-- Added imports and exports of CVAT sample-level tags as
-  :class:`Classifications <fiftyone.core.labels.Classification>` labels
-- Fixed a when annotating existing fields with multiple label types
+- Added support for :ref:`importing <CVATImageDataset-import>` and
+  :ref:`exporting <CVATImageDataset-export>` sample-level tags in CVAT format
+- Fixed a bug that prevented existing label fields such as |Detections| that
+  can contain multiple annotation types (boxes or instances) from being
+  specified in calls to
+  :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+- CVAT login credentials are no longer included in exception messages
+
+Zoo
+
+- Added :ref:`ActivityNet 100 <dataset-zoo-activitynet-100>` to the dataset
+  zoo!
+- Added :ref:`ActivityNet 200 <dataset-zoo-activitynet-200>` to the dataset
+  zoo!
+- Added :ref:`Kinetics 400 <dataset-zoo-kinetics-400>` to the dataset zoo!
+- Added :ref:`Kinetics 600 <dataset-zoo-kinetics-600>` to the dataset zoo!
+- Added :ref:`Kinetics 700 <dataset-zoo-kinetics-700>` to the dataset zoo!
+- Added :ref:`Kinetics 700-2020 <dataset-zoo-kinetics-700-2020>` to the dataset
+  zoo!
 
 .. _release-notes-v0.14.3:
 
