@@ -83,6 +83,7 @@ def download_kinetics_split(
     info = KineticsDatasetInfo.build_for_version(
         version, dataset_dir, scratch_dir, split
     )
+    classes = info.validate_classes(classes)
     manager = KineticsDatasetManager(info)
 
     downloader = KineticsDatasetDownloader(num_workers=num_workers)
@@ -163,6 +164,10 @@ class KineticsDatasetManager(object):
             classes, retry_errors=config.retry_errors
         )
 
+        if not urls:
+            # Skipping unlabeled test split when classes are provided
+            return
+
         if config.shuffle:
             if config.seed is not None:
                 random.seed(config.seed)
@@ -179,9 +184,14 @@ class KineticsDatasetManager(object):
             max_videos=num_remaining,
             num_workers=config.num_workers,
         )
+        errors_dict = {}
+        for ind, error in errors.items():
+            if error not in errors_dict:
+                errors_dict[error] = []
+            errors_dict[error].append(urls[ind])
 
         self.info.cleanup_partial_downloads()
-        self._merge_and_write_errors(errors)
+        self._merge_and_write_errors(errors_dict)
 
     def _get_matching_samples(self, classes):
         existing_samples = []
@@ -412,7 +422,6 @@ class KineticsDatasetInfo(object):
             self._classwise_sample_ids.values()
         )
 
-        self.ensure_class_dirs()
         self.update_existing_sample_ids()
 
         self.all_prev_loaded_tars = self._get_prev_loaded_tars()
@@ -491,10 +500,10 @@ class KineticsDatasetInfo(object):
         return os.path.join(self.kinetics_dir, self.split)
 
     def class_dir(self, c):
-        return os.path.join(self.split_dir, c)
+        return os.path.join(self.split_dir, str(c))
 
     def class_existing_sample_ids(self, c):
-        return self._classwise_existing_sample_ids[c]
+        return self._classwise_existing_sample_ids.get(c, [])
 
     def class_sample_ids(self, c):
         return self._classwise_sample_ids[c]
@@ -520,10 +529,6 @@ class KineticsDatasetInfo(object):
 
     def get_video_class(self, video_id):
         return self._classwise_sample_ids_rev.get(video_id, None)
-
-    def ensure_class_dirs(self):
-        for c in self.all_classes:
-            etau.ensure_dir(self.class_dir(c))
 
     def cleanup_partial_downloads(self):
         for c in etau.list_subdirs(self.split_dir):
@@ -569,20 +574,24 @@ class KineticsDatasetInfo(object):
 
         return incomplete_classes
 
-    def _parse_classes(self, classes):
+    def validate_classes(self, classes):
         if classes is not None:
-            if self.split == "test":
-                logger.warning(
-                    "Test split is unlabeled; ignoring classes requirement"
-                )
-                return None
+            if etau.is_str(classes):
+                classes = [classes]
 
-            non_existant_classes = list(set(classes) - set(self.all_classes))
-            if non_existant_classes:
+            if len(self.all_classes) == 1 and self.split == "test":
+                logger.warning(
+                    "Test split is unlabeled but `classes` were provided; "
+                    "Skipping the split..."
+                )
+                return []
+
+            bad_classes = list(set(classes) - set(self.all_classes))
+            if bad_classes:
                 raise ValueError(
                     "The following classes were specified but do not exist in "
                     "the dataset; ",
-                    tuple(non_existant_classes),
+                    tuple(bad_classes),
                 )
 
         return classes
@@ -624,15 +633,13 @@ class KineticsDatasetInfo(object):
         return etas.load_json(self.raw_anno_path)
 
     def _parse_sample_ids(self):
-        if self.split == "test":
-            sample_ids = list(self.raw_annotations.keys())
-            return {None: sample_ids}, {sid: None for sid in sample_ids}
-
         url_id_map = {}
         classwise_sample_ids = defaultdict(list)
         classwise_sample_ids_rev = {}
         for sample_id, info in self.raw_annotations.items():
             c = info["annotations"]["label"]
+            if not c:
+                c = "_unlabeled"
             classwise_sample_ids[c].append(sample_id)
             classwise_sample_ids_rev[sample_id] = c
             url_id_map[info["url"]] = sample_id
