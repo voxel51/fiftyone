@@ -127,3 +127,6 @@
 
 .. |InteractiveScatter| replace:: :class:`InteractiveScatter <fiftyone.core.plots.plotly.InteractiveScatter>`
 .. |InteractiveHeatmap| replace:: :class:`InteractiveHeatmap <fiftyone.core.plots.plotly.InteractiveHeatmap>`
+
+.. |AnnotationBackend| replace:: :class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`
+.. |AnnotationBackendConfig| replace:: :class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`
