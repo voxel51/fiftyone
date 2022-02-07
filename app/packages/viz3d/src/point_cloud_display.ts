@@ -132,4 +132,8 @@ export class Display3D <T extends HTMLCanvasElement> {
     public render (): void {
         this._renderer.render(this._scene, this._camera);
     }
+
+    public copyToCanvas (ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this._renderer.domElement, 0, 0);
+    }
 };

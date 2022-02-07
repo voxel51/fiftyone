@@ -12,6 +12,7 @@
         "start": "vite preview"
     },
     "dependencies": {
+        "@fiftyone/viz3d": "*",
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
         "@material-ui/core": "4.11.4",

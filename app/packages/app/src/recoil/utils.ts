@@ -6,7 +6,9 @@ import * as selectors from "./selectors";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { http } from "../shared/connection";
 
-type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
+import { PointCloudLooker } from "@fiftyone/viz3d"
+
+type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker & typeof PointCloudLooker;
 
 export const getSampleSrc = (filepath: string, id: string) => {
   return `${http}/filepath/${encodeURIComponent(filepath)}?id=${id}`;
@@ -19,6 +21,10 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
     const isPatch = get(selectors.isPatchesView);
 
     return (mimetype) => {
+      if (mimetype.startsWith("model")){
+        return PointCloudLooker;
+      }
+
       const video = mimetype.startsWith("video/");
       if (video && (isFrame || isPatch)) {
         return FrameLooker;

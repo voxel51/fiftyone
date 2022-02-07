@@ -25,7 +25,7 @@ const benchmark = function (){
   var start_time = undefined;
 
   for (let i = 0; i < file_count; i++){
-    let url = `http://localhost:3001/data/object0.drc`;
+    let url = window.location.origin + "/data/object0.drc";
     drc_urls.push(url);
   }
 

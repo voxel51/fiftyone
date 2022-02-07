@@ -1,6 +1,8 @@
+- Get background thumbnail generator working
+- Add caching for 3D content/thumbnails/etc
 - Implement point cloud color rendering
 - Add lighting to render
 - Handle modal state
-- Add caching, etc
+- Handle resizing, etc
 - Add overlay rendering
 - Add other compression types

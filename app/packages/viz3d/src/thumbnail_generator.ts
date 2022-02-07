@@ -72,6 +72,12 @@ export class ThumbnailGenerator {
         this._display.setSize(width, height);
     }
 
+    public setSize (width: number, height: number) {
+        this._canvas.width = width;
+        this._canvas.height = height;
+        this._display.onResize();
+    }
+
     public makeThumbnail (mesh: three.Mesh): Promise<Blob> {
         this._display.clearScene();
         this._display.addSceneItem(mesh);

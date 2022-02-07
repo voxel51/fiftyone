@@ -25,7 +25,7 @@ export interface Sample {
     height: number;
   };
   id: string;
-  media_type: "image" | "image";
+  media_type: "image" | "image" | "model";
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -254,7 +254,7 @@ export type StateUpdate<State extends BaseState> = (
   ) => void
 ) => void;
 
-const DEFAULT_BASE_OPTIONS: BaseOptions = {
+export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,

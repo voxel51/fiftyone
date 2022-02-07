@@ -15,7 +15,7 @@ const Root = React.memo(function (){
 
     const cfg: Readonly<pc.PointCloudConfig> = new pc.PointCloudConfig();
     const sample = new pc.PointCloudSample();
-    sample.filepath = "http://localhost:3001/data/bunny.drc";
+    sample.filepath = window.location.origin + "/data/bunny.drc";
     sample.compressed_path = sample.filepath;
     const l = new pc.PointCloudLooker(sample, cfg);
 
