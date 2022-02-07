@@ -38,8 +38,8 @@ FiftyOne's evaluation methods are conveniently exposed as methods on all
 datasets or specific views into them via the same syntax.
 
 Let's illustrate the basic workflow by loading the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo and
-analyzing the object detections in its `predictions` field using the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` and analyzing the object
+detections in its `predictions` field using the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method:
 
@@ -255,8 +255,8 @@ which can take any value supported by
 :class:`SimpleEvaluationConfig <fiftyone.utils.eval.regression.SimpleEvaluationConfig>`.
 
 The example below demonstrates simple evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo with
-some fake regression data added to it to demonstrate the workflow:
+:ref:`quickstart dataset <dataset-zoo-quickstart>` with some fake regression
+data added to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -370,8 +370,8 @@ be populated on each sample that records whether that sample's prediction is
 correct.
 
 The example below demonstrates simple evaluation on the
-:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
-fake predictions added to it to demonstrate the workflow:
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` with some fake predictions added
+to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -562,8 +562,8 @@ false positive, true negative, or false negative.
     :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`.
 
 The example below demonstrates binary evaluation on the
-:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
-fake binary predictions added to it to demonstrate the workflow:
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` with some fake binary predictions
+added to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
@@ -646,7 +646,8 @@ __________
 You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method to evaluate the predictions of an object detection model stored in a
-|Detections| or |Polylines| field of your dataset.
+|Detections| or |Polylines| field of your dataset or of a temporal detection
+model stored in a |TemporalDetections| field of your dataset.
 
 Invoking
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
@@ -677,11 +678,13 @@ method supports all of the following task types:
 -   :ref:`Object detection <object-detection>`
 -   :ref:`Instance segmentations <instance-segmentation>`
 -   :ref:`Polygon detection <polylines>`
+-   :ref:`Temporal detections <temporal-detection>`
 
 The only difference between each task type is in how the IoU between objects is
 calculated. Specifically, for instance segmentations and polygons, IoUs are
 computed between the polgyonal shapes rather than their rectangular bounding
-boxes.
+boxes. For temporal detections, IoU is computed between the 1D support of two
+temporal segments.
 
 For object detection tasks, the ground truth and predicted objects should be
 stored in |Detections| format.
@@ -708,6 +711,9 @@ polylines).
     than the actual polygonal geometries for IoU calculations, you can pass
     ``use_boxes=True`` to
     :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+
+For temporal detection tasks, the ground truth and predicted objects should be
+stored in |TemporalDetections| format.
 
 .. _evaluation-patches:
 
@@ -749,7 +755,7 @@ field if the evaluation protocol defines a crowd attribute.
 
 The example below demonstrates loading an evaluation patches view for the
 results of an evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -836,13 +842,14 @@ compared to non-patch views:
 
 .. _evaluating-detections-coco:
 
-COCO-style evaluation (default)
--------------------------------
+COCO-style evaluation (default spatial)
+---------------------------------------
 
 By default,
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 will use `COCO-style evaluation <https://cocodataset.org/#detection-eval>`_ to
-analyze predictions.
+analyze predictions when the specified label fields are |Detections| or
+|Polylines|.
 
 You can also explicitly request that COCO-style evaluation be used by setting
 the ``method`` parameter to ``"coco"``.
@@ -902,7 +909,7 @@ Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
 The example below demonstrates COCO-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -1131,7 +1138,7 @@ Example evaluation
 ~~~~~~~~~~~~~~~~~~
 
 The example below demonstrates Open Images-style detection evaluation on the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
@@ -1270,6 +1277,273 @@ matched with ground truth objects of different classes.
 
 .. image:: /images/evaluation/oi_confusion_matrix.png
    :alt: oi-confusion-matrix
+   :align: center
+
+.. note::
+
+    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
+    attached to your |Session| object and dynamically explored using FiftyOne's
+    :ref:`interactive plotting features <interactive-plots>`!
+
+.. _evaluating-detections-activitynet:
+
+ActivityNet-style evaluation (default temporal)
+-----------------------------------------------
+
+By default,
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+will use 
+`ActivityNet-style temporal detection evaluation <https://github.com/activitynet/ActivityNet/tree/master/Evaluation>`_.
+to analyze predictions when the specified label fields are |TemporalDetections|.
+
+You can also explicitly request that ActivityNet-style evaluation be used by setting
+the ``method`` parameter to ``"activitynet"``.
+
+.. note::
+
+    FiftyOne's implementation of ActivityNet-style evaluation matches the
+    reference implementation available via the
+    `ActivityNet API <https://github.com/activitynet/ActivityNet/tree/master/Evaluation>`_.
+
+Overview
+~~~~~~~~
+
+When running ActivityNet-style evaluation using
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
+
+-   Predicted and ground truth segments are matched using a specified IoU
+    threshold (default = 0.50). This threshold can be customized via the
+    ``iou`` parameter
+
+-   By default, only segments with the same ``label`` will be matched.
+    Classwise matching can be disabled by passing ``classwise=False``
+
+-   mAP is computed by averaging over the same range of IoU values
+    :ref:`used by COCO <coco-map>`
+
+When you specify an ``eval_key`` parameter, a number of helpful fields will be
+populated on each sample and its predicted/ground truth segments:
+
+-   True positive (TP), false positive (FP), and false negative (FN) counts
+    for the each sample are saved in top-level fields of each sample::
+
+        TP: sample.<eval_key>_tp
+        FP: sample.<eval_key>_fp
+        FN: sample.<eval_key>_fn
+
+-   The fields listed below are populated on each individual temporal detection
+    segment; these fields tabulate the TP/FP/FN status of the segment, the ID
+    of the matching segment (if any), and the matching IoU::
+
+        TP/FP/FN: segment.<eval_key>
+              ID: segment.<eval_key>_id
+             IoU: segment.<eval_key>_iou
+
+.. note::
+
+    See |ActivityNetEvaluationConfig| for complete descriptions of the optional
+    keyword arguments that you can pass to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+    when running ActivityNet-style evaluation.
+
+Example evaluation
+~~~~~~~~~~~~~~~~~~
+
+The example below demonstrates ActivityNet-style temporal detection evaluation
+on the :ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    import random
+
+    # Load subset of ActivityNet 200
+    classes = ["Bathing dog", "Walking the dog"]
+    dataset = foz.load_zoo_dataset(
+        "activitynet-200",
+        split="validation",
+        classes=classes,
+        max_samples=10,
+    )
+    print(dataset)
+
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
+
+    # Evaluate the segments in the `predictions` field with respect to the
+    # segments in the `ground_truth` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+    # Print a classification report for the classes
+    results.print_report(classes=classes)
+
+    # Print some statistics about the total TP/FP/FN counts
+    print("TP: %d" % dataset.sum("eval_tp"))
+    print("FP: %d" % dataset.sum("eval_fp"))
+    print("FN: %d" % dataset.sum("eval_fn"))
+
+    # Create a view that has samples with the most false positives first, and
+    # only includes false positive segments in the `predictions` field
+    view = (
+        dataset
+        .sort_by("eval_fp", reverse=True)
+        .filter_labels("predictions", F("eval") == "fp")
+    )
+
+    # Visualize results in the App
+    session = fo.launch_app(view=view)
+
+.. code-block:: text
+
+                   precision    recall  f1-score   support
+
+      Bathing dog       0.50      0.40      0.44         5
+  Walking the dog       0.50      0.60      0.55         5
+  
+        micro avg       0.50      0.50      0.50        10
+        macro avg       0.50      0.50      0.49        10
+     weighted avg       0.50      0.50      0.49        10
+
+.. image:: /images/evaluation/activitynet_evaluate_detections.png
+   :alt: activitynet-evaluate-detections
+   :align: center
+
+mAP and PR curves
+~~~~~~~~~~~~~~~~~
+
+You can compute mean average precision (mAP) and precision-recall (PR) curves
+for your segments by passing the ``compute_mAP=True`` flag to
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
+
+.. note::
+
+    All mAP calculations are performed according to the
+    `ActivityNet evaluation protocol <https://github.com/activitynet/ActivityNet/tree/master/Evaluation>`_.
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load subset of ActivityNet 200
+    classes = ["Bathing dog", "Walking the dog"]
+    dataset = foz.load_zoo_dataset(
+        "activitynet-200",
+        split="validation",
+        classes=classes,
+        max_samples=10,
+    )
+    print(dataset)
+
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
+
+    # Performs an IoU sweep so that mAP and PR curves can be computed
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+        compute_mAP=True,
+    )
+
+    print(results.mAP())
+    # 0.367
+
+    plot = results.plot_pr_curves(classes=classes)
+    plot.show()
+
+.. image:: /images/evaluation/activitynet_pr_curves.png
+   :alt: activitynet-pr-curves
+   :align: center
+
+Confusion matrices
+~~~~~~~~~~~~~~~~~~
+
+You can also easily generate :ref:`confusion matrices <confusion-matrices>` for
+the results of ActivityNet-style evaluations.
+
+In order for the confusion matrix to capture anything other than false
+positive/negative counts, you will likely want to set the
+:class:`classwise <fiftyone.utils.eval.coco.ActivityNetEvaluationConfig>`
+parameter to ``False`` during evaluation so that predicted segments can be
+matched with ground truth segments of different classes.
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load subset of ActivityNet 200
+    classes = ["Bathing dog", "Grooming dog", "Grooming horse", "Walking the dog"]
+    dataset = foz.load_zoo_dataset(
+        "activitynet-200",
+        split="validation",
+        classes=classes,
+        max_samples=20,
+    )
+    print(dataset)
+
+    # Generate some fake predictions for this example
+    random.seed(51)
+    dataset.clone_sample_field("ground_truth", "predictions")
+    for sample in dataset:
+        for det in sample.predictions.detections:
+            det.support[0] += random.randint(-10,10)
+            det.support[1] += random.randint(-10,10)
+            det.support[0] = max(det.support[0], 1)
+            det.support[1] = max(det.support[1], det.support[0] + 1)
+            det.confidence = random.random()
+            det.label = random.choice(classes)
+
+        sample.save()
+
+    # Perform evaluation, allowing objects to be matched between classes
+    results = dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", classwise=False
+    )
+
+    # Generate a confusion matrix for the specified classes
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show()
+
+.. image:: /images/evaluation/activitynet_confusion_matrix.png
+   :alt: activitynet-confusion-matrix
    :align: center
 
 .. note::

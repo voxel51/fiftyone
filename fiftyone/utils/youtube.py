@@ -5,10 +5,13 @@ Utilities for working with `YouTube <https://youtube.com>`.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import importlib
 import itertools
+import logging
 import multiprocessing
 import multiprocessing.dummy
 import os
+import pkg_resources
 
 import numpy as np
 
@@ -17,12 +20,17 @@ import eta.core.video as etav
 
 import fiftyone.core.utils as fou
 
-pytube = fou.lazy_import(
-    "pytube", callback=lambda: fou.ensure_package("pytube"),
-)
+
+def _ensure_pytube():
+    fou.ensure_package("pytube>=11.0.2")
+    if pkg_resources.get_distribution("pytube").version == "11.0.2":
+        _patch_pytube_cypher()
 
 
-logger = multiprocessing.get_logger()
+pytube = fou.lazy_import("pytube", callback=_ensure_pytube)
+
+
+logger = logging.getLogger(__name__)
 
 
 def download_youtube_videos(
@@ -134,7 +142,6 @@ def download_youtube_videos(
             ext,
             only_progressive,
             resolution,
-            quiet,
         )
 
         if num_workers <= 1:
@@ -174,7 +181,6 @@ def _build_tasks_list(
     ext,
     only_progressive,
     resolution,
-    quiet,
 ):
     if video_paths is None and download_dir is None:
         raise ValueError("Either `download_dir` or `video_paths` are required")
@@ -228,7 +234,6 @@ def _build_tasks_list(
             itertools.repeat(ext),
             itertools.repeat(only_progressive),
             itertools.repeat(resolution),
-            itertools.repeat(quiet),
         )
     )
 
@@ -239,7 +244,12 @@ def _download(tasks, max_videos, skip_failures, quiet):
 
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
         for task in tasks:
-            idx, url, video_path, error = _do_download(task)
+            idx, url, video_path, error, warnings = _do_download(task)
+
+            if warnings and not quiet:
+                for msg in warnings:
+                    logger.warning(msg)
+
             if error:
                 msg = "Failed to download video '%s': %s" % (url, error)
                 if skip_failures:
@@ -249,6 +259,7 @@ def _download(tasks, max_videos, skip_failures, quiet):
                     raise ValueError(msg)
 
                 errors[idx] = error
+                pb.draw()
             else:
                 pb.update()
                 downloaded[idx] = video_path
@@ -271,9 +282,13 @@ def _download_multi(
             pool_cls = multiprocessing.Pool
 
         with pool_cls(num_workers) as pool:
-            for idx, url, video_path, error in pool.imap_unordered(
+            for idx, url, video_path, error, warnings in pool.imap_unordered(
                 _do_download, tasks
             ):
+                if warnings and not quiet:
+                    for msg in warnings:
+                        logger.warning(msg)
+
                 if error:
                     msg = "Failed to download video '%s': %s" % (url, error)
                     if skip_failures:
@@ -283,6 +298,7 @@ def _download_multi(
                         raise ValueError(msg)
 
                     errors[idx] = error
+                    pb.draw()
                 else:
                     pb.update()
                     downloaded[idx] = video_path
@@ -303,10 +319,10 @@ def _do_download(task):
         ext,
         only_progressive,
         resolution,
-        quiet,
     ) = task
 
     error = None
+    warnings = []
 
     try:
         pytube_video = pytube.YouTube(url)
@@ -327,34 +343,35 @@ def _do_download(task):
         root, ext = os.path.splitext(video_path)
         stream_ext = os.path.splitext(stream.default_filename)[1]
         if ext != stream_ext:
-            if not quiet:
-                logger.warning(
+            warnings.append(
+                (
                     "Unable to find a '%s' stream for '%s'; downloading '%s' "
-                    "instead",
-                    ext,
-                    url,
-                    stream_ext,
+                    "instead"
                 )
+                % (ext, url, stream_ext)
+            )
 
             video_path = root + stream_ext
 
-        if not quiet and only_progressive and not stream.is_progressive:
-            logger.warning(
-                "Unable to find a progressive stream for '%s'; downloading a "
-                "non-progressive stream instead",
-                url,
+        if only_progressive and not stream.is_progressive:
+            warnings.append(
+                (
+                    "Unable to find a progressive stream for '%s'; "
+                    "downloading a non-progressive stream instead"
+                )
+                % url
             )
 
-        if not quiet and etau.is_numeric(resolution):
+        if etau.is_numeric(resolution):
             target_res = "%dp" % resolution
             stream_res = stream.resolution
             if target_res != stream_res:
-                logger.warning(
-                    "Unable to find a '%s' stream for '%s'; downloading a "
-                    "'%s' stream instead",
-                    target_res,
-                    url,
-                    stream_res,
+                warnings.append(
+                    (
+                        "Unable to find a '%s' stream for '%s'; downloading a "
+                        "'%s' stream instead"
+                    )
+                    % (target_res, url, stream_res)
                 )
 
         # Download to a temporary location first and then move to `video_path`
@@ -374,7 +391,7 @@ def _do_download(task):
         else:
             error = str(e)
 
-    return idx, url, video_path, error
+    return idx, url, video_path, error, warnings
 
 
 def _validate_video(pytube_video):
@@ -464,3 +481,79 @@ def _download_clip(stream, clip_segment, video_path):
     etav.extract_clip(
         stream.url, video_path, start_time=start_time, duration=duration
     )
+
+
+def _patch_pytube_cypher():
+    filepath = os.path.normpath(
+        os.path.join(
+            os.path.dirname(importlib.util.find_spec("pytube").origin),
+            "cipher.py",
+        )
+    )
+
+    find = """
+    function_patterns = [
+        # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
+        # a.C&&(b=a.get("n"))&&(b=Dea(b),a.set("n",b))}};
+        # In above case, `Dea` is the relevant function name
+        r'a\.[A-Z]&&\(b=a\.get\("n"\)\)&&\(b=([^(]+)\(b\)',
+    ]
+    logger.debug('Finding throttling function name')
+    for pattern in function_patterns:
+        regex = re.compile(pattern)
+        function_match = regex.search(js)
+        if function_match:
+            logger.debug("finished regex search, matched: %s", pattern)
+            return function_match.group(1)"""
+
+    replace = """
+    # Patched by FiftyOne: https://github.com/voxel51/fiftyone
+    # PR: https://github.com/pytube/pytube/pull/1222
+    function_patterns = [
+        # https://github.com/ytdl-org/youtube-dl/issues/29326#issuecomment-865985377
+        # https://github.com/yt-dlp/yt-dlp/commit/48416bc4a8f1d5ff07d5977659cb8ece7640dcd8
+        # var Bpa = [iha];
+        # ...
+        # a.C && (b = a.get("n")) && (b = Bpa[0](b), a.set("n", b),
+        # Bpa.length || iha("")) }};
+        # In the above case, `iha` is the relevant function name
+        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&\s*'
+        r'\([a-z]\s*=\s*([a-zA-Z0-9$]{3})(\[\d+\])?\([a-z]\)',
+    ]
+    logger.debug('Finding throttling function name')
+    for pattern in function_patterns:
+        regex = re.compile(pattern)
+        function_match = regex.search(js)
+        if function_match:
+            logger.debug("finished regex search, matched: %s", pattern)
+            if len(function_match.groups()) == 1:
+                return function_match.group(1)
+            idx = function_match.group(2)
+            if idx:
+                idx = idx.strip("[]")
+                array = re.search(
+                    r'var {nfunc}\s*=\s*(\[.+?\]);'.format(
+                        nfunc=function_match.group(1)),
+                    js
+                )
+                if array:
+                    array = array.group(1).strip("[]").split(",")
+                    array = [x.strip() for x in array]
+                    return array[int(idx)]"""
+
+    try:
+        with open(filepath, "r") as f:
+            code = f.read()
+
+        if find in code:
+            logger.debug("Patching '%s'", filepath)
+            fixed = code.replace(find, replace)
+            with open(filepath, "w") as f:
+                f.write(fixed)
+        elif replace in code:
+            logger.debug("Already patched '%s'", filepath)
+        else:
+            logger.debug("Unable to patch '%s'", filepath)
+    except Exception as e:
+        logger.debug(e)
+        logger.debug("Unable to patch '%s'", filepath)

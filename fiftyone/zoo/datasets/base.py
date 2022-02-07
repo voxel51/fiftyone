@@ -13,6 +13,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.types as fot
+import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
@@ -32,6 +33,365 @@ class FiftyOneDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided natively by FiftyOne."""
 
     pass
+
+
+class ActivityNet100Dataset(FiftyOneDataset):
+    """ActivityNet is a large-scale video dataset for human activity
+    understanding supporting the tasks of global video classification, trimmed
+    activity classification, and temporal activity detection.
+
+    This version contains videos and temporal activity detections for the 100
+    class version of the dataset.
+
+    Notes:
+
+    -   ActivityNet 100 and 200 differ in the number of activity classes and
+        videos per split
+    -   Partial downloads will download videos (if still available) from
+        YouTube
+    -   Full splits can be loaded by first downloading the official source
+        files from the
+        `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
+    -   The test set does not have annotations
+
+    Full split stats:
+
+    -   Train split: 4,819 videos (7,151 instances)
+    -   Test split: 2,480 videos (labels withheld)
+    -   Validation split: 2,383 videos (3,582 instances)
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the ``max_duration``,
+        ``classes``, and ``max_samples`` parameters
+
+    Full split downloads:
+
+    Many videos have been removed from YouTube since the creation of
+    ActivityNet. As a result, if you do not specify any partial download
+    parameters described below, you must first download the official source
+    files from the ActivityNet maintainers in order to load a full split into
+    FiftyOne.
+
+    To download the source files, you must fill out
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+    Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to
+    load full splits by passing the ``source_dir`` parameter to
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary)
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "activitynet-100",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "Bathing dog" and "Walking the dog"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "activitynet-100",
+            split="validation",
+            classes=["Bathing dog", "Walking the dog"],
+            max_samples=10,
+        )
+
+        session.dataset = dataset
+
+    Dataset size
+        223 GB
+
+    Source 
+        http://activity-net.org/index.html
+
+    Args:
+        source_dir (None): the directory containing the manually downloaded
+            ActivityNet files used to avoid downloading videos from YouTube
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the ``max_duration`` will be downloaded. By
+            default, all videos are downloaded
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating ``dataset_dir``. This is only
+            relevant when a ``source_dir`` is provided
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded. By
+            default, all matching samples are loaded
+    """
+
+    def __init__(
+        self,
+        source_dir=None,
+        classes=None,
+        max_duration=None,
+        copy_files=True,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.source_dir = source_dir
+        self.classes = classes
+        self.max_duration = max_duration
+        self.copy_files = copy_files
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "activitynet-100"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "temporal-detection",
+            "action-detection",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes = foua.download_activitynet_split(
+            dataset_dir,
+            split,
+            source_dir=self.source_dir,
+            classes=self.classes,
+            max_duration=self.max_duration,
+            copy_files=self.copy_files,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            version="100",
+        )
+
+        dataset_type = fot.ActivityNetDataset()
+
+        return dataset_type, num_samples, classes
+
+
+class ActivityNet200Dataset(FiftyOneDataset):
+    """ActivityNet is a large-scale video dataset for human activity
+    understanding supporting the tasks of global video classification, trimmed
+    activity classification, and temporal activity detection.
+
+    This version contains videos and temporal activity detections for the 200
+    class version of the dataset.
+
+    Notes:
+
+    -   ActivityNet 200 is a superset of ActivityNet 100
+    -   ActivityNet 100 and 200 differ in the number of activity classes and
+        videos per split
+    -   Partial downloads will download videos (if still available) from
+        YouTube
+    -   Full splits can be loaded by first downloading the official source
+        files from the
+        `ActivityNet maintainers <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_
+    -   The test set does not have annotations
+
+    Full split stats:
+
+    -   Train split: 10,024 videos (15,410 instances)
+    -   Test split: 5,044 videos (labels withheld)
+    -   Validation split: 4,926 videos (7,654 instances)
+
+    Partial downloads:
+
+    -   You can specify subsets of data to download via the ``max_duration``,
+        ``classes``, and ``max_samples`` parameters
+
+    Full split downloads:
+
+    Many videos have been removed from YouTube since the creation of
+    ActivityNet. As a result, if you do not specify any partial download
+    parameters described below, you must first download the official source
+    files from the ActivityNet maintainers in order to load a full split into
+    FiftyOne.
+
+    To download the source files, you must fill out
+    `this form <https://docs.google.com/forms/d/e/1FAIpQLSeKaFq9ZfcmZ7W0B0PbEhfbTHY41GeEgwsa7WobJgGUhn4DTQ/viewform>`_.
+
+    Refer to :ref:`this page <activitynet-full-split-downloads>` to see how to
+    load full splits by passing the ``source_dir`` parameter to
+    :func:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        #
+        # Load 10 random samples from the validation split
+        #
+        # Only the required videos will be downloaded (if necessary)
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "activitynet-200",
+            split="validation",
+            max_samples=10,
+            shuffle=True,
+        )
+
+        session = fo.launch_app(dataset)
+
+        #
+        # Load 10 samples from the validation split that
+        # contain the actions "Bathing dog" and "Walking the dog"
+        #
+        # Videos that contain all `classes` will be prioritized first, followed
+        # by videos that contain at least one of the required `classes`. If
+        # there are not enough videos matching `classes` in the split to meet
+        # `max_samples`, only the available videos will be loaded.
+        #
+        # Videos will only be downloaded if necessary
+        #
+        # Subsequent partial loads of the validation split will never require
+        # downloading any videos 
+        #
+
+        dataset = foz.load_zoo_dataset(
+            "activitynet-200",
+            split="validation",
+            classes=["Bathing dog", "Walking the dog"],
+            max_samples=10,
+        )
+
+        session.dataset = dataset
+
+    Dataset size
+        500 GB
+
+    Source 
+        http://activity-net.org/index.html
+
+    Args:
+        source_dir (None): the directory containing the manually downloaded
+            ActivityNet files used to avoid downloading videos from YouTube
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        max_duration (None): only videos with a duration in seconds that is
+            less than or equal to the `max_duration` will be downloaded. By
+            default, all videos are downloaded
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating ``dataset_dir``. This is only
+            relevant when a ``source_dir`` is provided
+        num_workers (None): the number of processes to use when downloading
+            individual images. By default, ``multiprocessing.cpu_count()`` is
+            used
+        shuffle (False): whether to randomly shuffle the order in which samples
+            are chosen for partial downloads
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load per split. If
+            ``classes`` are also specified, only up to the number of samples
+            that contain at least one specified class will be loaded.
+            By default, all matching samples are loaded
+    """
+
+    def __init__(
+        self,
+        source_dir=None,
+        classes=None,
+        max_duration=None,
+        copy_files=True,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.source_dir = source_dir
+        self.classes = classes
+        self.max_duration = max_duration
+        self.copy_files = copy_files
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "activitynet-200"
+
+    @property
+    def tags(self):
+        return (
+            "video",
+            "temporal-detection",
+            "action-detection",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return True
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes = foua.download_activitynet_split(
+            dataset_dir,
+            split,
+            source_dir=self.source_dir,
+            classes=self.classes,
+            max_duration=self.max_duration,
+            copy_files=self.copy_files,
+            num_workers=self.num_workers,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            max_samples=self.max_samples,
+            version="200",
+        )
+
+        dataset_type = fot.ActivityNetDataset()
+
+        return dataset_type, num_samples, classes
 
 
 class BDD100KDataset(FiftyOneDataset):
@@ -1527,6 +1887,8 @@ class UCF101Dataset(FiftyOneDataset):
 
 
 AVAILABLE_DATASETS = {
+    "activitynet-100": ActivityNet100Dataset,
+    "activitynet-200": ActivityNet200Dataset,
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
     "caltech256": Caltech256Dataset,
