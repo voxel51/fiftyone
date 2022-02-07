@@ -62,7 +62,12 @@ class Singleton <T> {
             }
         });
     }
-};
+
+    public created (): boolean{
+        return !!this._item;
+    }
+
+}
 
 // TODO: This should be themeable 
 export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
@@ -72,14 +77,18 @@ export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
 
 // TODO: This design makes it impossible to scene config at runtime
 const _thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton<ThumbnailGenerator>(ThumbnailGenerator);
-const _3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
 const _dracoLoader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
+const _3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
 
 function create3DDisplay (config: pcd.SceneConfig): pcd.Display3D<HTMLCanvasElement> {
-    // https://github.com/mrdoob/three.js/blob/master/examples/webgl_multiple_canvases_circle.html
-    // All modal display happens on this canvas, and is copied over to the looker elements' canvases
-    const canvas = document.createElement("canvas");
-    return _3D_display.make(canvas, config);
+    // TODO: Gross hack
+    if (!_3D_display.created()){
+        // https://github.com/mrdoob/three.js/blob/master/examples/webgl_multiple_canvases_circle.html
+        // All modal display happens on this canvas, and is copied over to the looker elements' canvases
+        const canvas = document.createElement("canvas");
+        return _3D_display.make(canvas, config);
+    }
+    else return _3D_display.make(null, config);
 }
 
 export class PointCloudConfig implements BaseConfig {
