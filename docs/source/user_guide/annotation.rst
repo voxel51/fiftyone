@@ -11,7 +11,8 @@ labels on your :ref:`datasets <using-datasets>` or specific
 
 By default, all annotation is performend via a native
 :ref:`CVAT integration <cvat-integration>` that uses `cvat.org <https://cvat.org>`_, but
-you can use a :ref:`self-hosted server <cvat-setup>` or even use a
+you can use a :ref:`self-hosted CVAT server <cvat-setup>`, switch to the
+:ref:`Labelbox backend <labelbox-integration>`, or even use a
 :ref:`custom annotation backend <custom-annotation-backend>`.
 
 .. note::
