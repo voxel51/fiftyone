@@ -1,0 +1,49 @@
+{
+  "name": "@fiftyone/viz3d",
+  "version": "0.1.0",
+  "author": "Dane Mason",
+  "description": "3D Support for Looker",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/app/looker"
+  },
+  "main": "./src/index.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "prettier": "@fiftyone/prettier-config",
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@fiftyone/flashlight": "*",
+    "@fiftyone/looker": "*",
+    "@types/draco3d": "^1.4.1",
+    "@types/offscreencanvas": "^2019.6.4",
+    "@ungap/event-target": "^0.2.2",
+    "copy-to-clipboard": "^3.3.1",
+    "draco3d": "^1.5.0",
+    "immutable": "^4.0.0-rc.12",
+    "json-format-highlight": "^1.0.4",
+    "lru-cache": "^6.0.0",
+    "mime": "^2.5.2",
+    "three": "^0.137.5",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@fiftyone/prettier-config": "*",
+    "@types/color-string": "^1.5.0",
+    "@types/lru-cache": "^5.1.0",
+    "@types/offscreencanvas": "^2019.6.4",
+    "@types/three": "*",
+    "@types/uuid": "^8.3.0",
+    "path": "^0.12.7",
+    "prettier": "2.2.1",
+    "typescript": "4.2.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "2.4.2"
+  }
+}

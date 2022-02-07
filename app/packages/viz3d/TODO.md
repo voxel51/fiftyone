@@ -1,0 +1,6 @@
+- Implement point cloud color rendering
+- Add lighting to render
+- Handle modal state
+- Add caching, etc
+- Add overlay rendering
+- Add other compression types

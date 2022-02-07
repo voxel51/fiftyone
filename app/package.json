@@ -10,7 +10,8 @@
         "dev": "yarn workspace @fiftyone/app dev",
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",
-        "start-desktop": "yarn workspace FiftyOne start-desktop"
+        "start-desktop": "yarn workspace FiftyOne start-desktop",
+        "viz3d": "yarn workspace @fiftyone/viz3d dev"
     },
     "devDependencies": {
         "patch-package": "^6.4.7",
