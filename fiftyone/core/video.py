@@ -11,7 +11,7 @@ import logging
 import os
 
 from bson import ObjectId
-from pymongo.errors import BulkWriteError
+from pymongo import UpdateOne
 
 import eta.core.utils as etau
 
@@ -377,33 +377,35 @@ class FramesView(fov.DatasetView):
 
 def make_frames_dataset(
     sample_collection,
-    sample_frames=True,
-    frames_patt=None,
+    sample_frames=False,
     fps=None,
     max_fps=None,
     size=None,
     min_size=None,
     max_size=None,
-    force_sample=False,
     sparse=False,
+    frames_patt=None,
+    force_sample=False,
+    skip_failures=True,
     verbose=False,
 ):
-    """Creates a dataset that contains one sample per video frame in the
+    """Creates a dataset that contains one sample per frame in the video
     collection.
-
-    By default, samples will be generated for every video frame at full
-    resolution, but this method provides a variety of parameters that can be
-    used to customize the sampling behavior.
 
     The returned dataset will contain all frame-level fields and the ``tags``
     of each video as sample-level fields, as well as a ``sample_id`` field that
     records the IDs of the parent sample for each frame.
 
-    When ``sample_frames`` is True (the default), this method samples each
-    video in the collection into a directory of per-frame images with the same
-    basename as the input video with frame numbers/format specified by
-    ``frames_patt``. If this method is run multiple times, existing frames will
-    not be resampled unless ``force_sample`` is set to True.
+    By default, ``sample_frames`` is False and this method assumes that the
+    frames of the input collection have ``filepath`` fields populated pointing
+    to each frame image. Any frames without a ``filepath`` populated will be
+    omitted from the frames dataset.
+
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images with the same basename as
+    the input video with frame numbers/format specified by ``frames_patt``, and
+    stores the resulting frame paths in a ``filepath`` field of the input
+    collection.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -423,6 +425,16 @@ def make_frames_dataset(
             000002.jpg
             ...
 
+    By default, samples will be generated for every video frame at full
+    resolution, but this method provides a variety of parameters that can be
+    used to customize the sampling behavior.
+
+    .. note::
+
+        If this method is run multiple times with ``sample_frames`` set to
+        True, existing frames will not be resampled unless you set
+        ``force_sample`` to True.
+
     .. note::
 
         The returned dataset is independent from the source collection;
@@ -431,32 +443,38 @@ def make_frames_dataset(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        sample_frames (True): whether to sample the video frames (True) or
-            set the ``filepath`` of each sample to the source video (False).
-            Note that datasets generated with this parameter set to False
-            cannot currently be viewed in the App
-        frames_patt (None): a pattern specifying the filename/format to use to
-            store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
-            is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+        sample_frames (False): whether to assume that the frame images have
+            already been sampled at locations stored in the ``filepath`` field
+            of each frame (False), or whether to sample the video frames now
+            according to the specified parameters (True)
         fps (None): an optional frame rate at which to sample each video's
             frames
         max_fps (None): an optional maximum frame rate at which to sample.
             Videos with frame rate exceeding this value are downsampled
-        size (None): an optional ``(width, height)`` for each frame. One
-            dimension can be -1, in which case the aspect ratio is preserved
+        size (None): an optional ``(width, height)`` at which to sample frames.
+            A dimension can be -1, in which case the aspect ratio is preserved.
+            Only applicable when ``sample_frames=True``
         min_size (None): an optional minimum ``(width, height)`` for each
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
-            this constraint
+            this constraint. Only applicable when ``sample_frames=True``
         max_size (None): an optional maximum ``(width, height)`` for each
             frame. A dimension can be -1 if no constraint should be applied.
             The frames are resized (aspect-preserving) if necessary to meet
-            this constraint
-        sparse (False): whether to only generate samples for non-empty frames,
-            i.e., frame numbers for which :class:`fiftyone.core.frame.Frame`
-            instances have explicitly been created
+            this constraint. Only applicable when ``sample_frames=True``
+        sparse (False): whether to only sample frame images for frame numbers
+            for which :class:`fiftyone.core.frame.Frame` instances exist in the
+            input collection. This parameter has no effect when
+            ``sample_frames==False`` since frames must always exist in order to
+            have ``filepath`` information use
+        frames_patt (None): a pattern specifying the filename/format to use to
+            write or check or existing sampled frames, e.g., ``"%%06d.jpg"``.
+            The default value is
+            ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
         force_sample (False): whether to resample videos whose sampled frames
-            already exist
+            already exist. Only applicable when ``sample_frames=True``
+        skip_failures (True): whether to gracefully continue without raising
+            an error if a video cannot be sampled
         verbose (False): whether to log information about the frames that will
             be sampled, if any
 
@@ -465,13 +483,18 @@ def make_frames_dataset(
     """
     fova.validate_video_collection(sample_collection)
 
-    if sample_frames and frames_patt is None:
+    if sample_frames != True:
+        l = locals()
+        for var in ("size", "min_size", "max_size"):
+            if l[var]:
+                logger.warning(
+                    "Ignoring '%s' when sample_frames=%s", var, sample_frames
+                )
+
+    if frames_patt is None:
         frames_patt = (
             fo.config.default_sequence_idx + fo.config.default_image_ext
         )
-
-    # We'll need frame counts
-    sample_collection.compute_metadata()
 
     #
     # Create dataset with proper schema
@@ -494,24 +517,27 @@ def make_frames_dataset(
 
     _make_pretty_summary(dataset)
 
-    # Populate frames dataset
-    ids_to_sample, frames_to_sample = _populate_frames(
+    # Initialize frames dataset
+    ids_to_sample, frames_to_sample = _init_frames(
         dataset,
         sample_collection,
-        frames_patt,
-        force_sample,
         sample_frames,
+        frames_patt,
         fps,
         max_fps,
         sparse,
+        force_sample,
         verbose,
     )
 
-    # Sample video frames, if necessary
+    # Sample frames, if necessary
     if ids_to_sample:
         logger.info("Sampling video frames...")
+        to_sample_view = sample_collection._root_dataset.select(
+            ids_to_sample, ordered=True
+        )
         fouv.sample_videos(
-            sample_collection.select(ids_to_sample, ordered=True),
+            to_sample_view,
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -519,6 +545,41 @@ def make_frames_dataset(
             max_size=max_size,
             original_frame_numbers=True,
             force_sample=True,
+            save_filepaths=True,
+            skip_failures=skip_failures,
+        )
+
+    # Merge frame data
+    pipeline = sample_collection._pipeline(frames_only=True)
+
+    if sample_frames == "dynamic":
+        pipeline.append({"$unset": "filepath"})
+
+    pipeline.append(
+        {
+            "$merge": {
+                "into": dataset._sample_collection_name,
+                "on": ["_sample_id", "frame_number"],
+                "whenMatched": "merge",
+                "whenNotMatched": "discard",
+            }
+        }
+    )
+
+    sample_collection._dataset._aggregate(pipeline=pipeline)
+
+    # Delete samples for frames without filepaths
+    if sample_frames == True:
+        dataset._sample_collection.delete_many({"filepath": None})
+
+    if sample_frames == False and not dataset:
+        logger.warning(
+            "Your frames view is empty. Note that you must either "
+            "pre-populate the `filepath` field on the frames of your video "
+            "collection or pass `sample_frames=True` to this method to "
+            "perform the sampling. See "
+            "https://voxel51.com/docs/fiftyone/user_guide/using_views.html#frame-views "
+            "for more information."
         )
 
     return dataset
@@ -531,18 +592,26 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _populate_frames(
+def _init_frames(
     dataset,
     src_collection,
-    frames_patt,
-    force_sample,
     sample_frames,
+    frames_patt,
     fps,
     max_fps,
     sparse,
+    force_sample,
     verbose,
 ):
-    if sample_frames and verbose:
+    if (
+        (sample_frames != False and not sparse)
+        or fps is not None
+        or max_fps is not None
+    ):
+        # We'll need frame counts to determine what frames to include/sample
+        src_collection.compute_metadata()
+
+    if sample_frames == True and verbose:
         logger.info("Determining frames to sample...")
 
     #
@@ -550,43 +619,62 @@ def _populate_frames(
     #
 
     docs = []
+    src_docs = []
+    src_inds = []
+    missing_filepaths = []
+
     id_map = {}
     sample_map = defaultdict(set)
     frame_map = defaultdict(set)
 
+    src_dataset = src_collection._root_dataset
     is_clips = src_collection._dataset._is_clips
-    samples = src_collection.select_fields()._aggregate(attach_frames=True)
-    for sample in samples:
+    if src_collection.has_frame_field("filepath"):
+        view = src_collection.select_fields("frames.filepath")
+    else:
+        view = src_collection.select_fields()
+
+    for sample in view._aggregate(attach_frames=True):
         video_path = sample["filepath"]
         tags = sample.get("tags", [])
-        metadata = sample.get("metadata", {})
+        metadata = sample.get("metadata", None) or {}
         frame_rate = metadata.get("frame_rate", None)
         total_frame_count = metadata.get("total_frame_count", -1)
-        frame_ids_map = {
-            f["frame_number"]: f["_id"] for f in sample.get("frames", [])
-        }
+        frames = sample.get("frames", [])
+
+        frame_ids_map = {}
+        frames_with_filepaths = set()
+        for frame in frames:
+            _frame_id = frame["_id"]
+            fn = frame["frame_number"]
+            filepath = frame.get("filepath", None)
+
+            if sample_frames != False or filepath:
+                frame_ids_map[fn] = _frame_id
+
+            if sample_frames == True and filepath:
+                frames_with_filepaths.add(fn)
 
         if is_clips:
-            sample_id = sample["_sample_id"]
+            _sample_id = sample["_sample_id"]
             support = sample["support"]
         else:
-            sample_id = sample["_id"]
+            _sample_id = sample["_id"]
             support = None
 
-        if sample_frames:
-            outdir = os.path.splitext(video_path)[0]
-            images_patt = os.path.join(outdir, frames_patt)
-        else:
-            images_patt = None
+        outdir = os.path.splitext(video_path)[0]
+        images_patt = os.path.join(outdir, frames_patt)
 
+        # Determine which frame numbers to include in the frames dataset and
+        # whether any frame images need to be sampled
         doc_frame_numbers, sample_frame_numbers = _parse_video_frames(
             video_path,
+            sample_frames,
             images_patt,
             support,
             total_frame_count,
             frame_rate,
             frame_ids_map,
-            sample_frames,
             force_sample,
             sparse,
             fps,
@@ -594,43 +682,95 @@ def _populate_frames(
             verbose,
         )
 
-        # note: [] means no frames, None means all frames
+        # Record things that need to be sampled
+        # Note: [] means no frames, None means all frames
         if sample_frame_numbers != []:
-            id_map[video_path] = str(sample["_id"])
+            id_map[video_path] = str(_sample_id)
+
             if sample_frame_numbers is None:
                 sample_map[video_path] = None
             elif sample_map[video_path] is not None:
                 sample_map[video_path].update(sample_frame_numbers)
 
-        for frame_number in doc_frame_numbers:
+        # Record any already-sampled frames whose `filepath` need to be stored
+        # on the source dataset
+        if sample_frames == True and sample_frame_numbers is not None:
+            missing_fns = (
+                set(doc_frame_numbers)
+                - set(sample_frame_numbers)
+                - frames_with_filepaths
+            )
+        else:
+            missing_fns = set()
+
+        for fn in missing_fns:
+            missing_filepaths.append((_sample_id, fn, images_patt % fn))
+
+        # Create necessary frame documents
+        for fn in doc_frame_numbers:
             if is_clips:
                 fns = frame_map[video_path]
-                if frame_number in fns:
+                if fn in fns:
                     continue  # frame has already been sampled
 
-                fns.add(frame_number)
+                fns.add(fn)
 
-            if sample_frames:
-                _filepath = images_patt % frame_number
+            _id = frame_ids_map.get(fn, None)
+
+            if sample_frames == "dynamic":
+                filepath = video_path
             else:
-                _filepath = video_path
+                filepath = None  # will be populated later
 
             doc = {
-                "filepath": _filepath,
+                "filepath": filepath,
                 "tags": tags,
                 "metadata": None,
-                "frame_number": frame_number,
+                "frame_number": fn,
                 "_media_type": "image",
-                "_rand": foos._generate_rand(_filepath),
-                "_sample_id": sample_id,
+                "_rand": foos._generate_rand(images_patt % fn),
+                "_sample_id": _sample_id,
             }
 
-            _id = frame_ids_map.get(frame_number, None)
             if _id is not None:
                 doc["_id"] = _id
+            elif fn in missing_fns:
+                # Found a frame whose image is already sampled but for which
+                # there is no frame in the source collection. We now need to
+                # create a frame so that the missing filepath can be added and
+                # the frames dataset can use the same frame ID
+                src_docs.append({"_sample_id": _sample_id, "frame_number": fn})
+                src_inds.append(len(docs))
 
             docs.append(doc)
 
+            # Commit batch of docs to frames dataset
+            if len(docs) >= 100000:  # MongoDB limit for bulk inserts
+                _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
+
+    # Add remaining docs to frames dataset
+    _insert_docs(docs, src_docs, src_inds, dataset, src_dataset)
+
+    # Add missing frame filepaths to source collection
+    if missing_filepaths:
+        logger.info(
+            "Setting %d frame filepaths on the input collection that exist "
+            "on disk but are not recorded on the dataset",
+            len(missing_filepaths),
+        )
+        src_dataset._add_frame_field_if_necessary("filepath", fof.StringField)
+        ops = [
+            UpdateOne(
+                {"_sample_id": _sample_id, "frame_number": fn},
+                {"$set": {"filepath": filepath}},
+            )
+            for _sample_id, fn, filepath in missing_filepaths
+        ]
+        src_dataset._bulk_write(ops, frames=True)
+
+    #
+    # Finalize which frame images need to be sampled, if any
+    #
     # We first populate `sample_map` and then convert to `ids_to_sample` and
     # `frames_to_sample` here to avoid resampling frames when working with clip
     # views with multiple overlapping clips into the same video
@@ -643,46 +783,32 @@ def _populate_frames(
 
         frames_to_sample.append(sample_frame_numbers)
 
-    if not docs:
-        return ids_to_sample, frames_to_sample
-
-    try:
-        dataset._sample_collection.insert_many(docs)
-    except BulkWriteError as bwe:
-        msg = bwe.details["writeErrors"][0]["errmsg"]
-        raise ValueError(msg) from bwe
-
-    #
-    # Merge existing frame data
-    #
-
-    pipeline = src_collection._pipeline(frames_only=True)
-    pipeline.extend(
-        [
-            {
-                "$merge": {
-                    "into": dataset._sample_collection_name,
-                    "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
-                    "whenNotMatched": "discard",
-                }
-            },
-        ]
-    )
-
-    src_collection._dataset._aggregate(pipeline=pipeline)
-
     return ids_to_sample, frames_to_sample
+
+
+def _insert_docs(docs, src_docs, src_inds, dataset, src_dataset):
+    if src_docs:
+        foo.insert_documents(src_docs, src_dataset._frame_collection)
+
+        for idx, src_doc in enumerate(src_docs):
+            docs[src_inds[idx]]["_id"] = src_doc["_id"]
+
+        src_docs.clear()
+        src_inds.clear()
+
+    if docs:
+        foo.insert_documents(docs, dataset._sample_collection)
+        docs.clear()
 
 
 def _parse_video_frames(
     video_path,
+    sample_frames,
     images_patt,
     support,
     total_frame_count,
     frame_rate,
     frame_ids_map,
-    sample_frames,
     force_sample,
     sparse,
     fps,
@@ -719,45 +845,43 @@ def _parse_video_frames(
     else:
         doc_frame_numbers = target_frame_numbers
 
-    if sparse:
+    if sparse or sample_frames == False:
         doc_frame_numbers = [
             fn for fn in doc_frame_numbers if fn in frame_ids_map
         ]
 
-    if not sample_frames:
+    if sample_frames != True:
         return doc_frame_numbers, []
 
     #
     # Determine frames that need to be sampled
     #
 
-    all_frames = not sparse and support is None
-
     if force_sample:
-        if all_frames and target_frame_numbers is None:
-            sample_frame_numbers = None  # all frames
-        else:
-            sample_frame_numbers = doc_frame_numbers
+        sample_frame_numbers = doc_frame_numbers
     else:
         sample_frame_numbers = _get_non_existent_frame_numbers(
             images_patt, doc_frame_numbers
         )
 
-        if all_frames and len(sample_frame_numbers) == len(doc_frame_numbers):
-            sample_frame_numbers = None  # all frames
+    if (
+        target_frame_numbers is None
+        and len(sample_frame_numbers) == len(doc_frame_numbers)
+        and len(doc_frame_numbers) >= total_frame_count
+    ):
+        sample_frame_numbers = None  # all frames
 
     if verbose:
+        count = total_frame_count if total_frame_count >= 0 else "???"
         if sample_frame_numbers is None:
             logger.info(
-                "Must sample all %d frames of '%s'",
-                total_frame_count,
-                video_path,
+                "Must sample all %s frames of '%s'", count, video_path,
             )
         elif sample_frame_numbers != []:
             logger.info(
-                "Must sample %d/%d frames of '%s'",
+                "Must sample %d/%s frames of '%s'",
                 len(sample_frame_numbers),
-                total_frame_count,
+                count,
                 video_path,
             )
         else:
