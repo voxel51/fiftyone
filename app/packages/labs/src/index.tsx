@@ -41,11 +41,9 @@ const Environment = () => {
   }
 
   return (
-    <ErrorBoundary FallbackComponent={Error}>
-      <RelayEnvironmentProvider environment={getRelayEnvironment(auth0)}>
-        <Login />
-      </RelayEnvironmentProvider>
-    </ErrorBoundary>
+    <RelayEnvironmentProvider environment={getRelayEnvironment(auth0)}>
+      <Login />
+    </RelayEnvironmentProvider>
   );
 };
 
@@ -64,15 +62,17 @@ const App = () => {
 const Root = () => {
   return (
     <RecoilRoot>
-      <Auth0Provider
-        audience="api.dev.fiftyone.ai"
-        clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
-        domain="dev-uqppzklh.us.auth0.com"
-        redirectUri={window.location.origin}
-        organization={"org_wtMMZE61j2gnmxsm"}
-      >
-        <App />
-      </Auth0Provider>
+      <ErrorBoundary FallbackComponent={Error}>
+        <Auth0Provider
+          audience="api.dev.fiftyone.ai"
+          clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
+          domain="dev-uqppzklh.us.auth0.com"
+          redirectUri={window.location.origin}
+          organization={"org_wtMMZE61j2gnmxsm"}
+        >
+          <App />
+        </Auth0Provider>
+      </ErrorBoundary>
     </RecoilRoot>
   );
 };

@@ -1,3 +1,7 @@
+type Mutation {
+  login(user: UserInput!): User!
+}
+
 type Query {
   users: [User!]!
   viewer: User!
@@ -5,4 +9,11 @@ type Query {
 
 type User {
   id: ID!
+}
+
+input UserInput {
+  email: String!
+  familyName: String!
+  givenName: String!
+  sub: String!
 }

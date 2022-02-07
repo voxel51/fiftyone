@@ -7,7 +7,8 @@ FiftyOne Teams schema.
 """
 import strawberry as gql
 
-from .types import Query
+from .extensions import EndSession
 from .mutations import Mutation
+from .types import Query
 
-schema = gql.Schema(query=Query, mutation=Mutation)
+schema = gql.Schema(query=Query, mutation=Mutation, extensions=[EndSession])

@@ -51,7 +51,6 @@ interface NavEntryProps extends Entry {
 }
 
 const NavEntry: React.FC<NavEntryProps> = ({ name, to, icon, active }) => {
-  console.log(to, active);
   return (
     <Link title={name} className={active ? activeEntry : ""} to={to}>
       {icon}
@@ -67,7 +66,7 @@ const Nav: React.FC = () => {
     .reduce((nearest, current) => {
       return current.length > nearest.length ? current : nearest;
     }, "/");
-  console.log(active);
+
   return (
     <div className={nav}>
       <div className={heading}>
@@ -78,7 +77,7 @@ const Nav: React.FC = () => {
       </div>
       <div className={entries}>
         {navEntries.map((props) => (
-          <NavEntry active={active === props.to} {...props} />
+          <NavEntry key={props.name} active={active === props.to} {...props} />
         ))}
       </div>
     </div>

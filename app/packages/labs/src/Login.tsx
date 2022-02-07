@@ -1,5 +1,5 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { graphql } from "relay-runtime";
 
 import Loading from "@fiftyone/app/src/components/Loading";
@@ -21,11 +21,10 @@ const Router = () => {
 };
 
 const LoginMutation = graphql`
-  mutation LoginMutation($input: UserInput!) {
-    login(input: $input) {
-      viewer {
-        id
-      }
+  mutation LoginMutation($user: UserInput!) {
+    login(user: $user) {
+      id
+      family_name
     }
   }
 `;
@@ -33,16 +32,26 @@ const LoginMutation = graphql`
 const Login = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [pending, logIn] = useMutation(LoginMutation);
-  const auth0 = useAuth0();
+  const { user } = useAuth0();
 
   useEffect(() => {
-    console.log(auth0.user);
-    return;
-    /*!loggedIn && !pending && logIn({
-        variables: {
-            email: 
-        }
-    })*/
+    if (!user || loggedIn || pending) {
+      return;
+    }
+
+    logIn({
+      onCompleted: (response, errors) => {
+        !errors && setLoggedIn(true);
+      },
+      variables: {
+        user: {
+          email: user.email,
+          familyName: user.family_name,
+          givenName: user.given_name,
+          sub: user.sub,
+        },
+      },
+    });
   }, [loggedIn, pending]);
 
   if (!loggedIn) {

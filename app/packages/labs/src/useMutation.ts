@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay/hooks";
 import {
   commitMutation,
@@ -15,6 +16,7 @@ const useMutation = (
   (config?: Omit<MutationConfig<MutationParameters>, "mutation">) => void
 ] => {
   const environment = useRelayEnvironment();
+  const handleError = useErrorHandler();
   const [isPending, setPending] = useState(false);
   const requestRef = useRef<Disposable | null>(null);
   const mountedRef = useRef(false);
@@ -25,22 +27,21 @@ const useMutation = (
       }
       const request = commitMutation(environment, {
         ...config,
-        onCompleted: () => {
+        onCompleted: (...args) => {
           if (!mountedRef.current) {
             return;
           }
           requestRef.current = null;
           setPending(false);
-          config.onCompleted && config.onCompleted();
+          config.onCompleted && config.onCompleted(...args);
         },
         onError: (error) => {
-          console.error(error);
           if (!mountedRef.current) {
             return;
           }
           requestRef.current = null;
           setPending(false);
-          config.onError && config.onError(error);
+          config.onError ? config.onError(error) : handleError(error);
         },
         mutation,
       });

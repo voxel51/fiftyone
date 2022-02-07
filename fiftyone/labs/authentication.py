@@ -94,7 +94,6 @@ async def authenticate_header(token: str, jwks: JWKS) -> bool:
 
 def has_scope(token: str, scope: str):
     unverified_claims = jwt.get_unverified_claims(token)
-    print(unverified_claims)
     if unverified_claims.get("scope"):
         token_scopes = unverified_claims["scope"].split()
         for token_scope in token_scopes:

@@ -49,5 +49,4 @@ class Query:
 
     @gql.field
     def viewer(self, info: Info) -> User:
-        print(info.context)
         return User(id=ObjectId("000000000000000000000000"))
