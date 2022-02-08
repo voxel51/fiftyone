@@ -222,7 +222,7 @@ export const sidebarGroups = selectorFamily<
       .map(([name, paths]) => [
         name,
         filtered
-          ? paths.filter((path) => pathIsShown(path) && path.includes(f))
+          ? paths.filter((path) => get(pathIsShown(path)) && path.includes(f))
           : paths,
       ])
       .filter(

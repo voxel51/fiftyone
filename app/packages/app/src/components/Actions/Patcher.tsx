@@ -34,6 +34,7 @@ import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
 import { State } from "../../recoil/types";
 import { filters } from "../../recoil/filters";
+import { similarityParameters } from "./Similar";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -86,8 +87,9 @@ const evaluationKeys = selector<string[]>({
   },
 });
 
-export const sendPatch = async (snapshot: Snapshot, addStage?: object) =>
-  fetch(`${http}/pin`, {
+export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
+  const similarity = await snapshot.getPromise(similarityParameters);
+  return fetch(`${http}/pin`, {
     method: "POST",
     cache: "no-cache",
     headers: {
@@ -101,8 +103,10 @@ export const sendPatch = async (snapshot: Snapshot, addStage?: object) =>
       sample_ids: await snapshot.getPromise(atoms.selectedSamples),
       labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
       add_stages: addStage ? [addStage] : null,
+      similarity: similarity ? toSnakeCase(similarity) : null,
     }),
   });
+};
 
 const useToPatches = () => {
   return useRecoilCallback(

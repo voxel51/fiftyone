@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
+  RecoilState,
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
@@ -9,13 +10,24 @@ import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
+import * as aggregationAtoms from "../recoil/aggregations";
+import * as atoms from "../recoil/atoms";
+import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
+import * as viewAtoms from "../recoil/view";
 import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga";
 import { aggregationsTick } from "../recoil/aggregations";
 import { selectedSamples } from "../recoil/atoms";
+import { toCamelCase } from "@fiftyone/utilities";
+import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
+import { savingFilters } from "../components/Actions/ActionsRow";
+import { viewsAreEqual } from "./view";
+import { similaritySorting } from "../components/Actions/Similar";
+import { patching } from "../components/Actions/Patcher";
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
@@ -338,6 +350,84 @@ export const useSelect = () => {
       socket.send(
         packageMessage("set_selection", { _ids: Array.from(selected) })
       );
+    },
+    []
+  );
+};
+
+export const useStateUpdate = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => async (
+      { state: data },
+      callback?: (
+        set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+      ) => void
+    ) => {
+      if (!data) {
+        callback && callback(set);
+        return;
+      }
+
+      const state = toCamelCase(data) as State.Description;
+      state.view = data.view;
+      const newSamples = new Set<string>(state.selected);
+      const counter = get(atoms.viewCounter);
+      const view = get(viewAtoms.view);
+      const current = get(atoms.stateDescription);
+
+      set(atoms.viewCounter, counter + 1);
+      set(atoms.loading, false);
+      set(atoms.selectedSamples, newSamples);
+
+      [true, false].forEach((i) =>
+        [true, false].forEach((j) =>
+          set(atoms.tagging({ modal: i, labels: j }), false)
+        )
+      );
+      set(patching, false);
+      set(similaritySorting, false);
+      set(savingFilters, false);
+      if (
+        !viewsAreEqual(view, state.view || []) ||
+        state?.dataset?.sampleCollectionName !==
+          current?.dataset?.sampleCollectionName
+      ) {
+        set(viewAtoms.view, state.view || []);
+        set(filterAtoms.filters, {});
+      }
+
+      if (state.dataset) {
+        state.dataset.brainMethods = Object.values(
+          state.dataset.brainMethods || {}
+        );
+        state.dataset.evaluations = Object.values(
+          state.dataset.evaluations || {}
+        );
+
+        state.dataset.annotationRuns = Object.values(
+          state.dataset.annotationRuns || {}
+        );
+        const groups = resolveGroups(state.dataset);
+        const current = get(sidebarGroupsDefinition(false));
+
+        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+          set(sidebarGroupsDefinition(false), groups);
+          set(
+            aggregationAtoms.aggregationsTick,
+            get(aggregationAtoms.aggregationsTick) + 1
+          );
+        }
+      }
+
+      const colorPool = get(atoms.colorPool);
+      if (
+        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+      ) {
+        set(atoms.colorPool, state.config.colorPool);
+      }
+      set(atoms.connected, true);
+      set(atoms.stateDescription, state);
+      callback && callback(set);
     },
     []
   );

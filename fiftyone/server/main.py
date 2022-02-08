@@ -49,6 +49,7 @@ from fiftyone.server.json_util import convert
 import fiftyone.server.metadata as fosm
 from fiftyone.server.notebook import NotebookHandler
 from fiftyone.server.sidebar import SidebarHandler
+from fiftyone.server.sort import SortHandler
 from fiftyone.server.state import (
     catch_errors,
     PollingHandler,
@@ -168,16 +169,20 @@ class FramesHandler(tornado.web.RequestHandler):
 
 class PageHandler(fosu.AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         page = data.get("page", 1)
         page_length = data.get("page_length", 20)
+        similarity = data.get("similarity", None)
 
         view = fosv.get_view(
-            dataset, stages=stages, filters=filters, count_label_tags=True
+            dataset,
+            stages=stages,
+            filters=filters,
+            count_label_tags=True,
+            similarity=similarity,
         )
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
@@ -293,6 +298,7 @@ class Application(tornado.web.Application):
             (r"/polling", PollingHandler),
             (r"/reactivate", ReactivateHandler),
             (r"/sidebar", SidebarHandler),
+            (r"/sort", SortHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (r"/tag", TagHandler),

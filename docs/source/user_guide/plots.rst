@@ -898,6 +898,76 @@ cells in which they were defined and shown.
     :meth:`plot.freeze() <fiftyone.core.plots.base.ResponsivePlot.freeze>` are
     only appliclable when working in notebook contexts.
 
+.. _saving-plots:
+
+Saving plots
+____________
+
+You can use :meth:`plot.save() <fiftyone.core.plots.base.Plot.save>` to save
+any |InteractivePlot| or |ViewPlot| as a static image or HTML.
+
+Consult the documentation of your plot's
+:meth:`save() <fiftyone.core.plots.base.Plot.save>` method for details on
+configuring the export.
+
+For example, you can save a :ref:`histogram view plot <view-plots>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    plot = fo.CategoricalHistogram(
+        "ground_truth.detections.label",
+        order="frequency",
+        log=True,
+        init_view=dataset,
+    )
+
+    plot.save("./histogram.jpg", scale=2.0)
+
+.. image:: /images/plots/save-histogram.jpg
+   :alt: save-histogram
+   :align: center
+
+|br|
+Or you can save an :ref:`embedding scatterplot <embeddings-plots>`:
+
+.. code-block:: python
+    :linenos:
+
+    results = fob.compute_visualization(dataset)
+
+    plot = results.visualize(labels="uniqueness", axis_equal=True)
+    plot.save("./embeddings.png", height=300, width=800)
+
+.. image:: /images/plots/save-embeddings.png
+   :alt: save-embeddings
+   :align: center
+
+|br|
+You can also save plots generated using the
+:ref:`matplotlib backend <plotting-backend>`:
+
+.. code-block:: python
+    :linenos:
+
+    plot = results.visualize(
+        labels="uniqueness",
+        backend="matplotlib",
+        ax_equal=True,
+        marker_size=5,
+    )
+    plot.save("./embeddings-matplotlib.png", dpi=200)
+
+.. image:: /images/plots/save-embeddings-matplotlib.png
+   :alt: save-embeddings-matplotlib
+   :align: center
+
 .. _plots-advanced:
 
 Advanced usage

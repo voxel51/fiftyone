@@ -7,11 +7,8 @@ FiftyOne Server aggregations.
 """
 from collections import defaultdict
 
-import tornado
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -32,9 +29,7 @@ class CountExists(foa.Count):
 
 class AggregationsHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -55,9 +50,7 @@ class AggregationsHandler(AsyncRequestHandler):
 
 class TagAggregationsHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
+    async def post_response(self, data):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -141,7 +134,6 @@ async def get_app_statistics(view, filters):
 
     ordered = [agg for path in aggregations.values() for agg in path.values()]
     results = await view._async_aggregate(ordered)
-    convert(results)
 
     for aggregation, result in zip(ordered, results):
         aggregations[aggregation.field_name or ""][

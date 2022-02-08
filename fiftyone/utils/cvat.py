@@ -565,6 +565,7 @@ class CVATImageDatasetImporter(
     @property
     def label_cls(self):
         return {
+            "classifications": fol.Classifications,
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
@@ -898,6 +899,7 @@ class CVATImageDatasetExporter(
     @property
     def label_cls(self):
         return {
+            "classifications": fol.Classifications,
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
@@ -1312,6 +1314,7 @@ class CVATImage(object):
         name: the filename of the image
         width: the width of the image, in pixels
         height: the height of the image, in pixels
+        tags (None): a list of :class:`CVATImageTag` instances
         boxes (None): a list of :class:`CVATImageBox` instances
         polygons (None): a list of :class:`CVATImagePolygon` instances
         polylines (None): a list of :class:`CVATImagePolyline` instances
@@ -1325,6 +1328,7 @@ class CVATImage(object):
         name,
         width,
         height,
+        tags=None,
         boxes=None,
         polygons=None,
         polylines=None,
@@ -1336,10 +1340,16 @@ class CVATImage(object):
         self.subset = subset
         self.width = width
         self.height = height
+        self.tags = tags or []
         self.boxes = boxes or []
         self.polygons = polygons or []
         self.polylines = polylines or []
         self.points = points or []
+
+    @property
+    def has_tags(self):
+        """Whether this image has tags."""
+        return bool(self.tags)
 
     @property
     def has_boxes(self):
@@ -1363,7 +1373,7 @@ class CVATImage(object):
             an iterator that emits :class:`CVATImageAnno` instances
         """
         return itertools.chain(
-            self.boxes, self.polygons, self.polylines, self.points
+            self.tags, self.boxes, self.polygons, self.polylines, self.points
         )
 
     def get_image_metadata(self):
@@ -1386,6 +1396,12 @@ class CVATImage(object):
         frame_size = (self.width, self.height)
 
         labels = {}
+
+        if self.tags:
+            tags = [t.to_classification() for t in self.tags]
+            labels["classifications"] = fol.Classifications(
+                classifications=tags
+            )
 
         if self.boxes:
             detections = [b.to_detection(frame_size) for b in self.boxes]
@@ -1418,12 +1434,17 @@ class CVATImage(object):
         width = metadata.width
         height = metadata.height
 
+        _classifications = []
         _detections = []
         _polygons = []
         _polylines = []
         _keypoints = []
         for _labels in labels.values():
-            if isinstance(_labels, fol.Detection):
+            if isinstance(_labels, fol.Classification):
+                _classifications.append(_labels)
+            elif isinstance(_labels, fol.Classifications):
+                _classifications.extend(_labels.classifications)
+            elif isinstance(_labels, fol.Detection):
                 _detections.append(_labels)
             elif isinstance(_labels, fol.Detections):
                 _detections.extend(_labels.detections)
@@ -1448,6 +1469,8 @@ class CVATImage(object):
                 )
                 warnings.warn(msg)
 
+        tags = [CVATImageTag.from_classification(c) for c in _classifications]
+
         boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
 
         polygons = []
@@ -1467,6 +1490,7 @@ class CVATImage(object):
             None,
             width,
             height,
+            tags=tags,
             boxes=boxes,
             polygons=polygons,
             polylines=polylines,
@@ -1490,6 +1514,10 @@ class CVATImage(object):
         width = int(d["@width"])
         height = int(d["@height"])
 
+        tags = []
+        for td in _ensure_list(d.get("tag", [])):
+            tags.append(CVATImageTag.from_tag_dict(td))
+
         boxes = []
         for bd in _ensure_list(d.get("box", [])):
             boxes.append(CVATImageBox.from_box_dict(bd))
@@ -1511,6 +1539,7 @@ class CVATImage(object):
             name,
             width,
             height,
+            tags=tags,
             boxes=boxes,
             polygons=polygons,
             polylines=polylines,
@@ -1610,6 +1639,55 @@ class CVATImageAnno(object):
                 attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
+
+
+class CVATImageTag(CVATImageAnno):
+    """A tag in CVAT image format.
+
+    Args:
+        label: the tag string
+    """
+
+    def __init__(self, label):
+        self.label = label
+        CVATImageAnno.__init__(self)
+
+    def to_classification(self):
+        """Returns a :class:`fiftyone.core.labels.Classification`
+        representation of the tag.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Classification`
+        """
+        return fol.Classification(label=self.label)
+
+    @classmethod
+    def from_classification(cls, classification):
+        """Creates a :class:`CVATImageTag` from a
+        :class:`fiftyone.core.labels.Classification`.
+
+        Args:
+            classification: a :class:`fiftyone.core.labels.Classification`
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = classification.label
+        return cls(label)
+
+    @classmethod
+    def from_tag_dict(cls, d):
+        """Creates a :class:`CVATImageTag` from a ``<tag>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<tag>`` tag
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = d["@label"]
+        return cls(label)
 
 
 class CVATImageBox(CVATImageAnno):

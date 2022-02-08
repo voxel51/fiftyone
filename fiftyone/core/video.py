@@ -165,13 +165,18 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the frames in the source dataset with the contents of the
-        view.
+        """Saves the frames in this view to the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
             This will permanently delete any omitted or filtered contents from
-            the source dataset.
+            the frames of the source dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -183,6 +188,23 @@ class FramesView(fov.DatasetView):
         super().save(fields=fields)
 
         self._sync_source(fields=fields)
+
+    def keep(self):
+        """Deletes all frames that are **not** in this view from the underlying
+        dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+
+        # The `keep()` operation below will delete frames, so we must sync
+        # deletions to the source dataset first
+        self._sync_source(update=False, delete=True)
+
+        super().keep()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -225,7 +247,7 @@ class FramesView(fov.DatasetView):
         self._source_collection._delete_labels(ids, fields=frame_fields)
 
     def _sync_source_sample(self, sample):
-        self._sync_source_schema(delete=False)
+        self._sync_source_schema()
 
         default_fields = set(
             self._get_default_sample_fields(
@@ -251,7 +273,7 @@ class FramesView(fov.DatasetView):
             match, {"$set": updates}
         )
 
-    def _sync_source(self, fields=None, ids=None):
+    def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         default_fields = set(
             self._get_default_sample_fields(
                 include_private=True, use_db_fields=True
@@ -263,21 +285,13 @@ class FramesView(fov.DatasetView):
             if not fields:
                 return
 
-        self._sync_source_schema(fields=fields, delete=True)
+        if update:
+            self._sync_source_schema(fields=fields)
 
-        dst_coll = self._source_collection._dataset._frame_collection_name
+            dst_coll = self._source_collection._dataset._frame_collection_name
 
-        pipeline = []
+            pipeline = []
 
-        if fields is None and ids is None:
-            default_fields.discard("_id")
-            default_fields.discard("_sample_id")
-            default_fields.discard("frame_number")
-
-            pipeline.extend(
-                [{"$unset": list(default_fields)}, {"$out": dst_coll}]
-            )
-        else:
             if ids is not None:
                 pipeline.append(
                     {
@@ -310,7 +324,11 @@ class FramesView(fov.DatasetView):
                 }
             )
 
-        self._frames_dataset._aggregate(pipeline=pipeline)
+            self._frames_dataset._aggregate(pipeline=pipeline)
+
+        if delete:
+            frame_ids = self._frames_dataset.exclude(self).values("id")
+            self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
         schema = self.get_field_schema()

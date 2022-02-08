@@ -13,7 +13,6 @@ import {
   useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
-import { useSpring } from "@react-spring/core";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
@@ -40,6 +39,7 @@ const CategoricalFilterContainer = styled.div`
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  position: relative;
 `;
 
 const NamedCategoricalFilterContainer = styled.div`
@@ -236,20 +236,12 @@ const ResultsWrapper = <T extends unknown>({
 }: ResultsWrapperProps<T>) => {
   const theme = useTheme();
 
-  const style = useSpring({
-    opacity: shown ? 1 : 0,
-  });
-
   if (!shown) {
     return null;
   }
 
   return (
-    <ResultsContainer
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      style={style}
-    >
+    <ResultsContainer onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       {results && (
         <Results<T>
           color={color}
@@ -424,6 +416,7 @@ const CategoricalFilter = <T extends unknown>({
         setActive,
       });
   }, [focused, search, selected]);
+  const ref = useRef<HTMLElement>();
 
   const getCount = (results, search) => {
     const index = results.map((r) => r[0]).indexOf(search);
@@ -435,7 +428,7 @@ const CategoricalFilter = <T extends unknown>({
   const { count, results } = countsLoadable.contents;
 
   return (
-    <NamedCategoricalFilterContainer title={title}>
+    <NamedCategoricalFilterContainer title={title} ref={ref}>
       <NamedCategoricalFilterHeader>
         {named && name && <>{name.replaceAll("_", " ")}</>}
       </NamedCategoricalFilterHeader>
@@ -501,21 +494,23 @@ const CategoricalFilter = <T extends unknown>({
                 }
               }}
             />
-            <ResultsWrapper
-              key={"results"}
-              results={searchResults}
-              color={color}
-              shown={focused || hovering}
-              onSelect={(value) => {
-                onSelect(value, getCount(searchResults, value));
-                setHovering(false);
-                setFocused(false);
-              }}
-              active={active}
-              subCount={subCount}
-              onMouseEnter={() => setHovering(true)}
-              onMouseLeave={() => setHovering(false)}
-            />
+            {focused && (
+              <ResultsWrapper
+                key={"results"}
+                results={searchResults}
+                color={color}
+                shown={focused || hovering}
+                onSelect={(value) => {
+                  onSelect(value, getCount(searchResults, value));
+                  setHovering(false);
+                  setFocused(false);
+                }}
+                active={active}
+                subCount={subCount}
+                onMouseEnter={() => setHovering(true)}
+                onMouseLeave={() => setHovering(false)}
+              />
+            )}
           </>
         )}
 

@@ -47,6 +47,7 @@ function Dataset() {
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
+    document.getElementById("modal").classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
   const datasets = useRecoilValue(selectors.datasets);
 

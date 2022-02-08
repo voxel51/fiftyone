@@ -1,16 +1,16 @@
 import { Clear, FileCopy, Refresh } from "@material-ui/icons";
 import React from "react";
 import { useCopyToClipboard } from "react-use";
-import { useResetRecoilState } from "recoil";
+import { useRecoilTransaction_UNSTABLE } from "recoil";
 import styled from "styled-components";
 
 import Header from "../components/Header";
 import { scrollbarStyles } from "../components/utils";
 import { stateDescription } from "../recoil/atoms";
+import { filters, modalFilters } from "../recoil/filters";
 
-import socket, { http } from "../shared/connection";
+import { http } from "../shared/connection";
 import { useRefresh } from "../utils/hooks";
-import { packageMessage } from "../utils/socket";
 
 const ErrorWrapper = styled.div`
   width: 100%;
@@ -74,9 +74,20 @@ const Stack = styled.div`
   }
 `;
 
+const useReset = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ reset }) => () => {
+      reset(stateDescription);
+      reset(filters);
+      reset(modalFilters);
+    },
+    []
+  );
+};
+
 const Error = ({ error = null, resetErrorBoundary }) => {
   const [_, copy] = useCopyToClipboard();
-  const resetState = useResetRecoilState(stateDescription);
+  const resetState = useReset();
 
   const refresh = useRefresh();
   return (

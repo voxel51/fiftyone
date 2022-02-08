@@ -415,11 +415,23 @@ class Detection(_HasID, _HasAttributesDict, Label):
         Returns:
             a :class:`Polyline`
         """
-        dobj = foue.to_detected_object(self)
+        dobj = foue.to_detected_object(self, extra_attrs=False)
         polyline = etai.convert_object_to_polygon(
             dobj, tolerance=tolerance, filled=filled
         )
-        return foue.from_polyline(polyline)
+
+        attributes = dict(self.iter_attributes())
+
+        return Polyline(
+            label=self.label,
+            points=polyline.points,
+            confidence=self.confidence,
+            index=self.index,
+            closed=polyline.closed,
+            filled=polyline.filled,
+            tags=self.tags,
+            **attributes,
+        )
 
     def to_segmentation(self, mask=None, frame_size=None, target=255):
         """Returns a :class:`Segmentation` representation of this instance.
@@ -620,7 +632,7 @@ class Polyline(_HasID, _HasAttributesDict, Label):
         Returns:
             a :class:`Detection`
         """
-        polyline = foue.to_polyline(self)
+        polyline = foue.to_polyline(self, extra_attrs=False)
         if mask_size is not None:
             bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
         else:
@@ -1204,7 +1216,7 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
 
 
 def _render_instance(mask, detection, target):
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
     obj_mask, offset = etai.render_instance_mask(
         dobj.mask, dobj.bounding_box, img=mask
     )
@@ -1218,14 +1230,14 @@ def _render_instance(mask, detection, target):
 
 
 def _render_polyline(mask, polyline, target, thickness):
-    points = foue.to_polyline(polyline).coords_in(img=mask)
+    points = foue.to_polyline(polyline, extra_attrs=False).coords_in(img=mask)
     points = [np.array(shape, dtype=np.int32) for shape in points]
 
     if polyline.filled:
         # pylint: disable=no-member
-        mask = cv2.fillPoly(mask, points, target)
+        cv2.fillPoly(mask, points, target)
     else:
-        mask = cv2.polylines(  # pylint: disable=no-member
+        cv2.polylines(  # pylint: disable=no-member
             mask, points, polyline.closed, target, thickness=thickness
         )
 

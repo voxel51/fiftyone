@@ -1,11 +1,4 @@
-import React, {
-  Suspense,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useContext, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
@@ -26,7 +19,6 @@ import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
 import { ExternalLink } from "../utils/generic";
 
 import Logo from "../images/logo.png";

@@ -101,6 +101,12 @@ const fn = (
       scale: dragging ? scale : 1,
       shadow: dragging ? 8 : 0,
       left: shown ? 0 : -3000,
+      height: shown
+        ? Array.from(el.children).reduce((height, child) => {
+            return height + child.getBoundingClientRect().height;
+          }, 0)
+        : 0,
+      overflow: "hidden",
     };
 
     if (active) {
@@ -458,11 +464,13 @@ const InteractiveSidebar = ({
         el: null,
         controller: new Controller({
           cursor: "pointer",
-          top: 0,
+          top: -3000,
           left: 0,
           zIndex: 0,
           scale: 1,
           shadow: 0,
+          height: 0,
+          overflow: "hidden",
           config: {
             ...config.stiff,
             bounce: 0,
@@ -541,6 +549,7 @@ const InteractiveSidebar = ({
     containerController.set({ maxHeight: minHeight });
     for (const key of order.current) {
       const item = items.current[key];
+
       if (item.active) {
         item.controller.start(placements[key]);
       } else {
@@ -702,16 +711,6 @@ const InteractiveSidebar = ({
               <animated.div
                 data-key={key}
                 onMouseDown={disabled ? null : trigger}
-                ref={(node) => {
-                  if (!items.current[key]) {
-                    return;
-                  }
-
-                  items.current[key].el &&
-                    observer.unobserve(items.current[key].el);
-                  node && observer.observe(node);
-                  items.current[key].el = node;
-                }}
                 key={key}
                 style={{
                   ...springs,
@@ -721,7 +720,20 @@ const InteractiveSidebar = ({
                   cursor: disabled ? "unset" : cursor,
                 }}
               >
-                {children}
+                <div
+                  ref={(node) => {
+                    if (!items.current[key]) {
+                      return;
+                    }
+
+                    items.current[key].el &&
+                      observer.unobserve(items.current[key].el);
+                    node && observer.observe(node);
+                    items.current[key].el = node;
+                  }}
+                >
+                  {children}
+                </div>
               </animated.div>
             );
           })}

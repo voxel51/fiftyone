@@ -5,8 +5,6 @@ FiftyOne Server filtering.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import tornado
-
 import fiftyone.core.state as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
@@ -18,16 +16,15 @@ import fiftyone.server.view as fosv
 
 class PinHandler(AsyncRequestHandler):
     @catch_errors
-    async def post_response(self):
-        data = tornado.escape.json_decode(self.request.body)
-
-        filters = data.get("filters", None)
+    async def post_response(self, data):
+        filters = data.get("filters", {})
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         add_stages = data.get("add_stages", None)
+        similarity = data.get("similarity", None)
 
-        view = fosv.get_view(dataset, stages, filters)
+        view = fosv.get_view(dataset, stages, filters, similarity=similarity)
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 

@@ -593,12 +593,51 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frame_fields(field_names, view=self)
 
     def clear(self):
-        """Removes all samples in the view from the underlying dataset."""
+        """Deletes all samples in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
         self._dataset._clear(view=self)
 
     def clear_frames(self):
-        """Removes all frame labels from the samples in the view."""
+        """Deletes all frame labels from the samples in the view from the
+        underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
         self._dataset._clear_frames(view=self)
+
+    def keep(self):
+        """Deletes all samples that are **not** in the view from the underlying
+        dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._dataset._keep(view=self)
+
+    def keep_frames(self):
+        """For each sample in the view, deletes all frames labels that are
+        **not** in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._dataset._keep_frames(view=self)
 
     def ensure_frames(self):
         """Ensures that the video view contains frame instances for every frame
@@ -606,24 +645,37 @@ class DatasetView(foc.SampleCollection):
 
         Empty frames will be inserted for missing frames, and already existing
         frames are left unchanged.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
         self._dataset._ensure_frames(view=self)
 
     def save(self, fields=None):
-        """Overwrites the underlying dataset with the contents of the view.
+        """Saves the contents of the view to the database.
+
+        This method **does not** delete samples or frames from the underlying
+        dataset that this view excludes.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
-            This will permanently delete any omitted, filtered, or otherwise
-            modified contents of the dataset.
+            If a view has excluded fields or filtered list values, this method
+            will permanently delete this data from the dataset, unless
+            ``fields`` is used to omit such fields from the save.
 
         Args:
             fields (None): an optional field or list of fields to save. If
-                specified, only these fields are overwritten
+                specified, only these field's contents are modified
         """
-        if etau.is_str(fields):
-            fields = [fields]
-
         self._dataset._save(view=self, fields=fields)
 
     def clone(self, name=None):
@@ -631,10 +683,10 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`get_default_dataset_name` is used
+                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
 
         Returns:
-            the new :class:`Dataset`
+            the new :class:`fiftyone.core.dataset.Dataset`
         """
         return self._dataset._clone(name=name, view=self)
 
@@ -787,30 +839,9 @@ class DatasetView(foc.SampleCollection):
             view = stage.load_view(self)
         else:
             view = copy(self)
-
-            if not self._add_sort_stage(stage, view._stages):
-                view._stages.append(stage)
+            view._stages.append(stage)
 
         return view
-
-    @staticmethod
-    def _add_sort_stage(new_stage, stages):
-        if not type(new_stage) == fost.SortBySimilarity:
-            return False
-
-        sort_views = [
-            i for i, x in enumerate(stages) if type(x) == fost.SortBySimilarity
-        ]
-
-        if len(sort_views) > 0:
-            sort_views.reverse()
-            last_sort_view = sort_views[0]
-
-            if stages[last_sort_view].k == new_stage.k:
-                stages[last_sort_view] = new_stage
-                return True
-
-        return False
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

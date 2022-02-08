@@ -2,7 +2,7 @@
 -r docs.txt
 -r extras.txt
 
-ipython==7.8.0
+ipython==7.16.3
 pre-commit==2.0.1
 pylint==2.3.1
 pytest==5.4.3

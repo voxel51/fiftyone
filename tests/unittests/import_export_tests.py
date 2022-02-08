@@ -1187,6 +1187,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
         self.assertEqual(len(dataset), len(dataset.exists("yolo_inclusive")))
 
+    @skipwindows
     @drop_datasets
     def test_add_coco_labels(self):
         dataset = self._make_dataset()
