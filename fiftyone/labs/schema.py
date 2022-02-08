@@ -9,6 +9,6 @@ import strawberry as gql
 
 from .extensions import EndSession
 from .mutations import Mutation
-from .types import Query
+from .queries import Query
 
 schema = gql.Schema(query=Query, mutation=Mutation, extensions=[EndSession])

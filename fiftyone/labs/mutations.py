@@ -12,7 +12,7 @@ import strawberry as gql
 
 from .context import Info
 from .permissions import IsAuthenticated
-from .types import User
+from .queries import User
 
 
 @gql.input
@@ -28,7 +28,7 @@ class Mutation:
     @gql.mutation(permission_classes=[IsAuthenticated])
     async def login(self, user: UserInput, info: Info) -> User:
         db = info.context.db
-        users: motor.MotorCollection = db["users"]
+        users: motor.MotorCollection = db.users
         updated_user = await users.find_one_and_update(
             {"sub": user.sub},
             {
