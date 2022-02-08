@@ -1,4 +1,10 @@
-from distutils.command.config import config
+"""
+FiftyOne Teams pagination.
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from bson import ObjectId
 from dacite import Config, from_dict
 import motor as mtr
@@ -12,7 +18,7 @@ from fiftyone.labs.context import Info
 from fiftyone.labs.mixins import HasPagination
 
 
-GenericType = t.TypeVar("GenericType", bound=HasPagination, covariant=True)
+GenericType = t.TypeVar("GenericType", bound=HasPagination)
 
 
 @strawberry.type

@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext } from "react";
 import {
   AiOutlineDatabase,
   AiOutlineHome,
@@ -62,7 +62,7 @@ const NavEntry: React.FC<NavEntryProps> = ({ name, to, icon, active }) => {
 const Nav: React.FC = () => {
   const context = useContext(RoutingContext);
   const active = navEntryPaths
-    .filter((path) => context.get().pathname.startsWith(path))
+    .filter((path) => context?.get().pathname.startsWith(path))
     .reduce((nearest, current) => {
       return current.length > nearest.length ? current : nearest;
     }, "/");
