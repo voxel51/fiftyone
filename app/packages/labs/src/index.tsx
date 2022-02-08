@@ -6,10 +6,11 @@ import { RelayEnvironmentProvider } from "react-relay/hooks";
 import { RecoilRoot } from "recoil";
 import { ThemeProvider as LegacyThemeContext } from "styled-components";
 
-import Loading from "@fiftyone/app/src/components/Loading";
 import Error from "@fiftyone/app/src/containers/Error";
 
 import "./index.css";
+
+import Loading from "./Components/Loading";
 
 import { getRelayEnvironment } from "./RelayEnvironment";
 import Login from "./Login";
@@ -28,16 +29,11 @@ const Environment = () => {
   }, [auth0.isAuthenticated, auth0.isLoading, auth0.error]);
 
   if (auth0.error || (!auth0.isAuthenticated && !auth0.isLoading)) {
-    return (
-      <Loading
-        text={"Unauthorized"}
-        onClick={() => auth0.logout({ federated: true })}
-      />
-    );
+    return <Loading>Unauthorized</Loading>;
   }
 
   if (auth0.isLoading) {
-    return <Loading text={"Pixelating..."} />;
+    return <Loading>Pixelating...</Loading>;
   }
 
   return (

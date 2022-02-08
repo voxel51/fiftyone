@@ -29,12 +29,12 @@ const routes: Route[] = [
       {
         path: "/",
         exact: true,
-        component: components("Home", () =>
-          import("../Root/Home").then((result) => result.default)
+        component: components("Datasets", () =>
+          import("../Root/Datasets").then((result) => result.default)
         ),
         prepare: (params) =>
           queries("HomeQuery", () =>
-            import("../Root/Home/__generated__/HomeQuery.graphql").then(
+            import("../Root/Datasets/__generated__/DatasetsQuery.graphql").then(
               (query) => {
                 return loadQuery(
                   RelayEnvironment,
@@ -45,6 +45,28 @@ const routes: Route[] = [
               }
             )
           ),
+      },
+      {
+        path: "/datasets/:name",
+        component: components("Dataset", () =>
+          import("../Root/Datasets/Dataset").then((result) => result.default)
+        ),
+        prepare: (params) => {
+          queries("DatasetQuery", () =>
+            import("../Root/Datasets/__generated__/DatasetQuery.graphql").then(
+              (query) => {
+                return loadQuery(
+                  RelayEnvironment,
+                  query.default,
+                  {
+                    name: params.name,
+                  },
+                  { fetchPolicy: "network-only" }
+                );
+              }
+            )
+          );
+        },
       },
     ],
   },

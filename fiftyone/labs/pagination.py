@@ -60,16 +60,22 @@ async def get_items(
     async for doc in collection.find(d, session=session).sort(
         "_id", DESCENDING
     ).limit(first + 1):
-        edges.append(Edge(node=from_db(doc), cursor=str(doc["_id"])))
+        _id = doc["_id"]
+        edges.append(Edge(node=from_db(doc), cursor=str(_id)))
+
+    has_next_page = False
+    if len(edges) > first:
+        edges = edges[:-1]
+        has_next_page = True
 
     return Connection(
         page_info=PageInfo(
             has_previous_page=False,
-            has_next_page=len(edges) > first,
+            has_next_page=has_next_page,
             start_cursor=edges[0].cursor if edges else None,
-            end_cursor=edges[-2].cursor if len(edges) > 1 else None,
+            end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
-        edges=edges[:-1],
+        edges=edges,
     )
 
 

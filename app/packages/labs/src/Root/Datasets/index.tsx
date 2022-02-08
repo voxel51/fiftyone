@@ -3,7 +3,9 @@ import { graphql, usePaginationFragment, usePreloadedQuery } from "react-relay";
 
 import { RouteComponent } from "../../routing";
 
-const HomeComponent = (props) => {
+const Dataset = () => {};
+
+const DatasetListingComponent = (props) => {
   const {
     data,
     loadNext,
@@ -15,7 +17,7 @@ const HomeComponent = (props) => {
     refetch,
   } = usePaginationFragment(
     graphql`
-      fragment HomeComponent_query on Query
+      fragment DatasetListingComponent_query on Query
         @refetchable(queryName: "DatasetsPaginationQuery") {
         datasets(first: $count, after: $cursor)
           @connection(key: "DatasetList_query_datasets") {
@@ -37,17 +39,17 @@ const HomeComponent = (props) => {
   );
 };
 
-const Home: RouteComponent = ({ prepared }) => {
+const DatasetsComponent: RouteComponent = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
-      query HomeQuery($count: Int = 10, $cursor: String) {
-        ...HomeComponent_query
+      query DatasetsQuery($count: Int = 10, $cursor: String) {
+        ...DatasetListingComponent_query
       }
     `,
     prepared
   );
 
-  return <HomeComponent user={data} />;
+  return <DatasetListingComponent user={data} />;
 };
 
-export default Home;
+export default DatasetsComponent;

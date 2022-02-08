@@ -1,8 +1,8 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { graphql } from "relay-runtime";
 
-import Loading from "@fiftyone/app/src/components/Loading";
+import Loading from "./Components/Loading";
 
 import routes from "./routing/routes";
 import RoutingContext, { createRouter } from "./routing/RoutingContext";
@@ -11,11 +11,12 @@ import useMutation from "./useMutation";
 
 const Router = () => {
   const [router] = useState(() => createRouter(routes));
-  const auth0 = useAuth0();
 
   return (
     <RoutingContext.Provider value={router.context}>
-      <RouterRenderer />
+      <Suspense fallback={<Loading>Pixelating</Loading>}>
+        <RouterRenderer />
+      </Suspense>
     </RoutingContext.Provider>
   );
 };
@@ -55,7 +56,7 @@ const Login = () => {
   }, [loggedIn, pending]);
 
   if (!loggedIn) {
-    return <Loading text={"Pixelating..."} />;
+    return <Loading>Pixelating...</Loading>;
   }
 
   return <Router />;

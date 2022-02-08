@@ -62,7 +62,7 @@ class GraphQL(gqla.GraphQL):
         authenticated = await authenticate_header(token, _jwks)
         db_client = mtr.MotorClient(fo.config.database_uri)
         db = db_client[foc.DEFAULT_DATABASE]
-        session = await db_client.start_session(snapshot=True)
+        session = await db_client.start_session()
         sub = jwt.get_unverified_claims(token)["sub"]
 
         return Context(

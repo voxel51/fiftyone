@@ -8,6 +8,7 @@ body,
   padding: 0;
   font-family: "Palanquin", sans-serif;
   font-size: 16px;
+  background-image: url(https://voxel51.com/images/header_dark_fancy3.svg);
 
   color: var(--font);
 }

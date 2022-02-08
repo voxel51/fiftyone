@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
 import { OperationType } from "relay-runtime";
+
 import Resource from "./Resource";
 import { RouteComponent } from "./RouteComponent";
 import RoutingContext from "./RoutingContext";
-
-const { useContext, useEffect, Suspense, useState } = React;
 
 const RouteHandler: React.FC<{
   component: Resource<RouteComponent>;
@@ -61,7 +60,7 @@ const RouterRenderer: React.FC<{}> = () => {
     );
   }
 
-  return <Suspense fallback={null}>{routeComponent}</Suspense>;
+  return <>{routeComponent}</>;
 };
 
 export default RouterRenderer;
