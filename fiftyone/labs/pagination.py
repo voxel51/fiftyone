@@ -9,9 +9,10 @@ from bson import ObjectId
 from dacite import Config, from_dict
 import motor as mtr
 import motor.motor_tornado as mtrt
+from pymongo import DESCENDING
 import typing as t
 
-import strawberry
+import strawberry as gql
 from strawberry.arguments import UNSET
 
 from fiftyone.labs.context import Info
@@ -21,13 +22,13 @@ from fiftyone.labs.mixins import HasPagination
 GenericType = t.TypeVar("GenericType", bound=HasPagination)
 
 
-@strawberry.type
+@gql.type
 class Connection(t.Generic[GenericType]):
     page_info: "PageInfo"
     edges: list["Edge[GenericType]"]
 
 
-@strawberry.type
+@gql.type
 class PageInfo:
     has_next_page: bool
     has_previous_page: bool
@@ -35,7 +36,7 @@ class PageInfo:
     end_cursor: t.Optional[str]
 
 
-@strawberry.type
+@gql.type
 class Edge(t.Generic[GenericType]):
     node: GenericType
     cursor: str
@@ -53,11 +54,11 @@ async def get_items(
 ) -> Connection[GenericType]:
     d = {}
     if after:
-        d = {"_id": {"$gt": ObjectId()}}
+        d = {"_id": {"$gt": ObjectId(after)}}
 
     edges = []
-    async for doc in collection.find(d).sort(
-        {"_id": 1}, session=session
+    async for doc in collection.find(d, session=session).sort(
+        "_id", DESCENDING
     ).limit(first + 1):
         edges.append(Edge(node=from_db(doc), cursor=str(doc["_id"])))
 
@@ -74,15 +75,21 @@ async def get_items(
 
 def get_pagination_resolver(
     cls: t.Type[GenericType],
-) -> t.Callable[[int, t.Optional[Cursor], Info], Connection[GenericType]]:
-    async def paginate(first: int, after: t.Optional[Cursor], info: Info):
+) -> t.Callable[
+    [t.Optional[int], t.Optional[Cursor], Info], Connection[GenericType]
+]:
+    async def paginate(
+        first: t.Optional[int] = 10,
+        after: t.Optional[Cursor] = None,
+        info: Info = None,
+    ):
         def from_db(doc: dict):
             doc["id"] = doc.pop("_id")
             return from_dict(cls, doc, config=Config(check_types=False))
 
-        return get_items(
-            info.db[cls.get_collection_name()],
-            info.session,
+        return await get_items(
+            info.context.db[cls.get_collection_name()],
+            info.context.session,
             from_db,
             first,
             after,

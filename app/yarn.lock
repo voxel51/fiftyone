@@ -2027,6 +2027,7 @@ __metadata:
     react-router-config: ^5.1.1
     recoil: ^0.6.1
     relay-compiler: ^13.0.2
+    relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
     relay-runtime: ^13.0.2
     typescript: 4.2.4
@@ -7594,6 +7595,21 @@ fsevents@~2.3.2:
   bin:
     regjsparser: bin/parser
   checksum: ad533fe6ce6d156efb2a144a61166747317598069530205f9d9e3414e2642ff63eb59dbd7d01fcbc0daf18115b510d6494fa49ce30491f76c323695f3a16f2db
+  languageName: node
+  linkType: hard
+
+"relay-compiler-language-typescript@npm:^15.0.1":
+  version: 15.0.1
+  resolution: "relay-compiler-language-typescript@npm:15.0.1"
+  dependencies:
+    invariant: ^2.2.4
+  peerDependencies:
+    "@types/react-relay": ">=11.0.2"
+    "@types/relay-runtime": ">=12.0.0"
+    relay-compiler: ">=12.0.0"
+    relay-runtime: ">=12.0.0"
+    typescript: ">=4.5.0"
+  checksum: eba0344454bfa2c4ecdc79715545c861711a27157a13237e196c7dfa1fd45a6c82dc70d92a14679b318ac1db33a9e0d787c997633f090ead20b6ff83425b0708
   languageName: node
   linkType: hard
 

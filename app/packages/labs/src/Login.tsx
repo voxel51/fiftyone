@@ -24,7 +24,7 @@ const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
     login(user: $user) {
       id
-      family_name
+      familyName
     }
   }
 `;

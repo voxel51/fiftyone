@@ -1,14 +1,50 @@
+type Dataset {
+  name: String!
+}
+
+type DatasetConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetEdge!]!
+}
+
+type DatasetEdge {
+  node: Dataset!
+  cursor: String!
+}
+
 type Mutation {
   login(user: UserInput!): User!
 }
 
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
 type Query {
-  users: [User!]!
+  users(first: Int = 10, after: String = null): UserConnection!
+  datasets(first: Int = 10, after: String = null): DatasetConnection!
   viewer: User!
 }
 
 type User {
   id: ID!
+  datasets(first: Int = 10, after: String = null): DatasetConnection!
+  email: String!
+  familyName: String!
+  givenName: String!
+}
+
+type UserConnection {
+  pageInfo: PageInfo!
+  edges: [UserEdge!]!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
 }
 
 input UserInput {

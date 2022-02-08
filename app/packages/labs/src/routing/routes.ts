@@ -34,14 +34,16 @@ const routes: Route[] = [
         ),
         prepare: (params) =>
           queries("HomeQuery", () =>
-            import("../Root/__generated__/RootQuery.graphql").then((query) => {
-              return loadQuery(
-                RelayEnvironment,
-                query.default,
-                {},
-                { fetchPolicy: "network-only" }
-              );
-            })
+            import("../Root/Home/__generated__/HomeQuery.graphql").then(
+              (query) => {
+                return loadQuery(
+                  RelayEnvironment,
+                  query.default,
+                  {},
+                  { fetchPolicy: "network-only" }
+                );
+              }
+            )
           ),
       },
     ],

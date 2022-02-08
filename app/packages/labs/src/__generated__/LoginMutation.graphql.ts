@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cc9638f11db95c64afa72200a117b051>>
+ * @generated SignedSource<<a6570360bd1796511f7f17e8c14c2544>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type LoginMutationVariables = LoginMutation$variables;
 export type LoginMutation$data = {
   readonly login: {
     readonly id: string;
+    readonly familyName: string;
   };
 };
 export type LoginMutationResponse = LoginMutation$data;
@@ -60,6 +61,13 @@ const node: ConcreteRequest = (function () {
             name: "id",
             storageKey: null,
           },
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
+            name: "familyName",
+            storageKey: null,
+          },
         ],
         storageKey: null,
       },
@@ -82,17 +90,17 @@ const node: ConcreteRequest = (function () {
       selections: v1 /*: any*/,
     },
     params: {
-      cacheID: "dc0bd4bb1f30ce2e98eec7c8b3d59474",
+      cacheID: "7c01549097494e70a5ac63730c3b9fa4",
       id: null,
       metadata: {},
       name: "LoginMutation",
       operationKind: "mutation",
       text:
-        "mutation LoginMutation(\n  $user: UserInput!\n) {\n  login(user: $user) {\n    id\n  }\n}\n",
+        "mutation LoginMutation(\n  $user: UserInput!\n) {\n  login(user: $user) {\n    id\n    familyName\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "bde54c8f8a7f48c881892d290cf95380";
+(node as any).hash = "692af5083699c56301066312c7858b01";
 
 export default node;

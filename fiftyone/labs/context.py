@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import typing as t
 
 import aiohttp as aio
+from jose import jwt
 import motor as mtr
 import starlette.requests as strq
 import starlette.responses as strp
@@ -32,6 +33,7 @@ class Context:
     jwks: JWKS
     session: mtr.motor_tornado.MotorClientSession
     token: str
+    sub: str
 
 
 Info = gqlt.Info[Context, None]
@@ -61,6 +63,7 @@ class GraphQL(gqla.GraphQL):
         db_client = mtr.MotorClient(fo.config.database_uri)
         db = db_client[foc.DEFAULT_DATABASE]
         session = await db_client.start_session(snapshot=True)
+        sub = jwt.get_unverified_claims(token)["sub"]
 
         return Context(
             authenticated=authenticated,
@@ -69,4 +72,5 @@ class GraphQL(gqla.GraphQL):
             jwks=_jwks,
             token=token,
             session=session,
+            sub=sub,
         )
