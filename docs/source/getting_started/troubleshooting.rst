@@ -209,9 +209,9 @@ installation by adding `--force-reinstall` to the commands below.
 
     .. code-block:: shell
 
-      # be sure you have libcurl3 installed
-      # apt install libcurl3
-      pip install fiftyone-db-ubuntu1604
+      # be sure you have libcurl4 installed
+      # apt install libcurl4
+      pip install fiftyone-db-ubuntu2004
 
   .. tab:: Debian 9
 
