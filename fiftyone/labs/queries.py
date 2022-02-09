@@ -11,14 +11,14 @@ from bson import ObjectId
 from dacite import Config, from_dict
 import motor
 import strawberry as gql
-from fiftyone.labs.authentication import has_scope
+from fiftyone.labs.dataloader import get_dataloader_resolver
 
-from fiftyone.labs.pagination import Connection, get_pagination_resolver
+from fiftyone.labs.paginator import Connection, get_paginator_resolver
 
-from .context import Info
 from .interfaces import Stage
-from .mixins import HasPagination
-from .pagination import Connection
+from .mixins import HasCollection
+from .paginator import Connection
+from .utils import Info
 
 
 ID = gql.scalar(
@@ -29,7 +29,7 @@ ID = gql.scalar(
 
 
 @gql.type
-class Dataset(HasPagination):
+class Dataset(HasCollection):
     name: str
 
     @staticmethod
@@ -55,10 +55,10 @@ class Session:
 
 
 @gql.type
-class User(HasPagination):
+class User(HasCollection):
     id: gql.ID
     datasets: Connection[Dataset] = gql.field(
-        resolver=get_pagination_resolver(Dataset)
+        resolver=get_paginator_resolver(Dataset)
     )
     email: str
     family_name: str
@@ -71,9 +71,13 @@ class User(HasPagination):
 
 @gql.type
 class Query:
-    users: Connection[User] = gql.field(resolver=get_pagination_resolver(User))
+    users: Connection[User] = gql.field(resolver=get_paginator_resolver(User))
+
+    dataset: Dataset = gql.field(
+        resolver=get_dataloader_resolver(Dataset, "name")
+    )
     datasets: Connection[Dataset] = gql.field(
-        resolver=get_pagination_resolver(Dataset)
+        resolver=get_paginator_resolver(Dataset)
     )
 
     @gql.field

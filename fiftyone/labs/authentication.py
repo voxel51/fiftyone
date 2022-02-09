@@ -5,34 +5,16 @@ FiftyOne Teams authentication.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
-import typing as t
-
 import aiohttp as aio
 from dacite import from_dict
 from jose import jwt
+
+from .utils import JWKS
 
 
 AUTH0_DOMAIN = "dev-uqppzklh.us.auth0.com"
 API_AUDIENCE = "api.dev.fiftyone.ai"
 ALGORITHMS = ["RS256"]
-
-
-@dataclass
-class Key:
-    alg: str
-    kty: str
-    use: str
-    n: str
-    e: str
-    kid: str
-    x5t: str
-    x5c: t.List[str]
-
-
-@dataclass
-class JWKS:
-    keys: t.List[Key]
 
 
 def decode(token: str, rsa_key):

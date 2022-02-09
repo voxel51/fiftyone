@@ -1,5 +1,5 @@
 """
-FiftyOne Teams pagination.
+FiftyOne Teams paginator.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -15,17 +15,13 @@ import typing as t
 import strawberry as gql
 from strawberry.arguments import UNSET
 
-from fiftyone.labs.context import Info
-from fiftyone.labs.mixins import HasPagination
-
-
-GenericType = t.TypeVar("GenericType", bound=HasPagination)
+from .utils import Info, HasCollectionType
 
 
 @gql.type
-class Connection(t.Generic[GenericType]):
+class Connection(t.Generic[HasCollectionType]):
     page_info: "PageInfo"
-    edges: list["Edge[GenericType]"]
+    edges: list["Edge[HasCollectionType]"]
 
 
 @gql.type
@@ -37,8 +33,8 @@ class PageInfo:
 
 
 @gql.type
-class Edge(t.Generic[GenericType]):
-    node: GenericType
+class Edge(t.Generic[HasCollectionType]):
+    node: HasCollectionType
     cursor: str
 
 
@@ -48,10 +44,10 @@ Cursor = str
 async def get_items(
     collection: mtr.MotorCollection,
     session: mtrt.MotorClientSession,
-    from_db: t.Callable[[dict], GenericType],
+    from_db: t.Callable[[dict], HasCollectionType],
     first: int = 10,
     after: t.Optional[Cursor] = UNSET,
-) -> Connection[GenericType]:
+) -> Connection[HasCollectionType]:
     d = {}
     if after:
         d = {"_id": {"$gt": ObjectId(after)}}
@@ -79,10 +75,10 @@ async def get_items(
     )
 
 
-def get_pagination_resolver(
-    cls: t.Type[GenericType],
+def get_paginator_resolver(
+    cls: t.Type[HasCollectionType],
 ) -> t.Callable[
-    [t.Optional[int], t.Optional[Cursor], Info], Connection[GenericType]
+    [t.Optional[int], t.Optional[Cursor], Info], Connection[HasCollectionType]
 ]:
     async def paginate(
         first: t.Optional[int] = 10,

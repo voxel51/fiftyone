@@ -10,9 +10,9 @@ import motor
 from pymongo import ReturnDocument
 import strawberry as gql
 
-from .context import Info
 from .permissions import IsAuthenticated
 from .queries import User
+from .utils import Info
 
 
 @gql.input

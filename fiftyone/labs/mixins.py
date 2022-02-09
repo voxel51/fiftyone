@@ -11,9 +11,5 @@ class HasCollection(object):
     @staticmethod
     def get_collection_name():
         raise NotImplementedError(
-            "subclasses must implement 'get_collection_name"
+            "subclasses must implement 'get_collection_name()'"
         )
-
-
-class HasPagination(HasCollection):
-    pass

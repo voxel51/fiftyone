@@ -5,7 +5,6 @@ FiftyOne Teams context.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
 import typing as t
 
 import aiohttp as aio
@@ -14,29 +13,18 @@ import motor as mtr
 import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.asgi as gqla
-import strawberry.types as gqlt
+
 
 import fiftyone as fo
 import fiftyone.constants as foc
 
 from .authentication import JWKS, authenticate_header, get_jwks, get_token
+from .dataloader import dataloaders, get_dataloader
+from .utils import Context
+
 
 _jwks: JWKS = None
 _web: aio.ClientSession = None
-
-
-@dataclass
-class Context:
-    authenticated: bool
-    db: mtr.MotorDatabase
-    web: aio.ClientSession
-    jwks: JWKS
-    session: mtr.motor_tornado.MotorClientSession
-    token: str
-    sub: str
-
-
-Info = gqlt.Info[Context, None]
 
 
 async def on_startup():
@@ -65,6 +53,10 @@ class GraphQL(gqla.GraphQL):
         session = await db_client.start_session()
         sub = jwt.get_unverified_claims(token)["sub"]
 
+        loaders = {}
+        for cls, key in dataloaders.items():
+            loaders[cls] = get_dataloader(cls, key, db, session)
+
         return Context(
             authenticated=authenticated,
             db=db,
@@ -73,4 +65,5 @@ class GraphQL(gqla.GraphQL):
             token=token,
             session=session,
             sub=sub,
+            dataloaders=loaders,
         )
