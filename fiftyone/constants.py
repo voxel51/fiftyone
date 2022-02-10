@@ -77,7 +77,7 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
+MIN_MONGODB_VERSION = Version("4.4")
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")

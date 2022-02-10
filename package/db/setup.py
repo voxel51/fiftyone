@@ -23,23 +23,22 @@ except ImportError:
     from urllib2 import urlopen
 
 
-# arm64 is not available for ubuntu1604 and debian9
 MONGODB_DOWNLOAD_URLS = {
-    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-4.4.2.tgz",
+    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
     "linux-i686": None,
-    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
+    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.4.tgz",
     "mac-arm64": None,
-    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
+    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.4.tgz",
     "win-32": None,
-    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
+    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip",
     "debian9": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
     },
     "rhel7": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-4.4.2.tgz",
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
     },
-    "ubuntu1604": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
+    "ubuntu2004": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.4.tgz",
     },
 }
 
@@ -47,7 +46,7 @@ MONGODB_DOWNLOAD_URLS = {
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
-VERSION = "0.3"
+VERSION = "0.4.0"
 
 
 def get_version():
