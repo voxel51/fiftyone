@@ -7,7 +7,9 @@ const Dataset: RouteComponent = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
       query DatasetQuery($name: String!) {
-        dataset
+        dataset(name: $name) {
+          id
+        }
       }
     `,
     prepared

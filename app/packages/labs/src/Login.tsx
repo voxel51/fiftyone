@@ -4,20 +4,14 @@ import { graphql } from "relay-runtime";
 
 import Loading from "./Components/Loading";
 
-import routes from "./routing/routes";
-import RoutingContext, { createRouter } from "./routing/RoutingContext";
 import RouterRenderer from "./routing/RouteRenderer";
 import useMutation from "./useMutation";
 
 const Router = () => {
-  const [router] = useState(() => createRouter(routes));
-
   return (
-    <RoutingContext.Provider value={router.context}>
-      <Suspense fallback={<Loading>Pixelating</Loading>}>
-        <RouterRenderer />
-      </Suspense>
-    </RoutingContext.Provider>
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>
+      <RouterRenderer />
+    </Suspense>
   );
 };
 

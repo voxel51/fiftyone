@@ -30,11 +30,19 @@ ID = gql.scalar(
 
 @gql.type
 class Dataset(HasCollection):
+    id: gql.ID
     name: str
 
     @staticmethod
     def get_collection_name():
         return "datasets"
+
+
+dataset_dataloader = get_dataloader_resolver(Dataset, "name")
+
+
+async def dataset_resolver(name: str, info: Info) -> Dataset:
+    return await dataset_dataloader(name, info)
 
 
 @gql.type
@@ -73,9 +81,7 @@ class User(HasCollection):
 class Query:
     users: Connection[User] = gql.field(resolver=get_paginator_resolver(User))
 
-    dataset: Dataset = gql.field(
-        resolver=get_dataloader_resolver(Dataset, "name")
-    )
+    dataset: Dataset = gql.field(resolver=dataset_resolver)
     datasets: Connection[Dataset] = gql.field(
         resolver=get_paginator_resolver(Dataset)
     )

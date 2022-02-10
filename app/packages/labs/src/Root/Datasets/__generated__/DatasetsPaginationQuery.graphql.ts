@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<157eb1b796de3fe599c8d412a0a5f553>>
+ * @generated SignedSource<<1f2a74fb6894cf65c059e01f0412ab46>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,7 @@ export type DatasetsPaginationQuery$variables = {
 };
 export type DatasetsPaginationQueryVariables = DatasetsPaginationQuery$variables;
 export type DatasetsPaginationQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"HomeComponent_query">;
+  readonly " $fragmentSpreads": FragmentRefs<"DatasetsListingComponent_query">;
 };
 export type DatasetsPaginationQueryResponse = DatasetsPaginationQuery$data;
 export type DatasetsPaginationQuery = {
@@ -59,7 +59,7 @@ const node: ConcreteRequest = (function () {
         {
           args: null,
           kind: "FragmentSpread",
-          name: "HomeComponent_query",
+          name: "DatasetsListingComponent_query",
         },
       ],
       type: "Query",
@@ -90,11 +90,25 @@ const node: ConcreteRequest = (function () {
                 {
                   alias: null,
                   args: null,
+                  kind: "ScalarField",
+                  name: "cursor",
+                  storageKey: null,
+                },
+                {
+                  alias: null,
+                  args: null,
                   concreteType: "Dataset",
                   kind: "LinkedField",
                   name: "node",
                   plural: false,
                   selections: [
+                    {
+                      alias: null,
+                      args: null,
+                      kind: "ScalarField",
+                      name: "id",
+                      storageKey: null,
+                    },
                     {
                       alias: null,
                       args: null,
@@ -110,13 +124,6 @@ const node: ConcreteRequest = (function () {
                       storageKey: null,
                     },
                   ],
-                  storageKey: null,
-                },
-                {
-                  alias: null,
-                  args: null,
-                  kind: "ScalarField",
-                  name: "cursor",
                   storageKey: null,
                 },
               ],
@@ -155,24 +162,24 @@ const node: ConcreteRequest = (function () {
           args: v1 /*: any*/,
           filters: null,
           handle: "connection",
-          key: "DatasetList_query_datasets",
+          key: "DatasetsList_query_datasets",
           kind: "LinkedHandle",
           name: "datasets",
         },
       ],
     },
     params: {
-      cacheID: "c22032c5c99a0135ff93f1a57cb8caf8",
+      cacheID: "6a4140c4ab426dd0c28604ae16b39bd1",
       id: null,
       metadata: {},
       name: "DatasetsPaginationQuery",
       operationKind: "query",
       text:
-        "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n) {\n  ...HomeComponent_query\n}\n\nfragment HomeComponent_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      node {\n        name\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+        "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n) {\n  ...DatasetsListingComponent_query\n}\n\nfragment DatasetsListingCard_dataset on Dataset {\n  id\n  name\n}\n\nfragment DatasetsListingComponent_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        ...DatasetsListingCard_dataset\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "6b66187e50519470cc3da0585958b320";
+(node as any).hash = "f67aef8101e1e2ec9cdcfaefe194dda1";
 
 export default node;

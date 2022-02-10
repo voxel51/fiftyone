@@ -1,16 +1,13 @@
-import React, { useContext } from "react";
-import {
-  AiOutlineDatabase,
-  AiOutlineHome,
-  AiOutlineUser,
-} from "react-icons/ai";
+import React from "react";
+import { AiOutlineHome, AiOutlineUser } from "react-icons/ai";
 import { usePreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
 import Logo from "../images/logo.png";
 import { RouteComponent } from "../routing";
 import Link from "../routing/Link";
-import RoutingContext from "../routing/RoutingContext";
+import { routingContext } from "../routing/RoutingContext";
 
 import {
   container,
@@ -19,6 +16,7 @@ import {
   heading,
   nav,
 } from "./index.module.css";
+import { RootQuery } from "./__generated__/RootQuery.graphql";
 
 interface Entry {
   to: string;
@@ -31,11 +29,6 @@ const navEntries: Entry[] = [
     to: "/",
     name: "Home",
     icon: <AiOutlineHome />,
-  },
-  {
-    to: "/datasets",
-    name: "Datasets",
-    icon: <AiOutlineDatabase />,
   },
   {
     to: "/users",
@@ -60,7 +53,7 @@ const NavEntry: React.FC<NavEntryProps> = ({ name, to, icon, active }) => {
 };
 
 const Nav: React.FC = () => {
-  const context = useContext(RoutingContext);
+  const context = useRecoilValue(routingContext);
   const active = navEntryPaths
     .filter((path) => context?.get().pathname.startsWith(path))
     .reduce((nearest, current) => {
@@ -84,8 +77,10 @@ const Nav: React.FC = () => {
   );
 };
 
-const Root: RouteComponent = ({ children, prepared }) => {
-  const data = usePreloadedQuery(
+const Root: RouteComponent<RootQuery> = ({ children, prepared }) => {
+  const {
+    viewer: { id },
+  } = usePreloadedQuery(
     graphql`
       query RootQuery {
         viewer {

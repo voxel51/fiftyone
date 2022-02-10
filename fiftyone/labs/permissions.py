@@ -9,7 +9,7 @@ import typing as t
 
 import strawberry.permission as gqlp
 
-from .context import Info
+from .utils import Info
 
 
 class IsAuthenticated(gqlp.BasePermission):

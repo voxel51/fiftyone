@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6879697853ba486089d98953d6e39509>>
+ * @generated SignedSource<<640bb3fb9263d4596c7d928883b7b77c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,20 +10,23 @@
 
 import { ReaderFragment, RefetchableFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
-export type HomeComponent_query$data = {
+export type DatasetsListingComponent_query$data = {
   readonly datasets: {
     readonly edges: ReadonlyArray<{
+      readonly cursor: string;
       readonly node: {
-        readonly name: string;
+        readonly " $fragmentSpreads": FragmentRefs<
+          "DatasetsListingCard_dataset"
+        >;
       };
     }>;
   };
-  readonly " $fragmentType": "HomeComponent_query";
+  readonly " $fragmentType": "DatasetsListingComponent_query";
 };
-export type HomeComponent_query = HomeComponent_query$data;
-export type HomeComponent_query$key = {
-  readonly " $data"?: HomeComponent_query$data;
-  readonly " $fragmentSpreads": FragmentRefs<"HomeComponent_query">;
+export type DatasetsListingComponent_query = DatasetsListingComponent_query$data;
+export type DatasetsListingComponent_query$key = {
+  readonly " $data"?: DatasetsListingComponent_query$data;
+  readonly " $fragmentSpreads": FragmentRefs<"DatasetsListingComponent_query">;
 };
 
 import DatasetsPaginationQuery_graphql from "./DatasetsPaginationQuery.graphql";
@@ -63,14 +66,14 @@ const node: ReaderFragment = (function () {
         operation: DatasetsPaginationQuery_graphql,
       },
     },
-    name: "HomeComponent_query",
+    name: "DatasetsListingComponent_query",
     selections: [
       {
         alias: "datasets",
         args: null,
         concreteType: "DatasetConnection",
         kind: "LinkedField",
-        name: "__DatasetList_query_datasets_connection",
+        name: "__DatasetsList_query_datasets_connection",
         plural: false,
         selections: [
           {
@@ -84,17 +87,22 @@ const node: ReaderFragment = (function () {
               {
                 alias: null,
                 args: null,
+                kind: "ScalarField",
+                name: "cursor",
+                storageKey: null,
+              },
+              {
+                alias: null,
+                args: null,
                 concreteType: "Dataset",
                 kind: "LinkedField",
                 name: "node",
                 plural: false,
                 selections: [
                   {
-                    alias: null,
                     args: null,
-                    kind: "ScalarField",
-                    name: "name",
-                    storageKey: null,
+                    kind: "FragmentSpread",
+                    name: "DatasetsListingCard_dataset",
                   },
                   {
                     alias: null,
@@ -104,13 +112,6 @@ const node: ReaderFragment = (function () {
                     storageKey: null,
                   },
                 ],
-                storageKey: null,
-              },
-              {
-                alias: null,
-                args: null,
-                kind: "ScalarField",
-                name: "cursor",
                 storageKey: null,
               },
             ],
@@ -150,6 +151,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "6b66187e50519470cc3da0585958b320";
+(node as any).hash = "f67aef8101e1e2ec9cdcfaefe194dda1";
 
 export default node;

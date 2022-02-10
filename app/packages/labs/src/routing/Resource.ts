@@ -1,7 +1,7 @@
 class Resource<T> {
-  private error: Error = null;
-  private promise: Promise<T> = null;
-  private result: T = null;
+  private error: Error | null = null;
+  private promise: Promise<T> | null = null;
+  private result: T | null = null;
 
   constructor(private readonly loader: () => Promise<T>) {}
 

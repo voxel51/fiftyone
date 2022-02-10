@@ -1,4 +1,5 @@
 type Dataset {
+  id: ID!
   name: String!
 }
 
@@ -25,6 +26,7 @@ type PageInfo {
 
 type Query {
   users(first: Int = 10, after: String = null): UserConnection!
+  dataset(name: String!): Dataset!
   datasets(first: Int = 10, after: String = null): DatasetConnection!
   viewer: User!
 }

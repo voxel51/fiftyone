@@ -51,7 +51,7 @@ const routes: Route[] = [
         component: components("Dataset", () =>
           import("../Root/Datasets/Dataset").then((result) => result.default)
         ),
-        prepare: (params) => {
+        prepare: (params) =>
           queries("DatasetQuery", () =>
             import("../Root/Datasets/__generated__/DatasetQuery.graphql").then(
               (query) => {
@@ -65,8 +65,7 @@ const routes: Route[] = [
                 );
               }
             )
-          );
-        },
+          ),
       },
     ],
   },

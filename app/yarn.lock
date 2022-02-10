@@ -2016,6 +2016,7 @@ __metadata:
     "@types/react-router-config": ^5.0.6
     "@types/relay-compiler": ^8.0.2
     "@types/relay-runtime": ^13.0.1
+    "@types/styled-components": ^5.1.22
     history: ^4.10.1
     re-resizable: ^6.9.1
     react: ^17.0.2
@@ -2030,6 +2031,7 @@ __metadata:
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
     relay-runtime: ^13.0.2
+    styled-components: ^5.3.3
     typescript: 4.2.4
     vite: 2.4.2
     vite-plugin-relay: ^1.0.7
@@ -2518,6 +2520,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/hoist-non-react-statics@npm:*":
+  version: 3.3.1
+  resolution: "@types/hoist-non-react-statics@npm:3.3.1"
+  dependencies:
+    "@types/react": "*"
+    hoist-non-react-statics: ^3.3.0
+  checksum: 16ab4c45d4920fa378c8be76554b10061247fc04d2c8af11bdb7d520b3967e9c06d7ad5efd9b0f1657fbc4d095f62c6e1325f03b9141eb1ef2c8095b96fd42f8
+  languageName: node
+  linkType: hard
+
 "@types/js-cookie@npm:^2.2.6":
   version: 2.2.7
   resolution: "@types/js-cookie@npm:2.2.7"
@@ -2717,6 +2729,17 @@ __metadata:
   version: 0.16.2
   resolution: "@types/scheduler@npm:0.16.2"
   checksum: e78d1bb50ca9321a76826c0f5a5ed7f1b6e995597127993cad658bd18d7f7de4324cd7efdfd0140079ee212a05774bbbd95eecfdf72370d14023acb99b841a30
+  languageName: node
+  linkType: hard
+
+"@types/styled-components@npm:^5.1.22":
+  version: 5.1.22
+  resolution: "@types/styled-components@npm:5.1.22"
+  dependencies:
+    "@types/hoist-non-react-statics": "*"
+    "@types/react": "*"
+    csstype: ^3.0.2
+  checksum: 0da07f27dfab5534bee04a2625045ae55f2444f410b02b342dfa2cf00546f36c551cadcb09a74b38fa0dc7f769a541408dc73c84826d3da93f0e07b99de869fc
   languageName: node
   linkType: hard
 
@@ -5178,7 +5201,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.2":
+"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.0, hoist-non-react-statics@npm:^3.3.2":
   version: 3.3.2
   resolution: "hoist-non-react-statics@npm:3.3.2"
   dependencies:
@@ -8350,6 +8373,28 @@ resolve@^1.12.0:
     react-dom: ">= 16.8.0"
     react-is: ">= 16.8.0"
   checksum: 1f94f92b5dab0b0a965646079604c184e9ef31fd0546881408039a5b4d9a4ebe73b6bb62b05912f06b68392352f1fed4c2dd66a74888b2446226aa0105b681c9
+  languageName: node
+  linkType: hard
+
+"styled-components@npm:^5.3.3":
+  version: 5.3.3
+  resolution: "styled-components@npm:5.3.3"
+  dependencies:
+    "@babel/helper-module-imports": ^7.0.0
+    "@babel/traverse": ^7.4.5
+    "@emotion/is-prop-valid": ^0.8.8
+    "@emotion/stylis": ^0.8.4
+    "@emotion/unitless": ^0.7.4
+    babel-plugin-styled-components: ">= 1.12.0"
+    css-to-react-native: ^3.0.0
+    hoist-non-react-statics: ^3.0.0
+    shallowequal: ^1.1.0
+    supports-color: ^5.5.0
+  peerDependencies:
+    react: ">= 16.8.0"
+    react-dom: ">= 16.8.0"
+    react-is: ">= 16.8.0"
+  checksum: c0879b91e0994db108b2b775b778d87b81527febc28946819c0e97c57f5aa524f82c9b4da905f8787ecae08f30a3eadecb75a54b3c4ec28718438b660b46853e
   languageName: node
   linkType: hard
 

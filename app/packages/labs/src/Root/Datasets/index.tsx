@@ -1,55 +1,89 @@
-import React from "react";
-import { graphql, usePaginationFragment, usePreloadedQuery } from "react-relay";
+import React, { useCallback } from "react";
+import {
+  graphql,
+  useFragment,
+  usePaginationFragment,
+  usePreloadedQuery,
+} from "react-relay";
 
 import { RouteComponent } from "../../routing";
+import { DatasetsListingCard_dataset$key } from "./__generated__/DatasetsListingCard_dataset.graphql";
+import { DatasetsListingComponent_query$key } from "./__generated__/DatasetsListingComponent_query.graphql";
+import { DatasetsQuery } from "./__generated__/DatasetsQuery.graphql";
 
-const Dataset = () => {};
-
-const DatasetListingComponent = (props) => {
-  const {
-    data,
-    loadNext,
-    loadPrevious,
-    hasNext,
-    hasPrevious,
-    isLoadingNext,
-    isLoadingPrevious,
-    refetch,
-  } = usePaginationFragment(
+const DatasetCard: React.FC<{ dataset: DatasetsListingCard_dataset$key }> = (
+  props
+) => {
+  const { name, id } = useFragment(
     graphql`
-      fragment DatasetListingComponent_query on Query
+      fragment DatasetsListingCard_dataset on Dataset {
+        id
+        name
+      }
+    `,
+    props.dataset
+  );
+  return (
+    <div>
+      <span>{name}</span>
+      {id}
+    </div>
+  );
+};
+
+const DatasetListingComponent: React.FC<{
+  datasets: DatasetsListingComponent_query$key;
+}> = (props) => {
+  const { data, loadNext, hasNext, isLoadingNext } = usePaginationFragment(
+    graphql`
+      fragment DatasetsListingComponent_query on Query
         @refetchable(queryName: "DatasetsPaginationQuery") {
         datasets(first: $count, after: $cursor)
-          @connection(key: "DatasetList_query_datasets") {
+          @connection(key: "DatasetsList_query_datasets") {
           edges {
+            cursor
             node {
-              name
+              ...DatasetsListingCard_dataset
             }
           }
         }
       }
     `,
-    props.user
+    props.datasets
   );
 
+  const loadMore = useCallback(() => {
+    if (isLoadingNext) {
+      return;
+    }
+    loadNext(10);
+  }, [isLoadingNext, loadNext]);
+
   return (
-    <>
-      <div>homepage</div>
-    </>
+    <div className="issues">
+      {data.datasets.edges.map((edge) => {
+        if (edge == null || edge.node == null) {
+          return null;
+        }
+        return <DatasetCard dataset={edge.node} key={edge.cursor} />;
+      })}
+      {hasNext && <button onClick={loadMore}>Load More</button>}
+    </div>
   );
 };
 
-const DatasetsComponent: RouteComponent = ({ prepared }) => {
+const DatasetsComponent: RouteComponent<DatasetsQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
       query DatasetsQuery($count: Int = 10, $cursor: String) {
-        ...DatasetListingComponent_query
+        ...DatasetsListingComponent_query
       }
     `,
     prepared
   );
+  console.log("HELLO");
 
-  return <DatasetListingComponent user={data} />;
+  return <DatasetListingComponent datasets={data} />;
 };
 
 export default DatasetsComponent;

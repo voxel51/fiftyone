@@ -1,7 +1,7 @@
-import RoutingContext from "./RoutingContext";
-import React from "react";
+import React, { useCallback } from "react";
+import { useRecoilValue } from "recoil";
 
-const { useCallback, useContext } = React;
+import { routingContext } from "./RoutingContext";
 
 const Link: React.FC<{
   to: string;
@@ -9,7 +9,7 @@ const Link: React.FC<{
   className?: string;
   style?: React.CSSProperties;
 }> = (props) => {
-  const router = useContext(RoutingContext);
+  const router = useRecoilValue(routingContext);
 
   const changeRoute = useCallback(
     (event) => {

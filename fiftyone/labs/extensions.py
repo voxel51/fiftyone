@@ -7,7 +7,7 @@ FiftyOne Teams extensions.
 """
 from strawberry.extensions import Extension
 
-from .context import Context
+from .utils import Context
 
 
 class EndSession(Extension):

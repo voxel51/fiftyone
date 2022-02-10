@@ -1,5 +1,5 @@
-import { createBrowserHistory } from "history";
 import React from "react";
+import { createBrowserHistory } from "history";
 import { PreloadedQuery } from "react-relay";
 import { matchRoutes, RouteConfig } from "react-router-config";
 import { OperationType } from "relay-runtime";
@@ -7,6 +7,8 @@ import Resource from "./Resource";
 
 import Route from "./Route";
 import { RouteComponent } from "./RouteComponent";
+import { selector } from "recoil";
+import routes from "./routes";
 
 export interface Entry {
   pathname: string;
@@ -25,6 +27,16 @@ export interface RoutingContext {
   subscribe: (cb: (entry: Entry) => void) => () => void;
 }
 
+interface Match {
+  route: Route;
+  match: { params: unknown };
+}
+
+interface Router {
+  cleanup: () => void;
+  context: RoutingContext;
+}
+
 export const createRouter = (routes: Route[], options = {}) => {
   const history = createBrowserHistory(options);
 
@@ -39,7 +51,7 @@ export const createRouter = (routes: Route[], options = {}) => {
   let nextId = 0;
   const subscribers = new Map();
 
-  const cleanup = history.listen((location) => {
+  const cleanup = history.listen((location: typeof window.location) => {
     if (location.pathname === currentEntry.pathname) {
       return;
     }
@@ -59,12 +71,20 @@ export const createRouter = (routes: Route[], options = {}) => {
       return currentEntry;
     },
     preloadCode(pathname) {
-      const matches = matchRoutes(routes, pathname);
-      matches.forEach(({ route }) => route.component.load());
+      const matches = matchRoutes(
+        (routes as unknown) as RouteConfig[],
+        pathname
+      );
+      matches.forEach(({ route }) =>
+        ((route as unknown) as Route).component.load()
+      );
     },
     preload(pathname) {
-      const matches = matchRoutes(routes, pathname);
-      prepareMatches(matches);
+      const matches = matchRoutes(
+        (routes as unknown) as RouteConfig[],
+        pathname
+      );
+      prepareMatches((matches as unknown) as Match[]);
     },
     subscribe(cb) {
       const id = nextId++;
@@ -82,7 +102,7 @@ export const createRouter = (routes: Route[], options = {}) => {
 const matchRoute = (
   routes: Route[],
   pathname: string
-): { route: Route; match: { params?: unknown } }[] => {
+): { route: Route; match: { params: unknown } }[] => {
   const matchedRoutes = matchRoutes(
     (routes as unknown) as RouteConfig[],
     pathname
@@ -93,13 +113,11 @@ const matchRoute = (
   }
   return (matchedRoutes as unknown) as {
     route: Route;
-    match: { params?: unknown };
+    match: { params: unknown };
   }[];
 };
 
-const prepareMatches = (
-  matches: { route: Route; match: { params?: unknown } }[]
-) => {
+const prepareMatches = (matches: Match[]) => {
   return matches.map((match) => {
     const { route, match: matchData } = match;
     const prepared = route.prepare(matchData.params);
@@ -122,4 +140,14 @@ const prepareMatches = (
   });
 };
 
-export default React.createContext<RoutingContext | null>(null);
+export const router = selector<Router>({
+  key: "router",
+  get: () => createRouter(routes),
+});
+
+export const routingContext = selector<RoutingContext>({
+  key: "routingContext",
+  get: ({ get }) => {
+    return get(router).context;
+  },
+});

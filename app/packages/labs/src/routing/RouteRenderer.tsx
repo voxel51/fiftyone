@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 import { OperationType } from "relay-runtime";
 
 import Resource from "./Resource";
 import { RouteComponent } from "./RouteComponent";
-import RoutingContext from "./RoutingContext";
+import { routingContext } from "./RoutingContext";
 
 const RouteHandler: React.FC<{
   component: Resource<RouteComponent>;
@@ -22,8 +23,8 @@ const RouteHandler: React.FC<{
   );
 };
 
-const RouterRenderer: React.FC<{}> = () => {
-  const router = useContext(RoutingContext);
+const RouterRenderer: React.FC = () => {
+  const router = useRecoilValue(routingContext);
   const [routeEntry, setRouteEntry] = useState(router.get());
   useEffect(() => {
     const currentEntry = router.get();

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ec2882cbeff1393cba4f0c77f3d7d241>>
+ * @generated SignedSource<<cd0a4f3273062730b922852e63bc54ce>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,18 +10,18 @@
 
 import { ConcreteRequest, Query } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
-export type HomeQuery$variables = {
+export type DatasetsQuery$variables = {
   count?: number | null;
   cursor?: string | null;
 };
-export type HomeQueryVariables = HomeQuery$variables;
-export type HomeQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"HomeComponent_query">;
+export type DatasetsQueryVariables = DatasetsQuery$variables;
+export type DatasetsQuery$data = {
+  readonly " $fragmentSpreads": FragmentRefs<"DatasetsListingComponent_query">;
 };
-export type HomeQueryResponse = HomeQuery$data;
-export type HomeQuery = {
-  variables: HomeQueryVariables;
-  response: HomeQuery$data;
+export type DatasetsQueryResponse = DatasetsQuery$data;
+export type DatasetsQuery = {
+  variables: DatasetsQueryVariables;
+  response: DatasetsQuery$data;
 };
 
 const node: ConcreteRequest = (function () {
@@ -54,12 +54,12 @@ const node: ConcreteRequest = (function () {
       argumentDefinitions: v0 /*: any*/,
       kind: "Fragment",
       metadata: null,
-      name: "HomeQuery",
+      name: "DatasetsQuery",
       selections: [
         {
           args: null,
           kind: "FragmentSpread",
-          name: "HomeComponent_query",
+          name: "DatasetsListingComponent_query",
         },
       ],
       type: "Query",
@@ -69,7 +69,7 @@ const node: ConcreteRequest = (function () {
     operation: {
       argumentDefinitions: v0 /*: any*/,
       kind: "Operation",
-      name: "HomeQuery",
+      name: "DatasetsQuery",
       selections: [
         {
           alias: null,
@@ -90,11 +90,25 @@ const node: ConcreteRequest = (function () {
                 {
                   alias: null,
                   args: null,
+                  kind: "ScalarField",
+                  name: "cursor",
+                  storageKey: null,
+                },
+                {
+                  alias: null,
+                  args: null,
                   concreteType: "Dataset",
                   kind: "LinkedField",
                   name: "node",
                   plural: false,
                   selections: [
+                    {
+                      alias: null,
+                      args: null,
+                      kind: "ScalarField",
+                      name: "id",
+                      storageKey: null,
+                    },
                     {
                       alias: null,
                       args: null,
@@ -110,13 +124,6 @@ const node: ConcreteRequest = (function () {
                       storageKey: null,
                     },
                   ],
-                  storageKey: null,
-                },
-                {
-                  alias: null,
-                  args: null,
-                  kind: "ScalarField",
-                  name: "cursor",
                   storageKey: null,
                 },
               ],
@@ -155,24 +162,24 @@ const node: ConcreteRequest = (function () {
           args: v1 /*: any*/,
           filters: null,
           handle: "connection",
-          key: "DatasetList_query_datasets",
+          key: "DatasetsList_query_datasets",
           kind: "LinkedHandle",
           name: "datasets",
         },
       ],
     },
     params: {
-      cacheID: "c34097a8d00429d173f5edd9bafc5627",
+      cacheID: "13da52eb1aca12a937b3bc0543b03613",
       id: null,
       metadata: {},
-      name: "HomeQuery",
+      name: "DatasetsQuery",
       operationKind: "query",
       text:
-        "query HomeQuery(\n  $count: Int = 10\n  $cursor: String\n) {\n  ...HomeComponent_query\n}\n\nfragment HomeComponent_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      node {\n        name\n        __typename\n      }\n      cursor\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+        "query DatasetsQuery(\n  $count: Int = 10\n  $cursor: String\n) {\n  ...DatasetsListingComponent_query\n}\n\nfragment DatasetsListingCard_dataset on Dataset {\n  id\n  name\n}\n\nfragment DatasetsListingComponent_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        ...DatasetsListingCard_dataset\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "b3d54134adce1b91498ec4ea2cad9c71";
+(node as any).hash = "ea9a025fa952f9ae5b80a010f382c400";
 
 export default node;

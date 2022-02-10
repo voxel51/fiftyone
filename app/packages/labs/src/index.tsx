@@ -1,5 +1,5 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { ErrorBoundary } from "react-error-boundary";
 import { RelayEnvironmentProvider } from "react-relay/hooks";
@@ -18,6 +18,7 @@ import { ThemeContext, useTheme } from "./Theme";
 
 const Environment = () => {
   const auth0 = useAuth0();
+  const redirecting = useRef(false);
 
   useEffect(() => {
     if (!auth0.isAuthenticated && !auth0.isLoading && !auth0.error) {
@@ -25,10 +26,14 @@ const Environment = () => {
         redirectUri: window.location.href,
         prompt: "login",
       });
+      redirecting.current = true;
     }
   }, [auth0.isAuthenticated, auth0.isLoading, auth0.error]);
 
-  if (auth0.error || (!auth0.isAuthenticated && !auth0.isLoading)) {
+  if (
+    auth0.error ||
+    (!auth0.isAuthenticated && !auth0.isLoading && !redirecting.current)
+  ) {
     return <Loading>Unauthorized</Loading>;
   }
 

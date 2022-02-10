@@ -20,7 +20,8 @@
         "react-router": "^5.1.2",
         "react-router-config": "^5.1.1",
         "recoil": "^0.6.1",
-        "relay-runtime": "^13.0.2"
+        "relay-runtime": "^13.0.2",
+        "styled-components": "^5.3.3"
     },
     "devDependencies": {
         "@types/history": "^5.0.0",
@@ -31,6 +32,7 @@
         "@types/react-router-config": "^5.0.6",
         "@types/relay-compiler": "^8.0.2",
         "@types/relay-runtime": "^13.0.1",
+        "@types/styled-components": "^5.1.22",
         "react-icons": "^4.3.1",
         "relay-compiler": "^13.0.2",
         "relay-compiler-language-typescript": "^15.0.1",

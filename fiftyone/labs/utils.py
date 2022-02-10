@@ -16,7 +16,6 @@ from strawberry.dataloader import DataLoader
 from .mixins import HasCollection
 
 
-GenericID = t.TypeVar("GenericID")
 HasCollectionType = t.TypeVar("HasCollectionType", bound=HasCollection)
 
 
@@ -47,7 +46,7 @@ class Context:
     token: str
     sub: str
     dataloaders: t.Dict[
-        t.Type[HasCollectionType], DataLoader[HasCollectionType]
+        t.Type[HasCollectionType], DataLoader[str, HasCollectionType]
     ]
 
 
