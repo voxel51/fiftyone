@@ -189,6 +189,19 @@ both local and cloud paths. These methods are designed to be drop-in
 replacements for the common `os` and `eta` utilities that are prevalent in open
 source FiftyOne.
 
+#### Protecting local-only code
+
+If a public method only supports local paths, use the pattern below to raise an
+informative error message if a cloud path is provided:
+
+```py
+import fiftyone.core.storage as fos
+
+def f(local_path):
+    fos.ensure_local(local_path)
+    ...
+```
+
 #### Path operations
 
 Local-only:
