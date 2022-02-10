@@ -14,7 +14,7 @@ import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useStateUpdate, useTheme } from "../../utils/hooks";
+import { useUnprocessedStateUpdate, useTheme } from "../../utils/hooks";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -79,7 +79,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 };
 
 const useSortBySimilarity = () => {
-  const update = useStateUpdate();
+  const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
   return useRecoilCallback(
     ({ snapshot, set }) => async (

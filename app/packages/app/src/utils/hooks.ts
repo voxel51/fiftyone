@@ -10,6 +10,8 @@ import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
+import { toCamelCase } from "@fiftyone/utilities";
+
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
@@ -22,7 +24,6 @@ import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga";
 import { aggregationsTick } from "../recoil/aggregations";
 import { selectedSamples } from "../recoil/atoms";
-import { toCamelCase } from "@fiftyone/utilities";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
@@ -355,21 +356,29 @@ export const useSelect = () => {
   );
 };
 
+export const useUnprocessedStateUpdate = () => {
+  const update = useStateUpdate();
+  return async (
+    data: { state: State.Description },
+    callback?: (
+      set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+    ) => void
+  ) => update(data ? (toCamelCase(data) as State.Description) : {});
+};
+
 export const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
     ({ get, set }) => async (
-      { state: data },
+      { state }: { state: State.Description },
       callback?: (
         set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
       ) => void
     ) => {
-      if (!data) {
+      if (!state) {
         callback && callback(set);
         return;
       }
 
-      const state = toCamelCase(data) as State.Description;
-      state.view = data.view;
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
       const view = get(viewAtoms.view);
