@@ -230,6 +230,7 @@ def sample_videos(
     max_size=None,
     original_frame_numbers=True,
     force_sample=False,
+    save_filepaths=False,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -287,6 +288,8 @@ def sample_videos(
             the frames as 1, 2, ... (False)
         force_sample (False): whether to resample videos whose sampled frames
             already exist
+        save_filepaths (False): whether to save the sampled frame paths in a
+            ``filepath`` field of each frame of the input collection
         delete_originals (False): whether to delete the original videos after
             sampling
         skip_failures (False): whether to gracefully continue without raising
@@ -309,6 +312,7 @@ def sample_videos(
         original_frame_numbers=original_frame_numbers,
         frames_patt=frames_patt,
         force_reencode=force_sample,
+        save_filepaths=save_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -579,6 +583,7 @@ def _transform_videos(
     original_frame_numbers=True,
     reencode=False,
     force_reencode=False,
+    save_filepaths=False,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -607,7 +612,8 @@ def _transform_videos(
 
                 # If sampling was not forced and the first frame exists, assume
                 # that all frames exist
-                if not force_reencode and fos.isfile(outpath % 1):
+                fn = _frames[0] if _frames else 1
+                if not force_reencode and fos.isfile(outpath % fn):
                     continue
             elif reencode:
                 root, ext = os.path.splitext(inpath)
@@ -636,6 +642,29 @@ def _transform_videos(
                 verbose=verbose,
                 **kwargs
             )
+
+            if save_filepaths and sample_frames:
+                if _frames is None:
+                    try:
+                        if sample.metadata is None:
+                            sample.compute_metadata()
+
+                        _frames = range(
+                            1, sample.metadata.total_frame_count + 1
+                        )
+                    except Exception as e:
+                        if not skip_failures:
+                            raise
+
+                        _frames = []
+                        logger.warning(e)
+
+                for fn in _frames:
+                    frame_path = outpath % fn
+                    if os.path.isfile(frame_path):
+                        sample.frames[fn]["filepath"] = frame_path
+
+                sample.save()
 
             if outpath != inpath:
                 if not sample_frames:
