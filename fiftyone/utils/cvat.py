@@ -3438,7 +3438,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def base_api_url(self):
-        return "%s/api/v1" % self.base_url
+        if self._version == 1:
+            return "%s/api/v1" % self.base_url
+        else:
+            return "%s/api" % self.base_url
 
     @property
     def login_url(self):
@@ -3538,12 +3541,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
-        response = self._make_request(
-            self._session.post,
-            self.login_url,
-            print_error_info=False,
-            data={"username": username, "password": password},
-        )
+        self._version = 1
+
+        try:
+            response = self._make_request(
+                self._session.post,
+                self.login_url,
+                print_error_info=False,
+                data={"username": username, "password": password},
+            )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                self._version = 2
+                response = self._make_request(
+                    self._session.post,
+                    self.login_url,
+                    print_error_info=False,
+                    data={"username": username, "password": password},
+                )
+                logger.warning(
+                    "WARNING: Connecting to a CVAT v2 server which is "
+                    "currently unsupported. Unexpected behavior may occur."
+                )
+            else:
+                raise e
 
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
