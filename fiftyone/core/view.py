@@ -1,7 +1,7 @@
 """
 Dataset views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -77,11 +78,18 @@ class DatasetView(foc.SampleCollection):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
             return self._slice(id_filepath_slice)
+
+        if isinstance(id_filepath_slice, foe.ViewExpression):
+            return self.match(id_filepath_slice)
+
+        if etau.is_container(id_filepath_slice):
+            return self.select(id_filepath_slice)
 
         try:
             oid = ObjectId(id_filepath_slice)
@@ -585,12 +593,51 @@ class DatasetView(foc.SampleCollection):
         self._dataset._clear_frame_fields(field_names, view=self)
 
     def clear(self):
-        """Removes all samples in the view from the underlying dataset."""
+        """Deletes all samples in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
         self._dataset._clear(view=self)
 
     def clear_frames(self):
-        """Removes all frame labels from the samples in the view."""
+        """Deletes all frame labels from the samples in the view from the
+        underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
         self._dataset._clear_frames(view=self)
+
+    def keep(self):
+        """Deletes all samples that are **not** in the view from the underlying
+        dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._dataset._keep(view=self)
+
+    def keep_frames(self):
+        """For each sample in the view, deletes all frames labels that are
+        **not** in the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._dataset._keep_frames(view=self)
 
     def ensure_frames(self):
         """Ensures that the video view contains frame instances for every frame
@@ -598,24 +645,37 @@ class DatasetView(foc.SampleCollection):
 
         Empty frames will be inserted for missing frames, and already existing
         frames are left unchanged.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
         """
         self._dataset._ensure_frames(view=self)
 
     def save(self, fields=None):
-        """Overwrites the underlying dataset with the contents of the view.
+        """Saves the contents of the view to the database.
+
+        This method **does not** delete samples or frames from the underlying
+        dataset that this view excludes.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
-            This will permanently delete any omitted, filtered, or otherwise
-            modified contents of the dataset.
+            If a view has excluded fields or filtered list values, this method
+            will permanently delete this data from the dataset, unless
+            ``fields`` is used to omit such fields from the save.
 
         Args:
             fields (None): an optional field or list of fields to save. If
-                specified, only these fields are overwritten
+                specified, only these field's contents are modified
         """
-        if etau.is_str(fields):
-            fields = [fields]
-
         self._dataset._save(view=self, fields=fields)
 
     def clone(self, name=None):
@@ -623,10 +683,10 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`get_default_dataset_name` is used
+                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
 
         Returns:
-            the new :class:`Dataset`
+            the new :class:`fiftyone.core.dataset.Dataset`
         """
         return self._dataset._clone(name=name, view=self)
 
@@ -646,9 +706,9 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If

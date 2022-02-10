@@ -1,13 +1,14 @@
 """
 View stages.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import deepcopy
+import itertools
 import random
 import reprlib
 import uuid
@@ -317,7 +318,15 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+
+        if bools:
+            raise ValueError(
+                "Excluding samples via boolean indexing is not supported; use "
+                "select() instead"
+            )
+
+        self._sample_ids = sample_ids
 
     @property
     def sample_ids(self):
@@ -619,7 +628,7 @@ class ExcludeFrames(ViewStage):
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -4023,6 +4032,8 @@ class Select(ViewStage):
 
             -   a sample ID
             -   an iterable of sample IDs
+            -   an iterable of booleans of same length as the collection
+                encoding which samples to select
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
             -   an iterable of sample IDs
@@ -4035,7 +4046,9 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids, ordered=False):
-        self._sample_ids = _get_sample_ids(sample_ids)
+        sample_ids, bools = _parse_sample_ids(sample_ids)
+        self._sample_ids = sample_ids
+        self._bools = bools
         self._ordered = ordered
 
     @property
@@ -4049,6 +4062,11 @@ class Select(ViewStage):
         return self._ordered
 
     def to_mongo(self, _):
+        if self._bools:
+            raise ValueError(
+                "`validate()` must be called before using this stage"
+            )
+
         ids = [ObjectId(_id) for _id in self._sample_ids]
 
         if not self._ordered:
@@ -4079,6 +4097,13 @@ class Select(ViewStage):
                 "placeholder": "ordered (default=False)",
             },
         ]
+
+    def validate(self, sample_collection):
+        if self._bools:
+            ids = sample_collection.values("id")
+            selectors = self._sample_ids
+            self._sample_ids = list(itertools.compress(ids, selectors))
+            self._bools = False
 
 
 class SelectBy(ViewStage):
@@ -4406,7 +4431,7 @@ class SelectFrames(ViewStage):
     """
 
     def __init__(self, frame_ids, omit_empty=True):
-        self._frame_ids = _get_frame_ids(frame_ids)
+        self._frame_ids = _parse_frame_ids(frame_ids)
         self._omit_empty = omit_empty
 
     @property
@@ -5172,6 +5197,9 @@ class SortBySimilarity(ViewStage):
         k (None): the number of matches to return. By default, the entire
             collection is sorted
         reverse (False): whether to sort by least similarity
+        dist_field (None): the name of a float field in which to store the
+            distance of each example to the specified query. The field is
+            created if necessary
         brain_key (None): the brain key of an existing
             :meth:`fiftyone.brain.compute_similarity` run on the dataset. If
             not specified, the dataset must have an applicable run, which will
@@ -5179,7 +5207,13 @@ class SortBySimilarity(ViewStage):
     """
 
     def __init__(
-        self, query_ids, k=None, reverse=False, brain_key=None, _state=None
+        self,
+        query_ids,
+        k=None,
+        reverse=False,
+        dist_field=None,
+        brain_key=None,
+        _state=None,
     ):
         if etau.is_str(query_ids):
             query_ids = [query_ids]
@@ -5189,6 +5223,7 @@ class SortBySimilarity(ViewStage):
         self._query_ids = query_ids
         self._k = k
         self._reverse = reverse
+        self._dist_field = dist_field
         self._brain_key = brain_key
         self._state = _state
         self._pipeline = None
@@ -5207,6 +5242,11 @@ class SortBySimilarity(ViewStage):
     def reverse(self):
         """Whether to sort by least similiarity."""
         return self._reverse
+
+    @property
+    def dist_field(self):
+        """The field to store similarity distances, if any."""
+        return self._dist_field
 
     @property
     def brain_key(self):
@@ -5229,6 +5269,7 @@ class SortBySimilarity(ViewStage):
             ["query_ids", self._query_ids],
             ["k", self._k],
             ["reverse", self._reverse],
+            ["dist_field", self._dist_field],
             ["brain_key", self._brain_key],
             ["_state", self._state],
         ]
@@ -5254,6 +5295,12 @@ class SortBySimilarity(ViewStage):
                 "placeholder": "reverse (default=False)",
             },
             {
+                "name": "dist_field",
+                "type": "NoneType|field|str",
+                "default": "None",
+                "placeholder": "dist_field (default=None)",
+            },
+            {
                 "name": "brain_key",
                 "type": "NoneType|str",
                 "default": "None",
@@ -5269,6 +5316,7 @@ class SortBySimilarity(ViewStage):
             "query_ids": self._query_ids,
             "k": self._k,
             "reverse": self._reverse,
+            "dist_field": self._dist_field,
             "brain_key": self._brain_key,
         }
 
@@ -5300,7 +5348,11 @@ class SortBySimilarity(ViewStage):
                 context.enter_context(results)  # pylint: disable=no-member
 
             return results.sort_by_similarity(
-                self._query_ids, k=self._k, reverse=self._reverse, _mongo=True
+                self._query_ids,
+                k=self._k,
+                reverse=self._reverse,
+                dist_field=self._dist_field,
+                _mongo=True,
             )
 
 
@@ -5818,22 +5870,48 @@ class ToClips(ViewStage):
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
-    By default, samples will be generated for every frame of each video,
-    based on the total frame count of the video files, but this method is
-    highly customizable. Refer to
-    :meth:`fiftyone.core.video.make_frames_dataset` to see the available
-    configuration options.
+    The returned view will contain all frame-level fields and the ``tags`` of
+    each video as sample-level fields, as well as a ``sample_id`` field that
+    records the IDs of the parent sample for each frame.
+
+    By default, ``sample_frames`` is False and this method assumes that the
+    frames of the input collection have ``filepath`` fields populated pointing
+    to each frame image. Any frames without a ``filepath`` populated will be
+    omitted from the returned view.
+
+    When ``sample_frames`` is True, this method samples each video in the input
+    collection into a directory of per-frame images with the same basename as
+    the input video with frame numbers/format specified by ``frames_patt``, and
+    stores the resulting frame paths in a ``filepath`` field of the input
+    collection.
+
+    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+    following paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    By default, samples will be generated for every video frame at full
+    resolution, but this method provides a variety of parameters that can be
+    used to customize the sampling behavior.
 
     .. note::
 
-        Unless you have configured otherwise, creating frame views will
-        sample the necessary frames from the input video collection into
-        directories of per-frame images. **For large video datasets,
-        **this may take some time and require substantial disk space.**
-
-        Frames that have previously been sampled will not be resampled, so
-        creating frame views into the same dataset will become faster after the
-        frames have been sampled.
+        If this method is run multiple times with ``sample_frames`` set to
+        True, existing frames will not be resampled unless you set
+        ``force_sample`` to True.
 
     Examples::
 
@@ -5849,7 +5927,7 @@ class ToFrames(ViewStage):
         # Create a frames view for an entire video dataset
         #
 
-        stage = fo.ToFrames()
+        stage = fo.ToFrames(sample_frames=True)
         frames = dataset.add_stage(stage)
         print(frames)
 
@@ -5863,7 +5941,7 @@ class ToFrames(ViewStage):
         num_objects = F("detections.detections").length()
         view = dataset.match_frames(num_objects > 10)
 
-        stage = fo.ToFrames(max_fps=1, sparse=True)
+        stage = fo.ToFrames(max_fps=1)
         frames = view.add_stage(stage)
         print(frames)
 
@@ -5942,31 +6020,33 @@ class ToFrames(ViewStage):
         ]
 
 
-def _get_sample_ids(samples_or_ids):
+def _parse_sample_ids(samples_or_ids):
     from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+        return [samples_or_ids], False
 
     if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+        return [samples_or_ids.id], False
 
     if isinstance(samples_or_ids, SampleCollection):
-        return samples_or_ids.values("id")
+        return samples_or_ids.values("id"), False
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    samples_or_ids = list(samples_or_ids)
 
     if not samples_or_ids:
-        return []
+        return [], False
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
+        return [s.id for s in samples_or_ids], False
 
-    return list(samples_or_ids)
+    if isinstance(samples_or_ids[0], (bool, np.bool_)):
+        return samples_or_ids, True
+
+    return samples_or_ids, False
 
 
-def _get_frame_ids(frames_or_ids):
+def _parse_frame_ids(frames_or_ids):
     from fiftyone.core.collections import SampleCollection
 
     if etau.is_str(frames_or_ids):
@@ -5978,16 +6058,15 @@ def _get_frame_ids(frames_or_ids):
     if isinstance(frames_or_ids, SampleCollection):
         return frames_or_ids.values("frames.id", unwind=True)
 
-    if isinstance(frames_or_ids, np.ndarray):
-        return list(frames_or_ids)
+    frames_or_ids = list(frames_or_ids)
 
     if not frames_or_ids:
         return []
 
-    if isinstance(next(iter(frames_or_ids)), (fofr.Frame, fofr.FrameView)):
+    if isinstance(frames_or_ids[0], (fofr.Frame, fofr.FrameView)):
         return [s.id for s in frames_or_ids]
 
-    return list(frames_or_ids)
+    return frames_or_ids
 
 
 def _get_rng(seed):

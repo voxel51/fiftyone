@@ -17,9 +17,11 @@ jobs:
       matrix:
         platform:
           - linux-aarch64
+          - linux-i686
           - linux-x86_64
           - mac-arm64
           - mac-x86_64
+          - win-32
           - win-amd64
     steps:
       - name: Clone fiftyone

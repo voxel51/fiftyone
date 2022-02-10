@@ -34,11 +34,11 @@ on the cards below to see how!
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: Lightning Flash
-    :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
-    :link: lightning_flash.html
-    :image: ../_static/images/integrations/lightning_flash.png
-    :tags: Model-Training,Model-Evaluation
+    :header: COCO Dataset
+    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
+    :link: coco.html
+    :image: ../_static/images/integrations/coco.png
+    :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
     :header: Open Images Dataset
@@ -48,10 +48,10 @@ on the cards below to see how!
     :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
-    :header: COCO Dataset
-    :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
-    :link: coco.html
-    :image: ../_static/images/integrations/coco.png
+    :header: ActivityNet Dataset
+    :description: See how to use FiftyOne to download, visualize, and evaluate on the ActivityNet dataset with ease.
+    :link: activitynet.html
+    :image: ../_static/images/integrations/activitynet.png
     :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
@@ -61,21 +61,19 @@ on the cards below to see how!
     :image: ../_static/images/integrations/cvat.png
     :tags: Annotation
 
-.. Upcoming integrations :)
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
+    :link: labelbox.html
+    :image: ../_static/images/integrations/labelbox.jpeg
+    :tags: Annotation
 
-    .. customcarditem::
-        :header: Labelbox
-        :description: Use our Labelbox integration to easily annotate and edit your FiftyOne datasets.
-        :link: ../api/fiftyone.utils.labelbox.html
-        :image: https://voxel51.com/images/integrations/labelbox-128.png
-        :tags: Annotation
-
-    .. customcarditem::
-        :header: Scale AI
-        :description: Use our Scale integration to easily annotate and edit your FiftyOne datasets.
-        :link: ../api/fiftyone.utils.scale.html
-        :image: https://voxel51.com/images/integrations/scale-128.png
-        :tags: Annotation
+.. customcarditem::
+    :header: Lightning Flash
+    :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
+    :link: lightning_flash.html
+    :image: ../_static/images/integrations/lightning_flash.png
+    :tags: Model-Training,Model-Evaluation
 
 .. End of integrations cards
 
@@ -95,7 +93,9 @@ on the cards below to see how!
    :maxdepth: 1
    :hidden:
 
-    Lightning Flash <lightning_flash.rst>
-    Open Images <open_images.rst>
     COCO <coco.rst>
+    Open Images <open_images.rst>
+    ActivityNet <activitynet.rst>
     CVAT <cvat.rst>
+    Labelbox <labelbox.rst>
+    Lightning Flash <lightning_flash.rst>

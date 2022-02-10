@@ -1,7 +1,7 @@
 """
 FiftyOne dataset types.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -448,57 +448,6 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in
     `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            data/
-                <filename0>.<ext>
-                <filename1>.<ext>
-                ...
-            labels/
-                classifications.csv
-                detections.csv
-                relationships.csv
-                segmentations.csv
-                masks/
-                    <starting-char1>/
-                        <mask_filename0>.<ext>
-                        <mask_filename1>.<ext>
-                        ...
-                    ...
-            metadata/
-                attributes.csv
-                classes.csv
-                segmentation_classes.csv
-                hierarchy.json
-
-    The ``data`` directory and ``metadata/classes.csv`` files are always
-    required. Other labels and metadata files are only required if you wish to
-    load the corresponding label types:
-
-    -   Classifications: ``labels/classifications.csv``
-
-    -   Detections: ``labels/detections.csv``
-
-    -   Relationships: ``labels/relationships.csv``, ``metadata/attributes.csv``
-
-    -   Segmentations: ``labels/segmentations.csv``, ``labels/masks/``, and
-        ``metadata/segmentation_classes.csv``
-
-    The ``hierarchy.json`` file is only used when performing Open Images-style
-    detection evaluation.
-
-    See
-    `this page <https://storage.googleapis.com/openimages/web/download.html>`_
-    for a full specification of this dataset format.
-
-    .. note::
-
-        See :class:`fiftyone.utils.openimages.OpenImagesV6DatasetImporter` for
-        parameters that can be passed to methods like
-        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
-        customize the import of datasets of this type.
     """
 
     def get_dataset_importer_cls(self):
@@ -708,6 +657,17 @@ class DICOMDataset(ImageLabelsDataset):
         import fiftyone.utils.dicom as foud
 
         return foud.DICOMDatasetImporter
+
+
+class ActivityNetDataset(FiftyOneTemporalDetectionDataset):
+    """A video dataset composed of temporal activity detections from the
+    `ActivityNet dataset <http://activity-net.org/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.activitynet as foua
+
+        return foua.ActivityNetDatasetImporter
 
 
 class GeoJSONDataset(LabeledDataset):

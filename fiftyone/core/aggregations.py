@@ -1,7 +1,7 @@
 """
 Aggregations.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1704,6 +1704,7 @@ def _parse_field_and_expr(
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
 
+    root = "." not in field_name
     found_expr = expr is not None
 
     field_type = _get_field_type(
@@ -1754,9 +1755,12 @@ def _parse_field_and_expr(
 
     if keep_top_level:
         if is_frame_field:
-            path = "frames." + path
-            unwind_list_fields = ["frames." + f for f in unwind_list_fields]
-            other_list_fields = ["frames." + f for f in other_list_fields]
+            if not root:
+                prefix = "frames."
+                path = prefix + path
+                unwind_list_fields = [prefix + f for f in unwind_list_fields]
+                other_list_fields = [prefix + f for f in other_list_fields]
+
             other_list_fields.insert(0, "frames")
         elif unwind_list_fields:
             first_field = unwind_list_fields.pop(0)
@@ -1765,13 +1769,14 @@ def _parse_field_and_expr(
         pipeline.append({"$project": {path: True}})
     elif auto_unwind:
         if is_frame_field:
-            pipeline.extend(
-                [
-                    {"$unwind": "$frames"},
-                    {"$project": {"frames." + path: True}},
-                    {"$replaceRoot": {"newRoot": "$frames"}},
-                ]
-            )
+            pipeline.append({"$unwind": "$frames"})
+            if not root:
+                pipeline.extend(
+                    [
+                        {"$project": {"frames." + path: True}},
+                        {"$replaceRoot": {"newRoot": "$frames"}},
+                    ]
+                )
         else:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
