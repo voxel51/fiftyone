@@ -765,6 +765,47 @@ class DatasetTests(unittest.TestCase):
         results = dataset.values(fields)
         self.assertEqual(len(fields), len(results))
 
+    @drop_datasets
+    def test_video_frames(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame()
+        sample.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        num_objs = F("frames").map(F("detections.detections").length())
+
+        values = dataset.values(num_objs)
+        self.assertListEqual(values, [[2, 0, 3]])
+
+        counts = dataset.count_values(num_objs)
+        self.assertDictEqual(counts, {2: 1, 3: 1, 0: 1})
+
+        max_objs = F("frames").map(F("detections.detections").length()).max()
+
+        values = dataset.values(max_objs)
+        self.assertListEqual(values, [3])
+
+        counts = dataset.count_values(max_objs)
+        self.assertDictEqual(counts, {3: 1})
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

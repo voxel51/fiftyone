@@ -676,7 +676,11 @@ class ImportPathsMixin(object):
                 )
 
             data_map = etas.read_json(data_path)
-            return {to_uuid(k): v for k, v in data_map.items()}
+            data_root = os.path.dirname(data_path)
+            return {
+                to_uuid(k): os.path.join(data_root, v)
+                for k, v in data_map.items()
+            }
 
         if not os.path.isdir(data_path):
             raise ValueError("Data directory '%s' does not exist" % data_path)
@@ -2010,6 +2014,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        classes (None): an optional string or list of strings specifying a
+            subset of classes to load
         unlabeled ("_unlabeled"): the name of the subdirectory containing
             unlabeled images
         shuffle (False): whether to randomly shuffle the order in which the
@@ -2023,11 +2029,14 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
+        classes=None,
         unlabeled="_unlabeled",
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
+        classes = _to_list(classes)
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -2036,6 +2045,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         )
 
         self.compute_metadata = compute_metadata
+        self.classes = classes
         self.unlabeled = unlabeled
 
         self._classes = None
@@ -2078,6 +2088,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
+        whitelist = set(self.classes) if self.classes is not None else None
 
         for relpath in etau.list_files(self.dataset_dir, recursive=True):
             chunks = relpath.split(os.path.sep, 1)
@@ -2088,6 +2099,9 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             if label.startswith("."):
                 continue
 
+            if whitelist is not None and label not in whitelist:
+                continue
+
             if label == self.unlabeled:
                 label = None
             else:
@@ -2096,8 +2110,12 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             path = os.path.join(self.dataset_dir, relpath)
             samples.append((path, label))
 
-        classes = sorted(classes)
         samples = self._preprocess_list(samples)
+
+        if whitelist is not None:
+            classes = self.classes
+        else:
+            classes = sorted(classes)
 
         self._samples = samples
         self._num_samples = len(samples)
@@ -2117,6 +2135,16 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return len(etau.list_files(dataset_dir, recursive=True))
 
 
+def _to_list(arg):
+    if arg is None:
+        return None
+
+    if etau.is_container(arg):
+        return list(arg)
+
+    return [arg]
+
+
 class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     """Importer for a viideo classification directory tree stored on disk.
 
@@ -2128,6 +2156,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
+        classes (None): an optional string or list of strings specifying a
+            subset of classes to load
         unlabeled ("_unlabeled"): the name of the subdirectory containing
             unlabeled images
         shuffle (False): whether to randomly shuffle the order in which the
@@ -2141,11 +2171,14 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
+        classes=None,
         unlabeled="_unlabeled",
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
+        classes = _to_list(classes)
+
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -2154,6 +2187,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         )
 
         self.compute_metadata = compute_metadata
+        self.classes = classes
         self.unlabeled = unlabeled
 
         self._classes = None
@@ -2200,6 +2234,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
+        whitelist = set(self.classes) if self.classes is not None else None
 
         for relpath in etau.list_files(self.dataset_dir, recursive=True):
             chunks = relpath.split(os.path.sep, 1)
@@ -2208,6 +2243,9 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
 
             label = chunks[0]
             if label.startswith("."):
+                continue
+
+            if whitelist is not None and label not in whitelist:
                 continue
 
             if label == self.unlabeled:
@@ -2219,7 +2257,11 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             samples.append((path, label))
 
         samples = self._preprocess_list(samples)
-        classes = sorted(classes)
+
+        if whitelist is not None:
+            classes = self.classes
+        else:
+            classes = sorted(classes)
 
         self._samples = samples
         self._num_samples = len(samples)
