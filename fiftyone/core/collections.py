@@ -2034,7 +2034,7 @@ class SampleCollection(object):
         eval_key=None,
         classes=None,
         missing=None,
-        method="coco",
+        method=None,
         iou=0.50,
         use_masks=False,
         use_boxes=False,
@@ -2046,21 +2046,28 @@ class SampleCollection(object):
 
         This method supports evaluating the following spatial data types:
 
-        -   Object detections in :class:`fiftyone.core.labels.Detections`
-            format
+        -   Object detections in :class:`fiftyone.core.labels.Detections` format
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Temporal detections in
+            :class:`fiftyone.core.labels.TemporalDetections` format
 
-        By default, this method uses COCO-style evaluation, but you can use the
-        ``method`` parameter to select a different method, and you can
-        optionally customize the method by passing additional parameters for
-        the method's config class as ``kwargs``.
+        For spatial object detection evaluation, this method uses COCO-style
+        evaluation by default.
+
+        For temporal segment detection, this method uses ActivityNet-style
+        evaluation by default.
+
+        You can use the ``method`` parameter to select a different method, and
+        you can optionally customize the method by passing additional
+        parameters for the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
+        -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
@@ -2090,11 +2097,13 @@ class SampleCollection(object):
 
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                ground truth :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
@@ -2103,9 +2112,12 @@ class SampleCollection(object):
                 possible, or else the observed ground truth/predicted labels
                 are used
             missing (None): a missing label string. Any unmatched objects are
-                given this label for evaluation purposes
-            method ("coco"): a string specifying the evaluation method to use.
-                Supported values are ``("coco")``
+                given this label for results purposes
+            method (None): a string specifying the evaluation method to use.
+                For spatial object detection, the supported values are
+                ``("coco", "open-images")`` and the default is ``"coco"``. For
+                temporal detection, the supported values are
+                ``("activitynet")`` and the default is ``"activitynet"``
             iou (0.50): the IoU threshold to use to determine matches
             use_masks (False): whether to compute IoUs using the instances
                 masks in the ``mask`` attribute of the provided objects, which
@@ -4835,9 +4847,16 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.patches.make_patches_dataset` specifying
-                how to perform the conversion
+            other_fields (None): controls whether fields other than ``field``
+                and the default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            keep_label_lists (False): whether to store the patches in label
+                list fields of the same type as the input collection rather
+                than using their single label variants
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
@@ -4901,9 +4920,13 @@ class SampleCollection(object):
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
-                specifying how to perform the conversion
+            other_fields (None): controls whether fields other than the
+                ground truth/predicted fields and the default sample fields are
+                included. Can be any of the following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
@@ -4984,9 +5007,22 @@ class SampleCollection(object):
                 -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
                     defining the frame numbers of the clips to extract from
                     each sample
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
-                to perform the conversion
+            other_fields (None): controls whether sample fields other than the
+                default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            tol (0): the maximum number of false frames that can be overlooked
+                when generating clips. Only applicable when ``field_or_expr``
+                is a frame-level list field or expression
+            min_len (0): the minimum allowable length of a clip, in frames.
+                Only applicable when ``field_or_expr`` is a frame-level list
+                field or an expression
+            trajectories (False): whether to create clips for each unique
+                object trajectory defined by their ``(label, index)``. Only
+                applicable when ``field_or_expr`` is a frame-level field
 
         Returns:
             a :class:`fiftyone.core.clips.ClipsView`
@@ -4998,22 +5034,48 @@ class SampleCollection(object):
         """Creates a view that contains one sample per frame in the video
         collection.
 
-        By default, samples will be generated for every frame of each video,
-        based on the total frame count of the video files, but this method is
-        highly customizable. Refer to
-        :meth:`fiftyone.core.video.make_frames_dataset` to see the available
-        configuration options.
+        The returned view will contain all frame-level fields and the ``tags``
+        of each video as sample-level fields, as well as a ``sample_id`` field
+        that records the IDs of the parent sample for each frame.
+
+        By default, ``sample_frames`` is False and this method assumes that the
+        frames of the input collection have ``filepath`` fields populated
+        pointing to each frame image. Any frames without a ``filepath``
+        populated will be omitted from the returned view.
+
+        When ``sample_frames`` is True, this method samples each video in the
+        input collection into a directory of per-frame images with the same
+        basename as the input video with frame numbers/format specified by
+        ``frames_patt``, and stores the resulting frame paths in a ``filepath``
+        field of the input collection.
+
+        For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+        following paths::
+
+            /path/to/video1.mp4
+            /path/to/video2.mp4
+            ...
+
+        would be sampled as follows::
+
+            /path/to/video1/
+                000001.jpg
+                000002.jpg
+                ...
+            /path/to/video2/
+                000001.jpg
+                000002.jpg
+                ...
+
+        By default, samples will be generated for every video frame at full
+        resolution, but this method provides a variety of parameters that can
+        be used to customize the sampling behavior.
 
         .. note::
 
-            Unless you have configured otherwise, creating frame views will
-            sample the necessary frames from the input video collection into
-            directories of per-frame images. **For large video datasets,
-            this may take some time and require substantial disk space.**
-
-            Frames that have previously been sampled will not be resampled, so
-            creating frame views into the same dataset will become faster after
-            the frames have been sampled.
+            If this method is run multiple times with ``sample_frames`` set to
+            True, existing frames will not be resampled unless you set
+            ``force_sample`` to True.
 
         Examples::
 
@@ -5029,7 +5091,7 @@ class SampleCollection(object):
             # Create a frames view for an entire video dataset
             #
 
-            frames = dataset.to_frames()
+            frames = dataset.to_frames(sample_frames=True)
             print(frames)
 
             session.view = frames
@@ -5042,15 +5104,49 @@ class SampleCollection(object):
             num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
-            frames = view.to_frames(max_fps=1, sparse=True)
+            frames = view.to_frames(max_fps=1)
             print(frames)
 
             session.view = frames
 
         Args:
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.video.make_frames_dataset` specifying how
-                to perform the conversion
+            sample_frames (False): whether to assume that the frame images have
+                already been sampled at locations stored in the ``filepath``
+                field of each frame (False), or whether to sample the video
+                frames now according to the specified parameters (True)
+            fps (None): an optional frame rate at which to sample each video's
+                frames
+            max_fps (None): an optional maximum frame rate at which to sample.
+                Videos with frame rate exceeding this value are downsampled
+            size (None): an optional ``(width, height)`` at which to sample
+                frames. A dimension can be -1, in which case the aspect ratio
+                is preserved. Only applicable when ``sample_frames=True``
+            min_size (None): an optional minimum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint. Only applicable when
+                ``sample_frames=True``
+            max_size (None): an optional maximum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint. Only applicable when
+                ``sample_frames=True``
+            sparse (False): whether to only sample frame images for frame
+                numbers for which :class:`fiftyone.core.frame.Frame` instances
+                exist in the input collection. This parameter has no effect
+                when ``sample_frames==False`` since frames must always exist in
+                order to have ``filepath`` information use
+            frames_patt (None): a pattern specifying the filename/format to use
+                to write or check or existing sampled frames, e.g.,
+                ``"%%06d.jpg"``. The default value is
+                ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+            force_sample (False): whether to resample videos whose sampled
+                frames already exist. Only applicable when
+                ``sample_frames=True``
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a video cannot be sampled
+            verbose (False): whether to log information about the frames that
+                will be sampled, if any
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`

@@ -12,7 +12,7 @@ import {
   useEventHandler,
   useMessageHandler,
   useSendMessage,
-  useStateUpdate,
+  useUnprocessedStateUpdate,
 } from "../utils/hooks";
 
 import Dataset from "./Dataset";
@@ -37,7 +37,7 @@ const Container = () => {
   const connected = useRecoilValue(atoms.connected);
 
   useEventHandler(socket, "close", useClose());
-  useMessageHandler("update", useStateUpdate());
+  useMessageHandler("update", useUnprocessedStateUpdate());
 
   useSendMessage("as_app", {
     notebook: isNotebook,

@@ -9,15 +9,14 @@ Installs the ``fiftyone-desktop`` package.
 import glob
 import os
 import shutil
-from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
 import os
 import shutil
 
 
-VERSION = "0.10.1"
+VERSION = "0.19.2"
 
 
 def get_version():

@@ -1,3 +1,4 @@
+import { useStateUpdate } from "@fiftyone/app/src/utils/hooks";
 import React from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 
@@ -16,6 +17,7 @@ const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
     `,
     prepared
   );
+  const setState = useStateUpdate();
   return <div>{data.dataset.name}</div>;
 };
 

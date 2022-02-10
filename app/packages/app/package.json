@@ -1,6 +1,6 @@
 {
     "name": "@fiftyone/app",
-    "version": "0.10.1",
+    "version": "0.19.2",
     "license": "Apache-2.0",
     "private": true,
     "main": "./src/index.tsx",

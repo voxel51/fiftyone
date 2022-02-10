@@ -3565,14 +3565,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
-        response = self.post(
-            self.login_url, data={"username": username, "password": password}
+        response = self._make_request(
+            self._session.post,
+            self.login_url,
+            print_error_info=False,
+            data={"username": username, "password": password},
         )
 
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
+
+    def _make_request(
+        self, request_method, url, print_error_info=True, **kwargs
+    ):
+        response = request_method(url, verify=False, **kwargs)
+        if print_error_info:
+            self._validate(response, kwargs)
+        else:
+            response.raise_for_status()
+        return response
 
     def get(self, url, **kwargs):
         """Sends a GET request to the given CVAT API URL.
@@ -3584,9 +3597,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.get(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.get, url, **kwargs)
 
     def patch(self, url, **kwargs):
         """Sends a PATCH request to the given CVAT API URL.
@@ -3598,9 +3609,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.patch(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.patch, url, **kwargs)
 
     def post(self, url, **kwargs):
         """Sends a POST request to the given CVAT API URL.
@@ -3612,9 +3621,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.post(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.post, url, **kwargs)
 
     def put(self, url, **kwargs):
         """Sends a PUT request to the given CVAT API URL.
@@ -3626,9 +3633,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.put(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.put, url, **kwargs)
 
     def delete(self, url, **kwargs):
         """Sends a DELETE request to the given CVAT API URL.
@@ -3640,9 +3645,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.delete(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.delete, url, **kwargs)
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.

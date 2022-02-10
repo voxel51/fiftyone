@@ -651,10 +651,17 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_fields_collection(cls, field_names, sample_collection):
+        if cls._is_frames_doc:
+            prefix = sample_collection._FRAMES_PREFIX
+            field_names = [prefix + f for f in field_names]
+            n = 2
+        else:
+            n = 1
+
         field_roots = set()
         view = sample_collection.view()
         for field_name in field_names:
-            field_roots.add(field_name.split(".", 1)[0])
+            field_roots.add(".".join(field_name.split(".", n)[:n]))
             view = view.set_field(field_name, None)
 
         #

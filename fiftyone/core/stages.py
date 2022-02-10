@@ -5860,22 +5860,48 @@ class ToClips(ViewStage):
 class ToFrames(ViewStage):
     """Creates a view that contains one sample per frame in a video collection.
 
-    By default, samples will be generated for every frame of each video,
-    based on the total frame count of the video files, but this method is
-    highly customizable. Refer to
-    :meth:`fiftyone.core.video.make_frames_dataset` to see the available
-    configuration options.
+    The returned view will contain all frame-level fields and the ``tags`` of
+    each video as sample-level fields, as well as a ``sample_id`` field that
+    records the IDs of the parent sample for each frame.
+
+    By default, ``sample_frames`` is False and this method assumes that the
+    frames of the input collection have ``filepath`` fields populated pointing
+    to each frame image. Any frames without a ``filepath`` populated will be
+    omitted from the returned view.
+
+    When ``sample_frames`` is True, this method samples each video in the input
+    collection into a directory of per-frame images with the same basename as
+    the input video with frame numbers/format specified by ``frames_patt``, and
+    stores the resulting frame paths in a ``filepath`` field of the input
+    collection.
+
+    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+    following paths::
+
+        /path/to/video1.mp4
+        /path/to/video2.mp4
+        ...
+
+    would be sampled as follows::
+
+        /path/to/video1/
+            000001.jpg
+            000002.jpg
+            ...
+        /path/to/video2/
+            000001.jpg
+            000002.jpg
+            ...
+
+    By default, samples will be generated for every video frame at full
+    resolution, but this method provides a variety of parameters that can be
+    used to customize the sampling behavior.
 
     .. note::
 
-        Unless you have configured otherwise, creating frame views will
-        sample the necessary frames from the input video collection into
-        directories of per-frame images. **For large video datasets,
-        **this may take some time and require substantial disk space.**
-
-        Frames that have previously been sampled will not be resampled, so
-        creating frame views into the same dataset will become faster after the
-        frames have been sampled.
+        If this method is run multiple times with ``sample_frames`` set to
+        True, existing frames will not be resampled unless you set
+        ``force_sample`` to True.
 
     Examples::
 
@@ -5891,7 +5917,7 @@ class ToFrames(ViewStage):
         # Create a frames view for an entire video dataset
         #
 
-        stage = fo.ToFrames()
+        stage = fo.ToFrames(sample_frames=True)
         frames = dataset.add_stage(stage)
         print(frames)
 
@@ -5905,7 +5931,7 @@ class ToFrames(ViewStage):
         num_objects = F("detections.detections").length()
         view = dataset.match_frames(num_objects > 10)
 
-        stage = fo.ToFrames(max_fps=1, sparse=True)
+        stage = fo.ToFrames(max_fps=1)
         frames = view.add_stage(stage)
         print(frames)
 
