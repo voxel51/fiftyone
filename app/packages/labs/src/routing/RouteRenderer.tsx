@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { OperationType } from "relay-runtime";
+import Loading from "../Components/Loading";
 
 import Resource from "./Resource";
 import { RouteComponent } from "./RouteComponent";
@@ -15,11 +16,13 @@ const RouteHandler: React.FC<{
   const Component = props.component.read();
   const { routeData, prepared } = props;
   return (
-    <Component
-      routeData={routeData}
-      prepared={prepared.read()}
-      children={props.children}
-    />
+    <Suspense>
+      <Component
+        routeData={routeData}
+        prepared={prepared.read()}
+        children={props.children}
+      />
+    </Suspense>
   );
 };
 

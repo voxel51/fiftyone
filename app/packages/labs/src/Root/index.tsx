@@ -1,5 +1,5 @@
-import React from "react";
-import { AiOutlineHome, AiOutlineUser } from "react-icons/ai";
+import React, { Suspense } from "react";
+import { AiOutlineDatabase, AiOutlineUser } from "react-icons/ai";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
@@ -15,6 +15,8 @@ import {
   activeEntry,
   heading,
   nav,
+  page,
+  profile,
 } from "./index.module.css";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
@@ -27,8 +29,8 @@ interface Entry {
 const navEntries: Entry[] = [
   {
     to: "/",
-    name: "Home",
-    icon: <AiOutlineHome />,
+    name: "Datasets",
+    icon: <AiOutlineDatabase />,
   },
   {
     to: "/users",
@@ -73,6 +75,7 @@ const Nav: React.FC = () => {
           <NavEntry key={props.name} active={active === props.to} {...props} />
         ))}
       </div>
+      <div className={profile}>Hi, Ben</div>
     </div>
   );
 };
@@ -94,7 +97,9 @@ const Root: RouteComponent<RootQuery> = ({ children, prepared }) => {
   return (
     <div className={container}>
       <Nav />
-      <div>{children}</div>
+      <div className={page}>
+        <Suspense fallback={null}>{children}</Suspense>
+      </div>
     </div>
   );
 };

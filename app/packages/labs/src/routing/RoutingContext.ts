@@ -143,6 +143,7 @@ const prepareMatches = (matches: Match[]) => {
 export const router = selector<Router>({
   key: "router",
   get: () => createRouter(routes),
+  dangerouslyAllowMutability: true,
 });
 
 export const routingContext = selector<RoutingContext>({
@@ -150,4 +151,5 @@ export const routingContext = selector<RoutingContext>({
   get: ({ get }) => {
     return get(router).context;
   },
+  dangerouslyAllowMutability: true,
 });

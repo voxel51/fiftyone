@@ -11,7 +11,7 @@ from pymongo import ReturnDocument
 import strawberry as gql
 
 from .permissions import IsAuthenticated
-from .queries import User
+from .query import User
 from .utils import Info
 
 

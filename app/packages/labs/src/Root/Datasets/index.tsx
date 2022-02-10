@@ -11,6 +11,9 @@ import { DatasetsListingCard_dataset$key } from "./__generated__/DatasetsListing
 import { DatasetsListingComponent_query$key } from "./__generated__/DatasetsListingComponent_query.graphql";
 import { DatasetsQuery } from "./__generated__/DatasetsQuery.graphql";
 
+import { datasetCard, datasetListing } from "./index.module.css";
+import Link from "../../routing/Link";
+
 const DatasetCard: React.FC<{ dataset: DatasetsListingCard_dataset$key }> = (
   props
 ) => {
@@ -24,10 +27,10 @@ const DatasetCard: React.FC<{ dataset: DatasetsListingCard_dataset$key }> = (
     props.dataset
   );
   return (
-    <div>
-      <span>{name}</span>
-      {id}
-    </div>
+    <Link title={name} className={datasetCard} to={`datasets/${name}`}>
+      <h1>{name}</h1>
+      <p>{id}</p>
+    </Link>
   );
 };
 
@@ -60,7 +63,7 @@ const DatasetListingComponent: React.FC<{
   }, [isLoadingNext, loadNext]);
 
   return (
-    <div className="issues">
+    <div className={datasetListing}>
       {data.datasets.edges.map((edge) => {
         if (edge == null || edge.node == null) {
           return null;
@@ -81,7 +84,6 @@ const DatasetsComponent: RouteComponent<DatasetsQuery> = ({ prepared }) => {
     `,
     prepared
   );
-  console.log("HELLO");
 
   return <DatasetListingComponent datasets={data} />;
 };

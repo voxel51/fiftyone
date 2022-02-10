@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b789681b1458cfb29c3aadf019811a2e>>
+ * @generated SignedSource<<dd9a61027a0a4aa41e3bff28ddf7f99c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type DatasetQueryVariables = DatasetQuery$variables;
 export type DatasetQuery$data = {
   readonly dataset: {
     readonly id: string;
+    readonly name: string;
   };
 };
 export type DatasetQueryResponse = DatasetQuery$data;
@@ -54,6 +55,13 @@ const node: ConcreteRequest = (function () {
             name: "id",
             storageKey: null,
           },
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
+            name: "name",
+            storageKey: null,
+          },
         ],
         storageKey: null,
       },
@@ -76,17 +84,17 @@ const node: ConcreteRequest = (function () {
       selections: v1 /*: any*/,
     },
     params: {
-      cacheID: "d6f65d7d2c33ba00ef7f377d3e9ef46a",
+      cacheID: "99b38d145129882eeaeb35b50bc9409d",
       id: null,
       metadata: {},
       name: "DatasetQuery",
       operationKind: "query",
       text:
-        "query DatasetQuery(\n  $name: String!\n) {\n  dataset(name: $name) {\n    id\n  }\n}\n",
+        "query DatasetQuery(\n  $name: String!\n) {\n  dataset(name: $name) {\n    id\n    name\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "2f1c3c34fbff87b4d69546f57ee1b8d6";
+(node as any).hash = "f6b84da24f8261c8966ccf499e931fab";
 
 export default node;

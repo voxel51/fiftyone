@@ -12,6 +12,7 @@
   -webkit-backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   width: 260px;
+  min-width: 260px;
   display: flex;
   flex-direction: column;
 }
@@ -78,4 +79,17 @@
   color: var(--font);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+}
+
+.page {
+  position: relative;
+  width: 100%;
+  margin: 1rem;
+}
+
+.profile {
+  margin: 0.25rem 1rem;
+  padding: 0.25rem;
+  color: var(--font-dark);
+  justify-content: left;
 }
