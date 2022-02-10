@@ -26,6 +26,7 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
@@ -1461,10 +1462,12 @@ class PlotlyWidgetMixin(object):
                 :meth:`plotly:plotly.graph_objects.Figure.to_image` or
                 :meth:`plotly:plotly.graph_objects.Figure.write_html`
         """
-        etau.ensure_basedir(path)
+        fos.ensure_basedir(path)
 
         if os.path.splitext(path)[1] == ".html":
-            self._widget.write_html(path, **kwargs)
+            with fos.LocalFile(path, "w") as local_path:
+                self._widget.write_html(local_path, **kwargs)
+
             return
 
         if width is None:
@@ -1476,9 +1479,10 @@ class PlotlyWidgetMixin(object):
         if scale is None:
             scale = 1.0
 
-        self._widget.write_image(
-            path, width=width, height=height, scale=scale, **kwargs
-        )
+        with fos.LocalFile(path, "w") as local_path:
+            self._widget.write_image(
+                local_path, width=width, height=height, scale=scale, **kwargs
+            )
 
     def _update_layout(self, **kwargs):
         if kwargs:

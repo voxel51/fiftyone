@@ -659,9 +659,10 @@ def _transform_videos(
                         _frames = []
                         logger.warning(e)
 
-                for fn in _frames:
-                    frame_path = outpath % fn
-                    if os.path.isfile(frame_path):
+                _frame_paths = [outpath % fn for fn in _frames]
+                _exists = fos.run(fos.isfile, _frame_paths)
+                for fn, frame_path, e in zip(_frames, _frame_paths, _exists):
+                    if e:
                         sample.frames[fn]["filepath"] = frame_path
 
                 sample.save()
