@@ -782,6 +782,17 @@ def _transform_video(
                 )
 
             did_transform = True
+        elif not etav.is_video_mime_type(inpath):
+            indir, patt = os.path.split(inpath)
+            with fos.LocalDir(indir, "r", quiet=True) as local_dir:
+                local_inpath = os.path.join(local_dir, patt)
+                with fos.LocalFile(outpath, "w") as local_outpath:
+                    with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                        ffmpeg.run(
+                            local_inpath, local_outpath, verbose=verbose
+                        )
+
+            did_transform = True
         elif not etav.is_video_mime_type(outpath):
             inpath = fos.to_readable(inpath)
             outdir, patt = os.path.split(outpath)
