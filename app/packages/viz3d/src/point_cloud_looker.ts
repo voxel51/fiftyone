@@ -30,6 +30,7 @@ import * as thumb_gen from "./thumbnail_generator"
 import { ThumbnailGenerator } from "./thumbnail_generator";
 import * as worker_util from "./worker_util"
 import * as three from "three"
+import LRUCache, * as lru from "lru-cache"
 
 
 // TODO: This is just a prototype. Clean up later
@@ -106,6 +107,28 @@ const _global_thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton
 const _global_draco_loader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
 const _global_3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
 const _global_render_loop: RenderLoop = new RenderLoop();
+const _global_mesh_cache: LRUCache<string, three.Mesh> = new LRUCache({
+    // TODO: Tune this value...
+    max: 100
+});
+
+
+function _getCachedMesh (path: string): Promise<three.Mesh> {
+    if (_global_mesh_cache.has(path)){
+        let mesh = _global_mesh_cache.get(path);
+        return new Promise((resolve,_) => {
+            resolve(mesh);
+        })
+    }
+    else {
+        return _global_draco_loader.then((loader) => {
+            return loader.loadRemoteMesh(path);
+        }).then((mesh) => {
+            _global_mesh_cache.set(path, mesh);
+            return mesh;
+        });
+    }
+}
 
 function create3DDisplay (config: pcd.SceneConfig): pcd.Display3D<HTMLCanvasElement> {
     // TODO: Gross hack
@@ -248,25 +271,21 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
     }
 
     public renderSelf(state: Readonly<PointCloudState>, sample: Readonly<Sample>): HTMLCanvasElement {
-        _global_draco_loader.then((loader) => {
-            // TODO: Need to cache results here... 
+        // TODO: Need to cache results here... 
 
-            // TODO: Need to resolve with main contributors how to best represent samples.
-            // Currently I have raw point cloud datasets that I pre-compress with draco before visualizing.
-            // In theory, this could be done internally in fiftyone, and would offer a better user experience.
-            // On the flip side, this compression step is fairly slow. Maybe some notion of "pre-processing"
-            // will have to be added to fiftyone datasets and importers to handle this.
+        // TODO: Need to resolve with main contributors how to best represent samples.
+        // Currently I have raw point cloud datasets that I pre-compress with draco before visualizing.
+        // In theory, this could be done internally in fiftyone, and would offer a better user experience.
+        // On the flip side, this compression step is fairly slow. Maybe some notion of "pre-processing"
+        // will have to be added to fiftyone datasets and importers to handle this.
 
-            // TODO: Need a way to easily trigger thumbnail/expanded states in limited testing situations.
-            //
-            if (!sample.compressed_path) return;
-            //loader.loadRemoteMesh("http://localhost:5151/filepath/" + sample.compressed_path)
-            loader.loadRemoteMesh(sample.compressed_path)
-                .then((mesh) => {
-                    console.log(state);
-                    if (state.config.thumbnail) this._renderThumbnail(mesh);
-                    else this._renderScene(mesh);
-                });
+        // TODO: Need a way to easily trigger thumbnail/expanded states in limited testing situations.
+        //
+        if (!sample.compressed_path) return this.element;
+        // "http://localhost:5151/filepath/" + sample.compressed_path)
+        _getCachedMesh(sample.compressed_path).then((mesh) => {
+            if (state.config.thumbnail) this._renderThumbnail(mesh);
+            else this._renderScene(mesh);
         });
         return this.element;
     }
