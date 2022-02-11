@@ -72,6 +72,10 @@ export class ThumbnailGenerator {
         this._display.setSize(width, height);
     }
 
+    public getSize (): {width: number, height: number} {
+        return {width: this._canvas.width, height: this._canvas.height};
+    }
+
     public setSize (width: number, height: number) {
         this._canvas.width = width;
         this._canvas.height = height;

@@ -223,9 +223,13 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
 
     private _renderThumbnail (mesh: three.Mesh) {
         _global_render_loop.stop();
+        let dims = this._thumb_gen.getSize();
         this._thumb_gen.makeThumbnailURL(mesh).then((url) => {
             this._thumb_image.src = url;
-            this._ctx.drawImage(this._thumb_image, 0, 0);
+            this._ctx.drawImage(this._thumb_image, 
+                0, 0, dims.width, dims.height,
+                0, 0, this._canvas.width, this._canvas.height
+            );
         });
     }
 
@@ -259,6 +263,7 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
             //loader.loadRemoteMesh("http://localhost:5151/filepath/" + sample.compressed_path)
             loader.loadRemoteMesh(sample.compressed_path)
                 .then((mesh) => {
+                    console.log(state);
                     if (state.config.thumbnail) this._renderThumbnail(mesh);
                     else this._renderScene(mesh);
                 });
@@ -314,8 +319,8 @@ export class PointCloudLooker extends looker.Looker<PointCloudState> {
         // TODO: I guess I have to provide my own custom config options here given 
         // the flashlight invocation is hard coded...?
         state.config.displayConfig = DEFAULT_3D_DISPLAY_CONFIG;
-        state.config.thumbnail_width = 100;
-        state.config.thumbnail_height =  100;
+        state.config.thumbnail_width = 200;
+        state.config.thumbnail_height =  200;
         return state;
     }
 };
