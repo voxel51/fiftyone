@@ -1,4 +1,3 @@
-import { t } from "@fiftyone/looker/src/overlays/util";
 import * as three from "three"
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls"
 import { Resolver } from "./worker_util";
