@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 import boto3
 import botocore
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 import eta.core.utils as etau
@@ -64,6 +65,7 @@ def download_public_s3_files(
         urls = {url: None for url in urls}
 
     if download_dir:
+        fos.ensure_local(download_dir)
         etau.ensure_dir(download_dir)
 
     if num_workers is None:
@@ -94,7 +96,9 @@ def _build_inputs(urls, s3_client, download_dir=None, overwrite=True):
     inputs = []
     for url, filepath in urls.items():
         bucket_name, object_path = _parse_url(url)
-        if filepath is None:
+        if filepath is not None:
+            fos.ensure_local(filepath)
+        else:
             filepath = os.path.join(download_dir, object_path)
         if not os.path.isfile(filepath):
             inputs.append((bucket_name, object_path, filepath, s3_client))

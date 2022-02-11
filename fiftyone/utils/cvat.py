@@ -25,7 +25,6 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -87,13 +86,12 @@ def import_annotations(
             the filenames in CVAT and the filepaths of ``sample_collection``.
             Can be any of the following:
 
-            -   a directory on disk where the media files reside. In this case,
-                the filenames must match those in CVAT
+            -   a directory where the media files reside. In this case, the
+                filenames must match those in CVAT
             -   a dict mapping CVAT filenames to absolute filepaths to the
-                corresponding media on disk
-            -   the path to a JSON manifest on disk containing a mapping
-                between CVAT filenames and absolute filepaths to the media on
-                disk
+                corresponding media
+            -   the path to a JSON manifest containing a mapping between CVAT
+                filenames and absolute filepaths to the media
 
             By default, only annotations whose filename matches an existing
             filepath in ``sample_collection`` will be imported
@@ -151,12 +149,12 @@ def import_annotations(
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path) and data_path.endswith(".json"):
-        data_map = etas.read_json(data_path)
+        data_map = fos.read_json(data_path)
     elif etau.is_str(data_path):
-        if os.path.isdir(data_path):
+        if fos.isdir(data_path):
             data_map = {
                 os.path.basename(f): f
-                for f in etau.list_files(
+                for f in fos.list_files(
                     data_path, abs_paths=True, recursive=True
                 )
             }
@@ -280,15 +278,18 @@ def _parse_task_metadata(
     chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
+    new_filepaths = []
+    new_tasks = []
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
         if download_media:
             if filepath is None and data_dir:
-                filepath = os.path.join(data_dir, filename)
+                filepath = fos.join(data_dir, filename)
 
-            if filepath and not os.path.exists(filepath):
-                download_tasks.append(
+            if filepath is not None:
+                new_filepaths.append(filepath)
+                new_tasks.append(
                     (
                         api,
                         task_id,
@@ -305,6 +306,12 @@ def _parse_task_metadata(
             task_filepaths.append(filepath)
         else:
             ignored_filenames.append(filename)
+
+    if new_tasks:
+        exists = fos.run(fos.isfile, new_filepaths)
+        for task, _exists in zip(new_tasks, exists):
+            if not _exists:
+                download_tasks.append(task)
 
     return cvat_id_map
 
@@ -357,7 +364,7 @@ def _do_download_media(task):
             fouv.concat_videos(chunk_paths, filepath)
     else:
         resp = api.get(api.task_data_download_url(task_id, frame_id))
-        etau.write_file(resp._content, filepath)
+        fos.write_file(resp._content, filepath)
 
 
 def _download_annotations(
