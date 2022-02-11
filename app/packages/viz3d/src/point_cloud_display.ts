@@ -49,8 +49,9 @@ export class SceneConfigBuilder {
         this._config.fov = 75;
         this._config.far = 1000;
 
-        this._config.controlsEnabled = true;
         this._config.save_drawing_buffer = true;
+
+        this._config.controlsEnabled = true;
         this._config.autoRotateSpeed = 1;
         this._config.autoRotate = false;
         this._config.keyControls = false;
@@ -68,6 +69,7 @@ export class SceneConfigBuilder {
         this._config.floorType = type;
         this._config.floorSize= size;
         this._config.floorDivision = divs;
+        return this;
     }
 
     public setFog (color: number, near: number = 0.025, far: number = 20): SceneConfigBuilder {

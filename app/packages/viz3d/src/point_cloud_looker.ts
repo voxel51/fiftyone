@@ -30,7 +30,6 @@ import * as thumb_gen from "./thumbnail_generator"
 import { ThumbnailGenerator } from "./thumbnail_generator";
 import * as worker_util from "./worker_util"
 import * as three from "three"
-import { ReinhardToneMapping } from "three";
 
 
 // TODO: This is just a prototype. Clean up later
