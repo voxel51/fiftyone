@@ -1,4 +1,6 @@
+import { t } from "@fiftyone/looker/src/overlays/util";
 import * as three from "three"
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls"
 import { Resolver } from "./worker_util";
 
 // Define point cloud display logic and styling here
@@ -10,12 +12,32 @@ interface Dimensions {
     height: number;
 }
 
+export enum FloorType {
+    GRID
+};
+
 export class SceneConfig {
     background_color: three.Color;
     save_drawing_buffer: boolean;
     fov: number;
     near: number;
     far: number;
+
+    controlsEnabled: boolean;
+    keyControls: boolean;
+    autoRotate: boolean;
+    autoRotateSpeed: number;
+
+    fogEnabled: boolean;
+    fogNear: number;
+    fogFar: number;
+    fogColor: three.Color;
+
+    floorEnabled: boolean;
+    floorType: FloorType;
+    floorSize: number;
+    floorDivision: number;
+
 };
 
 export class SceneConfigBuilder {
@@ -27,7 +49,46 @@ export class SceneConfigBuilder {
         this._config.near = 0.1;
         this._config.fov = 75;
         this._config.far = 1000;
+
+        this._config.controlsEnabled = true;
         this._config.save_drawing_buffer = true;
+        this._config.autoRotateSpeed = 1;
+        this._config.autoRotate = false;
+        this._config.keyControls = false;
+
+        this._config.fogEnabled = false;
+
+        this._config.floorEnabled = false;
+        this._config.floorType = FloorType.GRID;
+        this._config.floorSize = 3;
+        this._config.floorDivision = 10;
+    }
+
+    public setFloor (type: FloorType, size: number, divs: number): SceneConfigBuilder {
+        this._config.floorEnabled = true;
+        this._config.floorType = type;
+        this._config.floorSize= size;
+        this._config.floorDivision = divs;
+    }
+
+    public setFog (color: number, near: number = 0.025, far: number = 20): SceneConfigBuilder {
+        this._config.fogEnabled = true;
+        this._config.fogNear = near;
+        this._config.fogFar = far;
+        this._config.fogColor = new three.Color(color);
+        return this;
+    }
+
+    public setControlsEnabled (enabled: boolean): SceneConfigBuilder {
+        this._config.controlsEnabled = enabled;
+        return this;
+    }
+
+    public setAutoRotate (enabled: boolean, speed: number = 1): SceneConfigBuilder {
+        this._config.autoRotate = enabled;
+        this._config.controlsEnabled = true;
+        this._config.autoRotateSpeed = speed;
+        return this;
     }
 
     public setCamera (fov: number, near: number, far: number): SceneConfigBuilder {
@@ -61,6 +122,7 @@ export class Display3D <T extends HTMLCanvasElement> {
     private _renderer: three.WebGLRenderer;
     private _dimensions: Dimensions;
     private _sceneMeshes: three.Mesh[] = [];
+    private _controls: OrbitControls;
 
     public constructor (canvas: T, config: SceneConfig) {
         this._canvas = canvas;
@@ -78,11 +140,42 @@ export class Display3D <T extends HTMLCanvasElement> {
         this._camera.position.set(1, 0.15, 1);
         this._camera.lookAt(0, 0, 0);
         this._camera.updateProjectionMatrix();
-        let grid = new three.GridHelper(3, 10);
-        this._scene.add(grid);
+
+        if (this._config.floorEnabled){
+            var grid;
+            if (config.floorType == FloorType.GRID) {
+                grid = new three.GridHelper(config.floorSize, config.floorDivision);
+            }
+            this._scene.add(grid);
+        }
+
+
+        if (this._config.fogEnabled){
+            this._scene.fog = new three.Fog(config.fogColor, config.fogNear, config.fogFar);
+        }
+
+        if (this._config.controlsEnabled) {
+            this._initializeControls(this._renderer.domElement);
+        }
 
         // TODO: Add rest of scene stuff... Lighting, ground plane, fog, etc
-        
+    }
+
+    private _initializeControls (element: HTMLElement): void {
+        if (!this._config.controlsEnabled) return;
+        if (this._controls) this._controls.reset();
+        this._controls = new OrbitControls(this._camera, element);
+        this._controls.enabled = true;
+        this._controls.enableKeys = this._config.keyControls;
+        this._controls.autoRotate = this._config.autoRotate;
+        this._controls.autoRotateSpeed = this._config.autoRotateSpeed;
+        this._controls.update();
+    }
+
+    /// Set DOM element for interacting with 3D scene
+    public setInteractionElement (element: HTMLElement): void {
+        if (!this._config.controlsEnabled) return;
+        this._initializeControls(element);
     }
 
     public setSize (width: number, height: number){
@@ -115,6 +208,10 @@ export class Display3D <T extends HTMLCanvasElement> {
         }
     }
 
+    public copyToCanvas (ctx: CanvasRenderingContext2D) {
+        ctx.drawImage(this._renderer.domElement, 0, 0);
+    }
+
     public clearScene (): void {
         for (let i = 0; i < this._sceneMeshes.length; i++){
             let mesh: three.Mesh = this._sceneMeshes[i];
@@ -130,10 +227,10 @@ export class Display3D <T extends HTMLCanvasElement> {
     }
 
     public render (): void {
+        if (this._config.controlsEnabled && this._controls) {
+            this._controls.update();
+        }
         this._renderer.render(this._scene, this._camera);
     }
 
-    public copyToCanvas (ctx: CanvasRenderingContext2D) {
-        ctx.drawImage(this._renderer.domElement, 0, 0);
-    }
 };

@@ -10,9 +10,15 @@ export {LogLevel} from "./worker_util"
 //export { DracoTaskConfig } from "./draco_worker"
 
 // TODO: Improve performance.
+// This might be too slow for smooth UI.
 // As of Sun Feb 6 14:15:05 PST 2022 this can
 // load ~5mb point clouds (compressed to ~650kb) in ~65ms/each. 
-// This might be too slow for smooth UI.
+// ----
+// Fri Feb 11 12:55:44 PST 2022
+// Apple M1 Pro 8 core:
+// load ~5mb point clouds (compressed to ~650kb) in ~35ms/each
+// ----
+
 
 // TODO: Might be faster to do batch processing.
 // Measure overhead incurred from going back and 
@@ -54,8 +60,12 @@ export class DracoLoader extends worker_util.WorkerPool {
 
     public decodeGeometry (buffer: ArrayBuffer): Promise<any>{
         return this.execute((worker, id) => {
+            // TODO: For some reason can't use transfer here. Attempts to do so
+            // throw "ArrayBuffer at index 0 is already detached" errors. Investigate this:
+            // worker.postMessage(draco_worker_lib.createDecodeRequest(id, buffer, this._state.decodeConfig), [buffer]);
+
             worker.postMessage(draco_worker_lib.createDecodeRequest(id, buffer, this._state.decodeConfig));
-        })
+        });
     }
 
     private _createGeometry (data) {

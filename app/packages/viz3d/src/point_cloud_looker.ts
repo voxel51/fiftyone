@@ -30,6 +30,7 @@ import * as thumb_gen from "./thumbnail_generator"
 import { ThumbnailGenerator } from "./thumbnail_generator";
 import * as worker_util from "./worker_util"
 import * as three from "three"
+import { ReinhardToneMapping } from "three";
 
 
 // TODO: This is just a prototype. Clean up later
@@ -69,26 +70,53 @@ class Singleton <T> {
 
 }
 
+class RenderLoop {
+    private _rendering: boolean = false;
+    private _renderFn: () => void;
+
+    public constructor () {
+    }
+
+    private _render () {
+        if (!this._rendering) return;
+        this._renderFn();
+        requestAnimationFrame(() => this._render());
+    }
+
+    public start (fn: () => void) {
+        this._renderFn = fn;
+        this._rendering = true;
+        this._render();
+    }
+    
+    public stop () {
+        this._rendering = false;
+    }
+
+};
+
 // TODO: This should be themeable 
 export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
     .setBackgroundColor(0xAAAAAA)
+    .setFog(0x999999, 0.1, 5)
     .build();
 
 
 // TODO: This design makes it impossible to scene config at runtime
-const _thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton<ThumbnailGenerator>(ThumbnailGenerator);
-const _dracoLoader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
-const _3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
+const _global_thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton<ThumbnailGenerator>(ThumbnailGenerator);
+const _global_draco_loader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
+const _global_3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
+const _global_render_loop: RenderLoop = new RenderLoop();
 
 function create3DDisplay (config: pcd.SceneConfig): pcd.Display3D<HTMLCanvasElement> {
     // TODO: Gross hack
-    if (!_3D_display.created()){
+    if (!_global_3D_display.created()){
         // https://github.com/mrdoob/three.js/blob/master/examples/webgl_multiple_canvases_circle.html
         // All modal display happens on this canvas, and is copied over to the looker elements' canvases
         const canvas = document.createElement("canvas");
-        return _3D_display.make(canvas, config);
+        return _global_3D_display.make(canvas, config);
     }
-    else return _3D_display.make(null, config);
+    else return _global_3D_display.make(null, config);
 }
 
 export class PointCloudConfig implements BaseConfig {
@@ -187,7 +215,7 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
 
         update((state: Readonly<PointCloudState>) => {
             this._display = create3DDisplay(state.config.displayConfig);
-            this._thumb_gen = _thumbnail_generator.make(state.config.thumbnail_width, state.config.thumbnail_height, state.config.displayConfig);
+            this._thumb_gen = _global_thumbnail_generator.make(state.config.thumbnail_width, state.config.thumbnail_height, state.config.displayConfig);
             return state;
         });
 
@@ -195,6 +223,7 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
     }
 
     private _renderThumbnail (mesh: three.Mesh) {
+        _global_render_loop.stop();
         this._thumb_gen.makeThumbnailURL(mesh).then((url) => {
             this._thumb_image.src = url;
             this._ctx.drawImage(this._thumb_image, 0, 0);
@@ -202,18 +231,34 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
     }
 
     private _renderScene (mesh: three.Mesh) {
+        _global_render_loop.stop();
+
         this._display.clearScene();
         this._display.addSceneItem(mesh);
-        this._display.render();
-        this._display.copyToCanvas(this._ctx);
+        this._display.setInteractionElement(this._canvas);
+        this._display.setSize(this._canvas.width, this._canvas.height);
+
+        _global_render_loop.start(() => {
+            this._display.render();
+            this._display.copyToCanvas(this._ctx);
+        })
     }
 
     public renderSelf(state: Readonly<PointCloudState>, sample: Readonly<Sample>): HTMLCanvasElement {
-        _dracoLoader.then((loader) => {
-            // TODO: URL THING BROKEN + NEED TO HANDLE COMPRESSED
+        _global_draco_loader.then((loader) => {
             // TODO: Need to cache results here... 
+
+            // TODO: Need to resolve with main contributors how to best represent samples.
+            // Currently I have raw point cloud datasets that I pre-compress with draco before visualizing.
+            // In theory, this could be done internally in fiftyone, and would offer a better user experience.
+            // On the flip side, this compression step is fairly slow. Maybe some notion of "pre-processing"
+            // will have to be added to fiftyone datasets and importers to handle this.
+
+            // TODO: Need a way to easily trigger thumbnail/expanded states in limited testing situations.
+            //
             if (!sample.compressed_path) return;
-            loader.loadRemoteMesh("http://localhost:5151/filepath/" + sample.compressed_path)
+            //loader.loadRemoteMesh("http://localhost:5151/filepath/" + sample.compressed_path)
+            loader.loadRemoteMesh(sample.compressed_path)
                 .then((mesh) => {
                     if (state.config.thumbnail) this._renderThumbnail(mesh);
                     else this._renderScene(mesh);
