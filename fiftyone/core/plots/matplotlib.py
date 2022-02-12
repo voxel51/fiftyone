@@ -43,6 +43,7 @@ def plot_confusion_matrix(
     show_values=True,
     show_colorbar=True,
     cmap="viridis",
+    title=None,
     xticks_rotation=45.0,
     values_format=None,
     ax=None,
@@ -57,6 +58,7 @@ def plot_confusion_matrix(
             cells
         show_colorbar (True): whether to show a colorbar
         cmap ("viridis"): a colormap recognized by ``matplotlib``
+        title (None): a title for the plot
         xticks_rotation (45.0): a rotation for the x-tick labels. Can be
             numeric degrees, "vertical", "horizontal", or None
         values_format (None): an optional format string like ``".2g"`` or
@@ -120,6 +122,9 @@ def plot_confusion_matrix(
     if figsize is not None:
         fig.set_size_inches(*figsize)
 
+    if title is not None:
+        fig.suptitle(title)
+
     plt.tight_layout()
 
     return fig
@@ -138,6 +143,7 @@ def plot_regressions(
     best_fit_label=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     figsize=None,
     style="seaborn-ticks",
@@ -183,6 +189,7 @@ def plot_regressions(
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
@@ -244,6 +251,7 @@ def plot_regressions(
         sizes=sizes,
         marker_size=marker_size,
         cmap=cmap,
+        title=title,
         ax=ax,
         ax_equal=True,
         figsize=figsize,
@@ -256,6 +264,7 @@ def plot_pr_curve(
     precision,
     recall,
     label=None,
+    title=None,
     ax=None,
     figsize=None,
     style="seaborn-ticks",
@@ -267,6 +276,7 @@ def plot_pr_curve(
         precision: an array of precision values
         recall: an array of recall values
         label (None): a label for the curve
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
@@ -282,16 +292,22 @@ def plot_pr_curve(
         )
         display.plot(ax=ax, label=label, **kwargs)
 
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
+    fig = display.figure_
 
-    return display.figure_
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
 
 
 def plot_pr_curves(
     precisions,
     recall,
     classes,
+    title=None,
     ax=None,
     figsize=None,
     style="seaborn-ticks",
@@ -304,6 +320,7 @@ def plot_pr_curves(
             precision values
         recall: an array of recall values
         classes: the list of classes
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
@@ -332,16 +349,22 @@ def plot_pr_curves(
     if ax is None:
         ax = plt.gca()
 
-    if figsize is not None:
-        ax.figure.set_size_inches(*figsize)
+    fig = ax.figure
 
-    return ax.figure
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
 
 
 def plot_roc_curve(
     fpr,
     tpr,
     roc_auc=None,
+    title=None,
     ax=None,
     figsize=None,
     style="seaborn-ticks",
@@ -353,6 +376,7 @@ def plot_roc_curve(
         fpr: an array of false postive rates
         tpr: an array of true postive rates
         roc_auc (None): the area under the ROC curve
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
@@ -366,10 +390,15 @@ def plot_roc_curve(
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
 
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
+    fig = display.figure_
 
-    return display.figure_
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
 
 
 def scatterplot(
@@ -382,6 +411,7 @@ def scatterplot(
     classes=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     ax_equal=False,
     figsize=None,
@@ -446,6 +476,7 @@ def scatterplot(
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
         figsize (None): an optional ``(width, height)`` for the figure, in
@@ -456,10 +487,10 @@ def scatterplot(
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveCollection`, for 2D points when ``samples``
-            are provided
+        -   an :class:`InteractiveCollection`, for 2D points and when IDs are
+            available
         -   a matplotlib figure, otherwise
     """
     points = np.asarray(points)
@@ -493,6 +524,9 @@ def scatterplot(
             figsize=figsize,
             **kwargs,
         )
+
+        if title is not None:
+            collection.axes.figure.suptitle(title)
 
         if samples is None or num_dims != 2:
             fig = collection.axes.figure
@@ -593,6 +627,7 @@ def location_scatterplot(
     api_key=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     ax_equal=False,
     figsize=None,
@@ -658,6 +693,7 @@ def location_scatterplot(
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
+        title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
         figsize (None): an optional ``(width, height)`` for the figure, in
@@ -668,9 +704,9 @@ def location_scatterplot(
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveCollection`, if ``samples`` are provided
+        -   an :class:`InteractiveCollection`, if IDs are available
         -   a matplotlib figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -707,6 +743,7 @@ def location_scatterplot(
         classes=classes,
         marker_size=marker_size,
         cmap=cmap,
+        title=title,
         ax=ax,
         ax_equal=ax_equal,
         figsize=figsize,

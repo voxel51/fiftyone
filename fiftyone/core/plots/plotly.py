@@ -53,6 +53,7 @@ def plot_confusion_matrix(
     pred_field=None,
     colorscale="oranges",
     log_colorscale=False,
+    title=None,
     **kwargs,
 ):
     """Plots a confusion matrix.
@@ -79,11 +80,12 @@ def plot_confusion_matrix(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`InteractiveHeatmap`, if ``ids`` are provided
         -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
@@ -96,7 +98,11 @@ def plot_confusion_matrix(
 
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix, labels, colorscale=colorscale, **kwargs
+            confusion_matrix,
+            labels,
+            colorscale=colorscale,
+            title=title,
+            **kwargs,
         )
 
     return _plot_confusion_matrix_interactive(
@@ -108,12 +114,13 @@ def plot_confusion_matrix(
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
+        title=title,
         **kwargs,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, **kwargs
+    confusion_matrix, labels, colorscale=None, title=None, **kwargs
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -158,6 +165,7 @@ def _plot_confusion_matrix_static(
         ),
         xaxis_title="Predicted label",
         yaxis_title="True label",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -178,6 +186,7 @@ def _plot_confusion_matrix_interactive(
     gt_field=None,
     pred_field=None,
     colorscale=None,
+    title=None,
     **kwargs,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
@@ -222,7 +231,7 @@ def _plot_confusion_matrix_interactive(
     )
 
     plot.update_layout(**_DEFAULT_LAYOUT)
-    plot.update_layout(**kwargs)
+    plot.update_layout(title=title, **kwargs)
 
     return plot
 
@@ -240,6 +249,7 @@ def plot_regressions(
     figure=None,
     best_fit_label=None,
     marker_size=None,
+    title=None,
     labels_title=None,
     sizes_title=None,
     show_colorbar_title=None,
@@ -295,6 +305,7 @@ def plot_regressions(
         best_fit_label (None): a custom legend label for the best fit line
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        title (None): a title for the plot
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -310,7 +321,7 @@ def plot_regressions(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`InteractiveScatter`, if IDs are provided
         -   a :class:`PlotlyNotebookPlot`, if no IDs are provided but you are
@@ -387,6 +398,7 @@ def plot_regressions(
         sizes=sizes,
         figure=figure,
         marker_size=marker_size,
+        title=title,
         trace_title="regressions",
         labels_title=labels_title,
         sizes_title=sizes_title,
@@ -403,6 +415,7 @@ def plot_pr_curve(
     label=None,
     style="area",
     figure=None,
+    title=None,
     **kwargs,
 ):
     """Plots a precision-recall (PR) curve.
@@ -416,11 +429,12 @@ def plot_pr_curve(
             ``("area", "line")``
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
             to which to add the plot
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -463,8 +477,8 @@ def plot_pr_curve(
         type="line", x0=0, x1=1, y0=1, y1=0, line=dict(dash="dash")
     )
 
-    if label is not None:
-        figure.update_layout(title=dict(text=label, x=0.5, xanchor="center"))
+    if title is None and label is not None:
+        title = label
 
     figure.update_layout(
         xaxis=dict(range=[0, 1], constrain="domain"),
@@ -473,6 +487,7 @@ def plot_pr_curve(
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -485,7 +500,13 @@ def plot_pr_curve(
 
 
 def plot_pr_curves(
-    precisions, recall, classes, thresholds=None, figure=None, **kwargs
+    precisions,
+    recall,
+    classes,
+    thresholds=None,
+    figure=None,
+    title=None,
+    **kwargs,
 ):
     """Plots a set of per-class precision-recall (PR) curves.
 
@@ -498,11 +519,12 @@ def plot_pr_curves(
             decision thresholds
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
             to which to add the plots
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -564,6 +586,7 @@ def plot_pr_curves(
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -582,6 +605,7 @@ def plot_roc_curve(
     roc_auc=None,
     style="area",
     figure=None,
+    title=None,
     **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
@@ -595,11 +619,12 @@ def plot_roc_curve(
             ``("area", "line")``
         figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
             to which to add the plot
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -639,10 +664,8 @@ def plot_roc_curve(
         type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1
     )
 
-    if roc_auc is not None:
-        figure.update_layout(
-            title=dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
-        )
+    if title is None and roc_auc is not None:
+        title = dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
 
     figure.update_layout(
         xaxis=dict(range=[0, 1], constrain="domain"),
@@ -651,6 +674,7 @@ def plot_roc_curve(
         ),
         xaxis_title="False positive rate",
         yaxis_title="True positive rate",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -676,6 +700,7 @@ def scatterplot(
     marker_size=None,
     colorscale=None,
     log_colorscale=False,
+    title=None,
     trace_title=None,
     labels_title=None,
     sizes_title=None,
@@ -757,6 +782,7 @@ def scatterplot(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         trace_title (None): a name for the scatter trace. Only applicable when
             plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
@@ -777,10 +803,10 @@ def scatterplot(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
-            are provided
+        -   an :class:`InteractiveScatter`, for 2D points and when IDs are
+            available
         -   a :class:`PlotlyNotebookPlot`, if you're working in a Jupyter
             notebook but the above conditions aren't met
         -   a plotly figure, otherwise
@@ -864,7 +890,7 @@ def scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-    figure.update_layout(**kwargs)
+    figure.update_layout(title=title, **kwargs)
 
     if num_dims == 3:
         if samples is not None:
@@ -1055,6 +1081,7 @@ def location_scatterplot(
     marker_size=None,
     colorscale=None,
     log_colorscale=False,
+    title=None,
     trace_title=None,
     labels_title=None,
     sizes_title=None,
@@ -1137,6 +1164,7 @@ def location_scatterplot(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         trace_title (None): a name for the scatter trace. Only applicable when
             plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
@@ -1156,11 +1184,11 @@ def location_scatterplot(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveScatter`, if ``samples`` are provided
-        -   a :class:`PlotlyNotebookPlot`, if ``samples`` are not provided but
-            you're working in a Jupyter notebook
+        -   an :class:`InteractiveScatter`, if IDs are available
+        -   a :class:`PlotlyNotebookPlot`, if IDs are not available but you're
+            working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -1257,7 +1285,7 @@ def location_scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-    figure.update_layout(**kwargs)
+    figure.update_layout(title=title, **kwargs)
 
     if style == "density" and not categorical:
         msg = "Density plots do not yet support interactivity"

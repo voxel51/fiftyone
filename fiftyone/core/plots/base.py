@@ -53,13 +53,13 @@ def plot_confusion_matrix(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if
-            ``ids`` are provided and the plotly backend is used
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            ``ids`` are provided but you are working in a Jupyter notebook with
-            the plotly backend
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if IDs
+            are available and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no IDs
+            are available but you are working in a Jupyter notebook with the
+            plotly backend
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -147,13 +147,13 @@ def plot_regressions(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if
-            IDs are provided and the plotly backend is used
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            IDs are provided but you are working in a Jupyter notebook with
-            the plotly backend
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if IDs
+            are available and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no IDs
+            are available but you are working in a Jupyter notebook with the
+            plotly backend
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -195,7 +195,7 @@ def plot_pr_curve(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curve`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -239,7 +239,7 @@ def plot_pr_curves(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -281,7 +281,7 @@ def plot_roc_curve(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_roc_curve`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -378,13 +378,13 @@ def scatterplot(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.scatterplot`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
-            ``samples`` are not provided but you are working with the plotly
-            backend in a Jupyter notebook
+        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if IDs are
+            available
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if IDs
+            are not available but you are working with the plotly backend in a
+            Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -475,13 +475,13 @@ def location_scatterplot(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.location_scatterplot`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
-            ``samples`` are not provided but you are working with the plotly
-            backend in a Jupyter notebook
+        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if IDs are
+            available
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if IDs
+            are not available but you are working with the plotly backend in a
+            Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
