@@ -16,7 +16,7 @@ export {LogLevel} from "./worker_util"
 // ----
 // Fri Feb 11 12:55:44 PST 2022
 // Apple M1 Pro 8 core:
-// load ~5mb point clouds (compressed to ~650kb) in ~35ms/each
+// load ~5mb point clouds (compressed to ~650kb) in ~17ms/each
 // ----
 
 

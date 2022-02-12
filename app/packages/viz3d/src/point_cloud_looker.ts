@@ -107,6 +107,8 @@ const _global_thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton
 const _global_draco_loader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
 const _global_3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
 const _global_render_loop: RenderLoop = new RenderLoop();
+
+// TODO: Consider caching thumbnails...
 const _global_mesh_cache: LRUCache<string, three.Mesh> = new LRUCache({
     // TODO: Tune this value...
     max: 100
@@ -271,8 +273,6 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
     }
 
     public renderSelf(state: Readonly<PointCloudState>, sample: Readonly<Sample>): HTMLCanvasElement {
-        // TODO: Need to cache results here... 
-
         // TODO: Need to resolve with main contributors how to best represent samples.
         // Currently I have raw point cloud datasets that I pre-compress with draco before visualizing.
         // In theory, this could be done internally in fiftyone, and would offer a better user experience.
@@ -284,8 +284,9 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         if (!sample.compressed_path) return this.element;
         // "http://localhost:5151/filepath/" + sample.compressed_path)
         _getCachedMesh(sample.compressed_path).then((mesh) => {
-            if (state.config.thumbnail) this._renderThumbnail(mesh);
-            else this._renderScene(mesh);
+            //if (state.config.thumbnail) this._renderThumbnail(mesh);
+            //else this._renderScene(mesh);
+            this._renderScene(mesh);
         });
         return this.element;
     }

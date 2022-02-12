@@ -26,6 +26,7 @@ export class SceneConfig {
     keyControls: boolean;
     autoRotate: boolean;
     autoRotateSpeed: number;
+    zoomSpeed: number;
 
     fogEnabled: boolean;
     fogNear: number;
@@ -53,6 +54,7 @@ export class SceneConfigBuilder {
 
         this._config.controlsEnabled = true;
         this._config.autoRotateSpeed = 1;
+        this._config.zoomSpeed = 0.5;
         this._config.autoRotate = false;
         this._config.keyControls = false;
 
@@ -62,6 +64,10 @@ export class SceneConfigBuilder {
         this._config.floorType = FloorType.GRID;
         this._config.floorSize = 3;
         this._config.floorDivision = 10;
+    }
+
+    public setFloorGrid (size:number, divs: number): SceneConfigBuilder {
+        return this.setFloor(FloorType.GRID, size, divs);
     }
 
     public setFloor (type: FloorType, size: number, divs: number): SceneConfigBuilder {
@@ -170,6 +176,7 @@ export class Display3D <T extends HTMLCanvasElement> {
         this._controls.enableKeys = this._config.keyControls;
         this._controls.autoRotate = this._config.autoRotate;
         this._controls.autoRotateSpeed = this._config.autoRotateSpeed;
+        this._controls.zoomSpeed = this._config.zoomSpeed;
         this._controls.update();
     }
 
