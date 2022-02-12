@@ -88,13 +88,17 @@ export class DracoLoader extends worker_util.WorkerPool {
     public loadMesh (buffer: ArrayBuffer): Promise<three.Mesh> {
         return this.decodeGeometry(buffer).then((bufferGeometry) => {
             bufferGeometry = this._createGeometry(bufferGeometry);
-            var material = new three.MeshStandardMaterial({ vertexColors: three.VertexColors });
 
             var geometry;
             // Point cloud does not have face indices.
             if (bufferGeometry.index == null) {
+                let material = new three.PointsMaterial({
+                    vertexColors: true,
+                    size: 0.0005
+                });
                 geometry = new three.Points(bufferGeometry, material);
             } else {
+                let material = new three.MeshStandardMaterial({ vertexColors: three.VertexColors });
                 if (bufferGeometry.attributes.normal === undefined) {
                     var geometryHelper = new GeometryHelper();
                     geometryHelper.computeVertexNormals(bufferGeometry);

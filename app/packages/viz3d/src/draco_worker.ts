@@ -209,7 +209,6 @@ class DracoWorker extends worker_utils.WorkerBase {
 				if ( attributeID === - 1 ) continue;
 
 				attribute = decoder.GetAttribute( dracoGeometry, attributeID );
-
 			}
 
 			geometry.attributes.push( this._decodeAttribute(decoder, dracoGeometry, attributeName, attributeType, attribute ) );
