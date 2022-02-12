@@ -38,6 +38,8 @@ export class SceneConfig {
     floorSize: number;
     floorDivision: number;
 
+    cameraUp: three.Vector3;
+
 };
 
 export class SceneConfigBuilder {
@@ -64,6 +66,13 @@ export class SceneConfigBuilder {
         this._config.floorType = FloorType.GRID;
         this._config.floorSize = 3;
         this._config.floorDivision = 10;
+
+        this._config.cameraUp = new three.Vector3(0,1,0);
+    }
+
+    public flipCamera (): SceneConfigBuilder {
+        this._config.cameraUp.set(0, -1, 0);
+        return this;
     }
 
     public setFloorGrid (size:number, divs: number): SceneConfigBuilder {
@@ -143,9 +152,14 @@ export class Display3D <T extends HTMLCanvasElement> {
         });
         this._dimensions = {width: canvas.width, height: canvas.height};
         this._camera = new three.PerspectiveCamera(config.fov, canvas.width / canvas.height, config.near, config.far);
-        // TODO: handle camera stuff
-        this._camera.position.set(1, 0.15, 1);
+
+        // TODO: handle camera stuff in a more elegant way
+        // Somehow need to detect proper "up" for camera. Probably will have
+        // to be exposed as a UI control.
+        this._camera.up = this._config.cameraUp;
         this._camera.lookAt(0, 0, 0);
+        // TODO: Set camera position to fit content
+        this._camera.position.set(0.5, 0.15, 0.5);
         this._camera.updateProjectionMatrix();
 
         if (this._config.floorEnabled){
