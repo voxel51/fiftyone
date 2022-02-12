@@ -203,7 +203,7 @@ class DracoWorker extends worker_utils.WorkerBase {
 				attribute = decoder.GetAttributeByUniqueId( dracoGeometry, attributeID );
 
 			} else {
-				attributeID = decoder.GetAttributeId( dracoGeometry, this._dracoModule[ config.attributeIDs[ attributeName ] ] );
+				attributeID = decoder.GetAttributeId( dracoGeometry, this._dracoModule[config.attributeIDs[attributeName]]);
 
 				if ( attributeID === - 1 ) continue;
 

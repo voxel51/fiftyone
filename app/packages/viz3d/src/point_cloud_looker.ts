@@ -282,12 +282,12 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         // TODO: Need a way to easily trigger thumbnail/expanded states in limited testing situations.
         //
         if (!sample.compressed_path) return this.element;
-        // "http://localhost:5151/filepath/" + sample.compressed_path)
-        let path = sample.compressed_path;
+        let path = "http://localhost:5151/filepath/" + sample.compressed_path;
+        //let path = sample.compressed_path;
         _getCachedMesh(path).then((mesh) => {
-            this._renderScene(mesh);
-            //if (state.config.thumbnail) this._renderThumbnail(mesh, state.canvasBBox);
-            //else this._renderScene(mesh);
+            //this._renderScene(mesh);
+            if (state.config.thumbnail) this._renderThumbnail(mesh, state.canvasBBox);
+            else this._renderScene(mesh);
         });
         return this.element;
     }
