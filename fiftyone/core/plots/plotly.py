@@ -686,6 +686,160 @@ def plot_roc_curve(
     return figure
 
 
+def line(
+    x=None,
+    y=None,
+    samples=None,
+    ids=None,
+    link_field=None,
+    sizes=None,
+    style="line",
+    figure=None,
+    marker_size=None,
+    title=None,
+    trace_title=None,
+    xaxis_title=None,
+    yaxis_title=None,
+    sizes_title=None,
+    axis_equal=False,
+    **kwargs,
+):
+    """Plots the given line data.
+
+    Returns:
+        one of the following
+
+        -   an :class:`InteractiveScatter`, when IDs are available
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a Jupyter
+            notebook but the above conditions aren't met
+        -   a plotly figure, otherwise
+    """
+    if y is None:
+        raise ValueError("You must provide 'y' values")
+
+    y = _parse_values(y, "y", samples=samples)
+
+    if x is None:
+        x = list(range(1, len(y) + 1))
+    else:
+        x = _parse_values(x, "x", samples=samples, points=y)
+
+    sizes = _parse_values(sizes, "sizes", samples=samples, points=y)
+
+    if ids is None and samples is not None:
+        ids = _get_ids(samples, link_field=link_field, points=y)
+
+    if xaxis_title is not None:
+        x_title = xaxis_title.rsplit(".", 1)[-1]
+    else:
+        x_title = "x"
+
+    if yaxis_title is not None:
+        y_title = yaxis_title.rsplit(".", 1)[-1]
+    else:
+        y_title = "y"
+
+    if sizes_title is None:
+        if etau.is_str(sizes):
+            sizes_title = sizes.rsplit(".", 1)[-1]
+        else:
+            sizes_title = "size"
+
+    if style not in ("line", "area"):
+        msg = "Unsupported style '%s'; using 'line' instead" % style
+        warnings.warn(msg)
+        style = "line"
+
+    marker = {}
+
+    if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
+        marker.update(
+            dict(
+                size=sizes,
+                sizemode="diameter",
+                sizeref=0.5 * max(sizes) / marker_size,
+                sizemin=4,
+            )
+        )
+    elif marker_size is not None:
+        marker.update(dict(size=marker_size))
+
+    hover_lines = []
+    hover_lines.append("%s, %s = %%{x:.3f}, %%{y:.3f}" % (x_title, y_title))
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
+
+    if ids is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    params = {}
+    if style == "area":
+        params.update(dict(fill="tozeroy"))
+
+    if figure is None:
+        figure = go.Figure()
+
+    scatter = go.Scatter(
+        x=x,
+        y=y,
+        customdata=ids,
+        mode="lines+markers",
+        line_color=_DEFAULT_LINE_COLOR,
+        marker=marker,
+        hovertemplate=hovertemplate,
+        name=trace_title,
+        showlegend=True,
+        **params,
+    )
+
+    figure.add_trace(scatter)
+
+    figure.update_layout(**_DEFAULT_LAYOUT)
+    figure.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        **kwargs,
+    )
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+
+    if ids is None:
+        if foc.is_jupyter_context():
+            return PlotlyNotebookPlot(figure)
+
+        return figure
+
+    if link_field is None:
+        link_type = "samples"
+        selection_mode = None
+        init_patches_fcn = None
+    elif link_field == "frames" and samples.media_type == fom.VIDEO:
+        link_type = "frames"
+        selection_mode = None
+        init_patches_fcn = None
+    else:
+        link_type = "labels"
+        selection_mode = "patches"
+        init_patches_fcn = lambda view: view.to_patches(link_field)
+
+    return InteractiveScatter(
+        figure,
+        link_type=link_type,
+        init_view=samples,
+        label_fields=link_field,
+        selection_mode=selection_mode,
+        init_patches_fcn=init_patches_fcn,
+    )
+
+
 def scatterplot(
     points,
     samples=None,
