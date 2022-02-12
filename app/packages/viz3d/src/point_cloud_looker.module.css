@@ -1,0 +1,19 @@
+.hidden {
+    background-color:green;
+    visibility: hidden;
+    display: none;
+}
+
+.controls {
+    /*background-color: red;*/
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.controlButton {
+    font: 0.75em sans-serif;
+    background-color: cornflowerblue;
+    width: 40px;
+    height: 30px;
+}

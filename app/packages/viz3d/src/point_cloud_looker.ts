@@ -20,6 +20,7 @@ import { Overlay } from "@fiftyone/looker/src/overlays/base";
 import { LookerElement, CanvasElement } from "@fiftyone/looker/src/elements/common";
 import { GetElements } from "@fiftyone/looker/src/elements";
 import { createElementsTree } from "@fiftyone/looker/src/elements/util";
+import { ThumbnailSelectorElement } from "@fiftyone/looker/src/elements/common";
 import Flashlight, { FlashlightConfig, FlashlightOptions } from "@fiftyone/flashlight";
 import React, { Fragment } from "react";
 import ReactDOM from "react-dom";
@@ -31,6 +32,7 @@ import { ThumbnailGenerator } from "./thumbnail_generator";
 import * as worker_util from "./worker_util"
 import * as three from "three"
 import LRUCache, * as lru from "lru-cache"
+import * as css from "./point_cloud_looker.module.css"
 
 
 // TODO: This is just a prototype. Clean up later
@@ -224,6 +226,38 @@ export const DEFAULT_POINTCLOUD_OPTIONS = {
     zoom: false
 }
 
+export class ControlsElement extends BaseElement<PointCloudState> {
+    private _element: HTMLElement;
+
+    createHTMLElement(update: StateUpdate<PointCloudState>, dispatchEvent: (eventType: string, details?: any) => void): HTMLElement {
+        let el = this._element = document.createElement("div");
+        let camResetBtn = document.createElement("div");
+
+        el.classList.add(css.controls);
+
+        camResetBtn.classList.add(css.controlButton);
+        camResetBtn.innerText = "CAM RESET";
+        camResetBtn.addEventListener("click", () => {
+            _global_3D_display.get().then((display) => {
+                display.resetCamera();
+            });
+        });
+
+        el.appendChild(camResetBtn);
+
+        return this._element;
+    }
+    renderSelf(state: Readonly<PointCloudState>, sample: Readonly<Sample>): HTMLElement {
+        if (state.config.thumbnail) {
+            this._element.classList.add(css.hidden);
+        }
+        else {
+            this._element.classList.remove(css.hidden);
+        }
+        return this._element;
+    }
+};
+
 export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasElement>{
     private _canvas: HTMLCanvasElement;
     private _ctx: CanvasRenderingContext2D;
@@ -309,6 +343,12 @@ export const get3DElements: GetElements<PointCloudState> = (
             {
                 node: CanvasElement,
             },
+            {
+                node: ControlsElement
+            },
+            {
+                node: ThumbnailSelectorElement
+            }
         ]
     };
 
@@ -322,6 +362,7 @@ export const get3DElements: GetElements<PointCloudState> = (
 
 export class PointCloudLooker extends looker.Looker<PointCloudState> {
     updateOptions(options: Optional<BaseOptions>): void {
+        console.log(options);
     }
 
     protected hasDefaultZoom(state: PointCloudState, overlays: Overlay<PointCloudState>[]): boolean {

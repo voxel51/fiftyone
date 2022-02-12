@@ -254,4 +254,10 @@ export class Display3D <T extends HTMLCanvasElement> {
         this._renderer.render(this._scene, this._camera);
     }
 
+    public resetCamera (): void {
+        // TODO: Actually calculate camera position given scene
+        this._camera.position.set(0.5, 0.15, 0.5);
+        this._camera.lookAt(0,0,0);
+    }
+
 };
