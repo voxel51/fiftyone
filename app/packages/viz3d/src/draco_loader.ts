@@ -80,8 +80,9 @@ export class DracoLoader extends worker_util.WorkerPool {
 			var array = attribute.array;
 			var itemSize = attribute.itemSize;
 
-			geometry.setAttribute( name, new three.BufferAttribute( array, itemSize ) );
+			geometry.setAttribute( name, new three.Float32BufferAttribute( array, itemSize ) );
         }
+        
         return geometry;
     }
 
@@ -98,7 +99,7 @@ export class DracoLoader extends worker_util.WorkerPool {
                 });
                 geometry = new three.Points(bufferGeometry, material);
             } else {
-                let material = new three.MeshStandardMaterial({ vertexColors: three.VertexColors });
+                let material = new three.MeshStandardMaterial({ vertexColors: true });
                 if (bufferGeometry.attributes.normal === undefined) {
                     var geometryHelper = new GeometryHelper();
                     geometryHelper.computeVertexNormals(bufferGeometry);
