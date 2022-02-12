@@ -157,9 +157,9 @@ export class Display3D <T extends HTMLCanvasElement> {
         // Somehow need to detect proper "up" for camera. Probably will have
         // to be exposed as a UI control.
         this._camera.up = this._config.cameraUp;
-        this._camera.lookAt(0, 0, 0);
         // TODO: Set camera position to fit content
         this._camera.position.set(0.5, 0.15, 0.5);
+        this._camera.lookAt(0, 0, 0);
         this._camera.updateProjectionMatrix();
 
         if (this._config.floorEnabled){
@@ -184,7 +184,6 @@ export class Display3D <T extends HTMLCanvasElement> {
 
     private _initializeControls (element: HTMLElement): void {
         if (!this._config.controlsEnabled) return;
-        if (this._controls) this._controls.reset();
         this._controls = new OrbitControls(this._camera, element);
         this._controls.enabled = true;
         this._controls.enableKeys = this._config.keyControls;

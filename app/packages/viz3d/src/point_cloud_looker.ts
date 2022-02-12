@@ -98,7 +98,8 @@ class RenderLoop {
 // TODO: This should be themeable 
 export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
     .setBackgroundColor(0xAAAAAA)
-    .setFog(0x999999, 0.1, 5)
+    .setFog(0x999999, 0.1, 2)
+    .flipCamera()
     .build();
 
 
