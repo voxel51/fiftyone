@@ -959,20 +959,20 @@ def _parse_scatter_inputs(
 ):
     num_dims = points.shape[1]
 
-    labels = _get_data_for_points(points, samples, labels, "labels")
-    sizes = _get_data_for_points(points, samples, sizes, "sizes")
+    labels = _parse_values(labels, "labels", samples=samples, points=points)
+    sizes = _parse_values(sizes, "sizes", samples=samples, points=points)
 
     if ids is None and samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
         else:
-            ids = _get_ids_for_points(points, samples, link_field=link_field)
+            ids = _get_ids(samples, link_field=link_field, points=points)
 
     return _parse_data(points, ids, labels, sizes, edges, classes)
 
 
-def _get_data_for_points(points, samples, values, parameter):
+def _parse_values(values, parameter, samples=None, points=None):
     if values is None:
         return None
 
@@ -987,7 +987,7 @@ def _get_data_for_points(points, samples, values, parameter):
     else:
         values = _unwind_values(values)
 
-    if len(values) != len(points):
+    if points is not None and len(values) != len(points):
         raise ValueError(
             "Number of %s (%d) does not match number of points (%d). You "
             "may have missing data/labels that you need to omit from your "
@@ -1004,7 +1004,7 @@ def _unwind_values(values):
     return values
 
 
-def _get_ids_for_points(points, samples, link_field=None):
+def _get_ids(samples, link_field=None, points=None):
     if link_field is None:
         ids = samples.values("id")
         ptype = "sample"
@@ -1015,7 +1015,7 @@ def _get_ids_for_points(points, samples, link_field=None):
         ids = samples._get_label_ids(fields=link_field)
         ptype = "label"
 
-    if len(ids) != len(points):
+    if points is not None and len(ids) != len(points):
         raise ValueError(
             "Number of %s IDs (%d) does not match number of points "
             "(%d). You may have missing data/labels that you need to omit "
