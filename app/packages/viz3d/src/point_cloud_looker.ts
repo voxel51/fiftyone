@@ -246,14 +246,14 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         return this._canvas;
     }
 
-    private _renderThumbnail (mesh: three.Mesh) {
+    private _renderThumbnail (mesh: three.Mesh, bbox:[number,number,number,number]) {
         _global_render_loop.stop();
         let dims = this._thumb_gen.getSize();
         this._thumb_gen.makeThumbnailURL(mesh).then((url) => {
             this._thumb_image.src = url;
             this._ctx.drawImage(this._thumb_image, 
                 0, 0, dims.width, dims.height,
-                0, 0, this._canvas.width, this._canvas.height
+                0, 0, bbox[2], bbox[3]
             );
         });
     }
@@ -283,10 +283,10 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         //
         if (!sample.compressed_path) return this.element;
         // "http://localhost:5151/filepath/" + sample.compressed_path)
-        _getCachedMesh(sample.compressed_path).then((mesh) => {
-            //if (state.config.thumbnail) this._renderThumbnail(mesh);
-            //else this._renderScene(mesh);
-            this._renderScene(mesh);
+        let path = "http://localhost:5151/filepath" + sample.compressed_path
+        _getCachedMesh(path).then((mesh) => {
+            if (state.config.thumbnail) this._renderThumbnail(mesh, state.canvasBBox);
+            else this._renderScene(mesh);
         });
         return this.element;
     }
@@ -320,8 +320,8 @@ export const get3DElements: GetElements<PointCloudState> = (
 
 export class PointCloudLooker extends looker.Looker<PointCloudState> {
     updateOptions(options: Optional<BaseOptions>): void {
-        throw new Error("Method not implemented.");
     }
+
     protected hasDefaultZoom(state: PointCloudState, overlays: Overlay<PointCloudState>[]): boolean {
         return false;
     }
