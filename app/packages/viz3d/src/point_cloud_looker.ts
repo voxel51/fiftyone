@@ -23,15 +23,6 @@ import * as css from "./point_cloud_looker.module.css"
 import {Global3DState, Looker3DState} from "./state"
 
 
-// TODO: This should be themeable 
-export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
-    .setBackgroundColor(0xAAAAAA)
-    .setFog(0x999999, 0.1, 2)
-    .flipCamera()
-    .build();
-
-
-
 export class PointCloudConfig implements BaseConfig {
     thumbnail: boolean = true;
     thumbnail_width: number = 100;
@@ -43,7 +34,7 @@ export class PointCloudConfig implements BaseConfig {
     displayConfig: pcd.SceneConfig;
 
     constructor() {
-        this.displayConfig = DEFAULT_3D_DISPLAY_CONFIG;
+        this.displayConfig = pcd.DEFAULT_3D_DISPLAY_CONFIG;
     }
 };
 
@@ -270,7 +261,7 @@ export class PointCloudLooker extends looker.Looker<PointCloudState> {
 
         // TODO: I guess I have to provide my own custom config options here given 
         // the flashlight invocation is hard coded...?
-        state.config.displayConfig = DEFAULT_3D_DISPLAY_CONFIG;
+        state.config.displayConfig = pcd.DEFAULT_3D_DISPLAY_CONFIG;
         state.config.thumbnail_width = 200;
         state.config.thumbnail_height =  200;
         return state;

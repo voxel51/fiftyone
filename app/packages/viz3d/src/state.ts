@@ -7,7 +7,6 @@ import * as thumb_gen from "./thumbnail_generator"
 import {RGBDProjector} from "./rgbd_projector"
 import LRUCache, * as lru from "lru-cache"
 import { Optional } from "@fiftyone/looker/src/state"
-import { numLabelsInSelectedSamples } from "../../app/src/components/Actions/utils"
 
 
 
@@ -60,7 +59,10 @@ export class Looker3DState {
             });
         }
         else {
-            return this._rgbd_loader.createMesh(color, depth);
+            return this._rgbd_loader.createMesh(color, depth).then((mesh) => {
+                this._mesh_cache.set(color, mesh);
+                return mesh;
+            });
         }
     }
 

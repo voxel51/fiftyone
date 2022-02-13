@@ -36,7 +36,7 @@ export class RGBDProjector {
         this._canvas.width = image.width;
         this._canvas.height = image.height;
         this._ctx.drawImage(image, 0, 0);
-        let colorData = this._ctx.createImageData(image.width, image.height);
+        let colorData = this._ctx.getImageData(0,0,this._canvas.width, this._canvas.height);
         return colorData;
     }
 
@@ -58,11 +58,13 @@ export class RGBDProjector {
                 let y = j / color.height;
 
                 // TODO Need a way to know how large depth values are.
-                let z = depth.data[idx*2] | (depth.data[idx*2 + 1] << 8);
+                let z = (depth.data[idx*4 + 0] | (depth.data[idx*4 + 1] << 8)); 
+                z = z / 10000;
+                if (z === 0) continue;
 
-                colors.push(color.data[idx*3] / 255);
-                colors.push(color.data[idx*3+1] / 255);
-                colors.push(color.data[idx*3+2] / 255);
+                colors.push(color.data[idx*4] / 255);
+                colors.push(color.data[idx*4+1] / 255);
+                colors.push(color.data[idx*4+2] / 255);
 
                 positions.push(x);
                 positions.push(y);
@@ -72,8 +74,8 @@ export class RGBDProjector {
         }
         let positionsBuf = new Float32Array(positions);
         let colorsBuf = new Float32Array(colors);
-        geometry.setAttribute("position", new three.BufferAttribute(positionsBuf, 3));
-        geometry.setAttribute("color", new three.BufferAttribute(colorsBuf, 3));
+        geometry.setAttribute("position", new three.Float32BufferAttribute(positionsBuf, 3));
+        geometry.setAttribute("color", new three.Float32BufferAttribute(colorsBuf, 3));
         let material = new three.PointsMaterial({
             vertexColors: true,
             size: 0.005
