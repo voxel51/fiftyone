@@ -58,16 +58,16 @@ export class RGBDProjector {
                 let y = j / color.height;
 
                 // TODO Need a way to know how large depth values are.
-                let z = (depth.data[idx*4 + 0] | (depth.data[idx*4 + 1] << 8)); 
-                z = z / 10000;
+                let z = (depth.data[idx*4 + 0] | (depth.data[idx*4 + 1] << 8));// | (depth.data[idx*4 + 2] << 16) | (depth.data[idx*4+3] << 24)); 
+                z = z / 0xffff;
                 if (z === 0) continue;
 
                 colors.push(color.data[idx*4] / 255);
                 colors.push(color.data[idx*4+1] / 255);
                 colors.push(color.data[idx*4+2] / 255);
 
-                positions.push(x);
-                positions.push(y);
+                positions.push(x-0.5);
+                positions.push(y-0.5);
                 positions.push(z);
 
             }

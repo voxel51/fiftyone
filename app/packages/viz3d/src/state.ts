@@ -51,37 +51,33 @@ export class Looker3DState {
         this._mesh_cache.set(path, mesh);
     }
 
-    public getRGBDMesh (color: string, depth: string): Promise<three.Mesh> {
-        if (this.hasMesh(color)){
-            let mesh = this._mesh_cache.get(color);
+    private _cacheGetter (key: string, getter: () => Promise<three.Mesh>): Promise<three.Mesh>{
+        if (this.hasMesh(key)){
+            let mesh = this._mesh_cache.get(key);
             return new Promise((resolve,_) => {
                 resolve(mesh);
             });
         }
         else {
-            return this._rgbd_loader.createMesh(color, depth).then((mesh) => {
-                this._mesh_cache.set(color, mesh);
+            return getter().then((mesh) => {
+                this._mesh_cache.set(key, mesh);
                 return mesh;
             });
         }
     }
 
-    public getDracoMesh (path: string): Promise<three.Mesh>{
-        if (this._mesh_cache.has(path)){
-            let mesh = this._mesh_cache.get(path);
-            return new Promise((resolve,_) => {
-                resolve(mesh);
-            })
-        }
-        else {
+    public getRGBDMesh (color: string, depth: string): Promise<three.Mesh> {
+        return this._cacheGetter(color, () => {
+            return this._rgbd_loader.createMesh(color, depth);
+        });
+    }
+
+    public getDracoMesh (path: string): Promise<three.Mesh> {
+        return this._cacheGetter(path, () => {
             return this._draco_loader.then((loader) => {
                 return loader.loadRemoteMesh(path);
-            }).then((mesh) => {
-                this._mesh_cache.set(path, mesh);
-                return mesh;
             });
-        }
-
+        });
     }
 };
 
