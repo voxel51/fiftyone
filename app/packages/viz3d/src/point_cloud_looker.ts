@@ -20,7 +20,7 @@ import { Overlay } from "@fiftyone/looker/src/overlays/base";
 import { LookerElement, CanvasElement } from "@fiftyone/looker/src/elements/common";
 import { GetElements } from "@fiftyone/looker/src/elements";
 import { createElementsTree } from "@fiftyone/looker/src/elements/util";
-import { ThumbnailSelectorElement } from "@fiftyone/looker/src/elements/common";
+import { ThumbnailSelectorElement, ErrorElement, TagsElement, HelpPanelElement, JSONPanelElement } from "@fiftyone/looker/src/elements/common";
 import Flashlight, { FlashlightConfig, FlashlightOptions } from "@fiftyone/flashlight";
 import React, { Fragment } from "react";
 import ReactDOM from "react-dom";
@@ -348,7 +348,12 @@ export const get3DElements: GetElements<PointCloudState> = (
             },
             {
                 node: ThumbnailSelectorElement
-            }
+            },
+            { node: ErrorElement },
+            { node: JSONPanelElement },
+            { node: HelpPanelElement },
+            { node: TagsElement }
+
         ]
     };
 

@@ -193,6 +193,10 @@ export class Display3D <T extends HTMLCanvasElement> {
         this._controls.update();
     }
 
+    private _positionCamera () {
+        // TODO
+    }
+
     /// Set DOM element for interacting with 3D scene
     public setInteractionElement (element: HTMLElement): void {
         if (!this._config.controlsEnabled) return;
@@ -245,6 +249,7 @@ export class Display3D <T extends HTMLCanvasElement> {
         // TODO: add way to handle camera positioning
         this._sceneMeshes.push(mesh);
         this._scene.add(mesh);
+        this._positionCamera();
     }
 
     public render (): void {

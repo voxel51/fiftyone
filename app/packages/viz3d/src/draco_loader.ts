@@ -6,6 +6,7 @@ import draco_worker from "./draco_worker?worker"
 
 import * as worker_util from "./worker_util"
 export {LogLevel} from "./worker_util"
+import {calculateStatistics, GeometryStatistics} from "./geometry_utils"
 
 //export { DracoTaskConfig } from "./draco_worker"
 
@@ -88,7 +89,7 @@ export class DracoLoader extends worker_util.WorkerPool {
 
     public loadMesh (buffer: ArrayBuffer): Promise<three.Mesh> {
         return this.decodeGeometry(buffer).then((bufferGeometry) => {
-            bufferGeometry = this._createGeometry(bufferGeometry);
+            bufferGeometry = this._createGeometry(bufferGeometry) as three.BufferGeometry;
 
             var geometry;
             // Point cloud does not have face indices.
@@ -107,8 +108,11 @@ export class DracoLoader extends worker_util.WorkerPool {
                 geometry = new three.Mesh(bufferGeometry, material);
             }
             // Compute range of the geometry coordinates for proper rendering.
-            bufferGeometry.computeBoundingBox();
-            bufferGeometry.computeBoundingSphere();
+            let stats: GeometryStatistics = calculateStatistics(bufferGeometry);
+            bufferGeometry.boundingBox = stats.boundingBox;
+            bufferGeometry.boundingSphere = stats.boundingSphere;
+            //bufferGeometry.computeBoundingBox();
+            //bufferGeometry.computeBoundingSphere();
             var sizeX = bufferGeometry.boundingBox.max.x - bufferGeometry.boundingBox.min.x;
             var sizeY = bufferGeometry.boundingBox.max.y - bufferGeometry.boundingBox.min.y;
             var sizeZ = bufferGeometry.boundingBox.max.z - bufferGeometry.boundingBox.min.z;
@@ -120,6 +124,8 @@ export class DracoLoader extends worker_util.WorkerPool {
                 (bufferGeometry.boundingBox.min.y + bufferGeometry.boundingBox.max.y) / 2;
             var midZ =
                 (bufferGeometry.boundingBox.min.z + bufferGeometry.boundingBox.max.z) / 2;
+
+            bufferGeometry.userData["std_dev"] = stats.stdDev;
 
             geometry.scale.multiplyScalar(scale);
             geometry.position.x = -midX * scale;
