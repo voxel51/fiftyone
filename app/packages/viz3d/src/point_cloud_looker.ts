@@ -3,13 +3,8 @@ import {
     BaseConfig,
     BaseOptions,
     BaseState,
-    BoundingBox,
-    ControlMap,
-    Coordinates,
-    DEFAULT_IMAGE_OPTIONS,
     DEFAULT_BASE_OPTIONS,
     Dimensions,
-    ImageConfig,
     Optional,
     Sample,
     Schema,
@@ -21,81 +16,12 @@ import { LookerElement, CanvasElement } from "@fiftyone/looker/src/elements/comm
 import { GetElements } from "@fiftyone/looker/src/elements";
 import { createElementsTree } from "@fiftyone/looker/src/elements/util";
 import { ThumbnailSelectorElement, ErrorElement, TagsElement, HelpPanelElement, JSONPanelElement } from "@fiftyone/looker/src/elements/common";
-import Flashlight, { FlashlightConfig, FlashlightOptions } from "@fiftyone/flashlight";
-import React, { Fragment } from "react";
-import ReactDOM from "react-dom";
 
-import * as draco_loader from "./draco_loader"
-import * as pcd from "./point_cloud_display"
-import * as thumb_gen from "./thumbnail_generator"
-import { ThumbnailGenerator } from "./thumbnail_generator";
-import * as worker_util from "./worker_util"
+import * as pcd from "./display3d"
 import * as three from "three"
-import LRUCache, * as lru from "lru-cache"
 import * as css from "./point_cloud_looker.module.css"
+import {Global3DState, Looker3DState} from "./state"
 
-
-// TODO: This is just a prototype. Clean up later
-
-class Singleton <T> {
-    private _item: T = undefined;
-    private _resolvers: worker_util.Resolver[] = [];
-    private _cnstr: new (...args: any[]) => T;
-
-    public constructor (cnstr: new (...args: any[]) => T) {
-        this._cnstr = cnstr;
-    }
-
-    public make (...args: any[]): T {
-        if (this._item) return this._item;
-        this._item = new this._cnstr(...args);
-        while (this._resolvers.length){
-            this._resolvers.pop().resolve(this._item);
-        }
-        return this._item;
-    }
-
-    public get (): Promise<T> {
-        return new Promise((resolve, reject) => {
-            if (!this._item) {
-                this._resolvers.push({resolve, reject});
-            }
-            else {
-                resolve(this._item);
-            }
-        });
-    }
-
-    public created (): boolean{
-        return !!this._item;
-    }
-
-}
-
-class RenderLoop {
-    private _rendering: boolean = false;
-    private _renderFn: () => void;
-
-    public constructor () {
-    }
-
-    private _render () {
-        if (!this._rendering) return;
-        this._renderFn();
-        requestAnimationFrame(() => this._render());
-    }
-
-    public start (fn: () => void) {
-        this._renderFn = fn;
-        this._rendering = true;
-        this._render();
-    }
-    
-    public stop () {
-        this._rendering = false;
-    }
-
-};
 
 // TODO: This should be themeable 
 export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
@@ -105,46 +31,6 @@ export const DEFAULT_3D_DISPLAY_CONFIG = new pcd.SceneConfigBuilder()
     .build();
 
 
-// TODO: This design makes it impossible to scene config at runtime
-const _global_thumbnail_generator: Singleton<ThumbnailGenerator> = new Singleton<ThumbnailGenerator>(ThumbnailGenerator);
-const _global_draco_loader: Promise<draco_loader.DracoLoader> = new draco_loader.DracoLoaderBuilder().build();
-const _global_3D_display: Singleton<pcd.Display3D<HTMLCanvasElement>> = new Singleton<pcd.Display3D<HTMLCanvasElement>>(pcd.Display3D);
-const _global_render_loop: RenderLoop = new RenderLoop();
-
-// TODO: Consider caching thumbnails...
-const _global_mesh_cache: LRUCache<string, three.Mesh> = new LRUCache({
-    // TODO: Tune this value...
-    max: 100
-});
-
-
-function _getCachedMesh (path: string): Promise<three.Mesh> {
-    if (_global_mesh_cache.has(path)){
-        let mesh = _global_mesh_cache.get(path);
-        return new Promise((resolve,_) => {
-            resolve(mesh);
-        })
-    }
-    else {
-        return _global_draco_loader.then((loader) => {
-            return loader.loadRemoteMesh(path);
-        }).then((mesh) => {
-            _global_mesh_cache.set(path, mesh);
-            return mesh;
-        });
-    }
-}
-
-function create3DDisplay (config: pcd.SceneConfig): pcd.Display3D<HTMLCanvasElement> {
-    // TODO: Gross hack
-    if (!_global_3D_display.created()){
-        // https://github.com/mrdoob/three.js/blob/master/examples/webgl_multiple_canvases_circle.html
-        // All modal display happens on this canvas, and is copied over to the looker elements' canvases
-        const canvas = document.createElement("canvas");
-        return _global_3D_display.make(canvas, config);
-    }
-    else return _global_3D_display.make(null, config);
-}
 
 export class PointCloudConfig implements BaseConfig {
     thumbnail: boolean = true;
@@ -238,8 +124,8 @@ export class ControlsElement extends BaseElement<PointCloudState> {
         camResetBtn.classList.add(css.controlButton);
         camResetBtn.innerText = "CAM RESET";
         camResetBtn.addEventListener("click", () => {
-            _global_3D_display.get().then((display) => {
-                display.resetCamera();
+            Global3DState.get().then((core) => {
+                core.display.resetCamera();
             });
         });
 
@@ -261,9 +147,8 @@ export class ControlsElement extends BaseElement<PointCloudState> {
 export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasElement>{
     private _canvas: HTMLCanvasElement;
     private _ctx: CanvasRenderingContext2D;
-    private _display: pcd.Display3D<HTMLCanvasElement>;
-    private _thumb_gen: ThumbnailGenerator;
     private _thumb_image: HTMLImageElement;
+    private _state_3d: Looker3DState;
 
     public createHTMLElement(update: StateUpdate<PointCloudState>, dispatchEvent: (eventType: string, details?: any) => void): HTMLCanvasElement {
         this._canvas = document.createElement("canvas");
@@ -273,8 +158,7 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         this._thumb_image = new Image();
 
         update((state: Readonly<PointCloudState>) => {
-            this._display = create3DDisplay(state.config.displayConfig);
-            this._thumb_gen = _global_thumbnail_generator.make(state.config.thumbnail_width, state.config.thumbnail_height, state.config.displayConfig);
+            this._state_3d = Global3DState.make(state.config.displayConfig);
             return state;
         });
 
@@ -282,29 +166,30 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
     }
 
     private _renderThumbnail (mesh: three.Mesh, bbox:[number,number,number,number]) {
-        _global_render_loop.stop();
-        let dims = this._thumb_gen.getSize();
-        this._thumb_gen.makeThumbnailURL(mesh).then((url) => {
-            this._thumb_image.src = url;
-            this._ctx.drawImage(this._thumb_image, 
-                0, 0, dims.width, dims.height,
-                0, 0, bbox[2], bbox[3]
-            );
+        Global3DState.get().then((core) => {
+            core.renderLoop.stop();
+            let dims = core.thumb_gen.getSize();
+            core.thumb_gen.makeThumbnailURL(mesh).then((url) => {
+                this._thumb_image.src = url;
+                this._ctx.drawImage(this._thumb_image, 
+                    0, 0, dims.width, dims.height,
+                    0, 0, bbox[2], bbox[3]
+                );
+            });
         });
     }
 
     private _renderScene (mesh: three.Mesh) {
-        _global_render_loop.stop();
+        this._state_3d.renderLoop.stop();
+        this._state_3d.display.clearScene();
+        this._state_3d.display.addSceneItem(mesh);
+        this._state_3d.display.setInteractionElement(this._canvas);
+        this._state_3d.display.setSize(this._canvas.width, this._canvas.height);
 
-        this._display.clearScene();
-        this._display.addSceneItem(mesh);
-        this._display.setInteractionElement(this._canvas);
-        this._display.setSize(this._canvas.width, this._canvas.height);
-
-        _global_render_loop.start(() => {
-            this._display.render();
-            this._display.copyToCanvas(this._ctx);
-        })
+        this._state_3d.renderLoop.start(() => {
+            this._state_3d.display.render();
+            this._state_3d.display.copyToCanvas(this._ctx);
+        });
     }
 
     public renderSelf(state: Readonly<PointCloudState>, sample: Readonly<Sample>): HTMLCanvasElement {
@@ -319,7 +204,7 @@ export class PointCloudElement extends BaseElement<PointCloudState, HTMLCanvasEl
         if (!sample.compressed_path) return this.element;
         let path = "http://localhost:5151/filepath/" + sample.compressed_path;
         //let path = sample.compressed_path;
-        _getCachedMesh(path).then((mesh) => {
+        this._state_3d.getDracoMesh(path).then((mesh) => {
             //this._renderScene(mesh);
             if (state.config.thumbnail) this._renderThumbnail(mesh, state.canvasBBox);
             else this._renderScene(mesh);
@@ -367,7 +252,6 @@ export const get3DElements: GetElements<PointCloudState> = (
 
 export class PointCloudLooker extends looker.Looker<PointCloudState> {
     updateOptions(options: Optional<BaseOptions>): void {
-        console.log(options);
     }
 
     protected hasDefaultZoom(state: PointCloudState, overlays: Overlay<PointCloudState>[]): boolean {

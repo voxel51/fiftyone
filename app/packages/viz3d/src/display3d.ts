@@ -266,3 +266,28 @@ export class Display3D <T extends HTMLCanvasElement> {
     }
 
 };
+
+
+export class RenderLoop {
+    private _rendering: boolean = false;
+    private _renderFn: () => void;
+
+    public constructor () {
+    }
+
+    private _render () {
+        if (!this._rendering) return;
+        this._renderFn();
+        requestAnimationFrame(() => this._render());
+    }
+
+    public start (fn: () => void) {
+        this._renderFn = fn;
+        this._rendering = true;
+        this._render();
+    }
+    
+    public stop () {
+        this._rendering = false;
+    }
+};

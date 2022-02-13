@@ -2,9 +2,9 @@ import thumbnail_worker from "./thumbnail_worker?worker"
 import * as thumbnail_lib from "./thumbnail_worker"
 import * as three from "three"
 import * as worker_util from "./worker_util"
-import * as pcd from "./point_cloud_display"
+import * as pcd from "./display3d"
 
-import {SceneConfig} from "./point_cloud_display"
+import {SceneConfig} from "./display3d"
 
 // TODO: Might be faster to do batch processing.
 // Measure overhead incurred from going back and 

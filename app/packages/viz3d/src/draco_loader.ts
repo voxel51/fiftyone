@@ -111,8 +111,6 @@ export class DracoLoader extends worker_util.WorkerPool {
             let stats: GeometryStatistics = calculateStatistics(bufferGeometry);
             bufferGeometry.boundingBox = stats.boundingBox;
             bufferGeometry.boundingSphere = stats.boundingSphere;
-            //bufferGeometry.computeBoundingBox();
-            //bufferGeometry.computeBoundingSphere();
             var sizeX = bufferGeometry.boundingBox.max.x - bufferGeometry.boundingBox.min.x;
             var sizeY = bufferGeometry.boundingBox.max.y - bufferGeometry.boundingBox.min.y;
             var sizeZ = bufferGeometry.boundingBox.max.z - bufferGeometry.boundingBox.min.z;

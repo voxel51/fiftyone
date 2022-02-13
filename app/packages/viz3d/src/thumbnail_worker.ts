@@ -1,5 +1,4 @@
-import { RawShaderMaterial } from "@fiftyone/looker/src/three";
-import * as pc_display from "./point_cloud_display"
+import * as pc_display from "./display3d"
 import * as worker_utils from "./worker_util"
 import * as three from "three"
 import { OffscreenCanvas } from "three";
