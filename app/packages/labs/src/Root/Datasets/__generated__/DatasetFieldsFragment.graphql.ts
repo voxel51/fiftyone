@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type DatasetFieldsFragment$data = {
   readonly ftype: string;
@@ -25,49 +25,49 @@ export type DatasetFieldsFragment$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [],
-  "kind": "Fragment",
-  "metadata": null,
-  "name": "DatasetFieldsFragment",
-  "selections": [
+  argumentDefinitions: [],
+  kind: "Fragment",
+  metadata: null,
+  name: "DatasetFieldsFragment",
+  selections: [
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "ftype",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "ftype",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "subfield",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "subfield",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "embeddedDocType",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "embeddedDocType",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "path",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "path",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "dbField",
-      "storageKey": null
-    }
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "dbField",
+      storageKey: null,
+    },
   ],
-  "type": "SampleField",
-  "abstractKey": null
+  type: "SampleField",
+  abstractKey: null,
 };
 
 (node as any).hash = "a63d45ae07f692f86a2a78a28bc875f4";

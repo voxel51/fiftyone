@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type DatasetEvaluationsFragment$data = {
   readonly config: {
@@ -25,44 +25,44 @@ export type DatasetEvaluationsFragment$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [],
-  "kind": "Fragment",
-  "metadata": null,
-  "name": "DatasetEvaluationsFragment",
-  "selections": [
+  argumentDefinitions: [],
+  kind: "Fragment",
+  metadata: null,
+  name: "DatasetEvaluationsFragment",
+  selections: [
     {
-      "args": null,
-      "kind": "FragmentSpread",
-      "name": "DatasetRunFragment"
+      args: null,
+      kind: "FragmentSpread",
+      name: "DatasetRunFragment",
     },
     {
-      "alias": null,
-      "args": null,
-      "concreteType": "EvaluationRunConfig",
-      "kind": "LinkedField",
-      "name": "config",
-      "plural": false,
-      "selections": [
+      alias: null,
+      args: null,
+      concreteType: "EvaluationRunConfig",
+      kind: "LinkedField",
+      name: "config",
+      plural: false,
+      selections: [
         {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "predField",
-          "storageKey": null
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "predField",
+          storageKey: null,
         },
         {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "gtField",
-          "storageKey": null
-        }
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "gtField",
+          storageKey: null,
+        },
       ],
-      "storageKey": null
-    }
+      storageKey: null,
+    },
   ],
-  "type": "EvaluationRun",
-  "abstractKey": null
+  type: "EvaluationRun",
+  abstractKey: null,
 };
 
 (node as any).hash = "267a2463af95780a388920956a0e1a78";

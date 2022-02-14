@@ -54,10 +54,14 @@ type DatasetEdge {
   cursor: String!
 }
 
-"""Date (isoformat)"""
+"""
+Date (isoformat)
+"""
 scalar Date
 
-"""Date with time (isoformat)"""
+"""
+Date with time (isoformat)
+"""
 scalar DateTime
 
 type EvaluationRun implements Run {

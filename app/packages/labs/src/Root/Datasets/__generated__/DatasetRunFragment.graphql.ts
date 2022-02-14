@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Fragment, ReaderFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type DatasetRunFragment$data = {
   readonly key: string;
@@ -24,42 +24,42 @@ export type DatasetRunFragment$key = {
 };
 
 const node: ReaderFragment = {
-  "argumentDefinitions": [],
-  "kind": "Fragment",
-  "metadata": null,
-  "name": "DatasetRunFragment",
-  "selections": [
+  argumentDefinitions: [],
+  kind: "Fragment",
+  metadata: null,
+  name: "DatasetRunFragment",
+  selections: [
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "key",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "key",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "version",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "version",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "timestamp",
-      "storageKey": null
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "timestamp",
+      storageKey: null,
     },
     {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "viewStages",
-      "storageKey": null
-    }
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "viewStages",
+      storageKey: null,
+    },
   ],
-  "type": "Run",
-  "abstractKey": "__isRun"
+  type: "Run",
+  abstractKey: "__isRun",
 };
 
 (node as any).hash = "3a46cb47119af149357daffc9f520e15";
