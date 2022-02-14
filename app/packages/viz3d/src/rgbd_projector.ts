@@ -1,51 +1,55 @@
 import * as three from "three"
 import * as d3d from "./display3d"
 
+// Apparently the JS canvas API CANNOT be 
+// used to handle depth data reliably. 
+// See: https://stackoverflow.com/questions/43412842/reconstruct-original-16-bit-raw-pixel-data-from-the-html5-canvas
+import upng from "./upng"
+
+export class RGBDProjectionOptions {
+    public depth_bytes: number = 2;
+    public depth_scale: number = 1000;
+    public depth_trunc: number = 3;
+
+    constructor () {}
+};
+
+class ImageData<T extends ArrayLike<number>> {
+    public width: number;
+    public height: number;
+    public data: T;
+
+    constructor (width: number, height: number, data: T) {
+        this.width = width;
+        this.height = height;
+        this.data = data;
+    }
+};
+
+
 
 // TODO: Consider moving this into a worker.
+// Given that this is typically used for modal 
+// depth display it may not be necessary.
+
+// TODO: Only supports PNG at the moment.
 export class RGBDProjector {
-    private _canvas: HTMLCanvasElement;
-    private _ctx: CanvasRenderingContext2D;
 
     constructor () {
-        this._canvas = document.createElement("canvas");
-        this._ctx = this._canvas.getContext("2d");
     }
 
-    private _loadImage (path: string): Promise<HTMLImageElement> {
-        let resolver = null;
-        let res = new Promise<HTMLImageElement>((resolve,reject) => {
-            resolver = {resolve, reject};
-        });
-
-        let image = new Image();
-        image.src = path;
-
-        image.onload = () => {
-            resolver.resolve(image);
-        };
-        return res;
-    }
-
-    private _loadImages (paths: string[]): Promise<HTMLImageElement[]> {
-        return Promise.all(paths.map((v) => this._loadImage(v)));
+    private _fetchFile (path: string): Promise<ArrayBuffer> {
+        return fetch(path)
+            .then(res => res.blob())
+            .then(blob => blob.arrayBuffer());
     }
 
 
-    private _getImageData (image: HTMLImageElement): ImageData {
-        this._canvas.width = image.width;
-        this._canvas.height = image.height;
-        this._ctx.drawImage(image, 0, 0);
-        let colorData = this._ctx.getImageData(0,0,this._canvas.width, this._canvas.height);
-        return colorData;
-    }
-
-    private _createMesh (color: ImageData, depth: ImageData): three.Mesh {
+    private _createMesh (color: ImageData<Uint8Array>, depth: ImageData<Uint16Array>, options: RGBDProjectionOptions): three.Mesh {
         //let fov = color.width / color.height;
         //let camera = new three.PerspectiveCamera(50, fov, 0.1, 2000);
         //camera.updateProjectionMatrix();
 
-        let point_count = color.width * color.height;
         let geometry = new three.BufferGeometry();
         let positions = [];
         let colors = [];
@@ -53,25 +57,28 @@ export class RGBDProjector {
 
         for (let j = 0; j < color.height; j++){
             for (let i = 0; i < color.width; i++){
-                let idx = i + (j * color.width);
-                let x = i / color.width;
-                let y = j / color.height;
+                let idx = j * color.width + i;
 
                 // TODO Need a way to know how large depth values are.
-                let z = (depth.data[idx*4 + 0] | (depth.data[idx*4 + 1] << 8));// | (depth.data[idx*4 + 2] << 16) | (depth.data[idx*4+3] << 24)); 
-                z = z / 0xffff;
-                if (z === 0) continue;
+                let z = depth.data[idx];
+                z = z / options.depth_scale;
+                if (z === 0 || z > options.depth_trunc) continue;
+
+                let x = (i / color.width) - 0.5;
+                let y = (j / color.height) - 0.5;
 
                 colors.push(color.data[idx*4] / 255);
                 colors.push(color.data[idx*4+1] / 255);
                 colors.push(color.data[idx*4+2] / 255);
 
-                positions.push(x-0.5);
-                positions.push(y-0.5);
-                positions.push(z);
+                point.set(x, y, z);
+                positions.push(point.x);
+                positions.push(point.y);
+                positions.push(point.z);
 
             }
         }
+
         let positionsBuf = new Float32Array(positions);
         let colorsBuf = new Float32Array(colors);
         geometry.setAttribute("position", new three.Float32BufferAttribute(positionsBuf, 3));
@@ -84,11 +91,30 @@ export class RGBDProjector {
         return mesh;
     }
 
-    public createMesh (color: string, depth: string): Promise<three.Mesh> {
-        return this._loadImages([color, depth]).then((images) => {
-            let colorData = this._getImageData(images[0]);
-            let depthData = this._getImageData(images[1]);
-            return this._createMesh(colorData, depthData);
+    public createMesh (color: string, depth: string, options?: RGBDProjectionOptions): Promise<three.Mesh> {
+        options = options ? options : new RGBDProjectionOptions();
+        let color_img = this._fetchFile(color).then((buf) => {
+            let uimg = upng.decode(buf);
+            let img = upng.toRGBA8(uimg)[0];
+            return new ImageData<Uint8Array>(uimg.width, uimg.height, new Uint8Array(img));
+        });
+
+        let depth_img = this._fetchFile(depth).then((buf) => {
+            let uimg = upng.decode(buf);
+            let vals = [];
+            for (let i = 0; i < uimg.data.length; i+=2){
+                let v = uimg.data[i+0] << 8 | uimg.data[i+1];
+                vals.push(v);
+            }
+            return new ImageData(uimg.width, uimg.height, new Uint16Array(vals));
+
+            // TODO: can't seem to specify endianess of typed arrays
+            // You can use DataView to read different endianness values, which might be better...
+            //return new ImageData(uimg.width, uimg.height, new Uint16Array(uimg.data.buffer));
+
+        });
+        return Promise.all([color_img, depth_img]).then((images) => {
+            return this._createMesh(images[0], images[1], options);
         });
     }
 

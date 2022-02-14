@@ -30,6 +30,7 @@
     "json-format-highlight": "^1.0.4",
     "lru-cache": "^6.0.0",
     "mime": "^2.5.2",
+    "pako": "^2.0.4",
     "three": "^0.137.5",
     "uuid": "^8.3.2"
   },

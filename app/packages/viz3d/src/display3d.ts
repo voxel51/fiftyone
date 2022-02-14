@@ -294,6 +294,6 @@ export class RenderLoop {
 
 export const DEFAULT_3D_DISPLAY_CONFIG = new SceneConfigBuilder()
     .setBackgroundColor(0xAAAAAA)
-    .setFog(0x999999, 0.1, 2)
+    .setFog(0x999999, 0.1, 4)
     .flipCamera()
     .build();
