@@ -54,6 +54,7 @@ export class RGBDProjector {
         let positions = [];
         let colors = [];
         let point = new three.Vector3();
+        let aspect = color.width/color.height;
 
         for (let j = 0; j < color.height; j++){
             for (let i = 0; i < color.width; i++){
@@ -64,7 +65,7 @@ export class RGBDProjector {
                 z = z / options.depth_scale;
                 if (z === 0 || z > options.depth_trunc) continue;
 
-                let x = (i / color.width) - 0.5;
+                let x = ((i / color.width) - 0.5) * aspect;
                 let y = (j / color.height) - 0.5;
 
                 colors.push(color.data[idx*4] / 255);
