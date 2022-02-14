@@ -686,7 +686,7 @@ def plot_roc_curve(
     return figure
 
 
-def line(
+def lines(
     x=None,
     y=None,
     samples=None,
@@ -696,6 +696,7 @@ def line(
     style="line",
     figure=None,
     marker_size=None,
+    colors=None,
     title=None,
     trace_title=None,
     xaxis_title=None,
@@ -717,18 +718,6 @@ def line(
     if y is None:
         raise ValueError("You must provide 'y' values")
 
-    y = _parse_values(y, "y", samples=samples)
-
-    if x is None:
-        x = list(range(1, len(y) + 1))
-    else:
-        x = _parse_values(x, "x", samples=samples, points=y)
-
-    sizes = _parse_values(sizes, "sizes", samples=samples, points=y)
-
-    if ids is None and samples is not None:
-        ids = _get_ids(samples, link_field=link_field, points=y)
-
     if xaxis_title is not None:
         x_title = xaxis_title.rsplit(".", 1)[-1]
     else:
@@ -739,7 +728,7 @@ def line(
     else:
         y_title = "y"
 
-    if sizes_title is None:
+    if sizes is not None and sizes_title is None:
         if etau.is_str(sizes):
             sizes_title = sizes.rsplit(".", 1)[-1]
         else:
@@ -750,30 +739,12 @@ def line(
         warnings.warn(msg)
         style = "line"
 
-    marker = {}
-
-    if sizes is not None:
-        if marker_size is None:
-            marker_size = 15  # max marker size
-
-        marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
-        )
-    elif marker_size is not None:
-        marker.update(dict(size=marker_size))
-
-    hover_lines = []
-    hover_lines.append("%s, %s = %%{x:.3f}, %%{y:.3f}" % (x_title, y_title))
+    hover_lines = ["%s: %%{x}" % x_title, "%s: %%{y}" % y_title]
 
     if sizes is not None:
         hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
-    if ids is not None:
+    if ids is not None or samples is not None:
         hover_lines.append("ID: %{customdata}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
@@ -782,23 +753,114 @@ def line(
     if style == "area":
         params.update(dict(fill="tozeroy"))
 
+    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
+        if samples is not None and samples.media_type == fom.VIDEO:
+            is_frames = foe.is_frames_expr(y)
+        else:
+            is_frames = False
+    else:
+        is_frames = y and etau.is_container(y[0])
+
+    if is_frames and link_field is None:
+        link_field = "frames"
+
+    y = _parse_values(y, "y", samples=samples, is_frames=is_frames)
+
+    if x is None:
+        if is_frames:
+            x = [np.arange(1, len(yi) + 1) for yi in y]
+        else:
+            x = np.arange(1, len(y) + 1)
+    else:
+        x = _parse_values(x, "x", samples=samples, ref=y, is_frames=is_frames)
+
+    if is_frames and x and not etau.is_container(x[0]):
+        x = [x] * len(y)
+
+    sizes = _parse_values(
+        sizes, "sizes", samples=samples, ref=y, is_frames=is_frames
+    )
+
+    if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
+        if is_frames:
+            _sizes = list(itertools.chain(*sizes))
+        else:
+            _sizes = sizes
+
+        try:
+            sizeref = 0.5 * max(_sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
+    if ids is None and samples is not None:
+        ids = _get_ids(
+            samples, link_field=link_field, ref=y, is_frames=is_frames
+        )
+
+    if is_frames:
+        if sizes is None:
+            sizes = itertools.repeat(None)
+
+        if ids is None:
+            ids = itertools.repeat(None)
+
+        if trace_title is None:
+            trace_title = [str(i) for i in range(1, len(y) + 1)]
+        elif etau.is_str(trace_title):
+            trace_title = _parse_values(
+                trace_title, "trace_title", samples=samples
+            )
+
+        showlegend = True
+    else:
+        x = [x]
+        y = [y]
+        ids = [ids]
+        sizes = [sizes]
+        trace_title = [trace_title]
+        showlegend = trace_title[0] is not None
+
+    colors = _get_qualitative_colors(len(y), colors=colors)
+
+    traces = []
+    for _x, _y, _ids, _sizes, _trace_title, _color in zip(
+        x, y, ids, sizes, trace_title, colors
+    ):
+        marker = {}
+        if _sizes is not None:
+            marker.update(
+                dict(
+                    size=_sizes,
+                    sizemode="diameter",
+                    sizeref=sizeref,
+                    sizemin=4,
+                )
+            )
+        elif marker_size is not None:
+            marker.update(dict(size=marker_size))
+
+        traces.append(
+            go.Scatter(
+                x=_x,
+                y=_y,
+                customdata=_ids,
+                mode="lines+markers",
+                line_color=_color,
+                marker=marker,
+                hovertemplate=hovertemplate,
+                name=_trace_title,
+                showlegend=showlegend,
+                **params,
+            )
+        )
+
     if figure is None:
         figure = go.Figure()
 
-    scatter = go.Scatter(
-        x=x,
-        y=y,
-        customdata=ids,
-        mode="lines+markers",
-        line_color=_DEFAULT_LINE_COLOR,
-        marker=marker,
-        hovertemplate=hovertemplate,
-        name=trace_title,
-        showlegend=True,
-        **params,
-    )
-
-    figure.add_trace(scatter)
+    figure.add_traces(traces)
 
     figure.update_layout(**_DEFAULT_LAYOUT)
     figure.update_layout(
@@ -1113,20 +1175,20 @@ def _parse_scatter_inputs(
 ):
     num_dims = points.shape[1]
 
-    labels = _parse_values(labels, "labels", samples=samples, points=points)
-    sizes = _parse_values(sizes, "sizes", samples=samples, points=points)
+    labels = _parse_values(labels, "labels", samples=samples, ref=points)
+    sizes = _parse_values(sizes, "sizes", samples=samples, ref=points)
 
     if ids is None and samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
         else:
-            ids = _get_ids(samples, link_field=link_field, points=points)
+            ids = _get_ids(samples, link_field=link_field, ref=points)
 
-    return _parse_data(points, ids, labels, sizes, edges, classes)
+    return _parse_scatter_data(points, ids, labels, sizes, edges, classes)
 
 
-def _parse_values(values, parameter, samples=None, points=None):
+def _parse_values(values, parameter, samples=None, ref=None, is_frames=False):
     if values is None:
         return None
 
@@ -1137,50 +1199,81 @@ def _parse_values(values, parameter, samples=None, points=None):
                 "for the `%s` parameter" % parameter
             )
 
-        values = samples.values(values, unwind=True)
+        values = samples.values(values)
+
+    if is_frames:
+        values = [_unwind_values(v) for v in values]
     else:
         values = _unwind_values(values)
 
-    if points is not None and len(values) != len(points):
-        raise ValueError(
-            "Number of %s (%d) does not match number of points (%d). You "
-            "may have missing data/labels that you need to omit from your "
-            "view" % (parameter, len(values), len(points))
-        )
+    if ref is not None:
+        _validate_values(values, ref, parameter, is_frames=is_frames)
 
     return values
 
 
-def _unwind_values(values):
-    while any(isinstance(v, (list, tuple)) for v in values):
-        values = list(itertools.chain.from_iterable(v for v in values if v))
-
-    return values
-
-
-def _get_ids(samples, link_field=None, points=None):
+def _get_ids(samples, link_field=None, ref=None, is_frames=False):
     if link_field is None:
         ids = samples.values("id")
         ptype = "sample"
-    elif link_field == "frames" and samples.media_type == fom.VIDEO:
-        ids = samples.values("frames.id", unwind=True)
+    elif link_field == "frames":
+        ids = samples.values("frames.id")
         ptype = "frame"
     else:
-        ids = samples._get_label_ids(fields=link_field)
+        _, id_path = samples._get_label_field_path(link_field, "id")
+        ids = samples.values(id_path)
         ptype = "label"
 
-    if points is not None and len(ids) != len(points):
+    if is_frames:
+        ids = [_unwind_values(_ids) for _ids in ids]
+    else:
+        ids = _unwind_values(ids)
+
+    if ref is not None:
+        values_type = "%s IDs" % ptype
+        _validate_values(ids, ref, values_type, is_frames=is_frames)
+
+    return ids
+
+
+def _unwind_values(values):
+    if values is None:
+        return None
+
+    while any(etau.is_container(v) for v in values):
+        values = list(itertools.chain.from_iterable(v for v in values if v))
+
+    return np.array(values)
+
+
+def _validate_values(values, ref, values_type, is_frames=False):
+    if not is_frames:
+        if len(values) != len(ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d). You may have missing "
+                "data/labels that you need to omit from your view"
+                % (values_type, len(values), len(ref))
+            )
+
+        return
+
+    if len(values) != len(ref):
         raise ValueError(
-            "Number of %s IDs (%d) does not match number of points "
-            "(%d). You may have missing data/labels that you need to omit "
-            "from your view before visualizing"
-            % (ptype, len(ids), len(points))
+            "Inconsistent number of %s traces (%d != %d). You may have "
+            "missing data/labels that you need to omit from your view"
+            % (values_type, len(values), len(ref))
         )
 
-    return np.array(ids)
+    for idx, (_values, _ref) in enumerate(zip(values, ref), 1):
+        if len(_values) != len(_ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d) in trace %d/%d. You may "
+                "have missing data/labels that you need to omit from your view"
+                % (values_type, len(_values), len(_ref), idx, len(values))
+            )
 
 
-def _parse_data(points, ids, labels, sizes, edges, classes):
+def _parse_scatter_data(points, ids, labels, sizes, edges, classes):
     if ids is not None:
         ids = np.asarray(ids)
 
@@ -2441,13 +2534,13 @@ def _plot_scatter_categorical_single_trace(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2544,13 +2637,13 @@ def _plot_scatter_numeric(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2631,7 +2724,11 @@ def _plot_scatter_mapbox_categorical(
         if marker_size is None:
             marker_size = 15  # max marker size
 
-        sizeref = 0.5 * max(sizes) / marker_size
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
@@ -2738,13 +2835,13 @@ def _plot_scatter_mapbox_categorical_single_trace(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2831,13 +2928,13 @@ def _plot_scatter_mapbox_numeric(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -3017,7 +3114,9 @@ def _get_qualitative_colors(num_classes, colors=None):
     # Some color choices:
     # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
     if colors is None:
-        if num_classes <= 10:
+        if num_classes == 1:
+            colors = [_DEFAULT_LINE_COLOR]
+        elif num_classes <= 10:
             colors = px.colors.qualitative.G10
         else:
             colors = px.colors.qualitative.Alphabet
