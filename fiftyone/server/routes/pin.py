@@ -1,22 +1,24 @@
 """
-FiftyOne Server filtering.
+FiftyOne Server /pin route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+
 import fiftyone.core.state as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
 
-from fiftyone.server.state import catch_errors, StateHandler
-from fiftyone.server.utils import AsyncRequestHandler
+from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
-class PinHandler(AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class Pin(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict):
         filters = data.get("filters", {})
         dataset = data.get("dataset", None)
         stages = data.get("view", None)

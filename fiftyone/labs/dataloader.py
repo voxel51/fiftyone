@@ -32,13 +32,13 @@ def get_dataloader(
             {key: {"$in": keys}}
         ):
             results[doc[key]] = doc
-            doc["id"] = doc.pop("_id")
 
         def build(doc):
-            if doc:
-                return from_dict(cls, doc, config=Config(check_types=False))
+            if not doc:
+                return None
 
-            return None
+            doc = cls.modifier(doc)
+            return from_dict(cls, doc, config=Config(check_types=False))
 
         return [build(results.get(k, None)) for k in keys]
 

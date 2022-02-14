@@ -5,18 +5,21 @@ FiftyOne Server sorting.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
 
-from fiftyone.server.state import StateHandler, catch_errors
-from fiftyone.server.utils import AsyncRequestHandler
+from fiftyone.server.decorators import route
+from fiftyone.server.routes.state import StateHandler
 import fiftyone.server.view as fosv
 
 
-class SortHandler(AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class Sort(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict):
         dataset_name = data.get("dataset", None)
         filters = data.get("filters", {})
         stages = data.get("view", None)

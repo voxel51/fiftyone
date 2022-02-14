@@ -86,7 +86,7 @@ def get_paginator_resolver(
         info: Info = None,
     ):
         def from_db(doc: dict):
-            doc["id"] = doc.pop("_id")
+            doc = cls.modifier(doc)
             return from_dict(cls, doc, config=Config(check_types=False))
 
         return await get_items(

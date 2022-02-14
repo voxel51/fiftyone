@@ -1,24 +1,28 @@
 """
-FiftyOne Server tagging.
+FiftyOne Server /tag route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
+from fiftyone.server.decorators import route
 from fiftyone.server.json_util import convert
-from fiftyone.server.state import catch_errors, StateHandler
+from fiftyone.server.routes.state import StateHandler
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
 
-class TagHandler(fosu.AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class Tag(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)

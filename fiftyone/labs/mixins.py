@@ -9,7 +9,12 @@ FiftyOne Teams mixins.
 
 class HasCollection(object):
     @staticmethod
-    def get_collection_name():
+    def get_collection_name() -> str:
         raise NotImplementedError(
             "subclasses must implement 'get_collection_name()'"
         )
+
+    @staticmethod
+    def modifier(doc: dict) -> dict:
+        doc["id"] = doc.pop("_id")
+        return doc

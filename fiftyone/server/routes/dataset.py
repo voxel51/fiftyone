@@ -1,20 +1,22 @@
 """
-FiftyOne Server state setters.
+FiftyOne Server /dataset route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+
 import fiftyone.core.dataset as fod
 import fiftyone.core.state as fos
 
-from fiftyone.server.state import catch_errors, StateHandler
-import fiftyone.server.utils as fosu
+from fiftyone.server.decorators import route
 
 
-class DatasetHandler(fosu.AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class DatasetHandler(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict):
         dataset = data.get("dataset", None)
         dataset = fod.load_dataset(dataset) if dataset else None
 

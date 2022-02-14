@@ -10,6 +10,9 @@ from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
 import math
+import typing as t
+
+from starlette.responses import JSONResponse
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -132,3 +135,8 @@ class FiftyOneJSONEncoder(JSONEncoder):
         return json_util.loads(
             json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
         )
+
+
+class FiftyOneResponse(JSONResponse):
+    def render(self, content: t.Any) -> bytes:
+        return FiftyOneJSONEncoder.dumps(content)

@@ -1,11 +1,14 @@
 """
-FiftyOne Server aggregations.
+FiftyOne Server /aggregation and /tagging routes
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict
+
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
@@ -14,9 +17,9 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
+from fiftyone.server.decorators import route
 from fiftyone.server.json_util import convert
-from fiftyone.server.state import catch_errors
-from fiftyone.server.utils import AsyncRequestHandler, meets_type
+from fiftyone.server.utils import meets_type
 import fiftyone.server.view as fosv
 
 
@@ -27,9 +30,9 @@ class CountExists(foa.Count):
         super().__init__(field, _unwind=False)
 
 
-class AggregationsHandler(AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class Aggregations(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -48,9 +51,9 @@ class AggregationsHandler(AsyncRequestHandler):
         return convert(result)
 
 
-class TagAggregationsHandler(AsyncRequestHandler):
-    @catch_errors
-    async def post_response(self, data):
+class TagsAggregations(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
