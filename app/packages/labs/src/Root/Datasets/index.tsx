@@ -22,6 +22,9 @@ const DatasetCard: React.FC<{ dataset: DatasetsListingCard_dataset$key }> = (
       fragment DatasetsListingCard_dataset on Dataset {
         id
         name
+        sampleFields {
+          path
+        }
       }
     `,
     props.dataset
@@ -40,7 +43,7 @@ const DatasetListingComponent: React.FC<{
   const { data, loadNext, hasNext, isLoadingNext } = usePaginationFragment(
     graphql`
       fragment DatasetsListingComponent_query on Query
-        @refetchable(queryName: "DatasetsPaginationQuery") {
+      @refetchable(queryName: "DatasetsPaginationQuery") {
         datasets(first: $count, after: $cursor)
           @connection(key: "DatasetsList_query_datasets") {
           edges {

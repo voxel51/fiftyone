@@ -69,10 +69,10 @@ export const removeKeys = <T>(
 
 interface BaseField {
   ftype: string;
-  dbField?: string;
+  dbField: string | null;
   name: string;
-  embeddedDocType?: string;
-  subfield?: string;
+  embeddedDocType: string | null;
+  subfield: string | null;
 }
 
 export interface StrictField extends BaseField {

@@ -1,3 +1,4 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import React, { Suspense } from "react";
 import { AiOutlineDatabase, AiOutlineUser } from "react-icons/ai";
 import { usePreloadedQuery } from "react-relay";
@@ -61,6 +62,7 @@ const Nav: React.FC = () => {
     .reduce((nearest, current) => {
       return current.length > nearest.length ? current : nearest;
     }, "/");
+  const { logout } = useAuth0();
 
   return (
     <div className={nav}>
@@ -76,6 +78,7 @@ const Nav: React.FC = () => {
         ))}
       </div>
       <div className={profile}>Hi, Ben</div>
+      <button onClick={() => logout()}>Logout</button>
     </div>
   );
 };

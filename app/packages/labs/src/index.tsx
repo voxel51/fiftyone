@@ -1,4 +1,6 @@
+import { RedirectLoginResult } from "@auth0/auth0-spa-js";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
+
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { ErrorBoundary } from "react-error-boundary";
@@ -18,21 +20,20 @@ import { ThemeContext, useTheme } from "./Theme";
 
 const Environment = () => {
   const auth0 = useAuth0();
-  const redirecting = useRef(false);
+  const redirect = !auth0.isAuthenticated && !auth0.isLoading && !auth0.error;
 
   useEffect(() => {
-    if (!auth0.isAuthenticated && !auth0.isLoading && !auth0.error) {
+    redirect &&
       auth0.loginWithRedirect({
-        redirectUri: window.location.href,
+        redirectUri: `${window.location.protocol}//${window.location.host}`,
         prompt: "login",
+        appState: window.location.href,
       });
-      redirecting.current = true;
-    }
-  }, [auth0.isAuthenticated, auth0.isLoading, auth0.error]);
+  }, [redirect]);
 
   if (
     auth0.error ||
-    (!auth0.isAuthenticated && !auth0.isLoading && !redirecting.current)
+    (!auth0.isAuthenticated && !auth0.isLoading && !redirect)
   ) {
     return <Loading>Unauthorized</Loading>;
   }
@@ -68,8 +69,8 @@ const Root = () => {
           audience="api.dev.fiftyone.ai"
           clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
           domain="dev-uqppzklh.us.auth0.com"
-          redirectUri={window.location.origin}
           organization={"org_wtMMZE61j2gnmxsm"}
+          onRedirectCallback={(url) => window.location.assign(url)}
         >
           <App />
         </Auth0Provider>

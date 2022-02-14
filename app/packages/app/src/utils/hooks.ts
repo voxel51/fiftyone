@@ -398,8 +398,7 @@ export const useStateUpdate = () => {
       set(savingFilters, false);
       if (
         !viewsAreEqual(view, state.view || []) ||
-        state?.dataset?.sampleCollectionName !==
-          current?.dataset?.sampleCollectionName
+        state?.dataset?.id !== current?.dataset?.id
       ) {
         set(viewAtoms.view, state.view || []);
         set(filterAtoms.filters, {});
@@ -413,9 +412,6 @@ export const useStateUpdate = () => {
           state.dataset.evaluations || {}
         );
 
-        state.dataset.annotationRuns = Object.values(
-          state.dataset.annotationRuns || {}
-        );
         const groups = resolveGroups(state.dataset);
         const current = get(sidebarGroupsDefinition(false));
 

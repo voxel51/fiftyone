@@ -29,6 +29,7 @@ ID = gql.scalar(
     parse_value=lambda v: ObjectId(v),
 )
 
+
 @gql.enum
 class MediaType(Enum):
     image = "image"

@@ -1,6 +1,47 @@
+type AppConfig {
+  timezone: String
+  colorscale: String!
+  colorPool: [String!]!
+  gridZoom: Int!
+  loopVideos: Boolean!
+  notebookHeight: Int!
+  showConfidence: Boolean!
+  showIndex: Boolean!
+  showLabel: Boolean!
+  showTooltip: Boolean!
+  useFrameNumber: Boolean!
+}
+
+type BrainRun implements Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: BrainRunConfig!
+  viewStages: [String!]!
+}
+
+type BrainRunConfig implements RunConfig {
+  cls: String!
+  embeddingsField: String
+  method: String!
+  patchesField: String
+}
+
 type Dataset {
   id: ID!
   name: String!
+  createdAt: Date!
+  lastLoadedAt: DateTime!
+  persistent: Boolean!
+  mediaType: MediaType!
+  maskTargets: [NamedTargets!]!
+  defaultMaskTargets: [Target!]
+  sampleFields: [SampleField!]!
+  frameFields: [SampleField!]!
+  brainMethods: [BrainRun!]!
+  evaluations: [EvaluationRun!]!
+  appSidebarGroups: [SidebarGroup!]
+  version: String!
 }
 
 type DatasetConnection {
@@ -13,8 +54,41 @@ type DatasetEdge {
   cursor: String!
 }
 
+"""Date (isoformat)"""
+scalar Date
+
+"""Date with time (isoformat)"""
+scalar DateTime
+
+type EvaluationRun implements Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: EvaluationRunConfig!
+  viewStages: [String!]!
+}
+
+type EvaluationRunConfig implements RunConfig {
+  cls: String!
+  classwise: Boolean!
+  errorLevel: Int!
+  gtField: String!
+  predField: String!
+  method: String!
+}
+
+enum MediaType {
+  image
+  video
+}
+
 type Mutation {
   login(user: UserInput!): User!
+}
+
+type NamedTargets {
+  name: String!
+  targets: [Target!]!
 }
 
 type PageInfo {
@@ -31,12 +105,44 @@ type Query {
   viewer: User!
 }
 
+interface Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: RunConfig!
+  viewStages: [String!]!
+}
+
+interface RunConfig {
+  cls: String!
+}
+
+type SampleField {
+  ftype: String!
+  path: String!
+  subfield: String
+  embeddedDocType: String
+  dbField: String
+}
+
+type SidebarGroup {
+  name: String!
+  paths: [String!]!
+}
+
+type Target {
+  target: Int!
+  value: String!
+}
+
 type User {
   id: ID!
   datasets(first: Int = 10, after: String = null): DatasetConnection!
   email: String!
   familyName: String!
   givenName: String!
+  colorscale: [[Int!]!]
+  config: AppConfig!
 }
 
 type UserConnection {

@@ -5,7 +5,7 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio  # pylint: disable=unused-import
+import asyncio
 from collections import defaultdict
 import logging
 import requests
@@ -14,8 +14,7 @@ from threading import Thread
 import time
 
 from bson import json_util
-from tornado.ioloop import IOLoop
-from tornado.websocket import websocket_connect
+import websockets
 
 
 logging.getLogger("tornado").setLevel(logging.ERROR)
@@ -51,13 +50,13 @@ class HasClient(object):
 
         async def connect():
             try:
-                self._client = await websocket_connect(url=self._url)
+                self._client = websockets.connect(self._url)
                 self._initial_connection = False
             except:
                 return
 
             while True:
-                message = await self._client.read_message()
+                message = await self._client.recv()
 
                 global _leader
                 if _leader[self._url] is None:
@@ -74,9 +73,7 @@ class HasClient(object):
                     while not self._client:
                         try:
                             _ping(fiftyone_url)
-                            self._client = await websocket_connect(
-                                url=self._url
-                            )
+                            self._client = await websockets.connect(self._url)
                         except:
                             print(
                                 "\r\nCould not connect session, trying again "
@@ -105,9 +102,6 @@ class HasClient(object):
                     )
                     self._update_listeners()
 
-                if event == "notification":
-                    self.on_notification(message)
-
                 if event == "capture":
                     self.on_capture(message)
 
@@ -121,8 +115,7 @@ class HasClient(object):
                     self.on_close()
 
         def run_client():
-            io_loop = IOLoop(make_current=True)
-            io_loop.run_sync(connect)
+            asyncio.run(connect)
 
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
@@ -160,7 +153,7 @@ class HasClient(object):
             self._data = value
             self._update_listeners()
 
-            self._client.write_message(
+            self._client.send(
                 json_util.dumps({"type": "update", "state": value.serialize()})
             )
         else:
