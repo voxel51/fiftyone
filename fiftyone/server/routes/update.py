@@ -1,5 +1,5 @@
 """
-FiftyOne Server /teams route
+FiftyOne Server /update route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,17 +8,15 @@ FiftyOne Server /teams route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import eta.core.serial as etas
-
-import fiftyone.constants as foc
+import fiftyone.core.state as fos
 
 from fiftyone.server.decorators import route
+from fiftyone.server.state import set_state
 
 
-class Teams(HTTPEndpoint):
+class Update(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        submitted = data.get("submitted", "") == "true"
-        etas.write_json({"submitted": submitted}, foc.TEAMS_PATH)
-
+        state = fos.StateDescription.from_dict(data.get("state"))
+        set_state(state)
         return {}

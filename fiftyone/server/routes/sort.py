@@ -1,5 +1,5 @@
 """
-FiftyOne Server sorting.
+FiftyOne Server /sort route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -13,7 +13,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
 
 from fiftyone.server.decorators import route
-from fiftyone.server.routes.state import StateHandler
+from fiftyone.server.state import get_state
 import fiftyone.server.view as fosv
 
 
@@ -33,7 +33,5 @@ class Sort(HTTPEndpoint):
 
         fosv.get_view(dataset_name, stages, filters, similarity=similarity)
         return {
-            "state": fos.StateDescription.from_dict(
-                StateHandler.state
-            ).serialize()
+            "state": fos.StateDescription.from_dict(get_state()).serialize()
         }

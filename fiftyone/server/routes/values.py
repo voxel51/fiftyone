@@ -11,30 +11,26 @@ from starlette.requests import Request
 import fiftyone.core.aggregations as foa
 from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.media as fom
-import fiftyone.core.state as fos
 
+import fiftyone.server.constants as foc
 from fiftyone.server.decorators import route
-from fiftyone.server.routes.state import LIST_LIMIT, StateHandler
-from fiftyone.server.view import get_view_field
+import fiftyone.server.view as fosv
+
 
 class Values(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        path = data["path"]
-        uuid = data["uuid"]
-        selected = data["selected"]
-        search = data["search"]
-        asc = data["asc"]
-        count = data["count"]
-        limit = data["limit", LIST_LIMIT]
+        dataset = data.get("dataset")
+        path = data.get("path")
+        selected = data.get("selected")
+        search = data.get("search")
+        asc = data.get("asc", True)
+        count = data.get("count")
+        limit = data.get("limit", foc.LIST_LIMIT)
         sample_id = data.get("sample_id", None)
+        stages = data.get("view", [])
 
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset
-
+        view = fosv.get_view(dataset, stages)
         view = _get_search_view(view, path, search, selected)
 
         if sample_id is not None:
@@ -47,10 +43,8 @@ class Values(HTTPEndpoint):
         )
 
         return {
-            "type": "count_values",
             "count": count,
             "results": first,
-            "uuid": uuid,
         }
 
 
@@ -71,7 +65,7 @@ def _get_search_view(view, path, search, selected):
         vf = F("label")
         meth = lambda expr: view.filter_labels(field, expr)
     else:
-        vf = get_view_field(fields_map, path)
+        vf = fosv.get_view_field(fields_map, path)
         meth = view.match
 
     if search != "" and selected:
@@ -82,4 +76,3 @@ def _get_search_view(view, path, search, selected):
         expr = ~vf.is_in(selected)
 
     return meth(expr)
-

@@ -12,6 +12,7 @@ from fiftyone.core.stages import _STAGES
 
 from fiftyone.server.decorators import route
 
+
 class Stages(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):

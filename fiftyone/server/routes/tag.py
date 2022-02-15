@@ -15,7 +15,6 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 from fiftyone.server.json_util import convert
-from fiftyone.server.routes.state import StateHandler
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
@@ -77,7 +76,7 @@ class Tag(HTTPEndpoint):
             view = view.set_field("frames", expr)
 
         samples = await foo.aggregate(
-            StateHandler.sample_collection(),
+            foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(len(sample_ids))
         return {"samples": convert(samples)}

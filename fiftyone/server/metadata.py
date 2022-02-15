@@ -396,8 +396,3 @@ class MetadataException(Exception):
     """"Exception raised when metadata for a media file cannot be computed."""
 
     pass
-
-
-def _is_video(filepath):
-    mime_type = etau.guess_mime_type(filepath)
-    return mime_type and mime_type.startswith("video/")

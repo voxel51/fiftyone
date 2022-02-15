@@ -14,7 +14,7 @@ from starlette.responses import FileResponse
 from fiftyone.core.cache import media_cache
 
 
-class MediaHandler(HTTPEndpoint):
+class Media(HTTPEndpoint):
     def get(self, request: Request):
         path = request.query_params["filepath"]
 

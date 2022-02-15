@@ -8,11 +8,11 @@ FiftyOne Server /pin route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone.core.state as fos
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.state import get_state, set_state
 import fiftyone.server.view as fosv
 
 
@@ -35,10 +35,10 @@ class Pin(HTTPEndpoint):
                 stage = fost.ViewStage._from_dict(d)
                 view = view.add_stage(stage)
 
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = get_state()
         state.selected = []
         state.selected_labels = []
         state.view = view
 
-        await StateHandler.on_update(StateHandler, state.serialize())
+        set_state(state)
         return {}

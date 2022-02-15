@@ -12,19 +12,22 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.state as fos
 
 from fiftyone.server.decorators import route
+from fiftyone.server.state import get_state, set_state
 
 
-class DatasetHandler(HTTPEndpoint):
+class Dataset(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         dataset = data.get("dataset", None)
         dataset = fod.load_dataset(dataset) if dataset else None
 
-        config = fos.StateDescription.from_dict(StateHandler.state).config
-        active_handle = StateHandler.state["active_handle"]
-        StateHandler.state = fos.StateDescription(
-            dataset=dataset, config=config, active_handle=active_handle
-        ).serialize()
+        state = get_state()
+        set_state(
+            fos.StateDescription(
+                dataset=dataset,
+                config=state.config,
+                active_handle=state.active_handle,
+            ).serialize()
+        )
 
-        await StateHandler.on_update(StateHandler, StateHandler.state)
         return {}

@@ -1,18 +1,22 @@
 """
-FiftyOne Server sidebar ordering.
+FiftyOne Server /sidebar route
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+
 import fiftyone.core.odm.dataset as food
 
-from fiftyone.server.utils import AsyncRequestHandler
+from fiftyone.server.decorators import route
 import fiftyone.server.view as fosv
 
 
-class SidebarHandler(AsyncRequestHandler):
-    async def post_response(self, data):
+class Sidebar(HTTPEndpoint):
+    @route
+    async def post_response(self, request: Request, data: dict):
         groups = [
             food.SidebarGroupDocument(**group) for group in data["groups"]
         ]
