@@ -7,8 +7,8 @@ FiftyOne Server /fiftyone route
 """
 import os
 
-from starlette.requests import Request
 from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
 
 import eta.core.serial as etas
 
@@ -21,7 +21,7 @@ from fiftyone.server.decorators import route
 
 class FiftyOne(HTTPEndpoint):
     @route
-    async def get(self, request: Request, data: dict):
+    async def get(self, request: Request, data: dict) -> dict:
         uid, _ = fou.get_user_id()
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:

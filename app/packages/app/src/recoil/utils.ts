@@ -17,7 +17,7 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
     return url;
   }
 
-  return `${http}/filepath/${encodeURIComponent(filepath)}?id=${id}`;
+  return `${http}/media?filepath=${encodeURIComponent(filepath)}&id=${id}`;
 };
 
 export const lookerType = selector<(mimetype: string) => LookerTypes>({

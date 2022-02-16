@@ -116,27 +116,30 @@ class FiftyOneJSONEncoder(JSONEncoder):
         return super().default(o)
 
     @staticmethod
-    def dumps(*args, **kwargs):
+    def dumps(data, *args, **kwargs) -> str:
         kwargs["cls"] = FiftyOneJSONEncoder
+        data = convert(data)
         return json_util.dumps(
             json_util.loads(
-                json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
+                json_util.dumps(data, *args, **kwargs),
+                parse_constant=lambda c: c,
             ),
             **kwargs
         )
 
     @staticmethod
-    def loads(*args, **kwargs):
+    def loads(*args, **kwargs) -> dict:
         return json_util.loads(*args, **kwargs)
 
     @staticmethod
-    def process(*args, **kwargs):
+    def process(data, *args, **kwargs):
         kwargs["cls"] = FiftyOneJSONEncoder
+        data = convert(data)
         return json_util.loads(
-            json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
+            json_util.dumps(data, *args, **kwargs), parse_constant=lambda c: c
         )
 
 
 class FiftyOneResponse(JSONResponse):
     def render(self, content: t.Any) -> bytes:
-        return FiftyOneJSONEncoder.dumps(content)
+        return bytes(FiftyOneJSONEncoder.dumps(content), encoding="utf-8")

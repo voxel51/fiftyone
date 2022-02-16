@@ -36,6 +36,9 @@ export interface ColorTheme {
   border: string;
   borderLight: string;
 
+  button: string;
+  buttonBorder: string;
+
   brand: string;
   brandDark: string;
   brandTransparent: string;
@@ -62,6 +65,9 @@ export const darkTheme: ColorTheme = {
   backgroundTransparent: grey19a70,
   border: grey37,
   borderLight: grey24,
+
+  button: grey37,
+  buttonBorder: grey24,
 
   brand: orange49,
   brandDark: orange45,

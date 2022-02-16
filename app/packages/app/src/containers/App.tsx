@@ -11,6 +11,7 @@ import socket, { handleId, isNotebook } from "../shared/connection";
 import {
   useEventHandler,
   useMessageHandler,
+  useScreenshot,
   useSendMessage,
   useUnprocessedStateUpdate,
 } from "../utils/hooks";
@@ -38,6 +39,7 @@ const Container = () => {
 
   useEventHandler(socket, "close", useClose());
   useMessageHandler("update", useUnprocessedStateUpdate());
+  useScreenshot();
 
   useSendMessage("as_app", {
     notebook: isNotebook,

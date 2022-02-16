@@ -9,6 +9,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 from fiftyone.server.decorators import route
+from fiftyone.server.state import get_state, set_state
 
 
 class Select(HTTPEndpoint):
@@ -17,8 +18,12 @@ class Select(HTTPEndpoint):
         ids = data.get("ids", None)
         labels = data.get("labels", None)
 
+        state = get_state()
+
         if ids is not None:
-            pass
+            state.selected = ids
 
         if labels is not None:
-            pass
+            state.selected_labels = labels
+
+        set_state(state)

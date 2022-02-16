@@ -8,6 +8,7 @@ FiftyOne Server decorators.
 import traceback
 import typing as t
 
+from starlette.endpoints import HTTPEndpoint
 from starlette.responses import Response
 from starlette.requests import Request
 
@@ -15,15 +16,19 @@ from fiftyone.server.json_util import FiftyOneJSONEncoder, FiftyOneResponse
 
 
 def route(func):
-    async def wrapper(request: Request) -> t.Union[dict, Response]:
+    async def wrapper(
+        endpoint: HTTPEndpoint, request: Request, *args
+    ) -> t.Union[dict, Response]:
         try:
-            data = FiftyOneJSONEncoder.loads(await request.body)
-            result = await func(request, data)
-            if isinstance(result, Response):
-                return result
+            body = await request.body()
+            payload = body.decode("utf-8")
+            data = FiftyOneJSONEncoder.loads(payload) if payload else {}
+            response = await func(endpoint, request, data, *args)
+            if isinstance(response, Response):
+                return response
 
-            return FiftyOneResponse(result)
-        except Exception:
+            return FiftyOneResponse(response)
+        except:
             return FiftyOneResponse(
                 {"kind": "Server Error", "stack": traceback.format_exc(),}
             )

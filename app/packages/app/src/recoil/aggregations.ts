@@ -136,7 +136,7 @@ export const aggregations = selectorFamily<
     }
 
     get(aggregationsTick);
-    const data = (await (
+    const { aggregations: data } = (await (
       await fetch(`${http}/aggregations`, {
         cache: "no-cache",
         method: "POST",
@@ -155,7 +155,7 @@ export const aggregations = selectorFamily<
               : null,
         }),
       })
-    ).json()) as AggregationsData;
+    ).json()) as { aggregations: AggregationsData };
 
     data && addNoneCounts(data, get(selectors.isVideoDataset));
 

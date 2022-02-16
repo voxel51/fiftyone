@@ -15,3 +15,15 @@ body,
 #modal {
   position: absolute;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+body,
+input,
+button {
+  font-family: "Palanquin", sans-serif;
+  font-size: 14px;
+  color: var(--font);
+}

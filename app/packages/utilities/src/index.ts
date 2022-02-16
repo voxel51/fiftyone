@@ -428,3 +428,11 @@ export const formatDate = (timeStamp: number): string => {
     .format(timeStamp)
     .replaceAll("/", "-");
 };
+
+type Mutable<T> = {
+  -readonly [K in keyof T]: Mutable<T[K]>;
+};
+
+export const clone = <T extends unknown>(data: T): Mutable<T> => {
+  return JSON.parse(JSON.stringify(data));
+};

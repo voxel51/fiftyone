@@ -9,7 +9,7 @@ import {
   DatasetQuery,
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
-import { Field, Schema, StrictField } from "@fiftyone/utilities";
+import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
 import { useStateUpdate } from "@fiftyone/app/src/utils/hooks";
 import { useEffect } from "react";
 
@@ -82,26 +82,10 @@ const transformDataset = ({
   };
 };
 
-type Mutable<T> = {
-  -readonly [K in keyof T]: Mutable<T[K]>;
-};
-
-const clone = <T extends unknown>(data: T): Mutable<T> => {
-  return JSON.parse(JSON.stringify(data));
-};
-
-const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
+export const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
       query DatasetQuery($name: String!) {
-        datasets(first: 1000) @connection(key: "Dataset_query_datasets") {
-          edges {
-            cursor
-            node {
-              name
-            }
-          }
-        }
         dataset(name: $name) {
           id
           name
@@ -162,22 +146,6 @@ const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
           createdAt
           version
         }
-        viewer {
-          config {
-            timezone
-            colorscale
-            colorPool
-            gridZoom
-            loopVideos
-            notebookHeight
-            showConfidence
-            showIndex
-            showLabel
-            showTooltip
-            useFrameNumber
-          }
-          colorscale
-        }
       }
     `,
     prepared
@@ -191,7 +159,6 @@ const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
     refresh: false,
     connected: true,
     viewCls: null,
-    datasets: data.datasets.edges.map(({ node }) => node.name),
     config: {
       ...clone(data.viewer.config),
     },
@@ -209,4 +176,8 @@ const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
   return <DatasetContainer />;
 };
 
-export default Dataset;
+const Home = () => {
+  return <DatasetContainer />;
+};
+
+export default Home;

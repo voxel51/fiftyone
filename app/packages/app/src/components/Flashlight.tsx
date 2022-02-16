@@ -85,7 +85,7 @@ export const gridZoomRange = atom<[number, number]>({
 
 let nextIndex = 0;
 
-const url = `${http}/page`;
+const url = `${http}/samples`;
 
 const Container = styled.div`
   width: 100%;
