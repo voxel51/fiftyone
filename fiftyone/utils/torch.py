@@ -845,11 +845,12 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
         labels = output["labels"].detach().cpu().numpy()
         scores = output["scores"].detach().cpu().numpy()
         keypoints = output["keypoints"].detach().cpu().numpy()
+        keypoints_scores = torch.sigmoid(output["keypoints_scores"].detach().cpu()).numpy()
 
         _detections = []
         _keypoints = []
         _polylines = []
-        for box, label, score, kpts in zip(boxes, labels, scores, keypoints):
+        for box, label, score, kpts, kpt_scores in zip(boxes, labels, scores, keypoints, keypoints_scores):
             if confidence_thresh is not None and score < confidence_thresh:
                 continue
 
@@ -862,6 +863,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             ]
 
             points = [(p[0] / width, p[1] / height) for p in kpts]
+            visible = [bool(p[2] > 0) for p in kpts]
 
             _detections.append(
                 fol.Detection(
@@ -875,7 +877,8 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
                 fol.Keypoint(
                     label=self.class_labels[label],
                     points=points,
-                    confidence=score,
+                    visible=visible,
+                    confidences=kpt_scores.tolist(),
                 )
             )
 

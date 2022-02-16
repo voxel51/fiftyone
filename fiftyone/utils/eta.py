@@ -730,7 +730,6 @@ def to_keypoints(keypoint, name=None, extra_attrs=True):
     return etak.Keypoints(
         name=name,
         label=keypoint.label,
-        confidence=keypoint.confidence,
         index=keypoint.index,
         points=keypoint.points,
         attrs=attrs,
@@ -753,7 +752,6 @@ def from_keypoint(keypoints):
     return fol.Keypoint(
         label=keypoints.label,
         points=keypoints.points,
-        confidence=keypoints.confidence,
         index=keypoints.index,
         tags=keypoints.tags,
         **attributes,
