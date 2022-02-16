@@ -536,18 +536,20 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
+        # @todo handle frame views and patches views in all cases
+
         if link_field is None:
             link_type = "samples"
             selection_mode = None
-            init_patches_fcn = None
+            init_fcn = None
         elif link_field == "frames" and samples.media_type == fom.VIDEO:
             link_type = "frames"
             selection_mode = None
-            init_patches_fcn = None
+            init_fcn = lambda view: view.to_frames()
         else:
             link_type = "labels"
             selection_mode = "patches"
-            init_patches_fcn = lambda view: view.to_patches(link_field)
+            init_fcn = lambda view: view.to_patches(link_field)
 
         return InteractiveCollection(
             collection,
@@ -557,7 +559,7 @@ def scatterplot(
             init_view=samples,
             label_fields=link_field,
             selection_mode=selection_mode,
-            init_patches_fcn=init_patches_fcn,
+            init_fcn=init_fcn,
         )
 
 

@@ -747,14 +747,13 @@ class InteractivePlot(ResponsivePlot):
             which points in this plot correspond. Only applicable when
             ``link_type == "labels"``
         selection_mode (None): the mode to use when updating connected sessions
-            in response to selections in this plot. Only applicable when
-            ``link_type == "labels"``. See :meth:`selection_mode` for details
-        init_patches_fcn (None): an optional function that can be called with
-            ``init_view`` as its argument and returns a
+            in response to selections in this plot. See :meth:`selection_mode`
+            for details
+        init_fcn (None): an optional function that can be called with
+            ``init_view`` as its argument that returns a
             :class:`fiftyone.core.collections.SampleCollection` defining an
-            initial view from which to dervie selection views when cells are
-            selected in the plot when :meth:`selection_mode` is ``"patches"``.
-            Only applicable when ``link_type == "labels"``
+            initial view from which to derive certain types of selection views.
+            See :meth:`selection_mode` for details
     """
 
     def __init__(
@@ -763,7 +762,7 @@ class InteractivePlot(ResponsivePlot):
         init_view=None,
         label_fields=None,
         selection_mode=None,
-        init_patches_fcn=None,
+        init_fcn=None,
     ):
         supported_link_types = ("samples", "frames", "labels")
         if link_type not in supported_link_types:
@@ -772,7 +771,7 @@ class InteractivePlot(ResponsivePlot):
                 % (link_type, supported_link_types)
             )
 
-        if selection_mode is None and link_type == "labels":
+        if selection_mode is None and link_type in ("frames", "labels"):
             selection_mode = "select"
 
         super().__init__(link_type)
@@ -780,8 +779,8 @@ class InteractivePlot(ResponsivePlot):
         self.label_fields = label_fields
 
         self._init_view = init_view
-        self._init_patches_fcn = init_patches_fcn
-        self._init_patches_view = None
+        self._init_fcn = init_fcn
+        self._init_fcn_view = None
 
         self._selection_callback = None
         self._sync_callback = None
@@ -794,11 +793,19 @@ class InteractivePlot(ResponsivePlot):
     def selection_mode(self):
         """The current selection mode of the plot.
 
-        Only applicable when ``link_type == "labels"``.
+        Only applicable when ``link_type`` is ``"frames"`` or ``"labels"``.
 
         This property controls how the current view is updated in response to
         updates from :class:`InteractivePlot` instances that are linked to
-        labels:
+        labels or frames.
+
+        When ``link_type`` is ``"frames"``, the supported values are:
+
+        -   ``"select"``: show only the selected labels
+        -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"frames"``: show the selected frames in a frames view
+
+        When ``link_type`` is ``"labels"``, the supported values are:
 
         -   ``"select"``: show only the selected labels
         -   ``"match"``: show unfiltered samples containing the selected labels
@@ -806,26 +813,29 @@ class InteractivePlot(ResponsivePlot):
 
         .. note::
 
-            ``"patches"`` mode is only supported if an ``init_patches_fcn`` was
-            provided when constructing this plot.
+            ``"frames"`` and ``"patches"`` modes are only supported if an
+            ``init_fcn`` was provided when constructing the plot.
         """
         return self._selection_mode
 
     @selection_mode.setter
     def selection_mode(self, mode):
-        if self.link_type != "labels":
+        if self.link_type not in ("frames", "labels"):
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "
-                    "applicable for plots linked to labels"
+                    "applicable for plots linked to frames or labels"
                 )
 
             return
 
-        if self._init_patches_fcn is not None:
-            supported_modes = ("select", "match", "patches")
-        else:
-            supported_modes = ("select", "match")
+        supported_modes = ["select", "match"]
+
+        if self._init_fcn is not None:
+            if self.link_type == "frames":
+                supported_modes.append("frames")
+            elif self.link_type == "labels":
+                supported_modes.append("patches")
 
         if mode not in supported_modes:
             raise ValueError(
@@ -847,13 +857,13 @@ class InteractivePlot(ResponsivePlot):
         This view will also be shown when the plot is in its default state (no
         selection).
         """
-        if self.selection_mode != "patches":
+        if self.selection_mode not in ("frames", "patches"):
             return self._init_view
 
-        if self._init_patches_view is None:
-            self._init_patches_view = self._init_patches_fcn(self._init_view)
+        if self._init_fcn is None:
+            self._init_fcn_view = self._init_fcn(self._init_view)
 
-        return self._init_patches_view
+        return self._init_fcn_view
 
     @property
     def selected_ids(self):
