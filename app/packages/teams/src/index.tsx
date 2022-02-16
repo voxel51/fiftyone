@@ -1,22 +1,30 @@
-import { RedirectLoginResult } from "@auth0/auth0-spa-js";
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { RelayEnvironmentProvider } from "react-relay/hooks";
 import { RecoilRoot } from "recoil";
 import { ThemeProvider as LegacyThemeContext } from "styled-components";
 
-import Error from "@fiftyone/app/src/containers/Error";
+import { Error, Loading } from "@fiftyone/components";
 
 import "./index.css";
-
-import Loading from "./Components/Loading";
 
 import { getRelayEnvironment } from "./RelayEnvironment";
 import Login from "./Login";
 import { ThemeContext, useTheme } from "./Theme";
+
+const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
+  return (
+    <Error
+      error={error}
+      reset={() => {
+        resetErrorBoundary();
+      }}
+    />
+  );
+};
 
 const Environment = () => {
   const auth0 = useAuth0();
@@ -64,13 +72,15 @@ const App = () => {
 const Root = () => {
   return (
     <RecoilRoot>
-      <ErrorBoundary FallbackComponent={Error}>
+      <ErrorBoundary FallbackComponent={ErrorPage}>
         <Auth0Provider
           audience="api.dev.fiftyone.ai"
           clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
           domain="dev-uqppzklh.us.auth0.com"
           organization={"org_wtMMZE61j2gnmxsm"}
-          onRedirectCallback={(url) => window.location.assign(url)}
+          onRedirectCallback={(state) =>
+            state.returnTo && window.location.assign(state.returnTo)
+          }
         >
           <App />
         </Auth0Provider>

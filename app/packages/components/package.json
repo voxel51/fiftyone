@@ -8,14 +8,7 @@
   "bugs": {
     "url": "https://github.com/voxel51/fiftyone/"
   },
-  "main": "./dist/components.umd.js",
-  "module": "./dist/components.es.js",
-  "exports": {
-    ".": {
-      "import": "./dist/components.es.js",
-      "require": "./dist/components.umd.js"
-    }
-  },
+  "main": "./src/index.ts",
   "scripts": {
     "dev": "vite"
   },
@@ -23,6 +16,7 @@
   "private": true,
   "files": [
     "dist",
+    "package.json",
     "README.md"
   ],
   "devDependencies": {
@@ -36,7 +30,12 @@
     "vite": "^2.8.3"
   },
   "peerDependencies": {
+    "@material-ui/icons": "*",
+    "@react-spring/web": "^9.4.3",
     "react": "^17.0.0",
     "react-dom": "^17.0.0"
+  },
+  "dependencies": {
+    "react-use": "^17.3.2"
   }
 }

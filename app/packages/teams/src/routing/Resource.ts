@@ -1,4 +1,4 @@
-class Resource<T> {
+class Resource<T = unknown> {
   private error: Error | null = null;
   private promise: Promise<T> | null = null;
   private result: T | null = null;
@@ -28,7 +28,7 @@ class Resource<T> {
     }
   }
 
-  read() {
+  read(): T {
     if (this.result != null) {
       return this.result;
     } else if (this.error != null) {
@@ -39,16 +39,16 @@ class Resource<T> {
   }
 }
 
-export const createResourceGroup = <T extends unknown>() => {
-  const resources = new Map<string, Resource<T>>();
+export const createResourceGroup = () => {
+  const resources = new Map<string, Resource>();
 
-  return (id: string, loader: () => Promise<T>): Resource<T> => {
+  return <T>(id: string, loader: () => Promise<T>): Resource<T> => {
     let resource = resources.get(id);
     if (resource == null) {
-      resource = new Resource(loader);
+      resource = new Resource<T>(loader);
       resources.set(id, resource);
     }
-    return resource;
+    return resource as Resource<T>;
   };
 };
 

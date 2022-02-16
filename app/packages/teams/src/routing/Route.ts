@@ -1,12 +1,35 @@
 import { PreloadedQuery } from "react-relay";
-import { OperationType } from "relay-runtime";
-import Resource from "./Resource";
+import { OperationType, VariablesOf } from "relay-runtime";
+
+import Resource, { createResourceGroup } from "./Resource";
 import { RouteComponent } from "./RouteComponent";
 
-export default interface Route {
+export default interface Route<T extends OperationType = OperationType> {
   path?: string;
   exact?: boolean;
-  component: Resource<RouteComponent>;
-  prepare: (params: any) => Resource<PreloadedQuery<OperationType>>;
-  routes?: Route[];
+  component: Resource<RouteComponent<T>>;
+  prepare: (params: VariablesOf<T>) => Resource<PreloadedQuery<T>>;
+  routes?: Route<T>[];
 }
+
+const queries = createResourceGroup();
+const components = createResourceGroup();
+
+export interface RouteOptions<T extends OperationType> {
+  exact?: boolean;
+  routes?: Route<T>[];
+}
+
+export const makeRoute = <T extends OperationType>(
+  path: string,
+  get: () => Promise<RouteComponent<T>>,
+  prepare: (params: VariablesOf<T>) => Promise<PreloadedQuery<T>>,
+  options: RouteOptions<T>
+): Route<T> => {
+  return {
+    path,
+    prepare: (params: VariablesOf<T>) => queries(path, () => prepare(params)),
+    component: components(path, get),
+    ...options,
+  };
+};

@@ -2,7 +2,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import React, { Suspense, useEffect, useState } from "react";
 import { graphql } from "relay-runtime";
 
-import Loading from "./Components/Loading";
+import { Loading } from "@fiftyone/components";
 
 import RouterRenderer from "./routing/RouteRenderer";
 import useMutation from "./useMutation";

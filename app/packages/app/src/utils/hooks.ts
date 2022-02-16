@@ -30,6 +30,17 @@ import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
 
+const useReset = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ reset }) => () => {
+      reset(atoms.stateDescription);
+      reset(filterAtoms.filters);
+      reset(filterAtoms.modalFilters);
+    },
+    []
+  );
+};
+
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
     socket.send(packageMessage("refresh", {}));

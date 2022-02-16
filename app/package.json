@@ -4,7 +4,6 @@
     "version": "0.19.2",
     "license": "Apache-2.0",
     "private": true,
-    "main": "index.js",
     "scripts": {
         "build": "yarn workspace @fiftyone/app build",
         "dev": "yarn workspace @fiftyone/app dev",
@@ -14,14 +13,10 @@
     },
     "devDependencies": {
         "patch-package": "^6.4.7",
-        "tsc-silent": "^1.2.1",
-        "typescript": "4.2.4",
+        "typescript": "^4.5.5",
         "typescript-plugin-css-modules": "^3.4.0"
     },
     "workspaces": [
         "packages/*"
-    ],
-    "dependencies": {
-        "react-use": "^17.3.1"
-    }
+    ]
 }

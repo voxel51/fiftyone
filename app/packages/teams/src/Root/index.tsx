@@ -13,15 +13,7 @@ import { RouteComponent } from "../routing";
 import Link from "../routing/Link";
 import { routingContext } from "../routing/RoutingContext";
 
-import {
-  container,
-  entries,
-  activeEntry,
-  heading,
-  nav,
-  page,
-  profile,
-} from "./index.module.css";
+import { container, entries, heading, page } from "./index.module.css";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
 interface Entry {

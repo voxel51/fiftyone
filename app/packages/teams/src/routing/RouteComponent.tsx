@@ -1,10 +1,8 @@
 import React from "react";
 import { PreloadedQuery } from "react-relay";
-import { OperationType } from "relay-runtime";
+import { OperationType, VariablesOf } from "relay-runtime";
 
-export type RouteComponent<
-  Operation extends OperationType = OperationType
-> = React.FC<{
+export type RouteComponent<Operation extends OperationType> = React.FC<{
   prepared: PreloadedQuery<Operation>;
-  routeData: { params: unknown };
+  routeData: { params: VariablesOf<Operation> };
 }>;

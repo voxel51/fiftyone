@@ -1,22 +1,23 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { PropsWithChildren, Suspense, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { OperationType } from "relay-runtime";
-import Loading from "../Components/Loading";
+import { OperationType, VariablesOf } from "relay-runtime";
 
 import Resource from "./Resource";
 import { RouteComponent } from "./RouteComponent";
 import { routingContext } from "./RoutingContext";
 
-const RouteHandler: React.FC<{
-  component: Resource<RouteComponent>;
-  prepared: Resource<PreloadedQuery<OperationType>>;
-  routeData: { params: unknown };
-}> = (props) => {
+const RouteHandler = <T extends OperationType>(
+  props: PropsWithChildren<{
+    component: Resource<RouteComponent<T>>;
+    prepared: Resource<PreloadedQuery<T>>;
+    routeData: { params: VariablesOf<T> };
+  }>
+) => {
   const Component = props.component.read();
   const { routeData, prepared } = props;
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <Component
         routeData={routeData}
         prepared={prepared.read()}

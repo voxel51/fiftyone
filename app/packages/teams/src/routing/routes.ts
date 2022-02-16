@@ -1,39 +1,27 @@
-import { loadQuery, PreloadedQuery } from "react-relay";
+import { loadQuery } from "react-relay";
 
-import { createResourceGroup } from "./Resource";
 import RelayEnvironment from "../RelayEnvironment";
-import Route from "./Route";
-import { OperationType } from "relay-runtime";
-import { RouteComponent } from "./RouteComponent";
+import Route, { makeRoute } from "./Route";
 
-const queries = createResourceGroup<PreloadedQuery<OperationType>>();
-const components = createResourceGroup<RouteComponent>();
-
-const routes: Route[] = [
-  {
-    component: components("Root", () =>
-      import("../Root").then((result) => result.default)
-    ),
-    prepare: (params) =>
-      queries("RootQuery", () =>
-        import("../Root/__generated__/RootQuery.graphql").then((query) => {
-          return loadQuery(
-            RelayEnvironment,
-            query.default,
-            {},
-            { fetchPolicy: "network-only" }
-          );
-        })
-      ),
-    routes: [
-      {
-        path: "/",
-        exact: true,
-        component: components("Datasets", () =>
-          import("../Root/Datasets").then((result) => result.default)
-        ),
-        prepare: (params) =>
-          queries("HomeQuery", () =>
+const routes: Route<any>[] = [
+  makeRoute(
+    "",
+    () => import("../Root").then((result) => result.default),
+    (params) =>
+      import("../Root/__generated__/RootQuery.graphql").then((query) => {
+        return loadQuery(
+          RelayEnvironment,
+          query.default,
+          {},
+          { fetchPolicy: "network-only" }
+        );
+      }),
+    {
+      routes: [
+        makeRoute(
+          "/",
+          () => import("../Root/Home").then((result) => result.default),
+          () =>
             import("../Root/Datasets/__generated__/DatasetsQuery.graphql").then(
               (query) => {
                 return loadQuery(
@@ -43,16 +31,13 @@ const routes: Route[] = [
                   { fetchPolicy: "network-only" }
                 );
               }
-            )
-          ),
-      },
-      {
-        path: "/datasets/:name",
-        component: components("Dataset", () =>
-          import("../Root/Datasets/Dataset").then((result) => result.default)
+            ),
+          { exact: true }
         ),
-        prepare: (params) =>
-          queries("DatasetQuery", () =>
+        makeRoute(
+          "/datasets/:name",
+          () => import("../Root/Datasets").then((result) => result.default),
+          (params) =>
             import("../Root/Datasets/__generated__/DatasetQuery.graphql").then(
               (query) => {
                 return loadQuery(
@@ -64,11 +49,12 @@ const routes: Route[] = [
                   { fetchPolicy: "network-only" }
                 );
               }
-            )
-          ),
-      },
-    ],
-  },
+            ),
+          {}
+        ),
+      ],
+    }
+  ),
 ];
 
 export default routes;

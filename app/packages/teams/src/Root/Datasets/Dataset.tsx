@@ -176,8 +176,4 @@ export const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
   return <DatasetContainer />;
 };
 
-const Home = () => {
-  return <DatasetContainer />;
-};
-
-export default Home;
+export default Dataset;

@@ -2,7 +2,7 @@ import React from "react";
 import { createBrowserHistory } from "history";
 import { PreloadedQuery } from "react-relay";
 import { matchRoutes, RouteConfig } from "react-router-config";
-import { OperationType } from "relay-runtime";
+import { OperationType, VariablesOf } from "relay-runtime";
 import Resource from "./Resource";
 
 import Route from "./Route";
@@ -10,31 +10,31 @@ import { RouteComponent } from "./RouteComponent";
 import { selector } from "recoil";
 import routes from "./routes";
 
-export interface Entry {
+export interface Entry<T extends OperationType> {
   pathname: string;
   entries: {
-    component: Resource<RouteComponent>;
-    prepared: Resource<PreloadedQuery<OperationType>>;
-    routeData: { params: unknown };
+    component: Resource<RouteComponent<T>>;
+    prepared: Resource<PreloadedQuery<T>>;
+    routeData: { params: VariablesOf<T> };
   }[];
 }
 
-export interface RoutingContext {
+export interface RoutingContext<T extends OperationType = OperationType> {
   history: ReturnType<typeof createBrowserHistory>;
-  get: () => Entry;
+  get: () => Entry<T>;
   preloadCode: (pathname: string) => void;
   preload: (pathname: string) => void;
-  subscribe: (cb: (entry: Entry) => void) => () => void;
+  subscribe: (cb: (entry: Entry<T>) => void) => () => void;
 }
 
-interface Match {
-  route: Route;
-  match: { params: unknown };
+interface Match<T extends OperationType = OperationType> {
+  route: Route<T>;
+  match: { params: VariablesOf<T> };
 }
 
-interface Router {
+interface Router<T extends OperationType> {
   cleanup: () => void;
-  context: RoutingContext;
+  context: RoutingContext<T>;
 }
 
 export const createRouter = (routes: Route[], options = {}) => {
@@ -43,7 +43,7 @@ export const createRouter = (routes: Route[], options = {}) => {
   const initialMatches = matchRoute(routes, history.location.pathname);
   const initialEntries = prepareMatches(initialMatches);
 
-  let currentEntry: Entry = {
+  let currentEntry = {
     pathname: history.location.pathname,
     entries: initialEntries,
   };
@@ -99,10 +99,10 @@ export const createRouter = (routes: Route[], options = {}) => {
   return { cleanup, context };
 };
 
-const matchRoute = (
-  routes: Route[],
+const matchRoute = <T extends OperationType>(
+  routes: Route<T>[],
   pathname: string
-): { route: Route; match: { params: unknown } }[] => {
+): Match<T>[] => {
   const matchedRoutes = matchRoutes(
     (routes as unknown) as RouteConfig[],
     pathname
@@ -111,10 +111,8 @@ const matchRoute = (
   if (!Array.isArray(matchedRoutes) || matchedRoutes.length === 0) {
     throw new Error("No route for " + pathname);
   }
-  return (matchedRoutes as unknown) as {
-    route: Route;
-    match: { params: unknown };
-  }[];
+
+  return (matchedRoutes as unknown) as Match<T>[];
 };
 
 const prepareMatches = (matches: Match[]) => {
@@ -140,7 +138,7 @@ const prepareMatches = (matches: Match[]) => {
   });
 };
 
-export const router = selector<Router>({
+export const router = selector<Router<OperationType>>({
   key: "router",
   get: () => createRouter(routes),
   dangerouslyAllowMutability: true,
