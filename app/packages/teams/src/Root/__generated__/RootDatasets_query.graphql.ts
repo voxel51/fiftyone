@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<640bb3fb9263d4596c7d928883b7b77c>>
+ * @generated SignedSource<<dbe8653f57f8f616a656b953f9634eed>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,23 +10,21 @@
 
 import { ReaderFragment, RefetchableFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
-export type DatasetsListingComponent_query$data = {
+export type RootDatasets_query$data = {
   readonly datasets: {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
-        readonly " $fragmentSpreads": FragmentRefs<
-          "DatasetsListingCard_dataset"
-        >;
+        readonly name: string;
       };
     }>;
   };
-  readonly " $fragmentType": "DatasetsListingComponent_query";
+  readonly " $fragmentType": "RootDatasets_query";
 };
-export type DatasetsListingComponent_query = DatasetsListingComponent_query$data;
-export type DatasetsListingComponent_query$key = {
-  readonly " $data"?: DatasetsListingComponent_query$data;
-  readonly " $fragmentSpreads": FragmentRefs<"DatasetsListingComponent_query">;
+export type RootDatasets_query = RootDatasets_query$data;
+export type RootDatasets_query$key = {
+  readonly " $data"?: RootDatasets_query$data;
+  readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
 };
 
 import DatasetsPaginationQuery_graphql from "./DatasetsPaginationQuery.graphql";
@@ -66,7 +64,7 @@ const node: ReaderFragment = (function () {
         operation: DatasetsPaginationQuery_graphql,
       },
     },
-    name: "DatasetsListingComponent_query",
+    name: "RootDatasets_query",
     selections: [
       {
         alias: "datasets",
@@ -100,9 +98,11 @@ const node: ReaderFragment = (function () {
                 plural: false,
                 selections: [
                   {
+                    alias: null,
                     args: null,
-                    kind: "FragmentSpread",
-                    name: "DatasetsListingCard_dataset",
+                    kind: "ScalarField",
+                    name: "name",
+                    storageKey: null,
                   },
                   {
                     alias: null,
@@ -151,6 +151,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "f67aef8101e1e2ec9cdcfaefe194dda1";
+(node as any).hash = "04face7b25aed322240f032c60955faf";
 
 export default node;

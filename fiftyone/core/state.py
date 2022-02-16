@@ -24,8 +24,6 @@ class StateDescription(etas.Serializable):
     a corresponding :class:`fiftyone.core.session.Session`.
 
     Args:
-        datasets (None): the list of available datasets
-        dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         active_handle (None): the UUID of the currently active App. Only
             applicable in notebook contexts
@@ -38,7 +36,6 @@ class StateDescription(etas.Serializable):
 
     def __init__(
         self,
-        datasets=None,
         dataset=None,
         view=None,
         active_handle=None,
@@ -48,7 +45,6 @@ class StateDescription(etas.Serializable):
         refresh=False,
         close=False,
     ):
-        self.datasets = datasets or fod.list_datasets()
         self.dataset = dataset
         self.view = view
         self.active_handle = active_handle

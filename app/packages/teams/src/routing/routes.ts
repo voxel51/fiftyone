@@ -22,7 +22,7 @@ const routes: Route<any>[] = [
           "/",
           () => import("../Root/Home").then((result) => result.default),
           () =>
-            import("../Root/Datasets/__generated__/DatasetsQuery.graphql").then(
+            import("../Root/Home/__generated__/HomeQuery.graphql").then(
               (query) => {
                 return loadQuery(
                   RelayEnvironment,
