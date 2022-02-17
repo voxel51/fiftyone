@@ -28,7 +28,9 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
+import fiftyone.core.video as fov
 
 from .base import InteractivePlot
 from .utils import load_button_icon
@@ -536,16 +538,23 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        # @todo handle frame views and patches views in all cases
+        selection_mode = None
+        init_fcn = None
 
         if link_field is None:
-            link_type = "samples"
-            selection_mode = None
-            init_fcn = None
-        elif link_field == "frames" and samples.media_type == fom.VIDEO:
-            link_type = "frames"
-            selection_mode = None
-            init_fcn = lambda view: view.to_frames()
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            elif isinstance(samples, fop.PatchesView):
+                link_type = "labels"
+                link_field = samples._label_fields
+            else:
+                link_type = "samples"
+        elif link_field == "frames":
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            else:
+                link_type = "frames"
+                init_fcn = lambda view: view.to_frames()
         else:
             link_type = "labels"
             selection_mode = "patches"
