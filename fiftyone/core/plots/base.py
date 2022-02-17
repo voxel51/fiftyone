@@ -868,7 +868,7 @@ class InteractivePlot(ResponsivePlot):
         if self.selection_mode not in ("frames", "patches"):
             return self._init_view
 
-        if self._init_fcn is None:
+        if self._init_fcn_view is None:
             self._init_fcn_view = self._init_fcn(self._init_view)
 
         return self._init_fcn_view
