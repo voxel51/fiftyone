@@ -1,8 +1,38 @@
 .header {
-  background-color: var(--background);
+  background-color: var(--background-dark);
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
   border-bottom: 1px var(--background-dark-border) solid;
+  height: 74px;
+}
+
+.title {
+  margin-right: 1rem;
+  cursor: pointer;
+  height: 40px;
+  display: flex;
+}
+
+.logo {
+  height: 40px;
+  width: 40px;
+  cursor: pointer;
+  margin-right: 1rem;
+  will-change: transform;
+}
+
+.left {
+  display: flex;
+  padding: 1rem;
+}
+
+.fiftyone {
+  color: var(--font);
+  font-weight: bold;
+  font-size: 1.8rem;
+  align-items: center;
+  display: flex;
+  white-space: nowrap;
 }

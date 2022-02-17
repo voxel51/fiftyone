@@ -1981,8 +1981,10 @@ __metadata:
     "@fiftyone/prettier-config": "*"
     "@types/react": ^17.0.39
     "@types/react-dom": ^17.0.11
+    "@types/react-input-autosize": ^2.2.1
     path: ^0.12.7
     prettier: 2.2.1
+    react-input-autosize: ^3.0.0
     react-use: ^17.3.2
     typescript: 4.2.4
     typescript-plugin-css-modules: ^3.4.0
@@ -2619,6 +2621,15 @@ __metadata:
   dependencies:
     "@types/react": "*"
   checksum: 4d5730dffbef86c887cecad7e3cecda424ce6a64d0b5441c63b5b015d48219868660a2bb1aa15e897e565ad8867fa6b885d4358b04e1c4e589ba4c07c3fda55c
+  languageName: node
+  linkType: hard
+
+"@types/react-input-autosize@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "@types/react-input-autosize@npm:2.2.1"
+  dependencies:
+    "@types/react": "*"
+  checksum: 3293e714889845e6d71801305391191485a82ff470a241459ac355a2b597478727bbe3af518674878c68f13cfe89502a908e5587fbac6f574399b4ec13fcb99e
   languageName: node
   linkType: hard
 

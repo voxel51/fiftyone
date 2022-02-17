@@ -1,13 +1,14 @@
-import React from "react";
 import { createBrowserHistory } from "history";
+import { useCallback } from "react";
 import { PreloadedQuery } from "react-relay";
 import { matchRoutes, RouteConfig } from "react-router-config";
+import { useRecoilValue, selector } from "recoil";
 import { OperationType, VariablesOf } from "relay-runtime";
-import Resource from "./Resource";
 
+import Resource from "./Resource";
 import Route from "./Route";
 import { RouteComponent } from "./RouteComponent";
-import { selector } from "recoil";
+
 import routes from "./routes";
 
 export interface Entry<T extends OperationType> {
@@ -51,7 +52,7 @@ export const createRouter = (routes: Route[], options = {}) => {
   let nextId = 0;
   const subscribers = new Map();
 
-  const cleanup = history.listen((location: typeof window.location) => {
+  const cleanup = history.listen((location) => {
     if (location.pathname === currentEntry.pathname) {
       return;
     }
@@ -151,3 +152,17 @@ export const routingContext = selector<RoutingContext>({
   },
   dangerouslyAllowMutability: true,
 });
+
+export const to = (router: RoutingContext, path: string) => {
+  router.history.push(path);
+};
+
+export const useTo = () => {
+  const router = useRecoilValue(routingContext);
+  return useCallback(
+    (path: string) => {
+      to(router, path);
+    },
+    [router]
+  );
+};

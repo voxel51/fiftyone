@@ -1,7 +1,7 @@
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 
-import { header } from "./Header.module.css";
+import style from "./Header.module.css";
 
 interface Props {
   onRefresh: () => void;
@@ -16,10 +16,12 @@ const Header: React.FC<Props> = ({ children, logo, title }) => {
   });
 
   return (
-    <div className={header}>
-      <div onClick={() => setToggle(!toggle)}>
-        <animated.img style={logoProps} src={logo} />
-        <div>{title}</div>
+    <div className={style.header}>
+      <div className={style.left}>
+        <div className={style.title} onClick={() => setToggle(!toggle)}>
+          <animated.img className={style.logo} style={logoProps} src={logo} />
+          <div className={style.fiftyone}>{title}</div>
+        </div>
       </div>
       {children}
     </div>

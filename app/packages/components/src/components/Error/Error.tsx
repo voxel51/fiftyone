@@ -28,7 +28,10 @@ const Error: React.FC<Props> = ({ error, reset }) => {
             </div>
             {error.stack && (
               <div>
-                <span title={"Copy stack"} onClick={() => copy(error.stack)}>
+                <span
+                  title={"Copy stack"}
+                  onClick={() => copy(error.stack || "")}
+                >
                   <FileCopy />
                 </span>
               </div>
