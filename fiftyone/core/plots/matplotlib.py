@@ -53,7 +53,7 @@ def plot_confusion_matrix(
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
+        labels: a ``max(num_true, num_preds)`` array-like of class labels
         show_values (True): whether to show counts in the confusion matrix
             cells
         show_colorbar (True): whether to show a colorbar
@@ -152,11 +152,11 @@ def plot_regressions(
     """Plots the given regression results.
 
     Args:
-        ytrue: an array of ground truth values
-        ypred: an array of predicted values
+        ytrue: an array-like of ground truth values
+        ypred: an array-like of predicted values
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of sample or frame IDs corresponding to the
+        ids (None): an array-like of sample or frame IDs corresponding to the
             regressions. If not provided but ``samples`` are provided, the
             appropriate IDs will be extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -167,9 +167,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric or string values
+            -   a list of array-lies of numeric or string values, if
+                ``link_field`` refers to frames
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -178,9 +178,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         gt_field (None): the name of the ground truth field
@@ -273,8 +273,8 @@ def plot_pr_curve(
     """Plots a precision-recall (PR) curve.
 
     Args:
-        precision: an array of precision values
-        recall: an array of recall values
+        precision: an array-like of precision values
+        recall: an array-like of recall values
         label (None): a label for the curve
         title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
@@ -316,9 +316,9 @@ def plot_pr_curves(
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
+        precisions: a ``num_classes x num_recalls`` array-like of per-class
             precision values
-        recall: an array of recall values
+        recall: an array-like of recall values
         classes: the list of classes
         title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
@@ -373,8 +373,8 @@ def plot_roc_curve(
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array of false postive rates
-        tpr: an array of true postive rates
+        fpr: an array-like of false postive rates
+        tpr: an array-like of true postive rates
         roc_auc (None): the area under the ROC curve
         title (None): a title for the plot
         ax (None): an optional matplotlib axis to plot in
@@ -434,10 +434,10 @@ def scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        points: a ``num_points x num_dims`` array of points
+        points: a ``num_points x num_dims`` array-like of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the points. If not
+        ids (None): an array-like of IDs corresponding to the points. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
@@ -455,9 +455,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
@@ -467,9 +467,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
@@ -658,14 +658,14 @@ def location_scatterplot(
             -   None, in which case ``samples`` must have a single
                 :class:`fiftyone.core.labels.GeoLocation` field whose ``point``
                 attribute contains location data
-            -   a ``num_locations x 2`` array of ``(longitude, latitude)``
+            -   a ``num_locations x 2`` array-like of ``(longitude, latitude)``
                 coordinates
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the locations. If not
+        ids (None): an array-like of IDs corresponding to the locations. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -676,7 +676,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
+            -   an array-like of numeric or string values
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -685,7 +685,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
+            -   an array-like of numeric values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are
@@ -864,7 +864,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
     Args:
         collection: a ``matplotlib.collections.Collection`` to select points
             from
-        ids (None): a list of IDs corresponding to the points in ``collection``
+        ids (None): an array-like of IDs corresponding to the points in
+            ``collection``
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points

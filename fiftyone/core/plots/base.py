@@ -35,13 +35,12 @@ def plot_confusion_matrix(
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
-        ids (None): an optional array of same shape as ``confusion_matrix``
-            containing lists of IDs corresponding to each cell. Only used by
-            the "plotly" backend
+        labels: a ``max(num_true, num_preds)`` array-like of class labels
+        ids (None): an optional array-like of same shape as
+            ``confusion_matrix`` containing lists of IDs corresponding to each
+            cell
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the confusion matrix was generated. Only used by the
-            "plotly" backend when ``ids`` are provided
+            for which the confusion matrix was generated
         eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -105,12 +104,12 @@ def plot_regressions(
     currently selected points in the plot.
 
     Args:
-        ytrue: an array of ground truth values
-        ypred: an array of predicted values
+        ytrue: an array-like of ground truth values
+        ypred: an array-like of predicted values
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were generated. Only used by the "plotly"
             backend when IDs are provided
-        ids (None): an array of sample or frame IDs corresponding to the
+        ids (None): an array-like of sample or frame IDs corresponding to the
             regressions. If not provided but ``samples`` are provided, the
             appropriate IDs will be extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -121,9 +120,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -132,9 +131,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         gt_field (None): the name of the ground truth field
@@ -183,9 +182,9 @@ def plot_pr_curve(
     """Plots a precision-recall (PR) curve.
 
     Args:
-        precision: an array of precision values
-        recall: an array of recall values
-        thresholds (None): an optional array of decision thresholds
+        precision: an array-like of precision values
+        recall: an array-like of recall values
+        thresholds (None): an optional array-like of decision thresholds
         label (None): a label for the curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -225,12 +224,12 @@ def plot_pr_curves(
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
+        precisions: a ``num_classes x num_recalls`` array-like of per-class
             precision values
-        recall: an array of recall values
+        recall: an array-like of recall values
         classes: the list of classes
-        thresholds (None): an optional ``num_classes x num_recalls`` array of
-            decision thresholds
+        thresholds (None): an optional ``num_classes x num_recalls`` array-like
+            of decision thresholds
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -269,9 +268,9 @@ def plot_roc_curve(
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array of false postive rates
-        tpr: an array of true postive rates
-        thresholds (None): an optional array of decision thresholds
+        fpr: an array-like of false postive rates
+        tpr: an array-like of true postive rates
+        thresholds (None): an optional array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -331,10 +330,10 @@ def scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        points: a ``num_points x num_dims`` array of points
+        points: a ``num_points x num_dims`` array-like of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the points. If not
+        ids (None): an array-like of IDs corresponding to the points. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
@@ -352,9 +351,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
@@ -364,9 +363,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
@@ -444,7 +443,7 @@ def location_scatterplot(
                 its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the locations. If not
+        ids (None): an array-like of IDs corresponding to the locations. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -455,7 +454,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
+            -   an array-like of numeric or string values
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -464,7 +463,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
+            -   an array-like of numeric values
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -746,11 +745,11 @@ class InteractivePlot(ResponsivePlot):
         label_fields (None): an optional label field or list of label fields to
             which points in this plot correspond. Only applicable when
             ``link_type == "labels"``
-        selection_mode (None): the mode to use when updating connected sessions
-            in response to selections in this plot. See :meth:`selection_mode`
-            for details
-        init_fcn (None): an optional function that can be called with
-            ``init_view`` as its argument that returns a
+        selection_mode (None): the initial selection mode to use when updating
+            connected sessions in response to selections in this plot. See
+            :meth:`selection_mode` for details
+        init_fcn (None): a function that can be called with ``init_view`` as
+            its argument that returns a
             :class:`fiftyone.core.collections.SampleCollection` defining an
             initial view from which to derive certain types of selection views.
             See :meth:`selection_mode` for details
@@ -793,8 +792,6 @@ class InteractivePlot(ResponsivePlot):
     def selection_mode(self):
         """The current selection mode of the plot.
 
-        Only applicable when ``link_type`` is ``"frames"`` or ``"labels"``.
-
         This property controls how the current view is updated in response to
         updates from :class:`InteractivePlot` instances that are linked to
         labels or frames.
@@ -813,8 +810,19 @@ class InteractivePlot(ResponsivePlot):
 
         .. note::
 
-            ``"frames"`` and ``"patches"`` modes are only supported if an
-            ``init_fcn`` was provided when constructing the plot.
+            In order to use ``"patches"`` selection mode, you must have
+            provided an ``init_fcn`` when constructing this plot that defines
+            how to create the base patches view. This usually involves
+            :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+            or
+            :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+
+        .. note::
+
+            In order to use ``"frames"`` selection mode, you must have
+            provided an ``init_fcn`` when constructing this plot that defines
+            how to create the base frames view. This usually involves
+            :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
         """
         return self._selection_mode
 

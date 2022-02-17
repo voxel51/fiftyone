@@ -228,11 +228,12 @@ class PlotManager(object):
                 name
         """
         if not isinstance(plot, ResponsivePlot):
-            # @todo add docs link to error message
             raise ValueError(
                 "Plots must be subclasses of %s; but found %s. You may be "
-                "working in an environment that does not support interactivity"
-                % (ResponsivePlot, type(plot))
+                "working in an environment that does not support "
+                "interactivity.\n\nSee "
+                "https://voxel51.com/docs/fiftyone/user_guide/plots.html#overview "
+                "for more information" % (ResponsivePlot, type(plot))
             )
 
         same_plots = [(n, p) for n, p in self._plots.items() if p is plot]
@@ -675,8 +676,6 @@ class PlotManager(object):
 
     def _update_interactive_plot(self, name, view):
         plot = self._plots[name]
-
-        # @todo handle frame views and patches views in all cases
 
         if plot.link_type == "samples":
             plot.select_ids(self._current_sample_ids, view=view)
