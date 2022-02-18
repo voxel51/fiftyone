@@ -13,6 +13,7 @@ import warnings
 
 import numpy as np
 
+import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -63,12 +64,12 @@ def from_images_patt(images_patt, num_parallel_calls=None):
     return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
-# @todo add force_rgb option?
-def from_images(image_paths, num_parallel_calls=None):
+def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given list of images.
 
     Args:
         image_paths: an iterable of image paths
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -77,19 +78,25 @@ def from_images(image_paths, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
+
+    def parse_sample(image_path):
+        return _parse_image_tf(image_path, force_rgb=force_rgb)
+
     return tf.data.Dataset.from_tensor_slices(list(image_paths)).map(
-        _parse_image_tf, num_parallel_calls=num_parallel_calls
+        parse_sample, num_parallel_calls=num_parallel_calls
     )
 
 
-# @todo add force_rgb option?
-def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
+def from_image_paths_and_labels(
+    image_paths, labels, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for an image classification dataset stored
     as a list of image paths and labels.
 
     Args:
         image_paths: an iterable of image paths
         labels: an iterable of labels
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -100,7 +107,7 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     """
 
     def parse_sample(image_path, label):
-        img = _parse_image_tf(image_path)
+        img = _parse_image_tf(image_path, force_rgb=force_rgb)
         return img, label
 
     return tf.data.Dataset.from_tensor_slices(
@@ -108,8 +115,9 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     ).map(parse_sample, num_parallel_calls=num_parallel_calls)
 
 
-# @todo add force_rgb option?
-def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
+def from_image_classification_dir_tree(
+    dataset_dir, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for the given image classification dataset
     directory tree.
 
@@ -127,20 +135,23 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
 
     Args:
         dataset_dir: the dataset directory
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
             details
 
     Returns:
-        dataset: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
-        classes: a list of class label strings
+        a tuple of
+
+        -   **dataset**: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
+        -   **classes**: a list of class label strings
     """
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
         image_path, label = sample
-        img = _parse_image_tf(image_path)
+        img = _parse_image_tf(image_path, force_rgb=force_rgb)
         return img, label
 
     dataset = tf.data.Dataset.from_tensor_slices(samples).map(
@@ -264,8 +275,7 @@ class TFRecordSampleParser(foud.LabeledImageSampleParser):
     containing labeled images.
 
     Args:
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     # Subclasses must implement this
@@ -316,8 +326,7 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
     :ref:`this page <TFImageClassificationDataset-import>`.
 
     Args:
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     _FEATURES = {
@@ -376,8 +385,7 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
     :ref:`this page <TFObjectDetectionDataset-import>`.
 
     Args:
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     _FEATURES = {
@@ -492,8 +500,7 @@ class TFRecordsLabeledImageDatasetImporter(
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -604,8 +611,7 @@ class TFImageClassificationDatasetImporter(
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -647,8 +653,7 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        force_rgb (False): whether to force convert all images to RGB when
-            writing to disk
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -893,10 +898,15 @@ class TFExampleGenerator(object):
             if filename is None:
                 filename = os.path.basename(image_path)
 
-            img_bytes = tf.io.read_file(image_path)
-            img = tf.image.decode_image(img_bytes)
+            img_bytes = etau.read_file(image_path, binary=True)
+            img = etai.decode(img_bytes)
 
-            # @todo how to best force RGB in `img_bytes` here?
+            if img.ndim == 2:
+                img = np.expand_dims(img, 2)
+
+            if self.force_rgb and img.shape[2] == 1:
+                img = img.repeat(3, axis=2)
+                img_bytes = etai.encode(img, os.path.splitext(image_path)[1])
         else:
             img = image_or_path
 
@@ -1088,9 +1098,10 @@ def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
 
-def _parse_image_tf(image_path):
+def _parse_image_tf(image_path, force_rgb=False):
+    channels = 3 if force_rgb else 0
     img_bytes = tf.io.read_file(image_path)
-    return tf.image.decode_image(img_bytes)
+    return tf.image.decode_image(img_bytes, channels=channels)
 
 
 def _bytes_feature(value):
