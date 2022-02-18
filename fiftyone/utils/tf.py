@@ -11,6 +11,7 @@ import multiprocessing
 import os
 import warnings
 
+import cv2
 import numpy as np
 
 import eta.core.image as etai
@@ -29,12 +30,15 @@ import tensorflow as tf
 logger = logging.getLogger(__name__)
 
 
-def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
+def from_images_dir(
+    images_dir, recursive=True, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for the given directory of images.
 
     Args:
         images_dir: a directory of images
         recursive (True): whether to recursively traverse subdirectories
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -44,14 +48,17 @@ def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
         a ``tf.data.Dataset`` that emits decoded images
     """
     image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
-    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
+    return from_images(
+        image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
+    )
 
 
-def from_images_patt(images_patt, num_parallel_calls=None):
+def from_images_patt(images_patt, force_rgb=False, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given glob pattern of images.
 
     Args:
         images_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -61,7 +68,9 @@ def from_images_patt(images_patt, num_parallel_calls=None):
         a ``tf.data.Dataset`` that emits decoded images
     """
     image_paths = etau.get_glob_matches(images_patt)
-    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
+    return from_images(
+        image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
+    )
 
 
 def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
@@ -898,8 +907,9 @@ class TFExampleGenerator(object):
             if filename is None:
                 filename = os.path.basename(image_path)
 
+            # pylint: disable=no-member
             img_bytes = etau.read_file(image_path, binary=True)
-            img = etai.decode(img_bytes)
+            img = etai.decode(img_bytes, flag=cv2.IMREAD_ANYCOLOR)
 
             if img.ndim == 2:
                 img = np.expand_dims(img, 2)
