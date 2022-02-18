@@ -11,6 +11,8 @@ import multiprocessing
 import os
 import warnings
 
+import numpy as np
+
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -61,6 +63,7 @@ def from_images_patt(images_patt, num_parallel_calls=None):
     return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
+# @todo add force_rgb option?
 def from_images(image_paths, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given list of images.
 
@@ -79,6 +82,7 @@ def from_images(image_paths, num_parallel_calls=None):
     )
 
 
+# @todo add force_rgb option?
 def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for an image classification dataset stored
     as a list of image paths and labels.
@@ -104,6 +108,7 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     ).map(parse_sample, num_parallel_calls=num_parallel_calls)
 
 
+# @todo add force_rgb option?
 def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given image classification dataset
     directory tree.
@@ -257,14 +262,21 @@ class TFRecordsWriter(object):
 class TFRecordSampleParser(foud.LabeledImageSampleParser):
     """Base class for sample parsers that ingest ``tf.train.Example`` protos
     containing labeled images.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
     """
 
     # Subclasses must implement this
     _FEATURES = {}
 
-    def __init__(self):
+    def __init__(self, force_rgb=False):
         super().__init__()
+        self.force_rgb = force_rgb
+
         self._current_features_cache = None
+        self._channels = 3 if force_rgb else 0
 
     def get_image(self):
         return self._parse_image(self._current_features)
@@ -302,6 +314,10 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
     :ref:`this page <TFImageClassificationDataset-import>`.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
     """
 
     _FEATURES = {
@@ -331,7 +347,7 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
     def _parse_image(self, features):
         img_bytes = features["image_bytes"]
-        img = tf.image.decode_image(img_bytes)
+        img = tf.image.decode_image(img_bytes, channels=self._channels)
         return img.numpy()
 
     def _parse_image_metadata(self, features):
@@ -358,6 +374,10 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
     :ref:`this page <TFObjectDetectionDataset-import>`.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
     """
 
     _FEATURES = {
@@ -404,7 +424,7 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
 
     def _parse_image(self, features):
         img_bytes = features["image/encoded"]
-        img = tf.image.decode_image(img_bytes)
+        img = tf.image.decode_image(img_bytes, channels=self._channels)
         return img.numpy()
 
     def _parse_image_metadata(self, features):
@@ -472,6 +492,8 @@ class TFRecordsLabeledImageDatasetImporter(
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -482,6 +504,7 @@ class TFRecordsLabeledImageDatasetImporter(
         tf_records_path=None,
         images_dir=None,
         image_format=None,
+        force_rgb=False,
         max_samples=None,
     ):
         if dataset_dir is None and tf_records_path is None:
@@ -507,6 +530,7 @@ class TFRecordsLabeledImageDatasetImporter(
         self.tf_records_path = tf_records_path
         self.images_dir = images_dir
         self.image_format = image_format
+        self.force_rgb = force_rgb
 
         self._sample_parser = self._make_sample_parser()
         self._dataset_ingestor = None
@@ -580,6 +604,8 @@ class TFImageClassificationDatasetImporter(
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -589,7 +615,7 @@ class TFImageClassificationDatasetImporter(
         return fol.Classification
 
     def _make_sample_parser(self):
-        return TFImageClassificationSampleParser()
+        return TFImageClassificationSampleParser(force_rgb=self.force_rgb)
 
 
 class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
@@ -621,6 +647,8 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
             If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        force_rgb (False): whether to force convert all images to RGB when
+            writing to disk
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -630,7 +658,7 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         return fol.Detections
 
     def _make_sample_parser(self):
-        return TFObjectDetectionSampleParser()
+        return TFObjectDetectionSampleParser(force_rgb=self.force_rgb)
 
 
 class TFRecordsDatasetExporter(
@@ -659,6 +687,7 @@ class TFRecordsDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     def __init__(
@@ -667,6 +696,7 @@ class TFRecordsDatasetExporter(
         tf_records_path=None,
         num_shards=None,
         image_format=None,
+        force_rgb=False,
     ):
         tf_records_path = self._parse_labels_path(
             export_dir=export_dir,
@@ -682,6 +712,7 @@ class TFRecordsDatasetExporter(
         self.tf_records_path = tf_records_path
         self.num_shards = num_shards
         self.image_format = image_format
+        self.force_rgb = force_rgb
 
         self._example_generator = None
         self._filename_maker = None
@@ -750,6 +781,7 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     @property
@@ -757,7 +789,7 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
         return fol.Classification
 
     def _make_example_generator(self):
-        return TFImageClassificationExampleGenerator()
+        return TFImageClassificationExampleGenerator(force_rgb=self.force_rgb)
 
 
 class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
@@ -785,6 +817,7 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        force_rgb (False): whether to force convert all images to RGB
         classes (None): the list of possible class labels. If omitted, the
             class list is dynamically generated as samples are processed
     """
@@ -795,6 +828,7 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
         tf_records_path=None,
         num_shards=None,
         image_format=None,
+        force_rgb=False,
         classes=None,
     ):
         super().__init__(
@@ -802,6 +836,7 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
             tf_records_path=tf_records_path,
             num_shards=num_shards,
             image_format=image_format,
+            force_rgb=force_rgb,
         )
 
         self.classes = classes
@@ -820,11 +855,20 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
                 self.classes = sample_collection.info["classes"]
 
     def _make_example_generator(self):
-        return TFObjectDetectionExampleGenerator(classes=self.classes)
+        return TFObjectDetectionExampleGenerator(
+            force_rgb=self.force_rgb, classes=self.classes
+        )
 
 
 class TFExampleGenerator(object):
-    """Base class for sample writers that emit ``tf.train.Example`` protos."""
+    """Base class for sample writers that emit ``tf.train.Example`` protos.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
+    """
+
+    def __init__(self, force_rgb=False):
+        self.force_rgb = force_rgb
 
     def make_tf_example(self, image_or_path, label, *args, **kwargs):
         """Makes a ``tf.train.Example`` for the given data.
@@ -842,8 +886,7 @@ class TFExampleGenerator(object):
             "subclasses must implement make_tf_example()"
         )
 
-    @staticmethod
-    def _parse_image_or_path(image_or_path, filename=None):
+    def _parse_image_or_path(self, image_or_path, filename=None):
         if etau.is_str(image_or_path):
             image_path = image_or_path
 
@@ -852,6 +895,8 @@ class TFExampleGenerator(object):
 
             img_bytes = tf.io.read_file(image_path)
             img = tf.image.decode_image(img_bytes)
+
+            # @todo how to best force RGB in `img_bytes` here?
         else:
             img = image_or_path
 
@@ -860,6 +905,12 @@ class TFExampleGenerator(object):
                     "`filename` must be provided when `image_or_path` is an "
                     "image"
                 )
+
+            if img.ndim == 2:
+                img = np.expand_dims(img, 2)
+
+            if self.force_rgb and img.shape[2] == 1:
+                img = img.repeat(3, axis=2)
 
             if filename.endswith((".jpg", ".jpeg")):
                 img_bytes = tf.image.encode_jpeg(img)
@@ -882,6 +933,9 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
 
     See :ref:`this page <TFImageClassificationDataset-export>` for format
     details.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     def make_tf_example(self, image_or_path, classification, filename=None):
@@ -928,11 +982,16 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
     See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
+        force_rgb (False): whether to force convert all images to RGB
         classes (None): the list of possible class labels. If omitted, the
             class list is dynamically generated as examples are processed
     """
 
-    def __init__(self, classes=None):
+    def __init__(self, force_rgb=False, classes=None):
+        super().__init__(force_rgb=force_rgb)
+
+        self.classes = classes
+
         if classes:
             labels_map_rev = _to_labels_map_rev(classes)
             dynamic_classes = False
