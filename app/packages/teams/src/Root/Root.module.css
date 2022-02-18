@@ -1,12 +1,15 @@
-.container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-}
-
 .page {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 74px);
+  flex: 1;
+}
+
+.rest {
+  display: flex;
+  flex: 1;
+}
+
+.icons {
+  flex-shrink: 0;
 }

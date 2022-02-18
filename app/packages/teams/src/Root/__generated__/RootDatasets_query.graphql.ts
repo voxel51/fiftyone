@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dbe8653f57f8f616a656b953f9634eed>>
+ * @generated SignedSource<<3502ad27f17a9798cc22b0407dafc843>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ReaderFragment, RefetchableFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type RootDatasets_query$data = {
   readonly datasets: {
+    readonly total: number;
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
@@ -39,6 +40,10 @@ const node: ReaderFragment = (function () {
       {
         kind: "RootArgument",
         name: "cursor",
+      },
+      {
+        kind: "RootArgument",
+        name: "search",
       },
     ],
     kind: "Fragment",
@@ -68,12 +73,25 @@ const node: ReaderFragment = (function () {
     selections: [
       {
         alias: "datasets",
-        args: null,
+        args: [
+          {
+            kind: "Variable",
+            name: "search",
+            variableName: "search",
+          },
+        ],
         concreteType: "DatasetConnection",
         kind: "LinkedField",
         name: "__DatasetsList_query_datasets_connection",
         plural: false,
         selections: [
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
+            name: "total",
+            storageKey: null,
+          },
           {
             alias: null,
             args: null,
@@ -151,6 +169,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "04face7b25aed322240f032c60955faf";
+(node as any).hash = "280afc557752c2245a140c58ccb00248";
 
 export default node;

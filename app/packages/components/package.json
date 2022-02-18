@@ -37,7 +37,7 @@
     "react-dom": "^17.0.0"
   },
   "dependencies": {
-    "react-input-autosize": "^3.0.0",
-    "react-use": "^17.3.2"
+    "classnames": "^2.3.1",
+    "react-input-autosize": "^3.0.0"
   }
 }

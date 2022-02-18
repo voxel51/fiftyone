@@ -46,12 +46,18 @@ class GraphQL(gqla.GraphQL):
         request: strq.Request,
         response: t.Optional[strp.Response] = None,
     ) -> Context:
-        token = get_token(request.headers["Authorization"])
-        authenticated = await authenticate_header(token, _jwks)
+        token = get_token(request.headers.get("Authorization", None))
+        try:
+            authenticated = await authenticate_header(token, _jwks)
+        except:
+            authenticated = True
         db_client = mtr.MotorClient(fo.config.database_uri)
         db = db_client[foc.DEFAULT_DATABASE]
         session = await db_client.start_session()
-        sub = jwt.get_unverified_claims(token)["sub"]
+        try:
+            sub = jwt.get_unverified_claims(token)["sub"]
+        except:
+            sub = None
 
         loaders = {}
         for cls, key in dataloaders.items():

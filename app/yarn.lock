@@ -1982,10 +1982,10 @@ __metadata:
     "@types/react": ^17.0.39
     "@types/react-dom": ^17.0.11
     "@types/react-input-autosize": ^2.2.1
+    classnames: ^2.3.1
     path: ^0.12.7
     prettier: 2.2.1
     react-input-autosize: ^3.0.0
-    react-use: ^17.3.2
     typescript: 4.2.4
     typescript-plugin-css-modules: ^3.4.0
     vite: ^2.8.3
@@ -2075,6 +2075,7 @@ __metadata:
     react-relay: ^13.0.2
     react-router: ^5.1.2
     react-router-config: ^5.1.1
+    react-use: ^17.3.2
     recoil: ^0.6.1
     relay-compiler: ^13.0.2
     relay-compiler-language-typescript: ^15.0.1
@@ -3602,7 +3603,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"classnames@npm:^2.2.5, classnames@npm:^2.2.6":
+"classnames@npm:^2.2.5, classnames@npm:^2.2.6, classnames@npm:^2.3.1":
   version: 2.3.1
   resolution: "classnames@npm:2.3.1"
   checksum: 14db8889d56c267a591f08b0834989fe542d47fac659af5a539e110cc4266694e8de86e4e3bbd271157dbd831361310a8293e0167141e80b0f03a0f175c80960

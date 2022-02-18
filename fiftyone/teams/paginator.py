@@ -15,6 +15,8 @@ import typing as t
 import strawberry as gql
 from strawberry.arguments import UNSET
 
+import fiftyone.core.odm as foo
+
 from .utils import Info, HasCollectionType
 
 
@@ -22,6 +24,7 @@ from .utils import Info, HasCollectionType
 class Connection(t.Generic[HasCollectionType]):
     page_info: "PageInfo"
     edges: list["Edge[HasCollectionType]"]
+    total: int
 
 
 @gql.type
@@ -45,17 +48,32 @@ async def get_items(
     collection: mtr.MotorCollection,
     session: mtrt.MotorClientSession,
     from_db: t.Callable[[dict], HasCollectionType],
+    search: str,
     first: int = 10,
     after: t.Optional[Cursor] = UNSET,
 ) -> Connection[HasCollectionType]:
-    d = {}
+    start = []
+    if search:
+        start = [
+            {"$match": {"name": {"$regex": search}}},
+            {"$set": {"_length": {"$strLenCP": "$name"}}},
+            {"$sort": {"_length": 1, "name": 1}},
+            {"$unset": "_length"},
+        ]
+
     if after:
-        d = {"_id": {"$gt": ObjectId(after)}}
+        start += [{"$match": {"_id": {"$gt": ObjectId(after)}}}]
 
     edges = []
-    async for doc in collection.find(d, session=session).sort(
-        "_id", DESCENDING
-    ).limit(first + 1):
+
+    pipelines = [
+        start + [{"$limit": first + 1}],
+        start + [{"$count": "total"}],
+    ]
+
+    data = await foo.aggregate(collection, pipelines)
+    results, total = data
+    for doc in results:
         _id = doc["_id"]
         edges.append(Edge(node=from_db(doc), cursor=str(_id)))
 
@@ -72,20 +90,22 @@ async def get_items(
             end_cursor=edges[-1].cursor if len(edges) > 1 else None,
         ),
         edges=edges,
+        total=total[0]["total"] if total else 0,
     )
 
 
 def get_paginator_resolver(
     cls: t.Type[HasCollectionType],
 ) -> t.Callable[
-    [t.Optional[int], t.Optional[Cursor], Info], Connection[HasCollectionType]
+    [t.Optional[int], t.Optional[Cursor], Info], Connection[HasCollectionType],
 ]:
     async def paginate(
+        search: t.Optional[str],
         first: t.Optional[int] = 10,
         after: t.Optional[Cursor] = None,
         info: Info = None,
     ):
-        def from_db(doc: dict):
+        def from_db(doc: dict) -> t.Optional[HasCollectionType]:
             doc = cls.modifier(doc)
             return from_dict(cls, doc, config=Config(check_types=False))
 
@@ -93,6 +113,7 @@ def get_paginator_resolver(
             info.context.db[cls.get_collection_name()],
             info.context.session,
             from_db,
+            search,
             first,
             after,
         )

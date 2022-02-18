@@ -28,7 +28,8 @@ export const makeRoute = <T extends OperationType>(
 ): Route<T> => {
   return {
     path,
-    prepare: (params: VariablesOf<T>) => queries(path, () => prepare(params)),
+    prepare: (params: VariablesOf<T>) =>
+      queries(`${path}-${JSON.stringify(params)}`, () => prepare(params)),
     component: components(path, get),
     ...options,
   };

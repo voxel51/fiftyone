@@ -1,48 +1,85 @@
+import classnames from "classnames";
 import { Clear, FileCopy } from "@material-ui/icons";
 import React from "react";
 import { useCopyToClipboard } from "react-use";
 
+import { scrollable } from "../../scrollable.module.css";
+
+import Loading from "../Loading";
+
 import style from "./Error.module.css";
 
-interface Props {
-  reset: () => void;
-  error: {
-    kind?: string;
-    stack?: string;
+export class NotFoundError extends Error {
+  constructor(path: string) {
+    super(path);
+    this.message = `404: ${path} not found`;
+    this.name = "404";
+  }
+}
+
+export class ServerError extends Error {
+  constructor(stack: string) {
+    super();
+    this.message = `500: Server Error`;
+    this.name = "500";
+    this.stack = stack;
+  }
+}
+
+interface GraphQLError extends Error {
+  source: {
+    errors: {
+      extensions: {
+        stack: string;
+      };
+    }[];
   };
 }
 
-const Error: React.FC<Props> = ({ error, reset }) => {
+interface Props {
+  reset: () => void;
+  error: Error | GraphQLError | ServerError;
+}
+
+const ErrorPage: React.FC<Props> = ({ error, reset }) => {
   const [_, copy] = useCopyToClipboard();
+
+  if (error instanceof NotFoundError) {
+    return <Loading>{error.message}</Loading>;
+  }
+
+  let stack: string;
+  if (error.source) {
+    stack = error.source.errors.map((e) => e.extensions.stack).join("\n");
+  } else {
+    stack = error.stack;
+  }
 
   return (
     <div className={style.wrapper}>
-      <div className={style.container}>
+      <div className={classnames(style.container, scrollable)}>
         <div className={style.heading}>
-          <div>{error.kind ? error.kind : "App Error"}</div>
+          <div>{error.name}</div>
           <div>
             <div>
               <span title={"Reset"} onClick={reset}>
                 <Clear />
               </span>
             </div>
-            {error.stack && (
+            {stack && (
               <div>
-                <span
-                  title={"Copy stack"}
-                  onClick={() => copy(error.stack || "")}
-                >
+                <span title={"Copy stack"} onClick={() => copy(stack)}>
                   <FileCopy />
                 </span>
               </div>
             )}
           </div>
         </div>
-        {error.stack && (
+        {stack && (
           <div className={style.message}>
-            {error.stack && (
+            {stack && (
               <div className={style.stack}>
-                {error.stack.split("\n").map((line, i) => (
+                {stack.split("\n").map((line, i) => (
                   <div key={i}>{line}</div>
                 ))}
               </div>
@@ -54,4 +91,4 @@ const Error: React.FC<Props> = ({ error, reset }) => {
   );
 };
 
-export default Error;
+export default ErrorPage;

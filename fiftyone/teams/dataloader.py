@@ -15,7 +15,7 @@ from strawberry.dataloader import DataLoader
 from .utils import Info, HasCollectionType
 
 
-dataloaders: t.Dict[t.Type[HasCollectionType], str] = {}
+dataloaders: t.Dict[type, str] = {}
 
 
 def get_dataloader(
@@ -23,8 +23,10 @@ def get_dataloader(
     key: str,
     db: mtr.MotorDatabase,
     session: mtrt.MotorClientSession,
-) -> DataLoader[str, HasCollectionType]:
-    async def load_items(keys: t.List[str]) -> t.List[HasCollectionType]:
+) -> DataLoader[str, t.Optional[HasCollectionType]]:
+    async def load_items(
+        keys: t.List[str],
+    ) -> t.List[t.Optional[HasCollectionType]]:
         results = {}
         if key == "id":
             key == "_id"
@@ -33,7 +35,7 @@ def get_dataloader(
         ):
             results[doc[key]] = doc
 
-        def build(doc):
+        def build(doc: dict = None) -> t.Optional[HasCollectionType]:
             if not doc:
                 return None
 
@@ -47,10 +49,15 @@ def get_dataloader(
 
 def get_dataloader_resolver(
     cls: t.Type[HasCollectionType], key: str
-) -> t.Callable[[str, Info], t.Awaitable[HasCollectionType]]:
+) -> t.Callable[
+    [str, Info],
+    t.Coroutine[t.Any, t.Any, t.Awaitable[t.Optional[HasCollectionType]]],
+]:
     dataloaders[cls] = key
 
-    async def resolver(name: str, info: Info):
+    async def resolver(
+        name: str, info: Info
+    ) -> t.Awaitable[t.Optional[HasCollectionType]]:
         return await info.context.dataloaders[cls].load(name)
 
     resolver.__annotations__[key] = resolver.__annotations__.pop("name")

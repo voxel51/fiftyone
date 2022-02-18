@@ -132,7 +132,7 @@ class Dataset(HasCollection):
         return doc
 
     @classmethod
-    async def resolver(cls, name: str, info: Info) -> "Dataset":
+    async def resolver(cls, name: str, info: Info) -> t.Optional["Dataset"]:
         return await dataset_dataloader(name, info)
 
 
@@ -186,7 +186,7 @@ class User(HasCollection):
 class Query:
     users: Connection[User] = gql.field(resolver=get_paginator_resolver(User))
 
-    dataset: Dataset = gql.field(resolver=Dataset.resolver)
+    dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
         resolver=get_paginator_resolver(Dataset)
     )

@@ -71,21 +71,23 @@ const App = () => {
 
 const Root = () => {
   return (
-    <RecoilRoot>
-      <ErrorBoundary FallbackComponent={ErrorPage}>
-        <Auth0Provider
-          audience="api.dev.fiftyone.ai"
-          clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
-          domain="dev-uqppzklh.us.auth0.com"
-          organization={"org_wtMMZE61j2gnmxsm"}
-          onRedirectCallback={(state) =>
-            state.returnTo && window.location.assign(state.returnTo)
-          }
-        >
-          <App />
-        </Auth0Provider>
-      </ErrorBoundary>
-    </RecoilRoot>
+    <ErrorBoundary FallbackComponent={ErrorPage}>
+      <RecoilRoot>
+        <ErrorBoundary FallbackComponent={ErrorPage}>
+          <Auth0Provider
+            audience="api.dev.fiftyone.ai"
+            clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
+            domain="dev-uqppzklh.us.auth0.com"
+            organization={"org_wtMMZE61j2gnmxsm"}
+            onRedirectCallback={(state) =>
+              state.returnTo && window.location.assign(state.returnTo)
+            }
+          >
+            <App />
+          </Auth0Provider>
+        </ErrorBoundary>
+      </RecoilRoot>
+    </ErrorBoundary>
   );
 };
 

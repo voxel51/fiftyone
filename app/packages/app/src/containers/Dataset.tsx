@@ -13,7 +13,7 @@ import * as schemaAtoms from "../recoil/schema";
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
 const Container = styled.div`
-  height: calc(100% - 84px);
+  height: 100%;
   display: flex;
   flex-direction: column;
 `;

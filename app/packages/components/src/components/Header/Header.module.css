@@ -6,6 +6,7 @@
   width: 100%;
   border-bottom: 1px var(--background-dark-border) solid;
   height: 74px;
+  justify-content: left;
 }
 
 .title {
@@ -35,4 +36,12 @@
   align-items: center;
   display: flex;
   white-space: nowrap;
+}
+
+.dataset {
+  font-weight: bold;
+  padding-left: 1rem;
+  border-left-width: 1px;
+  border-color: var(--background-dark-border);
+  border-left-style: solid;
 }

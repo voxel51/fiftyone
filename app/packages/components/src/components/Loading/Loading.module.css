@@ -5,6 +5,7 @@
   align-items: center;
   width: 100%;
   height: 100%;
+  color: var(--font-dark);
 
   background: transparent;
 }
@@ -14,6 +15,6 @@
   justify-content: center;
   flex-direction: row;
 
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
 }

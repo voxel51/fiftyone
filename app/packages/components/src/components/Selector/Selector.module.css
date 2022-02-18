@@ -1,12 +1,8 @@
 .container {
   font-size: 1.2rem;
   display: flex;
-  overflow: hidden;
   border-bottom: 1px var(--brand) solid;
-}
-
-.container > div:last-child {
-  display: none;
+  position: relative;
 }
 
 .input {
@@ -15,6 +11,8 @@
 
 .input input {
   background-color: transparent;
+  text-decoration: none !important;
+  outline: none;
   border: none;
   color: var(--font);
   height: 40px;

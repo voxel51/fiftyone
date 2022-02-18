@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03b6c51c2d317dd0b1f8e680a0cedefc>>
+ * @generated SignedSource<<1dcec7933075f1c8ad3fd71de9920a99>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,14 +11,12 @@
 import { ConcreteRequest, Query } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type RootQuery$variables = {
+  search?: string | null;
   count?: number | null;
   cursor?: string | null;
 };
 export type RootQueryVariables = RootQuery$variables;
 export type RootQuery$data = {
-  readonly viewer: {
-    readonly id: string;
-  };
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
 };
 export type RootQueryResponse = RootQuery$data;
@@ -28,34 +26,20 @@ export type RootQuery = {
 };
 
 const node: ConcreteRequest = (function () {
-  var v0 = [
-      {
-        defaultValue: 10,
-        kind: "LocalArgument",
-        name: "count",
-      },
-      {
-        defaultValue: null,
-        kind: "LocalArgument",
-        name: "cursor",
-      },
-    ],
+  var v0 = {
+      defaultValue: 10,
+      kind: "LocalArgument",
+      name: "count",
+    },
     v1 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "id",
-      storageKey: null,
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "cursor",
     },
     v2 = {
-      alias: null,
-      args: null,
-      concreteType: "User",
-      kind: "LinkedField",
-      name: "viewer",
-      plural: false,
-      selections: [v1 /*: any*/],
-      storageKey: null,
+      defaultValue: "",
+      kind: "LocalArgument",
+      name: "search",
     },
     v3 = [
       {
@@ -68,10 +52,15 @@ const node: ConcreteRequest = (function () {
         name: "first",
         variableName: "count",
       },
+      {
+        kind: "Variable",
+        name: "search",
+        variableName: "search",
+      },
     ];
   return {
     fragment: {
-      argumentDefinitions: v0 /*: any*/,
+      argumentDefinitions: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
       kind: "Fragment",
       metadata: null,
       name: "RootQuery",
@@ -81,14 +70,13 @@ const node: ConcreteRequest = (function () {
           kind: "FragmentSpread",
           name: "RootDatasets_query",
         },
-        v2 /*: any*/,
       ],
       type: "Query",
       abstractKey: null,
     },
     kind: "Request",
     operation: {
-      argumentDefinitions: v0 /*: any*/,
+      argumentDefinitions: [v2 /*: any*/, v0 /*: any*/, v1 /*: any*/],
       kind: "Operation",
       name: "RootQuery",
       selections: [
@@ -100,6 +88,13 @@ const node: ConcreteRequest = (function () {
           name: "datasets",
           plural: false,
           selections: [
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "total",
+              storageKey: null,
+            },
             {
               alias: null,
               args: null,
@@ -130,7 +125,13 @@ const node: ConcreteRequest = (function () {
                       name: "name",
                       storageKey: null,
                     },
-                    v1 /*: any*/,
+                    {
+                      alias: null,
+                      args: null,
+                      kind: "ScalarField",
+                      name: "id",
+                      storageKey: null,
+                    },
                     {
                       alias: null,
                       args: null,
@@ -175,27 +176,26 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v3 /*: any*/,
-          filters: null,
+          filters: ["search"],
           handle: "connection",
           key: "DatasetsList_query_datasets",
           kind: "LinkedHandle",
           name: "datasets",
         },
-        v2 /*: any*/,
       ],
     },
     params: {
-      cacheID: "5008bc9639e7be4734caea32136232b0",
+      cacheID: "bff2e1c76df0e64cbfe629627f25d526",
       id: null,
       metadata: {},
       name: "RootQuery",
       operationKind: "query",
       text:
-        "query RootQuery(\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootDatasets_query\n  viewer {\n    id\n  }\n}\n\nfragment RootDatasets_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n',
     },
   };
 })();
 
-(node as any).hash = "144b399644aafc0829ed0741b4dbec9c";
+(node as any).hash = "ff8eb0a959345ce8352680a0298a4aa7";
 
 export default node;

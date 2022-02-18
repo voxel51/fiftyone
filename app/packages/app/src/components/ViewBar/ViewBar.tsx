@@ -17,7 +17,7 @@ import viewBarMachine from "./viewBarMachine";
 const ViewBarDiv = styled.div`
   position: relative;
   margin: 1rem 0.5rem;
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.background};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;

@@ -1,0 +1,93 @@
+import React, { useRef } from "react";
+import { animated } from "@react-spring/web";
+
+import style from "./Results.module.css";
+
+export interface ResultValue<T> {
+  name: T;
+  count?: number;
+}
+
+export interface ResultProps<T> {
+  result: ResultValue<T>;
+  onClick: () => void;
+  component: React.FC<{ value: T; className: string }>;
+}
+
+const NONSTRING_VALUES: any[] = [false, true, null];
+const STRING_VALUES = ["False", "True", "None"];
+
+export const getValueString = (value: unknown): [string, boolean] => {
+  if (NONSTRING_VALUES.includes(value)) {
+    return [STRING_VALUES[NONSTRING_VALUES.indexOf(value)], true];
+  }
+
+  if (typeof value === "number") {
+    return [value.toLocaleString(), true];
+  }
+
+  if (typeof value === "string" && !value.length) {
+    return [`""`, true];
+  }
+
+  if (Array.isArray(value)) {
+    return [`[${value.map((v) => getValueString(v)[0]).join(", ")}]`, false];
+  }
+
+  return [value as string, false];
+};
+
+export const Result = <T extends unknown>({
+  result: { name, count },
+  onClick,
+  component,
+}: ResultProps<T>) => {
+  const Component = component;
+
+  const [text] = getValueString(name);
+  return (
+    <div onClick={onClick}>
+      <Component value={name} className={style.result}>
+        <span>{text}</span>
+        {typeof count === "number" && <span>{count.toLocaleString()}</span>}
+      </Component>
+    </div>
+  );
+};
+
+export interface ResultsProps<T> {
+  results: ResultValue<T>[];
+  onSelect: (value: T) => void;
+  total: number;
+  component: React.FC<{ value: T; className: string }>;
+}
+
+const Results = <T extends unknown>({
+  onSelect,
+  results,
+  total,
+  component,
+}: ResultsProps<T>) => {
+  return (
+    <div className={style.container}>
+      {results.map((result) => (
+        <Result
+          component={component}
+          key={String(result.name)}
+          result={result}
+          onClick={() => onSelect(result.name)}
+        />
+      ))}
+      <div className={style.footer}>
+        {Boolean(total) && (
+          <>
+            {total} result{total > 1 ? "s" : ""}
+          </>
+        )}
+        {!Boolean(total) && <>No results</>}
+      </div>
+    </div>
+  );
+};
+
+export default Results;

@@ -191,20 +191,14 @@ def _do_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
-    global _async_client
-
-    async with await _async_client.start_session() as session:
-        return await asyncio.gather(
-            *[
-                _do_async_aggregate(collection, pipeline, session)
-                for pipeline in pipelines
-            ]
-        )
+    return await asyncio.gather(
+        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+    )
 
 
-async def _do_async_aggregate(collection, pipeline, session):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    return await cursor.to_list(1)
+async def _do_async_aggregate(collection, pipeline):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True)
+    return [doc async for doc in cursor]
 
 
 def get_db_client():

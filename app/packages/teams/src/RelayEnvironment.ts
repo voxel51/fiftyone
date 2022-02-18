@@ -1,4 +1,5 @@
 import { Auth0ContextInterface, User } from "@auth0/auth0-react";
+import { lookerError } from "@fiftyone/looker/src/elements/common/canvas.module.css";
 import {
   Environment,
   FetchFunction,
@@ -19,19 +20,23 @@ async function fetchGraphQL(
 
   const token = await auth0Client.getAccessTokenSilently();
 
-  const response = await fetch("http://localhost:5151/graphql", {
-    method: "POST",
-    headers: {
-      Authorization: `bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query: text,
-      variables,
-    }),
-  });
+  try {
+    const response = await fetch("http://localhost:5151/graphql", {
+      method: "POST",
+      headers: {
+        Authorization: `bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: text,
+        variables,
+      }),
+    });
 
-  return await response.json();
+    return await response.json();
+  } catch (error) {
+    throw new Error("Failed request");
+  }
 }
 
 const fetchRelay: FetchFunction = async (params, variables) => {

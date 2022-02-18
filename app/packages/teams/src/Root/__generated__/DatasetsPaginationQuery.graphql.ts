@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc27484167af96ab93870fdc8d533254>>
+ * @generated SignedSource<<4f31c87501c6dde0035dbe7507e96077>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ import { FragmentRefs } from "relay-runtime";
 export type DatasetsPaginationQuery$variables = {
   count?: number | null;
   cursor?: string | null;
+  search?: string | null;
 };
 export type DatasetsPaginationQueryVariables = DatasetsPaginationQuery$variables;
 export type DatasetsPaginationQuery$data = {
@@ -36,6 +37,11 @@ const node: ConcreteRequest = (function () {
         kind: "LocalArgument",
         name: "cursor",
       },
+      {
+        defaultValue: null,
+        kind: "LocalArgument",
+        name: "search",
+      },
     ],
     v1 = [
       {
@@ -47,6 +53,11 @@ const node: ConcreteRequest = (function () {
         kind: "Variable",
         name: "first",
         variableName: "count",
+      },
+      {
+        kind: "Variable",
+        name: "search",
+        variableName: "search",
       },
     ];
   return {
@@ -79,6 +90,13 @@ const node: ConcreteRequest = (function () {
           name: "datasets",
           plural: false,
           selections: [
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "total",
+              storageKey: null,
+            },
             {
               alias: null,
               args: null,
@@ -160,7 +178,7 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v1 /*: any*/,
-          filters: null,
+          filters: ["search"],
           handle: "connection",
           key: "DatasetsList_query_datasets",
           kind: "LinkedHandle",
@@ -169,17 +187,17 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "216fd414cb7acadab8e10d0d38e90247",
+      cacheID: "1e0b621671e78c21b0947dcfa72dd51e",
       id: null,
       metadata: {},
       name: "DatasetsPaginationQuery",
       operationKind: "query",
       text:
-        "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+        "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n  $search: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "04face7b25aed322240f032c60955faf";
+(node as any).hash = "280afc557752c2245a140c58ccb00248";
 
 export default node;

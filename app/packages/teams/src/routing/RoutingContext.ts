@@ -1,9 +1,11 @@
 import { createBrowserHistory } from "history";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { PreloadedQuery } from "react-relay";
 import { matchRoutes, RouteConfig } from "react-router-config";
 import { useRecoilValue, selector } from "recoil";
 import { OperationType, VariablesOf } from "relay-runtime";
+
+import { NotFoundError } from "@fiftyone/components";
 
 import Resource from "./Resource";
 import Route from "./Route";
@@ -11,7 +13,7 @@ import { RouteComponent } from "./RouteComponent";
 
 import routes from "./routes";
 
-export interface Entry<T extends OperationType> {
+export interface Entry<T extends OperationType = OperationType> {
   pathname: string;
   entries: {
     component: Resource<RouteComponent<T>>;
@@ -30,7 +32,12 @@ export interface RoutingContext<T extends OperationType = OperationType> {
 
 interface Match<T extends OperationType = OperationType> {
   route: Route<T>;
-  match: { params: VariablesOf<T> };
+  match: {
+    isExact: boolean;
+    params: VariablesOf<T>;
+    path: string;
+    url: string;
+  };
 }
 
 interface Router<T extends OperationType> {
@@ -109,8 +116,8 @@ const matchRoute = <T extends OperationType>(
     pathname
   );
 
-  if (!Array.isArray(matchedRoutes) || matchedRoutes.length === 0) {
-    throw new Error("No route for " + pathname);
+  if (matchedRoutes.every(({ match }) => !match.isExact)) {
+    throw new NotFoundError(pathname);
   }
 
   return (matchedRoutes as unknown) as Match<T>[];
@@ -153,16 +160,20 @@ export const routingContext = selector<RoutingContext>({
   dangerouslyAllowMutability: true,
 });
 
-export const to = (router: RoutingContext, path: string) => {
+export const goTo = (router: RoutingContext, path: string) => {
   router.history.push(path);
 };
 
 export const useTo = () => {
   const router = useRecoilValue(routingContext);
-  return useCallback(
-    (path: string) => {
-      to(router, path);
-    },
-    [router]
-  );
+  return {
+    to: useCallback((to: string) => goTo(router, to), [router]),
+    start: useCallback((to: string) => router.preloadCode(to), [router]),
+    query: useCallback((to: string) => router.preload(to), [router]),
+  };
+};
+
+export const useSubscribe = (cb: (entry: Entry<OperationType>) => void) => {
+  const router = useRecoilValue(routingContext);
+  useEffect(() => router.subscribe(cb), [router, cb]);
 };

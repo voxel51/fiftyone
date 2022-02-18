@@ -18,5 +18,6 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "composite": true
   },
-  "include": ["./src"]
+  "include": ["./src"],
+  "references": [{ "path": "../utilities" }]
 }

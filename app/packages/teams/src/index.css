@@ -12,6 +12,8 @@ body,
   font-size: 14px;
 
   color: var(--font);
+  display: flex;
+  flex-direction: column;
 }
 
 #modal {

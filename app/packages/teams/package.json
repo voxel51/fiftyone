@@ -20,6 +20,7 @@
         "react-relay": "^13.0.2",
         "react-router": "^5.1.2",
         "react-router-config": "^5.1.1",
+        "react-use": "^17.3.2",
         "recoil": "^0.6.1",
         "relay-runtime": "^13.0.2"
     },
