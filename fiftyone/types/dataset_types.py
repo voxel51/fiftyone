@@ -456,6 +456,20 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         return fouo.OpenImagesV6DatasetImporter
 
 
+class OpenLABELImageDataset(ImageLabelsDataset):
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openlabel as fouo
+
+        return fouo.OpenLABELImageDatasetImporter
+
+
+class OpenLABELVideoDataset(VideoLabelsDataset):
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.openlabel as fouo
+
+        return fouo.OpenLABELVideoDatasetImporter
+
+
 class YOLOv4Dataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in `YOLOv4 format <https://github.com/AlexeyAB/darknet>`_.
