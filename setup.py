@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.14.3"
+VERSION = "0.14.4"
 
 
 def get_version():
@@ -41,6 +41,7 @@ INSTALL_REQUIRES = [
     "matplotlib",
     "mongoengine==0.20.0",
     "motor>=2.3,<3",
+    "ndjson",
     "numpy",
     "packaging",
     "pandas",
@@ -60,9 +61,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.7.3,<0.8",
+    "fiftyone-brain>=0.8,<0.9",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.6.2,<0.7",
+    "voxel51-eta>=0.6.3,<0.7",
 ]
 
 
@@ -99,7 +100,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.1,<0.20"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.2,<0.20"]}
 
 
 with open("README.md", "r") as fh:

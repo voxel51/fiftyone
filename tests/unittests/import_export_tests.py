@@ -18,9 +18,10 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.utils.coco as fouc
+import fiftyone.utils.yolo as fouy
 
 from decorators import drop_datasets
-
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
@@ -1096,6 +1097,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset_dir=export_dir,
             dataset_type=fo.types.YOLOv5Dataset,
             label_field="predictions",
+            include_all_data=True,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1124,6 +1126,64 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         bounds2 = dataset2.bounds("predictions.detections.confidence")
         self.assertAlmostEqual(bounds[0], bounds2[0])
         self.assertAlmostEqual(bounds[1], bounds2[1])
+
+    @drop_datasets
+    def test_add_yolo_labels(self):
+        dataset = self._make_dataset()
+        classes = dataset.distinct("predictions.detections.label")
+
+        export_dir = self._new_dir()
+        dataset.export(
+            export_dir=export_dir, dataset_type=fo.types.YOLOv5Dataset,
+        )
+        yolo_labels_path = os.path.join(export_dir, "labels", "val")
+
+        # Standard
+
+        fouy.add_yolo_labels(
+            dataset, "yolo", labels_path=yolo_labels_path, classes=classes
+        )
+        self.assertEqual(
+            dataset.count_values("predictions.detections.label"),
+            dataset.count_values("yolo.detections.label"),
+        )
+        self.assertEqual(1, len(dataset) - len(dataset.exists("yolo")))
+
+        # Include missing
+
+        fouy.add_yolo_labels(
+            dataset,
+            "yolo_inclusive",
+            labels_path=yolo_labels_path,
+            classes=classes,
+            include_missing=True,
+        )
+        self.assertEqual(
+            dataset.count_values("predictions.detections.label"),
+            dataset.count_values("yolo_inclusive.detections.label"),
+        )
+        self.assertEqual(len(dataset), len(dataset.exists("yolo_inclusive")))
+
+    @skipwindows
+    @drop_datasets
+    def test_add_coco_labels(self):
+        dataset = self._make_dataset()
+        classes = dataset.distinct("predictions.detections.label")
+
+        export_dir = self._new_dir()
+        dataset.export(
+            export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset,
+        )
+        coco_labels_path = os.path.join(export_dir, "labels.json")
+
+        fouc.add_coco_labels(
+            dataset, "coco", coco_labels_path, classes=classes
+        )
+        self.assertEqual(
+            dataset.count_values("predictions.detections.label"),
+            dataset.count_values("coco.detections.label"),
+        )
+        self.assertEqual(len(dataset), len(dataset.exists("coco")))
 
 
 class ImageSegmentationDatasetTests(ImageDatasetTests):

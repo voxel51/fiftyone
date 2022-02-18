@@ -30,7 +30,7 @@ def evaluate_detections(
     eval_key=None,
     classes=None,
     missing=None,
-    method="coco",
+    method=None,
     iou=0.50,
     use_masks=False,
     use_boxes=False,
@@ -46,16 +46,24 @@ def evaluate_detections(
     -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
         format with their ``mask`` attributes populated
     -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+    -   Temporal detections in :class:`fiftyone.core.labels.TemporalDetections`
+        format
 
-    By default, this method uses COCO-style evaluation, but you can use the
-    ``method`` parameter to select a different method, and you can optionally
-    customize the method by passing additional parameters for the method's
-    config class as ``kwargs``.
+    For spatial object detection evaluation, this method uses COCO-style
+    evaluation by default.
+
+    For temporal segment detection, this method uses ActivityNet-style
+    evaluation by default.
+
+    You can use the ``method`` parameter to select a different method, and you
+    can optionally customize the method by passing additional parameters for
+    the method's config class as ``kwargs``.
 
     The supported ``method`` values and their associated configs are:
 
     -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
     -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
+    -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
 
     If an ``eval_key`` is provided, a number of fields are populated at the
     object- and sample-level recording the results of the evaluation:
@@ -85,21 +93,25 @@ def evaluate_detections(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`,
+            or :class:`fiftyone.core.labels.TemporalDetections`
         gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
+            truth :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polylines`,
+            or :class:`fiftyone.core.labels.TemporalDetections`
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, classes
             are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-            possible, or else the observed ground truth/predicted labels are
-            used
+            :meth:`fiftyone.core.dataset.Dataset.default_classes` if possible,
+            or else the observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
-        method ("coco"): a string specifying the evaluation method to use.
-            Supported values are ``("coco", "open-images")``
+        method (None): a string specifying the evaluation method to use.
+            For spatial object detection, the supported values are
+            ``("coco", "open-images")`` and the default is ``"coco"``. For
+            temporal segment detection, the supported values are
+            ``("activitynet")`` and the default is ``"activitynet"``
         iou (0.50): the IoU threshold to use to determine matches
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
@@ -118,8 +130,26 @@ def evaluate_detections(
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),
-        (fol.Detections, fol.Polylines),
+        (fol.Detections, fol.Polylines, fol.TemporalDetections),
         same_type=True,
+    )
+
+    label_type = samples._get_label_field_type(gt_field)
+    is_temporal = issubclass(label_type, fol.TemporalDetections)
+
+    if is_temporal:
+        fov.validate_video_collection(samples)
+    else:
+        kwargs.update(dict(use_masks=use_masks, use_boxes=use_boxes))
+
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        is_temporal,
+        iou=iou,
+        classwise=classwise,
+        **kwargs,
     )
 
     if classes is None:
@@ -130,26 +160,16 @@ def evaluate_detections(
         elif samples.default_classes:
             classes = samples.default_classes
 
-    config = _parse_config(
-        pred_field,
-        gt_field,
-        method,
-        iou=iou,
-        use_masks=use_masks,
-        use_boxes=use_boxes,
-        classwise=classwise,
-        **kwargs,
-    )
     eval_method = config.build()
     eval_method.ensure_requirements()
 
     eval_method.register_run(samples, eval_key)
     eval_method.register_samples(samples)
 
-    if not config.requires_additional_fields:
-        _samples = samples.select_fields([gt_field, pred_field])
-    else:
+    if config.requires_additional_fields:
         _samples = samples
+    else:
+        _samples = samples.select_fields([gt_field, pred_field])
 
     processing_frames = samples._is_frame_field(pred_field)
 
@@ -173,27 +193,25 @@ def evaluate_detections(
     logger.info("Evaluating detections...")
     for sample in _samples.iter_samples(progress=True):
         if processing_frames:
-            images = sample.frames.values()
+            docs = sample.frames.values()
         else:
-            images = [sample]
+            docs = [sample]
 
         sample_tp = 0
         sample_fp = 0
         sample_fn = 0
-        for image in images:
-            image_matches = eval_method.evaluate_image(
-                image, eval_key=eval_key
-            )
-            matches.extend(image_matches)
-            tp, fp, fn = _tally_matches(image_matches)
+        for doc in docs:
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
             sample_tp += tp
             sample_fp += fp
             sample_fn += fn
 
             if processing_frames and eval_key is not None:
-                image[tp_field] = tp
-                image[fp_field] = fp
-                image[fn_field] = fn
+                doc[tp_field] = tp
+                doc[fp_field] = fp
+                doc[fn_field] = fn
 
         if eval_key is not None:
             sample[tp_field] = sample_tp
@@ -318,7 +336,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
         performed.
 
         This method will be called before the first call to
-        :meth:`evaluate_image`. Subclasses can extend this method to perform
+        :meth:`evaluate`. Subclasses can extend this method to perform
         any setup required for an evaluation run.
 
         Args:
@@ -329,19 +347,18 @@ class DetectionEvaluation(foe.EvaluationMethod):
             self.config.pred_field
         )
 
-    def evaluate_image(self, sample_or_frame, eval_key=None):
-        """Evaluates the ground truth and predicted objects in an image.
+    def evaluate(self, doc, eval_key=None):
+        """Evaluates the ground truth and predictions in the given document.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
-                :class:`fiftyone.core.frame.Frame`
+            doc: a :class:`fiftyone.core.document.Document`
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
             tuples
         """
-        raise NotImplementedError("subclass must implement evaluate_image()")
+        raise NotImplementedError("subclass must implement evaluate()")
 
     def generate_results(
         self, samples, matches, eval_key=None, classes=None, missing=None
@@ -551,9 +568,17 @@ class DetectionResults(BaseEvaluationResults):
         )
 
 
-def _parse_config(pred_field, gt_field, method, **kwargs):
+def _parse_config(pred_field, gt_field, method, is_temporal, **kwargs):
     if method is None:
-        method = "coco"
+        if is_temporal:
+            method = "activitynet"
+        else:
+            method = "coco"
+
+    if method == "activitynet":
+        from .activitynet import ActivityNetEvaluationConfig
+
+        return ActivityNetEvaluationConfig(pred_field, gt_field, **kwargs)
 
     if method == "coco":
         from .coco import COCOEvaluationConfig

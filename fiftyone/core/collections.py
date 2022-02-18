@@ -1895,7 +1895,7 @@ class SampleCollection(object):
         eval_key=None,
         classes=None,
         missing=None,
-        method="coco",
+        method=None,
         iou=0.50,
         use_masks=False,
         use_boxes=False,
@@ -1907,21 +1907,28 @@ class SampleCollection(object):
 
         This method supports evaluating the following spatial data types:
 
-        -   Object detections in :class:`fiftyone.core.labels.Detections`
-            format
+        -   Object detections in :class:`fiftyone.core.labels.Detections` format
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Temporal detections in
+            :class:`fiftyone.core.labels.TemporalDetections` format
 
-        By default, this method uses COCO-style evaluation, but you can use the
-        ``method`` parameter to select a different method, and you can
-        optionally customize the method by passing additional parameters for
-        the method's config class as ``kwargs``.
+        For spatial object detection evaluation, this method uses COCO-style
+        evaluation by default.
+
+        For temporal segment detection, this method uses ActivityNet-style
+        evaluation by default.
+
+        You can use the ``method`` parameter to select a different method, and
+        you can optionally customize the method by passing additional
+        parameters for the method's config class as ``kwargs``.
 
         The supported ``method`` values and their associated configs are:
 
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
+        -   ``"activitynet"``: :class:`fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig`
 
         If an ``eval_key`` is provided, a number of fields are populated at the
         object- and sample-level recording the results of the evaluation:
@@ -1951,11 +1958,13 @@ class SampleCollection(object):
 
         Args:
             pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                ground truth :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`,
+                or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
                 classes are loaded from
@@ -1964,9 +1973,12 @@ class SampleCollection(object):
                 possible, or else the observed ground truth/predicted labels
                 are used
             missing (None): a missing label string. Any unmatched objects are
-                given this label for evaluation purposes
-            method ("coco"): a string specifying the evaluation method to use.
-                Supported values are ``("coco")``
+                given this label for results purposes
+            method (None): a string specifying the evaluation method to use.
+                For spatial object detection, the supported values are
+                ``("coco", "open-images")`` and the default is ``"coco"``. For
+                temporal detection, the supported values are
+                ``("activitynet")`` and the default is ``"activitynet"``
             iou (0.50): the IoU threshold to use to determine matches
             use_masks (False): whether to compute IoUs using the instances
                 masks in the ``mask`` attribute of the provided objects, which
@@ -4558,7 +4570,7 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by_similarity(
-        self, query_ids, k=None, reverse=False, brain_key=None
+        self, query_ids, k=None, reverse=False, dist_field=None, brain_key=None
     ):
         """Sorts the samples in the collection by visual similiarity to a
         specified set of query ID(s).
@@ -4591,6 +4603,9 @@ class SampleCollection(object):
             k (None): the number of matches to return. By default, the entire
                 collection is sorted
             reverse (False): whether to sort by least similarity
+            dist_field (None): the name of a float field in which to store the
+                distance of each example to the specified query. The field is
+                created if necessary
             brain_key (None): the brain key of an existing
                 :meth:`fiftyone.brain.compute_similarity` run on the dataset.
                 If not specified, the dataset must have an applicable run,
@@ -4601,7 +4616,11 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SortBySimilarity(
-                query_ids, k=k, reverse=reverse, brain_key=brain_key
+                query_ids,
+                k=k,
+                reverse=reverse,
+                dist_field=dist_field,
+                brain_key=brain_key,
             )
         )
 
@@ -4689,9 +4708,16 @@ class SampleCollection(object):
             field: the patches field, which must be of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.patches.make_patches_dataset` specifying
-                how to perform the conversion
+            other_fields (None): controls whether fields other than ``field``
+                and the default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            keep_label_lists (False): whether to store the patches in label
+                list fields of the same type as the input collection rather
+                than using their single label variants
 
         Returns:
             a :class:`fiftyone.core.patches.PatchesView`
@@ -4755,9 +4781,13 @@ class SampleCollection(object):
                 ground truth/predicted fields that are of type
                 :class:`fiftyone.core.labels.Detections` or
                 :class:`fiftyone.core.labels.Polylines`
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.patches.make_evaluation_patches_dataset`
-                specifying how to perform the conversion
+            other_fields (None): controls whether fields other than the
+                ground truth/predicted fields and the default sample fields are
+                included. Can be any of the following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
 
         Returns:
             a :class:`fiftyone.core.patches.EvaluationPatchesView`
@@ -4838,9 +4868,22 @@ class SampleCollection(object):
                 -   a list of ``[(first1, last1), (first2, last2), ...]`` lists
                     defining the frame numbers of the clips to extract from
                     each sample
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.clips.make_clips_dataset` specifying how
-                to perform the conversion
+            other_fields (None): controls whether sample fields other than the
+                default sample fields are included. Can be any of the
+                following:
+
+                -   a field or list of fields to include
+                -   ``True`` to include all other fields
+                -   ``None``/``False`` to include no other fields
+            tol (0): the maximum number of false frames that can be overlooked
+                when generating clips. Only applicable when ``field_or_expr``
+                is a frame-level list field or expression
+            min_len (0): the minimum allowable length of a clip, in frames.
+                Only applicable when ``field_or_expr`` is a frame-level list
+                field or an expression
+            trajectories (False): whether to create clips for each unique
+                object trajectory defined by their ``(label, index)``. Only
+                applicable when ``field_or_expr`` is a frame-level field
 
         Returns:
             a :class:`fiftyone.core.clips.ClipsView`
@@ -4852,22 +4895,48 @@ class SampleCollection(object):
         """Creates a view that contains one sample per frame in the video
         collection.
 
-        By default, samples will be generated for every frame of each video,
-        based on the total frame count of the video files, but this method is
-        highly customizable. Refer to
-        :meth:`fiftyone.core.video.make_frames_dataset` to see the available
-        configuration options.
+        The returned view will contain all frame-level fields and the ``tags``
+        of each video as sample-level fields, as well as a ``sample_id`` field
+        that records the IDs of the parent sample for each frame.
+
+        By default, ``sample_frames`` is False and this method assumes that the
+        frames of the input collection have ``filepath`` fields populated
+        pointing to each frame image. Any frames without a ``filepath``
+        populated will be omitted from the returned view.
+
+        When ``sample_frames`` is True, this method samples each video in the
+        input collection into a directory of per-frame images with the same
+        basename as the input video with frame numbers/format specified by
+        ``frames_patt``, and stores the resulting frame paths in a ``filepath``
+        field of the input collection.
+
+        For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
+        following paths::
+
+            /path/to/video1.mp4
+            /path/to/video2.mp4
+            ...
+
+        would be sampled as follows::
+
+            /path/to/video1/
+                000001.jpg
+                000002.jpg
+                ...
+            /path/to/video2/
+                000001.jpg
+                000002.jpg
+                ...
+
+        By default, samples will be generated for every video frame at full
+        resolution, but this method provides a variety of parameters that can
+        be used to customize the sampling behavior.
 
         .. note::
 
-            Unless you have configured otherwise, creating frame views will
-            sample the necessary frames from the input video collection into
-            directories of per-frame images. **For large video datasets,
-            this may take some time and require substantial disk space.**
-
-            Frames that have previously been sampled will not be resampled, so
-            creating frame views into the same dataset will become faster after
-            the frames have been sampled.
+            If this method is run multiple times with ``sample_frames`` set to
+            True, existing frames will not be resampled unless you set
+            ``force_sample`` to True.
 
         Examples::
 
@@ -4883,7 +4952,7 @@ class SampleCollection(object):
             # Create a frames view for an entire video dataset
             #
 
-            frames = dataset.to_frames()
+            frames = dataset.to_frames(sample_frames=True)
             print(frames)
 
             session.view = frames
@@ -4896,15 +4965,49 @@ class SampleCollection(object):
             num_objects = F("detections.detections").length()
             view = dataset.match_frames(num_objects > 10)
 
-            frames = view.to_frames(max_fps=1, sparse=True)
+            frames = view.to_frames(max_fps=1)
             print(frames)
 
             session.view = frames
 
         Args:
-            **kwargs: optional keyword arguments for
-                :meth:`fiftyone.core.video.make_frames_dataset` specifying how
-                to perform the conversion
+            sample_frames (False): whether to assume that the frame images have
+                already been sampled at locations stored in the ``filepath``
+                field of each frame (False), or whether to sample the video
+                frames now according to the specified parameters (True)
+            fps (None): an optional frame rate at which to sample each video's
+                frames
+            max_fps (None): an optional maximum frame rate at which to sample.
+                Videos with frame rate exceeding this value are downsampled
+            size (None): an optional ``(width, height)`` at which to sample
+                frames. A dimension can be -1, in which case the aspect ratio
+                is preserved. Only applicable when ``sample_frames=True``
+            min_size (None): an optional minimum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint. Only applicable when
+                ``sample_frames=True``
+            max_size (None): an optional maximum ``(width, height)`` for each
+                frame. A dimension can be -1 if no constraint should be
+                applied. The frames are resized (aspect-preserving) if
+                necessary to meet this constraint. Only applicable when
+                ``sample_frames=True``
+            sparse (False): whether to only sample frame images for frame
+                numbers for which :class:`fiftyone.core.frame.Frame` instances
+                exist in the input collection. This parameter has no effect
+                when ``sample_frames==False`` since frames must always exist in
+                order to have ``filepath`` information use
+            frames_patt (None): a pattern specifying the filename/format to use
+                to write or check or existing sampled frames, e.g.,
+                ``"%%06d.jpg"``. The default value is
+                ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
+            force_sample (False): whether to resample videos whose sampled
+                frames already exist. Only applicable when
+                ``sample_frames=True``
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a video cannot be sampled
+            verbose (False): whether to log information about the frames that
+                will be sampled, if any
 
         Returns:
             a :class:`fiftyone.core.video.FramesView`
@@ -6013,74 +6116,29 @@ class SampleCollection(object):
                 this can also contain keyword arguments for
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
+        archive_path = None
+
+        # If the user requested an archive, first populate a directory
         if export_dir is not None and etau.is_archive(export_dir):
             archive_path = export_dir
-            export_dir = etau.split_archive(archive_path)[0]
-        else:
-            archive_path = None
-
-        if dataset_type is None and dataset_exporter is None:
-            raise ValueError(
-                "Either `dataset_type` or `dataset_exporter` must be provided"
-            )
-
-        # If no dataset exporter was provided, construct one
-        if dataset_exporter is None:
-            _handle_existing_dirs(
-                export_dir, data_path, labels_path, export_media, overwrite
-            )
-
-            dataset_exporter, kwargs = foud.build_dataset_exporter(
-                dataset_type,
-                warn_unused=False,  # don't warn yet, might be patches kwargs
-                export_dir=export_dir,
-                data_path=data_path,
-                labels_path=labels_path,
-                export_media=export_media,
-                **kwargs,
-            )
-
-        # Get label field(s) to export
-        if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
-            # Labeled images
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=True,
-            )
-            frame_labels_field = None
-        elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
-            # Labeled videos
-            label_field = self._parse_label_field(
-                label_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-            frame_labels_field = self._parse_frame_labels_field(
-                frame_labels_field,
-                dataset_exporter=dataset_exporter,
-                allow_coercion=True,
-                required=False,
-            )
-
-            if label_field is None and frame_labels_field is None:
-                raise ValueError(
-                    "Unable to locate compatible sample or frame-level "
-                    "field(s) to export"
-                )
+            export_dir, _ = etau.split_archive(archive_path)
 
         # Perform the export
-        foud.export_samples(
+        _export(
             self,
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
             dataset_exporter=dataset_exporter,
             label_field=label_field,
             frame_labels_field=frame_labels_field,
+            overwrite=overwrite,
             **kwargs,
         )
 
-        # Archive, if requested
+        # Make archive, if requested
         if archive_path is not None:
             etau.make_archive(export_dir, archive_path, cleanup=True)
 
@@ -6573,9 +6631,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6590,10 +6648,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = (
-                os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
-            )
-            len_rel_dir = len(rel_dir)
+            rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
         is_video = self.media_type == fom.VIDEO
         write_frame_labels = is_video and frame_labels_dir is not None
@@ -6635,7 +6690,7 @@ class SampleCollection(object):
                 etas.write_json(frames, frames_path, pretty_print=pretty_print)
 
             if rel_dir and sd["filepath"].startswith(rel_dir):
-                sd["filepath"] = sd["filepath"][len_rel_dir:]
+                sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
             samples.append(sd)
 
@@ -6653,9 +6708,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -6689,9 +6744,9 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
-                use case for this argument is that your source data lives in
-                a single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                case for this argument is that your source data lives in a
+                single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
@@ -7429,7 +7484,10 @@ def _get_default_label_fields_for_exporter(
         return label_field_or_dict
 
     if required:
-        raise ValueError("No compatible field(s) of type %s found" % label_cls)
+        # Strange formatting is because `label_cls` may be a tuple
+        raise ValueError(
+            "No compatible field(s) of type %s found" % (label_cls,)
+        )
 
     return None
 
@@ -7465,8 +7523,10 @@ def _get_default_frame_label_fields_for_exporter(
         return frame_labels_field_or_dict
 
     if required:
+        # Strange formatting is because `frame_labels_cls` may be a tuple
         raise ValueError(
-            "No compatible frame field(s) of type %s found" % frame_labels_cls
+            "No compatible frame field(s) of type %s found"
+            % (frame_labels_cls,)
         )
 
     return None
@@ -8003,6 +8063,81 @@ def _get_non_none_value(values):
             return value
 
     return None
+
+
+def _export(
+    sample_collection,
+    export_dir=None,
+    dataset_type=None,
+    data_path=None,
+    labels_path=None,
+    export_media=None,
+    dataset_exporter=None,
+    label_field=None,
+    frame_labels_field=None,
+    overwrite=False,
+    **kwargs,
+):
+    if dataset_type is None and dataset_exporter is None:
+        raise ValueError(
+            "Either `dataset_type` or `dataset_exporter` must be provided"
+        )
+
+    # If no dataset exporter was provided, construct one
+    if dataset_exporter is None:
+        _handle_existing_dirs(
+            export_dir, data_path, labels_path, export_media, overwrite
+        )
+
+        dataset_exporter, kwargs = foud.build_dataset_exporter(
+            dataset_type,
+            warn_unused=False,  # don't warn yet, might be patches kwargs
+            export_dir=export_dir,
+            data_path=data_path,
+            labels_path=labels_path,
+            export_media=export_media,
+            **kwargs,
+        )
+
+    # Get label field(s) to export
+    if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
+        # Labeled images
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=True,
+        )
+        frame_labels_field = None
+    elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
+        # Labeled videos
+        label_field = sample_collection._parse_label_field(
+            label_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+        frame_labels_field = sample_collection._parse_frame_labels_field(
+            frame_labels_field,
+            dataset_exporter=dataset_exporter,
+            allow_coercion=True,
+            required=False,
+        )
+
+        if label_field is None and frame_labels_field is None:
+            raise ValueError(
+                "Unable to locate compatible sample or frame-level "
+                "field(s) to export"
+            )
+
+    # Perform the export
+    foud.export_samples(
+        sample_collection,
+        dataset_exporter=dataset_exporter,
+        label_field=label_field,
+        frame_labels_field=frame_labels_field,
+        **kwargs,
+    )
 
 
 def _handle_existing_dirs(

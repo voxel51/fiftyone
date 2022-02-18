@@ -207,9 +207,10 @@ class TFRecordsWriter(object):
     def __init__(self, tf_records_path, num_shards=None):
         self.tf_records_path = tf_records_path
         self.num_shards = num_shards
+
+        self._idx = None
         self._num_shards = None
         self._writers = None
-        self._idx = None
         self._writers_context = None
 
     def __enter__(self):
@@ -495,7 +496,7 @@ class TFRecordsLabeledImageDatasetImporter(
         )
 
         if images_dir is None:
-            images_dir = os.path.abspath(os.path.dirname(tf_records_path))
+            images_dir = os.path.dirname(tf_records_path)
             logger.warning(
                 "No `images_dir` provided. Images will be unpacked to '%s'",
                 images_dir,

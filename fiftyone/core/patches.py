@@ -197,16 +197,19 @@ class _PatchesView(fov.DatasetView):
             self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the object patches in the source dataset with the
-        contents of this view.
+        """Saves the patches in this view to the underlying dataset.
 
         If this view contains any additional fields that were not extracted
-        from the source dataset, these fields are not saved.
+        from the underlying dataset, these fields are not saved.
 
-        .. warning::
+        This method **does not** delete patches from the underlying dataset
+        that this view excludes.
 
-            This will permanently delete any omitted or filtered contents from
-            the source dataset.
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -222,14 +225,24 @@ class _PatchesView(fov.DatasetView):
         else:
             fields = [l for l in fields if l in self._label_fields]
 
-        #
-        # IMPORTANT: we sync the contents of `_patches_dataset`, not `self`
-        # here because the `save()` call above updated the dataset, which means
-        # this view may no longer have the same contents (e.g., if `skip()` is
-        # involved)
-        #
-
         self._sync_source_root(fields)
+
+    def keep(self):
+        """Deletes all patches that are **not** in this view from the
+        underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+
+        # The `keep()` operation below will delete patches, so we must sync
+        # deletions to the source dataset first
+        self._sync_source_root(self._label_fields, update=False, delete=True)
+
+        super().keep()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -283,42 +296,34 @@ class _PatchesView(fov.DatasetView):
 
         self._source_collection._set_labels(field, sample_ids, docs)
 
-    def _sync_source_root(self, fields):
+    def _sync_source_root(self, fields, update=True, delete=False):
         for field in fields:
-            self._sync_source_root_field(field)
+            self._sync_source_root_field(field, update=update, delete=delete)
 
-    def _sync_source_root_field(self, field):
+    def _sync_source_root_field(self, field, update=True, delete=False):
         _, label_id_path = self._get_label_field_path(field, "id")
         label_path = label_id_path.rsplit(".", 1)[0]
 
-        #
-        # Sync label updates
-        #
-
-        sample_ids, docs, label_ids = self._patches_dataset.aggregate(
-            [
-                foa.Values(self._id_field),
-                foa.Values(label_path, _raw=True),
-                foa.Values(label_id_path, unwind=True),
-            ]
-        )
-
-        self._source_collection._set_labels(field, sample_ids, docs)
-
-        #
-        # Sync label deletions
-        #
-
-        _, src_id_path = self._source_collection._get_label_field_path(
-            field, "id"
-        )
-        src_ids = self._source_collection.values(src_id_path, unwind=True)
-        delete_ids = set(src_ids) - set(label_ids)
-
-        if delete_ids:
-            self._source_collection._delete_labels(
-                ids=delete_ids, fields=field
+        if update:
+            sample_ids, docs, label_ids = self._patches_dataset.aggregate(
+                [
+                    foa.Values(self._id_field),
+                    foa.Values(label_path, _raw=True),
+                    foa.Values(label_id_path, unwind=True),
+                ]
             )
+
+            self._source_collection._set_labels(field, sample_ids, docs)
+
+        if delete:
+            all_ids = self._patches_dataset.values(label_id_path, unwind=True)
+            self_ids = self.values(label_id_path, unwind=True)
+            delete_ids = set(all_ids) - set(self_ids)
+
+            if delete_ids:
+                self._source_collection._delete_labels(
+                    ids=delete_ids, fields=field
+                )
 
 
 class PatchesView(_PatchesView):
