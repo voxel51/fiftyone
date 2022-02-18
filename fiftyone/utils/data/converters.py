@@ -24,6 +24,7 @@ def convert_dataset(
     output_dir=None,
     output_type=None,
     dataset_exporter=None,
+    overwrite=False,
 ):
     """Converts a dataset stored on disk to another format on disk.
 
@@ -46,6 +47,10 @@ def convert_dataset(
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
             export the dataset
+        overwrite (False): whether to delete existing directories before
+            performing the export (True) or to merge the export with existing
+            files and directories (False). Not applicable when a
+            ``dataset_exporter`` is provided
     """
     if input_type is None and dataset_importer is None:
         raise ValueError(
@@ -63,7 +68,11 @@ def convert_dataset(
     # Import dataset
     if dataset_importer is not None:
         # Import via ``dataset_importer``
-        logger.info("Loading dataset from '%s'", dataset_importer.dataset_dir)
+        if dataset_importer.dataset_dir is not None:
+            logger.info(
+                "Loading dataset from '%s'", dataset_importer.dataset_dir
+            )
+
         logger.info(
             "Using DatasetImporter '%s'", etau.get_class_name(dataset_importer)
         )
@@ -103,12 +112,18 @@ def convert_dataset(
     # Export dataset
     if dataset_exporter is not None:
         # Export via ``dataset_exporter``
-        logger.info("Exporting dataset to '%s'", dataset_exporter.export_dir)
+        if dataset_exporter.export_dir is not None:
+            logger.info(
+                "Exporting dataset to '%s'", dataset_exporter.export_dir
+            )
+
         logger.info(
             "Using DatasetExporter '%s'", etau.get_class_name(dataset_exporter)
         )
         dataset.export(
-            dataset_exporter=dataset_exporter, label_field=label_field
+            dataset_exporter=dataset_exporter,
+            label_field=label_field,
+            overwrite=overwrite,
         )
         logger.info("Export complete")
     else:
@@ -122,6 +137,7 @@ def convert_dataset(
             export_dir=output_dir,
             dataset_type=output_type,
             label_field=label_field,
+            overwrite=overwrite,
         )
         logger.info("Export complete")
 

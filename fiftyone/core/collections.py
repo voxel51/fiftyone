@@ -6110,7 +6110,7 @@ class SampleCollection(object):
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
                 existing files and directories (False). Not applicable when a
-                ``dataset_exporter`` was provided
+                ``dataset_exporter`` is provided
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
