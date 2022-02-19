@@ -120,8 +120,8 @@ export const http = isElectron()
   : window.location.protocol + "//" + host;
 
 export const ws = isElectron()
-? `ws://${address}:${port}/state`
-: `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
+  ? `ws://${address}:${port}/state`
+  : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
 
 export const appContext = isElectron()
   ? "desktop"

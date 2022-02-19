@@ -983,6 +983,9 @@ class Session(foc.HasClient):
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
 
+        if self._context == focx._DATABRICKS:
+            return _get_databricks_proxy_url(self.server_port)
+
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
 
