@@ -492,15 +492,22 @@ const isElectron = (): boolean => {
 };
 
 const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+const path =
+  window.location.pathname +
+  (window.location.pathname.endsWith("/") ? "" : "/");
 
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
   : parseInt(window.location.port);
 
+const address = isElectron()
+  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
+  : window.location.hostname;
+
 export const getURL = () => {
   return isElectron()
-    ? `http://localhost:${port}`
-    : window.location.protocol + "//" + host;
+    ? `http://${address}:${port}${path}`
+    : window.location.protocol + "//" + host + path;
 };
 
 export const getMimeType = (sample: any) => {
