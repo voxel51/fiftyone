@@ -246,7 +246,7 @@ const createReader = ({
 
         return new Promise((resolve, reject) => {
           fetch(
-            `${url}frames?` +
+            `${url}/frames?` +
               new URLSearchParams({
                 frameNumber: frameNumber.toString(),
                 numFrames: chunkSize.toString(),
