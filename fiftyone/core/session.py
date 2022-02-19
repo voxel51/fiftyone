@@ -954,6 +954,9 @@ class Session(foc.HasClient):
         if self._context == focx._COLAB:
             return
 
+        if self._context == focx._DATABRICKS:
+            return
+
         handle = data["handle"]
         if handle in self._handles and self._handles[handle]["active"]:
             self._handles[handle]["active"] = False
