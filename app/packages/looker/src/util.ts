@@ -506,8 +506,8 @@ const address = isElectron()
 
 export const getURL = () => {
   return isElectron()
-    ? `http://localhost:${port}`
-    : window.location.protocol + "//" + host;
+    ? `http://${address}:${port}${path}`
+    : window.location.protocol + "//" + host + path;
 };
 
 export const getMimeType = (sample: any) => {
