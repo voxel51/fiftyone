@@ -304,15 +304,34 @@ class ConvertCommand(Command):
 
     @staticmethod
     def setup(parser):
+        required = parser.add_argument_group("required arguments")
+        required.add_argument(
+            "--input-type",
+            metavar="INPUT_TYPE",
+            help="the fiftyone.types.Dataset type of the input dataset",
+            required=True,
+        )
+        required.add_argument(
+            "--output-type",
+            metavar="OUTPUT_TYPE",
+            help="the fiftyone.types.Dataset type to output",
+            required=True,
+        )
+
         parser.add_argument(
             "--input-dir",
             metavar="INPUT_DIR",
             help="the directory containing the dataset",
         )
         parser.add_argument(
-            "--input-type",
-            metavar="INPUT_TYPE",
-            help="the fiftyone.types.Dataset type of the input dataset",
+            "--input-kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments for "
+                "`fiftyone.utils.data.convert_dataset(..., input_kwargs=)`"
+            ),
         )
         parser.add_argument(
             "--output-dir",
@@ -320,24 +339,32 @@ class ConvertCommand(Command):
             help="the directory to which to write the output dataset",
         )
         parser.add_argument(
-            "--output-type",
-            metavar="OUTPUT_TYPE",
-            help="the fiftyone.types.Dataset type to output",
+            "--output-kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments for "
+                "`fiftyone.utils.data.convert_dataset(..., output_kwargs=)`"
+            ),
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite an existing output directory",
         )
 
     @staticmethod
     def execute(parser, args):
-        input_dir = args.input_dir
-        input_type = etau.get_class(args.input_type)
-
-        output_dir = args.output_dir
-        output_type = etau.get_class(args.output_type)
-
         foud.convert_dataset(
-            input_dir=input_dir,
-            input_type=input_type,
-            output_dir=output_dir,
-            output_type=output_type,
+            input_dir=args.input_dir,
+            input_type=etau.get_class(args.input_type),
+            input_kwargs=args.input_kwargs,
+            output_dir=args.output_dir,
+            output_type=etau.get_class(args.output_type),
+            output_kwargs=args.output_kwargs,
+            overwrite=args.overwrite,
         )
 
 
