@@ -1,0 +1,208 @@
+from copy import deepcopy
+import os
+import eta.core.serial as etas
+
+
+class OpenLABELLabels(object):
+    def __init__(self):
+        self.base_labels = {
+            "openlabel": {
+                "actions": {},
+                "contexts": {},
+                "coordinate_systems": {},
+                "events": {},
+                "frame_intervals": [],
+                "frames": {},
+                "metadata": {},
+                "objects": {},
+                "ontologies": {},
+                "relations": {},
+                "resources": {},
+                "streams": {},
+                "tags": {},
+            }
+        }
+
+        self._frame_intervals = []
+
+    @property
+    def frames(self):
+        return self.base_labels["openlabel"]["frames"]
+
+    def _update_frame_interval(self, frame_interval):
+        if frame_interval and frame_interval not in self._frame_intervals:
+            fs, fe = frame_interval
+            self.base_labels["openlabel"]["frame_intervals"].append(
+                {"frame_start": fs, "frame_end": fe}
+            )
+            self._frame_intervals.append(frame_interval)
+
+    def update_metadata(self, metadata_dict):
+        self.base_labels["openlabel"]["metadata"].update(metadata_dict)
+
+    def add_stream(self, stream_name, stream_dict):
+        self.base_labels["openlabel"]["streams"][stream_name] = stream_dict
+
+    def add_frame_properties(self, frame_number, properties_dict):
+        fn_str = str(frame_number)
+        fn_int = int(frame_number)
+        if fn_str not in self.frames:
+            self.frames[fn_str] = {}
+        self.frames[fn_str]["frame_properties"] = properties_dict
+
+    @property
+    def next_object_id(self):
+        object_ids = [
+            int(oid) for oid in self.base_labels["openlabel"]["objects"].keys()
+        ]
+        if not object_ids:
+            return "0"
+        return str(max(object_ids) + 1)
+
+    def add_object(self, o):
+        object_id = self.next_object_id
+        frame_object_dict = o.frame_object_dict
+        self._update_frame_interval(o.frame_interval)
+        for frame_num, frame_dict in frame_object_dict.items():
+            if frame_num not in self.base_labels["openlabel"]["frames"]:
+                self.base_labels["openlabel"]["frames"][frame_num] = {
+                    "objects": {}
+                }
+            self.base_labels["openlabel"]["frames"][frame_num]["objects"][
+                object_id
+            ] = frame_dict
+
+        self.base_labels["openlabel"]["objects"][object_id] = o.object_dict
+
+    def write_labels(self, labels_path):
+        etas.write_json(self.base_labels, labels_path)
+
+
+class OpenLABELObject(object):
+    def __init__(self, name, type, frame_interval=None):
+        self.object_dict = {
+            "name": name,
+            "type": type,
+            "object_data": {},
+            "object_data_pointers": {},
+            "frame_intervals": [],
+        }
+        self.frame_object_dict = {}
+        self.frame_interval = frame_interval
+        if frame_interval:
+            self.object_dict["frame_intervals"] = [
+                {
+                    "frame_start": frame_interval[0],
+                    "frame_end": frame_interval[1],
+                },
+            ]
+
+    def add_object_data(self, object_data, is_frame=False):
+        data_dict = object_data.to_dict()
+        if is_frame:
+            for frame_num in range(
+                self.frame_interval[0], self.frame_interval[1] + 1
+            ):
+                self.frame_object_dict[str(frame_num)] = {
+                    "object_data": data_dict
+                }
+        else:
+            self.object_dict["object_data"] = data_dict
+
+
+class OpenLABELObjectData(object):
+    def __init__(self, name, val, object_type):
+        self._data_dict = {
+            "name": name,
+            "val": val,
+        }
+        self.object_type = object_type
+
+    def to_dict(self):
+        return {self.object_type: [self._data_dict]}
+
+    def add_attribute(self, attr, val, as_property=False):
+        if not as_property:
+            self._data_dict[attr] = val
+        else:
+            val_type = type(val).__name__
+            if "attributes" not in self._data_dict:
+                self._data_dict["attributes"] = {}
+            if val_type not in self._data_dict["attributes"]:
+                self._data_dict["attributes"][val_type] = []
+
+            attr_dict = {"name": attr, "val": val}
+            self._data_dict["attributes"][val_type].append(attr_dict)
+
+    def add_attributes(self, attrs, as_property=False):
+        for attr_tuple in attrs:
+            _as_property = as_property
+            if len(attr_tuple) == 3:
+                _as_property = attr_tuple[2]
+            self.add_attribute(
+                attr_tuple[0], attr_tuple[1], as_property=_as_property
+            )
+
+
+def _make_image_labels(tmp_dir):
+    labels = OpenLABELLabels()
+    labels.update_metadata(
+        {
+            "annotation_id": 51,
+            "annotation_type": "semantic segmentation",
+            "input_uuid": "0",
+            "project": "FiftyOne Test",
+            "schema_version": "1.0.0",
+            "uri": "https://annotation.provider",
+            "uuid": "5151",
+        }
+    )
+    labels.add_stream(
+        "camera1",
+        {
+            "description": "image camera",
+            "stream_properties": {"height": 480, "width": 640},
+            "type": "camera",
+        },
+    )
+
+    kp_obj_data = OpenLABELObjectData("2d_point", [10, 20], "point2d")
+    kp_obj = OpenLABELObject("keypoints1", "Keypoints")
+    kp_obj.add_object_data(kp_obj_data)
+    labels.add_object(kp_obj)
+
+    poly_obj_data = OpenLABELObjectData(
+        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+    )
+    poly_obj_data.add_attributes(
+        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+    )
+    poly_obj_data.add_attributes(
+        [("is_hole", False), ("polygon_id", "0"), ("stream", "camera1"),],
+        as_property=True,
+    )
+    poly_obj = OpenLABELObject(
+        "polyname", "objectlabel1", frame_interval=(0, 0),
+    )
+    poly_obj.add_object_data(poly_obj_data, is_frame=True)
+    labels.add_object(poly_obj)
+
+    bbox_obj_data = OpenLABELObjectData(
+        "shape", [436.0, 303.5, 52, 47], "bbox"
+    )
+    bbox_obj = OpenLABELObject("car1", "Car")
+    bbox_obj.add_object_data(bbox_obj_data)
+    labels.add_object(bbox_obj)
+
+    labels.add_stream(
+        "camera1",
+        {
+            "description": "",
+            "stream_properties": {"height": 480, "width": 640},
+            "type": "camera",
+        },
+    )
+
+    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels.write_labels(labels_path)
+    return labels_path

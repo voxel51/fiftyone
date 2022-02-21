@@ -7,6 +7,7 @@ Utilities for working with datasets in
 |
 """
 from collections import defaultdict
+from copy import deepcopy
 import logging
 import os
 
@@ -297,7 +298,7 @@ class OpenLABELAnnotations(object):
                 if uri in self.objects:
                     self.objects[uri].add_objects(objects)
                 else:
-                    self.objects[uri] = objects
+                    self.objects[uri] = deepcopy(objects)
 
     def _parse_frames(self, labels, label_filename, object_parser):
         for frame_ind, frame in labels.get("frames", {}).items():
