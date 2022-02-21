@@ -9,6 +9,8 @@ import datetime
 import itertools
 import logging
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone.core.clips as foc
@@ -459,11 +461,13 @@ class PlotManager(object):
             elif plot.selection_mode == "match":
                 # Create a view that only contains unfiltered samples with at
                 # least one selected frame
-                plot_view = plot_view.match(F("frames.id").contains(ids))
+                _ids = [ObjectId(_id) for _id in ids]
+                plot_view = plot_view.match(F("frames._id").contains(_ids))
             elif plot.selection_mode == "frames":
                 # We shouldn't actually get here, since `plot_view` should have
                 # been a `FramesView`
-                plot_view = plot_view.match(F("frames.id").contains(ids))
+                _ids = [ObjectId(_id) for _id in ids]
+                plot_view = plot_view.match(F("frames._id").contains(_ids))
             else:
                 raise ValueError(
                     "Unsupported `selection_mode=%s`" % plot.selection_mode
