@@ -300,6 +300,16 @@ class ConvertCommand(Command):
             --input-type fiftyone.types.COCODetectionDataset \\
             --output-dir /path/for/cvat-image-dataset \\
             --output-type fiftyone.types.CVATImageDataset
+
+        # Perform a customized conversion via optional kwargs
+        fiftyone convert \\
+            --input-dir /path/to/coco-detection-dataset \\
+            --input-type fiftyone.types.COCODetectionDataset \\
+            --input-kwargs max_samples=100 shuffle=True \\
+            --output-dir /path/for/cvat-image-dataset \\
+            --output-type fiftyone.types.TFObjectDetectionDataset \\
+            --output-kwargs force_rgb=True \\
+            --overwrite
     """
 
     @staticmethod
