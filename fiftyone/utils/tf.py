@@ -369,12 +369,17 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
         return img.numpy()
 
     def _parse_image_metadata(self, features):
+        if self.force_rgb:
+            num_channels = 3
+        else:
+            num_channels = features["depth"].numpy()
+
         return fom.ImageMetadata(
             size_bytes=len(features["image_bytes"].numpy()),
             mime_type="image/" + features["format"].numpy().decode(),
             width=features["width"].numpy(),
             height=features["height"].numpy(),
-            num_channels=features["depth"].numpy(),
+            num_channels=num_channels,
         )
 
     def _parse_label(self, features):
@@ -445,11 +450,17 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         return img.numpy()
 
     def _parse_image_metadata(self, features):
+        if self.force_rgb:
+            num_channels = 3
+        else:
+            num_channels = None
+
         return fom.ImageMetadata(
             size_bytes=len(features["image/encoded"].numpy()),
             mime_type="image/" + features["image/format"].numpy().decode(),
             width=features["image/width"].numpy(),
             height=features["image/height"].numpy(),
+            num_channels=num_channels,
         )
 
     def _parse_label(self, features):
