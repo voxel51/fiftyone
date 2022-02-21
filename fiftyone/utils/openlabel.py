@@ -134,10 +134,14 @@ class OpenLABELImageDatasetImporter(
     def __next__(self):
         filename = next(self._iter_filenames)
 
-        if os.path.isabs(filename):
+        if os.path.exists(filename):
             sample_path = filename
-        else:
+        elif _to_uuid(filename) in self._sample_paths_map:
             sample_path = self._sample_paths_map[_to_uuid(filename)]
+        else:
+            sample_path = self._sample_paths_map[
+                _to_uuid(os.path.basename(filename))
+            ]
 
         stream = self._annotations.get_stream(filename)
         height, width = stream.height, stream.width
@@ -221,7 +225,10 @@ class OpenLABELVideoDatasetImporter(
 def _validate_filenames(potential_filenames, sample_paths_map):
     filenames = []
     for filename in set(potential_filenames):
-        if os.path.isabs(filename) or _to_uuid(filename) in sample_paths_map:
+        is_file = os.path.exists(filename)
+        has_uuid = _to_uuid(filename) in sample_paths_map
+        has_basename = _to_uuid(os.path.basename(filename)) in sample_paths_map
+        if is_file or has_uuid or has_basename:
             filenames.append(filename)
     return filenames
 
@@ -357,26 +364,30 @@ class OpenLABELObjects(object):
     def __init__(self, objects):
         self.objects = objects
 
-    def to_detections(self, frame_size):
-        detections = []
+    def _to_labels(self, frame_size, labels_type, obj_to_label):
+        labels = []
         for obj in self.objects:
-            detection = obj.to_detection(frame_size)
-            if detection is not None:
-                detections.append(detection)
+            label = obj_to_label(obj, frame_size)
+            if label is not None:
+                labels.append(label)
 
-        return fol.Detections(detections=detections)
+        kwargs = {labels_type._LABEL_LIST_FIELD: labels}
+        return labels_type(**kwargs)
+
+    def to_detections(self, frame_size):
+        return self._to_labels(
+            frame_size, fol.Detections, OpenLABELObject.to_detection,
+        )
 
     def to_keypoints(self, frame_size):
-        return fol.Keypoints()
+        return self._to_labels(
+            frame_size, fol.Keypoints, OpenLABELObject.to_keypoint,
+        )
 
     def to_polylines(self, frame_size):
-        polylines = []
-        for obj in self.objects:
-            polyline = obj.to_polyline(frame_size)
-            if polyline is not None:
-                polylines.append(polyline)
-
-        return fol.Polylines(polylines=polylines)
+        return self._to_labels(
+            frame_size, fol.Polylines, OpenLABELObject.to_polyline,
+        )
 
     def to_segmentations(self, frame_size):
         return fol.Detections()
@@ -516,7 +527,7 @@ class OpenLABELObject(object):
         type=None,
         bbox=None,
         segmentation=None,
-        keypoints=None,
+        keypoints=[],
         stream=None,
         **attributes,
     ):
@@ -559,7 +570,7 @@ class OpenLABELObject(object):
             [(x / width, y / height) for x, y, in _pairwise(self.segmentation)]
         ]
 
-        filled = not attributes.get("is_hole", False)
+        filled = not attributes.get("is_hole", True)
         closed = attributes.get("closed", True)
 
         return fol.Polyline(
@@ -570,11 +581,24 @@ class OpenLABELObject(object):
             **attributes,
         )
 
+    def to_keypoint(self, frame_size):
+        if not self.keypoints:
+            return None
+        label = self.type
+        attributes = self._get_object_attributes()
+
+        width, height = frame_size
+
+        rel_points = [(x / width, y / height) for x, y, in self.keypoints]
+
+        return fol.Keypoint(label=label, points=rel_points, **attributes,)
+
     @classmethod
     def from_anno_dict(cls, anno_id, d):
         (
             bbox,
             segmentation,
+            point,
             name,
             _type,
             stream,
@@ -587,7 +611,7 @@ class OpenLABELObject(object):
             type=_type,
             bbox=bbox,
             segmentation=segmentation,
-            keypoints=None,
+            keypoints=[point] if point else [],
             stream=stream,
             attributes=attributes,
         )
@@ -599,9 +623,16 @@ class OpenLABELObject(object):
         stream = None
         bbox = object_data.get("bbox", [])
         poly = object_data.get("poly2d", [])
+        point = object_data.get("point2d", [])
         stream, bbox, attrs = cls._parse_object_data(bbox)
         attributes.update(attrs)
+
         _stream, poly, attrs = cls._parse_object_data(poly)
+        attributes.update(attrs)
+        if stream is None:
+            stream = _stream
+
+        _stream, point, attrs = cls._parse_object_data(point)
         attributes.update(attrs)
         if stream is None:
             stream = _stream
@@ -613,7 +644,7 @@ class OpenLABELObject(object):
         if stream is None:
             stream = attr_stream
 
-        return bbox, poly, name, _type, stream, attributes
+        return bbox, poly, point, name, _type, stream, attributes
 
     @classmethod
     def _parse_object_data(cls, object_data_list):
@@ -648,6 +679,7 @@ class OpenLABELObject(object):
         (
             bbox,
             segmentation,
+            point,
             name,
             _type,
             stream,
@@ -658,6 +690,9 @@ class OpenLABELObject(object):
 
         if segmentation and not self.segmentation:
             self.segmentation = segmentation
+
+        if point:
+            self.keypoints.append(point)
 
         if name and not self.name:
             self.name = name

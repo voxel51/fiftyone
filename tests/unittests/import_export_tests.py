@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -46,10 +47,12 @@ class ImageDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_image(self):
+    def _new_image(self, filename=None):
+        if filename is None:
+            filename = self._new_name()
         filepath = os.path.join(
             self.images_dir,
-            self._new_name() + os.path.splitext(self._ref_image_path)[1],
+            filename + os.path.splitext(self._ref_image_path)[1],
         )
 
         etau.copy_file(self._ref_image_path, filepath)
@@ -1802,6 +1805,135 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info = dataset.get_evaluation_info("test")
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
+
+
+class OpenLABELImageDatasetTests(ImageDatasetTests):
+    def _make_labels(self):
+        labels = {
+            "openlabel": {
+                "actions": {},
+                "contexts": {},
+                "coordinate_systems": {},
+                "events": {},
+                "frame_intervals": [{"frame_end": 0, "frame_start": 0}],
+                "frames": {
+                    "0": {
+                        "frame_properties": {
+                            "streams": {"cam1": {"uri": "image_1.png"}},
+                            "timestamp": 0,
+                        },
+                        "objects": {
+                            "0": {
+                                "object_data": {
+                                    "poly2d": [
+                                        {
+                                            "attributes": {
+                                                "boolean": [
+                                                    {
+                                                        "name": "is_hole",
+                                                        "val": False,
+                                                    }
+                                                ],
+                                                "text": [
+                                                    {
+                                                        "name": "polygon_id",
+                                                        "val": "0",
+                                                    },
+                                                    {
+                                                        "name": "stream",
+                                                        "val": "camera1",
+                                                    },
+                                                ],
+                                            },
+                                            "closed": True,
+                                            "mode": "MODE_POLY2D_ABSOLUTE",
+                                            "name": "poly2d-0",
+                                            "val": [
+                                                100,
+                                                200,
+                                                200,
+                                                200,
+                                                200,
+                                                100,
+                                                100,
+                                                100,
+                                            ],
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                    }
+                },
+                "metadata": {
+                    "annotation_id": 51,
+                    "annotation_type": "semantic segmentation",
+                    "input_uuid": "0",
+                    "project": "FiftyOne Test",
+                    "schema_version": "1.0.0",
+                    "uri": "https://annotation.provider",
+                    "uuid": "5151",
+                },
+                "objects": {
+                    "0": {
+                        "frame_intervals": [
+                            {"frame_end": 0, "frame_start": 0}
+                        ],
+                        "name": "0",
+                        "object_data": {},
+                        "type": "label1",
+                    },
+                    "1": {
+                        "name": "car1",
+                        "type": "Car",
+                        "object_data": {
+                            "bbox": [
+                                {
+                                    "name": "shape",
+                                    "val": [436.0, 303.5, 52, 47],
+                                }
+                            ]
+                        },
+                        "object_data_pointers": {
+                            "shape": {"type": "bbox", "frame_intervals": []}
+                        },
+                    },
+                    "2": {
+                        "name": "keypoints1",
+                        "type": "Keypoints",
+                        "object_data": {
+                            "point2d": [{"name": "2d_point", "val": [10, 20],}]
+                        },
+                    },
+                },
+                "ontologies": {},
+                "relations": {},
+                "resources": {},
+                "streams": {
+                    "camera1": {
+                        "description": "",
+                        "stream_properties": {"height": 480, "width": 640},
+                        "type": "camera",
+                    }
+                },
+                "tags": {},
+            }
+        }
+
+        labels_path = os.path.join(self._tmp_dir, "openlabel_test.json")
+        etas.write_json(labels, labels_path)
+        return labels_path
+
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        labels_path = self._make_labels()
+        img_filepath = self._new_image(filename="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+        )
 
 
 class VideoDatasetTests(unittest.TestCase):
