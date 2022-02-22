@@ -46,7 +46,7 @@ def get_view(
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity:
+    if filters or similarity or count_label_tags:
         view = get_extended_view(
             view,
             filters,

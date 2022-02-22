@@ -89,11 +89,13 @@ class Distributions(HTTPEndpoint):
             (
                 hist_aggs,
                 hist_fields,
+                hist_paths,
                 ticks,
                 nonfinites,
             ) = await _numeric_histograms(view, view.get_field_schema())
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
+            paths.extend(hist_paths)
             results = await _gather_results(aggs, fields, paths, view, ticks)
             for result, nonfinites in zip(
                 results[-len(hist_aggs) :], nonfinites
@@ -295,4 +297,4 @@ async def _numeric_histograms(view, schema, prefix=""):
         ticks.append(num_ticks)
         aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
-    return aggregations, fields, ticks, nonfinites
+    return aggregations, fields, paths, ticks, nonfinites

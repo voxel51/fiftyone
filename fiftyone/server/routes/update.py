@@ -18,5 +18,6 @@ class Update(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         state = fos.StateDescription.from_dict(data.get("state"))
+
         set_state(state)
-        return {}
+        return {"state": state.serialize()}

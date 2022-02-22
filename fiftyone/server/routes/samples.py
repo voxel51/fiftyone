@@ -37,6 +37,7 @@ class Samples(HTTPEndpoint):
             count_label_tags=True,
             similarity=similarity,
         )
+
         if view.media_type == fom.VIDEO:
             if isinstance(view, focl.ClipsView):
                 expr = F("frame_number") == F("$support")[0]
@@ -46,6 +47,7 @@ class Samples(HTTPEndpoint):
             view = view.set_field("frames", F("frames").filter(expr))
 
         view = view.skip((page - 1) * page_length)
+
         samples = await foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=True, detach_frames=False),

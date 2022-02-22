@@ -8,6 +8,7 @@ FiftyOne Server /pin route
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+import fiftyone as fo
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
 
@@ -38,7 +39,9 @@ class Pin(HTTPEndpoint):
         state = get_state()
         state.selected = []
         state.selected_labels = []
+        state.dataset = fo.load_dataset(dataset)
         state.view = view
 
         set_state(state)
-        return {}
+
+        return {"state": state.serialize()}
