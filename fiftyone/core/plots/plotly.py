@@ -295,15 +295,15 @@ def plot_regressions(
             -   an array-like of numeric values
             -   a list of array-likes of numeric or string values, if
                 ``link_field`` refers to frames
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         best_fit_label (None): a custom legend label for the best fit line
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
@@ -425,12 +425,12 @@ def plot_pr_curve(
     Args:
         precision: an array-like of precision values
         recall: an array-like of recall values
-        thresholds (None): an optional array-like of decision thresholds
+        thresholds (None): an array-like of decision thresholds
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
@@ -517,10 +517,10 @@ def plot_pr_curves(
             precision values
         recall: an array-like of recall values
         classes: the list of classes
-        thresholds (None): an optional ``num_classes x num_recalls`` array-like
-            of decision thresholds
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plots
+        thresholds (None): a ``num_classes x num_recalls`` array-like of
+            decision thresholds
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plots
         title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
@@ -615,12 +615,12 @@ def plot_roc_curve(
     Args:
         fpr: an array-like of false postive rates
         tpr: an array-like of true postive rates
-        thresholds (None): an optional array-like of decision thresholds
+        thresholds (None): an array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
@@ -695,12 +695,11 @@ def lines(
     ids=None,
     link_field=None,
     sizes=None,
-    style="line",
-    figure=None,
-    marker_size=None,
+    labels=None,
     colors=None,
+    marker_size=None,
+    figure=None,
     title=None,
-    trace_title=None,
     xaxis_title=None,
     yaxis_title=None,
     sizes_title=None,
@@ -772,18 +771,16 @@ def lines(
                 sample-level (single trace) or frame-level (multiple traces)
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-        style ("line"): a plot style to use. Supported values are
-            ``("line", "area")``
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        labels (None): a name or list of names for the line traces
+        colors (None): a list of colors to use for the line traces. See
+            https://plotly.com/python/colorscales for options
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
-        colors (None): an optional list of colors to use for the line traces.
-            See https://plotly.com/python/colorscales for options
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         title (None): a title for the plot
-        trace_title (None): a name or list of names for the line traces
-        xaxis_title (None): an x-axis title string
-        yaxis_title (None): a y-axis title string
+        xaxis_title (None): an x-axis title
+        yaxis_title (None): a y-axis title
         sizes_title (None): a title string to use for ``sizes`` in the tooltip.
             By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
@@ -818,11 +815,6 @@ def lines(
         else:
             sizes_title = "size"
 
-    if style not in ("line", "area"):
-        msg = "Unsupported style '%s'; using 'line' instead" % style
-        warnings.warn(msg)
-        style = "line"
-
     hover_lines = ["%s: %%{x}" % x_title, "%s: %%{y}" % y_title]
 
     if sizes is not None:
@@ -832,10 +824,6 @@ def lines(
         hover_lines.append("ID: %{customdata}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
-
-    params = {}
-    if style == "area":
-        params.update(dict(fill="tozeroy"))
 
     if etau.is_str(y) or isinstance(y, foe.ViewExpression):
         if samples is not None and samples.media_type == fom.VIDEO:
@@ -891,12 +879,10 @@ def lines(
         if ids is None:
             ids = itertools.repeat(None)
 
-        if trace_title is None:
-            trace_title = [str(i) for i in range(1, len(y) + 1)]
-        elif etau.is_str(trace_title):
-            trace_title = _parse_values(
-                trace_title, "trace_title", samples=samples
-            )
+        if labels is None:
+            labels = [str(i) for i in range(1, len(y) + 1)]
+        elif etau.is_str(labels):
+            labels = _parse_values(labels, "labels", samples=samples)
 
         showlegend = True
     else:
@@ -904,24 +890,17 @@ def lines(
         y = [y]
         ids = [ids]
         sizes = [sizes]
-        trace_title = [trace_title]
-        showlegend = trace_title[0] is not None
+        labels = [labels]
+        showlegend = labels[0] is not None
 
     colors = _get_qualitative_colors(len(y), colors=colors)
 
     traces = []
-    for _x, _y, _ids, _sizes, _trace_title, _color in zip(
-        x, y, ids, sizes, trace_title, colors
-    ):
+    for _x, _y, _i, _s, _l, _c in zip(x, y, ids, sizes, labels, colors):
         marker = {}
-        if _sizes is not None:
+        if _s is not None:
             marker.update(
-                dict(
-                    size=_sizes,
-                    sizemode="diameter",
-                    sizeref=sizeref,
-                    sizemin=4,
-                )
+                dict(size=_s, sizemode="diameter", sizeref=sizeref, sizemin=4)
             )
         elif marker_size is not None:
             marker.update(dict(size=marker_size))
@@ -930,14 +909,13 @@ def lines(
             go.Scatter(
                 x=_x,
                 y=_y,
-                customdata=_ids,
+                customdata=_i,
                 mode="lines+markers",
-                line_color=_color,
+                line_color=_c,
                 marker=marker,
                 hovertemplate=hovertemplate,
-                name=_trace_title,
+                name=_l,
                 showlegend=showlegend,
-                **params,
             )
         )
 
@@ -1070,16 +1048,16 @@ def scatterplot(
             -   a list of array-likes of numeric or string values, if
                 ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-        edges (None): an optional ``num_edges x 2`` array of row indices into
-            ``points`` defining undirected edges between points to render as a
-            separate trace on the scatterplot
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        edges (None): a ``num_edges x 2`` array of row indices into ``points``
+            defining undirected edges between points to render as a separate
+            trace on the scatterplot
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
@@ -1487,21 +1465,21 @@ def location_scatterplot(
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
             -   an array-like of numeric values
-        edges (None): an optional ``num_edges x 2`` array-like of row indices
-            into ``locations`` defining undirected edges between points to
-            render as a separate trace on the scatterplot
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
+        edges (None): a ``num_edges x 2`` array-like of row indices into
+            ``locations`` defining undirected edges between points to render as
+            a separate trace on the scatterplot
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
         radius (None): the radius of influence of each lat/lon point. Only
             applicable when ``style`` is "density". Larger values will make
             density plots smoother and less detailed
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
@@ -3224,6 +3202,7 @@ def _get_qualitative_colors(num_classes, colors=None):
             colors = px.colors.qualitative.Alphabet
 
     # @todo can we blend when there are more classes than colors?
+    colors = list(colors)
     return [colors[i % len(colors)] for i in range(num_classes)]
 
 
