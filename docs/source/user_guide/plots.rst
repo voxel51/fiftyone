@@ -684,6 +684,38 @@ notebook:
    :alt: detection-evaluation
    :align: center
 
+When you pass an `eval_key` to
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+confusion matrices attached to App instances have a different default behavior:
+when you select cell(s), the corresponding
+:ref:`evaluation patches <evaluation-patches>` for the run are shown in the
+App. This allows you to visualize each TP, FP, and FN example in a fine-grained
+manner:
+
+.. code-block:: python
+    :linenos:
+
+    results = dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+.. code-block:: python
+    :linenos:
+
+    # Since these results have an `eval_key`, selecting cells in this plot will
+    # load evaluation patch views
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show(height=600)
+
+    session.plots.attach(plot)
+
+.. image:: /images/plots/detection-evaluation-patches.gif
+   :alt: detection-evaluation-patches
+   :align: center
+
+If you prefer a different selection behavior, you can simply change the plot's
+:ref:`selection mode <plot-selection-modes>`.
+
 .. _view-plots:
 
 View plots
