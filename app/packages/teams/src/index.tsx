@@ -43,7 +43,7 @@ const Environment = () => {
     auth0.isAuthenticated &&
       auth0.getAccessTokenSilently().then((token) => {
         document.cookie = `fiftyone-token=${token}`;
-        setFetchFunction({
+        setFetchFunction("https://dev.fiftyone.ai:5151", {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         });

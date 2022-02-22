@@ -4,7 +4,13 @@ import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
 export { NotFoundError, ServerError } from "./errors";
-export { getFetchFunction, setFetchFunction } from "./fetch";
+export {
+  getFetchFunction,
+  getFetchHeaders,
+  getFetchHost,
+  getFetchParameters,
+  setFetchFunction,
+} from "./fetch";
 
 export const toCamelCase = (obj: object): object =>
   _.transform(obj, (acc, value, key, target) => {

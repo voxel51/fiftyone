@@ -1,5 +1,6 @@
 import { ServerError } from "./errors";
 
+let fetchHost: string;
 let fetchFunctionSingleton: FetchFunction;
 let fetchHeaders: HeadersInit;
 
@@ -20,8 +21,17 @@ export const getFetchHeaders = () => {
   return fetchHeaders;
 };
 
-export const setFetchFunction = (headers: HeadersInit) => {
+export const getFetchHost = () => {
+  return fetchHost;
+};
+
+export const getFetchParameters = (): Parameters<typeof setFetchFunction> => {
+  return [getFetchHost(), getFetchHeaders()];
+};
+
+export const setFetchFunction = (host: string, headers: HeadersInit) => {
   fetchHeaders = headers;
+  fetchHost = host;
   const fetchFunction: FetchFunction = async (
     method,
     path,
@@ -31,9 +41,9 @@ export const setFetchFunction = (headers: HeadersInit) => {
     let url: string;
     try {
       new URL(path);
-      url = path;
+      host = path;
     } catch {
-      url = `https://dev.fiftyone.ai:5151${path}`;
+      url = `${host}${path}`;
     }
 
     const response = await fetch(url, {

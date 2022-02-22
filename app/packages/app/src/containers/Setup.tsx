@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "@react-spring/web";
 
-import { port, isNotebook } from "../shared/connection";
+import { isNotebook } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
 import { scrollbarStyles } from "../components/utils";
 

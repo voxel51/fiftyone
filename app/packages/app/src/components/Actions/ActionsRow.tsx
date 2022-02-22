@@ -38,7 +38,12 @@ import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
-import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
+import {
+  useEventHandler,
+  useOutsideClick,
+  useTheme,
+  useUnprocessedStateUpdate,
+} from "../../utils/hooks";
 import { http } from "../../shared/connection";
 import { formatDateTime, getFetchFunction } from "@fiftyone/utilities";
 import Similar, { similarityParameters } from "./Similar";
@@ -335,6 +340,7 @@ const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
   const similarity = useRecoilValue(similarityParameters);
   const loading = useRecoilValue(savingFilters);
+  const updateState = useUnprocessedStateUpdate();
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) => async () => {
@@ -343,7 +349,7 @@ const SaveFilters = () => {
         return;
       }
       set(savingFilters, true);
-      sendPatch(snapshot).then(() => {
+      sendPatch(snapshot, updateState).then(() => {
         set(savingFilters, false);
         set(similarityParameters, null);
       });

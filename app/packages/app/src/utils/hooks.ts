@@ -365,14 +365,12 @@ export const useSelect = () => {
   );
 };
 
-export const useUnprocessedStateUpdate = () => {
+export type StateUpdate = (data: { state?: State.Description }) => void;
+
+export const useUnprocessedStateUpdate = (): StateUpdate => {
   const update = useStateUpdate();
-  return async (
-    data: { state: State.Description },
-    callback?: (
-      set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
-    ) => void
-  ) => update(data ? (toCamelCase(data) as State.Description) : {});
+  return ({ state }) =>
+    update({ state: { ...toCamelCase(state), view: state.view } });
 };
 
 export const useStateUpdate = () => {
@@ -393,26 +391,6 @@ export const useStateUpdate = () => {
       const view = get(viewAtoms.view);
       const current = get(atoms.stateDescription);
 
-      set(atoms.viewCounter, counter + 1);
-      set(atoms.loading, false);
-      set(atoms.selectedSamples, newSamples);
-
-      [true, false].forEach((i) =>
-        [true, false].forEach((j) =>
-          set(atoms.tagging({ modal: i, labels: j }), false)
-        )
-      );
-      set(patching, false);
-      set(similaritySorting, false);
-      set(savingFilters, false);
-      if (
-        !viewsAreEqual(view, state.view || []) ||
-        state?.dataset?.id !== current?.dataset?.id
-      ) {
-        set(viewAtoms.view, state.view || []);
-        set(filterAtoms.filters, {});
-      }
-
       if (state.dataset) {
         state.dataset.brainMethods = Object.values(
           state.dataset.brainMethods || {}
@@ -431,6 +409,26 @@ export const useStateUpdate = () => {
             get(aggregationAtoms.aggregationsTick) + 1
           );
         }
+      }
+
+      set(atoms.viewCounter, counter + 1);
+      set(atoms.loading, false);
+      set(atoms.selectedSamples, newSamples);
+
+      [true, false].forEach((i) =>
+        [true, false].forEach((j) =>
+          set(atoms.tagging({ modal: i, labels: j }), false)
+        )
+      );
+      set(patching, false);
+      set(similaritySorting, false);
+      set(savingFilters, false);
+      if (
+        !viewsAreEqual(view, state.view || []) ||
+        state?.dataset?.id !== current?.dataset?.id
+      ) {
+        set(viewAtoms.view, state.view || []);
+        set(filterAtoms.filters, {});
       }
 
       const colorPool = get(atoms.colorPool);

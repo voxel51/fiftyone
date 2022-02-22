@@ -13,6 +13,7 @@ import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
+import { useSetState } from "../../recoil/utils";
 
 const ViewBarDiv = styled.div`
   position: relative;
@@ -46,7 +47,9 @@ const IconsContainer = styled.div`
   z-index: 904;
   height: 100%;
   border-radius: 3px;
-  right: 0;
+  top: 11px;
+  height: 52px;
+  right: 91px;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
@@ -68,7 +71,9 @@ const viewBarKeyMap = {
 
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
-  const [view, setView] = useRecoilState(viewAtoms.view);
+  const view = useRecoilValue(viewAtoms.view);
+  const setState = useSetState();
+
   const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
 
   useEffect(() => {
@@ -76,7 +81,7 @@ const ViewBar = React.memo(() => {
       type: "UPDATE",
       http,
       view,
-      setView,
+      setView: (v) => setState({ view: v }),
       fieldNames: fieldPaths,
     });
   }, [http, view]);
@@ -153,22 +158,21 @@ const ViewBar = React.memo(() => {
             height: "100%",
           }}
         ></div>
-
-        <IconsContainer>
-          <Close
-            onClick={() => send("CLEAR")}
-            style={{
-              cursor: "pointer",
-            }}
-          />
-          <ExternalLink
-            href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
-            style={{ display: "flex" }}
-          >
-            <Help />
-          </ExternalLink>
-        </IconsContainer>
       </ViewBarDiv>
+      <IconsContainer>
+        <Close
+          onClick={() => send("CLEAR")}
+          style={{
+            cursor: "pointer",
+          }}
+        />
+        <ExternalLink
+          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+          style={{ display: "flex" }}
+        >
+          <Help />
+        </ExternalLink>
+      </IconsContainer>
     </>
   );
 });

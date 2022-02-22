@@ -21,9 +21,11 @@ import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
-import socket, { http } from "../../shared/connection";
-import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
+import {
+  StateUpdate,
+  useTheme,
+  useUnprocessedStateUpdate,
+} from "../../utils/hooks";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -88,7 +90,11 @@ const evaluationKeys = selector<string[]>({
   },
 });
 
-export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
+export const sendPatch = async (
+  snapshot: Snapshot,
+  updateState: StateUpdate,
+  addStage?: object
+) => {
   const similarity = await snapshot.getPromise(similarityParameters);
   return getFetchFunction()("POST", "/pin", {
     filters: await snapshot.getPromise(filters),
@@ -98,14 +104,15 @@ export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
     labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
-  });
+  }).then((data) => updateState(data));
 };
 
 const useToPatches = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToPatches",
         kwargs: [
           ["field", field],
@@ -118,10 +125,11 @@ const useToPatches = () => {
 };
 
 const useToClips = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToClips",
         kwargs: [
           ["field_or_expr", field],
@@ -134,10 +142,11 @@ const useToClips = () => {
 };
 
 const useToEvaluationPatches = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (evaluation: string) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToEvaluationPatches",
         kwargs: [
           ["eval_key", evaluation],
