@@ -206,3 +206,41 @@ def _make_image_labels(tmp_dir):
     labels_path = os.path.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)
     return labels_path
+
+
+def _make_video_labels(tmp_dir):
+    labels = OpenLABELLabels()
+    poly_obj_data = OpenLABELObjectData(
+        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+    )
+    poly_obj_data.add_attributes(
+        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+    )
+    poly_obj_data.add_attributes(
+        [("is_hole", False), ("polygon_id", "0")], as_property=True,
+    )
+    poly_obj = OpenLABELObject(
+        "polyname", "objectlabel1", frame_interval=(0, 4),
+    )
+    poly_obj.add_object_data(poly_obj_data, is_frame=True)
+    labels.add_object(poly_obj)
+
+    points_obj_data = OpenLABELObjectData("points2d-0", [100, 200], "point2d",)
+    points_obj = OpenLABELObject(
+        "pointsname", "objectlabel1", frame_interval=(0, 4),
+    )
+    points_obj.add_object_data(points_obj_data, is_frame=True)
+    labels.add_object(points_obj)
+
+    bbox_obj_data = OpenLABELObjectData(
+        "bbox2d-0", [100, 200, 200, 100], "bbox",
+    )
+    bbox_obj = OpenLABELObject(
+        "bboxname", "objectlabel1", frame_interval=(0, 4),
+    )
+    bbox_obj.add_object_data(bbox_obj_data, is_frame=True)
+    labels.add_object(bbox_obj)
+
+    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels.write_labels(labels_path)
+    return labels_path

@@ -1846,10 +1846,12 @@ class VideoDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_video(self):
+    def _new_video(self, filename=None):
+        if filename is None:
+            filename = self._new_name()
         filepath = os.path.join(
             self.videos_dir,
-            self._new_name() + os.path.splitext(self._ref_video_path)[1],
+            filename + os.path.splitext(self._ref_video_path)[1],
         )
 
         etau.copy_file(self._ref_video_path, filepath)
@@ -1863,6 +1865,24 @@ class VideoDatasetTests(unittest.TestCase):
 
     def _new_dir(self):
         return os.path.join(self._tmp_dir, self._new_name())
+
+
+class OpenLABELVideoDatasetTests(VideoDatasetTests):
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        import import_export_utils.openlabel as ol
+
+        labels_path = ol._make_video_labels(self._tmp_dir)
+        vid_filepath = self._new_video(filename="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.videos_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELVideoDataset,
+        )
+        assert dataset.count("frames.detections.detections.label") == 5
+        assert dataset.count("frames.polylines.polylines.label") == 5
+        assert dataset.count("frames.keypoints.keypoints.label") == 5
 
 
 class VideoExportCoersionTests(VideoDatasetTests):

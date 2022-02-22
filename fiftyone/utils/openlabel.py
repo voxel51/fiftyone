@@ -15,7 +15,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
+import fiftyone.core.media as fom
+import fiftyone.core.metadata as fomt
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -148,19 +149,14 @@ class OpenLABELImageDatasetImporter(
         height, width = stream.height, stream.width
 
         if height is None or width is None:
-            sample_metadata = fom.ImageMetadata.build_for(sample_path)
+            sample_metadata = fomt.ImageMetadata.build_for(sample_path)
             height, width = sample_metadata["height"], sample_metadata["width"]
         else:
-            sample_metadata = fom.ImageMetadata(width=width, height=height)
+            sample_metadata = fomt.ImageMetadata(width=width, height=height)
 
         frame_size = (width, height)
-
-        label = {}
         objects = self._annotations.get_objects(filename)
-        label["detections"] = objects.to_detections(frame_size)
-        label["polylines"] = objects.to_polylines(frame_size)
-        label["keypoints"] = objects.to_keypoints(frame_size)
-        label["segmentations"] = objects.to_segmentations(frame_size)
+        label = objects.get_labels(frame_size)
 
         return sample_path, sample_metadata, label
 
@@ -189,7 +185,7 @@ class OpenLABELImageDatasetImporter(
         )
         info = {}
         potential_filenames = []
-        annotations = OpenLABELAnnotations()
+        annotations = OpenLABELAnnotations(fom.IMAGE)
 
         if self.labels_path is not None:
             if os.path.isfile(self.labels_path):
@@ -220,7 +216,148 @@ class OpenLABELImageDatasetImporter(
 class OpenLABELVideoDatasetImporter(
     foud.LabeledVideoDatasetImporter, foud.ImportPathsMixin
 ):
-    pass
+    def __init__(
+        self,
+        dataset_dir=None,
+        data_path=None,
+        labels_path=None,
+        label_types=None,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        if dataset_dir is None and data_path is None and labels_path is None:
+            raise ValueError(
+                "At least one of `dataset_dir`, `data_path`, and "
+                "`labels_path` must be provided"
+            )
+
+        data_path = self._parse_data_path(
+            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+        )
+
+        labels_dir = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels/",
+        )
+        labels_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=labels_path,
+            default="labels.json",
+        )
+
+        _label_types = _parse_label_types(label_types)
+
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.data_path = data_path
+        self.labels_dir = labels_dir
+        self.labels_path = labels_path
+        self._label_types = _label_types
+
+        self._info = None
+        self._video_paths_map = None
+        self._video_dicts_map = None
+        self._annotations = None
+        self._filenames = None
+        self._iter_filenames = None
+
+    def __iter__(self):
+        self._iter_filenames = iter(self._filenames)
+        return self
+
+    def __len__(self):
+        return len(self._filenames)
+
+    def __next__(self):
+        filename = next(self._iter_filenames)
+
+        if os.path.exists(filename):
+            sample_path = filename
+        elif _to_uuid(filename) in self._sample_paths_map:
+            sample_path = self._sample_paths_map[_to_uuid(filename)]
+        else:
+            sample_path = self._sample_paths_map[
+                _to_uuid(os.path.basename(filename))
+            ]
+
+        stream = self._annotations.get_stream(filename)
+        height, width = stream.height, stream.width
+
+        if height is None or width is None:
+            sample_metadata = fomt.VideoMetadata.build_for(sample_path)
+            height, width = (
+                sample_metadata["frame_height"],
+                sample_metadata["frame_width"],
+            )
+        else:
+            sample_metadata = fomt.VideoMetadata(
+                frame_width=width, frame_height=height
+            )
+
+        frame_size = (width, height)
+        frames = self._annotations.get_objects(filename)
+        frame_labels = frames.get_labels(frame_size)
+
+        return sample_path, sample_metadata, None, frame_labels
+
+    @property
+    def has_dataset_info(self):
+        return True
+
+    @property
+    def has_video_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        types = {
+            "detections": fol.Detections,
+            "segmentations": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
+
+        return {k: v for k, v in types.items() if k in self._label_types}
+
+    def setup(self):
+        sample_paths_map = self._load_data_map(
+            self.data_path, ignore_exts=True, recursive=True
+        )
+        info = {}
+        potential_filenames = []
+        annotations = OpenLABELAnnotations(fom.VIDEO)
+
+        if self.labels_path is not None:
+            if os.path.isfile(self.labels_path):
+                label_paths = [self.labels_path]
+            elif os.path.isdir(self.labels_dir):
+                label_paths = etau.list_files(self.labels_dir, recursive=True)
+                label_paths = [l for l in label_paths if l.endswith(".json")]
+            else:
+                label_paths = []
+
+            base_dir = fou.normalize_path(self.labels_dir)
+            for label_path in label_paths:
+                potential_filenames.extend(
+                    annotations.parse_labels(base_dir, label_path)
+                )
+
+        self._annotations = annotations
+        self._info = info
+        self._filenames = _validate_filenames(
+            potential_filenames, sample_paths_map
+        )
+        self._sample_paths_map = sample_paths_map
+
+    def get_dataset_info(self):
+        return self._info
 
 
 def _validate_filenames(potential_filenames, sample_paths_map):
@@ -235,10 +372,16 @@ def _validate_filenames(potential_filenames, sample_paths_map):
 
 
 class OpenLABELAnnotations(object):
-    def __init__(self):
+    def __init__(self, media_type):
+        if media_type not in [fom.VIDEO, fom.IMAGE]:
+            raise ValueError(
+                "Media type must be `fiftyone.core.media.VIDEO` or "
+                "`fiftyone.core.media.IMAGE`."
+            )
+
+        self.is_video = media_type == fom.VIDEO
         self.objects = {}
         self.streams = {}
-        self.frames = OpenLABELFrames()
         self.metadata = {}
 
         self.uri_to_streams = {}
@@ -256,7 +399,10 @@ class OpenLABELAnnotations(object):
         self.metadata[label_filename] = metadata
         potential_filenames.extend(metadata.parse_potential_filenames())
 
-        object_parser = OpenLABELObjectsParser()
+        if self.is_video:
+            object_parser = OpenLABELFramesParser()
+        else:
+            object_parser = OpenLABELObjectsParser()
         self._parse_streams(labels, label_filename)
         self._parse_objects(labels, object_parser)
         self._parse_frames(labels, label_filename, object_parser)
@@ -302,9 +448,15 @@ class OpenLABELAnnotations(object):
 
     def _parse_frames(self, labels, label_filename, object_parser):
         for frame_ind, frame in labels.get("frames", {}).items():
+            frame_num = int(frame_ind) + 1
             _objects = frame.get("objects", {})
             for obj_id, obj_d in _objects.items():
-                object_parser.add_object_dict(obj_id, obj_d)
+                if self.is_video:
+                    object_parser.add_object_dict(
+                        obj_id, obj_d, frame_num=frame_num
+                    )
+                else:
+                    object_parser.add_object_dict(obj_id, obj_d)
 
             _streams = frame.get("frame_properties", {}).get("streams", None)
             if _streams:
@@ -314,7 +466,10 @@ class OpenLABELAnnotations(object):
                     )
 
     def get_objects(self, uri):
-        return self.objects.get(uri, OpenLABELObjects([]))
+        if self.is_video:
+            return self.objects.get(uri, OpenLABELFrames({}))
+        else:
+            return self.objects.get(uri, OpenLABELObjects([]))
 
     def get_stream(self, uri):
         if uri not in self.uri_to_streams:
@@ -329,18 +484,18 @@ class OpenLABELObjectsParser(object):
     def __init__(self):
         self.objects = {}
         self.stream_to_id_map = defaultdict(list)
-        self.streamless_objects = []
+        self.streamless_objects = set()
 
     def add_object_dict(self, obj_id, obj_d):
         obj = self.objects.get(obj_id, None)
         if obj is None:
-            obj = OpenLABELObject.from_anno_dict(obj_id, obj_d)
+            obj, frame_nums = OpenLABELObject.from_anno_dict(obj_id, obj_d)
         else:
-            obj.update_object_dict(obj_d)
+            frame_nums = obj.update_object_dict(obj_d)
 
         stream = obj.stream
         if stream is None:
-            self.streamless_objects.append(obj_id)
+            self.streamless_objects.add(obj_id)
         else:
             if obj_id in self.streamless_objects:
                 self.streamless_objects.remove(obj_id)
@@ -398,6 +553,14 @@ class OpenLABELObjects(object):
             self.objects.extend(new_objects.objects)
         else:
             self.objects.extend(new_objects)
+
+    def get_labels(self, frame_size):
+        label = {}
+        label["detections"] = self.to_detections(frame_size)
+        label["polylines"] = self.to_polylines(frame_size)
+        label["keypoints"] = self.to_keypoints(frame_size)
+        label["segmentations"] = self.to_segmentations(frame_size)
+        return label
 
 
 class OpenLABELStreams(object):
@@ -604,9 +767,10 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
+            frame_nums,
         ) = cls._parse_object_dict(d)
 
-        return cls(
+        obj = cls(
             id=anno_id,
             name=name,
             type=_type,
@@ -616,6 +780,7 @@ class OpenLABELObject(object):
             stream=stream,
             attributes=attributes,
         )
+        return obj, frame_nums
 
     @classmethod
     def _parse_object_dict(cls, d):
@@ -642,10 +807,22 @@ class OpenLABELObject(object):
         _type = d.get("type", None)
         attributes, attr_stream = cls._parse_attributes(d)
 
+        frame_nums = cls._parse_frame_nums(d)
+
         if stream is None:
             stream = attr_stream
 
-        return bbox, poly, point, name, _type, stream, attributes
+        return bbox, poly, point, name, _type, stream, attributes, frame_nums
+
+    @classmethod
+    def _parse_frame_nums(cls, d):
+        frame_nums = []
+        for frame_interval in d.get("frame_intervals", []):
+            fs = int(frame_interval["frame_start"]) + 1
+            fe = int(frame_interval["frame_end"]) + 2
+            frame_nums += list(range(fs, fe))
+
+        return sorted(set(frame_nums))
 
     @classmethod
     def _parse_object_data(cls, object_data_list):
@@ -685,6 +862,7 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
+            frame_nums,
         ) = self._parse_object_dict(d)
         if bbox and not self.bbox:
             self.bbox = bbox
@@ -701,6 +879,8 @@ class OpenLABELObject(object):
         if stream and not self.stream:
             self.stream = stream
 
+        return frame_nums
+
     def _get_object_attributes(self):
         attributes = {}
 
@@ -713,9 +893,86 @@ class OpenLABELObject(object):
         return attributes
 
 
-class OpenLABELFrames(object):
+class OpenLABELFramesParser(object):
     def __init__(self):
-        pass
+        self.framewise_objects = defaultdict(dict)
+        self.stream_to_id_map = defaultdict(list)
+        self.streamless_objects = set()
+
+    def add_object_dict(self, obj_id, obj_d, frame_num=None):
+        obj = self.framewise_objects[frame_num].get(obj_id, None)
+        if obj is None:
+            obj, frame_nums = OpenLABELObject.from_anno_dict(obj_id, obj_d)
+        else:
+            frame_nums = obj.update_object_dict(obj_d)
+
+        stream = obj.stream
+        if stream is None:
+            self.streamless_objects.add(obj_id)
+        else:
+            if obj_id in self.streamless_objects:
+                self.streamless_objects.remove(obj_id)
+            self.stream_to_id_map[stream].append(obj_id)
+
+        if frame_nums:
+            if frame_num is not None:
+                frame_nums.append(frame_num)
+                frame_nums = sorted(set(frame_nums))
+        else:
+            frame_nums = [frame_num]
+
+        for frame_num in frame_nums:
+            if frame_num is not None and self.framewise_objects[None].get(
+                obj_id, False
+            ):
+                del self.framewise_objects[None][obj_id]
+            self.framewise_objects[frame_num][obj_id] = deepcopy(obj)
+
+    def to_stream_objects_map(self):
+        stream_objects_map = {}
+        for stream_name, ids in self.stream_to_id_map.items():
+            frame_objects = self._get_objects_for_ids(ids)
+            stream_objects_map[stream_name] = OpenLABELFrames(frame_objects)
+
+        frame_objects = self._get_objects_for_ids(self.streamless_objects)
+        if frame_objects:
+            stream_objects_map[None] = OpenLABELFrames(frame_objects)
+
+        return stream_objects_map
+
+    def _get_objects_for_ids(self, ids):
+        frame_objects = {}
+        for frame_num, objects in self.framewise_objects.items():
+            _objects = [objects[i] for i in ids if i in objects]
+            if _objects:
+                frame_objects[frame_num] = OpenLABELObjects(_objects)
+        return frame_objects
+
+
+class OpenLABELFrames(object):
+    def __init__(self, frame_objects):
+        self.frame_objects = frame_objects
+
+    def get_labels(self, frame_size):
+        frame_labels = {}
+        for frame_num, objects in self.frame_objects.items():
+            frame_label = {}
+            frame_label["detections"] = objects.to_detections(frame_size)
+            frame_label["polylines"] = objects.to_polylines(frame_size)
+            frame_label["keypoints"] = objects.to_keypoints(frame_size)
+            frame_label["segmentations"] = objects.to_segmentations(frame_size)
+            frame_labels[frame_num] = frame_label
+        return frame_labels
+
+    def add_objects(self, new_objects):
+        if isinstance(new_objects, OpenLABELFrames):
+            new_objects = new_objects.frame_objects
+
+        for frame_num, objects in new_objects.items():
+            if frame_num not in self.frame_objects:
+                self.frame_objects[frame_num] = objects
+            else:
+                self.frame_objects[frame_num].add_objects(objects)
 
 
 def _parse_label_types(label_types):
