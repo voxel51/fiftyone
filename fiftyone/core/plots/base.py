@@ -903,14 +903,17 @@ class InteractivePlot(ResponsivePlot):
 
         When ``link_type`` is ``"frames"``, the supported values are:
 
-        -   ``"select"``: show only the selected labels
-        -   ``"match"``: show unfiltered samples containing the selected labels
-        -   ``"frames"``: show the selected frames in a frames view
+        -   ``"select"``: show video samples with labels only for the selected
+            frames
+        -   ``"match"``: show unfiltered video samples containing at least one
+            selected frame
+        -   ``"frames"``: show only the selected frames in a frames view
 
         When ``link_type`` is ``"labels"``, the supported values are:
 
         -   ``"select"``: show only the selected labels
-        -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"match"``: show unfiltered samples containing at least one
+            selected label
         -   ``"patches"``: show the selected labels in a patches view
 
         .. note::
