@@ -14,8 +14,19 @@ import fiftyone.constants as foc
 
 from fiftyone.server.routes import routes
 
-from .context import on_shutdown, on_startup, GraphQL
+from .authentication import (
+    authenticate_route,
+    middleware as auth_middleware,
+    on_shutdown,
+    on_startup,
+)
+from .context import GraphQL
 from .schema import schema
+
+
+routes = [
+    Route(route, authenticate_route(endpoint)) for route, endpoint in routes
+]
 
 
 app = stra.Starlette(
@@ -31,7 +42,8 @@ app = stra.Starlette(
                 "content-type",
             ],
         )
-    ],
+    ]
+    + auth_middleware,
     on_shutdown=[on_shutdown],
     on_startup=[on_startup],
     routes=routes

@@ -12,4 +12,7 @@ export default {
     relay,
     nodePolyfills(),
   ],
+  server: {
+    https: true,
+  },
 } as UserConfig;

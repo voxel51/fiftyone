@@ -16,7 +16,7 @@ import fiftyone.server.view as fosv
 
 class Sidebar(HTTPEndpoint):
     @route
-    async def post_response(self, request: Request, data: dict):
+    async def post(self, request: Request, data: dict):
         groups = [
             food.SidebarGroupDocument(**group) for group in data["groups"]
         ]

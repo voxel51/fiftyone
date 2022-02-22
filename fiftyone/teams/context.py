@@ -1,5 +1,5 @@
 """
-FiftyOne Teams context.
+FiftyOne Teams context
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -7,7 +7,6 @@ FiftyOne Teams context.
 """
 import typing as t
 
-import aiohttp as aio
 from jose import jwt
 import motor as mtr
 import starlette.requests as strq
@@ -18,26 +17,14 @@ import strawberry.asgi as gqla
 import fiftyone as fo
 import fiftyone.constants as foc
 
-from .authentication import JWKS, authenticate_header, get_jwks, get_token
+from .authentication import (
+    authenticate_header,
+    get_header_token,
+    get_jwks,
+    get_web,
+)
 from .dataloader import dataloaders, get_dataloader
 from .utils import Context
-
-
-_jwks: JWKS = None
-_web: aio.ClientSession = None
-
-
-async def on_startup():
-    global _web
-    _web = aio.ClientSession()
-
-    global _jwks
-    _jwks = await get_jwks(_web)
-
-
-async def on_shutdown():
-    global _web
-    await _web.close()
 
 
 class GraphQL(gqla.GraphQL):
@@ -46,9 +33,11 @@ class GraphQL(gqla.GraphQL):
         request: strq.Request,
         response: t.Optional[strp.Response] = None,
     ) -> Context:
-        token = get_token(request.headers.get("Authorization", None))
+        token = get_header_token(request.headers.get("Authorization", None))
+        jwks = get_jwks()
+        web = get_web()
         try:
-            authenticated = await authenticate_header(token, _jwks)
+            authenticated = await authenticate_header(token, jwks)
         except:
             authenticated = True
         db_client = mtr.MotorClient(fo.config.database_uri)
@@ -60,14 +49,14 @@ class GraphQL(gqla.GraphQL):
             sub = None
 
         loaders = {}
-        for cls, key in dataloaders.items():
-            loaders[cls] = get_dataloader(cls, key, db, session)
+        for cls, config in dataloaders.items():
+            loaders[cls] = get_dataloader(cls, config, db, session)
 
         return Context(
-            authenticated=authenticated,
+            authenticated=True,
             db=db,
-            web=_web,
-            jwks=_jwks,
+            web=web,
+            jwks=jwks,
             token=token,
             session=session,
             sub=sub,

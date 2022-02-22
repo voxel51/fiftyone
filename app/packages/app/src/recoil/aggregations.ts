@@ -10,10 +10,9 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   FLOAT_FIELD,
+  getFetchFunction,
   toSnakeCase,
 } from "@fiftyone/utilities";
-
-import { http } from "../shared/connection";
 
 import * as atoms from "./atoms";
 import * as filterAtoms from "./filters";
@@ -136,26 +135,20 @@ export const aggregations = selectorFamily<
     }
 
     get(aggregationsTick);
-    const { aggregations: data } = (await (
-      await fetch(`${http}/aggregations`, {
-        cache: "no-cache",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        mode: "cors",
-        body: JSON.stringify({
-          filters,
-          sample_ids: modal ? get(atoms.modal).sample._id : null,
-          dataset,
-          view: get(viewAtoms.view),
-          hidden_labels:
-            modal && extended
-              ? toSnakeCase(get(selectors.hiddenLabelsArray))
-              : null,
-        }),
-      })
-    ).json()) as { aggregations: AggregationsData };
+    const { aggregations: data } = (await getFetchFunction()(
+      "POST",
+      "/aggregations",
+      {
+        filters,
+        sample_ids: modal ? get(atoms.modal).sample._id : null,
+        dataset,
+        view: get(viewAtoms.view),
+        hidden_labels:
+          modal && extended
+            ? toSnakeCase(get(selectors.hiddenLabelsArray))
+            : null,
+      }
+    )) as { aggregations: AggregationsData };
 
     data && addNoneCounts(data, get(selectors.isVideoDataset));
 

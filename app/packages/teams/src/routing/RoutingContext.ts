@@ -5,7 +5,7 @@ import { matchRoutes, RouteConfig } from "react-router-config";
 import { useRecoilValue, selector } from "recoil";
 import { OperationType, VariablesOf } from "relay-runtime";
 
-import { NotFoundError } from "@fiftyone/components";
+import { NotFoundError } from "@fiftyone/utilities";
 
 import Resource from "./Resource";
 import Route from "./Route";

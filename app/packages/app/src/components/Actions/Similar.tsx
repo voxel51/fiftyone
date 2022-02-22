@@ -26,7 +26,7 @@ import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { store } from "../Flashlight.store";
 import { http } from "../../shared/connection";
-import { toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
 import { aggregationsTick } from "../../recoil/aggregations";
 import { filters } from "../../recoil/filters";
@@ -89,25 +89,15 @@ const useSortBySimilarity = () => {
         const queryIds = await getQueryIds(snapshot, parameters.brainKey);
         set(similaritySorting, true);
 
-        const response = await fetch(`${http}/sort`, {
-          method: "POST",
-          cache: "no-cache",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          mode: "cors",
-          body: JSON.stringify({
-            dataset: await snapshot.getPromise(selectors.datasetName),
-            view: await snapshot.getPromise(viewAtoms.view),
-            filters: await snapshot.getPromise(filters),
-            similarity: toSnakeCase({
-              ...parameters,
-              queryIds,
-            }),
+        const data = await getFetchFunction()("POST", "/sort", {
+          dataset: await snapshot.getPromise(selectors.datasetName),
+          view: await snapshot.getPromise(viewAtoms.view),
+          filters: await snapshot.getPromise(filters),
+          similarity: toSnakeCase({
+            ...parameters,
+            queryIds,
           }),
         });
-
-        const data = await response.json();
 
         await update(data, (set) => {
           set(similarityParameters, { ...parameters, queryIds });

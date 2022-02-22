@@ -10,7 +10,7 @@ import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
-import { toCamelCase } from "@fiftyone/utilities";
+import { getFetchFunction, toCamelCase } from "@fiftyone/utilities";
 
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as atoms from "../recoil/atoms";
@@ -19,8 +19,7 @@ import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
 import { ColorTheme } from "../shared/colors";
-import socket, { appContext, handleId, isColab } from "../shared/connection";
-import { packageMessage } from "./socket";
+import { appContext, handleId, isColab } from "../shared/connection";
 import gaConfig from "../constants/ga";
 import { aggregationsTick } from "../recoil/aggregations";
 import { selectedSamples } from "../recoil/atoms";
@@ -242,8 +241,7 @@ export const useScreenshot = () => {
     images.forEach((img) => {
       !img.classList.contains("fo-captured") &&
         promises.push(
-          fetch(img.src)
-            .then((response) => response.blob())
+          getFetchFunction()("GET", img.src, null, "blob")
             .then((blob) => {
               return new Promise((resolve, reject) => {
                 const reader = new FileReader();

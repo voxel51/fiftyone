@@ -12,6 +12,7 @@ import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
+  getFetchFunction,
   PATCHES_FIELDS,
   toSnakeCase,
 } from "@fiftyone/utilities";
@@ -89,22 +90,14 @@ const evaluationKeys = selector<string[]>({
 
 export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
   const similarity = await snapshot.getPromise(similarityParameters);
-  return fetch(`${http}/pin`, {
-    method: "POST",
-    cache: "no-cache",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    mode: "cors",
-    body: JSON.stringify({
-      filters: await snapshot.getPromise(filters),
-      view: await snapshot.getPromise(viewAtoms.view),
-      dataset: await snapshot.getPromise(selectors.datasetName),
-      sample_ids: await snapshot.getPromise(atoms.selectedSamples),
-      labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
-      add_stages: addStage ? [addStage] : null,
-      similarity: similarity ? toSnakeCase(similarity) : null,
-    }),
+  return getFetchFunction()("POST", "/pin", {
+    filters: await snapshot.getPromise(filters),
+    view: await snapshot.getPromise(viewAtoms.view),
+    dataset: await snapshot.getPromise(selectors.datasetName),
+    sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+    labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
+    add_stages: addStage ? [addStage] : null,
+    similarity: similarity ? toSnakeCase(similarity) : null,
   });
 };
 

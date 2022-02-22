@@ -6,6 +6,7 @@ import { useRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import { http } from "../shared/connection";
+import { getFetchFunction } from "@fiftyone/utilities";
 
 const Container = styled("div")`
   position: fixed;
@@ -153,7 +154,7 @@ const Content = () => {
     const finalize = () => {
       setSubmitText("Submitted. Thank you!");
       setTeams((cur) => ({ ...cur, submitted: true }));
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
+      getFetchFunction()("POST", "/teams?submitted=true", {});
       setTimeout(() => setTeams((cur) => ({ ...cur, open: false })), 2000);
     };
 

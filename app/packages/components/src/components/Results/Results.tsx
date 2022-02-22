@@ -1,7 +1,9 @@
-import React, { useRef } from "react";
-import { animated } from "@react-spring/web";
+import classNames from "classnames";
+import React from "react";
 
 import style from "./Results.module.css";
+
+export { container, footer } from "./Results.module.css";
 
 export interface ResultValue<T> {
   name: T;
@@ -9,6 +11,7 @@ export interface ResultValue<T> {
 }
 
 export interface ResultProps<T> {
+  active: boolean;
   result: ResultValue<T>;
   onClick: () => void;
   component: React.FC<{ value: T; className: string }>;
@@ -38,6 +41,7 @@ export const getValueString = (value: unknown): [string, boolean] => {
 };
 
 export const Result = <T extends unknown>({
+  active,
   result: { name, count },
   onClick,
   component,
@@ -45,9 +49,12 @@ export const Result = <T extends unknown>({
   const Component = component;
 
   const [text] = getValueString(name);
+
+  const classes = active ? [style.active, style.result] : [style.result];
+
   return (
     <div onClick={onClick}>
-      <Component value={name} className={style.result}>
+      <Component value={name} className={classNames(...classes)}>
         <span>{text}</span>
         {typeof count === "number" && <span>{count.toLocaleString()}</span>}
       </Component>
@@ -56,6 +63,7 @@ export const Result = <T extends unknown>({
 };
 
 export interface ResultsProps<T> {
+  active?: T;
   results: ResultValue<T>[];
   onSelect: (value: T) => void;
   total: number;
@@ -63,15 +71,17 @@ export interface ResultsProps<T> {
 }
 
 const Results = <T extends unknown>({
+  active,
   onSelect,
   results,
   total,
   component,
 }: ResultsProps<T>) => {
   return (
-    <div className={style.container}>
+    <>
       {results.map((result) => (
         <Result
+          active={result.name === active}
           component={component}
           key={String(result.name)}
           result={result}
@@ -86,7 +96,7 @@ const Results = <T extends unknown>({
         )}
         {!Boolean(total) && <>No results</>}
       </div>
-    </div>
+    </>
   );
 };
 

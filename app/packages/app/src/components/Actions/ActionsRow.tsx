@@ -40,7 +40,7 @@ import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
 import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
 import { http } from "../../shared/connection";
-import { formatDateTime } from "@fiftyone/utilities";
+import { formatDateTime, getFetchFunction } from "@fiftyone/utilities";
 import Similar, { similarityParameters } from "./Similar";
 
 const Loading = () => {
@@ -62,27 +62,18 @@ const Export = () => {
       const dataset = await snapshot.getPromise(selectors.datasetName);
       const timeZone = await snapshot.getPromise(selectors.timeZone);
       const sample_ids = await snapshot.getPromise(atoms.selectedSamples);
-      const response = await fetch(`${http}/export`, {
-        method: "POST",
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        mode: "cors",
-        body: JSON.stringify({
+      const blob = await getFetchFunction()(
+        "POST",
+        "/export",
+        {
           filters: await snapshot.getPromise(filterAtoms.filters),
           view: await snapshot.getPromise(viewAtoms.view),
           dataset,
           sample_ids: [...sample_ids],
-        }),
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(new Blob([blob]));
+        },
+        "blob"
+      );
+      const url = window.URL.createObjectURL(new Blob([blob as BlobPart]));
       const link = document.createElement("a");
       link.style.display = "none";
       link.href = url;

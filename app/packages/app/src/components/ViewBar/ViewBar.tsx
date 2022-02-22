@@ -16,8 +16,8 @@ import viewBarMachine from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  margin: 1rem 0.5rem;
-  background-color: ${({ theme }) => theme.background};
+  margin: 0 0.5rem;
+  background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
@@ -40,29 +40,21 @@ const ViewBarDiv = styled.div`
 `;
 
 const IconsContainer = styled.div`
+  display: flex;
+  align-items: center;
   position: absolute;
   z-index: 904;
-  padding: 14px 0.5rem;
-  height: 52px;
+  height: 100%;
   border-radius: 3px;
   right: 0;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
-    5%,
+    30%,
     ${({ theme }) => theme.backgroundDark}
   );
-
-  & > * {
-    height: 100%;
-  }
-
-  & > * > {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-  }
+  column-gap: 0.5rem;
+  padding: 0 0.5rem;
 `;
 
 const viewBarKeyMap = {
@@ -169,7 +161,10 @@ const ViewBar = React.memo(() => {
               cursor: "pointer",
             }}
           />
-          <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
+          <ExternalLink
+            href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+            style={{ display: "flex" }}
+          >
             <Help />
           </ExternalLink>
         </IconsContainer>

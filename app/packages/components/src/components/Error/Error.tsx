@@ -3,28 +3,13 @@ import { Clear, FileCopy } from "@material-ui/icons";
 import React from "react";
 import { useCopyToClipboard } from "react-use";
 
+import { NotFoundError, ServerError } from "@fiftyone/utilities";
+
 import { scrollable } from "../../scrollable.module.css";
 
 import Loading from "../Loading";
 
 import style from "./Error.module.css";
-
-export class NotFoundError extends Error {
-  constructor(path: string) {
-    super(path);
-    this.message = `404: ${path} not found`;
-    this.name = "404";
-  }
-}
-
-export class ServerError extends Error {
-  constructor(stack: string) {
-    super();
-    this.message = `500: Server Error`;
-    this.name = "500";
-    this.stack = stack;
-  }
-}
 
 interface GraphQLError extends Error {
   source: {
@@ -59,7 +44,7 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
     <div className={style.wrapper}>
       <div className={classnames(style.container, scrollable)}>
         <div className={style.heading}>
-          <div>{error.name}</div>
+          <div>{error.message}</div>
           <div>
             <div>
               <span title={"Reset"} onClick={reset}>

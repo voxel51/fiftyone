@@ -5,6 +5,7 @@ FiftyOne Teams dataloader.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import dataclass
 import typing as t
 
 from dacite import Config, from_dict
@@ -15,12 +16,18 @@ from strawberry.dataloader import DataLoader
 from .utils import Info, HasCollectionType
 
 
-dataloaders: t.Dict[type, str] = {}
+@dataclass
+class DataLoaderConfig:
+    key: str
+    filters: t.List[dict]
+
+
+dataloaders: t.Dict[type, DataLoaderConfig] = {}
 
 
 def get_dataloader(
     cls: t.Type[HasCollectionType],
-    key: str,
+    config: DataLoaderConfig,
     db: mtr.MotorDatabase,
     session: mtrt.MotorClientSession,
 ) -> DataLoader[str, t.Optional[HasCollectionType]]:
@@ -28,12 +35,12 @@ def get_dataloader(
         keys: t.List[str],
     ) -> t.List[t.Optional[HasCollectionType]]:
         results = {}
-        if key == "id":
-            key == "_id"
+        if config.key == "id":
+            config.key == "_id"
         async for doc in db[cls.get_collection_name()].find(
-            {key: {"$in": keys}}
+            {"$and": [{config.key: {"$in": keys}}] + config.filters}
         ):
-            results[doc[key]] = doc
+            results[doc[config.key]] = doc
 
         def build(doc: dict = None) -> t.Optional[HasCollectionType]:
             if not doc:
@@ -48,12 +55,12 @@ def get_dataloader(
 
 
 def get_dataloader_resolver(
-    cls: t.Type[HasCollectionType], key: str
+    cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
 ) -> t.Callable[
     [str, Info],
     t.Coroutine[t.Any, t.Any, t.Awaitable[t.Optional[HasCollectionType]]],
 ]:
-    dataloaders[cls] = key
+    dataloaders[cls] = DataLoaderConfig(key=key, filters=filters)
 
     async def resolver(
         name: str, info: Info

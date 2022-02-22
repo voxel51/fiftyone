@@ -9,7 +9,6 @@ from bson import ObjectId
 from dacite import Config, from_dict
 import motor as mtr
 import motor.motor_tornado as mtrt
-from pymongo import DESCENDING
 import typing as t
 
 import strawberry as gql
@@ -48,16 +47,18 @@ async def get_items(
     collection: mtr.MotorCollection,
     session: mtrt.MotorClientSession,
     from_db: t.Callable[[dict], HasCollectionType],
+    key: str,
+    filters: t.List[dict],
     search: str,
     first: int = 10,
     after: t.Optional[Cursor] = UNSET,
 ) -> Connection[HasCollectionType]:
-    start = []
+    start = filters
     if search:
-        start = [
-            {"$match": {"name": {"$regex": search}}},
-            {"$set": {"_length": {"$strLenCP": "$name"}}},
-            {"$sort": {"_length": 1, "name": 1}},
+        start += [
+            {"$match": {f"{key}": {"$regex": search}}},
+            {"$set": {"_length": {"$strLenCP": f"${key}"}}},
+            {"$sort": {"_length": 1, f"{key}": 1}},
             {"$unset": "_length"},
         ]
 
@@ -95,7 +96,7 @@ async def get_items(
 
 
 def get_paginator_resolver(
-    cls: t.Type[HasCollectionType],
+    cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
 ) -> t.Callable[
     [t.Optional[int], t.Optional[Cursor], Info], Connection[HasCollectionType],
 ]:
@@ -113,6 +114,8 @@ def get_paginator_resolver(
             info.context.db[cls.get_collection_name()],
             info.context.session,
             from_db,
+            key,
+            filters,
             search,
             first,
             after,

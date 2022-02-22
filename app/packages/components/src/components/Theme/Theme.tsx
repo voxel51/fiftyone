@@ -108,8 +108,10 @@ const useThemeContext = () => {
   }, [theme]);
 };
 
-export const ThemeContext = ({ children }) => {
+const ThemeContext: React.FC = ({ children }) => {
   useThemeContext();
 
   return <>{children}</>;
 };
+
+export default ThemeContext;

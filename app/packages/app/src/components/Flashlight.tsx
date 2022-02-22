@@ -22,6 +22,7 @@ import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  getFetchFunction,
   LIST_FIELD,
   toSnakeCase,
 } from "@fiftyone/utilities";
@@ -284,15 +285,6 @@ const pageParameters = selector<PageParameters>({
   },
 });
 
-const getPageParameters = selector<() => Promise<PageParameters>>({
-  key: "getPageParameters",
-  get: ({ getCallback }) => {
-    return getCallback(({ snapshot }) => async () => {
-      return await snapshot.getPromise(pageParameters);
-    });
-  },
-});
-
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
@@ -312,10 +304,13 @@ export default React.memo(() => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(viewAtoms.view);
   const refresh = useRecoilValue(selectors.refresh);
-  const getPageParams = useRecoilValue(getPageParameters);
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
   const onSelect = useSelect();
+  const params = useRecoilValue(pageParameters);
+  const paramsRef = useRef(params);
+
+  paramsRef.current = params;
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   const handleError = useErrorHandler();
   const gridZoomRef = useRef<number>();
@@ -444,17 +439,12 @@ export default React.memo(() => {
           store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
-          const params = await getPageParams();
           try {
-            const { results, more } = await fetch(url, {
-              method: "POST",
-              cache: "no-cache",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              mode: "cors",
-              body: JSON.stringify({ ...params, page }),
-            }).then((response) => response.json());
+            const { results, more } = await getFetchFunction()(
+              "POST",
+              "/samples",
+              { ...paramsRef.current, page }
+            );
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,

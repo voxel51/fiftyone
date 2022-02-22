@@ -23,6 +23,7 @@ import { ExternalLink } from "../utils/generic";
 
 import Logo from "../images/logo.png";
 import { useRefresh } from "../utils/hooks";
+import { getFetchFunction } from "@fiftyone/utilities";
 
 const Button = styled.div`
   font-weight: bold;
@@ -85,7 +86,7 @@ const TeamsButton = ({ addNotification }) => {
           onClick={(e) => {
             e.stopPropagation();
             setTeams((cur) => ({ ...cur, minimized: true }));
-            fetch(`${http}/teams`, { method: "post" });
+            getFetchFunction()("POST", "/teams");
           }}
         />
       </div>

@@ -1,0 +1,19 @@
+div.iconContainer {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+a.iconLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 0.5em;
+}
+
+a.iconLink svg {
+  outline: none;
+  color: var(--font);
+}

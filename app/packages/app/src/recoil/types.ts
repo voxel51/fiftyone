@@ -128,7 +128,6 @@ export namespace State {
     close: boolean;
     config: Config;
     connected: boolean;
-    datasets: string[];
     dataset?: Dataset;
     refresh: boolean;
     selected: string[];

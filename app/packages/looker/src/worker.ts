@@ -2,7 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { LABELS, LABEL_LISTS_MAP } from "@fiftyone/utilities";
+import { setFetchFunction } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -234,7 +234,10 @@ const createReader = ({
                 sampleId,
               })
           )
-            .then((response: Response) => response.json())
+            .then((response: Response) => {
+              console.log(response.status);
+              response.json();
+            })
             .then(({ frames, range }: FrameChunk) => {
               controller.enqueue({ frames, range, coloring });
               frameNumber = range[1] + 1;
@@ -298,7 +301,10 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
       stream.reader
         .read()
         .then(getSendChunk(uuid))
-        .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
+        .catch((e) => {
+          console.log(e);
+          postMessage({ method: "requestFrameChunk", error: true });
+        });
   }
 };
 
@@ -335,7 +341,10 @@ const setStream = ({
   stream.reader
     .read()
     .then(getSendChunk(uuid))
-    .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
+    .catch((e) => {
+      console.log(e);
+      postMessage({ method: "requestFrameChunk", error: true });
+    });
 };
 
 const isFloatArray = (arr) =>
@@ -462,14 +471,28 @@ const UPDATE_LABEL = {
   },
 };
 
+interface Init {
+  headers: HeadersInit;
+}
+
+type InitMethod = Init & ReaderMethod;
+
+const init = ({ headers }: Init) => {
+  setFetchFunction(headers);
+};
+
 type Method =
+  | InitMethod
   | ProcessSampleMethod
   | RequestFrameChunkMethod
-  | SetStreamMethod
-  | ResolveColorMethod;
+  | ResolveColorMethod
+  | SetStreamMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
+    case "init":
+      init(args as Init);
+      return;
     case "processSample":
       processSample(args as ProcessSample);
       return;

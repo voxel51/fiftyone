@@ -5,7 +5,13 @@ import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
 import ViewBar from "@fiftyone/app/src/components/ViewBar/ViewBar";
-import { Header } from "@fiftyone/components";
+import {
+  DocsLink,
+  GitHubLink,
+  Header,
+  SlackLink,
+  iconContainer,
+} from "@fiftyone/components";
 
 import Logo from "../images/logo.png";
 import { RouteComponent } from "../routing";
@@ -17,6 +23,7 @@ import style from "./Root.module.css";
 import { useTo } from "../routing/RoutingContext";
 import { datasetName } from "@fiftyone/app/src/recoil/selectors";
 import Link from "../routing/Link";
+import { useMemo } from "react";
 
 const getUseSearch = (datasets: RootDatasets_query$key) => {
   return (search: string) => {
@@ -47,10 +54,12 @@ const getUseSearch = (datasets: RootDatasets_query$key) => {
       [search]
     );
 
-    return {
-      total: data.datasets.total,
-      values: data.datasets.edges.map((edge) => edge.node.name),
-    };
+    return useMemo(() => {
+      return {
+        total: data.datasets.total,
+        values: data.datasets.edges.map((edge) => edge.node.name),
+      };
+    }, [data]);
   };
 };
 
@@ -89,6 +98,12 @@ const Nav: React.FC<{
       }}
     >
       {dataset && <ViewBar />}
+      {!dataset && <div style={{ flex: 1 }}></div>}
+      <div className={iconContainer}>
+        <SlackLink />
+        <GitHubLink />
+        <DocsLink />
+      </div>
     </Header>
   );
 };

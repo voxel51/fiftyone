@@ -1,19 +1,18 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-
-import React, { useEffect } from "react";
+import { Error, Loading, Theme, useTheme } from "@fiftyone/components";
+import { setFetchFunction } from "@fiftyone/utilities";
+import React, { useEffect, useLayoutEffect } from "react";
 import ReactDOM from "react-dom";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { RelayEnvironmentProvider } from "react-relay/hooks";
 import { RecoilRoot } from "recoil";
 import { ThemeProvider as LegacyThemeContext } from "styled-components";
 
-import { Error, Loading } from "@fiftyone/components";
-
 import "./index.css";
 
-import { getRelayEnvironment } from "./RelayEnvironment";
+import RelayEnvironment from "./RelayEnvironment";
 import Login from "./Login";
-import { ThemeContext, useTheme } from "./Theme";
+import { useState } from "react";
 
 const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
   return (
@@ -29,6 +28,7 @@ const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
 const Environment = () => {
   const auth0 = useAuth0();
   const redirect = !auth0.isAuthenticated && !auth0.isLoading && !auth0.error;
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     redirect &&
@@ -39,6 +39,18 @@ const Environment = () => {
       });
   }, [redirect]);
 
+  useEffect(() => {
+    auth0.isAuthenticated &&
+      auth0.getAccessTokenSilently().then((token) => {
+        document.cookie = `fiftyone-token=${token}`;
+        setFetchFunction({
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        });
+        setInitialized(true);
+      });
+  }, [auth0.isAuthenticated]);
+
   if (
     auth0.error ||
     (!auth0.isAuthenticated && !auth0.isLoading && !redirect)
@@ -46,12 +58,12 @@ const Environment = () => {
     return <Loading>Unauthorized</Loading>;
   }
 
-  if (auth0.isLoading) {
+  if (auth0.isLoading || !initialized) {
     return <Loading>Pixelating...</Loading>;
   }
 
   return (
-    <RelayEnvironmentProvider environment={getRelayEnvironment(auth0)}>
+    <RelayEnvironmentProvider environment={RelayEnvironment}>
       <Login />
     </RelayEnvironmentProvider>
   );
@@ -62,26 +74,35 @@ const App = () => {
 
   return (
     <LegacyThemeContext theme={theme}>
-      <ThemeContext>
+      <Theme>
         <Environment />
-      </ThemeContext>
+      </Theme>
     </LegacyThemeContext>
   );
 };
 
+const ErrorWrapper: React.FC<FallbackProps> = (props) => {
+  useLayoutEffect(() => {
+    document.getElementById("modal")?.classList.remove("modalon");
+  }, []);
+
+  return <ErrorPage {...props} />;
+};
+
 const Root = () => {
   return (
-    <ErrorBoundary FallbackComponent={ErrorPage}>
+    <ErrorBoundary FallbackComponent={ErrorWrapper}>
       <RecoilRoot>
-        <ErrorBoundary FallbackComponent={ErrorPage}>
+        <ErrorBoundary FallbackComponent={ErrorWrapper}>
           <Auth0Provider
             audience="api.dev.fiftyone.ai"
             clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
-            domain="dev-uqppzklh.us.auth0.com"
+            domain="login.dev.fiftyone.ai"
             organization={"org_wtMMZE61j2gnmxsm"}
-            onRedirectCallback={(state) =>
-              state.returnTo && window.location.assign(state.returnTo)
-            }
+            onRedirectCallback={(state) => {
+              console.log(state);
+              //state.returnTo && window.location.assign(state.returnTo)
+            }}
           >
             <App />
           </Auth0Provider>
@@ -91,6 +112,6 @@ const Root = () => {
   );
 };
 
-document.addEventListener("DOMContentLoaded", () =>
-  ReactDOM.render(<Root />, document.getElementById("root"))
-);
+document.addEventListener("DOMContentLoaded", () => {
+  ReactDOM.render(<Root />, document.getElementById("root"));
+});

@@ -1,12 +1,13 @@
 .header {
-  background-color: var(--background-dark);
+  background-color: var(--background);
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
-  border-bottom: 1px var(--background-dark-border) solid;
+  border-bottom: 1px var(--background-border) solid;
   height: 74px;
   justify-content: left;
+  align-items: center;
 }
 
 .title {

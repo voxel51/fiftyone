@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 
 import { State } from "@fiftyone/app/src/recoil/types";
@@ -11,9 +11,8 @@ import {
 } from "./__generated__/DatasetQuery.graphql";
 import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
 import { useStateUpdate } from "@fiftyone/app/src/utils/hooks";
-import { useEffect } from "react";
 import { RGB } from "@fiftyone/looker";
-import { NotFoundError } from "@fiftyone/components";
+import { NotFoundError } from "@fiftyone/utilities";
 
 const toStrictField = (field: Field): StrictField => {
   return {

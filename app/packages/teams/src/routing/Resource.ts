@@ -43,7 +43,6 @@ export const createResourceGroup = () => {
   const resources = new Map<string, Resource>();
 
   return <T>(id: string, loader: () => Promise<T>): Resource<T> => {
-    console.log(id);
     let resource = resources.get(id);
     if (resource == null) {
       resource = new Resource<T>(loader);

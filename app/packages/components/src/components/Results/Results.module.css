@@ -26,6 +26,7 @@
   text-decoration: none;
 }
 
+.result.active,
 .result:hover {
   background: var(--background);
   color: var(--font);

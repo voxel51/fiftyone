@@ -554,19 +554,17 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const seeked = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                setTimeout(() => {
-                  const ctx = this.canvas.getContext("2d");
-                  ctx.imageSmoothingEnabled = false;
-                  ctx.drawImage(video, 0, 0);
-                  release();
-                  video.removeEventListener("seeked", seeked);
-                  video.removeEventListener("error", error);
-                  this.update({
-                    hasPoster: true,
-                    duration: video.duration,
-                    loaded: true,
-                  });
-                }, 20);
+                const ctx = this.canvas.getContext("2d");
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(video, 0, 0);
+                release();
+                video.removeEventListener("seeked", seeked);
+                video.removeEventListener("error", error);
+                this.update({
+                  hasPoster: true,
+                  duration: video.duration,
+                  loaded: true,
+                });
               });
             });
           };

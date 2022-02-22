@@ -16,11 +16,9 @@ import {
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
-import socket from "../../shared/connection";
 import * as atoms from "../../recoil/atoms";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as colorAtoms from "../../recoil/color";
-import { packageMessage } from "../../utils/socket";
 import { useTheme } from "../../utils/hooks";
 import { genSort } from "../../utils/generic";
 
@@ -31,6 +29,10 @@ import Results, { ResultsContainer } from "../Common/Results";
 import { Button, PopoutSectionTitle } from "../utils";
 
 import ExcludeOption from "./Exclude";
+import { getFetchFunction } from "@fiftyone/utilities";
+import { useErrorHandler } from "react-error-boundary";
+import { datasetName } from "../../recoil/selectors";
+import { view } from "../../recoil/view";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -273,12 +275,7 @@ const ResultsWrapper = <T extends unknown>({
 };
 
 const useSearch = <T extends unknown>() => {
-  const currentPromise = useRef<
-    Promise<{
-      count: number;
-      results: [T, number][];
-    }>
-  >();
+  const handleError = useErrorHandler();
   return useRecoilCallback(
     ({ snapshot }) => async ({
       modal,
@@ -297,13 +294,6 @@ const useSearch = <T extends unknown>() => {
       setSubCount: (value) => void;
       setActive: (value) => void;
     }) => {
-      const id = uuid();
-
-      const clear = setTimeout(() => setSearchResults(null), 200);
-      const wrap = (handler) => ({ data }) => {
-        data = JSON.parse(data);
-        data.uuid === id && handler(data);
-      };
       const sorting = await snapshot.getPromise(atoms.sortFilterResults(modal));
       let sampleId = null;
       if (modal) {
@@ -315,43 +305,36 @@ const useSearch = <T extends unknown>() => {
         aggregationAtoms.noneCount({ path, modal, extended: false })
       );
 
-      const promise = new Promise<{
-        count: number;
-        results: [T, number][];
-      }>((resolve) => {
-        const listener = wrap(({ count, results }) => {
-          socket.removeEventListener("message", listener);
-          resolve({ count, results });
-        });
-        socket.addEventListener("message", listener);
-        socket.send(
-          packageMessage("count_values", {
+      try {
+        let {
+          count,
+          results,
+        }: { count: number; results: [] } = await getFetchFunction()(
+          "POST",
+          "/values",
+          {
+            dataset: await snapshot.getPromise(datasetName),
+            view: await snapshot.getPromise(view),
             path,
             search,
             selected,
-            uuid: id,
             sample_id: sampleId,
             ...sorting,
-          })
+          }
         );
-      });
-      currentPromise.current = promise;
 
-      let { count, results } = await promise;
-
-      clearTimeout(clear);
-      if (currentPromise.current !== promise) {
-        return;
+        if (noneCount > 0 && "None".includes(search)) {
+          results = ([...results, [null, noneCount]] as [T, number][])
+            .sort(nullSort(sorting))
+            .slice(0, 25);
+          count++;
+        }
+        results.length && setActive(results[0][0]);
+        setSearchResults(results);
+        setSubCount(count);
+      } catch (error) {
+        handleError(error);
       }
-      if (noneCount > 0 && "None".includes(search)) {
-        results = ([...results, [null, noneCount]] as [T, number][])
-          .sort(nullSort(sorting))
-          .slice(0, 25);
-        count++;
-      }
-      results.length && setActive(results[0][0]);
-      setSearchResults(results);
-      setSubCount(count);
     },
     []
   );

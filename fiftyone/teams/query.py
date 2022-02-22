@@ -28,6 +28,8 @@ ID = gql.scalar(
     serialize=lambda v: str(v),
     parse_value=lambda v: ObjectId(v),
 )
+DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
+DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
 @gql.enum
@@ -136,7 +138,7 @@ class Dataset(HasCollection):
         return await dataset_dataloader(name, info)
 
 
-dataset_dataloader = get_dataloader_resolver(Dataset, "name")
+dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
 
 
 @gql.type
@@ -158,7 +160,7 @@ class AppConfig:
 class User(HasCollection):
     id: gql.ID
     datasets: Connection[Dataset] = gql.field(
-        resolver=get_paginator_resolver(Dataset)
+        resolver=get_paginator_resolver(Dataset, "name", DATASET_FILTER_STAGE,)
     )
     email: str
     family_name: str
@@ -184,11 +186,9 @@ class User(HasCollection):
 
 @gql.type
 class Query:
-    users: Connection[User] = gql.field(resolver=get_paginator_resolver(User))
-
     dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
-        resolver=get_paginator_resolver(Dataset)
+        resolver=get_paginator_resolver(Dataset, "name", DATASET_FILTER_STAGE,)
     )
 
     @gql.field

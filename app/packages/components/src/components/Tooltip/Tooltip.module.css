@@ -1,0 +1,7 @@
+.tooltip {
+  box-shadow: 0 2px 20px var(--background-dark);
+  background: var(--background-dark);
+  border: 1px solid var(--background-dark-border);
+  padding: 0.25rem;
+  border-radius: 3px;
+}

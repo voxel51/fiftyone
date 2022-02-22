@@ -1,5 +1,11 @@
 import _ from "lodash";
 
+import { isElectron } from "./electron";
+
+export { isElectron } from "./electron";
+export { NotFoundError, ServerError } from "./errors";
+export { getFetchFunction, setFetchFunction } from "./fetch";
+
 export const toCamelCase = (obj: object): object =>
   _.transform(obj, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : _.camelCase(key);
@@ -290,21 +296,6 @@ export function withPath(
 }
 
 export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
-
-export const isElectron = (() => {
-  let cache = undefined;
-
-  return (): boolean => {
-    if (cache === undefined) {
-      cache =
-        window.process &&
-        window.process.versions &&
-        Boolean(window.process.versions.electron);
-    }
-
-    return cache;
-  };
-})();
 
 export const useExternalLink = (href) => {
   let openExternal;

@@ -1,3 +1,4 @@
+import { getFetchFunction } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 
 import socket, { handleId, isNotebook, http } from "../shared/connection";
@@ -44,7 +45,7 @@ export const fiftyone = selector({
     let response = null;
     do {
       try {
-        response = await (await fetch(`${http}/fiftyone`)).json();
+        response = await getFetchFunction()("GET", "/fiftyone");
       } catch {}
       if (response) break;
       await new Promise((r) => setTimeout(r, 2000));
@@ -64,7 +65,7 @@ export const showTeamsButton = selector({
     const storedTeams = window.localStorage.getItem("fiftyone-teams");
     if (storedTeams) {
       window.localStorage.removeItem("fiftyone-teams");
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
+      getFetchFunction()("POST", "/teams?submitted=true");
     }
     if (
       teams.submitted ||

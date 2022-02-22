@@ -13,6 +13,7 @@
     },
     "include": ["./src"],
     "references": [
+        { "path": "../components" },
         { "path": "../looker" },
         { "path": "../flashlight" },
         { "path": "../utilities" }

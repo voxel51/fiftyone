@@ -28,7 +28,7 @@ _DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 class Distributions(HTTPEndpoint):
     @route
-    async def get(self, request: Request, data: dict):
+    async def post(self, request: Request, data: dict):
         filters = data.get("filters", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -47,8 +47,8 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields = _count_values(filter, view)
-            results = await _gather_results(aggs, fields, view)
+            aggs, fields, paths = _count_values(filter, view)
+            results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "labels":
 
@@ -60,14 +60,14 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields = _count_values(filter, view)
-            results = await _gather_results(aggs, fields, view)
+            aggs, fields, paths = _count_values(filter, view)
+            results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "sample tags":
             aggs = [foa.CountValues("tags", _first=limit)]
             try:
                 fields = [view.get_field_schema()["tags"]]
-                results = await _gather_results(aggs, fields, view)
+                results = await _gather_results(aggs, fields, ["tags"], view)
             except:
                 results = []
 
@@ -84,7 +84,7 @@ class Distributions(HTTPEndpoint):
 
                 return None
 
-            aggs, fields = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view)
 
             (
                 hist_aggs,
@@ -94,7 +94,7 @@ class Distributions(HTTPEndpoint):
             ) = await _numeric_histograms(view, view.get_field_schema())
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
-            results = await _gather_results(aggs, fields, view, ticks)
+            results = await _gather_results(aggs, fields, paths, view, ticks)
             for result, nonfinites in zip(
                 results[-len(hist_aggs) :], nonfinites
             ):
@@ -106,8 +106,7 @@ class Distributions(HTTPEndpoint):
 
                 data.extend(nonfinites)
 
-        results = sorted(results, key=lambda i: i["name"])
-        return {"type": "distributions", "results": results}
+        return {"distributions": sorted(results, key=lambda i: i["path"])}
 
 
 def _label_filter(field):
@@ -167,7 +166,7 @@ def _parse_count_values(result, field):
     )
 
 
-async def _gather_results(aggs, fields, view, ticks=None):
+async def _gather_results(aggs, fields, paths, view, ticks=None):
     response = await view._async_aggregate(aggs)
 
     sorters = {
@@ -176,7 +175,7 @@ async def _gather_results(aggs, fields, view, ticks=None):
     }
 
     results = []
-    for idx, (result, agg) in enumerate(zip(response, aggs)):
+    for idx, (result, agg, path) in enumerate(zip(response, aggs, paths)):
         field = fields[idx]
         try:
             type_ = field.document_type.__name__
@@ -211,7 +210,7 @@ async def _gather_results(aggs, fields, view, ticks=None):
             results.append(
                 {
                     "data": data,
-                    "name": name,
+                    "path": path,
                     "ticks": result_ticks,
                     "type": type_,
                 }
@@ -224,6 +223,7 @@ def _count_values(f, view):
     aggregations = []
     fields = []
     schemas = [(view.get_field_schema(), "")]
+    paths = []
     if view.media_type == fom.VIDEO:
         schemas.append((view.get_frame_field_schema(), view._FRAMES_PREFIX))
 
@@ -234,13 +234,14 @@ def _count_values(f, view):
                 continue
 
             fields.append(field)
+            paths.append(prefix + path)
             aggregations.append(
                 foa.CountValues(
                     "%s%s" % (prefix, path), _first=LIST_LIMIT, _asc=False
                 )
             )
 
-    return aggregations, fields
+    return aggregations, fields, paths
 
 
 def _numeric_bounds(paths):

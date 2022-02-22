@@ -85,7 +85,7 @@ export const imageFilters = atomFamily<
 
 export const activePlot = atom({
   key: "activePlot",
-  default: "labels",
+  default: "Labels",
 });
 
 export const loading = atom({

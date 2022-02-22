@@ -84,7 +84,6 @@ const fn = (
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
     const raise = dragging || groupRaised || key === lastTouched;
-
     let shown = true;
 
     if (entry.kind === EntryKind.PATH) {
@@ -568,12 +567,12 @@ const InteractiveSidebar = ({
       }
 
       requestAnimationFrame(() => {
+        lastTouched.current = down.current;
         const newOrder = getNewOrder(lastDirection.current);
         order.current = newOrder;
 
         const newEntries = order.current.map((key) => items.current[key].entry);
 
-        lastTouched.current = down.current;
         down.current = null;
         start.current = null;
         lastDirection.current = null;
@@ -706,6 +705,10 @@ const InteractiveSidebar = ({
               entry,
               items.current[key].controller
             );
+            const style = { cursor: disabled ? "unset" : cursor };
+            if (entry.kind === EntryKind.INPUT) {
+              style.zIndex = 0;
+            }
 
             return (
               <animated.div
@@ -717,7 +720,7 @@ const InteractiveSidebar = ({
                   boxShadow: shadow.to(
                     (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                   ),
-                  cursor: disabled ? "unset" : cursor,
+                  ...style,
                 }}
               >
                 <div
