@@ -377,7 +377,7 @@ contains |GeoLocation| data in its ``location`` field:
     uniqueness = dataset.values("uniqueness")
 
     # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    num_objects = dataset.values(F("ground_truth.detections").length())
 
     # Create scatterplot
     plot = fo.location_scatterplot(
@@ -457,8 +457,8 @@ notebook:
 
     from fiftyone import ViewField as F
 
-    # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    # Computes the number of ground truth objects in each sample
+    num_objects = F("ground_truth.detections").length()
 
     # Create the scatterplot
     plot = fo.location_scatterplot(
