@@ -488,15 +488,22 @@ class OpenLABELAnnotations(object):
         return streams.get_one_stream(uri)
 
 
-class OpenLABELObjectsParser(object):
+class OpenLABELParser(object):
     def __init__(self, seg_type=SegType.INSTANCE):
-        self.objects = {}
         self.stream_to_id_map = defaultdict(list)
         self.streamless_objects = set()
         self.seg_type = seg_type
 
-    def add_object_dict(self, obj_id, obj_d):
-        obj = self.objects.get(obj_id, None)
+    @property
+    def label_type(self):
+        raise NotImplementedError("Sublcass must implement `label_type`")
+
+    def _get_objects_for_ids(self, ids):
+        raise NotImplementedError(
+            "Subclass must impelment `_get_objects_for_ids()`"
+        )
+
+    def _parse_object(self, obj, obj_id, obj_d):
         if obj is None:
             obj, frame_nums = OpenLABELObject.from_anno_dict(obj_id, obj_d)
         else:
@@ -510,23 +517,41 @@ class OpenLABELObjectsParser(object):
                 self.streamless_objects.remove(obj_id)
             self.stream_to_id_map[stream].append(obj_id)
 
-        self.objects[obj_id] = obj
+        return obj, frame_nums
 
     def to_stream_objects_map(self):
         stream_objects_map = {}
         for stream_name, ids in self.stream_to_id_map.items():
-            objects = [self.objects[i] for i in ids]
-            stream_objects_map[stream_name] = OpenLABELObjects(
+            objects = self._get_objects_for_ids(ids)
+            stream_objects_map[stream_name] = self.label_type(
                 objects, seg_type=self.seg_type
             )
 
-        objects = [self.objects[i] for i in self.streamless_objects]
+        objects = self._get_objects_for_ids(self.streamless_objects)
         if objects:
-            stream_objects_map[None] = OpenLABELObjects(
+            stream_objects_map[None] = self.label_type(
                 objects, seg_type=self.seg_type
             )
 
         return stream_objects_map
+
+
+class OpenLABELObjectsParser(OpenLABELParser):
+    def __init__(self, seg_type=SegType.INSTANCE):
+        super().__init__(seg_type=seg_type)
+        self.objects = {}
+
+    @property
+    def label_type(self):
+        return OpenLABELObjects
+
+    def add_object_dict(self, obj_id, obj_d):
+        obj = self.objects.get(obj_id, None)
+        obj, _ = self._parse_object(obj, obj_id, obj_d)
+        self.objects[obj_id] = obj
+
+    def _get_objects_for_ids(self, ids):
+        return [self.objects[i] for i in ids]
 
 
 class OpenLABELObjects(object):
@@ -937,27 +962,18 @@ class OpenLABELObject(object):
         return attributes
 
 
-class OpenLABELFramesParser(object):
+class OpenLABELFramesParser(OpenLABELParser):
     def __init__(self, seg_type=SegType.INSTANCE):
+        super().__init__(seg_type=seg_type)
         self.framewise_objects = defaultdict(dict)
-        self.stream_to_id_map = defaultdict(list)
-        self.streamless_objects = set()
-        self.seg_type = seg_type
+
+    @property
+    def label_type(self):
+        return OpenLABELFrames
 
     def add_object_dict(self, obj_id, obj_d, frame_num=None):
         obj = self.framewise_objects[frame_num].get(obj_id, None)
-        if obj is None:
-            obj, frame_nums = OpenLABELObject.from_anno_dict(obj_id, obj_d)
-        else:
-            frame_nums = obj.update_object_dict(obj_d)
-
-        stream = obj.stream
-        if stream is None:
-            self.streamless_objects.add(obj_id)
-        else:
-            if obj_id in self.streamless_objects:
-                self.streamless_objects.remove(obj_id)
-            self.stream_to_id_map[stream].append(obj_id)
+        obj, frame_nums = self._parse_object(obj, obj_id, obj_d)
 
         if frame_nums:
             if frame_num is not None:
@@ -973,22 +989,6 @@ class OpenLABELFramesParser(object):
                 del self.framewise_objects[None][obj_id]
             self.framewise_objects[frame_num][obj_id] = deepcopy(obj)
 
-    def to_stream_objects_map(self):
-        stream_objects_map = {}
-        for stream_name, ids in self.stream_to_id_map.items():
-            frame_objects = self._get_objects_for_ids(ids)
-            stream_objects_map[stream_name] = OpenLABELFrames(
-                frame_objects, seg_type=self.seg_type
-            )
-
-        frame_objects = self._get_objects_for_ids(self.streamless_objects)
-        if frame_objects:
-            stream_objects_map[None] = OpenLABELFrames(
-                frame_objects, seg_type=self.seg_type
-            )
-
-        return stream_objects_map
-
     def _get_objects_for_ids(self, ids):
         frame_objects = {}
         for frame_num, objects in self.framewise_objects.items():
@@ -1000,7 +1000,7 @@ class OpenLABELFramesParser(object):
         return frame_objects
 
 
-class OpenLABELFrames(object):
+class OpenLABELFrames(OpenLABELParser):
     def __init__(self, frame_objects, seg_type=SegType.INSTANCE):
         self.frame_objects = frame_objects
         self.seg_type = seg_type

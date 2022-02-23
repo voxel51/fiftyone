@@ -1836,6 +1836,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
         )
         assert dataset.count("segmentations.mask") == 1
+        assert isinstance(dataset.first().segmentations, fo.Segmentation)
 
 
 class VideoDatasetTests(unittest.TestCase):
