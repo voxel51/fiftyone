@@ -64,13 +64,12 @@ const getUseSearch = (datasets: RootDatasets_query$key) => {
 };
 
 const DatasetLink: React.FC<{ value: string; className: string }> = ({
-  children,
   className,
   value,
 }) => {
   return (
     <Link title={value} className={className} to={`/datasets/${value}`}>
-      {children}
+      {value}
     </Link>
   );
 };

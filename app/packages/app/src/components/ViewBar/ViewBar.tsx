@@ -17,7 +17,6 @@ import { useSetState } from "../../recoil/utils";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  margin: 0 0.5rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
@@ -47,9 +46,9 @@ const IconsContainer = styled.div`
   z-index: 904;
   height: 100%;
   border-radius: 3px;
-  top: 11px;
+top 0;
   height: 52px;
-  right: 91px;
+  right: 0;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
@@ -107,7 +106,14 @@ const ViewBar = React.memo(() => {
   );
 
   return (
-    <>
+    <div
+      style={{
+        position: "relative",
+        flex: "1",
+        marginRight: "0.5rem",
+        overflow: "hidden",
+      }}
+    >
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         onClick={() =>
@@ -173,7 +179,7 @@ const ViewBar = React.memo(() => {
           <Help />
         </ExternalLink>
       </IconsContainer>
-    </>
+    </div>
   );
 });
 

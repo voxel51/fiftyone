@@ -45,18 +45,16 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 });
 
 export const useClearModal = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async () => {
-      const fullscreen = await snapshot.getPromise(atoms.fullscreen);
+  return useRecoilTransaction_UNSTABLE(
+    ({ set, get }) => () => {
+      const fullscreen = get(atoms.fullscreen);
       if (fullscreen) {
         return;
       }
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
+      const currentOptions = get(atoms.savedLookerOptions);
       set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
       set(atoms.modal, null);
-      set(selectors.selectedLabels, {});
+      set(atoms.selectedLabels, {});
       set(atoms.hiddenLabels, {});
     },
     []

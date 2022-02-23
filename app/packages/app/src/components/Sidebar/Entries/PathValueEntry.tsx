@@ -201,7 +201,6 @@ const PathValueEntry = ({ path }: { path: string }) => {
 
     const key = keys[index];
 
-    console.log(key, field, data);
     data = data[field.dbField || key];
 
     if (keys[index + 1]) {

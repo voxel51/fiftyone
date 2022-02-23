@@ -46,3 +46,7 @@
   border-color: var(--background-dark-border);
   border-left-style: solid;
 }
+
+.input:focus {
+  min-width: 108px;
+}

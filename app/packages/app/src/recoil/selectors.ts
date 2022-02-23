@@ -1,8 +1,7 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 
-import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
+import { handleId, isNotebook } from "../shared/connection";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
@@ -201,7 +200,7 @@ export const getTarget = selector({
 export const selectedLabelIds = selector<Set<string>>({
   key: "selectedLabelIds",
   get: ({ get }) => {
-    const labels = get(selectedLabels);
+    const labels = get(atoms.selectedLabels);
     return new Set(Object.keys(labels));
   },
   cachePolicy_UNSTABLE: {
@@ -292,35 +291,6 @@ export const pathHiddenLabelsMap = selector<{
     }
 
     set(atoms.hiddenLabels, newLabels);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const selectedLabels = selector<State.SelectedLabelMap>({
-  key: "selectedLabels",
-  get: ({ get }) => {
-    const labels: State.SelectedLabel[] =
-      get(atoms.stateDescription)?.selectedLabels || [];
-    return Object.fromEntries(labels.map((l) => [l.labelId, l]));
-  },
-  set: ({ get, set }, value) => {
-    const state = get(atoms.stateDescription);
-    const labels: State.SelectedLabel[] = Object.entries(value).map(
-      ([labelId, label]) => ({
-        ...label,
-        labelId,
-      })
-    );
-    const newState: State.Description = {
-      ...state,
-      selectedLabels: labels,
-    };
-    socket.send(
-      packageMessage("set_selected_labels", { selected_labels: labels })
-    );
-    set(atoms.stateDescription, newState);
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",

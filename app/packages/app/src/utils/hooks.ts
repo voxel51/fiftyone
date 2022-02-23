@@ -41,8 +41,9 @@ const useReset = () => {
 };
 
 export const useRefresh = () => {
+  const updateState = useStateUpdate();
   return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
-    socket.send(packageMessage("refresh", {}));
+    updateState({ state: get(atoms.stateDescription) });
     set(aggregationsTick, get(aggregationsTick) + 1);
   });
 };

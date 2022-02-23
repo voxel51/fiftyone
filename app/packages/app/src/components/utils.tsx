@@ -330,6 +330,7 @@ export const NameAndCountContainer = styled.div`
   flex: 1;
   min-width: 0;
   user-select: none;
+  align-items: center;
 
   & * {
     user-select: none;

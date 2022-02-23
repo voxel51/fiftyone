@@ -44,7 +44,7 @@ class Values(HTTPEndpoint):
 
         return {
             "count": count,
-            "results": first,
+            "values": map(lambda v: {"value": v[0], "count": v[1]}, first),
         }
 
 

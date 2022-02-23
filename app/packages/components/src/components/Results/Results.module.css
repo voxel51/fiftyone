@@ -4,17 +4,14 @@
   border-radius: 2px;
   box-shadow: 0 2px 20px var(--background-dark);
   box-sizing: border-box;
-  position: absolute;
   width: auto;
-  min-width: 100%;
-  left: 0;
-  z-index: 801;
-  margin-top: 50%;
+  overflow: visible;
+  position: absolute;
 }
 
 .result {
   display: flex;
-  padding: 0 0.25rem;
+  padding: 0 0.5rem;
   justify-content: space-between;
   flex: 1;
   min-width: 0;
@@ -24,28 +21,14 @@
   background: var(--background-dark);
   transition: all 0.1 ease-in;
   text-decoration: none;
+  white-space: nowrap;
+  font-size: 1rem;
 }
 
 .result.active,
 .result:hover {
   background: var(--background);
   color: var(--font);
-}
-
-.result * {
-  user-select: none;
-}
-
-.result > span:first-child {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-left: 6px;
-}
-
-.result span {
-  margin-right: 6px;
 }
 
 .footer {

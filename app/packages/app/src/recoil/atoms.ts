@@ -105,6 +105,11 @@ export const stateDescription = atom<State.Description>({
   default: null,
 });
 
+export const selectedLabels = atom<State.SelectedLabelMap>({
+  key: "selectedLabels",
+  default: {},
+});
+
 export const selectedSamples = atom<Set<string>>({
   key: "selectedSamples",
   default: new Set(),

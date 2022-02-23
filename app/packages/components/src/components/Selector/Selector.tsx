@@ -3,23 +3,33 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { useCallback } from "react";
 import { Suspense } from "react";
 import Input from "react-input-autosize";
+import { useLayer } from "react-laag";
 
 import Results, { container, footer } from "../Results/Results";
 
 import style from "./Selector.module.css";
 
-interface UseSearch {
-  (search: string): { values: string[]; total: number };
+interface UseSearch<T extends unknown> {
+  (search: string): { values: T[]; total: number };
 }
 
-const SelectorResults: React.FC<{
-  active?: string;
+const SelectorResults = <T extends unknown>({
+  active,
+  onSelect,
+  useSearch,
+  search,
+  onResults,
+  component,
+  toKey = (value) => String(value),
+}: {
+  active?: number;
   search: string;
-  useSearch: UseSearch;
-  onSelect: (value: string) => void;
-  onResults: (results: string[]) => void;
-  component: React.FC<{ value: string; className: string }>;
-}> = ({ active, onSelect, useSearch, search, onResults, component }) => {
+  useSearch: UseSearch<T>;
+  onSelect: (value: T) => void;
+  onResults: (results: T[]) => void;
+  component: React.FC<{ value: T; className: string }>;
+  toKey?: (value: T) => string;
+}) => {
   const { values, total } = useSearch(search);
 
   useLayoutEffect(() => {
@@ -28,36 +38,45 @@ const SelectorResults: React.FC<{
 
   return (
     <Results
+      toKey={toKey}
       active={active}
       component={component}
-      results={values.map((value) => ({
-        name: value,
-      }))}
+      results={values}
       onSelect={onSelect}
       total={total}
     />
   );
 };
 
-export interface SelectorProps {
-  value: string;
-  onSelect: (value: string) => void;
+export interface SelectorProps<T> {
+  value?: string;
+  onSelect: (value: T) => void;
   placeholder: string;
-  useSearch: UseSearch;
+  useSearch: UseSearch<T>;
   component: React.FC<{ value: T; className: string }>;
+  toKey?: (value: T) => string;
+  inputClassName?: string;
+  inputStyle?: React.CSSProperties;
+  containerStyle?: React.CSSProperties;
+  overflow?: boolean;
 }
 
-const Selector: React.FC<SelectorProps> = ({
-  value = null,
+const Selector = <T extends unknown>({
+  value,
   onSelect,
   placeholder,
   useSearch,
   component,
-}) => {
+  toKey = (value) => String(value),
+  inputStyle,
+  inputClassName,
+  containerStyle,
+  overflow = false,
+}: SelectorProps<T>) => {
   const [editing, setEditing] = useState(false);
   const [search, setSearch] = useState("");
-  const valuesRef = useRef<string[]>([]);
-  const [active, setActive] = useState<string>();
+  const valuesRef = useRef<T[]>([]);
+  const [active, setActive] = useState<number>();
 
   const ref = useRef<HTMLInputElement | null>();
   const hovering = useRef(false);
@@ -72,8 +91,17 @@ const Selector: React.FC<SelectorProps> = ({
 
   const onResults = useCallback((results) => {
     valuesRef.current = results;
-    setActive(results[0] || undefined);
+    setActive(results.length ? 0 : undefined);
   }, []);
+
+  const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
+    isOpen: editing,
+    overflowContainer: false,
+    auto: true,
+    snap: true,
+    placement: "bottom-start",
+    triggerOffset: 8,
+  });
 
   return (
     <div
@@ -84,12 +112,17 @@ const Selector: React.FC<SelectorProps> = ({
         hovering.current = false;
       }}
       className={style.container}
+      style={containerStyle}
       title={editing && search.length ? search : placeholder}
     >
       <Input
-        style={editing ? { minWidth: 108 } : {}}
+        inputStyle={editing ? { ...inputStyle } : inputStyle}
+        inputClassName={inputClassName}
         spellCheck={false}
-        inputRef={(node) => (ref.current = node)}
+        inputRef={(node) => {
+          ref.current = node;
+          triggerProps.ref(node);
+        }}
         className={style.input}
         value={editing ? search : value || ""}
         placeholder={placeholder}
@@ -110,52 +143,68 @@ const Selector: React.FC<SelectorProps> = ({
         }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
-            valuesRef.current.includes(search) && onSelect(search);
-            active && onSelect(active);
+            const found = valuesRef.current
+              .map((v) => toKey(v))
+              .indexOf(search);
+            found >= 0 && onSelect(valuesRef.current[found]);
+            active !== undefined && onSelect(valuesRef.current[active]);
             setEditing(false);
           }
         }}
         onKeyDown={(e) => {
-          const index = active ? valuesRef.current.indexOf(active) : 0;
           const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
               ref.current && ref.current.blur();
               break;
             case "ArrowDown":
-              setActive(valuesRef.current[Math.min(index + 1, length - 1)]);
+              active !== undefined &&
+                setActive(Math.min(active + 1, length - 1));
               break;
             case "ArrowUp":
-              setActive(valuesRef.current[Math.max(index - 1, 0)]);
+              active !== undefined && setActive(Math.max(active - 1, 0));
               break;
           }
         }}
       />
-      <AnimatePresence>
-        {editing && (
-          <motion.div
-            className={container}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            key={"results"}
-          >
-            <Suspense fallback={<div className={footer}>Loading...</div>}>
-              <SelectorResults
-                active={active}
-                search={search}
-                useSearch={useSearch}
-                onSelect={(value) => {
-                  setEditing(false);
-                }}
-                component={component}
-                onResults={onResults}
-              />
-            </Suspense>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {renderLayer(
+        <AnimatePresence>
+          {editing && (
+            <motion.div
+              className={container}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{
+                opacity: 1,
+                height: "auto",
+              }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              key={"results"}
+              {...layerProps}
+              style={{
+                ...layerProps.style,
+                width: overflow ? "auto" : triggerBounds?.width,
+                minWidth: triggerBounds?.width,
+              }}
+            >
+              <Suspense fallback={<div className={footer}>Loading...</div>}>
+                <SelectorResults
+                  active={active}
+                  search={search}
+                  useSearch={useSearch}
+                  onSelect={(value) => {
+                    setEditing(false);
+                    onSelect(value);
+                  }}
+                  component={component}
+                  onResults={onResults}
+                  toKey={toKey}
+                />
+              </Suspense>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 };

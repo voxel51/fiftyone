@@ -430,7 +430,7 @@ const InteractiveSidebar = ({
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
   const [containerController] = useState(
-    () => new Controller({ maxHeight: 0 })
+    () => new Controller({ minHeight: 0 })
   );
 
   let group = null;
@@ -469,11 +469,11 @@ const InteractiveSidebar = ({
           scale: 1,
           shadow: 0,
           height: 0,
-          overflow: "hidden",
           config: {
             ...config.stiff,
             bounce: 0,
           },
+          overflow: "visible",
         }),
         entry,
         active: false,
@@ -545,7 +545,7 @@ const InteractiveSidebar = ({
       lastTouched.current
     );
 
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
     for (const key of order.current) {
       const item = items.current[key];
 
@@ -628,7 +628,7 @@ const InteractiveSidebar = ({
       down.current,
       realDelta
     );
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
 
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
@@ -646,15 +646,20 @@ const InteractiveSidebar = ({
     });
   });
 
-  const trigger = useCallback((event) => {
-    if (event.button !== 0) return;
+  const trigger = useCallback(
+    (event) => {
+      if (event.button !== 0) return;
 
-    down.current = event.currentTarget.dataset.key;
-    start.current = event.clientY;
-    last.current = start.current;
-    lastOrder.current = order.current;
-    maxScrollHeight.current = container.current.scrollHeight;
-  }, []);
+      down.current = event.currentTarget.dataset.key;
+      start.current = event.clientY;
+      last.current = start.current;
+      lastOrder.current = order.current;
+      maxScrollHeight.current = container.current.scrollHeight;
+      lastTouched.current = null;
+      placeItems();
+    },
+    [placeItems]
+  );
 
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
@@ -674,6 +679,7 @@ const InteractiveSidebar = ({
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
+        overflow: "visible",
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
@@ -713,7 +719,11 @@ const InteractiveSidebar = ({
             return (
               <animated.div
                 data-key={key}
-                onMouseDown={disabled ? null : trigger}
+                onMouseDown={disabled ? undefined : trigger}
+                onMouseDownCapture={() => {
+                  lastTouched.current = undefined;
+                  placeItems();
+                }}
                 key={key}
                 style={{
                   ...springs,

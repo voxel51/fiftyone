@@ -5,7 +5,7 @@ import Selector, { SelectorProps } from "../Selector/Selector";
 
 import style from "./Header.module.css";
 
-interface Props extends SelectorProps {
+interface Props extends SelectorProps<string> {
   onRefresh: () => void;
   title: string;
   logo: string;
@@ -31,7 +31,12 @@ const Header: React.FC<Props> = ({
           <div className={style.fiftyone}>{title}</div>
         </div>
         <div className={style.dataset}>
-          <Selector {...selector} />
+          <Selector
+            inputStyle={{ height: 40, maxWidth: 300 }}
+            containerStyle={{ position: "relative" }}
+            inputClassName={style.input}
+            {...selector}
+          />
         </div>
       </div>
       {children}

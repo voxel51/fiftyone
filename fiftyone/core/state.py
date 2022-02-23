@@ -27,8 +27,6 @@ class StateDescription(etas.Serializable):
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         active_handle (None): the UUID of the currently active App. Only
             applicable in notebook contexts
-        selected (None): the list of currently selected samples
-        selected_labels (None): the list of currently selected labels
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         refresh (False): a boolean toggle for forcing an App refresh
         close (False): whether to close the App
@@ -39,8 +37,6 @@ class StateDescription(etas.Serializable):
         dataset=None,
         view=None,
         active_handle=None,
-        selected=None,
-        selected_labels=None,
         config=None,
         refresh=False,
         close=False,
@@ -48,8 +44,6 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.active_handle = active_handle
-        self.selected = selected or []
-        self.selected_labels = selected_labels or []
         self.config = config or fo.app_config.copy()
         self.refresh = refresh
         self.close = close
@@ -121,9 +115,6 @@ class StateDescription(etas.Serializable):
             view = None
 
         active_handle = d.get("active_handle", None)
-        selected = d.get("selected", [])
-        selected_labels = d.get("selected_labels", [])
-
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
@@ -139,8 +130,6 @@ class StateDescription(etas.Serializable):
             dataset=dataset,
             view=view,
             active_handle=active_handle,
-            selected=selected,
-            selected_labels=selected_labels,
             config=config,
             refresh=refresh,
             close=close,

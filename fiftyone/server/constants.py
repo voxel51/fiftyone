@@ -6,4 +6,4 @@ FiftyOne Server constants
 |
 """
 
-LIST_LIMIT = 25
+LIST_LIMIT = 10

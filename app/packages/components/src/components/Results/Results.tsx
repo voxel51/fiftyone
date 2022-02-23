@@ -5,14 +5,9 @@ import style from "./Results.module.css";
 
 export { container, footer } from "./Results.module.css";
 
-export interface ResultValue<T> {
-  name: T;
-  count?: number;
-}
-
 export interface ResultProps<T> {
   active: boolean;
-  result: ResultValue<T>;
+  result: T;
   onClick: () => void;
   component: React.FC<{ value: T; className: string }>;
 }
@@ -42,32 +37,28 @@ export const getValueString = (value: unknown): [string, boolean] => {
 
 export const Result = <T extends unknown>({
   active,
-  result: { name, count },
+  result,
   onClick,
   component,
 }: ResultProps<T>) => {
   const Component = component;
 
-  const [text] = getValueString(name);
-
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
     <div onClick={onClick}>
-      <Component value={name} className={classNames(...classes)}>
-        <span>{text}</span>
-        {typeof count === "number" && <span>{count.toLocaleString()}</span>}
-      </Component>
+      <Component value={result} className={classNames(...classes)} />
     </div>
   );
 };
 
 export interface ResultsProps<T> {
-  active?: T;
-  results: ResultValue<T>[];
+  active?: number;
+  results: T[];
   onSelect: (value: T) => void;
   total: number;
   component: React.FC<{ value: T; className: string }>;
+  toKey: (value: T) => string;
 }
 
 const Results = <T extends unknown>({
@@ -76,22 +67,23 @@ const Results = <T extends unknown>({
   results,
   total,
   component,
+  toKey = (value: T) => String(value),
 }: ResultsProps<T>) => {
   return (
     <>
-      {results.map((result) => (
+      {results.map((result, i) => (
         <Result
-          active={result.name === active}
+          active={i === active}
           component={component}
-          key={String(result.name)}
+          key={toKey(result)}
           result={result}
-          onClick={() => onSelect(result.name)}
+          onClick={() => onSelect(result)}
         />
       ))}
       <div className={style.footer}>
         {Boolean(total) && (
           <>
-            {total} result{total > 1 ? "s" : ""}
+            {total.toLocaleString()} result{total > 1 ? "s" : ""}
           </>
         )}
         {!Boolean(total) && <>No results</>}
