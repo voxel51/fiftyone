@@ -234,6 +234,56 @@ class OpenLABELImageDatasetImporter(
 class OpenLABELVideoDatasetImporter(
     foud.LabeledVideoDatasetImporter, foud.ImportPathsMixin
 ):
+    """Importer for OpenLABEL video datasets stored on disk.
+
+    See :ref:`this page <OpenLABELVideoDataset-import>` for format details.
+
+    Args:
+        dataset_dir (None): the dataset directory. If omitted, ``data_path``
+            and/or ``labels_path`` must be provided
+        data_path (None): an optional parameter that enables explicit control
+            over the location of the media. Can be any of the following:
+
+            -   a folder name like ``"data"`` or ``"data/"`` specifying a
+                subfolder of ``dataset_dir`` where the media files reside
+            -   an absolute directory path where the media files reside. In
+                this case, the ``dataset_dir`` has no effect on the location of
+                the data
+            -   a filename like ``"data.json"`` specifying the filename of the
+                JSON data manifest file in ``dataset_dir``
+            -   an absolute filepath specifying the location of the JSON data
+                manifest. In this case, ``dataset_dir`` has no effect on the
+                location of the data
+            -   a dict mapping filenames to absolute filepaths
+
+            If None, this parameter will default to whichever of ``data/`` or
+            ``data.json`` exists in the dataset directory
+        labels_path (None): an optional parameter that enables explicit control
+            over the location of the labels. Can be any of the following:
+
+            -   a filename like ``"labels.json"`` specifying the location of
+                the labels in ``dataset_dir``
+            -   a folder name like ``"labels"`` or ``"labels/"`` specifying a
+                subfolder of ``dataset_dir`` where the multiple label files
+                reside
+            -   an absolute filepath to the labels. In this case,
+                ``dataset_dir`` has no effect on the location of the labels
+
+            If None, the parameter will default to looking for ``labels.json``
+            and ``label/``
+        label_types (None): a label type or list of label types to load. The
+            supported values are
+            ``("detections", "segmentations", "keypoints", "polylines")``.
+            By default, all labels are loaded
+        use_polylines (False): whether to represent segmentations as
+            :class:`fiftyone.core.labels.Polylines` instances rather than
+            :class:`fiftyone.core.labels.Detections` with dense masks
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load
+    """
+
     def __init__(
         self,
         dataset_dir=None,
