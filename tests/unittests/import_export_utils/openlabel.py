@@ -207,7 +207,7 @@ def _make_image_labels(tmp_dir):
     return labels_path
 
 
-def _make_semantic_segmentation_labels(tmp_dir):
+def _make_segmentation_labels(tmp_dir):
     labels = OpenLABELLabels()
     labels.update_metadata(
         {

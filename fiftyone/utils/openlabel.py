@@ -70,6 +70,9 @@ class OpenLABELImageDatasetImporter(
             supported values are
             ``("detections", "segmentations", "keypoints", "polylines")``.
             By default, all labels are loaded
+        use_polylines (False): whether to represent segmentations as
+            :class:`fiftyone.core.labels.Polylines` instances rather than
+            :class:`fiftyone.core.labels.Detections` with dense masks
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -82,6 +85,7 @@ class OpenLABELImageDatasetImporter(
         data_path=None,
         labels_path=None,
         label_types=None,
+        use_polylines=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -120,6 +124,7 @@ class OpenLABELImageDatasetImporter(
         self.labels_dir = labels_dir
         self.labels_path = labels_path
         self._label_types = _label_types
+        self.use_polylines = use_polylines
 
         self._info = None
         self._image_paths_map = None
@@ -158,7 +163,11 @@ class OpenLABELImageDatasetImporter(
 
         frame_size = (width, height)
         objects = self._annotations.get_objects(filename)
-        label = objects.get_labels(frame_size)
+        seg_type = SegType.POLYLINE if self.use_polylines else SegType.INSTANCE
+        label = objects.to_labels(frame_size, self._label_types, seg_type)
+
+        if self._has_scalar_labels:
+            label = next(iter(label.values())) if label else None
 
         return sample_path, sample_metadata, label
 
@@ -171,13 +180,20 @@ class OpenLABELImageDatasetImporter(
         return True
 
     @property
+    def _has_scalar_labels(self):
+        return len(self._label_types) == 1
+
+    @property
     def label_cls(self):
+        seg_type = fol.Polylines if self.use_polylines else fol.Detections
         types = {
             "detections": fol.Detections,
-            "segmentations": fol.Detections,
-            "polylines": fol.Polylines,
+            "segmentations": seg_type,
             "keypoints": fol.Keypoints,
         }
+
+        if self._has_scalar_labels:
+            return types[self._label_types[0]]
 
         return {k: v for k, v in types.items() if k in self._label_types}
 
@@ -224,6 +240,7 @@ class OpenLABELVideoDatasetImporter(
         data_path=None,
         labels_path=None,
         label_types=None,
+        use_polylines=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -262,6 +279,7 @@ class OpenLABELVideoDatasetImporter(
         self.labels_dir = labels_dir
         self.labels_path = labels_path
         self._label_types = _label_types
+        self.use_polylines = use_polylines
 
         self._info = None
         self._video_paths_map = None
@@ -305,7 +323,10 @@ class OpenLABELVideoDatasetImporter(
 
         frame_size = (width, height)
         frames = self._annotations.get_objects(filename)
-        frame_labels = frames.get_labels(frame_size)
+        seg_type = SegType.POLYLINE if self.use_polylines else SegType.INSTANCE
+        frame_labels = frames.to_labels(
+            frame_size, self._label_types, seg_type
+        )
 
         return sample_path, sample_metadata, None, frame_labels
 
@@ -318,13 +339,20 @@ class OpenLABELVideoDatasetImporter(
         return True
 
     @property
+    def _has_scalar_labels(self):
+        return len(self._label_types) == 1
+
+    @property
     def label_cls(self):
+        seg_type = fol.Polylines if self.use_polylines else fol.Detections
         types = {
             "detections": fol.Detections,
-            "segmentations": fol.Detections,
-            "polylines": fol.Polylines,
+            "segmentations": seg_type,
             "keypoints": fol.Keypoints,
         }
+
+        if self._has_scalar_labels:
+            return types[self._label_types[0]]
 
         return {k: v for k, v in types.items() if k in self._label_types}
 
@@ -364,7 +392,8 @@ class OpenLABELVideoDatasetImporter(
 
 class SegType(enum.Enum):
     INSTANCE = 1
-    SEMANTIC = 2
+    POLYLINE = 2
+    SEMANTIC = 3
 
 
 def _validate_filenames(potential_filenames, sample_paths_map):
@@ -405,12 +434,11 @@ class OpenLABELAnnotations(object):
         metadata = OpenLABELMetadata(labels.get("metadata", {}))
         self.metadata[label_filename] = metadata
         potential_filenames.extend(metadata.parse_potential_filenames())
-        seg_type = metadata.seg_type
 
         if self.is_video:
-            object_parser = OpenLABELFramesParser(seg_type=seg_type)
+            object_parser = OpenLABELFramesParser()
         else:
-            object_parser = OpenLABELObjectsParser(seg_type=seg_type)
+            object_parser = OpenLABELObjectsParser()
         self._parse_streams(labels, label_filename)
         self._parse_objects(labels, object_parser)
         self._parse_frames(labels, label_filename, object_parser)
@@ -489,10 +517,9 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELParser(object):
-    def __init__(self, seg_type=SegType.INSTANCE):
+    def __init__(self):
         self.stream_to_id_map = defaultdict(list)
         self.streamless_objects = set()
-        self.seg_type = seg_type
 
     @property
     def label_type(self):
@@ -523,22 +550,18 @@ class OpenLABELParser(object):
         stream_objects_map = {}
         for stream_name, ids in self.stream_to_id_map.items():
             objects = self._get_objects_for_ids(ids)
-            stream_objects_map[stream_name] = self.label_type(
-                objects, seg_type=self.seg_type
-            )
+            stream_objects_map[stream_name] = self.label_type(objects)
 
         objects = self._get_objects_for_ids(self.streamless_objects)
         if objects:
-            stream_objects_map[None] = self.label_type(
-                objects, seg_type=self.seg_type
-            )
+            stream_objects_map[None] = self.label_type(objects)
 
         return stream_objects_map
 
 
 class OpenLABELObjectsParser(OpenLABELParser):
-    def __init__(self, seg_type=SegType.INSTANCE):
-        super().__init__(seg_type=seg_type)
+    def __init__(self):
+        super().__init__()
         self.objects = {}
 
     @property
@@ -555,43 +578,38 @@ class OpenLABELObjectsParser(OpenLABELParser):
 
 
 class OpenLABELObjects(object):
-    def __init__(self, objects, seg_type=SegType.INSTANCE):
+    def __init__(self, objects):
         self.objects = objects
-        self.seg_type = seg_type
 
     def _to_labels(self, frame_size, labels_type, obj_to_label):
         labels = []
         for obj in self.objects:
-            label = obj_to_label(obj, frame_size)
-            if label is not None:
-                labels.append(label)
+            labels.extend(obj_to_label(obj, frame_size))
 
         kwargs = {labels_type._LABEL_LIST_FIELD: labels}
         return labels_type(**kwargs)
 
     def to_detections(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Detections, OpenLABELObject.to_detection,
+            frame_size, fol.Detections, OpenLABELObject.to_detections,
         )
 
     def to_keypoints(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Keypoints, OpenLABELObject.to_keypoint,
+            frame_size, fol.Keypoints, OpenLABELObject.to_keypoints,
         )
 
     def to_polylines(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Polylines, OpenLABELObject.to_polyline,
+            frame_size, fol.Polylines, OpenLABELObject.to_polylines,
         )
 
-    def to_segmentations(self, frame_size):
+    def to_segmentations(self, frame_size, seg_type=SegType.INSTANCE):
         polylines = self.to_polylines(frame_size)
-        if self.seg_type == SegType.INSTANCE:
-            segs = polylines.to_detections(frame_size=frame_size)
+        if seg_type == SegType.POLYLINE:
+            return polylines
         else:
-            segs = polylines.to_segmentation(frame_size=frame_size)
-
-        return segs
+            return polylines.to_detections(frame_size=frame_size)
 
     def add_objects(self, new_objects):
         if isinstance(new_objects, OpenLABELObjects):
@@ -599,12 +617,16 @@ class OpenLABELObjects(object):
         else:
             self.objects.extend(new_objects)
 
-    def get_labels(self, frame_size):
+    def to_labels(self, frame_size, label_types, seg_type=SegType.INSTANCE):
         label = {}
-        label["detections"] = self.to_detections(frame_size)
-        label["polylines"] = self.to_polylines(frame_size)
-        label["keypoints"] = self.to_keypoints(frame_size)
-        label["segmentations"] = self.to_segmentations(frame_size)
+        if "detections" in label_types:
+            label["detections"] = self.to_detections(frame_size)
+        if "keypoints" in label_types:
+            label["keypoints"] = self.to_keypoints(frame_size)
+        if "segmentations" in label_types:
+            label["segmentations"] = self.to_segmentations(
+                frame_size, seg_type=seg_type
+            )
         return label
 
 
@@ -720,6 +742,7 @@ class OpenLABELMetadata(object):
         self._parse_seg_type()
 
     def _parse_seg_type(self):
+        # Currently unused
         self.seg_type = SegType.INSTANCE
         if "annotation_type" in self.metadata_dict:
             if (
@@ -744,8 +767,8 @@ class OpenLABELObject(object):
         id=None,
         name=None,
         type=None,
-        bbox=None,
-        segmentation=None,
+        bboxes=[],
+        segmentations=[],
         keypoints=[],
         stream=None,
         attributes={},
@@ -753,74 +776,92 @@ class OpenLABELObject(object):
         self.id = id
         self.name = name
         self.type = type
-        self.bbox = bbox
-        self.segmentation = segmentation
+        self.bboxes = bboxes
+        self.segmentations = segmentations
         self.keypoints = keypoints
         self.stream = stream
         self.attributes = attributes
 
-    def to_detection(self, frame_size):
-        if not self.bbox:
-            return None
-
-        label = self.type
-        attributes = self._get_object_attributes()
-
-        width, height = frame_size
-        cx, cy, w, h = self.bbox
-        x = cx - (w / 2)
-        y = cy - (h / 2)
-        bounding_box = [x / width, y / height, w / width, h / height]
-
-        return fol.Detection(
-            label=label, bounding_box=bounding_box, **attributes,
-        )
-
-    def to_polyline(self, frame_size):
-        if not self.segmentation:
-            return None
+    def to_detections(self, frame_size):
+        if not self.bboxes:
+            return []
 
         label = self.type
         attributes = self._get_object_attributes()
 
         width, height = frame_size
 
-        rel_points = [
-            [(x / width, y / height) for x, y, in _pairwise(self.segmentation)]
-        ]
+        detections = []
+        for bbox in self.bboxes:
+            cx, cy, w, h = bbox
+            x = cx - (w / 2)
+            y = cy - (h / 2)
+            bounding_box = [x / width, y / height, w / width, h / height]
 
-        filled = not attributes.get("is_hole", True)
-        closed = attributes.get("closed", True)
-        attributes.pop("closed", None)
-        attributes.pop("filled", None)
-        attributes.pop("label", None)
+            detections.append(
+                fol.Detection(
+                    label=label, bounding_box=bounding_box, **attributes,
+                )
+            )
 
-        return fol.Polyline(
-            label=label,
-            points=rel_points,
-            filled=filled,
-            closed=closed,
-            **attributes,
-        )
+        return detections
 
-    def to_keypoint(self, frame_size):
+    def to_polylines(self, frame_size):
+        if not self.segmentations:
+            return []
+
+        label = self.type
+        attributes = self._get_object_attributes()
+
+        width, height = frame_size
+
+        polylines = []
+        for segmentation in self.segmentations:
+            rel_points = [
+                [(x / width, y / height) for x, y, in _pairwise(segmentation)]
+            ]
+
+            filled = not attributes.get("is_hole", True)
+            closed = attributes.get("closed", True)
+            attributes.pop("closed", None)
+            attributes.pop("filled", None)
+            attributes.pop("label", None)
+
+            polylines.append(
+                fol.Polyline(
+                    label=label,
+                    points=rel_points,
+                    filled=filled,
+                    closed=closed,
+                    **attributes,
+                )
+            )
+        return polylines
+
+    def to_keypoints(self, frame_size):
         if not self.keypoints:
-            return None
+            return []
+
         label = self.type
         attributes = self._get_object_attributes()
 
         width, height = frame_size
 
-        rel_points = [(x / width, y / height) for x, y, in self.keypoints]
+        keypoints = []
+        for kps in self.keypoints:
+            rel_points = [(x / width, y / height) for x, y, in kps]
 
-        return fol.Keypoint(label=label, points=rel_points, **attributes,)
+            keypoints.append(
+                fol.Keypoint(label=label, points=rel_points, **attributes)
+            )
+        return keypoints
 
     @classmethod
     def from_anno_dict(cls, anno_id, d):
         (
-            bbox,
-            segmentation,
-            point,
+            bboxes,
+            segmentations,
+            points,
             name,
             _type,
             stream,
@@ -832,34 +873,39 @@ class OpenLABELObject(object):
             id=anno_id,
             name=name,
             type=_type,
-            bbox=bbox,
-            segmentation=segmentation,
-            keypoints=[point] if point else [],
+            bboxes=bboxes,
+            segmentations=segmentations,
+            keypoints=points,
             stream=stream,
             attributes=attributes,
         )
         return obj, frame_nums
 
     @classmethod
+    def _parse_obj_type(
+        cls, object_data, label_type, attributes={}, stream=None
+    ):
+        obj = object_data.get(label_type, [])
+        obj, attrs, _stream = cls._parse_object_data(obj)
+        attributes.update(attrs)
+        if stream is None:
+            stream = _stream
+
+        return obj, attributes, stream
+
+    @classmethod
     def _parse_object_dict(cls, d):
-        attributes = {}
         object_data = d.get("object_data", {})
-        stream = None
-        bbox = object_data.get("bbox", [])
-        poly = object_data.get("poly2d", [])
-        point = object_data.get("point2d", [])
-        stream, bbox, attrs = cls._parse_object_data(bbox)
-        attributes.update(attrs)
 
-        _stream, poly, attrs = cls._parse_object_data(poly)
-        attributes.update(attrs)
-        if stream is None:
-            stream = _stream
+        bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox",)
 
-        _stream, point, attrs = cls._parse_object_data(point)
-        attributes.update(attrs)
-        if stream is None:
-            stream = _stream
+        polys, attributes, stream = cls._parse_obj_type(
+            object_data, "poly2d", attributes=attributes, stream=stream,
+        )
+
+        points, attributes, stream = cls._parse_obj_type(
+            object_data, "point2d", attributes=attributes, stream=stream,
+        )
 
         name = d.get("name", None)
         _type = d.get("type", None)
@@ -871,7 +917,16 @@ class OpenLABELObject(object):
         if stream is None:
             stream = attr_stream
 
-        return bbox, poly, point, name, _type, stream, attributes, frame_nums
+        return (
+            bboxes,
+            polys,
+            points,
+            name,
+            _type,
+            stream,
+            attributes,
+            frame_nums,
+        )
 
     @classmethod
     def _parse_frame_nums(cls, d):
@@ -885,15 +940,20 @@ class OpenLABELObject(object):
 
     @classmethod
     def _parse_object_data(cls, object_data_list):
+        parsed_obj_list = []
+        attributes = {}
+        stream = None
         for obj_data in object_data_list:
             stream = obj_data.get(
                 "stream", obj_data.get("coordinate_system", None)
             )
-            attributes, attr_stream = cls._parse_attributes(obj_data)
+            attrs, attr_stream = cls._parse_attributes(obj_data)
             if stream is None:
                 stream = attr_stream
-            return stream, obj_data["val"], attributes
-        return None, None, {}
+            attributes.update(attrs)
+            parsed_obj_list.append(obj_data["val"])
+
+        return parsed_obj_list, attributes, stream
 
     @classmethod
     def _parse_attributes(cls, d):
@@ -920,23 +980,19 @@ class OpenLABELObject(object):
 
     def update_object_dict(self, d):
         (
-            bbox,
-            segmentation,
-            point,
+            bboxes,
+            segmentations,
+            points,
             name,
             _type,
             stream,
             attributes,
             frame_nums,
         ) = self._parse_object_dict(d)
-        if bbox and not self.bbox:
-            self.bbox = bbox
 
-        if segmentation and not self.segmentation:
-            self.segmentation = segmentation
-
-        if point:
-            self.keypoints.append(point)
+        self.bboxes.extend(bboxes)
+        self.segmentations.extend(segmentations)
+        self.keypoints.extend(points)
 
         if name and not self.name:
             self.name = name
@@ -963,8 +1019,8 @@ class OpenLABELObject(object):
 
 
 class OpenLABELFramesParser(OpenLABELParser):
-    def __init__(self, seg_type=SegType.INSTANCE):
-        super().__init__(seg_type=seg_type)
+    def __init__(self):
+        super().__init__()
         self.framewise_objects = defaultdict(dict)
 
     @property
@@ -994,25 +1050,26 @@ class OpenLABELFramesParser(OpenLABELParser):
         for frame_num, objects in self.framewise_objects.items():
             _objects = [objects[i] for i in ids if i in objects]
             if _objects:
-                frame_objects[frame_num] = OpenLABELObjects(
-                    _objects, seg_type=self.seg_type
-                )
+                frame_objects[frame_num] = OpenLABELObjects(_objects)
         return frame_objects
 
 
 class OpenLABELFrames(OpenLABELParser):
-    def __init__(self, frame_objects, seg_type=SegType.INSTANCE):
+    def __init__(self, frame_objects):
         self.frame_objects = frame_objects
-        self.seg_type = seg_type
 
-    def get_labels(self, frame_size):
+    def to_labels(self, frame_size, label_types, seg_type=SegType.POLYLINE):
         frame_labels = {}
         for frame_num, objects in self.frame_objects.items():
             frame_label = {}
-            frame_label["detections"] = objects.to_detections(frame_size)
-            frame_label["polylines"] = objects.to_polylines(frame_size)
-            frame_label["keypoints"] = objects.to_keypoints(frame_size)
-            frame_label["segmentations"] = objects.to_segmentations(frame_size)
+            if "detections" in label_types:
+                frame_label["detections"] = objects.to_detections(frame_size)
+            if "keypoints" in label_types:
+                frame_label["keypoints"] = objects.to_keypoints(frame_size)
+            if "segmentations" in label_types:
+                frame_label["segmentations"] = objects.to_segmentations(
+                    frame_size, seg_type=seg_type
+                )
             frame_labels[frame_num] = frame_label
         return frame_labels
 
@@ -1056,7 +1113,6 @@ def _parse_label_types(label_types):
 _SUPPORTED_LABEL_TYPES = [
     "detections",
     "segmentations",
-    "polylines",
     "keypoints",
 ]
 

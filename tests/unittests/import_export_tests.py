@@ -1824,10 +1824,26 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         assert dataset.count("keypoints.keypoints.label") == 1
 
     @drop_datasets
-    def test_openlabel_segmentation_dataset(self):
+    def test_openlabel_single_type_dataset(self):
         import import_export_utils.openlabel as ol
 
-        labels_path = ol._make_semantic_segmentation_labels(self._tmp_dir)
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(filename="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            label_types="detections",
+        )
+        assert isinstance(dataset.first().ground_truth, fo.Detections)
+
+    @drop_datasets
+    def test_openlabel_segmentation_dataset(self):
+        import import_export_utils.openlabel as ol
+        import fiftyone.utils.labels as foul
+
+        labels_path = ol._make_segmentation_labels(self._tmp_dir)
         img_filepath = self._new_image(filename="openlabel_test")
 
         dataset = fo.Dataset.from_dir(
@@ -1835,8 +1851,15 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
-        assert dataset.count("segmentations.mask") == 1
-        assert isinstance(dataset.first().segmentations, fo.Segmentation)
+        assert dataset.count("segmentations.detections.mask") == 1
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            use_polylines=True,
+        )
+        assert dataset.count("segmentations.polylines") == 1
 
 
 class VideoDatasetTests(unittest.TestCase):
