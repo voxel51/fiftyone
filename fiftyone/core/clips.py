@@ -218,6 +218,39 @@ class ClipsView(fov.DatasetView):
 
         super().keep()
 
+    def keep_fields(self):
+        """Deletes any frame fields that have been excluded in this view from
+        the frames of the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+
+        # If the source TemporalDetection field is excluded, delete it from
+        # this collection and the source collection
+        cls_field = self._classification_field
+        if cls_field and cls_field not in self.get_field_schema():
+            self._dataset.delete_sample_field(cls_field)
+
+            del_view = self._source_collection.exclude_fields(cls_field)
+            del_view.keep_fields()
+
+        # Delete any excluded frame fields from this collection and the source
+        # collection
+        schema = self.get_frame_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            # Clips views directly use their parent dataset's frame collection
+            prefix = self._source_collection._FRAMES_PREFIX
+            del_frame_fields = [prefix + f for f in del_fields]
+            del_view = self._source_collection.exclude_fields(del_frame_fields)
+            del_view.keep_fields()
+
     def reload(self):
         """Reloads this view from the source collection in the database.
 

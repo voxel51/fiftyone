@@ -709,15 +709,16 @@ in the sense that:
     :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
     and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
     will be reflected on the source dataset
--   Any modifications to the |Label| elements in the patches view that you make
-    by iterating over the contents of the view or calling
+-   Any modifications to the patch labels that you make by iterating over the
+    contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` or
-    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>` on an object
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.PatchesView.keep_fields>` on a
     patches view (typically one that contains additional view stages that
-    filter or modify its contents) will sync any |Label| edits or deletions
-    with the source dataset
+    filter or modify its contents) will sync any edits or deletions to the
+    patch labels with the source dataset
 
 However, because object patches views only contain a subset of the contents of
 a |Sample| from the source dataset, there are some differences compared to
@@ -826,11 +827,12 @@ Evaluation patches views are just like any other
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
-    or :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>` on an
-    evaluation patches view (typically one that contains additional view stages
-    that filter or modify its contents) will sync any |Label| edits or
-    deletions with the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.EvaluationPatchesView.keep_fields>`
+    on an evaluation patches view (typically one that contains additional view
+    stages that filter or modify its contents) will sync any predicted or
+    ground truth |Label| edits or deletions with the source dataset
 
 However, because evaluation patches views only contain a subset of the contents
 of a |Sample| from the source dataset, there are some differences compared to
@@ -1122,11 +1124,12 @@ sense that:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` or
-    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>` on a clips view
-    (typically one that contains additional view stages that filter or modify
-    its contents) will sync any frame-level edits or deletions with the source
-    dataset
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
+    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.clips.ClipsView.keep_fields>` on a
+    clips view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any frame-level edits or deletions with
+    the source dataset
 
 However, because clip views represent only a subset of a |Sample| from the
 source dataset, there are some differences compared to non-clip views:
@@ -1281,11 +1284,12 @@ Frame views are just like any other image collection view in the sense that:
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.video.FramesView.save>` or
-    :meth:`keep() <fiftyone.core.video.FramesView.keep>` on a frames view
-    (typically one that contains additional view stages that filter or modify
-    its contents) will sync any changes to the frames of the underlying video
-    dataset
+-   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
+    :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.video.FramesView.keep_fields>` on a
+    frames view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any changes to the frames of the
+    underlying video dataset
 
 The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not
@@ -1871,6 +1875,26 @@ samples from the underlying dataset that do not appear in a view you created:
 
     print(len(dataset))
     # 94
+
+and you can use
+:meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
+to delete any sample/frame fields from the underlying dataset that you have
+excluded from a view you created:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the `predictions` field
+    view = dataset.exclude_fields("predictions")
+    view.keep_fields()
+
+    print(dataset)
+
+    # Delete all non-default fields
+    view = dataset.select_fields()
+    view.keep_fields()
+
+    print(dataset)
 
 Alternatively, you can use
 :meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new

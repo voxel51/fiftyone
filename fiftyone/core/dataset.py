@@ -2138,6 +2138,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._clear(view=clear_view)
 
+    def _keep_fields(self, view=None):
+        if view is None:
+            return
+
+        del_sample_fields = view._get_missing_fields()
+        if del_sample_fields:
+            self.delete_sample_fields(del_sample_fields)
+
+        if self.media_type == fom.VIDEO:
+            del_frame_fields = view._get_missing_fields(frames=True)
+            if del_frame_fields:
+                self.delete_frame_fields(del_frame_fields)
+
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
 

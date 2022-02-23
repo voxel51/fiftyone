@@ -244,6 +244,23 @@ class _PatchesView(fov.DatasetView):
 
         super().keep()
 
+    def keep_fields(self):
+        """Deletes all patch field(s) that have been excluded from this view
+        from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        del_fields = set(self._label_fields) - set(self.get_field_schema())
+        if del_fields:
+            self._dataset.delete_sample_fields(del_fields)
+
+            del_view = self._source_collection.exclude_fields(del_fields)
+            del_view.keep_fields()
+
     def reload(self):
         """Reloads this view from the source collection in the database.
 
@@ -305,11 +322,10 @@ class _PatchesView(fov.DatasetView):
         label_path = label_id_path.rsplit(".", 1)[0]
 
         if update:
-            sample_ids, docs, label_ids = self._patches_dataset.aggregate(
+            sample_ids, docs = self._patches_dataset.aggregate(
                 [
                     foa.Values(self._id_field),
                     foa.Values(label_path, _raw=True),
-                    foa.Values(label_id_path, unwind=True),
                 ]
             )
 
@@ -318,11 +334,11 @@ class _PatchesView(fov.DatasetView):
         if delete:
             all_ids = self._patches_dataset.values(label_id_path, unwind=True)
             self_ids = self.values(label_id_path, unwind=True)
-            delete_ids = set(all_ids) - set(self_ids)
+            del_ids = set(all_ids) - set(self_ids)
 
-            if delete_ids:
+            if del_ids:
                 self._source_collection._delete_labels(
-                    ids=delete_ids, fields=field
+                    ids=del_ids, fields=field
                 )
 
 
