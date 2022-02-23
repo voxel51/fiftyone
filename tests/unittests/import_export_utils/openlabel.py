@@ -149,7 +149,6 @@ def _make_image_labels(tmp_dir):
     labels.update_metadata(
         {
             "annotation_id": 51,
-            "annotation_type": "semantic segmentation",
             "input_uuid": "0",
             "project": "FiftyOne Test",
             "schema_version": "1.0.0",
@@ -202,6 +201,39 @@ def _make_image_labels(tmp_dir):
             "type": "camera",
         },
     )
+
+    labels_path = os.path.join(tmp_dir, "openlabel_test.json")
+    labels.write_labels(labels_path)
+    return labels_path
+
+
+def _make_semantic_segmentation_labels(tmp_dir):
+    labels = OpenLABELLabels()
+    labels.update_metadata(
+        {
+            "annotation_id": 51,
+            "annotation_type": "semantic segmentation",
+            "input_uuid": "0",
+            "project": "FiftyOne Test",
+            "schema_version": "1.0.0",
+            "uri": "https://annotation.provider",
+            "uuid": "5151",
+        }
+    )
+    poly_obj_data = OpenLABELObjectData(
+        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+    )
+    poly_obj_data.add_attributes(
+        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+    )
+    poly_obj_data.add_attributes(
+        [("is_hole", False), ("polygon_id", "0")], as_property=True,
+    )
+    poly_obj = OpenLABELObject(
+        "polyname", "objectlabel1", frame_interval=(0, 0),
+    )
+    poly_obj.add_object_data(poly_obj_data, is_frame=True)
+    labels.add_object(poly_obj)
 
     labels_path = os.path.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)

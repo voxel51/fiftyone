@@ -8,6 +8,7 @@ Utilities for working with datasets in
 """
 from collections import defaultdict
 from copy import deepcopy
+import enum
 import logging
 import os
 
@@ -19,6 +20,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.labels as foul
 
 
 logger = logging.getLogger(__name__)
@@ -360,6 +362,11 @@ class OpenLABELVideoDatasetImporter(
         return self._info
 
 
+class SegType(enum.Enum):
+    INSTANCE = 1
+    SEMANTIC = 2
+
+
 def _validate_filenames(potential_filenames, sample_paths_map):
     filenames = []
     for filename in set(potential_filenames):
@@ -398,11 +405,12 @@ class OpenLABELAnnotations(object):
         metadata = OpenLABELMetadata(labels.get("metadata", {}))
         self.metadata[label_filename] = metadata
         potential_filenames.extend(metadata.parse_potential_filenames())
+        seg_type = metadata.seg_type
 
         if self.is_video:
-            object_parser = OpenLABELFramesParser()
+            object_parser = OpenLABELFramesParser(seg_type=seg_type)
         else:
-            object_parser = OpenLABELObjectsParser()
+            object_parser = OpenLABELObjectsParser(seg_type=seg_type)
         self._parse_streams(labels, label_filename)
         self._parse_objects(labels, object_parser)
         self._parse_frames(labels, label_filename, object_parser)
@@ -481,10 +489,11 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELObjectsParser(object):
-    def __init__(self):
+    def __init__(self, seg_type=SegType.INSTANCE):
         self.objects = {}
         self.stream_to_id_map = defaultdict(list)
         self.streamless_objects = set()
+        self.seg_type = seg_type
 
     def add_object_dict(self, obj_id, obj_d):
         obj = self.objects.get(obj_id, None)
@@ -507,18 +516,23 @@ class OpenLABELObjectsParser(object):
         stream_objects_map = {}
         for stream_name, ids in self.stream_to_id_map.items():
             objects = [self.objects[i] for i in ids]
-            stream_objects_map[stream_name] = OpenLABELObjects(objects)
+            stream_objects_map[stream_name] = OpenLABELObjects(
+                objects, seg_type=self.seg_type
+            )
 
         objects = [self.objects[i] for i in self.streamless_objects]
         if objects:
-            stream_objects_map[None] = OpenLABELObjects(objects)
+            stream_objects_map[None] = OpenLABELObjects(
+                objects, seg_type=self.seg_type
+            )
 
         return stream_objects_map
 
 
 class OpenLABELObjects(object):
-    def __init__(self, objects):
+    def __init__(self, objects, seg_type=SegType.INSTANCE):
         self.objects = objects
+        self.seg_type = seg_type
 
     def _to_labels(self, frame_size, labels_type, obj_to_label):
         labels = []
@@ -546,7 +560,13 @@ class OpenLABELObjects(object):
         )
 
     def to_segmentations(self, frame_size):
-        return fol.Detections()
+        polylines = self.to_polylines(frame_size)
+        if self.seg_type == SegType.INSTANCE:
+            segs = polylines.to_detections(frame_size=frame_size)
+        else:
+            segs = polylines.to_segmentation(frame_size=frame_size)
+
+        return segs
 
     def add_objects(self, new_objects):
         if isinstance(new_objects, OpenLABELObjects):
@@ -672,6 +692,16 @@ class OpenLABELMetadata(object):
 
     def __init__(self, metadata_dict):
         self.metadata_dict = metadata_dict
+        self._parse_seg_type()
+
+    def _parse_seg_type(self):
+        self.seg_type = SegType.INSTANCE
+        if "annotation_type" in self.metadata_dict:
+            if (
+                self.metadata_dict["annotation_type"]
+                == "semantic segmentation"
+            ):
+                self.seg_type = SegType.SEMANTIC
 
     def parse_potential_filenames(self):
         filenames = []
@@ -693,7 +723,7 @@ class OpenLABELObject(object):
         segmentation=None,
         keypoints=[],
         stream=None,
-        **attributes,
+        attributes={},
     ):
         self.id = id
         self.name = name
@@ -736,6 +766,9 @@ class OpenLABELObject(object):
 
         filled = not attributes.get("is_hole", True)
         closed = attributes.get("closed", True)
+        attributes.pop("closed", None)
+        attributes.pop("filled", None)
+        attributes.pop("label", None)
 
         return fol.Polyline(
             label=label,
@@ -805,7 +838,8 @@ class OpenLABELObject(object):
 
         name = d.get("name", None)
         _type = d.get("type", None)
-        attributes, attr_stream = cls._parse_attributes(d)
+        attrs, attr_stream = cls._parse_attributes(d)
+        attributes.update(attrs)
 
         frame_nums = cls._parse_frame_nums(d)
 
@@ -838,9 +872,14 @@ class OpenLABELObject(object):
 
     @classmethod
     def _parse_attributes(cls, d):
-        attributes = {
-            k: v for k, v in d.items() if k not in ["val", "attributes"]
-        }
+        _ignore_keys = [
+            "frame_intervals",
+            "val",
+            "attributes",
+            "object_data",
+            "object_data_pointers",
+        ]
+        attributes = {k: v for k, v in d.items() if k not in _ignore_keys}
         attributes_dict = d.get("attributes", {})
         stream = None
         for attr_type, attrs in attributes_dict.items():
@@ -849,7 +888,8 @@ class OpenLABELObject(object):
                 val = attr["val"]
                 if name.lower() in cls._STREAM_KEYS:
                     stream = val
-                attributes[name] = val
+                if name.lower() not in _ignore_keys:
+                    attributes[name] = val
 
         return attributes, stream
 
@@ -879,6 +919,8 @@ class OpenLABELObject(object):
         if stream and not self.stream:
             self.stream = stream
 
+        self.attributes.update(attributes)
+
         return frame_nums
 
     def _get_object_attributes(self):
@@ -890,14 +932,17 @@ class OpenLABELObject(object):
         if self.id is not None:
             attributes["openLABEL_id"] = self.id
 
+        attributes.update(self.attributes)
+
         return attributes
 
 
 class OpenLABELFramesParser(object):
-    def __init__(self):
+    def __init__(self, seg_type=SegType.INSTANCE):
         self.framewise_objects = defaultdict(dict)
         self.stream_to_id_map = defaultdict(list)
         self.streamless_objects = set()
+        self.seg_type = seg_type
 
     def add_object_dict(self, obj_id, obj_d, frame_num=None):
         obj = self.framewise_objects[frame_num].get(obj_id, None)
@@ -932,11 +977,15 @@ class OpenLABELFramesParser(object):
         stream_objects_map = {}
         for stream_name, ids in self.stream_to_id_map.items():
             frame_objects = self._get_objects_for_ids(ids)
-            stream_objects_map[stream_name] = OpenLABELFrames(frame_objects)
+            stream_objects_map[stream_name] = OpenLABELFrames(
+                frame_objects, seg_type=self.seg_type
+            )
 
         frame_objects = self._get_objects_for_ids(self.streamless_objects)
         if frame_objects:
-            stream_objects_map[None] = OpenLABELFrames(frame_objects)
+            stream_objects_map[None] = OpenLABELFrames(
+                frame_objects, seg_type=self.seg_type
+            )
 
         return stream_objects_map
 
@@ -945,13 +994,16 @@ class OpenLABELFramesParser(object):
         for frame_num, objects in self.framewise_objects.items():
             _objects = [objects[i] for i in ids if i in objects]
             if _objects:
-                frame_objects[frame_num] = OpenLABELObjects(_objects)
+                frame_objects[frame_num] = OpenLABELObjects(
+                    _objects, seg_type=self.seg_type
+                )
         return frame_objects
 
 
 class OpenLABELFrames(object):
-    def __init__(self, frame_objects):
+    def __init__(self, frame_objects, seg_type=SegType.INSTANCE):
         self.frame_objects = frame_objects
+        self.seg_type = seg_type
 
     def get_labels(self, frame_size):
         frame_labels = {}
