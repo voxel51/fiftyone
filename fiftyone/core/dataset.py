@@ -2291,6 +2291,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
+        # Clips datasets directly inherit frames from source dataset
         if not self._is_clips:
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
