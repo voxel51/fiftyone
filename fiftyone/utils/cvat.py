@@ -3940,11 +3940,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["chunk_size"] = chunk_size
 
         files = {}
+        open_files = []
 
         if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
             # Video task
             filename = os.path.basename(paths[0])
-            files["client_files[0]"] = (filename, open(paths[0], "rb"))
+            open_file = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, open_file)
+            open_files.append(open_file)
         else:
             # Image task
             for idx, path in enumerate(paths):
@@ -3952,9 +3955,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # by filename, so we must give CVAT filenames whose
                 # alphabetical order matches the order of `paths`
                 filename = "%06d_%s" % (idx, os.path.basename(path))
-                files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+                open_file = open(path, "rb")
+                files["client_files[%d]" % idx] = (filename, open_file)
+                open_files.append(open_file)
 
         self.post(self.task_data_url(task_id), data=data, files=files)
+        for f in open_files:
+            f.close()
 
         # @todo is this loop really needed?
         job_ids = []
