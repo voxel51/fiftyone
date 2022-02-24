@@ -22,20 +22,24 @@ class Resource<T = unknown> {
     return promise;
   }
 
-  get() {
-    if (this.result != null) {
+  get(): T | null {
+    if (this.result !== null) {
       return this.result;
     }
+
+    return null;
   }
 
   read(): T {
-    if (this.result != null) {
+    if (this.result !== null) {
       return this.result;
-    } else if (this.error != null) {
-      throw this.error;
-    } else {
-      throw this.promise;
     }
+
+    if (this.error !== null) {
+      throw this.error;
+    }
+
+    throw this.promise;
   }
 }
 
@@ -44,7 +48,7 @@ export const createResourceGroup = () => {
 
   return <T>(id: string, loader: () => Promise<T>): Resource<T> => {
     let resource = resources.get(id);
-    if (resource == null) {
+    if (resource === null) {
       resource = new Resource<T>(loader);
       resources.set(id, resource);
     }

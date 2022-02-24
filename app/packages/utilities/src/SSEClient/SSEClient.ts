@@ -1,10 +1,10 @@
-export interface SSEClientOptions {
+interface SSEClientOptions {
   headers: HeadersInit;
   data: unknown;
   withCredentials: boolean;
 }
 
-export enum SSEReadyState {
+enum SSEReadyState {
   CONNECTING = 0,
   OPEN = 1,
   CLOSED = 2,
@@ -23,7 +23,7 @@ interface Listeners {
 class SSEClient {
   private readonly options: SSEClientOptions;
   private readonly url: string;
-  private readyState: SSEReadyState = SSEReadyState.CONNECTING;
+  readyState: SSEReadyState = SSEReadyState.CONNECTING;
   private progress: 0;
   private listeners: Listeners = {};
   private chunk: string = "";
@@ -54,7 +54,7 @@ class SSEClient {
       return;
     }
 
-    var filtered = [];
+    const filtered = [];
     this.listeners[type].forEach(function (element) {
       if (element !== listener) {
         filtered.push(element);
@@ -152,7 +152,7 @@ class SSEClient {
       return;
     }
 
-    if (this.readyState == SSEReadyState.CONNECTING) {
+    if (this.readyState === SSEReadyState.CONNECTING) {
       this.dispatchEvent(new CustomEvent("open"));
       this.setReadyState(SSEReadyState.OPEN);
     }

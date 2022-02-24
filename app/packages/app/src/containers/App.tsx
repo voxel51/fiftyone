@@ -1,74 +1,50 @@
-import React, { Suspense, useLayoutEffect } from "react";
-import { RecoilRoot, useRecoilValue } from "recoil";
-import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { ThemeProvider as LegacyTheme } from "styled-components";
+import React, { Suspense } from "react";
+import { atom, RecoilRoot, useRecoilValue } from "recoil";
 
 import TeamsForm from "../components/TeamsForm";
 
 import * as atoms from "../recoil/atoms";
 
-import { useEventHandler, useScreenshot } from "../utils/hooks";
+import { useScreenshot } from "../utils/hooks";
 
 import Dataset from "./Dataset";
 import Setup from "./Setup";
-import { Error, Loading, Theme, useTheme } from "@fiftyone/components";
-import { getFetchHost, SSEClient } from "@fiftyone/utilities";
+import {
+  Loading,
+  withErrorBoundary,
+  withTheme,
+  withUpdates,
+} from "@fiftyone/components";
+import { darkTheme } from "@fiftyone/utilities";
 
-const ErrorPage: React.FC<FallbackProps> = ({
-  error,
-  resetErrorBoundary,
-}: FallbackProps) => {
-  useLayoutEffect(() => {
-    document.getElementById("modal")?.classList.remove("modalon");
-  }, []);
+const Container = withUpdates(
+  withErrorBoundary(
+    withTheme(() => {
+      useScreenshot();
 
-  return (
-    <Error
-      error={error}
-      reset={() => {
-        resetErrorBoundary();
-      }}
-    />
-  );
-};
+      const { open: teamsOpen } = useRecoilValue(atoms.teams);
 
-const eventSource = React.createContext(
-  new SSEClient(`${getFetchHost()}/state`, {})
+      return (
+        <>
+          {true ? (
+            <Suspense fallback={<Loading>Pixelating...</Loading>}>
+              <Dataset />
+            </Suspense>
+          ) : (
+            <Setup />
+          )}
+          {teamsOpen && <TeamsForm />}
+        </>
+      );
+    }, atom({ key: "theme", default: darkTheme }))
+  )
 );
-
-const Container = () => {
-  useScreenshot();
-  const theme = useTheme();
-
-  useEventHandler(eventSource, "update", (...args: any[]) => {
-    console.log(args);
-  });
-
-  const { open: teamsOpen } = useRecoilValue(atoms.teams);
-
-  return (
-    <LegacyTheme theme={theme}>
-      <Theme>
-        {true ? (
-          <Suspense fallback={<Loading>Pixelating...</Loading>}>
-            <Dataset />
-          </Suspense>
-        ) : (
-          <Setup />
-        )}
-        {teamsOpen && <TeamsForm />}
-      </Theme>
-    </LegacyTheme>
-  );
-};
 
 const App = () => {
   return (
-    <ErrorBoundary FallbackComponent={ErrorPage}>
-      <RecoilRoot>
-        <Container />
-      </RecoilRoot>
-    </ErrorBoundary>
+    <RecoilRoot>
+      <Container />
+    </RecoilRoot>
   );
 };
 

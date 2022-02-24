@@ -1,15 +1,14 @@
+import { createResourceGroup, Resource } from "@fiftyone/utilities";
 import { PreloadedQuery } from "react-relay";
 import { OperationType, VariablesOf } from "relay-runtime";
+import { Route } from "..";
 
-import Resource, { createResourceGroup } from "./Resource";
-import { RouteComponent } from "./RouteComponent";
-
-export default interface Route<T extends OperationType = OperationType> {
+export interface RouteDefinition<T extends OperationType = OperationType> {
   path?: string;
   exact?: boolean;
-  component: Resource<RouteComponent<T>>;
+  component: Resource<Route<T>>;
   prepare: (params: VariablesOf<T>) => Resource<PreloadedQuery<T>>;
-  routes?: Route<T>[];
+  routes?: RouteDefinition<T>[];
 }
 
 const queries = createResourceGroup();
@@ -17,15 +16,15 @@ const components = createResourceGroup();
 
 export interface RouteOptions<T extends OperationType> {
   exact?: boolean;
-  routes?: Route<T>[];
+  routes?: RouteDefinition<T>[];
 }
 
-export const makeRoute = <T extends OperationType>(
+export const makeRouteDefinition = <T extends OperationType>(
   path: string,
-  get: () => Promise<RouteComponent<T>>,
+  get: () => Promise<Route<T>>,
   prepare: (params: VariablesOf<T>) => Promise<PreloadedQuery<T>>,
   options: RouteOptions<T>
-): Route<T> => {
+): RouteDefinition<T> => {
   return {
     path,
     prepare: (params: VariablesOf<T>) =>
@@ -34,3 +33,5 @@ export const makeRoute = <T extends OperationType>(
     ...options,
   };
 };
+
+export default RouteDefinition;

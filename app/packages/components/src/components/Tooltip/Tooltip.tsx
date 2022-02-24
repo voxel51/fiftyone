@@ -3,7 +3,6 @@ import { useLayer, useHover, Arrow } from "react-laag";
 import { motion, AnimatePresence } from "framer-motion";
 
 import style from "./Tooltip.module.css";
-import { useTheme } from "..";
 
 const Tooltip = <P extends React.HTMLAttributes<T>, T extends HTMLElement>({
   children,

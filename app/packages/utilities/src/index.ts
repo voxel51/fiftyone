@@ -11,13 +11,15 @@ export {
   getFetchParameters,
   setFetchFunction,
 } from "./fetch";
-export {
-  default as SSEClient,
-  SSEClientOptions,
-  SSEReadyState,
-} from "./SSEClient";
+export * from "./SSEClient";
+export { darkTheme, ColorTheme } from "./theme";
+export * from "./Resource";
 
-export const toCamelCase = (obj: object): object =>
+interface O {
+  [key: string]: O | any;
+}
+
+export const toCamelCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : _.camelCase(key);
 
@@ -26,7 +28,7 @@ export const toCamelCase = (obj: object): object =>
     ] = _.isObject(value) ? toCamelCase(value) : value;
   });
 
-export const toSnakeCase = (obj: object): object =>
+export const toSnakeCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
     const snakeKey = _.isArray(target) ? key : _.snakeCase(key);
 

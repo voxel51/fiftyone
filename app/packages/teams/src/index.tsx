@@ -1,35 +1,31 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { Error, Loading, Theme, useTheme } from "@fiftyone/components";
-import { setFetchFunction } from "@fiftyone/utilities";
-import React, { useEffect, useLayoutEffect } from "react";
+import {
+  Loading,
+  withErrorBoundary,
+  withRelayEnvironment,
+  withTheme,
+} from "@fiftyone/components";
+import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
-import { ErrorBoundary, FallbackProps } from "react-error-boundary";
-import { RelayEnvironmentProvider } from "react-relay/hooks";
-import { RecoilRoot } from "recoil";
-import { ThemeProvider as LegacyTheme } from "styled-components";
+import { atom, RecoilRoot } from "recoil";
 
 import "./index.css";
 
-import RelayEnvironment from "./RelayEnvironment";
 import Login from "./Login";
 import { useState } from "react";
+import routes from "./routes";
 
-const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
-  useLayoutEffect(() => {
-    document.getElementById("modal")?.classList.remove("modalon");
-  }, []);
+const App: React.FC = withRelayEnvironment(
+  withErrorBoundary(
+    withTheme(() => {
+      return <Login />;
+    }, atom({ key: "theme", default: darkTheme }))
+  ),
+  routes
+);
 
-  return (
-    <Error
-      error={error}
-      reset={() => {
-        resetErrorBoundary();
-      }}
-    />
-  );
-};
-
-const Environment = () => {
+const Authenticate = () => {
   const auth0 = useAuth0();
   const redirect = !auth0.isAuthenticated && !auth0.isLoading && !auth0.error;
   const [initialized, setInitialized] = useState(false);
@@ -66,43 +62,25 @@ const Environment = () => {
     return <Loading>Pixelating...</Loading>;
   }
 
-  return (
-    <RelayEnvironmentProvider environment={RelayEnvironment}>
-      <Login />
-    </RelayEnvironmentProvider>
-  );
-};
-
-const App = () => {
-  const theme = useTheme();
-
-  return (
-    <LegacyTheme theme={theme}>
-      <Theme>
-        <Environment />
-      </Theme>
-    </LegacyTheme>
-  );
+  return <App />;
 };
 
 const Root = () => {
   return (
-    <ErrorBoundary FallbackComponent={ErrorPage}>
-      <RecoilRoot>
-        <Auth0Provider
-          audience="api.dev.fiftyone.ai"
-          clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
-          domain="login.dev.fiftyone.ai"
-          organization={"org_wtMMZE61j2gnmxsm"}
-          onRedirectCallback={(state) => {
-            console.log(state);
-            //state.returnTo && window.location.assign(state.returnTo)
-          }}
-        >
-          <App />
-        </Auth0Provider>
-      </RecoilRoot>
-    </ErrorBoundary>
+    <RecoilRoot>
+      <Auth0Provider
+        audience="api.dev.fiftyone.ai"
+        clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
+        domain="login.dev.fiftyone.ai"
+        organization={"org_wtMMZE61j2gnmxsm"}
+        onRedirectCallback={(state) => {
+          console.log(state);
+          //state.returnTo && window.location.assign(state.returnTo)
+        }}
+      >
+        <Authenticate />
+      </Auth0Provider>
+    </RecoilRoot>
   );
 };
 

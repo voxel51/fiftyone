@@ -35,13 +35,17 @@
     "@material-ui/icons": "*",
     "@react-spring/web": "^9.4.3",
     "react": "^17.0.0",
-    "react-dom": "^17.0.0"
+    "react-dom": "^17.0.0",
+    "react-error-boundary": "*",
+    "recoil": "*",
+    "styled-components": "*"
   },
   "dependencies": {
     "classnames": "^2.3.1",
     "framer-motion": "^6.2.7",
     "react-input-autosize": "^3.0.0",
     "react-laag": "^2.0.3",
+    "react-router-config": "^5.1.1",
     "react-use": "^17.3.2"
   }
 }

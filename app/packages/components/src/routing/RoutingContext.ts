@@ -1,22 +1,16 @@
 import { createBrowserHistory } from "history";
-import { useCallback, useEffect } from "react";
 import { PreloadedQuery } from "react-relay";
 import { matchRoutes, RouteConfig } from "react-router-config";
-import { useRecoilValue, selector } from "recoil";
 import { OperationType, VariablesOf } from "relay-runtime";
 
-import { NotFoundError } from "@fiftyone/utilities";
-
-import Resource from "./Resource";
-import Route from "./Route";
-import { RouteComponent } from "./RouteComponent";
-
-import routes from "./routes";
+import { NotFoundError, Resource } from "@fiftyone/utilities";
+import { Route } from "..";
+import RouteDefinition from "./RouteDefinition";
 
 export interface Entry<T extends OperationType = OperationType> {
   pathname: string;
   entries: {
-    component: Resource<RouteComponent<T>>;
+    component: Resource<Route<T>>;
     prepared: Resource<PreloadedQuery<T>>;
     routeData: { params: VariablesOf<T> };
   }[];
@@ -31,7 +25,7 @@ export interface RoutingContext<T extends OperationType = OperationType> {
 }
 
 interface Match<T extends OperationType = OperationType> {
-  route: Route<T>;
+  route: RouteDefinition<T>;
   match: {
     isExact: boolean;
     params: VariablesOf<T>;
@@ -40,12 +34,15 @@ interface Match<T extends OperationType = OperationType> {
   };
 }
 
-interface Router<T extends OperationType> {
+export interface Router<T extends OperationType> {
   cleanup: () => void;
   context: RoutingContext<T>;
 }
 
-export const createRouter = (routes: Route[], options = {}) => {
+export const createRouter = (
+  routes: RouteDefinition[],
+  options = {}
+): Router<any> => {
   const history = createBrowserHistory(options);
 
   const initialMatches = matchRoute(routes, history.location.pathname);
@@ -84,7 +81,7 @@ export const createRouter = (routes: Route[], options = {}) => {
         pathname
       );
       matches.forEach(({ route }) =>
-        ((route as unknown) as Route).component.load()
+        ((route as unknown) as RouteDefinition).component.load()
       );
     },
     preload(pathname) {
@@ -108,7 +105,7 @@ export const createRouter = (routes: Route[], options = {}) => {
 };
 
 const matchRoute = <T extends OperationType>(
-  routes: Route<T>[],
+  routes: RouteDefinition<T>[],
   pathname: string
 ): Match<T>[] => {
   const matchedRoutes = matchRoutes(
@@ -144,36 +141,4 @@ const prepareMatches = (matches: Match[]) => {
       routeData: matchData,
     };
   });
-};
-
-export const router = selector<Router<OperationType>>({
-  key: "router",
-  get: () => createRouter(routes),
-  dangerouslyAllowMutability: true,
-});
-
-export const routingContext = selector<RoutingContext>({
-  key: "routingContext",
-  get: ({ get }) => {
-    return get(router).context;
-  },
-  dangerouslyAllowMutability: true,
-});
-
-export const goTo = (router: RoutingContext, path: string) => {
-  router.history.push(path);
-};
-
-export const useTo = () => {
-  const router = useRecoilValue(routingContext);
-  return {
-    to: useCallback((to: string) => goTo(router, to), [router]),
-    start: useCallback((to: string) => router.preloadCode(to), [router]),
-    query: useCallback((to: string) => router.preload(to), [router]),
-  };
-};
-
-export const useSubscribe = (cb: (entry: Entry<OperationType>) => void) => {
-  const router = useRecoilValue(routingContext);
-  useEffect(() => router.subscribe(cb), [router, cb]);
 };

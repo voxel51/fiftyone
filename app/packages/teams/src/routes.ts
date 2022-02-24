@@ -1,14 +1,16 @@
+import {
+  makeRouteDefinition,
+  RelayEnvironment,
+  RouteDefinition,
+} from "@fiftyone/components";
 import { loadQuery } from "react-relay";
 
-import RelayEnvironment from "../RelayEnvironment";
-import Route, { makeRoute } from "./Route";
-
-const routes: Route<any>[] = [
-  makeRoute(
+const routes: RouteDefinition<any>[] = [
+  makeRouteDefinition(
     "",
-    () => import("../Root").then((result) => result.default),
+    () => import("./Root").then((result) => result.default),
     (params) =>
-      import("../Root/__generated__/RootQuery.graphql").then((query) => {
+      import("./Root/__generated__/RootQuery.graphql").then((query) => {
         return loadQuery(
           RelayEnvironment,
           query.default,
@@ -18,11 +20,11 @@ const routes: Route<any>[] = [
       }),
     {
       routes: [
-        makeRoute(
+        makeRouteDefinition(
           "/",
-          () => import("../Root/Home").then((result) => result.default),
+          () => import("./Root/Home").then((result) => result.default),
           () =>
-            import("../Root/Home/__generated__/HomeQuery.graphql").then(
+            import("./Root/Home/__generated__/HomeQuery.graphql").then(
               (query) => {
                 return loadQuery(
                   RelayEnvironment,
@@ -34,11 +36,11 @@ const routes: Route<any>[] = [
             ),
           { exact: true }
         ),
-        makeRoute(
+        makeRouteDefinition(
           "/datasets/:name",
-          () => import("../Root/Datasets").then((result) => result.default),
+          () => import("./Root/Datasets").then((result) => result.default),
           (params) =>
-            import("../Root/Datasets/__generated__/DatasetQuery.graphql").then(
+            import("./Root/Datasets/__generated__/DatasetQuery.graphql").then(
               (query) => {
                 return loadQuery(
                   RelayEnvironment,

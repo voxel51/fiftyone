@@ -1,9 +1,3 @@
-import React from "react";
-import { atom, useRecoilValue } from "recoil";
-
-import { toSnakeCase } from "@fiftyone/utilities";
-import { useLayoutEffect } from "react";
-
 const white100 = "hsl(0, 0%, 100%)";
 const grey11 = "hsl(210, 11%, 11%)";
 const grey15 = "hsl(210, 11%, 15%)";
@@ -84,34 +78,3 @@ export const darkTheme: ColorTheme = {
 
   error: red,
 };
-
-export const Theme = atom<ColorTheme>({
-  key: "Theme",
-  default: darkTheme,
-});
-
-export const useTheme = () => {
-  return useRecoilValue(Theme);
-};
-
-const useThemeContext = () => {
-  const theme = useTheme();
-
-  useLayoutEffect(() => {
-    const snake = toSnakeCase(theme);
-    for (const key in snake) {
-      document.documentElement.style.setProperty(
-        `--${key.replace(/_/g, "-")}`,
-        snake[key]
-      );
-    }
-  }, [theme]);
-};
-
-const ThemeContext: React.FC = ({ children }) => {
-  useThemeContext();
-
-  return <>{children}</>;
-};
-
-export default ThemeContext;

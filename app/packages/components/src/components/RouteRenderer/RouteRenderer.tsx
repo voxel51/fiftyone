@@ -1,15 +1,14 @@
+import { Resource } from "@fiftyone/utilities";
 import React, { PropsWithChildren, Suspense, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
-import { useRecoilValue } from "recoil";
 import { OperationType, VariablesOf } from "relay-runtime";
 
-import Resource from "./Resource";
-import { RouteComponent } from "./RouteComponent";
-import { routingContext } from "./RoutingContext";
+import { Route } from "..";
+import { RoutingContext } from "../../routing/RoutingContext";
 
 const RouteHandler = <T extends OperationType>(
   props: PropsWithChildren<{
-    component: Resource<RouteComponent<T>>;
+    component: Resource<Route<T>>;
     prepared: Resource<PreloadedQuery<T>>;
     routeData: { params: VariablesOf<T> };
   }>
@@ -27,8 +26,7 @@ const RouteHandler = <T extends OperationType>(
   );
 };
 
-const RouterRenderer: React.FC = () => {
-  const router = useRecoilValue(routingContext);
+const RouterRenderer: React.FC<{ router: RoutingContext }> = ({ router }) => {
   const [routeEntry, setRouteEntry] = useState(router.get());
   useEffect(() => {
     const currentEntry = router.get();
