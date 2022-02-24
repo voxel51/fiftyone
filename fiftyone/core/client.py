@@ -5,23 +5,13 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
-from collections import defaultdict
-import logging
 import requests
 from retrying import retry
 from threading import Thread
 import time
 
 from bson import json_util
-import websockets
-
-
-logging.getLogger("tornado").setLevel(logging.ERROR)
-
-
-# We want one session to lead per namespace and per process
-_leader = defaultdict(lambda: None)
+import sseclient
 
 
 @retry(wait_fixed=500, stop_max_delay=5000)
@@ -31,7 +21,6 @@ def _ping(url):
 
 class HasClient(object):
 
-    _HC_NAMESPACE = None
     _HC_ATTR_NAME = None
     _HC_ATTR_TYPE = None
 
@@ -39,83 +28,32 @@ class HasClient(object):
         self._port = port
         self._address = address or "localhost"
         self._data = None
-        self._client = None
-        self._initial_connection = True
-        self._url = "ws://%s:%d/%s" % (
-            self._address,
-            self._port,
-            self._HC_NAMESPACE,
-        )
+        self._host = f"http://{self._address}:{self._port}"
         self._listeners = {}
 
-        async def connect():
-            try:
-                self._client = websockets.connect(self._url)
-                self._initial_connection = False
-            except:
-                return
+        fiftyone_url = f"{self._host}/fiftyone"
+
+        def run_client() -> None:
+            def subscribe() -> None:
+                response = requests.get(
+                    self._url,
+                    stream=True,
+                    headers={"Accept": "text/event-stream"},
+                )
+                source = sseclient.SSEClient(response)
+                for message in source.events():
+                    self._handle_event(message)
 
             while True:
-                message = await self._client.recv()
-
-                global _leader
-                if _leader[self._url] is None:
-                    _leader[self._url] = self
-
-                if message is None and _leader[self._url] == self:
-                    print("\r\nSession disconnected, trying to reconnect\r\n")
-                    fiftyone_url = "http://%s:%d/fiftyone" % (
-                        self._address,
-                        self._port,
+                try:
+                    _ping(fiftyone_url)
+                    subscribe()
+                except:
+                    print(
+                        "\r\nCould not connect session, trying again "
+                        "in 10 seconds\r\n"
                     )
-
-                    self._client = None
-                    while not self._client:
-                        try:
-                            _ping(fiftyone_url)
-                            self._client = await websockets.connect(self._url)
-                        except:
-                            print(
-                                "\r\nCould not connect session, trying again "
-                                "in 10 seconds\r\n"
-                            )
-                            time.sleep(10)
-
-                    if message is None and _leader[self._url] == self:
-                        print("\r\nSession reconnected\r\n")
-
-                    continue
-
-                message = json_util.loads(message)
-                event = message.pop("type")
-
-                if event == "update":
-                    config = None
-                    if self._data:
-                        message["state"][
-                            "config"
-                        ] = self._data.config.serialize()
-                        config = self._data.config
-
-                    self._data = self._HC_ATTR_TYPE.from_dict(
-                        message["state"], with_config=config
-                    )
-                    self._update_listeners()
-
-                if event == "capture":
-                    self.on_capture(message)
-
-                if event == "reactivate":
-                    self.on_reactivate(message)
-
-                if event == "reload":
-                    self.on_reload()
-
-                if event == "close":
-                    self.on_close()
-
-        def run_client():
-            asyncio.run(connect)
+                    time.sleep(10)
 
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
@@ -144,23 +82,12 @@ class HasClient(object):
                     % (self._HC_ATTR_TYPE, type(value))
                 )
 
-            if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session is not connected")
-
-            while self._data is None:
-                time.sleep(0.2)
-
             self._data = value
             self._update_listeners()
 
-            self._client.send(
-                json_util.dumps({"type": "update", "state": value.serialize()})
-            )
+            self._post({"state": value.serialize()})
         else:
             super().__setattr__(name, value)
-
-    def __del__(self):
-        _leader[self._url] = None
 
     def on_capture(self, data):
         self._capture(data)
@@ -179,15 +106,6 @@ class HasClient(object):
 
     def _reactivate(self, data):
         raise NotImplementedError("subclasses must implement _reactivate()")
-
-    def on_reload(self):
-        if not _is_leader(self):
-            return
-
-        self._reload()
-
-    def _reload(self):
-        raise NotImplementedError("subclasses must implement _reload()")
 
     @property
     def has_listeners(self):
@@ -212,10 +130,29 @@ class HasClient(object):
         for callback in self._listeners.values():
             callback(self)
 
+    def _handle_event(self, message):
+        message = json_util.loads(message)
+        event = message.pop("event")
 
-def _is_leader(client):
-    global _leader
-    if _leader[client._url] is None:
-        _leader[client._url] = client
+        if event == "update":
+            config = None
+            if self._data:
+                message["state"]["config"] = self._data.config.serialize()
+                config = self._data.config
 
-    return _leader[client._url] == client
+            self._data = self._HC_ATTR_TYPE.from_dict(
+                message["state"], with_config=config
+            )
+            self._update_listeners()
+
+        if event == "capture":
+            self.on_capture(message)
+
+        if event == "reactivate":
+            self.on_reactivate(message)
+
+        if event == "close":
+            self.on_close()
+
+    def _post(self, data):
+        requests.post(f"{self._host}/update", data=data)

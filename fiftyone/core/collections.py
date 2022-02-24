@@ -7899,7 +7899,7 @@ def _parse_field_name(
 
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
 
-    field = sample_collection.get_field(field_name)
+    field = sample_collection.get_field(prefix + field_name)
     # Validate root field, if requested
     if (
         not allow_missing

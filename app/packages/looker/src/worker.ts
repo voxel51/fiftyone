@@ -473,12 +473,13 @@ const UPDATE_LABEL = {
 
 interface Init {
   headers: HeadersInit;
+  host: string;
 }
 
 type InitMethod = Init & ReaderMethod;
 
-const init = ({ headers }: Init) => {
-  setFetchFunction(headers);
+const init = ({ host, headers }: Init) => {
+  setFetchFunction(host, headers);
 };
 
 type Method =

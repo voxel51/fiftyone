@@ -5,6 +5,7 @@ FiftyOne Server state
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import dataclass
 import typing as t
 
 import asyncio
@@ -14,8 +15,15 @@ from starlette.websockets import WebSocket
 import fiftyone.core.state as fos
 
 
+@dataclass
+class Event:
+    event: str
+    data: dict
+
+
 _listeners: t.Dict[
-    t.Union[Request, WebSocket], asyncio.Queue[fos.StateDescription]
+    t.Union[Request, WebSocket],
+    asyncio.Queue[t.Union[fos.StateDescription, Event]],
 ] = {}
 _state = fos.StateDescription()
 
@@ -43,17 +51,6 @@ def set_state(
         events.append(event)
 
     asyncio.gather(*events)
-
-
-async def subscribe(
-    websocket: WebSocket, callback: t.Callable[[], None]
-) -> t.Callable[[], None]:
-    _listeners[websocket] = callback
-
-    def cleanup():
-        _listeners.pop(websocket)
-
-    return cleanup
 
 
 async def listen(request: Request,) -> t.AsyncIterator[fos.StateDescription]:

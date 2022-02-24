@@ -1937,8 +1937,9 @@ __metadata:
     "@material-ui/icons": ^4.9.1
     "@react-spring/web": ^9.4.3
     "@types/mime": ^2.0.3
-    "@types/react": ^17.0.0
-    "@types/react-dom": ^17.0.0
+    "@types/react": ^17.0.39
+    "@types/react-dom": ^17.0.11
+    "@types/styled-components": ^5.1.23
     "@use-gesture/react": 10.1.1
     "@vitejs/plugin-react-refresh": ^1.3.3
     "@xstate/react": 1.3.3
@@ -1950,8 +1951,8 @@ __metadata:
     numeral: ^2.0.6
     prettier: 2.2.1
     re-resizable: ^6.8.0
-    react: ^17.0.2
-    react-dom: ^17.0.2
+    react: beta
+    react-dom: beta
     react-error-boundary: ^3.1.4
     react-ga: ^3.1.2
     react-hotkeys: ^2.0.0
@@ -1964,7 +1965,7 @@ __metadata:
     recoil: ^0.6.1
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
-    styled-components: ^5.1.1
+    styled-components: ^5.3.3
     typescript: ^4.5.5
     uuid: ^8.3.2
     vite: 2.4.2
@@ -2534,6 +2535,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/hoist-non-react-statics@npm:*":
+  version: 3.3.1
+  resolution: "@types/hoist-non-react-statics@npm:3.3.1"
+  dependencies:
+    "@types/react": "*"
+    hoist-non-react-statics: ^3.3.0
+  checksum: 2c0778570d9a01d05afabc781b32163f28409bb98f7245c38d5eaf082416fdb73034003f5825eb5e21313044e8d2d9e1f3fe2831e345d3d1b1d20bcd12270719
+  languageName: node
+  linkType: hard
+
 "@types/js-cookie@npm:^2.2.6":
   version: 2.2.7
   resolution: "@types/js-cookie@npm:2.2.7"
@@ -2609,15 +2620,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^17.0.0":
-  version: 17.0.9
-  resolution: "@types/react-dom@npm:17.0.9"
-  dependencies:
-    "@types/react": "*"
-  checksum: b7e898e1a22643a371f58e801a3d1d8cf13a82d77063c24be73e840ef8d877ca1d04adc5db168d0dac3167dc050a26b1d70efc5fe8566a7f46a3c488a8322989
-  languageName: node
-  linkType: hard
-
 "@types/react-dom@npm:^17.0.11":
   version: 17.0.11
   resolution: "@types/react-dom@npm:17.0.11"
@@ -2676,7 +2678,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:*, @types/react@npm:^17.0.0":
+"@types/react@npm:*":
   version: 17.0.14
   resolution: "@types/react@npm:17.0.14"
   dependencies:
@@ -2735,6 +2737,17 @@ __metadata:
   version: 0.16.2
   resolution: "@types/scheduler@npm:0.16.2"
   checksum: b6b4dcfeae6deba2e06a70941860fb1435730576d3689225a421280b7742318d1548b3d22c1f66ab68e414f346a9542f29240bc955b6332c5b11e561077583bc
+  languageName: node
+  linkType: hard
+
+"@types/styled-components@npm:^5.1.23":
+  version: 5.1.23
+  resolution: "@types/styled-components@npm:5.1.23"
+  dependencies:
+    "@types/hoist-non-react-statics": "*"
+    "@types/react": "*"
+    csstype: ^3.0.2
+  checksum: 78bc52c70df3964cb3826bdc7f2aa298b610971b63f1e015184f425236219b97d8efaf665603960388763686335e2d8b981e4ee3d87f0e3e3781bad35b0a646a
   languageName: node
   linkType: hard
 
@@ -5397,7 +5410,7 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.2":
+"hoist-non-react-statics@npm:^3.0.0, hoist-non-react-statics@npm:^3.1.0, hoist-non-react-statics@npm:^3.3.0, hoist-non-react-statics@npm:^3.3.2":
   version: 3.3.2
   resolution: "hoist-non-react-statics@npm:3.3.2"
   dependencies:
@@ -7372,6 +7385,19 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
+"react-dom@npm:beta":
+  version: 18.0.0-beta-24dd07bd2-20211208
+  resolution: "react-dom@npm:18.0.0-beta-24dd07bd2-20211208"
+  dependencies:
+    loose-envify: ^1.1.0
+    object-assign: ^4.1.1
+    scheduler: 0.21.0-beta-24dd07bd2-20211208
+  peerDependencies:
+    react: 18.0.0-beta-24dd07bd2-20211208
+  checksum: 03d03c13ba16627b020d3351148186d7f118442978f5aa70bd5da50cfdce5acbabc5db12b4104a250cae451354750451b5d19f98c1067dc96e0273202525109d
+  languageName: node
+  linkType: hard
+
 "react-error-boundary@npm:^3.1.4":
   version: 3.1.4
   resolution: "react-error-boundary@npm:3.1.4"
@@ -7639,6 +7665,16 @@ fsevents@~2.3.2:
     loose-envify: ^1.1.0
     object-assign: ^4.1.1
   checksum: b254cc17ce3011788330f7bbf383ab653c6848902d7936a87b09d835d091e3f295f7e9dd1597c6daac5dc80f90e778c8230218ba8ad599f74adcc11e33b9d61b
+  languageName: node
+  linkType: hard
+
+"react@npm:beta":
+  version: 18.0.0-beta-24dd07bd2-20211208
+  resolution: "react@npm:18.0.0-beta-24dd07bd2-20211208"
+  dependencies:
+    loose-envify: ^1.1.0
+    object-assign: ^4.1.1
+  checksum: f3ed859eea5139ef96d4e15abbb451f0546ac6f8deb00e11bbb0824313c87b00e397dca26f9344bfbb44bb02bdb4b4de7bb374ea334401ab3cbe05c1de93de3b
   languageName: node
   linkType: hard
 
@@ -8102,6 +8138,16 @@ fsevents@~2.3.2:
   version: 1.2.4
   resolution: "sax@npm:1.2.4"
   checksum: d3df7d32b897a2c2f28e941f732c71ba90e27c24f62ee918bd4d9a8cfb3553f2f81e5493c7f0be94a11c1911b643a9108f231dd6f60df3fa9586b5d2e3e9e1fe
+  languageName: node
+  linkType: hard
+
+"scheduler@npm:0.21.0-beta-24dd07bd2-20211208":
+  version: 0.21.0-beta-24dd07bd2-20211208
+  resolution: "scheduler@npm:0.21.0-beta-24dd07bd2-20211208"
+  dependencies:
+    loose-envify: ^1.1.0
+    object-assign: ^4.1.1
+  checksum: 4ba375d51ff5ec7ab0bd4e6d357bc4f13b65706e63729eae22d1174424bfcc799ecaf7c498815896cd4d93a4b2b81626616b1ea302685f3e24dad890c6108fb5
   languageName: node
   linkType: hard
 
@@ -8577,9 +8623,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"styled-components@npm:^5.1.1":
-  version: 5.3.0
-  resolution: "styled-components@npm:5.3.0"
+"styled-components@npm:^5.3.3":
+  version: 5.3.3
+  resolution: "styled-components@npm:5.3.3"
   dependencies:
     "@babel/helper-module-imports": ^7.0.0
     "@babel/traverse": ^7.4.5
@@ -8595,7 +8641,7 @@ fsevents@~2.3.2:
     react: ">= 16.8.0"
     react-dom: ">= 16.8.0"
     react-is: ">= 16.8.0"
-  checksum: 19792fc00da531a083963c3679429dc739e03cb1ca7af2adf0317b25fcaf23655b8f37f8595a210be26003aa5a143003c6dc66ef80c545da85447277a4985bd1
+  checksum: a104341068fc39fa2c73950a34970d832dc7a511fc52b3df12f34e6746031f1f128f53b4d540bf39d9f0da043cf0d91517faf874d2c87de5e385f5c2e7620436
   languageName: node
   linkType: hard
 

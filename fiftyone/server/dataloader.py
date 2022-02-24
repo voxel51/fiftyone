@@ -1,5 +1,5 @@
 """
-FiftyOne Teams dataloader.
+FiftyOne Server dataloader
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -13,7 +13,7 @@ import motor as mtr
 import motor.motor_tornado as mtrt
 from strawberry.dataloader import DataLoader
 
-from .utils import Info, HasCollectionType
+from fiftyone.server.dataclasses import Info, HasCollectionType
 
 
 @dataclass

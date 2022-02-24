@@ -1,83 +1,62 @@
-import React, { useState, useRef, Suspense } from "react";
-import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
-import { ErrorBoundary, useErrorHandler } from "react-error-boundary";
+import React, { Suspense, useLayoutEffect } from "react";
+import { RecoilRoot, useRecoilValue } from "recoil";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
+import { ThemeProvider as LegacyTheme } from "styled-components";
 
-import Header from "../components/Header";
 import TeamsForm from "../components/TeamsForm";
 
 import * as atoms from "../recoil/atoms";
-import { useClearModal } from "../recoil/utils";
-import socket, { handleId, isNotebook } from "../shared/connection";
-import {
-  useEventHandler,
-  useMessageHandler,
-  useScreenshot,
-  useSendMessage,
-  useUnprocessedStateUpdate,
-} from "../utils/hooks";
+
+import { useScreenshot } from "../utils/hooks";
 
 import Dataset from "./Dataset";
-import ErrorPage from "./Error";
-import Loading from "../components/Loading";
 import Setup from "./Setup";
+import { Error, Loading, Theme, useTheme } from "@fiftyone/components";
 
-const useClose = () => {
-  const clearModal = useClearModal();
-  return useRecoilTransaction_UNSTABLE(
-    ({ reset, set }) => async () => {
-      clearModal();
-      set(atoms.connected, false);
-      reset(atoms.stateDescription);
-    },
-    []
+const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
+  useLayoutEffect(() => {
+    document.getElementById("modal")?.classList.remove("modalon");
+  }, []);
+
+  return (
+    <Error
+      error={error}
+      reset={() => {
+        resetErrorBoundary();
+      }}
+    />
   );
 };
 
 const Container = () => {
-  const addNotification = useRef(null);
-  const connected = useRecoilValue(atoms.connected);
-
-  useEventHandler(socket, "close", useClose());
-  useMessageHandler("update", useUnprocessedStateUpdate());
   useScreenshot();
 
-  useSendMessage("as_app", {
-    notebook: isNotebook,
-    handle: handleId,
-  });
+  const theme = useTheme();
 
-  const handleError = useErrorHandler();
-
-  useMessageHandler("error", (data) => {
-    handleError(data);
-  });
   const { open: teamsOpen } = useRecoilValue(atoms.teams);
 
   return (
-    <>
-      <Header addNotification={addNotification} />
-      {connected ? (
-        <Suspense fallback={<Loading text={"Loading..."} />}>
-          <Dataset />
-        </Suspense>
-      ) : (
-        <Setup />
-      )}
-      {teamsOpen && <TeamsForm />}
-    </>
+    <LegacyTheme theme={theme}>
+      <Theme>
+        {true ? (
+          <Suspense fallback={<Loading>Pixelating...</Loading>}>
+            <Dataset />
+          </Suspense>
+        ) : (
+          <Setup />
+        )}
+        {teamsOpen && <TeamsForm />}
+      </Theme>
+    </LegacyTheme>
   );
 };
 
 const App = () => {
-  const [reset, setReset] = useState(false);
-
   return (
-    <ErrorBoundary
-      FallbackComponent={ErrorPage}
-      onReset={() => setReset(true)}
-      resetKeys={[reset]}
-    >
-      <Container />
+    <ErrorBoundary FallbackComponent={ErrorPage}>
+      <RecoilRoot>
+        <Container />
+      </RecoilRoot>
     </ErrorBoundary>
   );
 };

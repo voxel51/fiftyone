@@ -29,17 +29,6 @@ import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
 
-const useReset = () => {
-  return useRecoilTransaction_UNSTABLE(
-    ({ reset }) => () => {
-      reset(atoms.stateDescription);
-      reset(filterAtoms.filters);
-      reset(filterAtoms.modalFilters);
-    },
-    []
-  );
-};
-
 export const useRefresh = () => {
   const updateState = useStateUpdate();
   return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
@@ -68,29 +57,6 @@ export const useEventHandler = (
       target && target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
-};
-
-export const useMessageHandler = (type, handler) => {
-  const wrapper = useCallback(
-    ({ data }) => {
-      data = JSON.parse(data);
-      data.type === type && handler(data);
-    },
-    [type, handler]
-  );
-  useEventHandler(socket, "message", wrapper);
-};
-
-export const useSendMessage = (type, data, guard = null, deps = []) => {
-  useEffect(() => {
-    !guard &&
-      socket.send(
-        JSON.stringify({
-          ...data,
-          type,
-        })
-      );
-  }, [guard, ...deps]);
 };
 
 export const useObserve = (target, handler) => {
@@ -323,16 +289,17 @@ export const useScreenshot = () => {
           "*"
         );
       }
+      /*
       socket.send(
         packageMessage("capture", {
           src: imgData,
           width: canvas.width,
         })
-      );
+      );*/
     });
   }, []);
 
-  useMessageHandler("deactivate", () => {
+  /*useMessageHandler("deactivate", () => {
     fitSVGs();
     let chain = Promise.resolve(null);
     if (isVideoDataset) {
@@ -343,7 +310,7 @@ export const useScreenshot = () => {
     } else {
       chain.then(capture);
     }
-  });
+  });*/
 };
 
 export const useTheme = (): ColorTheme => {

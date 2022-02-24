@@ -1,5 +1,5 @@
 """
-FiftyOne Server JIT metadata utilities.
+FiftyOne Server JIT metadata utilities
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -393,6 +393,6 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass

@@ -1,12 +1,7 @@
-import React, { Fragment } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import Root from "./containers/Root";
+import App from "./containers/App";
 
-document.addEventListener("DOMContentLoaded", () =>
-  ReactDOM.render(
-    <Fragment>
-      <Root />
-    </Fragment>,
-    document.getElementById("root")
-  )
-);
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

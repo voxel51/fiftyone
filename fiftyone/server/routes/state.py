@@ -5,12 +5,13 @@ FiftyOne Server /state route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from sse_starlette.sse import EventSourceResponse
-
 
 from fiftyone.server.state import listen
 
 
-async def state(request: Request):
-    return EventSourceResponse(listen(request))
+class State(HTTPEndpoint):
+    async def get(self, request: Request):
+        return EventSourceResponse(listen(request))

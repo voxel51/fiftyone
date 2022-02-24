@@ -6,7 +6,7 @@ import ReactDOM from "react-dom";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { RelayEnvironmentProvider } from "react-relay/hooks";
 import { RecoilRoot } from "recoil";
-import { ThemeProvider as LegacyThemeContext } from "styled-components";
+import { ThemeProvider as LegacyTheme } from "styled-components";
 
 import "./index.css";
 
@@ -15,6 +15,10 @@ import Login from "./Login";
 import { useState } from "react";
 
 const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
+  useLayoutEffect(() => {
+    document.getElementById("modal")?.classList.remove("modalon");
+  }, []);
+
   return (
     <Error
       error={error}
@@ -73,45 +77,35 @@ const App = () => {
   const theme = useTheme();
 
   return (
-    <LegacyThemeContext theme={theme}>
+    <LegacyTheme theme={theme}>
       <Theme>
         <Environment />
       </Theme>
-    </LegacyThemeContext>
+    </LegacyTheme>
   );
-};
-
-const ErrorWrapper: React.FC<FallbackProps> = (props) => {
-  useLayoutEffect(() => {
-    document.getElementById("modal")?.classList.remove("modalon");
-  }, []);
-
-  return <ErrorPage {...props} />;
 };
 
 const Root = () => {
   return (
-    <ErrorBoundary FallbackComponent={ErrorWrapper}>
+    <ErrorBoundary FallbackComponent={ErrorPage}>
       <RecoilRoot>
-        <ErrorBoundary FallbackComponent={ErrorWrapper}>
-          <Auth0Provider
-            audience="api.dev.fiftyone.ai"
-            clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
-            domain="login.dev.fiftyone.ai"
-            organization={"org_wtMMZE61j2gnmxsm"}
-            onRedirectCallback={(state) => {
-              console.log(state);
-              //state.returnTo && window.location.assign(state.returnTo)
-            }}
-          >
-            <App />
-          </Auth0Provider>
-        </ErrorBoundary>
+        <Auth0Provider
+          audience="api.dev.fiftyone.ai"
+          clientId="pJWJhgTswZu2rF0OUOdEC5QZdNtqsUIE"
+          domain="login.dev.fiftyone.ai"
+          organization={"org_wtMMZE61j2gnmxsm"}
+          onRedirectCallback={(state) => {
+            console.log(state);
+            //state.returnTo && window.location.assign(state.returnTo)
+          }}
+        >
+          <App />
+        </Auth0Provider>
       </RecoilRoot>
     </ErrorBoundary>
   );
 };
 
-document.addEventListener("DOMContentLoaded", () => {
-  ReactDOM.render(<Root />, document.getElementById("root"));
-});
+document.addEventListener("DOMContentLoaded", () =>
+  ReactDOM.render(<Root />, document.getElementById("root"))
+);

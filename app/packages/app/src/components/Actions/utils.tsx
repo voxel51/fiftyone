@@ -2,20 +2,13 @@ import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
-import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
-import { request } from "../../utils/socket";
-import {
-  datasetName,
-  hiddenLabelsArray,
-  selectedLabels,
-} from "../../recoil/selectors";
-import { http } from "../../shared/connection";
+import { datasetName, hiddenLabelsArray } from "../../recoil/selectors";
 import { view } from "../../recoil/view";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
@@ -89,8 +82,6 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
     };
   },
 });
-
-const url = `${http}/tags`;
 
 export const tagStatistics = selectorFamily<
   {

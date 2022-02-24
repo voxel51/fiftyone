@@ -1,19 +1,20 @@
+.scrollable {
+  scrollbar-color: var(--font-darkest) var(--background);
+
+  scrollbar-gutter: stable;
+
+  scrollbar-width: auto;
+  @-moz-document url-prefix() {
+    padding-right: 16px;
+  }
+}
+
 .scrollable::-webkit-scrollbar {
   width: 16px;
 }
 
-scrollbar-color: var(--font-darkest) var(--background);
-
-scrollbar-gutter: stable;
-
-scrollbar-width: auto;
-
 .scrollable::-webkit-scrollbar-track {
   border: solid 4px transparent var(--font-darkest);
-}
-
-@-moz-document url-prefix() {
-  padding-right: 16px;
 }
 
 .scrollable::-webkit-scrollbar-thumb {

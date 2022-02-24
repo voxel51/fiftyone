@@ -7,7 +7,8 @@ FiftyOne Teams schema.
 """
 import strawberry as gql
 
-from .extensions import EndSession
+from fiftyone.server.extensions import EndSession
+
 from .mutation import Mutation
 from .query import Query
 

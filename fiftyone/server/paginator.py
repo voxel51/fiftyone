@@ -1,5 +1,5 @@
 """
-FiftyOne Teams paginator.
+FiftyOne Server paginator
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,7 +16,7 @@ from strawberry.arguments import UNSET
 
 import fiftyone.core.odm as foo
 
-from .utils import Info, HasCollectionType
+from fiftyone.server.dataclasses import Info, HasCollectionType
 
 
 @gql.type

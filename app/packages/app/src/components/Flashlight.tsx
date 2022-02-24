@@ -37,7 +37,6 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
