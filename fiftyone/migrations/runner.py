@@ -35,7 +35,7 @@ def get_database_revision():
     Returns:
         the database revision string
     """
-    config = _get_database_config()
+    config = foo.get_db_config()
     return config.version
 
 
@@ -91,11 +91,18 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if destination is None:
         destination = foc.VERSION
 
-    config = _get_database_config()
+    config = foo.get_db_config()
 
     head = config.version
     if head is None:
-        head = "0.0"  # < v0.7.1
+        #
+        # The database version was moved in v0.15.0, so if no version is
+        # available, assume the database is at the preceeding release.
+        #
+        # It's okay if the database's version is actually older, because there
+        # are no significant admin migrations prior to v0.14.4
+        #
+        head = "0.14.4"
 
     if head == destination:
         return
@@ -106,13 +113,8 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             logger.info("Migrating database to v%s", destination)
             runner.run_admin(verbose=verbose)
 
-    config_path = _get_database_config_path()
-    if Version(destination) >= Version("0.7.1"):
-        config.version = destination
-        config.write_json(config_path)
-    elif os.path.isfile(config_path):
-        # Old version of FiftyOne that didn't have DB config files
-        os.remove(config_path)
+    config.version = destination
+    config.save()
 
 
 def needs_migration(name=None, head=None, destination=None):
@@ -135,7 +137,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = get_dataset_revision(name)
 
     if head is None:
-        head = "0.0"  # < v0.6.2
+        head = "0.0"  # < 0.6.2
 
     if destination is None:
         destination = foc.VERSION
@@ -165,7 +167,7 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
 
     head = get_dataset_revision(name)
     if head is None:
-        head = "0.0"  # < v0.6.2
+        head = "0.0"  # < 0.6.2
 
     if head == destination:
         return
@@ -320,20 +322,6 @@ class DatabaseConfig(etas.Serializable):
 def _database_exists():
     client = foo.get_db_client()
     return foc.DEFAULT_DATABASE in client.list_database_names()
-
-
-def _get_database_config():
-    try:
-        config_path = _get_database_config_path()
-        config = DatabaseConfig.from_json(config_path)
-    except FileNotFoundError:
-        config = DatabaseConfig()
-
-    return config
-
-
-def _get_database_config_path():
-    return os.path.join(fo.config.database_dir, "config.json")
 
 
 def _get_revisions_to_run(head, dest, revisions):
