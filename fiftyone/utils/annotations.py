@@ -2284,10 +2284,19 @@ def _to_video_labels(sample, label_fields=None):
     else:
         frame_label_fields = None
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        metadata = sample.metadata
+        if metadata is None:
+            metadata = fom.VideoMetadata.build_for(sample.filepath)
+
+        support = [1, metadata.total_frame_count]
+
     label = _get_sample_labels(sample, label_fields)
     frames = _get_frame_labels(sample, frame_label_fields)
 
-    return foue.to_video_labels(label=label, frames=frames)
+    return foue.to_video_labels(label=label, frames=frames, support=support)
 
 
 def _get_sample_labels(sample, label_fields):
