@@ -216,11 +216,17 @@ format when reading the dataset from disk.
     | :ref:`ImageSegmentationDirectory <ImageSegmentationDirectory-import>`                 | A labeled dataset consisting of images and their associated semantic segmentations |
     |                                                                                       | stored as images on disk.                                                          |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`CVATImageDataset <CVATImageDataset-import>`                                     | A labeled dataset consisting of images and their associated object detections      |
+    | :ref:`CVATImageDataset <CVATImageDataset-import>`                                     | A labeled dataset consisting of images and their associated multitask labels       |
     |                                                                                       | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`CVATVideoDataset <CVATVideoDataset-import>`                                     | A labeled dataset consisting of videos and their associated object detections      |
+    | :ref:`CVATVideoDataset <CVATVideoDataset-import>`                                     | A labeled dataset consisting of videos and their associated multitask labels       |
     |                                                                                       | stored in `CVAT video format <https://github.com/opencv/cvat>`_.                   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`OpenLABELImageDataset <OpenLABELImageDataset-import>`                           | A labeled dataset consisting of images and their associated multitask labels       |
+    |                                                                                       | stored in `OpenLABEL format <https://www.asam.net/standards/detail/openlabel/>`_.  |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`OpenLABELVideoDataset <OpenLABELVideoDataset-import>`                           | A labeled dataset consisting of videos and their associated multitask labels       |
+    |                                                                                       | stored in `OpenLABEL format <https://www.asam.net/standards/detail/openlabel/>`_.  |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | stored in `ETA ImageLabels format \                                                |
@@ -3095,6 +3101,279 @@ directory containing the corresponding media files by providing the
             --kwargs \
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
+
+
+.. _OpenLABELImageDataset-import:
+
+OpenLABELImageDataset
+---------------------
+
+The :class:`fiftyone.types.OpenLABELImageDataset <fiftyone.types.dataset_types.OpenLABELImageDataset>`
+type represents a labeled dataset consisting of images and their associated
+multitask predictions stored in
+`OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
+
+
+Datasets of this type are read in the following formats:
+
+
+One label file per image:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.json
+            <uuid2>.json
+            ...
+
+
+One label file for all images. Image filepaths are stored in labels as streams:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels.json
+
+
+Multiple label files, each corresponding to one or more images. Image filepaths
+are stored in labels as streams:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <label_uuid1>.json
+            <label_uuid2>.json
+            ...
+
+
+Labels are stored in one or more JSON files and can follow a variety of
+formats. In general following the format:
+
+.. code-block:: text
+
+    {
+        "openlabel": {
+            "metadata": {
+                "schema_version":"1.0.0",
+                "uri":"/path/to/image.ext",
+            },
+            "objects": {
+                "object_uuid1": {
+                    "name": "instance1",
+                    "type": "label1",
+                    "object_data": {
+                        "bbox": [
+                            {
+                                "name": "shape",
+                                "val": [
+                                    center-x,
+                                    center-y,
+                                    width,
+                                    height
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "object_uuid2": {
+                    "name": "instance1",
+                    "type": "label2",
+                    "object_data": {}, # Defined in frames
+                }
+            },
+            "frames": {
+                "0":{
+                   "frame_properties":{
+                      "streams":{
+                         "Camera1":{
+                            "uri":"image1.ext"
+                         }
+                      }
+                   },
+                   "objects":{
+                      "object_uuid2":{
+                         "object_data":{
+                            "poly2d":[
+                               {
+                                  "attributes":{
+                                     "boolean":[
+                                        {
+                                           "name":"is_hole",
+                                           "val": false
+                                        }
+                                     ],
+                                     "text":[
+                                        { # If not provided otherwise
+                                           "name": "stream",
+                                           "val": "Camera1"
+                                        }
+                                     ]
+                                  },
+                                  "closed": true,
+                                  "mode": "MODE_POLY2D_ABSOLUTE",
+                                  "name": "polygon_name",
+                                  "stream": "Camera1", # If not in "attributes"
+                                  "val": [
+                                     point1-x,
+                                     point1-y,
+                                     point2-x,
+                                     point2-y,
+                                     ...
+                                  ]
+                               }
+                            ]
+                         }
+                      }
+                  }
+               }
+            },
+            "streams": {
+               "Camera1": {
+                  "description": "",
+                  "stream_properties": {
+                     "height": 480,
+                     "width": 640
+                  },
+                  "type": "camera"
+               }
+            },
+            "ontologies": {NOT PARSED},
+            "relations": {NOT PARSED},
+            "resources": {NOT PARSED},
+            "tags": {NOT PARSED}
+        }
+    }
+
+
+For image datasets, all object information stored in frames is applied to the
+label's corresponding image.
+
+.. note::
+
+    See :class:`OpenLABELImageDatasetImporter <fiftyone.utils.openlabel.OpenLABELImageDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a CVAT image dataset stored in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        dataset_dir = "/path/to/openlabel-image-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir=dataset_dir,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATASET_DIR=/path/to/openlabel-image-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.OpenLABELImageDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a OpenLABEL image dataset stored in the above format in the FiftyOne
+    App without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/openlabel-image-dataset
+
+        # View the dataset in the App
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.OpenLABELImageDataset
+
+You can also independently specify the locations of the labels and the root
+directory containing the corresponding media files by providing the
+`labels_path` and `data_path` parameters rather than `dataset_dir`:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        data_path = "/path/to/images"
+        labels_path = "/path/to/openlabel-labels.json"
+        # OR a directory of files
+        labels_path = "/path/to/openlabel-labels"
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.OpenLABELImageDataset,
+            data_path=data_path,
+            labels_path=labels_path,
+            name=name,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        DATA_PATH=/path/to/images
+        LABELS_PATH=/path/to/openlabel-labels.json
+        # OR a directory of files
+        LABELS_PATH=/path/to/openlabel-labels
+
+        # Import dataset by explicitly providing paths to the source media and labels
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.OpenLABELImageDataset \
+            --kwargs \
+                data_path=$DATA_PATH \
+                labels_path=$LABELS_PATH
+
+
 
 .. _FiftyOneImageLabelsDataset-import:
 

@@ -26,6 +26,14 @@ import fiftyone.utils.labels as foul
 logger = logging.getLogger(__name__)
 
 
+class SegType(enum.Enum):
+    """The FiftyOne label type to load segmentations into"""
+
+    INSTANCE = 1
+    POLYLINE = 2
+    SEMANTIC = 3
+
+
 class OpenLABELImageDatasetImporter(
     foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
 ):
@@ -553,14 +561,14 @@ class OpenLABELAnnotations(object):
                     )
 
     def get_objects(self, uri):
-        """Get the `OpenLABELObjects` or `OpenLABELFrames` corresponding to a
+        """Get the :class:`OpenLABELObjects` or :class:`OpenLABELFrames` corresponding to a
         given uri.
 
         Args:
             uri: the uri of the media for which to get objects
 
         Returns:
-            the `OpenLABELObjects` or `OpenLABELFrames` corresponding to the
+            the :class:`OpenLABELObjects` or :class:`OpenLABELFrames` corresponding to the
             given uri
         """
         if self.is_video:
@@ -569,13 +577,13 @@ class OpenLABELAnnotations(object):
             return self.objects.get(uri, OpenLABELObjects([]))
 
     def get_stream(self, uri):
-        """Get the `OpenLABELStream` corresponding to a given uri.
+        """Get the :class:`OpenLABELStream` corresponding to a given uri.
 
         Args:
             uri: the uri of the media for which to get the stream
 
         Returns:
-            the `OpenLABELStream` corresponding to the given uri
+            the :class:`OpenLABELStream` corresponding to the given uri
         """
         if uri not in self.uri_to_streams:
             return OpenLABELStream(uri=uri)
@@ -586,7 +594,9 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELParser(object):
-    """An interface for OpenLABEL frame or object parsers."""
+    """An interface for :class:`OpenLABELFramesParser` or
+    :class:`OpenLABELObjectsParser`.
+    """
 
     def __init__(self):
         self.stream_to_id_map = defaultdict(list)
@@ -636,7 +646,7 @@ class OpenLABELParser(object):
 
 
 class OpenLABELObjectsParser(OpenLABELParser):
-    """Parses and collects OpenLABEL objects from object dictionaries"""
+    """Parses and collects :class:`OpenLABELObjects` from object dictionaries"""
 
     def __init__(self):
         super().__init__()
@@ -662,10 +672,10 @@ class OpenLABELObjectsParser(OpenLABELParser):
 
 
 class OpenLABELObjects(object):
-    """A collection of OpenLABEL objects.
+    """A collection of :class:`OpenLABELObject`.
 
     Args:
-        objects: a list of OpenLABEL objects
+        objects: a list of :class:`OpenLABELObject`
     """
 
     def __init__(self, objects):
@@ -705,8 +715,8 @@ class OpenLABELObjects(object):
         """Adds additional OpenLABEL objects to this collection.
 
         Args:
-            new_objects: either a list of OpenLABEL objects or a different
-                `OpenLABELObjects`
+            new_objects: either a list of :class:`OpenLABELObject` or a
+                different :class:`OpenLABELObjects`
         """
         if isinstance(new_objects, OpenLABELObjects):
             self.objects.extend(new_objects.objects)
@@ -714,7 +724,7 @@ class OpenLABELObjects(object):
             self.objects.extend(new_objects)
 
     def to_labels(self, frame_size, label_types, seg_type=SegType.INSTANCE):
-        """Converts the stored OpenLABEL objects to FiftyOne labels
+        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
 
         Args:
             frame_size: the size of the image frame in pixels (width, height)
@@ -737,7 +747,7 @@ class OpenLABELObjects(object):
 
 
 class OpenLABELFramesParser(OpenLABELParser):
-    """Parses and collects OpenLABEL framewise objects from object
+    """Parses and collects :class:`OpenLABELObject` framewise from object
     dictionaries
     """
 
@@ -784,11 +794,12 @@ class OpenLABELFramesParser(OpenLABELParser):
         return frame_objects
 
 
-class OpenLABELFrames(OpenLABELParser):
-    """A collection of OpenLABEL framewise objects.
+class OpenLABELFrames(object):
+    """A collection of :class:`OpenLABELObject` framewise.
 
     Args:
-        frame_objects: a dict mapping frame numbers to OpenLABEL objects
+        frame_objects: a dict mapping frame numbers to
+            :class:`OpenLABELObject`
     """
 
     def __init__(self, frame_objects):
@@ -813,8 +824,8 @@ class OpenLABELFrames(OpenLABELParser):
         """Adds additional OpenLABEL frames to this collection.
 
         Args:
-            new_objects: either a list of OpenLABEL frames or a different
-                `OpenLABELFramess`
+            new_objects: either a dict of framewise :class`OpenLABELObjects` or a different
+                :class:`OpenLABELFrames`
         """
 
         if isinstance(new_objects, OpenLABELFrames):
@@ -1154,14 +1165,14 @@ class OpenLABELObject(object):
 
     @classmethod
     def from_anno_dict(cls, anno_id, d):
-        """Create an OpenLABEL object from the raw label dictionary
+        """Create an :class:`OpenLABELObject` from the raw label dictionary
 
         Args:
             anno_id: id of the object
             d: dict containing the information for this object
 
         Returns:
-            a tuple containing the OpenLABELObject and the frame numbers the
+            a tuple containing the :class:`OpenLABELObject` and the frame numbers the
             object corresponds to, if any.
         """
         (
@@ -1285,7 +1296,7 @@ class OpenLABELObject(object):
         return attributes, stream
 
     def update_object_dict(self, d):
-        """Updates this OpenLABEL object given the raw label dictionary
+        """Updates this :class:`OpenLABELObject` given the raw label dictionary
 
         Args:
             d: dict containing the information for this object
@@ -1383,11 +1394,3 @@ def _pairwise(x):
 
 def _to_uuid(p):
     return os.path.splitext(p)[0]
-
-
-class SegType(enum.Enum):
-    """The FiftyOne label type to load segmentations into"""
-
-    INSTANCE = 1
-    POLYLINE = 2
-    SEMANTIC = 3
