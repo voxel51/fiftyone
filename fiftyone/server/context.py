@@ -16,8 +16,8 @@ import strawberry.asgi as gqla
 import fiftyone as fo
 import fiftyone.constants as foc
 
-from .dataclasses import Context
-from .dataloader import dataloaders, get_dataloader
+from fiftyone.server.data import Context
+from fiftyone.server.dataloader import dataloaders, get_dataloader
 
 
 class GraphQL(gqla.GraphQL):

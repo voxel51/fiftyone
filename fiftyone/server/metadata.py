@@ -6,7 +6,6 @@ FiftyOne Server JIT metadata utilities
 |
 """
 import logging
-from multiprocessing.sharedctypes import Value
 import requests
 import shutil
 import struct

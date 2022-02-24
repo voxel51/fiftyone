@@ -10,9 +10,9 @@ import motor
 from pymongo import ReturnDocument
 import strawberry as gql
 
-from .permissions import IsAuthenticated
-from .query import User
-from .utils import Info
+from fiftyone.server.data import Info
+from fiftyone.teams.permissions import IsAuthenticated
+from fiftyone.teams.query import User
 
 
 @gql.input

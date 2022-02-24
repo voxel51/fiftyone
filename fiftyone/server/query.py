@@ -13,7 +13,7 @@ from xmlrpc.client import boolean
 from bson import ObjectId
 import strawberry as gql
 
-from fiftyone.server.dataclasses import Info
+from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.mixins import HasCollection
 from fiftyone.server.paginator import Connection, get_paginator_resolver

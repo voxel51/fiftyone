@@ -17,11 +17,10 @@ from .notebook import Notebook
 from .pin import Pin
 from .samples import Samples
 from .select import Select
-from .session import Session
 from .sidebar import Sidebar
 from .sort import Sort
 from .stages import Stages
-from .state import state
+from .state import State
 from .tag import Tag
 from .tagging import Tagging
 from .teams import Teams
@@ -42,11 +41,10 @@ routes = [
     ("/pin", Pin),
     ("/samples", Samples),
     ("/select", Select),
-    ("/session", Session),
     ("/sidebar", Sidebar),
     ("/sort", Sort),
     ("/stages", Stages),
-    ("/state", state),
+    ("/state", State),
     ("/tag", Tag),
     ("/tagging", Tagging),
     ("/teams", Teams),

@@ -31,7 +31,10 @@ if __name__ == "__main__":
         "--address", type=str, default=fo.config.default_app_address
     )
     args = parser.parse_args()
-    config = Config(
-        bind=[f"{args.address}:{args.port}"], debug=foc.DEV_INSTALL
-    )
+    config = Config()
+
+    config.bind = [f"{args.address}:{args.port}"]
+
+    print(config.bind)
+    config.use_reloader = foc.DEV_INSTALL
     asyncio.run(serve(app, config))

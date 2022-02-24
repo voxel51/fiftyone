@@ -1,5 +1,5 @@
 """
-FiftyOne Teams authentication.
+FiftyOne Teams authentication
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -20,7 +20,7 @@ from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 
-from .utils import JWKS
+from fiftyone.teams.data import JWKS
 
 
 AUTH0_DOMAIN = "dev-uqppzklh.us.auth0.com"

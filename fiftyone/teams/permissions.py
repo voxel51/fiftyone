@@ -1,5 +1,5 @@
 """
-FiftyOne Teams permissions.
+FiftyOne Teams permissions
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -9,7 +9,7 @@ import typing as t
 
 import strawberry.permission as gqlp
 
-from .utils import Info
+from fiftyone.server.data import Info
 
 
 class IsAuthenticated(gqlp.BasePermission):

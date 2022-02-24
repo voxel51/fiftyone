@@ -11,6 +11,11 @@ export {
   getFetchParameters,
   setFetchFunction,
 } from "./fetch";
+export {
+  default as SSEClient,
+  SSEClientOptions,
+  SSEReadyState,
+} from "./SSEClient";
 
 export const toCamelCase = (obj: object): object =>
   _.transform(obj, (acc, value, key, target) => {

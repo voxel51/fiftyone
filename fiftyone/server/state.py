@@ -15,9 +15,19 @@ from starlette.websockets import WebSocket
 import fiftyone.core.state as fos
 
 
+T = t.TypeVar("T", bound=dataclass)
+
+
 @dataclass
-class Event:
-    event: str
+class Event(t.Generic[T]):
+    data: T
+
+
+class Update(Event):
+    data: fos.StateDescription
+
+
+class Capture(Event):
     data: dict
 
 
@@ -32,28 +42,32 @@ def get_state() -> fos.StateDescription:
     return _state
 
 
-def set_state(
-    state: fos.StateDescription, source: t.Union[Request, WebSocket] = None
+async def set_state(
+    state: fos.StateDescription, source: Request = None
 ) -> None:
     global _state
     _state = state
 
+    await dispatch_event(Update(data=state))
+
+
+async def dispatch_event(event: Event, source: Request = None):
     events = []
     for listener, queue_or_callback in _listeners.items():
         if source is listener:
             continue
 
         if isinstance(queue_or_callback, asyncio.LifoQueue):
-            event = queue_or_callback.put(state)
+            event = queue_or_callback.put(event)
         else:
             event = queue_or_callback()
 
         events.append(event)
 
-    asyncio.gather(*events)
+    await asyncio.gather(*events)
 
 
-async def listen(request: Request,) -> t.AsyncIterator[fos.StateDescription]:
+async def listen(request: Request,) -> t.AsyncIterator[Event]:
     def cleanup() -> None:
         _listeners.pop(request)
 
@@ -62,14 +76,14 @@ async def listen(request: Request,) -> t.AsyncIterator[fos.StateDescription]:
     try:
         yield get_state()
         while True:
-            state = await _listeners[request].get()
+            event = await _listeners[request].get()
             disconnected = await request.is_disconnected
 
             if disconnected:
                 cleanup()
                 break
 
-            yield state
+            yield event
 
     except asyncio.CancelledError as e:
         cleanup()

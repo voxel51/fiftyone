@@ -13,7 +13,7 @@ import motor as mtr
 import motor.motor_tornado as mtrt
 from strawberry.dataloader import DataLoader
 
-from fiftyone.server.dataclasses import Info, HasCollectionType
+from fiftyone.server.data import Info, HasCollectionType
 
 
 @dataclass

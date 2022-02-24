@@ -153,7 +153,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
-            default=None,
+            default="0.0.0.0",
         )
         self.desktop_app = self.parse_bool(
             d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,

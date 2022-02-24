@@ -16,7 +16,7 @@ from strawberry.arguments import UNSET
 
 import fiftyone.core.odm as foo
 
-from fiftyone.server.dataclasses import Info, HasCollectionType
+from fiftyone.server.data import Info, HasCollectionType
 
 
 @gql.type

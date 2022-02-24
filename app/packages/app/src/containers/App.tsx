@@ -7,13 +7,17 @@ import TeamsForm from "../components/TeamsForm";
 
 import * as atoms from "../recoil/atoms";
 
-import { useScreenshot } from "../utils/hooks";
+import { useEventHandler, useScreenshot } from "../utils/hooks";
 
 import Dataset from "./Dataset";
 import Setup from "./Setup";
 import { Error, Loading, Theme, useTheme } from "@fiftyone/components";
+import { getFetchHost, SSEClient } from "@fiftyone/utilities";
 
-const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
+const ErrorPage: React.FC<FallbackProps> = ({
+  error,
+  resetErrorBoundary,
+}: FallbackProps) => {
   useLayoutEffect(() => {
     document.getElementById("modal")?.classList.remove("modalon");
   }, []);
@@ -28,10 +32,17 @@ const ErrorPage: React.FC<FallbackProps> = ({ error, resetErrorBoundary }) => {
   );
 };
 
+const eventSource = React.createContext(
+  new SSEClient(`${getFetchHost()}/state`, {})
+);
+
 const Container = () => {
   useScreenshot();
-
   const theme = useTheme();
+
+  useEventHandler(eventSource, "update", (...args: any[]) => {
+    console.log(args);
+  });
 
   const { open: teamsOpen } = useRecoilValue(atoms.teams);
 

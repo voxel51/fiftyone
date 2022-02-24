@@ -13,7 +13,7 @@ import strawberry as gql
 
 import fiftyone as fo
 
-from fiftyone.server.dataclasses import Info
+from fiftyone.server.data import Info
 import fiftyone.server.query as fosq
 import fiftyone.server.mixins as fosm
 import fiftyone.server.paginator as fosp
@@ -24,9 +24,7 @@ class User(fosm.HasCollection):
     id: gql.ID
     datasets: fosp.Connection[fosq.Dataset] = gql.field(
         resolver=fosp.get_paginator_resolver(
-            fosq.Dataset,
-            "name",
-            fosq.DATASET_FILTER_STAGE,
+            fosq.Dataset, "name", fosq.DATASET_FILTER_STAGE,
         )
     )
     email: str
