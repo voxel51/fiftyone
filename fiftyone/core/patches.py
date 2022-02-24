@@ -254,12 +254,9 @@ class _PatchesView(fov.DatasetView):
             it immediately writes the requested changes to the underlying
             dataset.
         """
-        del_fields = set(self._label_fields) - set(self.get_field_schema())
-        if del_fields:
-            self._dataset.delete_sample_fields(del_fields)
+        self._sync_source_keep_fields()
 
-            del_view = self._source_collection.exclude_fields(del_fields)
-            del_view.keep_fields()
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -340,6 +337,13 @@ class _PatchesView(fov.DatasetView):
                 self._source_collection._delete_labels(
                     ids=del_ids, fields=field
                 )
+
+    def _sync_source_keep_fields(self):
+        src_schema = self.get_field_schema()
+
+        del_fields = set(self._label_fields) - set(src_schema.keys())
+        if del_fields:
+            self._source_collection.exclude_fields(del_fields).keep_fields()
 
 
 class PatchesView(_PatchesView):

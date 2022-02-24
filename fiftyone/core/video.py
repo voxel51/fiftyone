@@ -215,17 +215,9 @@ class FramesView(fov.DatasetView):
             it immediately writes the requested changes to the underlying
             dataset.
         """
-        schema = self.get_field_schema()
-        src_schema = self._source_collection.get_frame_field_schema()
+        self._sync_source_keep_fields()
 
-        del_fields = set(src_schema.keys()) - set(schema.keys())
-        if del_fields:
-            self._dataset.delete_sample_fields(del_fields)
-
-            prefix = self._source_collection._FRAMES_PREFIX
-            del_frame_fields = [prefix + f for f in del_fields]
-            del_view = self._source_collection.exclude_fields(del_frame_fields)
-            del_view.keep_fields()
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -395,6 +387,16 @@ class FramesView(fov.DatasetView):
         if delete:
             for field_name in del_fields:
                 self._source_collection._dataset.delete_frame_field(field_name)
+
+    def _sync_source_keep_fields(self):
+        schema = self.get_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_frames_dataset(

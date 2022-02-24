@@ -150,15 +150,10 @@ class ClipsView(fov.DatasetView):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-        if self._classification_field:
-            clips_fields = ("support", self._classification_field)
-        else:
-            clips_fields = ("support",)
-
         if use_db_fields:
-            return fields + ("_sample_id",) + clips_fields
+            return fields + ("_sample_id", "support")
 
-        return fields + ("sample_id",) + clips_fields
+        return fields + ("sample_id", "support")
 
     def _get_default_indexes(self, frames=False):
         if frames:
@@ -228,28 +223,9 @@ class ClipsView(fov.DatasetView):
             it immediately writes the requested changes to the underlying
             dataset.
         """
+        self._sync_source_keep_fields()
 
-        # If the source TemporalDetection field is excluded, delete it from
-        # this collection and the source collection
-        cls_field = self._classification_field
-        if cls_field and cls_field not in self.get_field_schema():
-            self._dataset.delete_sample_field(cls_field)
-
-            del_view = self._source_collection.exclude_fields(cls_field)
-            del_view.keep_fields()
-
-        # Delete any excluded frame fields from this collection and the source
-        # collection
-        schema = self.get_frame_field_schema()
-        src_schema = self._source_collection.get_frame_field_schema()
-
-        del_fields = set(src_schema.keys()) - set(schema.keys())
-        if del_fields:
-            # Clips views directly use their parent dataset's frame collection
-            prefix = self._source_collection._FRAMES_PREFIX
-            del_frame_fields = [prefix + f for f in del_fields]
-            del_view = self._source_collection.exclude_fields(del_frame_fields)
-            del_view.keep_fields()
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -334,6 +310,24 @@ class ClipsView(fov.DatasetView):
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
+
+    def _sync_source_keep_fields(self):
+        # If the source TemporalDetection field is excluded, delete it from
+        # this collection and the source collection
+        cls_field = self._classification_field
+        if cls_field and cls_field not in self.get_field_schema():
+            self._source_collection.exclude_fields(cls_field).keep_fields()
+
+        # Delete any excluded frame fields from this collection and the source
+        # collection
+        schema = self.get_frame_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_clips_dataset(
