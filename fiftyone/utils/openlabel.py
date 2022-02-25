@@ -810,11 +810,11 @@ class OpenLABELFrames(object):
         for frame_num, objects in self.frame_objects.items():
             frame_label = {}
             if "detections" in label_types:
-                frame_label["detections"] = objects.to_detections(frame_size)
+                frame_label["detections"] = objects._to_detections(frame_size)
             if "keypoints" in label_types:
-                frame_label["keypoints"] = objects.to_keypoints(frame_size)
+                frame_label["keypoints"] = objects._to_keypoints(frame_size)
             if "segmentations" in label_types:
-                frame_label["segmentations"] = objects.to_segmentations(
+                frame_label["segmentations"] = objects._to_segmentations(
                     frame_size, seg_type=seg_type
                 )
             frame_labels[frame_num] = frame_label
@@ -1044,15 +1044,25 @@ class OpenLABELObject(object):
         id=None,
         name=None,
         type=None,
-        bboxes=[],
-        segmentations=[],
-        keypoints=[],
+        bboxes=None,
+        segmentations=None,
+        keypoints=None,
         stream=None,
-        attributes={},
+        attributes=None,
     ):
+        if bboxes is None:
+            bboxes = []
+        if segmentations is None:
+            segmentations = []
+        if keypoints is None:
+            keypoints = []
+        if attributes is None:
+            attributes = {}
+
         self.id = id
         self.name = name
         self.type = type
+
         self.bboxes = bboxes
         self.segmentations = segmentations
         self.keypoints = keypoints
@@ -1118,10 +1128,10 @@ class OpenLABELObject(object):
                 [(x / width, y / height) for x, y, in _pairwise(segmentation)]
             ]
 
-            filled = not attributes.get("is_hole", True)
-            closed = attributes.get("closed", True)
-            attributes.pop("closed", None)
-            attributes.pop("filled", None)
+            filled = attributes.pop("filled", None)
+            if filled is None:
+                filled = not attributes.get("is_hole", True)
+            closed = attributes.pop("closed", True)
             attributes.pop("label", None)
 
             polylines.append(
@@ -1200,9 +1210,14 @@ class OpenLABELObject(object):
 
     @classmethod
     def _parse_obj_type(
-        cls, object_data, label_type, attributes={}, stream=None
+        cls, object_data, label_type, attributes=None, stream=None
     ):
+        if attributes is None:
+            attributes = {}
         obj = object_data.get(label_type, [])
+        if label_type == "point2d" and obj:
+            # Points are not stored in lists by default
+            obj = [obj]
         obj, attrs, _stream = cls._parse_object_data(obj)
         attributes.update(attrs)
         if stream is None:
@@ -1214,15 +1229,17 @@ class OpenLABELObject(object):
     def _parse_object_dict(cls, d):
         object_data = d.get("object_data", {})
 
-        bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox",)
+        bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox")
 
         polys, attributes, stream = cls._parse_obj_type(
             object_data, "poly2d", attributes=attributes, stream=stream,
         )
 
-        points, attributes, stream = cls._parse_obj_type(
+        point, attributes, stream = cls._parse_obj_type(
             object_data, "point2d", attributes=attributes, stream=stream,
         )
+        if point:
+            point = [point]
 
         name = d.get("name", None)
         _type = d.get("type", None)
@@ -1237,7 +1254,7 @@ class OpenLABELObject(object):
         return (
             bboxes,
             polys,
-            points,
+            point,
             name,
             _type,
             stream,

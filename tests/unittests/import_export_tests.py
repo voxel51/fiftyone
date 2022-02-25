@@ -1820,7 +1820,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
         )
         assert dataset.count("detections.detections.label") == 1
-        assert dataset.count("polylines.polylines.label") == 1
+        assert dataset.count("segmentations.detections.label") == 2
         assert dataset.count("keypoints.keypoints.label") == 1
 
     @drop_datasets
@@ -1851,7 +1851,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
-        assert dataset.count("segmentations.detections.mask") == 1
+        assert dataset.count("segmentations.detections.mask") == 2
 
         dataset = fo.Dataset.from_dir(
             data_path=self.images_dir,
@@ -1859,7 +1859,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
             use_polylines=True,
         )
-        assert dataset.count("segmentations.polylines") == 1
+        assert dataset.count("segmentations.polylines") == 2
 
 
 class VideoDatasetTests(unittest.TestCase):
@@ -1919,7 +1919,7 @@ class OpenLABELVideoDatasetTests(VideoDatasetTests):
             dataset_type=fo.types.OpenLABELVideoDataset,
         )
         assert dataset.count("frames.detections.detections.label") == 5
-        assert dataset.count("frames.polylines.polylines.label") == 5
+        assert dataset.count("frames.segmentations.detections.label") == 5
         assert dataset.count("frames.keypoints.keypoints.label") == 5
 
 

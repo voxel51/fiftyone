@@ -119,6 +119,9 @@ class OpenLABELObjectData(object):
         self.object_type = object_type
 
     def to_dict(self):
+        if self.object_type == "point2d":
+            return {self.object_type: self._data_dict}
+
         return {self.object_type: [self._data_dict]}
 
     def add_attribute(self, attr, val, as_property=False):
@@ -186,6 +189,21 @@ def _make_image_labels(tmp_dir):
     poly_obj.add_object_data(poly_obj_data, is_frame=True)
     labels.add_object(poly_obj)
 
+    line_obj_data = OpenLABELObjectData(
+        "poly2d-1", [100, 200, 200, 200, 200, 100], "poly2d",
+    )
+    line_obj_data.add_attributes(
+        [("closed", False), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+    )
+    line_obj_data.add_attributes(
+        [("stream", "camera1"),], as_property=True,
+    )
+    line_obj = OpenLABELObject(
+        "polyname2", "objectlabel1", frame_interval=(0, 0),
+    )
+    line_obj.add_object_data(line_obj_data, is_frame=True)
+    labels.add_object(line_obj)
+
     bbox_obj_data = OpenLABELObjectData(
         "shape", [436.0, 303.5, 52, 47], "bbox"
     )
@@ -234,6 +252,21 @@ def _make_segmentation_labels(tmp_dir):
     )
     poly_obj.add_object_data(poly_obj_data, is_frame=True)
     labels.add_object(poly_obj)
+
+    line_obj_data = OpenLABELObjectData(
+        "poly2d-1", [100, 200, 200, 200, 200, 100], "poly2d",
+    )
+    line_obj_data.add_attributes(
+        [("closed", False), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+    )
+    line_obj_data.add_attributes(
+        [("stream", "camera1"),], as_property=True,
+    )
+    line_obj = OpenLABELObject(
+        "polyname2", "objectlabel1", frame_interval=(0, 0),
+    )
+    line_obj.add_object_data(line_obj_data, is_frame=True)
+    labels.add_object(line_obj)
 
     labels_path = os.path.join(tmp_dir, "openlabel_test.json")
     labels.write_labels(labels_path)
