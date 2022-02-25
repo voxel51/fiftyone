@@ -1,6 +1,7 @@
 interface SSEClientOptions {
   headers: HeadersInit;
   data: unknown;
+  reconnect: boolean;
   withCredentials: boolean;
 }
 
@@ -34,6 +35,7 @@ class SSEClient {
       headers: {},
       data: {},
       withCredentials: false,
+      reconnect: false,
       ...options,
     };
     this.url = url;
@@ -126,13 +128,15 @@ class SSEClient {
     }
 
     if (this.xhr.readyState === XMLHttpRequest.DONE) {
-      this.setReadyState(SSEReadyState.CLOSED);
+      this.close();
+      this.reconnect();
     }
   }
 
   private onStreamFailure(e) {
     this.dispatchEvent(new CustomEvent("error"));
     this.close();
+    this.reconnect();
   }
 
   private onStreamLoaded(e) {
@@ -159,16 +163,14 @@ class SSEClient {
 
     var data = this.xhr.responseText.substring(this.progress);
     this.progress += data.length;
-    data.split(/(\r\n|\r|\n){2}/g).forEach(
-      function (part) {
-        if (part.trim().length === 0) {
-          this.dispatchEvent(this._parseEventChunk(this.chunk.trim()));
-          this.chunk = "";
-        } else {
-          this.chunk += part;
-        }
-      }.bind(this)
-    );
+    data.split(/(\r\n|\r|\n){2}/g).forEach((part) => {
+      if (part.trim().length === 0) {
+        this.dispatchEvent(this.parseEventChunk(this.chunk.trim()));
+        this.chunk = "";
+      } else {
+        this.chunk += part;
+      }
+    });
   }
 
   private parseEventChunk(chunk: string) {
@@ -204,6 +206,12 @@ class SSEClient {
     });
 
     return event;
+  }
+
+  private reconnect() {
+    if (this.options.reconnect) {
+      setTimeout(() => this.stream(), 3000);
+    }
   }
 
   private setReadyState(state: SSEReadyState) {

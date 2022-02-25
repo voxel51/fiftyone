@@ -12,7 +12,7 @@ export {
   setFetchFunction,
 } from "./fetch";
 export * from "./SSEClient";
-export { darkTheme, ColorTheme } from "./theme";
+export * from "./theme";
 export * from "./Resource";
 
 interface O {

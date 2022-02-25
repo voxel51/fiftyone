@@ -5,6 +5,7 @@ import { animated, useSpring } from "@react-spring/web";
 import { isNotebook } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
 import { scrollbarStyles } from "../components/utils";
+import { isElectron } from "@fiftyone/utilities";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -35,6 +36,16 @@ const Code = styled.pre`
 
   ${scrollbarStyles}
 `;
+
+const port = (() => {
+  if (isElectron()) {
+    parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+  }
+
+  if (window.location.port !== undefined) {
+    return parseInt(window.location.port);
+  }
+})();
 
 const remoteSnippet = `import fiftyone as fo
 
