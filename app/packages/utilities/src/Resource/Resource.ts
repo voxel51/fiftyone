@@ -7,7 +7,7 @@ class Resource<T = unknown> {
 
   load() {
     let promise = this.promise;
-    if (promise == null) {
+    if (promise === null) {
       promise = this.loader()
         .then((result) => {
           this.result = result;
@@ -48,10 +48,11 @@ export const createResourceGroup = () => {
 
   return <T>(id: string, loader: () => Promise<T>): Resource<T> => {
     let resource = resources.get(id);
-    if (resource === null) {
+    if (resource === undefined) {
       resource = new Resource<T>(loader);
       resources.set(id, resource);
     }
+
     return resource as Resource<T>;
   };
 };

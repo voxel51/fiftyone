@@ -31,19 +31,6 @@ class User(fosm.HasCollection):
     family_name: str
     given_name: str
 
-    @gql.field
-    def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
-        if fo.app_config.colorscale:
-            return fo.app_config.get_colormap()
-
-        return None
-
-    @gql.field
-    def config(self) -> fosq.AppConfig:
-        d = fo.app_config.serialize()
-        d["timezone"] = fo.config.timezone
-        return from_dict(fosq.AppConfig, d, config=Config(check_types=False))
-
     @staticmethod
     def get_collection_name():
         return "users"

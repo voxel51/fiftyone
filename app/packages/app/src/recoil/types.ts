@@ -40,7 +40,7 @@ export namespace State {
   export interface Run {
     key: string;
     version: string;
-    timestamp: { date: number };
+    timestamp: string;
     config: {};
     viewStages: readonly string[];
   }

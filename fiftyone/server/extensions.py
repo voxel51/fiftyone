@@ -19,6 +19,7 @@ class EndSession(Extension):
         await context.session.end_session()
 
         if self.execution_context.errors:
+
             for exception in self.execution_context.errors:
                 exception.extensions = {
                     "stack": traceback.format_tb(exception.__traceback__)

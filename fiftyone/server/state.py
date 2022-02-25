@@ -5,17 +5,18 @@ FiftyOne Server state
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import typing as t
 
 import asyncio
+from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 
 import fiftyone.core.state as fos
 
 
-T = t.TypeVar("T", bound=dataclass)
+T = t.TypeVar("T")
 
 
 @dataclass
@@ -29,6 +30,12 @@ class Update(Event):
 
 class Capture(Event):
     data: dict
+
+
+def _serialize(event: Event):
+    return ServerSentEvent(
+        **{"event": event.__class__.__name__, **asdict(event)}
+    )
 
 
 _listeners: t.Dict[
@@ -74,7 +81,6 @@ async def listen(request: Request,) -> t.AsyncIterator[Event]:
     _listeners[request] = asyncio.LifoQueue(maxsize=1)
 
     try:
-        yield get_state()
         while True:
             event = await _listeners[request].get()
             disconnected = await request.is_disconnected
@@ -83,7 +89,7 @@ async def listen(request: Request,) -> t.AsyncIterator[Event]:
                 cleanup()
                 break
 
-            yield event
+            yield _serialize(event)
 
     except asyncio.CancelledError as e:
         cleanup()

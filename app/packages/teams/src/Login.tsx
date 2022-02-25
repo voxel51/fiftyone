@@ -5,6 +5,7 @@ import { graphql } from "relay-runtime";
 import { Loading, RouteRenderer } from "@fiftyone/components";
 
 import useMutation from "./useMutation";
+import { getRoutingContext } from "@fiftyone/components/src/with/RelayEnvironment";
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -46,7 +47,7 @@ const Login = () => {
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <RouteRenderer />
+      <RouteRenderer router={getRoutingContext()} />
     </Suspense>
   );
 };

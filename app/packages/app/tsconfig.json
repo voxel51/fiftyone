@@ -8,7 +8,7 @@
         "sourceMap": true,
         "outDir": "dist",
         "jsx": "preserve",
-        "types": ["vite/client"],
+        "types": ["vite/client", "react/next", "react-dom/next"],
         "strict": true,
         "composite": true
     },

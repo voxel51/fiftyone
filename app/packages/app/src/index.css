@@ -1,13 +1,34 @@
-:root {
-  --bg: #ffffff;
-  --bg-darker: #f8f8f8;
-  --bg-darkest: #c0c0c0;
-  --std-border-color: var(--bg-darkest);
-  --std-border-width: 0.1rem;
-  --std-border-radius: 0.2rem;
-  --std-font-color: var(--bg-darkest);
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  background: var(--background-dark);
+  margin: 0;
+  padding: 0;
   font-family: "Palanquin", sans-serif;
+  font-size: 14px;
+
+  color: var(--font);
+  display: flex;
+  flex-direction: column;
+  min-width: 660px;
+}
+
+#modal {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: var(--background-transparent);
+  top: 0;
+  z-index: 1000;
+  display: none;
+}
+
+#modal.modalon {
+  display: block;
 }
 
 * {
@@ -20,46 +41,4 @@ button {
   font-family: "Palanquin", sans-serif;
   font-size: 14px;
   color: var(--font);
-}
-
-body,
-html {
-  height: 100%;
-  margin: 0 !important;
-  padding: 0 !important;
-  background-color: var(--background);
-  min-width: 600px;
-}
-
-#modal {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  background-color: var(--background-transparent);
-  top: 0;
-  z-index: 1000;
-  display: none;
-}
-
-#results {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-#modal.modalon {
-  display: block;
-}
-
-input {
-  padding: 0;
-}
-
-#root {
-  height: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background-color: var(--background);
 }

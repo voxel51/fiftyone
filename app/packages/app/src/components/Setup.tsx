@@ -6,6 +6,13 @@ import { isNotebook } from "../shared/connection";
 import { useTheme } from "../utils/hooks";
 import { scrollbarStyles } from "../components/utils";
 import { isElectron } from "@fiftyone/utilities";
+import {
+  DocsLink,
+  GitHubLink,
+  Header,
+  iconContainer,
+  SlackLink,
+} from "@fiftyone/components";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -28,7 +35,7 @@ const Text = styled.p`
 
 const Code = styled.pre`
   padding: 2rem;
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.backgroundDarker};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   color: ${({ theme }) => theme.font};
   border-radius: 3px;
@@ -117,8 +124,11 @@ const NotebookInstructions = () => {
 const SetupWrapper = styled.div`
   width: 100%;
   overflow: auto;
+  background: ${({ theme }) => theme.backgroundDark};
+  border-top: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  min-height: 100%;
 
-  ${scrollbarStyles}
+  ${scrollbarStyles};
 `;
 
 const SetupContainer = styled.div`
@@ -164,40 +174,54 @@ const Setup = () => {
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
-    borderBottomColor: activeTab === "local" ? theme.brand : theme.background,
+    borderBottomColor:
+      activeTab === "local" ? theme.brand : theme.backgroundDark,
     color: activeTab === "local" ? theme.font : theme.fontDark,
   });
   const remoteProps = useSpring({
-    borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
+    borderBottomColor:
+      activeTab === "remote" ? theme.brand : theme.backgroundDark,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
 
   return (
-    <SetupWrapper>
-      <SetupContainer>
-        <Title>Welcome to FiftyOne!</Title>
-        <Subtitle>It looks like you are not connected to a session</Subtitle>
-        {isNotebook ? (
-          <NotebookInstructions />
-        ) : (
-          <>
-            <TabsContainer>
-              <Tab onClick={() => setActiveTab("local")} style={localProps}>
-                Local sessions
-              </Tab>
-              <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
-                Remote sessions
-              </Tab>
-            </TabsContainer>
-            {activeTab === "remote" ? (
-              <RemoteInstructions />
-            ) : (
-              <LocalInstructions />
-            )}
-          </>
-        )}
-      </SetupContainer>
-    </SetupWrapper>
+    <>
+      <Header title={"FiftyOne"}>
+        <div
+          className={iconContainer}
+          style={{ flex: 1, justifyContent: "right" }}
+        >
+          <SlackLink />
+          <GitHubLink />
+          <DocsLink />
+        </div>
+      </Header>
+      <SetupWrapper>
+        <SetupContainer>
+          <Title>Welcome to FiftyOne!</Title>
+          <Subtitle>It looks like you are not connected to a session</Subtitle>
+          {isNotebook ? (
+            <NotebookInstructions />
+          ) : (
+            <>
+              <TabsContainer>
+                <Tab onClick={() => setActiveTab("local")} style={localProps}>
+                  Local sessions
+                </Tab>
+                <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
+                  Remote sessions
+                </Tab>
+              </TabsContainer>
+              {activeTab === "remote" ? (
+                <RemoteInstructions />
+              ) : (
+                <LocalInstructions />
+              )}
+            </>
+          )}
+        </SetupContainer>
+      </SetupWrapper>
+    </>
   );
 };
 

@@ -65,8 +65,8 @@ const Authenticate = () => {
   return <App />;
 };
 
-const Root = () => {
-  return (
+document.addEventListener("DOMContentLoaded", () =>
+  ReactDOM.render(
     <RecoilRoot>
       <Auth0Provider
         audience="api.dev.fiftyone.ai"
@@ -80,10 +80,7 @@ const Root = () => {
       >
         <Authenticate />
       </Auth0Provider>
-    </RecoilRoot>
-  );
-};
-
-document.addEventListener("DOMContentLoaded", () =>
-  ReactDOM.render(<Root />, document.getElementById("root"))
+    </RecoilRoot>,
+    document.getElementById("root")
+  )
 );

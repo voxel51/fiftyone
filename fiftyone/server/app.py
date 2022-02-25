@@ -7,6 +7,8 @@ FiftyOne Server app
 """
 import strawberry as gql
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Route
 
 import fiftyone.constants as foc
@@ -21,6 +23,18 @@ schema = gql.Schema(query=Query, extensions=[EndSession])
 
 
 app = Starlette(
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
+            allow_headers=[
+                "access-control-allow-origin",
+                "authorization",
+                "content-type",
+            ],
+        )
+    ],
     debug=foc.DEV_INSTALL,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL))],

@@ -1,4 +1,4 @@
-import { getFetchFunction, getFetchHost } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import {
   selector,
@@ -19,7 +19,7 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
     return url;
   }
 
-  return `${getFetchHost()}/media?filepath=${encodeURIComponent(
+  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
     filepath
   )}&id=${id}`;
 };

@@ -13,5 +13,5 @@ from fiftyone.server.state import listen
 
 
 class State(HTTPEndpoint):
-    async def get(self, request: Request):
+    async def post(self, request: Request):
         return EventSourceResponse(listen(request))

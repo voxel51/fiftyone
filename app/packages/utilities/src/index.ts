@@ -7,11 +7,11 @@ export { NotFoundError, ServerError } from "./errors";
 export {
   getFetchFunction,
   getFetchHeaders,
-  getFetchHost,
+  getFetchOrigin,
   getFetchParameters,
   setFetchFunction,
+  getEventSource,
 } from "./fetch";
-export * from "./SSEClient";
 export * from "./theme";
 export * from "./Resource";
 

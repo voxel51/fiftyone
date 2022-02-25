@@ -123,6 +123,7 @@ const matchRoute = <T extends OperationType>(
 const prepareMatches = (matches: Match[]) => {
   return matches.map((match) => {
     const { route, match: matchData } = match;
+
     const prepared = route.prepare(matchData.params);
     const Component = route.component.get();
     if (Component == null) {

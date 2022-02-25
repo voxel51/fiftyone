@@ -1,124 +1,10 @@
 import React, { useState } from "react";
-import { animated } from "@react-spring/web";
-import styled from "styled-components";
 import { Close } from "@material-ui/icons";
 import { useRecoilState } from "recoil";
 
-import * as atoms from "../recoil/atoms";
-import { http } from "../shared/connection";
 import { getFetchFunction } from "@fiftyone/utilities";
 
-const Container = styled("div")`
-  position: fixed;
-  z-index: 10000;
-  width: 0 auto;
-  bottom: ${(props) => (props.top ? "unset" : "2em")};
-  margin: 0 auto;
-  right: 2em;
-  font-weight: bold;
-  display: flex;
-  flex-direction: ${(props) => (props.top ? "column-reverse" : "column")};
-  align-items: ${(props) =>
-    props.position === "center" ? "center" : `flex-${props.position || "end"}`};
-  @media (max-width: 680px) {
-    align-items: center;
-  }
-`;
-
-const Message = styled(animated.div)`
-  margin-top: 1em;
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;
-  width: 40ch;
-  @media (max-width: 680px) {
-    width: 100%;
-  }
-`;
-
-const MessageTitle = styled.h3`
-  font-size: 1.5em;
-  color: ${({ theme }) => theme.font};
-`;
-
-const ContentDiv = styled.div`
-  color: ${({ theme }) => theme.font};
-  background: ${({ theme }) => theme.backgroundDark};
-  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  box-shadow: 0 2px 40px ${({ theme }) => theme.backgroundDark};
-  padding: 1em 2em 0 2em;
-  font-size: 1em;
-  overflow: hidden;
-  height: auto;
-  border-radius: 3px;
-`;
-
-const Button = styled.button`
-  cursor: pointer;
-  outline: 0;
-  border: none;
-  background: transparent;
-  display: flex;
-  align-self: flex-end;
-  position: abo
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-  padding-bottom: 2em;
-  color: ${({ theme }) => theme.fontDark};
-  :hover {
-    color: ${({ theme }) => theme.font};
-  }
-`;
-
-const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-`;
-
-const Life = animated(styled.div`
-  position: absolute;
-  bottom: ${(props) => (props.top ? "0.5em" : "0")};
-  left: 0px;
-  width: auto;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  background-image: linear-gradient(
-    130deg,
-    ${({ theme }) => theme.brand},
-    ${({ theme }) => theme.brandFullyTransparent}
-  );
-  height: 0.5em;
-`);
-
-const Input = styled.input`
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
-  border
-  color: ${({ theme }) => theme.font};
-  line-height: 1rem;
-  border: none;
-  border-bottom: 1px solid ${({ theme }) => theme.brand};
-  font-weight: bold;
-  text-overflow: ellipsis;
-  overflow: hidden;
-
-  &:focus {
-    border-bottom: 1px solid ${({ theme }) => theme.brand};
-    outline: none;
-    font-weight: bold;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.fontDark};
-    font-weight: bold;
-  }
-`;
-
-const Content = () => {
+const Teams = () => {
   const [formState, setFormState] = useState({
     email: "",
     firstname: "",
@@ -270,14 +156,4 @@ const Content = () => {
   );
 };
 
-const TeamsForm = React.memo(() => {
-  return (
-    <Container>
-      <Message>
-        <Content />
-      </Message>
-    </Container>
-  );
-});
-
-export default TeamsForm;
+export default Teams;

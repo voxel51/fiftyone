@@ -3,20 +3,21 @@ import React, { useState } from "react";
 
 import Selector, { SelectorProps } from "../Selector/Selector";
 
+import logo from "../../images/logo.png";
+
 import style from "./Header.module.css";
 
-interface Props extends SelectorProps<string> {
-  onRefresh: () => void;
+interface Props {
+  onRefresh?: () => void;
   title: string;
-  logo: string;
+  datasetSelectorProps?: SelectorProps<string>;
 }
 
 const Header: React.FC<Props> = ({
   children,
-  logo,
   title,
   onRefresh,
-  ...selector
+  datasetSelectorProps,
 }) => {
   const [toggle, setToggle] = useState(false);
   const logoProps = useSpring({
@@ -30,14 +31,16 @@ const Header: React.FC<Props> = ({
           <animated.img className={style.logo} style={logoProps} src={logo} />
           <div className={style.fiftyone}>{title}</div>
         </div>
-        <div className={style.dataset}>
-          <Selector
-            inputStyle={{ height: 40, maxWidth: 300 }}
-            containerStyle={{ position: "relative" }}
-            inputClassName={style.input}
-            {...selector}
-          />
-        </div>
+        {datasetSelectorProps && (
+          <div className={style.dataset}>
+            <Selector
+              inputStyle={{ height: 40, maxWidth: 300 }}
+              containerStyle={{ position: "relative" }}
+              inputClassName={style.input}
+              {...datasetSelectorProps}
+            />
+          </div>
+        )}
       </div>
       {children}
     </div>

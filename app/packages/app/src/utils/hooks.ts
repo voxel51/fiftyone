@@ -20,7 +20,7 @@ import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
 import { ColorTheme } from "../shared/colors";
 import { appContext, handleId, isColab } from "../shared/connection";
-import gaConfig from "../constants/ga";
+import gaConfig from "../ga";
 import { aggregationsTick } from "../recoil/aggregations";
 import { selectedSamples } from "../recoil/atoms";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";

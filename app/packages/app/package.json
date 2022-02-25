@@ -51,7 +51,7 @@
     "devDependencies": {
         "@fiftyone/prettier-config": "*",
         "@types/mime": "^2.0.3",
-        "@types/react": "^17.0.38",
+        "@types/react": "^17.0.39",
         "@types/react-dom": "^17.0.11",
         "@types/react-relay": "^13.0.0",
         "@types/react-router": "^5.1.18",
@@ -67,6 +67,7 @@
         "relay-config": "^12.0.1",
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript": "^4.5.5",
-        "vite": "2.4.2"
+        "vite": "2.4.2",
+        "vite-plugin-relay": "^1.0.7"
     }
 }

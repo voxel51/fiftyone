@@ -11,7 +11,10 @@ import typing as t
 from xmlrpc.client import boolean
 
 from bson import ObjectId
+from dacite import from_dict, Config
 import strawberry as gql
+
+import fiftyone as fo
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
@@ -154,10 +157,27 @@ class AppConfig:
 
 @gql.type
 class Query:
+    @gql.field
+    def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
+        if fo.app_config.colorscale:
+            return fo.app_config.get_colormap()
+
+        return None
+
+    @gql.field
+    def config(self) -> AppConfig:
+        d = fo.app_config.serialize()
+        d["timezone"] = fo.config.timezone
+        return from_dict(AppConfig, d, config=Config(check_types=False))
+
     dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
         resolver=get_paginator_resolver(Dataset, "name", DATASET_FILTER_STAGE,)
     )
+
+    @gql.field
+    def version(self) -> str:
+        return fo.__version__
 
 
 def _flatten_fields(path, fields):

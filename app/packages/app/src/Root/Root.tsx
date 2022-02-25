@@ -1,10 +1,9 @@
-import React, { Suspense, useState } from "react";
+import React, { Suspense } from "react";
 import { usePaginationFragment, usePreloadedQuery } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
-import ViewBar from "@fiftyone/app/src/components/ViewBar/ViewBar";
 import {
   DocsLink,
   GitHubLink,
@@ -12,16 +11,18 @@ import {
   SlackLink,
   iconContainer,
   Route,
+  Link,
   useTo,
+  getRoutingContext,
 } from "@fiftyone/components";
 
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
 import style from "./Root.module.css";
-import { datasetName } from "@fiftyone/app/src/recoil/selectors";
 import { useMemo } from "react";
-import { getRoutingContext } from "@fiftyone/components/src/with/RelayEnvironment";
+import { datasetName } from "../recoil/selectors";
+import ViewBar from "../components/ViewBar/ViewBar";
 
 const getUseSearch = (datasets: RootDatasets_query$key) => {
   return (search: string) => {
@@ -81,7 +82,7 @@ const Nav: React.FC<{
 
   return (
     <Header
-      title={"FiftyOne Teams"}
+      title={"FiftyOne"}
       onRefresh={() => {}}
       datasetSelectorProps={{
         component: DatasetLink,
