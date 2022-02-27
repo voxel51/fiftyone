@@ -14,12 +14,11 @@ import {
 } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { atom, RecoilRoot, useRecoilState, useSetRecoilState } from "recoil";
+import { atom, RecoilRoot, useSetRecoilState } from "recoil";
 
 import Setup from "./components/Setup";
 import * as atoms from "./recoil/atoms";
 
-import { State } from "./recoil/types";
 import { useScreenshot } from "./utils/hooks";
 
 import "./index.css";
@@ -50,6 +49,7 @@ const App = withErrorBoundary(
           "/state",
           {
             onmessage: (msg) => {
+              console.log(msg);
               if (msg.event === Events.UPDATE) {
                 setState(JSON.parse(msg.data));
               }

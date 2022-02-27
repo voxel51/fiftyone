@@ -20,4 +20,5 @@ class Update(HTTPEndpoint):
         state = fos.StateDescription.from_dict(data.get("state"))
 
         set_state(state)
+
         return {"state": state.serialize()}

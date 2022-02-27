@@ -16,6 +16,7 @@ import {
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
+import { getFetchParameters, ServerError } from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -403,10 +404,27 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (listeners?: {
-  [key: string]: ((worker: Worker, args: any) => void)[];
-}): Worker => {
+export const createWorker = (
+  listeners?: {
+    [key: string]: ((worker: Worker, args: any) => void)[];
+  },
+  dispatchEvent
+): Worker => {
   const worker = new LookerWorker();
+
+  worker.onerror = (error) => {
+    dispatchEvent("error", error);
+  };
+  worker.addEventListener("message", ({ data }) => {
+    if (data.error) {
+      dispatchEvent("error", new ErrorEvent("error", { error: data.error }));
+    }
+  });
+
+  worker.postMessage({
+    method: "init",
+    ...getFetchParameters(),
+  });
 
   if (!listeners) {
     return worker;
@@ -482,26 +500,6 @@ export const getDPR = (() => {
     return dpr;
   };
 })();
-
-const isElectron = (): boolean => {
-  return (
-    window.process &&
-    window.process.versions &&
-    Boolean(window.process.versions.electron)
-  );
-};
-
-const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
-
-export const port = isElectron()
-  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
-  : parseInt(window.location.port);
-
-export const getURL = () => {
-  return isElectron()
-    ? `http://localhost:${port}`
-    : window.location.protocol + "//" + host;
-};
 
 export const getMimeType = (sample: any) => {
   return (

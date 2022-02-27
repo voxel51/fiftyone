@@ -41,7 +41,7 @@
 .stack {
   border: 1px solid #191c1f;
   border-top: 2px solid var(--brand);
-  background: var(--background-dark);
+  background: var(--background-darker);
   border-radius: 2px;
   color: var(--font);
   margin-top: 0.25rem;

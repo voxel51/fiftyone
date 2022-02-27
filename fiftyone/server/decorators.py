@@ -22,13 +22,15 @@ def route(func):
         try:
             body = await request.body()
             payload = body.decode("utf-8")
+            print(endpoint, len(payload))
             data = FiftyOneJSONEncoder.loads(payload) if payload else {}
             response = await func(endpoint, request, data, *args)
             if isinstance(response, Response):
                 return response
 
             return FiftyOneResponse(response)
-        except:
+        except Exception as e:
+            print(traceback.format_exc())
             return FiftyOneResponse(
                 {"kind": "Server Error", "stack": traceback.format_exc(),},
                 status_code=500,

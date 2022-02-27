@@ -318,6 +318,7 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
+  const dataset = useRecoilValue(selectors.datasetName);
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -338,6 +339,8 @@ export default React.memo(() => {
       dimensions,
       sampleId: sample._id,
       frameRate,
+      dataset,
+      view,
       frameNumber: constructor === FrameLooker ? frameNumber : null,
       fieldSchema: {
         ...fieldSchema,
@@ -356,7 +359,9 @@ export default React.memo(() => {
       ...lookerOptions.contents,
       selected: selected.has(sample._id),
     });
-    looker.addEventListener("error", (event) => handleError(event.detail));
+    looker.addEventListener("error", (event: ErrorEvent) => {
+      handleError(event.error);
+    });
 
     return looker;
   };

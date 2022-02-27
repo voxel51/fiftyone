@@ -84,6 +84,7 @@ const Selector = <T extends unknown>({
   useLayoutEffect(() => {
     if (!editing) {
       document.activeElement === ref.current && ref.current?.blur();
+    } else {
       setSearch("");
       setActive(undefined);
     }
@@ -99,7 +100,8 @@ const Selector = <T extends unknown>({
     overflowContainer: false,
     auto: true,
     snap: true,
-    placement: "bottom-start",
+    placement: "bottom-center",
+    possiblePlacements: ["bottom-center"],
     triggerOffset: 8,
   });
 
@@ -168,8 +170,8 @@ const Selector = <T extends unknown>({
         }}
       />
       {renderLayer(
-        <AnimatePresence>
-          {editing && (
+        editing && (
+          <AnimatePresence>
             <motion.div
               className={container}
               initial={{ opacity: 0, height: 0 }}
@@ -202,8 +204,8 @@ const Selector = <T extends unknown>({
                 />
               </Suspense>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>
+        )
       )}
     </div>
   );

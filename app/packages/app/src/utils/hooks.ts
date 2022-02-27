@@ -29,14 +29,6 @@ import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
 
-export const useRefresh = () => {
-  const updateState = useStateUpdate();
-  return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
-    updateState({ state: get(atoms.stateDescription) });
-    set(aggregationsTick, get(aggregationsTick) + 1);
-  });
-};
-
 export const useEventHandler = (
   target,
   eventType,
@@ -325,9 +317,6 @@ export const useSelect = () => {
         ? selected.delete(sampleId)
         : selected.add(sampleId);
       set(selectedSamples, selected);
-      socket.send(
-        packageMessage("set_selection", { _ids: Array.from(selected) })
-      );
     },
     []
   );
@@ -405,7 +394,6 @@ export const useStateUpdate = () => {
       ) {
         set(atoms.colorPool, state.config.colorPool);
       }
-      set(atoms.connected, true);
       set(atoms.stateDescription, state);
       callback && callback(set);
     },

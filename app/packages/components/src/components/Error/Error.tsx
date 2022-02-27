@@ -32,7 +32,6 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
   if (error instanceof NotFoundError) {
     return <Loading>{error.message}</Loading>;
   }
-
   let stack: string;
   if (error.source) {
     stack = error.source.errors.map((e) => e.extensions.stack).join("\n");

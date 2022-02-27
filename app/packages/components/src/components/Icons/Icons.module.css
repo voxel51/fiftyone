@@ -3,6 +3,8 @@ div.iconContainer {
   height: 100%;
   align-items: center;
   justify-content: center;
+  column-gap: 0.5rem;
+  padding: 1rem;
 }
 
 a.iconLink {
@@ -10,7 +12,6 @@ a.iconLink {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-right: 0.5em;
 }
 
 a.iconLink svg {

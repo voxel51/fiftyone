@@ -106,6 +106,11 @@ export interface Schema {
   [key: string]: Field;
 }
 
+export interface Stage {
+  _cls: string;
+  kwargs: [string, object][];
+}
+
 export const meetsFieldType = (
   field: Field,
   {

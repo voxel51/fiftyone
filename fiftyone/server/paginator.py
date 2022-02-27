@@ -53,7 +53,7 @@ async def get_items(
     first: int = 10,
     after: t.Optional[Cursor] = UNSET,
 ) -> Connection[HasCollectionType]:
-    start = filters
+    start = list(filters)
     if search:
         start += [
             {"$match": {f"{key}": {"$regex": search}}},

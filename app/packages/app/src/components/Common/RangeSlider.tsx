@@ -26,24 +26,28 @@ const SliderStyled = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
     margin: 0 1.5rem 0 1.3rem;
-    height: 3px;
+    height: 8px;
   }
 
+  align-content: center;
+  display: flex;
   .rail {
-    height: 7px;
-    border-radius: 6px;
+    height: 8px;
+    border-radius: 8px;
   }
 
   .track {
-    height: 7px;
-    border-radius: 6px;
+    height: 8px;
+    border-radius: 8px;
     background: ${({ theme }) => theme.brand};
   }
 
   .thumb {
-    height: 1rem;
-    width: 1rem;
-    border-radius: 0.5rem;
+    height: 16px;
+    width: 16px;
+    top: 50%;
+    margin-top: -8.4px;
+    border-radius: 8px;
     background: ${({ theme }) => theme.brand};
     box-shadow: none;
     color: transparent;

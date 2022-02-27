@@ -22,7 +22,7 @@
   transition: all 0.1 ease-in;
   text-decoration: none;
   white-space: nowrap;
-  font-size: 1rem;
+  font-size: 1.2rem;
 }
 
 .result.active,

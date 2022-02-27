@@ -60,6 +60,7 @@ async def set_state(
 
 async def dispatch_event(event: Event, source: Request = None):
     events = []
+    print("HELLO")
     for listener, queue_or_callback in _listeners.items():
         if source is listener:
             continue
@@ -83,6 +84,7 @@ async def listen(request: Request,) -> t.AsyncIterator[Event]:
     try:
         while True:
             event = await _listeners[request].get()
+            print("EVENT!!!", event)
             disconnected = await request.is_disconnected
 
             if disconnected:

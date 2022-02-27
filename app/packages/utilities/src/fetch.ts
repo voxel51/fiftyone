@@ -30,8 +30,11 @@ export const getFetchOrigin = () => {
   return fetchOrigin;
 };
 
-export const getFetchParameters = (): Parameters<typeof setFetchFunction> => {
-  return [getFetchOrigin(), getFetchHeaders()];
+export const getFetchParameters = () => {
+  return {
+    origin: getFetchOrigin(),
+    headers: getFetchHeaders(),
+  };
 };
 
 export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
@@ -51,27 +54,23 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
       url = `${origin}${path}`;
     }
 
-    try {
-      const response = await fetch(url, {
-        method: method,
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-          ...headers,
-        },
-        mode: "cors",
-        body: body ? JSON.stringify(body) : null,
-      });
+    const response = await fetch(url, {
+      method: method,
+      cache: "no-cache",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      mode: "cors",
+      body: body ? JSON.stringify(body) : null,
+    });
 
-      if (response.status >= 400) {
-        const error = await response.json();
-        throw new ServerError(((error as unknown) as { stack: string }).stack);
-      }
-
-      return await response[result]();
-    } catch (error) {
-      console.log(error);
+    if (response.status >= 400) {
+      const error = await response.json();
+      throw new ServerError(((error as unknown) as { stack: string }).stack);
     }
+
+    return await response[result]();
   };
 
   fetchFunctionSingleton = fetchFunction;

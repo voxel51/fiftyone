@@ -28,19 +28,21 @@ class HasClient(object):
         self._port = port
         self._address = address or "localhost"
         self._data = None
-        self._host = f"http://{self._address}:{self._port}"
+        self._origin = f"http://{self._address}:{self._port}"
         self._listeners = {}
+        self._connected = True
 
-        fiftyone_url = f"{self._host}/fiftyone"
+        fiftyone_url = f"{self._origin}/fiftyone"
 
         def run_client() -> None:
             def subscribe() -> None:
-                response = requests.get(
-                    self._url,
+                response = requests.post(
+                    f"{self._origin}/state",
                     stream=True,
                     headers={"Accept": "text/event-stream"},
                 )
                 source = sseclient.SSEClient(response)
+                self._connected = True
                 for message in source.events():
                     self._handle_event(message)
 
@@ -49,6 +51,7 @@ class HasClient(object):
                     _ping(fiftyone_url)
                     subscribe()
                 except:
+                    self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
                         "in 10 seconds\r\n"
@@ -61,7 +64,7 @@ class HasClient(object):
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
-            if self._client is None and not self._initial_connection:
+            if not self._connected:
                 raise RuntimeError("Session is not connected")
 
             while self._data is None:
@@ -130,11 +133,9 @@ class HasClient(object):
         for callback in self._listeners.values():
             callback(self)
 
-    def _handle_event(self, message):
-        message = json_util.loads(message)
-        event = message.pop("event")
+    def _handle_event(self, event: sseclient.Event):
 
-        if event == "update":
+        if event.event == "update":
             config = None
             if self._data:
                 message["state"]["config"] = self._data.config.serialize()
@@ -155,4 +156,5 @@ class HasClient(object):
             self.on_close()
 
     def _post(self, data):
-        requests.post(f"{self._host}/update", data=data)
+        r = requests.post(f"{self._origin}/update", data=data)
+        print(r.content)

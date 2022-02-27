@@ -396,7 +396,7 @@ const ToggleSidebar = ({ modal }: { modal: boolean }) => {
         )
       }
       highlight={!visible}
-      style={{ height: "2rem", position: "absolute", ...style, zIndex: 1 }}
+      style={{ height: "2rem", position: "absolute", ...style }}
     />
   );
 };

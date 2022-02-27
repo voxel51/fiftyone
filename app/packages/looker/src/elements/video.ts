@@ -1,7 +1,6 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-
 import { Optional, StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {

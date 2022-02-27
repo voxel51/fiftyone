@@ -2,7 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { setFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, setFetchFunction, Stage } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -205,48 +205,48 @@ const createReader = ({
   frameCount,
   frameNumber,
   sampleId,
-  url,
+  dataset,
+  view,
 }: {
   chunkSize: number;
   coloring: Coloring;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
-  url: string;
+  dataset: string;
+  view: Stage[];
 }): FrameStream => {
   let cancelled = false;
 
   const privateStream = new ReadableStream<FrameChunkResponse>(
     {
-      pull: (controller: ReadableStreamDefaultController) => {
+      pull: async (controller: ReadableStreamDefaultController) => {
         if (frameNumber > frameCount || cancelled) {
           controller.close();
           return Promise.resolve();
         }
 
-        return new Promise((resolve, reject) => {
-          fetch(
-            `${url}/frames?` +
-              new URLSearchParams({
-                frameNumber: frameNumber.toString(),
-                numFrames: chunkSize.toString(),
-                frameCount: frameCount.toString(),
+        return await (async () => {
+          try {
+            const { frames, range }: FrameChunk = await getFetchFunction()(
+              "POST",
+              "/frames",
+              {
+                frameNumber: frameNumber,
+                numFrames: chunkSize,
+                frameCount: frameCount,
                 sampleId,
-              })
-          )
-            .then((response: Response) => {
-              console.log(response.status);
-              response.json();
-            })
-            .then(({ frames, range }: FrameChunk) => {
-              controller.enqueue({ frames, range, coloring });
-              frameNumber = range[1] + 1;
-              resolve();
-            })
-            .catch((error) => {
-              reject(error);
-            });
-        });
+                dataset,
+                view,
+              }
+            );
+
+            controller.enqueue({ frames, range, coloring });
+            frameNumber = range[1] + 1;
+          } catch (error) {
+            postMessage({ error });
+          }
+        })();
       },
       cancel: () => {
         cancelled = true;
@@ -297,14 +297,7 @@ type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
 
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream &&
-      stream.reader
-        .read()
-        .then(getSendChunk(uuid))
-        .catch((e) => {
-          console.log(e);
-          postMessage({ method: "requestFrameChunk", error: true });
-        });
+    stream && stream.reader.read().then(getSendChunk(uuid));
   }
 };
 
@@ -314,7 +307,8 @@ interface SetStream {
   frameNumber: number;
   sampleId: string;
   uuid: string;
-  url: string;
+  dataset: string;
+  view: Stage[];
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -325,7 +319,8 @@ const setStream = ({
   frameNumber,
   sampleId,
   uuid,
-  url,
+  dataset,
+  view,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -335,16 +330,11 @@ const setStream = ({
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
-    url,
+    dataset,
+    view,
   });
 
-  stream.reader
-    .read()
-    .then(getSendChunk(uuid))
-    .catch((e) => {
-      console.log(e);
-      postMessage({ method: "requestFrameChunk", error: true });
-    });
+  stream.reader.read().then(getSendChunk(uuid));
 };
 
 const isFloatArray = (arr) =>
@@ -473,13 +463,13 @@ const UPDATE_LABEL = {
 
 interface Init {
   headers: HeadersInit;
-  host: string;
+  origin: string;
 }
 
 type InitMethod = Init & ReaderMethod;
 
-const init = ({ host, headers }: Init) => {
-  setFetchFunction(host, headers);
+const init = ({ origin, headers }: Init) => {
+  setFetchFunction(origin, headers);
 };
 
 type Method =

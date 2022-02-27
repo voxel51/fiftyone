@@ -303,7 +303,7 @@ const ResultComponent = ({
   className: string;
 }) => {
   return (
-    <div className={className}>
+    <div className={className} style={{ fontSize: "1rem" }}>
       <span
         style={{
           flex: 1,

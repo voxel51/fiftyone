@@ -37,6 +37,7 @@ const Header: React.FC<Props> = ({
               inputStyle={{ height: 40, maxWidth: 300 }}
               containerStyle={{ position: "relative" }}
               inputClassName={style.input}
+              overflow={true}
               {...datasetSelectorProps}
             />
           </div>
