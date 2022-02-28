@@ -1449,9 +1449,6 @@ by dynamically adding new fields to each |Detection| instance:
         'mood': 'salty',
     }>
 
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
-
 .. note::
 
     Did you know? You can view custom attributes in the
@@ -1566,9 +1563,6 @@ by dynamically adding new fields to each |Detection| instance:
         'age': 51,
         'mood': 'salty',
     }>
-
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
 
 .. note::
 
@@ -1695,9 +1689,6 @@ dynamically adding new fields to each |Polyline| instance:
         'kind': 'right',
     }>
 
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
-
 .. note::
 
     Did you know? You can view custom attributes in the
@@ -1790,9 +1781,6 @@ dynamically adding new fields to each |Keypoint| instance:
         'index': None,
         'kind': 'square',
     }>
-
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
 
 .. note::
 
@@ -2025,8 +2013,8 @@ stores the `[first, last]` frame range of the detection in the video.
 The optional
 :attr:`confidence <fiftyone.core.labels.TemporalDetection.confidence>`
 attribute can be used to store a model prediction score, and you can add
-:ref:`custom attributes <label-attributes>` as well, which can be visualized in
-the App.
+:ref:`custom attributes <using-labels>` as well, which can be visualized in the
+App.
 
 .. code-block:: python
     :linenos:
@@ -2346,14 +2334,25 @@ dictionary mapping attribute names to |Attribute| instances, which contain the
 :attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
 associated metadata.
 
-.. note::
+.. warning::
 
-    In most cases, it is recommended to
-    :ref:`add custom attributes as fields directly on <using-labels>` the
-    |Label| object. However, a typical use case for this feature, as opposed to
-    simply storing custom attributes directly on the |Label| object, is to
-    store predictions and associated confidences of a classifier applied to the
-    object patches.
+    The :attr:`attributes <fiftyone.core.labels.Detection.attributes>` field
+    will be removed in an upcoming release.
+
+    Instead, :ref:`add custom attributes directly <using-labels>` to your
+    |Label| objects:
+
+    .. code-block:: python
+
+        detection = fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.8, 0.8])
+        detection["custom_attribute"] = 51
+
+        # Equivalent
+        detection = fo.Detection(
+            label="cat",
+            bounding_box=[0.1, 0.1, 0.8, 0.8],
+            custom_attribute=51,
+        )
 
 There are |Attribute| subclasses for various types of attributes you may want
 to store. Use the appropriate subclass when possible so that FiftyOne knows the
