@@ -286,6 +286,68 @@ class SampleCollection(object):
 
         return None
 
+    @property
+    def skeletons(self):
+        """The keypoint skeletons of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.skeletons` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement skeletons")
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        raise NotImplementedError("Subclass must implement skeletons")
+
+    @property
+    def default_skeleton(self):
+        """The default keypoint skeleton of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_skeleton` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement default_skeleton")
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        raise NotImplementedError("Subclass must implement default_skeleton")
+
+    def has_skeleton(self, field):
+        """Determines whether this collection has a keypoint skeleton for the
+        given field.
+
+        Keypoint skeletons may be defined either in :meth:`skeletons` or
+        :meth:`default_skeleton`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            True/False
+        """
+        return field in self.skeletons or bool(self.default_skeleton)
+
+    def get_skeleton(self, field):
+        """Gets the keypoint skeleton for the given field, or None if no
+        skeleton is available.
+
+        Skeletons are first retrieved from :meth:`skeletons` if they exist,
+        otherwise from :meth:`default_skeleton`.
+
+        Args:
+            field: a field name
+
+        Returns:
+            a list of classes, or None
+        """
+        if field in self.skeletons:
+            return self.skeletons[field]
+
+        if self.default_skeleton:
+            return self.default_skeleton
+
+        return None
+
     def summary(self):
         """Returns a string summary of the collection.
 
@@ -6677,6 +6739,12 @@ class SampleCollection(object):
         if self.default_mask_targets:
             d["default_mask_targets"] = self._serialize_default_mask_targets()
 
+        if self.skeletons:
+            d["skeletons"] = self._serialize_skeletons()
+
+        if self.default_skeleton:
+            d["default_skeleton"] = self._serialize_default_skeleton()
+
         # Serialize samples
         samples = []
         for sample in self.iter_samples(progress=True):
@@ -7080,6 +7148,26 @@ class SampleCollection(object):
 
         return self._root_dataset._doc.field_to_python(
             "default_mask_targets", default_mask_targets
+        )
+
+    def _serialize_skeletons(self):
+        return self._root_dataset._doc.field_to_mongo("skeletons")
+
+    def _serialize_default_skeleton(self):
+        return self._root_dataset._doc.field_to_mongo("default_skeleton")
+
+    def _parse_skeletons(self, skeletons):
+        if not skeletons:
+            return skeletons
+
+        return self._root_dataset._doc.field_to_python("skeletons", skeletons)
+
+    def _parse_default_skeleton(self, default_skeleton):
+        if not default_skeleton:
+            return default_skeleton
+
+        return self._root_dataset._doc.field_to_python(
+            "default_skeleton", default_skeleton
         )
 
     def _to_fields_str(self, field_schema):
