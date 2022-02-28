@@ -17,6 +17,7 @@ from fiftyone.core.fields import (
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    IntField,
     ListField,
     StringField,
     TargetsField,
@@ -183,6 +184,19 @@ class SampleFieldDocument(EmbeddedDocument):
         return etau.get_class_name(attr) if attr else None
 
 
+class KeypointSkeleton(EmbeddedDocument):
+    """Description of a keypoint skeleton.
+
+    Args:
+        labels (None): a list of keypoint label strings
+        edges: a list of lists of integer indexes defining the connectivity
+            between keypoints
+    """
+
+    labels = ListField(StringField(), null=True)
+    edges = ListField(ListField(IntField()))
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -201,6 +215,10 @@ class DatasetDocument(Document):
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
+    skeletons = DictField(
+        EmbeddedDocumentField(document_type=KeypointSkeleton)
+    )
+    default_skeleton = EmbeddedDocumentField(document_type=KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
