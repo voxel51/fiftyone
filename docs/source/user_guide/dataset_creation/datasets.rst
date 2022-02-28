@@ -5055,52 +5055,25 @@ The
 :meth:`has_dataset_info <fiftyone.utils.data.importers.DatasetImporter.has_dataset_info>`
 property of the importer allows it to declare whether its
 :meth:`get_dataset_info() <fiftyone.utils.data.importers.DatasetImporter.get_dataset_info>`
-method should be called after all samples have been imported to retrieve
-dataset-level information to store in the relevant properties of the FiftyOne
-dataset, including
-:meth:`info <fiftyone.core.dataset.Dataset.info>`,
-:meth:`classes <fiftyone.core.dataset.Dataset.classes>`,
-:meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`,
-:meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`, and
-:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`.
+method should be called after all samples have been imported to retrieve a dict
+of dataset-level information to store in the
+:meth:`info <fiftyone.core.dataset.Dataset.info>` property of the dataset.
 
-The function below describes how the `info` dict is dissected by the dataset
-import routine:
+As a special case, if the `info` dict contains any of the keys listed below,
+these items are popped and stored in the corresponding dedicated dataset field:
 
-.. code-block:: python
-
-    def parse_info(dataset, info):
-        """Parses the info returned by :meth:`DatasetImporter.get_dataset_info` and
-        stores it on the relevant properties of the dataset.
-
-        Args:
-            dataset: a :class:`fiftyone.core.dataset.Dataset`
-            info: an info dict
-        """
-        classes = info.pop("classes", None)
-        if isinstance(classes, dict):
-            # Classes may already exist, so update rather than set
-            dataset.classes.update(classes)
-        elif isinstance(classes, list):
-            dataset.default_classes = classes
-
-        default_classes = info.pop("default_classes", None)
-        if default_classes:
-            dataset.default_classes = default_classes
-
-        mask_targets = info.pop("mask_targets", None)
-        if mask_targets:
-            # Mask targets may already exist, so update rather than set
-            dataset.mask_targets.update(dataset._parse_mask_targets(mask_targets))
-
-        default_mask_targets = info.pop("default_mask_targets", None)
-        if default_mask_targets:
-            dataset.default_mask_targets = dataset._parse_default_mask_targets(
-                default_mask_targets
-            )
-
-        dataset.info.update(info)
-        dataset.save()
+-   `"classes"` key:
+    :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>`
+-   `"default_classes"` key:
+    :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
+-   `"mask_targets"` key:
+    :meth:`Dataset.mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`
+-   `"default_mask_targets"` key:
+    :meth:`Dataset.default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+-   `"skeletons"` key:
+    :meth:`Dataset.skeletons <fiftyone.core.dataset.Dataset.skeletons>`
+-   `"default_skeleton"` key:
+    :meth:`Dataset.default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
 
 .. _writing-a-custom-dataset-type-importer:
 

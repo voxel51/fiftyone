@@ -310,6 +310,72 @@ require knowledge of the mask targets for a dataset or field(s).
     :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
     properties to save the changes to the database.
 
+.. _storing-keypoint-skeletons:
+
+Storing keypoint skeletons
+--------------------------
+
+All |Dataset| instances have
+:meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
+:meth:`default_skeletons <fiftyone.core.dataset.Dataset.default_skeletons>`
+properties that you can use to store keypoint skeletons for |Keypoint| field(s)
+of a dataset.
+
+The :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` property is a
+dictionary mapping field names to |KeypointSkeleton| instances, each of which
+defines the keypoint label strings and edge connectivity for the |Keypoint|
+instances in the specified field of the dataset.
+
+If all |Keypoint| fields in your dataset have the same semantics, you can store
+a single |KeypointSkeleton| in the
+:meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
+property of your dataset.
+
+When you load datasets with |Keypoint| fields in the App that have
+corresponding skeletons, the skeletons will automatically be rendered and label
+strings will appear in the App's tooltip when you hover over the keypoints.
+
+.. note::
+
+    When using keypoint skeletons, each |Keypoint| instance's
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list must always
+    respect the indexing defined by the field's |KeypointSkeleton|.
+
+    If a particular keypoint is occluded or missing for an object, use
+    `[float("nan"), float("nan")]` in its
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set keypoint skeleton for the `ground_truth` field
+    dataset.skeletons = {
+        "ground_truth": fo.KeypointSkeleton(
+            labels=[
+                "left hand" "left shoulder", "right shoulder", "right hand",
+                "left eye", "right eye", "mouth",
+            ],
+            edges=[[0, 1, 2, 3], [4, 5, 6]],
+        )
+    }
+
+    # Edit an existing skeleton
+    dataset.skeletons["ground_truth"].labels[-1] = "lips"
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties to save the changes to the database.
+
 Deleting a dataset
 ------------------
 
@@ -1783,8 +1849,11 @@ attributes with additional metadata such as prediction confidences.
 
 .. note::
 
-    Did you know? You can view custom attributes in the
-    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+    Did you know? You can
+    :ref:`store keypoint skeletons <storing-keypoint-skeletons>` for your
+    keypoint fields on your dataset. Then, when you view the dataset in the
+    App, label strings and edges will be drawn when you visualize these fields
+    in the App.
 
 .. _semantic-segmentation:
 
