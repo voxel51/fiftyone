@@ -859,7 +859,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
 
     label = fof.StringField()
     points = fof.KeypointsField()
-    confidences = fof.ListField(field=fof.FloatField(), null=True)
+    confidences = fof.ListField(fof.FloatField(), null=True)
     index = fof.IntField()
 
     def to_shapely(self, frame_size=None):

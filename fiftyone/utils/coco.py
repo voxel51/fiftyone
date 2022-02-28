@@ -973,18 +973,13 @@ class COCOObject(object):
         label = self._get_label(classes)
 
         points = []
-        visible = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
                 points.append((float("nan"), float("nan")))
-                visible.append(False)
             else:
                 points.append((x / width, y / height))
-                visible.append(True)
 
-        return fol.Keypoint(
-            label=label, points=points, visible=visible, **self.attributes,
-        )
+        return fol.Keypoint(label=label, points=points, **self.attributes)
 
     def to_detection(
         self,
