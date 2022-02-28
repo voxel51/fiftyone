@@ -391,6 +391,7 @@ class ServerService(Service):
             super().start()
             self._wait_for_child_port(port=port)
         else:
+            self._disabled = True
             logger.info(
                 "Connected to FiftyOne on port %i at %s.\nIf you are not "
                 "connecting to a remote session, you may need to start a new "

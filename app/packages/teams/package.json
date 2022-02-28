@@ -11,6 +11,7 @@
         "@fiftyone/app": "*",
         "@fiftyone/components": "*",
         "@fiftyone/utilities": "*",
+        "@material-ui/icons": "^4.11.2",
         "@react-spring/web": "^9.4.2",
         "history": "^4.10.1",
         "re-resizable": "^6.9.1",

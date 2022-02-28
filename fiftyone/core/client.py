@@ -134,7 +134,8 @@ class HasClient(object):
             callback(self)
 
     def _handle_event(self, event: sseclient.Event):
-
+        print(event.event, event.data)
+        return
         if event.event == "update":
             config = None
             if self._data:
@@ -156,5 +157,4 @@ class HasClient(object):
             self.on_close()
 
     def _post(self, data):
-        r = requests.post(f"{self._origin}/update", data=data)
-        print(r.content)
+        requests.post(f"{self._origin}/update", json=data)

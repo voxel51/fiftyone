@@ -14,10 +14,9 @@ import {
 } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { atom, RecoilRoot, useSetRecoilState } from "recoil";
+import { atom, RecoilRoot } from "recoil";
 
 import Setup from "./components/Setup";
-import * as atoms from "./recoil/atoms";
 
 import { useScreenshot } from "./utils/hooks";
 
@@ -30,16 +29,11 @@ enum AppReadyState {
   CLOSED = 2,
 }
 
-enum Events {
-  UPDATE = "Update",
-}
-
 setFetchFunction("http://localhost:5151");
 
 const App = withErrorBoundary(
   withRelayEnvironment(
     withTheme(() => {
-      const setState = useSetRecoilState(atoms.stateDescription);
       const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
 
       useEffect(() => {
@@ -48,12 +42,6 @@ const App = withErrorBoundary(
         getEventSource(
           "/state",
           {
-            onmessage: (msg) => {
-              console.log(msg);
-              if (msg.event === Events.UPDATE) {
-                setState(JSON.parse(msg.data));
-              }
-            },
             onopen: async (response) => {
               setReadyState(AppReadyState.OPEN);
             },

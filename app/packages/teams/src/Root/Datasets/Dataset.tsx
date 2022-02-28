@@ -2,9 +2,8 @@ import React, { useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 
 import { State } from "@fiftyone/app/src/recoil/types";
-import DatasetContainer from "@fiftyone/app/src/containers/Dataset";
+import DatasetContainer from "@fiftyone/app/src/components/Dataset";
 
-import { RouteComponent } from "../../routing";
 import {
   DatasetQuery,
   DatasetQuery$data,
@@ -13,6 +12,7 @@ import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
 import { useStateUpdate } from "@fiftyone/app/src/utils/hooks";
 import { RGB } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
+import { Route } from "@fiftyone/components";
 
 const toStrictField = (field: Field): StrictField => {
   return {
@@ -22,7 +22,7 @@ const toStrictField = (field: Field): StrictField => {
 };
 
 const collapseFields = (
-  paths: DatasetQuery$data["dataset"]["sampleFields"]
+  paths: NonNullable<DatasetQuery$data["dataset"]>["sampleFields"]
 ): StrictField[] => {
   const schema: Schema = {};
   for (let i = 0; i < paths.length; i++) {
@@ -49,7 +49,7 @@ const collapseFields = (
 };
 
 const convertTargets = (
-  targets: DatasetQuery$data["dataset"]["defaultMaskTargets"]
+  targets: NonNullable<DatasetQuery$data["dataset"]>["defaultMaskTargets"]
 ) => {
   return Object.fromEntries(
     (targets || []).map<[number, string]>(({ target, value }) => [
@@ -59,9 +59,9 @@ const convertTargets = (
   );
 };
 
-const transformDataset = ({
-  dataset,
-}: DatasetQuery$data): Readonly<State.Dataset> => {
+const transformDataset = (
+  dataset: NonNullable<DatasetQuery$data["dataset"]>
+): Readonly<State.Dataset> => {
   const targets = Object.fromEntries(
     (dataset.maskTargets || []).map(({ name, targets }) => [
       name,
@@ -83,7 +83,7 @@ const transformDataset = ({
   };
 };
 
-export const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
+export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
       query DatasetQuery($name: String!) {
@@ -185,7 +185,7 @@ export const Dataset: RouteComponent<DatasetQuery> = ({ prepared }) => {
     },
     activeHandle: null,
     colorscale: (clone(data.viewer.colorscale) || []) as RGB[],
-    dataset: transformDataset(data),
+    dataset: transformDataset(data.dataset),
   };
 
   const update = useStateUpdate();

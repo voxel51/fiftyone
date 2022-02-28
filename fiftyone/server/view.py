@@ -1,5 +1,5 @@
 """
-FiftyOne Server extended view.
+FiftyOne Server view
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -146,18 +146,6 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
-
-
-def get_view_field(fields_map, path):
-    """Returns the proper view field, even for special paths like "id"
-
-    Returns:
-        :class:`fiftyone.core.expressions.ViewField`
-    """
-    if path in fields_map:
-        return F(fields_map[path]).to_string()
-
-    return F(path)
 
 
 def _make_expression(field, path, args):

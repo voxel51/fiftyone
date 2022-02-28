@@ -11,7 +11,6 @@ import typing as t
 import asyncio
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
-from starlette.websockets import WebSocket
 
 import fiftyone.core.state as fos
 
@@ -38,10 +37,7 @@ def _serialize(event: Event):
     )
 
 
-_listeners: t.Dict[
-    t.Union[Request, WebSocket],
-    asyncio.Queue[t.Union[fos.StateDescription, Event]],
-] = {}
+_listeners: t.Dict[Request, asyncio.Queue[Event]] = {}
 _state = fos.StateDescription()
 
 
@@ -49,50 +45,40 @@ def get_state() -> fos.StateDescription:
     return _state
 
 
-async def set_state(
-    state: fos.StateDescription, source: Request = None
-) -> None:
+async def set_state(state: fos.StateDescription) -> None:
     global _state
     _state = state
 
     await dispatch_event(Update(data=state))
 
 
-async def dispatch_event(event: Event, source: Request = None):
+async def dispatch_event(event: Event):
     events = []
-    print("HELLO")
-    for listener, queue_or_callback in _listeners.items():
-        if source is listener:
-            continue
-
-        if isinstance(queue_or_callback, asyncio.LifoQueue):
-            event = queue_or_callback.put(event)
-        else:
-            event = queue_or_callback()
-
-        events.append(event)
+    for queue in _listeners.values():
+        events.append(queue.put(event))
 
     await asyncio.gather(*events)
 
 
 async def listen(request: Request,) -> t.AsyncIterator[Event]:
-    def cleanup() -> None:
-        _listeners.pop(request)
-
     _listeners[request] = asyncio.LifoQueue(maxsize=1)
 
+    yield _serialize(Capture(data={"helloo": "world"}))
     try:
         while True:
-            event = await _listeners[request].get()
-            print("EVENT!!!", event)
-            disconnected = await request.is_disconnected
-
+            disconnected = await request.is_disconnected()
             if disconnected:
-                cleanup()
+                _listeners.pop(request)
                 break
 
-            yield _serialize(event)
+            try:
+                event = _listeners[request].get_nowait()
+                yield _serialize(event)
+            except asyncio.QueueEmpty:
+                pass
+
+            await asyncio.sleep(0.2)
 
     except asyncio.CancelledError as e:
-        cleanup()
+        _listeners.pop(request)
         raise e

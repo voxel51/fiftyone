@@ -1,4 +1,4 @@
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { RecoilState, useRecoilValue } from "recoil";
 import { ColorTheme, toSnakeCase } from "@fiftyone/utilities";
 import React, { useLayoutEffect } from "react";
 import { ThemeContext as LegacyTheme } from "styled-components";
@@ -6,7 +6,7 @@ import { ThemeContext as LegacyTheme } from "styled-components";
 let atom: RecoilState<ColorTheme>;
 
 export const useTheme = () => {
-  return useRecoilState(atom);
+  return useRecoilValue(atom);
 };
 
 const withTheme = <P extends {}>(

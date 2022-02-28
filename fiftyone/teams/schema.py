@@ -9,8 +9,8 @@ import strawberry as gql
 
 from fiftyone.server.extensions import EndSession
 
-from .mutation import Mutation
-from .query import Query
+from fiftyone.teams.mutation import Mutation
+from fiftyone.teams.query import Query
 
 
 schema = gql.Schema(query=Query, mutation=Mutation, extensions=[EndSession])

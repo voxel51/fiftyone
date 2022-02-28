@@ -9,7 +9,6 @@ import {
   Bookmark,
   Check,
   FlipToBack,
-  ArrowDownward,
   KeyboardArrowLeft,
   KeyboardArrowRight,
   LocalOffer,
@@ -37,15 +36,12 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
-import * as viewAtoms from "../../recoil/view";
 import {
   useEventHandler,
   useOutsideClick,
   useTheme,
   useUnprocessedStateUpdate,
 } from "../../utils/hooks";
-import { http } from "../../shared/connection";
-import { formatDateTime, getFetchFunction } from "@fiftyone/utilities";
 import Similar, { similarityParameters } from "./Similar";
 
 const Loading = () => {
@@ -60,53 +56,6 @@ const Loading = () => {
 const ActionDiv = styled.div`
   position: relative;
 `;
-
-const Export = () => {
-  const download = useRecoilCallback(
-    ({ snapshot }) => async () => {
-      const dataset = await snapshot.getPromise(selectors.datasetName);
-      const timeZone = await snapshot.getPromise(selectors.timeZone);
-      const sample_ids = await snapshot.getPromise(atoms.selectedSamples);
-      const blob = await getFetchFunction()(
-        "POST",
-        "/export",
-        {
-          filters: await snapshot.getPromise(filterAtoms.filters),
-          view: await snapshot.getPromise(viewAtoms.view),
-          dataset,
-          sample_ids: [...sample_ids],
-        },
-        "blob"
-      );
-      const url = window.URL.createObjectURL(new Blob([blob as BlobPart]));
-      const link = document.createElement("a");
-      link.style.display = "none";
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `${dataset}-${formatDateTime(Date.now(), timeZone)
-          .replaceAll(":", "-")
-          .replaceAll(", ", "-")}.csv`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-    },
-    []
-  );
-
-  return (
-    <ActionDiv>
-      <PillButton
-        open={false}
-        highlight={false}
-        icon={<ArrowDownward />}
-        onClick={download}
-        title={"Download a filepath CSV"}
-      />
-    </ActionDiv>
-  );
-};
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
@@ -421,7 +370,6 @@ export const GridActionsRow = () => {
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
       <Selected modal={false} />
-      <Export />
     </ActionsRowDiv>
   );
 };

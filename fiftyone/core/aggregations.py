@@ -555,6 +555,7 @@ class CountValues(Aggregation):
         _sort_by="count",
         _asc=True,
         _include=None,
+        _search="",
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
@@ -562,6 +563,7 @@ class CountValues(Aggregation):
         self._order = 1 if _asc else -1
         self._include = _include
         self._field_type = None
+        self._search = _search
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -632,6 +634,9 @@ class CountValues(Aggregation):
                     }
                 }
             ]
+
+        if self._search:
+            pipeline += [{"$match": {"_id": {"$regex": self._search}}}]
 
         sort = OrderedDict()
         limit = self._first

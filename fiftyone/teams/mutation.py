@@ -11,6 +11,7 @@ from pymongo import ReturnDocument
 import strawberry as gql
 
 from fiftyone.server.data import Info
+
 from fiftyone.teams.permissions import IsAuthenticated
 from fiftyone.teams.query import User
 

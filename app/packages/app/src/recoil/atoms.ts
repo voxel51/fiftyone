@@ -3,6 +3,12 @@ import { atom, atomFamily } from "recoil";
 import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import {
+  getEventSource,
+  getFetchFunction,
+  toCamelCase,
+} from "@fiftyone/utilities";
+import { getRoutingContext } from "@fiftyone/components";
 
 interface AppSample extends Sample {
   _id: string;
@@ -95,9 +101,49 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
+enum Events {
+  UPDATE = "Update",
+}
+
 export const stateDescription = atom<State.Description | null>({
   key: "stateDescription",
   default: null,
+  effects: [
+    ({ onSet, setSelf }) => {
+      onSet((state) => {});
+
+      const controller = new AbortController();
+
+      getEventSource(
+        "/state",
+        {
+          onmessage: (msg) => {
+            if (msg.event === Events.UPDATE) {
+              const state = JSON.parse(msg.data);
+              const router = getRoutingContext();
+              console.log(state);
+              if (!state.dataset) {
+                router.history.push("/");
+              } else {
+                router.history.push(`/datasets/${state.dataset.name}`);
+              }
+
+              setSelf({
+                ...toCamelCase(state),
+                view: state.view,
+              } as State.Description);
+            }
+          },
+        },
+        controller.signal
+      );
+
+      return () => {
+        console.log("ABORTED");
+        controller.abort();
+      };
+    },
+  ],
 });
 
 export const selectedLabels = atom<State.SelectedLabelMap>({

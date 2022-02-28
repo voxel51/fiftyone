@@ -82,7 +82,7 @@ class FatalError extends Error {}
 export const getEventSource = (
   path: string,
   events: {
-    onmessage: (ev: EventSourceMessage) => void;
+    onmessage?: (ev: EventSourceMessage) => void;
     onopen?: (response: Response) => Promise<void>;
     onclose?: () => void;
     onerror?: (err: any) => number | null | undefined | void;
@@ -94,7 +94,7 @@ export const getEventSource = (
     signal,
     async onopen(response) {
       if (response.ok) {
-        events.onopen(response);
+        events.onopen && events.onopen(response);
         return;
       }
 
@@ -112,15 +112,16 @@ export const getEventSource = (
       if (msg.event === "FatalError") {
         throw new FatalError(msg.data);
       }
-      events.onmessage(msg);
+      events.onmessage && events.onmessage(msg);
     },
     onclose() {
-      events.onclose();
+      events.onclose && events.onclose();
       throw new RetriableError();
     },
     onerror(err) {
       if (err instanceof FatalError) {
-        events.onerror(err);
+        events.onerror && events.onerror(err);
       }
     },
+    openWhenHidden: true,
   });

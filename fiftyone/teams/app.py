@@ -11,17 +11,16 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Route
 
 import fiftyone.constants as foc
-
 from fiftyone.server.routes import routes
 
-from .authentication import (
+from fiftyone.teams.authentication import (
     authenticate_route,
     middleware as auth_middleware,
     on_shutdown,
     on_startup,
 )
-from .context import GraphQL
-from .schema import schema
+from fiftyone.teams.context import GraphQL
+from fiftyone.teams.schema import schema
 
 
 routes = [
