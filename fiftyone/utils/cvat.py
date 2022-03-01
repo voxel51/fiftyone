@@ -4191,18 +4191,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             # Download task data
-            task_json = self.get(self.task_url(task_id)).json()
-            attr_id_map = {}
-            _class_map = {}
-            labels = task_json["labels"]
-            for label in labels:
-                _class_map[label["id"]] = label["name"]
-                attr_id_map[label["id"]] = {
-                    i["name"]: i["id"] for i in label["attributes"]
-                }
-
-            _class_map_rev = {n: i for i, n in _class_map.items()}
-
+            attr_id_map, _class_map_rev = self._get_attr_class_maps(task_id)
             task_resp = self.get(self.task_annotation_url(task_id)).json()
             all_shapes = task_resp["shapes"]
             all_tags = task_resp["tags"]
@@ -4331,6 +4320,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             results._forget_tasks(deleted_tasks)
 
         return annotations
+
+    def _get_attr_class_maps(self, task_id):
+
+        task_json = self.get(self.task_url(task_id)).json()
+        attr_id_map = {}
+        _class_map = {}
+        labels = task_json["labels"]
+        for label in labels:
+            _class_map[label["id"]] = label["name"]
+            attr_id_map[label["id"]] = {
+                i["name"]: i["id"] for i in label["attributes"]
+            }
+
+        _class_map_rev = {n: i for i, n in _class_map.items()}
+
+        return attr_id_map, _class_map_rev
 
     def _get_paginated_results(self, url, value=None):
         results = []
@@ -4755,9 +4760,26 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             job_assignees=_job_assignees,
             job_reviewers=_job_reviewers,
         )
+        self._verify_uploaded_frames(task_id, samples_batch)
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
         return task_id, class_id_map, attr_id_map
+
+    def _verify_uploaded_frames(self, task_id, samples):
+        task_meta = self.get(self.task_data_meta_url(task_id)).json()
+        num_uploaded = task_meta.get("size", 0)
+        if samples.media_type == fom.VIDEO:
+            num_frames = samples.count("frames")
+            frame_type = "frames"
+        else:
+            num_frames = len(samples)
+            frame_type = "images"
+
+        if num_frames != num_uploaded:
+            logger.warning(
+                "Warning: Failed to upload %d %s out of %d"
+                % (num_frames, frame_type, num_frames - num_uploaded)
+            )
 
     def _upload_annotations(
         self,
