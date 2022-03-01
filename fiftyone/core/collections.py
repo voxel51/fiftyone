@@ -5950,7 +5950,12 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
-        self, output_dir, label_fields=None, overwrite=False, config=None,
+        self,
+        output_dir,
+        label_fields=None,
+        overwrite=False,
+        config=None,
+        **kwargs,
     ):
         """Renders annotated versions of the media in the collection with the
         specified label data overlaid to the given directory.
@@ -5964,13 +5969,17 @@ class SampleCollection(object):
 
         Args:
             output_dir: the directory to write the annotated media
-            label_fields (None): a list of label fields to render. By default,
-                all :class:`fiftyone.core.labels.Label` fields are drawn
+            label_fields (None): a label field or list of label fields to
+                render. By default, all :class:`fiftyone.core.labels.Label`
+                fields are drawn
             overwrite (False): whether to delete ``output_dir`` if it exists
                 before rendering
             config (None): an optional
                 :class:`fiftyone.utils.annotations.DrawConfig` configuring how
                 to draw the labels
+            **kwargs: optional keyword arguments specifying parameters of the
+                default :class:`fiftyone.utils.annotations.DrawConfig` to
+                override
 
         Returns:
             the list of paths to the rendered media
@@ -5990,11 +5999,19 @@ class SampleCollection(object):
 
         if self.media_type == fom.VIDEO:
             return foua.draw_labeled_videos(
-                self, output_dir, label_fields=label_fields, config=config
+                self,
+                output_dir,
+                label_fields=label_fields,
+                config=config,
+                **kwargs,
             )
 
         return foua.draw_labeled_images(
-            self, output_dir, label_fields=label_fields, config=config
+            self,
+            output_dir,
+            label_fields=label_fields,
+            config=config,
+            **kwargs,
         )
 
     def export(
