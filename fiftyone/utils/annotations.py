@@ -2143,8 +2143,7 @@ def draw_labeled_images(
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
-            default :class:`fiftyone.utils.annotations.DrawConfig` to
-            override
+            default :class:`DrawConfig` to override
 
     Returns:
         the list of paths to the labeled images
@@ -2183,8 +2182,7 @@ def draw_labeled_image(
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
-            default :class:`fiftyone.utils.annotations.DrawConfig` to
-            override
+            default :class:`DrawConfig` to override
     """
     config = _parse_draw_config(config, kwargs)
 
@@ -2217,8 +2215,7 @@ def draw_labeled_videos(
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
-            default :class:`fiftyone.utils.annotations.DrawConfig` to
-            override
+            default :class:`DrawConfig` to override
 
     Returns:
         the list of paths to the labeled videos
@@ -2267,8 +2264,7 @@ def draw_labeled_video(
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
-            default :class:`fiftyone.utils.annotations.DrawConfig` to
-            override
+            default :class:`DrawConfig` to override
     """
     config = _parse_draw_config(config, kwargs)
 
