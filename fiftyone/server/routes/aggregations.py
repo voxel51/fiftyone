@@ -8,13 +8,13 @@ FiftyOne Server /aggregation and /tagging routes
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
-from fiftyone.server.json_util import convert
 from fiftyone.server.utils import meets_type
 import fiftyone.server.view as fosv
 
@@ -34,6 +34,7 @@ class Aggregations(HTTPEndpoint):
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         hidden_labels = data.get("hidden_labels", None)
+        print(fo.config)
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
         if sample_ids:

@@ -4,9 +4,6 @@
   scrollbar-gutter: stable;
 
   scrollbar-width: auto;
-  @-moz-document url-prefix() {
-    padding-right: 16px;
-  }
 }
 
 .scrollable::-webkit-scrollbar {

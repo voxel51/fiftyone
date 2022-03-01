@@ -43,7 +43,7 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
     <div className={style.wrapper}>
       <div className={classnames(style.container, scrollable)}>
         <div className={style.heading}>
-          <div>{error.message}</div>
+          <div>{String(error)}</div>
           <div>
             <div>
               <span title={"Reset"} onClick={reset}>

@@ -1,5 +1,5 @@
 import { formatDateTime, getFetchFunction } from "@fiftyone/utilities";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRecoilCallback } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
@@ -48,7 +48,13 @@ const useDownload = () => {
   );
 };
 
-const Export = ({ bounds }: { bounds: [number, number] }) => {
+const Export = ({
+  close,
+  bounds,
+}: {
+  bounds: [number, number];
+  close: () => void;
+}) => {
   const download = useDownload();
   const [includeTags, setIncludeTags] = useState(false);
 
@@ -61,8 +67,8 @@ const Export = ({ bounds }: { bounds: [number, number] }) => {
       />
       <PopoutSectionTitle />
       <Button
-        text={"Apply"}
-        title={`Sort by similarity to the selected ${type}`}
+        text={"Export CSV"}
+        title={`Export CSV`}
         onClick={() => {
           close();
           download(includeTags);

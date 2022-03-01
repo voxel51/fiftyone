@@ -368,7 +368,7 @@ const Export = () => {
         ref={mRef}
         title={"Export CSV"}
       />
-      {open && <ExportActions bounds={bounds} />}
+      {open && <ExportAction close={() => setOpen(false)} bounds={bounds} />}
     </ActionDiv>
   );
 };

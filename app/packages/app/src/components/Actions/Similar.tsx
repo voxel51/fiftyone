@@ -47,7 +47,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   const selectedLabelIds = await snapshot.getPromise(
     selectors.selectedLabelIds
   );
-  const selectedLabels = await snapshot.getPromise(selectors.selectedLabels);
+  const selectedLabels = await snapshot.getPromise(atoms.selectedLabels);
   const keys = await snapshot.getPromise(selectors.similarityKeys);
   const labels_field = keys.patches
     .filter(([k, v]) => k === brainKey)
@@ -133,7 +133,7 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
         return acc;
       }, []);
     } else if (modal) {
-      const selectedLabels = get(selectors.selectedLabels);
+      const selectedLabels = get(atoms.selectedLabels);
 
       if (Object.keys(selectedLabels).length) {
         const fields = new Set(

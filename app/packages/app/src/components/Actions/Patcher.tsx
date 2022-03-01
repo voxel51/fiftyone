@@ -101,7 +101,7 @@ export const sendPatch = async (
     view: await snapshot.getPromise(viewAtoms.view),
     dataset: await snapshot.getPromise(selectors.datasetName),
     sample_ids: await snapshot.getPromise(atoms.selectedSamples),
-    labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
+    labels: toSnakeCase(await snapshot.getPromise(atoms.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
   }).then((data) => updateState(data));
