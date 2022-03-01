@@ -17,6 +17,7 @@ from fiftyone.server.data import Info
 import fiftyone.server.query as fosq
 import fiftyone.server.mixins as fosm
 import fiftyone.server.paginator as fosp
+from fiftyone.teams.authentication import AuthenticatedUser
 
 
 @gql.type
@@ -36,11 +37,13 @@ class User(fosm.HasCollection):
         return "users"
 
 
+@gql.type
 class Query(fosq.Query):
     @gql.field
     async def viewer(self, info: Info) -> User:
         db = info.context.db
+        request_user: AuthenticatedUser = info.context.request.user
         users: motor.MotorCollection = db.users
-        user = await users.find_one({"sub": info.context.sub})
+        user = await users.find_one({"sub": request_user.sub})
         user["id"] = user.pop("_id")
         return from_dict(User, user, config=Config(check_types=False))

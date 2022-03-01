@@ -9,6 +9,8 @@ from dataclasses import dataclass
 import typing as t
 
 import motor as mtr
+import starlette.requests as strq
+import starlette.responses as strp
 import strawberry.types as gqlt
 from strawberry.dataloader import DataLoader
 
@@ -23,6 +25,8 @@ class Context:
     db: mtr.MotorDatabase
     session: mtr.motor_tornado.MotorClientSession
     dataloaders: t.Dict[HasCollection, DataLoader[str, HasCollection]]
+    request: strq.Request
+    response: strp.Response
 
 
 Info = gqlt.Info[Context, None]

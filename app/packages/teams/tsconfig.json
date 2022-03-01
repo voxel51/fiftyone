@@ -10,6 +10,9 @@
         "strict": true,
         "plugins": [{ "name": "typescript-plugin-css-modules" }],
         "moduleResolution": "Node",
+        "isolatedModules": true,
+        "noImplicitAny": false,
+        "useDefineForClassFields": false,
         "allowSyntheticDefaultImports": true
     },
     "references": [

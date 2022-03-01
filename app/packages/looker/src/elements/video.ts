@@ -532,6 +532,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.canvas.width = dimensions[0];
         this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
+
+        let canvas = this.canvas;
         acquireThumbnailer().then(([video, release]) => {
           const error = (event) => {
             // Chrome v60
@@ -553,7 +555,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const seeked = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                const ctx = this.canvas.getContext("2d");
+                const ctx = canvas.getContext("2d");
                 ctx.imageSmoothingEnabled = false;
                 ctx.drawImage(video, 0, 0);
                 release();

@@ -1,15 +1,20 @@
-import { PillButton } from "@fiftyone/app/src/components/utils";
-import * as atoms from "@fiftyone/app/src/recoil/atoms";
-import * as filterAtoms from "@fiftyone/app/src/recoil/filters";
-import * as selectors from "@fiftyone/app/src/recoil/selectors";
-import * as viewAtoms from "@fiftyone/app/src/recoil/view";
 import { formatDateTime, getFetchFunction } from "@fiftyone/utilities";
-import { ArrowDownward } from "@material-ui/icons";
+import { useState } from "react";
 import { useRecoilCallback } from "recoil";
 
-const Export = () => {
-  const download = useRecoilCallback(
-    ({ snapshot }) => async () => {
+import * as atoms from "../../recoil/atoms";
+import * as filterAtoms from "../../recoil/filters";
+import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
+
+import Checkbox from "../Common/Checkbox";
+import { Button, PopoutSectionTitle } from "../utils";
+
+import Popout from "./Popout";
+
+const useDownload = () => {
+  return useRecoilCallback(
+    ({ snapshot }) => async (tags: boolean) => {
       const dataset = await snapshot.getPromise(selectors.datasetName);
       const timeZone = await snapshot.getPromise(selectors.timeZone);
       const sample_ids = await snapshot.getPromise(atoms.selectedSamples);
@@ -21,6 +26,7 @@ const Export = () => {
           view: await snapshot.getPromise(viewAtoms.view),
           dataset,
           sample_ids: [...sample_ids],
+          tags,
         },
         "blob"
       );
@@ -40,17 +46,35 @@ const Export = () => {
     },
     []
   );
+};
+
+const Export = ({ bounds }: { bounds: [number, number] }) => {
+  const download = useDownload();
+  const [includeTags, setIncludeTags] = useState(false);
 
   return (
-    <div style={{ position: "relative" }}>
-      <PillButton
-        open={false}
-        highlight={false}
-        icon={<ArrowDownward />}
-        onClick={download}
-        title={"Download a filepath CSV"}
+    <Popout modal={false} bounds={bounds}>
+      <Checkbox
+        name={"Include tags"}
+        value={includeTags}
+        setValue={setIncludeTags}
       />
-    </div>
+      <PopoutSectionTitle />
+      <Button
+        text={"Apply"}
+        title={`Sort by similarity to the selected ${type}`}
+        onClick={() => {
+          close();
+          download(includeTags);
+        }}
+        style={{
+          margin: "0.25rem -0.5rem",
+          height: "2rem",
+          borderRadius: 0,
+          textAlign: "center",
+        }}
+      />
+    </Popout>
   );
 };
 

@@ -8,7 +8,8 @@ FiftyOne Teams app
 import starlette.applications as stra
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.routing import Route
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
 import fiftyone.constants as foc
 from fiftyone.server.routes import routes
@@ -46,5 +47,8 @@ app = stra.Starlette(
     on_shutdown=[on_shutdown],
     on_startup=[on_startup],
     routes=routes
-    + [Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL))],
+    + [
+        Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
+        Mount("/", app=StaticFiles(directory="static"), name="static"),
+    ],
 )

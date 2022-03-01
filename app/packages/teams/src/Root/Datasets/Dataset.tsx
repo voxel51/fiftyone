@@ -87,21 +87,19 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(
     graphql`
       query DatasetQuery($name: String!) {
-        viewer {
+        colorscale
+        config {
+          colorPool
           colorscale
-          config {
-            colorPool
-            colorscale
-            gridZoom
-            loopVideos
-            notebookHeight
-            useFrameNumber
-            showConfidence
-            showIndex
-            showLabel
-            showTooltip
-            timezone
-          }
+          gridZoom
+          loopVideos
+          notebookHeight
+          useFrameNumber
+          showConfidence
+          showIndex
+          showLabel
+          showTooltip
+          timezone
         }
         dataset(name: $name) {
           id
@@ -181,10 +179,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     connected: true,
     viewCls: null,
     config: {
-      ...clone(data.viewer.config),
+      ...clone(data.config),
     },
     activeHandle: null,
-    colorscale: (clone(data.viewer.colorscale) || []) as RGB[],
+    colorscale: (clone(data.colorscale) || []) as RGB[],
     dataset: transformDataset(data.dataset),
   };
 

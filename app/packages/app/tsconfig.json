@@ -1,18 +1,16 @@
 {
     "compilerOptions": {
-        "allowSyntheticDefaultImports": true,
-        "moduleResolution": "node",
         "target": "ESNext",
         "module": "ESNext",
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "noImplicitAny": false,
         "sourceMap": true,
         "outDir": "dist",
         "jsx": "preserve",
-        "types": ["vite/client", "react/next", "react-dom/next"],
-        "strict": true,
+        "types": ["vite/client"],
         "composite": true
     },
-    "include": ["./src"],
+    "include": ["index.ts"],
     "references": [
         { "path": "../components" },
         { "path": "../looker" },

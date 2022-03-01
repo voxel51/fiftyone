@@ -5,6 +5,7 @@ FiftyOne Teams authentication
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import dataclass
 from inspect import isclass
 import aiohttp as aio
 from dacite import from_dict
@@ -13,8 +14,8 @@ from starlette.authentication import (
     AuthCredentials,
     AuthenticationBackend,
     AuthenticationError,
+    BaseUser,
     requires,
-    SimpleUser,
 )
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.middleware import Middleware
@@ -75,7 +76,6 @@ def get_header_token(authorization: str):
 
 async def authenticate_header(token: str, jwks: JWKS) -> bool:
     unverified_header = jwt.get_unverified_header(token)
-    has_scope(token, "Eee")
     rsa_key = {}
     for key in jwks.keys:
         if key.kid == unverified_header["kid"]:
@@ -128,6 +128,19 @@ def get_web():
     return _web
 
 
+@dataclass
+class AuthenticatedUser(BaseUser):
+    sub: str
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def display_name(self) -> str:
+        return self.sub
+
+
 class Authentication(AuthenticationBackend):
     async def authenticate(self, conn):
         header = conn.headers.get("Authorization", None)
@@ -142,7 +155,11 @@ class Authentication(AuthenticationBackend):
         except Exception:
             raise AuthenticationError("authentication error")
 
-        return AuthCredentials(["authenticated"]), SimpleUser("joe")
+        claims = jwt.get_unverified_claims(token)
+        return (
+            AuthCredentials(["authenticated"]),
+            AuthenticatedUser(sub=claims["sub"]),
+        )
 
 
 def authenticate_route(endpoint):

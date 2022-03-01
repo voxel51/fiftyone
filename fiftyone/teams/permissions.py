@@ -18,4 +18,4 @@ class IsAuthenticated(gqlp.BasePermission):
     async def has_permission(
         self, source: t.Any, info: Info, **kwargs
     ) -> bool:
-        return info.context.authenticated
+        return True

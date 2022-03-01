@@ -104,13 +104,15 @@ type PageInfo {
 }
 
 type Query {
-  users(search: String, first: Int = 10, after: String = null): UserConnection!
   datasets(
     search: String
     first: Int = 10
     after: String = null
   ): DatasetConnection!
+  colorscale: [[Int!]!]
+  config: AppConfig!
   dataset(name: String!): Dataset
+  version: String!
   viewer: User!
 }
 
@@ -154,19 +156,6 @@ type User {
   email: String!
   familyName: String!
   givenName: String!
-  colorscale: [[Int!]!]
-  config: AppConfig!
-}
-
-type UserConnection {
-  pageInfo: PageInfo!
-  edges: [UserEdge!]!
-  total: Int!
-}
-
-type UserEdge {
-  node: User!
-  cursor: String!
 }
 
 input UserInput {

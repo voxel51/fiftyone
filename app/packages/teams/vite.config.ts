@@ -15,4 +15,5 @@ export default {
   server: {
     https: true,
   },
+  envDir: "./",
 } as UserConfig;

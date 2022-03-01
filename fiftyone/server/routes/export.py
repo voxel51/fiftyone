@@ -26,6 +26,7 @@ class Export(HTTPEndpoint):
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
+        tags = data.get("tags", False)
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
 
@@ -35,17 +36,24 @@ class Export(HTTPEndpoint):
         now = datetime.now(pytz.utc)
         datetime.strftime(now, "%Y-%m-%d %H:%M:%S")
 
-        collection = foo.get_async_db_conn()[view._dataset._sample_collection_name]
-        pipeline = view._pipeline() + [{"$project": {"filepath": 1}}]
+        collection = foo.get_async_db_conn()[
+            view._dataset._sample_collection_name
+        ]
+        pipeline = view._pipeline() + [
+            {"$project": {"filepath": 1, "tags": tags}}
+        ]
 
         async def response():
             async for row in foo.aggregate(collection, pipeline):
-                yield f"{row['filepath']}\n"
+                if tags:
+                    yield f"{row['filepath']},{','.join(row['tags'])}\n"
+                else:
+                    yield f"{row['filepath']}\n"
 
         return StreamingResponse(
             response(),
             media_type="application/octet-stream",
             headers={
                 "Content-Disposition": f"attachment; filename={dataset}.csv"
-            }
+            },
         )

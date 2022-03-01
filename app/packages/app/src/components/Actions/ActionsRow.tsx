@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
+  ArrowDownward,
   Bookmark,
   Check,
   FlipToBack,
@@ -29,6 +30,7 @@ import styled from "styled-components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import OptionsActions from "./Options";
+import ExportAction from "./Export";
 import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
@@ -350,6 +352,27 @@ const ToggleSidebar = ({ modal }: { modal: boolean }) => {
   );
 };
 
+const Export = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<ArrowDownward />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={open}
+        ref={mRef}
+        title={"Export CSV"}
+      />
+      {open && <ExportActions bounds={bounds} />}
+    </ActionDiv>
+  );
+};
+
 const ActionsRowDiv = styled.div`
   position: relative;
   display: flex;
@@ -369,6 +392,7 @@ export const GridActionsRow = () => {
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
+      <Export />
       <Selected modal={false} />
     </ActionsRowDiv>
   );

@@ -83,4 +83,4 @@ const Root = withErrorBoundary(() => {
 
 const root = document.getElementById("root") as HTMLDivElement;
 
-ReactDOM.createRoot(root).render(<Root />);
+ReactDOM.render(<Root />, root);
