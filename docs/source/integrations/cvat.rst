@@ -480,7 +480,7 @@ provided:
 -   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): the username to assign the generated tasks.
     This argument can be a list of usernames when annotating videos as each
-    video is uploaded to a separate task 
+    video is uploaded to a separate task
 -   **job_assignees** (*None*): a list of usernames to assign jobs
 -   **job_reviewers** (*None*): a list of usernames to assign job reviews
 -   **project_name** (*None*): an optional project name to which to upload the
@@ -491,6 +491,9 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
+-   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
+    created task(s). This argument can be a list of URLs when annotating videos
+    or when using `task_size` and generating multiple tasks
 
 .. _cvat-label-schema:
 
@@ -1639,7 +1642,7 @@ specify which users will be assigned to the created tasks:
 -   `segment_size`: the maximum number of images to include in a single job
 -   `task_assignee`: a username to assign the generated tasks. This argument
     can be a list of usernames when annotating videos as each
-    video is uploaded to a separate task 
+    video is uploaded to a separate task
 -   `job_assignees`: a list of usernames to assign jobs
 -   `job_reviewers`: a list of usernames to assign job reviews
 
