@@ -454,6 +454,19 @@ whenever accessing the sample from the |Dataset|:
 You can use :ref:`dataset views <using-views>` to perform more sophisticated
 operations on samples like searching, filtering, sorting, and slicing.
 
+.. note::
+
+    Accessing a sample by its integer index in a |Dataset| is not allowed. The
+    best practice is to lookup individual samples by ID or filepath, or use
+    array slicing to extract a range of samples, and iterate over samples in a
+    view.
+
+    .. code-block:: python
+
+        dataset[0]
+        # KeyError: Accessing dataset samples by numeric index is not supported.
+        # Use sample IDs, filepaths, slices, boolean arrays, or a boolean ViewExpression instead
+
 Deleting samples from a dataset
 -------------------------------
 
@@ -1436,9 +1449,6 @@ by dynamically adding new fields to each |Detection| instance:
         'mood': 'salty',
     }>
 
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
-
 .. note::
 
     Did you know? You can view custom attributes in the
@@ -1553,9 +1563,6 @@ by dynamically adding new fields to each |Detection| instance:
         'age': 51,
         'mood': 'salty',
     }>
-
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
 
 .. note::
 
@@ -1682,9 +1689,6 @@ dynamically adding new fields to each |Polyline| instance:
         'kind': 'right',
     }>
 
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
-
 .. note::
 
     Did you know? You can view custom attributes in the
@@ -1777,9 +1781,6 @@ dynamically adding new fields to each |Keypoint| instance:
         'index': None,
         'kind': 'square',
     }>
-
-You can also use :ref:`label attributes <label-attributes>` to store custom
-attributes with additional metadata such as prediction confidences.
 
 .. note::
 
@@ -2012,8 +2013,8 @@ stores the `[first, last]` frame range of the detection in the video.
 The optional
 :attr:`confidence <fiftyone.core.labels.TemporalDetection.confidence>`
 attribute can be used to store a model prediction score, and you can add
-:ref:`custom attributes <label-attributes>` as well, which can be visualized in
-the App.
+:ref:`custom attributes <using-labels>` as well, which can be visualized in the
+App.
 
 .. code-block:: python
     :linenos:
@@ -2333,13 +2334,25 @@ dictionary mapping attribute names to |Attribute| instances, which contain the
 :attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
 associated metadata.
 
-.. note::
+.. warning::
 
-    In most cases, it is recommended to :ref:`add custom attributes as fields
-    directly on<using-labels>` the |Label| object. However, a typical use case
-    for this feature, as opposed to simply storing custom attributes directly
-    on the |Label| object, is to store predictions and associated
-    confidences of a classifier applied to the object patches.
+    The :attr:`attributes <fiftyone.core.labels.Detection.attributes>` field
+    will be removed in an upcoming release.
+
+    Instead, :ref:`add custom attributes directly <using-labels>` to your
+    |Label| objects:
+
+    .. code-block:: python
+
+        detection = fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.8, 0.8])
+        detection["custom_attribute"] = 51
+
+        # Equivalent
+        detection = fo.Detection(
+            label="cat",
+            bounding_box=[0.1, 0.1, 0.8, 0.8],
+            custom_attribute=51,
+        )
 
 There are |Attribute| subclasses for various types of attributes you may want
 to store. Use the appropriate subclass when possible so that FiftyOne knows the
@@ -2451,6 +2464,127 @@ schema of the attributes that you're storing.
 
     Did you know? You can view attribute values in the
     :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+
+.. _custom-embedded-documents:
+
+Custom embedded documents
+_________________________
+
+If you work with collections of related fields that you would like to organize
+under a single top-level field, you can achieve this by defining and using
+custom |EmbeddedDocument| and |DynamicEmbeddedDocument| classes to populate
+your datasetes.
+
+Using custom embedded document classes enables you to access your data using
+the same object-oriented interface enjoyed by FiftyOne's
+:ref:`builtin label types <using-labels>`.
+
+The |EmbeddedDocument| class represents a fixed collection of fields with
+predefined types and optional default values, while the
+|DynamicEmbeddedDocument| class supports predefined fields but also allows
+users to populate arbitrary custom fields at runtime, like FiftyOne's
+:ref:`builtin label types <using-labels>`.
+
+To use this feature, simply define some custom embedded document classes in a
+`foo.bar` module, using the appropriate types from the
+:mod:`fiftyone.core.fields` module to declare your fields and their types,
+defaults, etc:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime
+
+    import fiftyone.core.fields as fof
+    import fiftyone.core.odm as foo
+
+    class CameraInfo(foo.EmbeddedDocument):
+        camera_id = fof.StringField(required=True)
+        quality = fof.FloatField()
+        description = fof.StringField()
+
+    class LabelMetadata(foo.DynamicEmbeddedDocument):
+        created_at = fof.DateTimeField(default=datetime.utcnow)
+        model_name = fof.StringField()
+
+and add `foo.bar` to FiftyOne's `module_path` config setting (see
+:ref:`this page <configuring-fiftyone>` for more ways to register this):
+
+.. code-block:: shell
+
+    export FIFTYONE_MODULE_PATH=foo.bar
+
+    # Verify module path
+    fiftyone config
+
+You're now free to use your custom embedded document classes as you please,
+whether this be top-level sample fields or nested fields:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import foo.bar as fb
+
+    sample = fo.Sample(
+        filepath="/path/to/image.png",
+        camera_info=fb.CameraInfo(
+            camera_id="123456789",
+            quality=99.0,
+        ),
+        weather=fo.Classification(
+            label="sunny",
+            confidence=0.95,
+            metadata=fb.LabelMetadata(
+                model_name="resnet50",
+                description="A dynamic field",
+            )
+        ),
+    )
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    dataset.name = "test"
+    dataset.persistent = True
+
+As long as `foo.bar` is on your `module_path`, this dataset can be loaded in
+future sessions and manipulated as usual:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("test")
+    print(dataset.first())
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '6217b696d181786cff360740',
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': BaseList([]),
+        'metadata': None,
+        'camera_info': <CameraInfo: {
+            'camera_id': '123456789',
+            'quality': 99.0,
+            'description': None,
+        }>,
+        'weather': <Classification: {
+            'id': '6217b696d181786cff36073e',
+            'tags': BaseList([]),
+            'label': 'sunny',
+            'confidence': 0.95,
+            'logits': None,
+            'metadata': <LabelMetadata: {
+                'created_at': datetime.datetime(2022, 2, 24, 16, 47, 18, 10000),
+                'model_name': 'resnet50',
+                'description': 'A dynamic field',
+            }>,
+        }>,
+    }>
 
 .. _video-frame-labels:
 

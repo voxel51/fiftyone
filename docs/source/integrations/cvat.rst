@@ -498,6 +498,9 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
+-   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
+    created task(s). This argument can be a list of URLs when annotating videos
+    or when using `task_size` and generating multiple tasks
 
 .. _cvat-label-schema:
 
@@ -651,8 +654,8 @@ Label attributes
 ----------------
 
 The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <label-attributes>` beyond the default `label`
-attribute are included in the annotation tasks.
+:ref:`custom attributes <using-labels>` beyond the default `label` attribute
+are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each
