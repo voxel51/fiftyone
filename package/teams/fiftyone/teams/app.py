@@ -5,6 +5,8 @@ FiftyOne Teams app
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import starlette.applications as stra
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
@@ -62,10 +64,13 @@ app = stra.Starlette(
     routes=routes
     + [
         Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
-        Mount("/", app=Static(directory="static", html=True), name="static",),
+        Mount(
+            "/",
+            app=Static(
+                directory=os.path.join(os.path.dirname(__file__), "static"),
+                html=True,
+            ),
+            name="static",
+        ),
     ],
 )
-
-import fiftyone as fo
-
-print(fo.config)

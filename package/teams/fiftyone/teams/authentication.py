@@ -15,17 +15,17 @@ from starlette.authentication import (
     AuthenticationBackend,
     AuthenticationError,
     BaseUser,
+    UnauthenticatedUser,
     requires,
 )
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 
+import fiftyone.teams as fot
 from fiftyone.teams.data import JWKS
 
 
-AUTH0_DOMAIN = "dev-uqppzklh.us.auth0.com"
-API_AUDIENCE = "api.dev.fiftyone.ai"
 ALGORITHMS = ["RS256"]
 
 
@@ -51,8 +51,8 @@ def decode(token: str, rsa_key):
         token,
         rsa_key,
         algorithms=ALGORITHMS,
-        audience=API_AUDIENCE,
-        issuer=f"https://{AUTH0_DOMAIN}/",
+        audience=fot.teams_config.auth0_audience,
+        issuer=f"https://{fot.teams_config.auth0_domain}/",
     )
 
 
@@ -114,7 +114,7 @@ def has_scope(token: str, scope: str):
 
 async def set_jwks(web: aio.ClientSession):
     async with web.get(
-        f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+        f"https://{fot.teams_config.auth0_domain}/.well-known/jwks.json"
     ) as response:
         data = await response.json()
         return from_dict(JWKS, data)
@@ -153,7 +153,7 @@ class Authentication(AuthenticationBackend):
         try:
             await authenticate_header(token, _jwks)
         except Exception:
-            raise AuthenticationError("authentication error")
+            return AuthCredentials([]), UnauthenticatedUser()
 
         claims = jwt.get_unverified_claims(token)
         return (

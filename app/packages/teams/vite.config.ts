@@ -9,8 +9,8 @@ export default {
     reactRefresh({
       parserPlugins: ["classProperties", "classPrivateProperties"],
     }),
-    nodePolyfills(),
     relay,
+    nodePolyfills(),
   ],
   server: {
     https: true,

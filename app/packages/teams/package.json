@@ -7,7 +7,7 @@
         "relay": "relay-compiler $@",
         "build": "yarn build-bare && yarn copy-to-python",
         "build-bare": "vite build",
-        "copy-to-python": "rm -rf ../../../fiftyone/teams/static && cp -r ./dist ../../../fiftyone/teams/static"
+        "copy-to-python": "rm -rf ../../../package/teams/fiftyone/teams/static && cp -r ./dist ../../../package/teams/fiftyone/teams/static"
     },
     "dependencies": {
         "@auth0/auth0-react": "^1.9.0",

@@ -3,86 +3,111 @@ import {
   Loading,
   RelayEnvironment,
   withErrorBoundary,
-  withRelayEnvironment,
   withTheme,
 } from "@fiftyone/components";
 import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import ReactDOM from "react-dom";
+import {
+  graphql,
+  loadQuery,
+  RelayEnvironmentProvider,
+  usePreloadedQuery,
+} from "react-relay";
 import { atom, RecoilRoot } from "recoil";
 
 import "./index.css";
 
 import Login from "./Login";
 import { useState } from "react";
-import routes from "./routes";
-import { RelayEnvironmentProvider } from "react-relay";
+import configQuery, { srcQuery } from "./__generated__/srcQuery.graphql";
 
-const App = withRelayEnvironment(() => {
-  return (
-    <RelayEnvironmentProvider environment={RelayEnvironment}>
-      <Login />
-    </RelayEnvironmentProvider>
+const Authenticate = () => {
+  const auth0 = useAuth0();
+  const redirect = !auth0.isAuthenticated && !auth0.isLoading && !auth0.error;
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    redirect &&
+      auth0.loginWithRedirect({
+        redirectUri: window.location.origin,
+        prompt: "login",
+        appState: window.location.href,
+      });
+  }, [redirect]);
+
+  useEffect(() => {
+    auth0.isAuthenticated &&
+      auth0.getAccessTokenSilently().then((token) => {
+        document.cookie = `fiftyone-token=${token}`;
+        setFetchFunction(import.meta.env.VITE_API || window.location.origin, {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        });
+        setInitialized(true);
+      });
+  }, [auth0.isAuthenticated]);
+
+  if (
+    auth0.error ||
+    (!auth0.isAuthenticated && !auth0.isLoading && !redirect)
+  ) {
+    return <Loading>Unauthorized</Loading>;
+  }
+
+  if (auth0.isLoading || !initialized) {
+    return <Loading>Pixelating...</Loading>;
+  }
+
+  return <Login />;
+};
+
+const query = loadQuery<srcQuery>(RelayEnvironment, configQuery, {});
+
+const Config = () => {
+  const { teamsConfig: config } = usePreloadedQuery<srcQuery>(
+    graphql`
+      query srcQuery {
+        teamsConfig {
+          auth0Audience
+          auth0ClientId
+          auth0Domain
+          auth0Organization
+        }
+      }
+    `,
+    query
   );
-}, routes);
 
-const Authenticate = withErrorBoundary(
+  return (
+    <Auth0Provider
+      audience={config.auth0Audience}
+      clientId={config.auth0ClientId}
+      domain={config.auth0Domain}
+      organization={config.auth0Organization}
+      onRedirectCallback={(state) => {}}
+    >
+      <Authenticate />
+    </Auth0Provider>
+  );
+};
+
+const App = withErrorBoundary(
   withTheme(() => {
-    const auth0 = useAuth0();
-    const redirect = !auth0.isAuthenticated && !auth0.isLoading && !auth0.error;
-    const [initialized, setInitialized] = useState(false);
-
-    useEffect(() => {
-      redirect &&
-        auth0.loginWithRedirect({
-          redirectUri: window.location.origin,
-          prompt: "login",
-          appState: window.location.href,
-        });
-    }, [redirect]);
-
-    useEffect(() => {
-      auth0.isAuthenticated &&
-        auth0.getAccessTokenSilently().then((token) => {
-          document.cookie = `fiftyone-token=${token}`;
-          setFetchFunction(import.meta.env.VITE_API || window.location.origin, {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          });
-          setInitialized(true);
-        });
-    }, [auth0.isAuthenticated]);
-
-    if (
-      auth0.error ||
-      (!auth0.isAuthenticated && !auth0.isLoading && !redirect)
-    ) {
-      return <Loading>Unauthorized</Loading>;
-    }
-
-    if (auth0.isLoading || !initialized) {
-      return <Loading>Pixelating...</Loading>;
-    }
-
-    return <App />;
+    return (
+      <RelayEnvironmentProvider environment={RelayEnvironment}>
+        <Suspense fallback={<Loading>Pixelating...</Loading>}>
+          <Config />
+        </Suspense>
+      </RelayEnvironmentProvider>
+    );
   }, atom({ key: "theme", default: darkTheme }))
 );
 
 document.addEventListener("DOMContentLoaded", () =>
   ReactDOM.render(
     <RecoilRoot>
-      <Auth0Provider
-        audience={import.meta.env.VITE_AUTH0_AUDIENCE}
-        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
-        domain={import.meta.env.VITE_AUTH0_DOMAIN}
-        organization={import.meta.env.VITE_AUTH0_ORGANIZATION}
-        onRedirectCallback={(state) => {
-          console.log(state);
-          //state.returnTo && window.location.assign(state.returnTo)
-        }}
-      >
-        <Authenticate />
-      </Auth0Provider>
+      <App />
     </RecoilRoot>,
     document.getElementById("root")
   )

@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { getRoutingContext } from "../../with/RelayEnvironment";
+import { getRoutingContext } from "../../with/Router";
 
 const Link: React.FC<{
   to: string;

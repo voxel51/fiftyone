@@ -1,7 +1,7 @@
 export { default as withErrorBoundary } from "./ErrorBoundary";
 export {
-  default as withRelayEnvironment,
-  RelayEnvironment,
+  default as withRouter,
   getRoutingContext,
-} from "./RelayEnvironment";
+  RelayEnvironment,
+} from "./Router";
 export { default as withTheme, useTheme } from "./Theme";

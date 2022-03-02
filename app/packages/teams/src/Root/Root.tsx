@@ -14,6 +14,7 @@ import {
   Route,
   Link,
   useTo,
+  getRoutingContext,
 } from "@fiftyone/components";
 
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
@@ -22,7 +23,6 @@ import { RootQuery } from "./__generated__/RootQuery.graphql";
 import style from "./Root.module.css";
 import { datasetName } from "@fiftyone/app/src/recoil/selectors";
 import { useMemo } from "react";
-import { getRoutingContext } from "@fiftyone/components/src/with/RelayEnvironment";
 
 const getUseSearch = (datasets: RootDatasets_query$key) => {
   return (search: string) => {

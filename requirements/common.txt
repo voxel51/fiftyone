@@ -2,6 +2,7 @@ aiofiles==0.7.0
 aiohttp==3.8.0
 argcomplete==1.11.0
 boto3==1.17.36
+dacite>=1.6.0
 Deprecated==1.2.11
 eventlet==0.31.0
 Flask==1.1.2
@@ -25,8 +26,11 @@ schedule==1.1.0
 scikit-learn>=0.23.2
 scikit-image>=0.16.2
 setuptools==45.2.0
+sseclient-py>=1.7.2
+sse-starlette>=0.10.3
+starlette>=0.16.0
+strawberry-graphql>=0.96.0
 tabulate==0.8.5
-tornado>=5.1.0
 universal-analytics-python3==1.0.1
 wcmatch==8.3
 xmltodict==0.12.0

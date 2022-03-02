@@ -8,13 +8,13 @@ FiftyOne Server queries
 from datetime import date, datetime
 from enum import Enum
 import typing as t
-from xmlrpc.client import boolean
 
 from bson import ObjectId
 from dacite import from_dict, Config
 import strawberry as gql
 
 import fiftyone as fo
+import fiftyone.constants as foc
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
@@ -86,7 +86,7 @@ class BrainRun(Run):
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    classwise: boolean
+    classwise: bool
     error_level: int
     gt_field: str
     pred_field: str
@@ -177,7 +177,7 @@ class Query:
 
     @gql.field
     def version(self) -> str:
-        return fo.__version__
+        return foc.VERSION
 
 
 def _flatten_fields(path, fields):

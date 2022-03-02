@@ -109,10 +109,10 @@ type Query {
     first: Int = 10
     after: String = null
   ): DatasetConnection!
+  teamsConfig: TeamsConfig!
   colorscale: [[Int!]!]
   config: AppConfig!
   dataset(name: String!): Dataset
-  version: String!
   viewer: User!
 }
 
@@ -144,6 +144,13 @@ type SidebarGroup {
 type Target {
   target: Int!
   value: String!
+}
+
+type TeamsConfig {
+  auth0Audience: String!
+  auth0ClientId: String!
+  auth0Domain: String!
+  auth0Organization: String!
 }
 
 type User {

@@ -5,9 +5,6 @@ FiftyOne Server context
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import typing as t
-from urllib import response
-
 import motor as mtr
 import starlette.requests as strq
 import starlette.responses as strp

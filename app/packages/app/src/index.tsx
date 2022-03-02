@@ -1,15 +1,15 @@
 import {
   getRoutingContext,
   Loading,
+  RelayEnvironment,
   RouteRenderer,
   withErrorBoundary,
-  withRelayEnvironment,
+  withRouter,
   withTheme,
 } from "@fiftyone/components";
 import {
   darkTheme,
   getEventSource,
-  Resource,
   setFetchFunction,
 } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useState } from "react";
@@ -22,6 +22,7 @@ import { useScreenshot } from "./utils/hooks";
 
 import "./index.css";
 import routes from "./routes";
+import { RelayEnvironmentProvider } from "react-relay";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -32,7 +33,7 @@ enum AppReadyState {
 setFetchFunction("http://localhost:5151");
 
 const App = withErrorBoundary(
-  withRelayEnvironment(
+  withRouter(
     withTheme(() => {
       const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
 
@@ -76,7 +77,9 @@ const App = withErrorBoundary(
 const Root = withErrorBoundary(() => {
   return (
     <RecoilRoot>
-      <App />
+      <RelayEnvironmentProvider environment={RelayEnvironment}>
+        <App />
+      </RelayEnvironmentProvider>
     </RecoilRoot>
   );
 });

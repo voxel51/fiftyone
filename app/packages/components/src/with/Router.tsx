@@ -1,6 +1,5 @@
 import React from "react";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { RelayEnvironmentProvider } from "react-relay/hooks";
 import {
   Environment,
   FetchFunction,
@@ -40,7 +39,7 @@ export const getRoutingContext = () => {
   return router.context;
 };
 
-const withRelayEnvironment = <P extends {}>(
+const withRouter = <P extends {}>(
   Component: React.FC<P>,
   routes: RouteDefinition[]
 ) => {
@@ -49,12 +48,8 @@ const withRelayEnvironment = <P extends {}>(
       router = createRouter(routes);
     }
 
-    return (
-      <RelayEnvironmentProvider environment={RelayEnvironment}>
-        <Component {...props} />
-      </RelayEnvironmentProvider>
-    );
+    return <Component {...props} />;
   };
 };
 
-export default withRelayEnvironment;
+export default withRouter;
