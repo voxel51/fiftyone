@@ -716,6 +716,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         if isinstance(doc, foo.DynamicEmbeddedDocument):
             doc._set_parent(self)
+
         return doc
 
     def _save_field(self, field, keys):

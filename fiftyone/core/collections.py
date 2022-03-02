@@ -6,7 +6,6 @@ Interface for sample collections.
 |
 """
 from collections import defaultdict
-from dataclasses import field
 import fnmatch
 import itertools
 import logging
@@ -17,7 +16,6 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm import document
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -460,19 +458,19 @@ class SampleCollection(object):
         if self.media_type == fom.VIDEO and keys[0] == "frames":
             schema = self.get_frame_field_schema()
             keys = keys[1:]
-            field = fofr.Frames
         else:
             schema = self.get_field_schema()
-            field = None
+
+        field = None
+        _add_mapped_fields_as_private_fields(schema)
 
         last = len(keys) - 1
-        _add_mapped_fields_as_private_fields(schema)
         for idx, field_name in enumerate(keys):
             field = schema.get(field_name, None)
             if field is None:
-                return field
+                return None
 
-            if idx != last and isinstance(field, (fof.ListField)):
+            if idx != last and isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
@@ -495,15 +493,16 @@ class SampleCollection(object):
         else:
             schema = self.get_field_schema()
 
-        last = len(keys) - 1
         _add_mapped_fields_as_private_fields(schema)
+
+        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
             field = schema.get(field_name, None)
             if field is None:
                 return None
 
             resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, (fof.ListField)):
+            if idx != last and isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
