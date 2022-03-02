@@ -17,8 +17,9 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
-import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
