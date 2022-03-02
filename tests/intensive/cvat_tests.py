@@ -91,81 +91,83 @@ def _update_shape(
         api.patch(update_url, json=update_json)
 
 
-def test_upload():
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+class CVATTests(unittest.TestCase):
+    def test_upload(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
 
-    anno_key = "anno_key"
-    results = dataset.annotate(
-        anno_key, backend="cvat", label_field="ground_truth",
-    )
-    api = results.connect_to_api()
-    task_id = results.task_ids[0]
-    shape_id = dataset.first().ground_truth.detections[0].id
-    assert _get_shape(api, task_id, shape_id) is not None
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key, backend="cvat", label_field="ground_truth",
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
 
-    sample_id = list(list(results.frame_id_map.values())[0].values())[0][
-        "sample_id"
-    ]
-    assert sample_id == dataset.first().id
+        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
+            "sample_id"
+        ]
+        self.assertEqual(sample_id, dataset.first().id)
 
-    dataset.load_annotations(anno_key, cleanup=True)
+        dataset.load_annotations(anno_key, cleanup=True)
 
+    def test_detection_labelling(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=2)
+            .select_fields("ground_truth")
+            .clone()
+        )
+        previous_dataset = dataset.clone()
 
-def test_detection_labelling():
-    dataset = (
-        foz.load_zoo_dataset("quickstart", max_samples=2)
-        .select_fields("ground_truth")
-        .clone()
-    )
-    previous_dataset = dataset.clone()
+        previous_label_ids = dataset.values(
+            "ground_truth.detections.id", unwind=True
+        )
 
-    previous_label_ids = dataset.values(
-        "ground_truth.detections.id", unwind=True
-    )
+        anno_key = "anno_key"
+        attributes = {"test": {"type": "text"}}
 
-    anno_key = "anno_key"
-    attributes = {"test": {"type": "text"}}
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+            attributes=attributes,
+        )
 
-    results = dataset.annotate(
-        anno_key,
-        backend="cvat",
-        label_field="ground_truth",
-        attributes=attributes,
-    )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        deleted_label_id = previous_label_ids[0]
+        updated_label_id = previous_label_ids[1]
 
-    api = results.connect_to_api()
-    task_id = results.task_ids[0]
-    deleted_label_id = previous_label_ids[0]
-    updated_label_id = previous_label_ids[1]
+        _delete_shape(api, task_id, deleted_label_id)
+        _create_shape(api, task_id)
+        _update_shape(
+            api, task_id, updated_label_id, attributes=[("test", "1")]
+        )
 
-    _delete_shape(api, task_id, deleted_label_id)
-    _create_shape(api, task_id)
-    _update_shape(api, task_id, updated_label_id, attributes=[("test", "1")])
+        dataset.load_annotations(anno_key, cleanup=True)
+        label_ids = dataset.values("ground_truth.detections.id", unwind=True)
 
-    dataset.load_annotations(anno_key, cleanup=True)
-    label_ids = dataset.values("ground_truth.detections.id", unwind=True)
+        self.assertEqual(len(label_ids), len(previous_label_ids))
 
-    assert len(label_ids) == len(previous_label_ids)
+        added_label_ids = list(set(label_ids) - set(previous_label_ids))
+        self.assertEqual(len(added_label_ids), 1)
+        deleted_label_ids = list(set(previous_label_ids) - set(label_ids))
+        self.assertEqual(len(deleted_label_ids), 1)
 
-    added_label_ids = list(set(label_ids) - set(previous_label_ids))
-    assert len(added_label_ids) == 1
-    deleted_label_ids = list(set(previous_label_ids) - set(label_ids))
-    assert len(deleted_label_ids) == 1
+        updated_sample = dataset.filter_labels(
+            "ground_truth", F("_id") == ObjectId(updated_label_id)
+        ).first()
+        prev_updated_sample = previous_dataset.filter_labels(
+            "ground_truth", F("_id") == ObjectId(updated_label_id)
+        ).first()
 
-    updated_sample = dataset.filter_labels(
-        "ground_truth", F("_id") == ObjectId(updated_label_id)
-    ).first()
-    prev_updated_sample = previous_dataset.filter_labels(
-        "ground_truth", F("_id") == ObjectId(updated_label_id)
-    ).first()
-
-    assert len(updated_sample.ground_truth.detections) == 1
-    assert len(prev_updated_sample.ground_truth.detections) == 1
-    assert (
-        updated_sample.ground_truth.detections[0].id
-        == prev_updated_sample.ground_truth.detections[0].id
-    )
-    assert updated_sample.ground_truth.detections[0].test == 1
+        self.assertEqual(len(updated_sample.ground_truth.detections), 1)
+        self.assertEqual(len(prev_updated_sample.ground_truth.detections), 1)
+        self.assertEqual(
+            updated_sample.ground_truth.detections[0].id,
+            prev_updated_sample.ground_truth.detections[0].id,
+        )
+        self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
 
 
 if __name__ == "__main__":
