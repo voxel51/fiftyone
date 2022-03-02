@@ -24,7 +24,7 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.auth0_organization = self.parse_string(
+        self.organization = self.parse_string(
             d, "organization", env_var="FIFTYONE_TEAMS_ORGANIZATION",
         )
 

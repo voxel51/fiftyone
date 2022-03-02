@@ -48,7 +48,7 @@ class TeamsConfig:
 @gql.type
 class Query:
     @gql.field
-    def teamsConfig(self, info: Info) -> TeamsConfig:
+    def teams_config(self, info: Info) -> TeamsConfig:
         return from_dict(TeamsConfig, fot.teams_config.serialize())
 
     @gql.field(permission_classes=[IsAuthenticated])
