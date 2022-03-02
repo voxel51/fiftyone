@@ -353,9 +353,13 @@ class Session(foc.HasClient):
             return
 
         if self._desktop:
-            if self._context == focx._COLAB or self._context == focx._DATABRICKS:
+            if (
+                self._context == focx._COLAB
+                or self._context == focx._DATABRICKS
+            ):
                 raise ValueError(
-                    "Cannot open a Desktop App instance from a %s notebook" % self._context
+                    "Cannot open a Desktop App instance from a %s notebook"
+                    % self._context
                 )
 
             if not focn.DEV_INSTALL:
