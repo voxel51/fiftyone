@@ -347,7 +347,7 @@ class DatabaseConfig(etas.Serializable):
 
 def _database_exists():
     client = foo.get_db_client()
-    return foc.DEFAULT_DATABASE in client.list_database_names()
+    return fo.config.database_name in client.list_database_names()
 
 
 def _get_revisions_to_run(head, dest, revisions):

@@ -88,6 +88,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
         )
+        self.database_name = self.parse_string(
+            d,
+            "database_name",
+            env_var="FIFTYONE_DATABASE_NAME",
+            default="fiftyone",
+        )
         self.dataset_zoo_dir = self.parse_path(
             d,
             "dataset_zoo_dir",

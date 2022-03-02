@@ -23,6 +23,9 @@ FiftyOne supports the configuration options described below:
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_name`               | `FIFTYONE_DATABASE_NAME`            | `fiftyone`                    | A name to use for FiftyOne's backing database in your MongoDB instance. The database   |
+|                               |                                     |                               | is automatically created if necessary.                                                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
 |                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
@@ -119,6 +122,7 @@ and the CLI:
         {
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
@@ -159,6 +163,7 @@ and the CLI:
         {
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
