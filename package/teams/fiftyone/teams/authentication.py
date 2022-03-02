@@ -51,8 +51,8 @@ def decode(token: str, rsa_key):
         token,
         rsa_key,
         algorithms=ALGORITHMS,
-        audience=fot.teams_config.auth0_audience,
-        issuer=f"https://{fot.teams_config.auth0_domain}/",
+        audience="api.dev.fiftyone.ai",
+        issuer=f"https://login.dev.fiftyone.ai/",
     )
 
 
@@ -114,7 +114,7 @@ def has_scope(token: str, scope: str):
 
 async def set_jwks(web: aio.ClientSession):
     async with web.get(
-        f"https://{fot.teams_config.auth0_domain}/.well-known/jwks.json"
+        f"https://login.dev.fiftyone.ai/.well-known/jwks.json"
     ) as response:
         data = await response.json()
         return from_dict(JWKS, data)

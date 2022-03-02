@@ -19,13 +19,6 @@ from fiftyone.server.data import Info, HasCollectionType
 
 
 @gql.type
-class Connection(t.Generic[HasCollectionType]):
-    page_info: "PageInfo"
-    edges: list["Edge[HasCollectionType]"]
-    total: int
-
-
-@gql.type
 class PageInfo:
     has_next_page: bool
     has_previous_page: bool
@@ -37,6 +30,13 @@ class PageInfo:
 class Edge(t.Generic[HasCollectionType]):
     node: HasCollectionType
     cursor: str
+
+
+@gql.type
+class Connection(t.Generic[HasCollectionType]):
+    page_info: PageInfo
+    edges: t.List[Edge[HasCollectionType]]
+    total: int
 
 
 Cursor = str

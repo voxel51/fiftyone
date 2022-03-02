@@ -20,7 +20,7 @@ import fiftyone.server.paginator as fosp
 
 import fiftyone.teams as fot
 from fiftyone.teams.authentication import AuthenticatedUser
-from package.teams.fiftyone.teams.permissions import IsAuthenticated
+from fiftyone.teams.permissions import IsAuthenticated
 
 
 @gql.type

@@ -15,6 +15,7 @@ VERSION = "0.1.0"
 
 
 INSTALL_REQUIRES = [
+    "python-jose>=3.3.0,<4",
     "fiftyone>=0.7.0",
 ]
 
@@ -48,7 +49,7 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name="fiftyone-teams",
+    name="fiftyone-teams-app",
     version=VERSION,
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",

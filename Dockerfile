@@ -1,13 +1,13 @@
 # Dockerfile for building an image with a source FiftyOne Teams install atop a
 # Debian-based Linux distribution.
 #
-# By default, Ubuntu 20.04 and Python 3.8 are used, but these can be customized
+# By default, Ubuntu 20.04 and Python 3.9 are used, but these can be customized
 # via ARGs.
 #
 # ARGs::
 #
 #   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
-#   PYTHON_VERSION (3.8): The Python version to install
+#   PYTHON_VERSION (3.9): The Python version to install
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
 #       should be mounted when running
 #
@@ -33,7 +33,7 @@ ARG BASE_IMAGE=ubuntu:20.04
 FROM $BASE_IMAGE
 
 # The Python version to install
-ARG PYTHON_VERSION=3.8
+ARG PYTHON_VERSION=3.9
 
 #
 # Install system packages
