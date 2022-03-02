@@ -130,4 +130,4 @@ ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
 # Serve the app
 #
 
-CMD hypercorn fiftyone.teams.app:app --bind localhost:5151
+CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:5151

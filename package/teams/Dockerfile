@@ -41,6 +41,5 @@ FROM $BASE_IMAGE
 COPY dist dist
 RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 
-EXPOSE 5151
 
 CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:5151
