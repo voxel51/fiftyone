@@ -208,6 +208,10 @@ on:
     # Print information about an evaluation
     print(dataset.get_evaluation_info("eval_predictions"))
 
+    # Load existing evaluation results and use them
+    results = dataset.load_evaluation_results("eval_predictions")
+    results.print_report()
+
     # Delete the evaluation
     # This will remove any evaluation data that was populated on your dataset
     dataset.delete_evaluation("eval_predictions")

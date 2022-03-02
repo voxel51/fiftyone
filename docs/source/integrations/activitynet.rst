@@ -49,7 +49,7 @@ and load an ActivityNet split into FiftyOne:
 .. _activitynet-partial-downloads:
 
 Partial Downloads
------------------
+~~~~~~~~~~~~~~~~~
 
 In addition, FiftyOne provides parameters that can be used to efficiently
 download specific subsets of the ActivityNet dataset, allowing you to quickly
@@ -142,7 +142,7 @@ ActivityNet 100 and ActivityNet 200 by passing them to
 .. _activitynet-full-split-downloads:
 
 Full Split Downloads
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 Many videos have been removed from YouTube since the creation of ActivityNet.
 As a result, you must first download the official source files from the
