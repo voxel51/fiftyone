@@ -7799,43 +7799,34 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
+    # Handle public (string) vs private (ObjectId) ID fields
+    field_name, field, id_to_str = _handle_id_fields(
+        sample_collection, field_name
+    )
+
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
 
-    prefix = ""
     if is_frame_field:
-        prefix = sample_collection._FRAMES_PREFIX
         if field_name == "":
             return "frames", True, [], [], False
 
+        prefix = sample_collection._FRAMES_PREFIX
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
+    else:
+        prefix = ""
 
-    field = sample_collection.get_field(field_name)
-    # Validate root field, if requested
-    if (
-        not allow_missing
-        and not isinstance(field, fof.ObjectIdField)
-        and field is None
-    ):
-        root_field_name = field_name.split(".", 1)[0]
-        if is_frame_field:
-            schema = sample_collection.get_frame_field_schema(
-                include_private=True
-            )
-        else:
-            schema = sample_collection.get_field_schema(include_private=True)
-
-        if root_field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
-            raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
-            )
+    if field is None and not allow_missing:
+        root = field_name.split(".", 1)[0]
+        ftype = "Frame field" if is_frame_field else "Field"
+        raise ValueError(
+            "%s '%s' does not exist on collection '%s'"
+            % (ftype, root, sample_collection.name)
+        )
 
     # Detect list fields in schema
     path = None
-    resolved_keys = []
     for part in field_name.split("."):
         if path is None:
             path = part
@@ -7843,10 +7834,9 @@ def _parse_field_name(
             path += "." + part
 
         field_type = sample_collection.get_field(prefix + path)
-        if field_type is None and not allow_missing:
-            break
 
-        resolved_keys.append(getattr(field_type, "db_field", part))
+        if field_type is None:
+            break
 
         if isinstance(field_type, fof.ListField):
             if omit_terminal_lists and path == field_name:
@@ -7868,7 +7858,7 @@ def _parse_field_name(
         if auto_unwind:
             unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
-            resolved_keys = ["frames"] + resolved_keys
+            field_name = prefix + field_name
             unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
             ]
@@ -7885,13 +7875,52 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     return (
-        ".".join(resolved_keys),
+        field_name,
         is_frame_field,
         unwind_list_fields,
         other_list_fields,
-        isinstance(field, fof.ObjectIdField)
-        and not field_name.split(".")[-1].startswith("_"),
+        id_to_str,
     )
+
+
+def _handle_id_fields(sample_collection, field_name):
+    if not field_name:
+        return field_name, False, False
+
+    if "." not in field_name:
+        root = None
+        leaf = field_name
+    else:
+        root, leaf = field_name.rsplit(".", 1)
+
+    is_private = leaf.startswith("_")
+
+    if is_private:
+        private_field = field_name
+        public_field = leaf[1:]
+        if root is not None:
+            public_field = root + "." + public_field
+    else:
+        public_field = field_name
+        private_field = "_" + leaf
+        if root is not None:
+            private_field = root + "." + private_field
+
+    public_type = sample_collection.get_field(public_field)
+    private_type = sample_collection.get_field(private_field)
+
+    if isinstance(public_type, fof.ObjectIdField):
+        id_to_str = not is_private
+        return private_field, public_type, id_to_str
+
+    if isinstance(private_type, fof.ObjectIdField):
+        id_to_str = not is_private
+        return private_field, private_type, id_to_str
+
+    if is_private:
+        return field_name, private_type, False
+
+    return field_name, public_type, False
 
 
 def _transform_values(values, fcn, level=1):

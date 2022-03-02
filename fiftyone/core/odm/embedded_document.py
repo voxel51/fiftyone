@@ -24,8 +24,10 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     _parent = None
 
     def __init__(self, *args, **kwargs):
-        self._custom_fields = {}
         super().__init__(*args, **kwargs)
+
+        self._custom_fields = {}
+
         # pylint: disable=no-member
         for name, field in self._fields.items():
             if isinstance(field, (DictField, ListField)):
