@@ -16,6 +16,13 @@ In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
 that you can use to specify the necessary account credentials and server
 endpoint to use.
 
+.. warning::
+
+    CVAT v2 is now available through self-hosted servers and
+    `cvat.org <https://cvat.org>`_ but is currently unsupported in
+    FiftyOne. Unexpected behavior may occur when connecting to a CVAT v2
+    server.
+
 CVAT provides three levels of abstraction for annotation workflows: projects,
 tasks, and jobs. A job contains one or more images and can be assigned to a
 specfic annotator or reviewer. A task defines the label schema to use for
