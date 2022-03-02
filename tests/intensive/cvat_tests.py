@@ -1,16 +1,23 @@
 """
-FiftyOne annotation-related unit tests.
+Tests for the :mod:`fiftyone.utils.cvat` module.
+
+You must run these tests interactively as follows::
+
+    pytest tests/intensive/cvat_tests.py -s -k <test_case>
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import ObjectId
 from collections import defaultdict
 import unittest
 
 import fiftyone as fo
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
+
+from fiftyone.core.expressions import ViewField as F
 
 
 def _find_shape(anno_json, label_id):
@@ -44,7 +51,7 @@ def _create_shape(api, task_id, shape=None):
             "frame": 0,
             "label_id": label,
             "group": 0,
-            "attributes": {},
+            "attributes": [],
             "points": [10, 10, 10, 10],
             "occluded": False,
         }
@@ -71,7 +78,7 @@ def _update_shape(
             for attr_name, attr_val in attributes:
                 if attr_name in attr_id_map:
                     shape["attributes"].append(
-                        {"spec_id": attr_id_map[attr_name], "value": attr_val,}
+                        {"spec_id": attr_id_map[attr_name], "value": attr_val}
                     )
 
         update_json = {
@@ -102,6 +109,63 @@ def test_upload():
     assert sample_id == dataset.first().id
 
     dataset.load_annotations(anno_key, cleanup=True)
+
+
+def test_detection_labelling():
+    dataset = (
+        foz.load_zoo_dataset("quickstart", max_samples=2)
+        .select_fields("ground_truth")
+        .clone()
+    )
+    previous_dataset = dataset.clone()
+
+    previous_label_ids = dataset.values(
+        "ground_truth.detections.id", unwind=True
+    )
+
+    anno_key = "anno_key"
+    attributes = {"test": {"type": "text"}}
+
+    results = dataset.annotate(
+        anno_key,
+        backend="cvat",
+        label_field="ground_truth",
+        attributes=attributes,
+    )
+
+    api = results.connect_to_api()
+    task_id = results.task_ids[0]
+    deleted_label_id = previous_label_ids[0]
+    updated_label_id = previous_label_ids[1]
+
+    _delete_shape(api, task_id, deleted_label_id)
+    _create_shape(api, task_id)
+    _update_shape(api, task_id, updated_label_id, attributes=[("test", "1")])
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    label_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+    assert len(label_ids) == len(previous_label_ids)
+
+    added_label_ids = list(set(label_ids) - set(previous_label_ids))
+    assert len(added_label_ids) == 1
+    deleted_label_ids = list(set(previous_label_ids) - set(label_ids))
+    assert len(deleted_label_ids) == 1
+
+    updated_sample = dataset.filter_labels(
+        "ground_truth", F("_id") == ObjectId(updated_label_id)
+    ).first()
+    prev_updated_sample = previous_dataset.filter_labels(
+        "ground_truth", F("_id") == ObjectId(updated_label_id)
+    ).first()
+
+    assert len(updated_sample.ground_truth.detections) == 1
+    assert len(prev_updated_sample.ground_truth.detections) == 1
+    assert (
+        updated_sample.ground_truth.detections[0].id
+        == prev_updated_sample.ground_truth.detections[0].id
+    )
+    assert updated_sample.ground_truth.detections[0].test == 1
 
 
 if __name__ == "__main__":
