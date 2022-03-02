@@ -9,8 +9,6 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone.core.aggregations as foa
-from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
-import fiftyone.core.media as fom
 
 import fiftyone.server.constants as foc
 from fiftyone.server.decorators import route
@@ -39,7 +37,12 @@ class Values(HTTPEndpoint):
 
         count, first = await view._async_aggregate(
             foa.CountValues(
-                path, _first=limit, _asc=asc, _sort_by=sort_by, _search=search
+                path,
+                _first=limit,
+                _asc=asc,
+                _sort_by=sort_by,
+                _search=search,
+                _selected=selected,
             )
         )
 

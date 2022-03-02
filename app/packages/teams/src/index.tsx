@@ -69,10 +69,7 @@ const Config = () => {
     graphql`
       query srcQuery {
         teamsConfig {
-          auth0Audience
-          auth0ClientId
-          auth0Domain
-          auth0Organization
+          organization
         }
       }
     `,
@@ -81,9 +78,9 @@ const Config = () => {
 
   return (
     <Auth0Provider
-      audience={config.auth0Audience}
-      clientId={config.auth0ClientId}
-      domain={config.auth0Domain}
+      audience={import.meta.env.VITE_AUTH0_AUDIENCE}
+      clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
+      domain={import.meta.env.VITE_AUTH0_DOMAIN}
       organization={config.auth0Organization}
       onRedirectCallback={(state) => {}}
     >

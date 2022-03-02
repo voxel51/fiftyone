@@ -32,15 +32,14 @@
 ARG BASE_IMAGE=voxel51/fiftyone-teams
 FROM $BASE_IMAGE
 
-RUN pip --no-cache-dir install --upgrade pip setuptools wheel
-
-EXPOSE 5151
-
 #
 # Install from source
 #
-
 COPY dist dist
 RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 
-CMD hypercorn fiftyone.teams.app:app --bind localhost:5151
+ENV FIFTYONE_TEAMS_APP_PORT=5151
+
+EXPOSE $FIFTYONE_TEAMS_APP_PORT
+
+CMD hypercorn fiftyone.teams.app:app --bind localhost:${FIFTYONE_TEAMS_APP_PORT}

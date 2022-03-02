@@ -24,19 +24,8 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.auth0_audience = self.parse_string(
-            d, "auth0_audience", env_var="FIFTYONE_TEAMS_AUTH0_AUDIENCE"
-        )
-        self.auth0_client_id = self.parse_string(
-            d, "auth0_client_id", env_var="FIFTYONE_TEAMS_AUTH0_CLIENT_ID"
-        )
-        self.auth0_domain = self.parse_string(
-            d, "auth0_domain", env_var="FIFTYONE_TEAMS_AUTH0_DOMAIN"
-        )
         self.auth0_organization = self.parse_string(
-            d,
-            "auth0_organization",
-            env_var="FIFTYONE_TEAMS_AUTH0_ORGANIZATION",
+            d, "organization", env_var="FIFTYONE_TEAMS_ORGANIZATION",
         )
 
 

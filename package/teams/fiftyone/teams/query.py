@@ -42,10 +42,7 @@ class User(fosm.HasCollection):
 
 @gql.type
 class TeamsConfig:
-    auth0_audience: str
-    auth0_client_id: str
-    auth0_domain: str
-    auth0_organization: str
+    organization: str
 
 
 @gql.type

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9c343cf4242dab645466e16022a24b04>>
+ * @generated SignedSource<<766c6cdeef3599b02624c33b554030b4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,10 +13,7 @@ export type srcQuery$variables = {};
 export type srcQueryVariables = srcQuery$variables;
 export type srcQuery$data = {
   readonly teamsConfig: {
-    readonly auth0Audience: string;
-    readonly auth0ClientId: string;
-    readonly auth0Domain: string;
-    readonly auth0Organization: string;
+    readonly organization: string;
   };
 };
 export type srcQueryResponse = srcQuery$data;
@@ -39,28 +36,7 @@ const node: ConcreteRequest = (function () {
           alias: null,
           args: null,
           kind: "ScalarField",
-          name: "auth0Audience",
-          storageKey: null,
-        },
-        {
-          alias: null,
-          args: null,
-          kind: "ScalarField",
-          name: "auth0ClientId",
-          storageKey: null,
-        },
-        {
-          alias: null,
-          args: null,
-          kind: "ScalarField",
-          name: "auth0Domain",
-          storageKey: null,
-        },
-        {
-          alias: null,
-          args: null,
-          kind: "ScalarField",
-          name: "auth0Organization",
+          name: "organization",
           storageKey: null,
         },
       ],
@@ -85,17 +61,16 @@ const node: ConcreteRequest = (function () {
       selections: v0 /*: any*/,
     },
     params: {
-      cacheID: "64c25842ad17f9de17adde2ac2b50562",
+      cacheID: "0a146faaf50b87e73e73b90aca063d7d",
       id: null,
       metadata: {},
       name: "srcQuery",
       operationKind: "query",
-      text:
-        "query srcQuery {\n  teamsConfig {\n    auth0Audience\n    auth0ClientId\n    auth0Domain\n    auth0Organization\n  }\n}\n",
+      text: "query srcQuery {\n  teamsConfig {\n    organization\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "f358c3d5485b5dd35fc3a475a41e31e1";
+(node as any).hash = "ffc9a55974ae971c33c10a95ccf79af2";
 
 export default node;

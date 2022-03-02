@@ -1,0 +1,132 @@
+# Dockerfile for building an image with a FiftyOne Team App release atop a
+# Debian-based Linux distribution.
+#
+# By default, Ubuntu 20.04, Python 3.8, and the latest Teams release are used,
+# but these can be customized via ARGs.
+#
+# ARGs::
+#
+#   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
+#   PYTHON_VERSION (3.8): The Python version to install
+#   TOKEN: Your Teams client install token
+#   TEAMS_VERSION (latest): The Teams release to install, or "latest"
+#   ROOT_DIR (/fiftyone): The name of the directory within the container that
+#       should be mounted when running
+#
+# Example usage::
+#
+#   # Build
+#   docker build \
+#       --build-arg TOKEN=${TOKEN} \
+#       -t voxel51/fiftyone-teams-app .
+#
+#   # Run
+#   SHARED_DIR=/path/to/shared/dir
+#   docker run \
+#       -e FIFTYONE_DATABASE_URI=mongodb://... \
+#       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
+#       -v ${SHARED_DIR}:/fiftyone \
+#       -p 5151:5151 \
+#       -it voxel51/fiftyone-teams-app
+#
+# Copyright 2017-2022, Voxel51, Inc.
+# voxel51.com
+#
+
+# The base image to build from; must be Debian-based (eg Ubuntu)
+ARG BASE_IMAGE=ubuntu:20.04
+FROM $BASE_IMAGE
+
+# The Python version to install
+ARG PYTHON_VERSION=3.8
+
+#
+# Install system packages
+#
+
+RUN apt -y update \
+    && apt -y --no-install-recommends install software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt -y update \
+    && apt -y upgrade \
+    && apt -y --no-install-recommends install tzdata \
+    && TZ=Etc/UTC \
+    && apt -y --no-install-recommends install \
+        build-essential \
+        ca-certificates \
+        cmake \
+        cmake-data \
+        pkg-config \
+        libcurl4 \
+        libsm6 \
+        libxext6 \
+        libssl-dev \
+        libffi-dev \
+        libxml2-dev \
+        libxslt1-dev \
+        zlib1g-dev \
+        unzip \
+        curl \
+        wget \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-distutils \
+        ffmpeg \
+    && ln -s /usr/bin/python${PYTHON_VERSION} /usr/local/bin/python \
+    && ln -s /usr/local/lib/python${PYTHON_VERSION} /usr/local/lib/python \
+    && curl https://bootstrap.pypa.io/get-pip.py | python \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+# Install Python dependencies
+#
+# Other packages you might want:
+#   torch torchvision: Torch model training/zoo datasets
+#   tensorflow tensorflow-datasets: TF model training/zoo datasets
+#   pycocotools: COCO-style evaluation
+#   notebook>=5.3 ipywidgets>=7.5: Jupyter notebooks
+#   flash>=0.4: Lightning Flash integration
+#   apache_beam: Apache Beam integration
+#   labelbox: Labelbox integration
+#   shapely: Polyline evaluation
+#   rasterio: GeoTIFF images
+#   pydicom: DICOM images
+#
+
+RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
+
+#
+# Install FiftyOne Teams
+#
+
+# Your install token
+ARG TOKEN
+
+# The Teams client version to install, or "latest"
+ARG TEAMS_APP_VERSION=latest
+
+RUN if [ "${TEAMS_VERSION}" = "latest" ]; then \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app; \
+    else \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app==${TEAMS_APP_VERSION}; \
+    fi
+
+#
+# Configure shared storage
+#
+
+# The name of the shared directory in the container that should be
+# volume-mounted by users to persist data loaded into FiftyOne
+ARG ROOT_DIR=/fiftyone
+
+ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
+    FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
+    FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
+    FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
+    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
+
+#
+# Serve the app
+#
+
+CMD hypercorn fiftyone.teams.app:app --bind localhost:5151

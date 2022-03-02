@@ -147,10 +147,7 @@ type Target {
 }
 
 type TeamsConfig {
-  auth0Audience: String!
-  auth0ClientId: String!
-  auth0Domain: String!
-  auth0Organization: String!
+  organization: String!
 }
 
 type User {

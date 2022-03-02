@@ -1,16 +1,12 @@
-import reactRefresh from "@vitejs/plugin-react-refresh";
 import { UserConfig } from "vite";
 import relay from "vite-plugin-relay";
-import nodePolyfills from "rollup-plugin-polyfill-node";
+import react from "@vitejs/plugin-react";
 
 export default {
   base: "/",
   plugins: [
-    reactRefresh({
-      parserPlugins: ["classProperties", "classPrivateProperties"],
-    }),
+    react({ parserPlugins: ["classProperties", "classPrivateProperties"] }),
     relay,
-    nodePolyfills(),
   ],
   server: {
     https: true,
