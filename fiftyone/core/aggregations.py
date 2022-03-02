@@ -555,6 +555,8 @@ class CountValues(Aggregation):
         _sort_by="count",
         _asc=True,
         _include=None,
+        _search="",
+        _selected=[],
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
@@ -562,6 +564,8 @@ class CountValues(Aggregation):
         self._order = 1 if _asc else -1
         self._include = _include
         self._field_type = None
+        self._search = _search
+        self._selected = _selected
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -629,6 +633,26 @@ class CountValues(Aggregation):
                     "$group": {
                         "_id": None,
                         "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    }
+                }
+            ]
+
+        if self._search or self._selected:
+            pipeline += [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$not": {"$in": ["$_id", self._selected]}},
+                                {
+                                    "$regexMatch": {
+                                        "input": "$_id",
+                                        "regex": self._search,
+                                        "options": None,
+                                    }
+                                },
+                            ]
+                        }
                     }
                 }
             ]
