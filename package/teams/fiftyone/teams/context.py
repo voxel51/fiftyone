@@ -5,9 +5,7 @@ FiftyOne Teams context
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import typing as t
-
-import motor as mtr
+import motor.motor_asyncio as mtr
 import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.asgi as gqla
@@ -23,9 +21,11 @@ class GraphQL(gqla.GraphQL):
     async def get_context(
         self, request: strq.Request, response: strp.Response,
     ) -> Context:
-        db_client = mtr.MotorClient(fo.config.database_uri)
+        db_client = mtr.AsyncIOMotorClient(fo.config.database_uri)
         db = db_client[foc.DEFAULT_DATABASE]
-        session = await db_client.start_session()
+        session: mtr.AsyncIOMotorClientSession = (
+            await db_client.start_session()
+        )
 
         loaders = {}
         for cls, config in dataloaders.items():

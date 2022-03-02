@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "vite",
-        "relay": "relay-compiler $@",
+        "relay": "relay-compiler relay.config.json",
         "build": "yarn build-bare && yarn copy-to-python",
         "build-bare": "vite build",
         "copy-to-python": "rm -rf ../../../package/teams/fiftyone/teams/static && cp -r ./dist ../../../package/teams/fiftyone/teams/static"

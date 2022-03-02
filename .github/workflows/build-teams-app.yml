@@ -35,6 +35,7 @@ jobs:
             npm-${{ hashFiles('app/package.json') }}
             npm-
       - name: Build app
+        working-directory: package/teams
         run: make app
       - name: Set environment
         env:
@@ -44,12 +45,13 @@ jobs:
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-v//")" >> $GITHUB_ENV
           fi
       - name: Build python
+        working-directory: package/teams
         run: make python -o app
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
           name: dist
-          path: dist/
+          path: package/teams/dist/
           retention-days: 1
 
   publish:

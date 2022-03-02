@@ -8,7 +8,7 @@ FiftyOne Teams query
 import typing as t
 
 from dacite import Config, from_dict
-import motor
+import motor.motor_asyncio as mtr
 import strawberry as gql
 
 import fiftyone as fo
@@ -78,7 +78,7 @@ class Query:
     async def viewer(self, info: Info) -> User:
         db = info.context.db
         request_user: AuthenticatedUser = info.context.request.user
-        users: motor.MotorCollection = db.users
+        users: mtr.AsyncIOMotorCollection = db.users
         user = await users.find_one({"sub": request_user.sub})
         user["id"] = user.pop("_id")
         return from_dict(User, user, config=Config(check_types=False))

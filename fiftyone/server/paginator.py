@@ -7,8 +7,7 @@ FiftyOne Server paginator
 """
 from bson import ObjectId
 from dacite import Config, from_dict
-import motor as mtr
-import motor.motor_tornado as mtrt
+import motor.motor_asyncio as mtr
 import typing as t
 
 import strawberry as gql
@@ -44,8 +43,8 @@ Cursor = str
 
 
 async def get_items(
-    collection: mtr.MotorCollection,
-    session: mtrt.MotorClientSession,
+    collection: mtr.AsyncIOMotorCollection,
+    session: mtr.AsyncIOMotorClientSession,
     from_db: t.Callable[[dict], HasCollectionType],
     key: str,
     filters: t.List[dict],

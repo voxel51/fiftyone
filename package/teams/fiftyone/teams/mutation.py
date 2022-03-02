@@ -6,7 +6,7 @@ FiftyOne Teams mutations.
 |
 """
 from dacite import Config, from_dict
-import motor
+import motor.motor_asyncio as mtr
 from pymongo import ReturnDocument
 import strawberry as gql
 
@@ -29,7 +29,7 @@ class Mutation:
     @gql.mutation(permission_classes=[IsAuthenticated])
     async def login(self, user: UserInput, info: Info) -> User:
         db = info.context.db
-        users: motor.MotorCollection = db.users
+        users: mtr.AsyncIOMotorCollection = db.users
         updated_user = await users.find_one_and_update(
             {"sub": user.sub},
             {

@@ -3,7 +3,7 @@
 .DEFAULT_GOAL := docker-export
 
 app:
-	@cd ../../app && yarn && yarn build-teams-app && cd -
+	@cd ../../app && yarn && yarn build-teams && cd -
 
 python: app
 	@python setup.py sdist bdist_wheel

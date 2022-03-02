@@ -24,6 +24,7 @@
 #   SHARED_DIR=/path/to/shared/dir
 #   docker run \
 #       -e FIFTYONE_DATABASE_URI=mongodb://... \
+#       -e FIFTYONE_TEAMS_ORGANIZATION=PROVIDED_ORG_ID
 #       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \

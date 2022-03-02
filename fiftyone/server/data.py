@@ -8,7 +8,7 @@ FiftyOne Server data
 from dataclasses import dataclass
 import typing as t
 
-import motor as mtr
+import motor.motor_asyncio as mtr
 import starlette.requests as strq
 import starlette.responses as strp
 import strawberry.types as gqlt
@@ -22,8 +22,8 @@ HasCollectionType = t.TypeVar("HasCollectionType", bound=HasCollection)
 
 @dataclass
 class Context:
-    db: mtr.MotorDatabase
-    session: mtr.motor_tornado.MotorClientSession
+    db: mtr.AsyncIOMotorDatabase
+    session: mtr.AsyncIOMotorClientSession
     dataloaders: t.Dict[HasCollection, DataLoader[str, HasCollection]]
     request: strq.Request
     response: strp.Response

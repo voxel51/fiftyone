@@ -9,8 +9,7 @@ from dataclasses import dataclass
 import typing as t
 
 from dacite import Config, from_dict
-import motor as mtr
-import motor.motor_tornado as mtrt
+import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
 from fiftyone.server.data import Info, HasCollectionType
@@ -28,8 +27,8 @@ dataloaders: t.Dict[type, DataLoaderConfig] = {}
 def get_dataloader(
     cls: t.Type[HasCollectionType],
     config: DataLoaderConfig,
-    db: mtr.MotorDatabase,
-    session: mtrt.MotorClientSession,
+    db: mtr.AsyncIOMotorDatabase,
+    session: mtr.AsyncIOMotorClientSession,
 ) -> DataLoader[str, t.Optional[HasCollectionType]]:
     async def load_items(
         keys: t.List[str],

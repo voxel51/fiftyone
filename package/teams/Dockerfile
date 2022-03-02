@@ -15,14 +15,17 @@
 #
 #   # Build
 #   make python
-#   docker build -t voxel51/fiftyone-teams-deployment .
+#   docker build -t voxel51/fiftyone-teams-app .
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
 #   docker run \
+#       -e FIFTYONE_DATABASE_URI=mongodb://... \
+#       -e FIFTYONE_TEAMS_ORGANIZATION=PROVIDED_ORG_ID
+#       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
-#       -it voxel51/fiftyone-teams
+#       -it voxel51/fiftyone-teams-app
 #
 # Copyright 2017-2022, Voxel51, Inc.
 # voxel51.com
@@ -38,8 +41,4 @@ FROM $BASE_IMAGE
 COPY dist dist
 RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
 
-ENV FIFTYONE_TEAMS_APP_PORT=5151
-
-EXPOSE $FIFTYONE_TEAMS_APP_PORT
-
-CMD hypercorn fiftyone.teams.app:app --bind localhost:${FIFTYONE_TEAMS_APP_PORT}
+CMD hypercorn fiftyone.teams.app:app --bind localhost:5151
