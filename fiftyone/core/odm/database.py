@@ -14,6 +14,7 @@ import asyncio
 from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
+import mongoengine.errors as moe
 import motor
 from packaging.version import Version
 import pymongo
@@ -25,8 +26,11 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
+import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+
+from .document import Document
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +40,30 @@ _client = None
 _async_client = None
 _connection_kwargs = {}
 _db_service = None
+
+
+class DatabaseConfigDocument(Document):
+    """Backing document for the database config."""
+
+    meta = {"collection": "config"}
+
+    version = fof.StringField()
+
+
+def get_db_config():
+    """Retrieves the database config.
+
+    Returns:
+        a :class:`DatabaseConfigDocument`
+    """
+    try:
+        # pylint: disable=no-member
+        config = DatabaseConfigDocument.objects.get()
+    except moe.DoesNotExist:
+        config = DatabaseConfigDocument()
+        config.save()
+
+    return config
 
 
 def establish_db_conn(config):
