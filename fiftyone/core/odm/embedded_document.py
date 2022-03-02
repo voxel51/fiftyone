@@ -36,7 +36,9 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
                 field.name = name
 
         for name in getattr(self, "_dynamic_fields", {}):
-            self.add_implied_field(name, self._data[name])
+            value = self._data[name]
+            if value is not None:
+                self.add_implied_field(name, value)
 
     def has_field(self, name):
         # pylint: disable=no-member
@@ -150,11 +152,11 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def _set_parent(self, parent):
         self._parent = parent
+
         # pylint: disable=no-member
-        for field_name, field in {
-            **self._fields,
-            **getattr(self, "_custom_fields", {}),
-        }.items():
+        custom_fields = getattr(self, "_custom_fields", {})
+
+        for field_name, field in {**self._fields, **custom_fields}.items():
             set_field = field
             if isinstance(field, (DictField, ListField)):
                 set_field = field.field
@@ -162,7 +164,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             if isinstance(field, EmbeddedDocumentField):
                 set_field._set_parent(parent)
 
-            if field_name in self._custom_fields:
+            if field_name in custom_fields:
                 self._declare_field(field)
 
         self._custom_fields = {}
