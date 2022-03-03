@@ -1,41 +1,41 @@
-import React, {
-  Suspense,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useContext, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { v4 as uuid } from "uuid";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import { ThemeContext } from "styled-components";
 import { Close, Group } from "@material-ui/icons";
 import { GitHub, MenuBook } from "@material-ui/icons";
 
+import ViewBar from "./ViewBar/ViewBar";
 import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
 import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
-import ExternalLink from "./ExternalLink";
 import { Slack } from "../icons";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import socket, { http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
+import { ExternalLink } from "../utils/generic";
 
 import Logo from "../images/logo.png";
+import { useRefresh } from "../utils/hooks";
 
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
   display: flex;
+  overflow: hidden;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
+  & > div:last-child {
+    display: none;
+  }
 `;
 
 const DatasetInput = styled(AuosizeInput)`
+  overflow: hidden;
   & input {
     background-color: transparent;
     border: none;
@@ -45,6 +45,8 @@ const DatasetInput = styled(AuosizeInput)`
     border: none;
     align-items: center;
     font-weight: bold;
+    text-overflow: ellipsis;
+    max-width: 300px;
   }
 
   & input:focus {
@@ -60,7 +62,7 @@ const DatasetInput = styled(AuosizeInput)`
 `;
 
 const HeaderDiv = styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.background};
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
@@ -76,8 +78,8 @@ const TitleDiv = styled.div`
 `;
 
 const LogoImg = animated(styled.img`
-  height: 100%;
-  width: auto;
+  height: 40px;
+  width: 40px;
   cursor: pointer;
   margin-right: 1rem;
   will-change: transform;
@@ -100,6 +102,7 @@ const FiftyOneDiv = styled.div`
   font-size: 1.8rem;
   align-items: center;
   display: flex;
+  white-space: nowrap;
 `;
 
 const DatasetDiv = styled.div`
@@ -108,6 +111,7 @@ const DatasetDiv = styled.div`
   border-left-width: 1px;
   border-color: ${({ theme }) => theme.backgroundDarkBorder};
   border-left-style: solid;
+  overflow: hidden;
 `;
 
 const IconWrapper = styled.div`
@@ -310,220 +314,60 @@ const selectorMachine = Machine({
   },
 });
 
-const Input = styled.input`
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  padding: 0.5rem 0;
-  margin-bottom: 1rem;
-  border
-  color: ${({ theme }) => theme.font};
-  line-height: 1rem;
-  border: none;
-  border-bottom: 1px solid ${({ theme }) => theme.brand};
-  font-weight: bold;
+const url = `${http}/dataset`;
 
-  &:focus {
-    border-bottom: 1px solid ${({ theme }) => theme.brand};
-    outline: none;
-    font-weight: bold;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.fontDark};
-    font-weight: bold;
-  }
-`;
-
-const TeamsForm = () => {
-  const [formState, setFormState] = useState({
-    email: "",
-    firstname: "",
-    lastname: "",
-    company: "",
-    role: "",
-    discover: "",
-  });
-  const [submitText, setSubmitText] = useState("Submit");
-  const [submitted, setSubmitted] = useRecoilState(atoms.teamsSubmitted);
-  const portalId = 4972700;
-  const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
-  const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
-  const closeTeams = useRecoilValue(atoms.closeTeams);
-
-  const setFormValue = (name) => (e) =>
-    setFormState({
-      ...formState,
-      [name]: e.target.value,
-    });
-  const disabled =
-    !(
-      formState.email?.length &&
-      formState.firstname?.length &&
-      formState.lastname?.length
-    ) || submitted.submitted;
-  const submit = () => {
-    if (disabled) {
-      return;
-    }
-    setSubmitText("Submitting...");
-    const headers = new Headers();
-    headers.append("Content-Type", "application/json");
-    const finalize = () => {
-      setSubmitText("Submitted. Thank you!");
-      setSubmitted({ ...submitted, submitted: true });
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
-      setTimeout(() => closeTeams && closeTeams.close(), 2000);
-    };
-
-    fetch(postUrl, {
-      method: "post",
-      headers,
-      mode: "cors",
-      body: JSON.stringify({
-        submittedAt: Date.now(),
-        fields: [
-          {
-            name: "firstname",
-            value: formState.firstname,
-          },
-          {
-            name: "lastname",
-            value: formState.lastname,
-          },
-          {
-            name: "email",
-            value: formState.email,
-          },
-          {
-            name: "company",
-            value: formState.company,
-          },
-          {
-            name: "role",
-            value: formState.role,
-          },
-          {
-            name: "app_how_did_you_hear_about_us",
-            value: formState.discover,
-          },
-        ],
-        context: { pageName: "FiftyOne App" },
-      }),
-    })
-      .then((response) => {
-        if (response.status !== 200) {
-          throw new Error("Failed submission");
-        }
-        return response.json();
-      })
-      .then(() => {
-        finalize();
-      })
-      .catch((e) => {
-        setSubmitText("Something went wrong");
-      });
-  };
-  return (
-    <>
-      <Input
-        key="firstname"
-        placeholder={"First name*"}
-        value={formState.firstname ?? ""}
-        maxLength={40}
-        onChange={setFormValue("firstname")}
-      />
-      <Input
-        key="lastname"
-        placeholder={"Last name*"}
-        value={formState.lastname ?? ""}
-        maxLength={40}
-        onChange={setFormValue("lastname")}
-      />
-      <Input
-        key="email"
-        placeholder={"Email*"}
-        type="email"
-        value={formState.email ?? ""}
-        onChange={setFormValue("email")}
-      />
-      <Input
-        key="company"
-        placeholder={"Company"}
-        value={formState.company ?? ""}
-        maxLength={100}
-        onChange={setFormValue("company")}
-      />
-      <Input
-        key="role"
-        placeholder={"Role"}
-        value={formState.role ?? ""}
-        maxLength={100}
-        onChange={setFormValue("role")}
-      />
-      <Input
-        key="discover"
-        placeholder={"How did you hear about FiftyOne?"}
-        value={formState.discover ?? ""}
-        maxLength={100}
-        onChange={setFormValue("discover")}
-      />
-      <Button
-        key="submit"
-        onClick={submit}
-        style={{
-          marginBottom: "1rem",
-        }}
-        className={disabled ? "disabled" : ""}
-      >
-        {submitText}
-      </Button>
-    </>
-  );
-};
-
-const DatasetSelector = () => {
+const DatasetSelector = ({ error }: { error: boolean }) => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
   const connected = useRecoilValue(atoms.connected);
-  const resetStats = useResetRecoilState(atoms.datasetStatsRaw);
-  const resetExtStats = useResetRecoilState(atoms.extendedDatasetStatsRaw);
-
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
-  useEffect(() => {
+  useLayoutEffect(() => {
     send({
       type: "SET_VALUES",
       value: datasetName ?? "",
       values: datasets,
-      onCommit: (v) => {
-        resetStats();
-        resetExtStats();
-        socket.send(packageMessage("set_dataset", { dataset_name: v }));
+      onCommit: (dataset) => {
+        fetch(url, {
+          method: "POST",
+          cache: "no-cache",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "cors",
+          body: JSON.stringify({ dataset }),
+        });
       },
     });
   }, [datasetName, datasets, socket]);
 
   const isEditing = state.matches("editing");
-  useEffect(() => {
+  useLayoutEffect(() => {
     isEditing && inputRef.current && inputRef.current.focus();
     !isEditing && inputRef.current && inputRef.current.blur();
   }, [isEditing, inputRef.current]);
 
+  const title =
+    connected && !error
+      ? value
+      : error
+      ? "Oops! Something went wrong"
+      : "Not connected";
   return (
-    <DatasetDiv>
+    <DatasetDiv title={title}>
       <DatasetContainerInput>
         <DatasetInput
           placeholder={
             datasets.length > 0 ? "Select a dataset" : "No datasets available"
           }
-          disabled={!datasets.length}
-          value={connected ? value : "Not connected"}
+          disabled={!datasets.length || error}
+          value={title}
           onFocus={() => state.matches("reading") && send("EDIT")}
           onBlur={(e) => {
             state.matches("editing.searchResults.notHovering") && send("BLUR");
           }}
+          style={{ minWidth: 100 }}
           ref={inputRef}
           onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
           onKeyPress={(e) => {
@@ -594,10 +438,7 @@ const TeamsButton = ({ addNotification }) => {
   const [appTeamsIsOpen, setAppTeamsIsOpen] = useRecoilState(
     atoms.appTeamsIsOpen
   );
-  const [teamsSubmitted, setTeamsSubmitted] = useRecoilState(
-    atoms.teamsSubmitted
-  );
-  const [closeTeams, setCloseTeams] = useRecoilState(atoms.closeTeams);
+  const setTeams = useSetRecoilState(atoms.teams);
   const text = (
     <span>
       FiftyOne is and will always be open source software that is freely
@@ -614,18 +455,7 @@ const TeamsButton = ({ addNotification }) => {
   const theme = useContext(ThemeContext);
   const showTeamsButton = useRecoilValue(selectors.showTeamsButton);
 
-  const onClick = () => {
-    if (!appTeamsIsOpen) {
-      setAppTeamsIsOpen(true);
-      const callback = addNotification.current({
-        kind: "Get FiftyOne for your team",
-        message: text,
-        children: [<TeamsForm key="teams" />],
-        onClose: () => setAppTeamsIsOpen(false),
-      });
-      setCloseTeams({ close: callback });
-    }
-  };
+  const onClick = () => setTeams((cur) => ({ ...cur, open: true }));
 
   return showTeamsButton === "shown" ? (
     <Button
@@ -647,9 +477,8 @@ const TeamsButton = ({ addNotification }) => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            setTeamsSubmitted({ ...teamsSubmitted, minimized: true });
+            setTeams((cur) => ({ ...cur, minimized: true }));
             fetch(`${http}/teams`, { method: "post" });
-            closeTeams && closeTeams.close();
           }}
         />
       </div>
@@ -662,21 +491,30 @@ const TeamsButton = ({ addNotification }) => {
   ) : null;
 };
 
-const Header = ({ addNotification }) => {
+const Header = ({
+  addNotification,
+  error,
+}: {
+  error?: boolean;
+  addNotification?: React.MutableRefObject<any>;
+}) => {
   const refresh = useRecoilValue(selectors.refresh);
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
+  const refreshState = useRefresh();
 
+  const dataset = useRecoilValue(selectors.hasDataset);
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
+        <TitleDiv onClick={refreshState}>
           <LogoImg style={logoProps} src={Logo} />
           <FiftyOneDiv className="fix-me">FiftyOne Teams</FiftyOneDiv>
         </TitleDiv>
-        <DatasetSelector />
+        <DatasetSelector error={error} />
       </LeftDiv>
+      {dataset && !error && <ViewBar key={"bar"} />}
       <RightDiv>
         <IconWrapper>
           <ExternalLink

@@ -7,6 +7,19 @@ import highlightJSON from "json-format-highlight";
 import copyToClipboard from "copy-to-clipboard";
 
 import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  LABELS,
+  LABELS_MAP,
+  LABELS_PATH,
+  LABEL_LISTS,
+  LABEL_LISTS_MAP,
+  LIST_FIELD,
+  Schema,
+  withPath,
+} from "@fiftyone/utilities";
+
+import {
   FONT_SIZE,
   STROKE_WIDTH,
   PAD,
@@ -14,11 +27,7 @@ import {
   MAX_FRAME_CACHE_SIZE_BYTES,
   CHUNK_SIZE,
   DASH_LENGTH,
-  LABEL_LISTS,
   JSON_COLORS,
-  MASK_LABELS,
-  DATE_TIME,
-  HEATMAP,
   BASE_ALPHA,
 } from "./constants";
 import {
@@ -32,7 +41,7 @@ import {
   VIDEO_SHORTCUTS,
 } from "./elements/common";
 import processOverlays from "./processOverlays";
-import { ClassificationsOverlay, FROM_FO, loadOverlays } from "./overlays";
+import { ClassificationsOverlay, loadOverlays } from "./overlays";
 import { CONTAINS, Overlay } from "./overlays/base";
 import {
   FrameState,
@@ -72,6 +81,7 @@ import { zoomToContent } from "./zoom";
 
 import { getFrameNumber } from "./elements/util";
 import { getColor } from "./color";
+import { Events } from "./elements/base";
 
 export { zoomAspectRatio } from "./zoom";
 export { freeVideos } from "./elements/util";
@@ -128,11 +138,13 @@ export abstract class Looker<
   S extends Sample = Sample
 > {
   private eventTarget: EventTarget;
+  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
+  private readonly rootEvents: Events<State>;
 
   protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
@@ -151,9 +163,6 @@ export abstract class Looker<
     this.state = this.getInitialState(config, options);
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
-    if (!this.state.config.thumbnail) {
-      this.state.showControls = true;
-    }
     this.pluckedOverlays = [];
     this.currentOverlays = [];
     this.lookerElement = this.getElements(config);
@@ -169,6 +178,30 @@ export abstract class Looker<
           windowBBox: box,
         });
     });
+
+    this.rootEvents = {};
+    const events = this.getRootEvents();
+    for (const eventType in events) {
+      this.rootEvents[eventType] = (event) =>
+        events[eventType]({
+          event,
+          update: this.updater,
+        });
+    }
+
+    this.hideControlsTimeout = setTimeout(
+      () =>
+        this.updater(
+          ({ showOptions, hoveringControls, options: { showControls } }) => {
+            this.hideControlsTimeout = null;
+            if (!showOptions && !hoveringControls && showControls) {
+              return { options: { showControls: false } };
+            }
+            return {};
+          }
+        ),
+      3500
+    );
   }
 
   loadOverlays(sample: Sample): void {
@@ -180,17 +213,17 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
-    if (eventType === "error") {
-      this.updater({ error: detail.error || true });
-    }
-
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
   protected dispatchImpliedEvents(
-    previousState: Readonly<State>,
-    state: Readonly<State>
-  ): void {}
+    { options: prevOtions }: Readonly<State>,
+    { options }: Readonly<State>
+  ): void {
+    if (options.showJSON !== prevOtions.showJSON) {
+      this.dispatchEvent("options", { showJSON: options.showJSON });
+    }
+  }
 
   protected getDispatchEvent(): (eventType: string, detail: any) => void {
     return (eventType: string, detail: any) => {
@@ -202,7 +235,7 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample.id);
+        this.dispatchEvent(eventType, this.sample._id);
         return;
       }
 
@@ -212,93 +245,99 @@ export abstract class Looker<
 
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
-      const updates =
-        stateOrUpdater instanceof Function
-          ? stateOrUpdater(this.state)
-          : stateOrUpdater;
-      if (
-        !this.lookerElement ||
-        (Object.keys(updates).length === 0 && !postUpdate)
-      ) {
-        return;
+      try {
+        const updates =
+          stateOrUpdater instanceof Function
+            ? stateOrUpdater(this.state)
+            : stateOrUpdater;
+        if (
+          !this.lookerElement ||
+          (Object.keys(updates).length === 0 && !postUpdate)
+        ) {
+          return;
+        }
+
+        this.previousState = this.state;
+        this.state = mergeUpdates(this.state, updates);
+        if (
+          !this.state.windowBBox ||
+          this.state.destroyed ||
+          !this.state.overlaysPrepared ||
+          this.state.disabled
+        ) {
+          return;
+        }
+
+        this.pluckedOverlays = this.pluckOverlays(this.state);
+        this.state = this.postProcess();
+
+        [this.currentOverlays, this.state.rotate] = processOverlays(
+          this.state,
+          this.pluckedOverlays
+        );
+
+        this.state.mouseIsOnOverlay =
+          Boolean(this.currentOverlays.length) &&
+          this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
+        postUpdate && postUpdate(this.state, this.currentOverlays);
+
+        this.dispatchImpliedEvents(this.previousState, this.state);
+
+        if (this.state.options.showJSON) {
+          const pre = this.lookerElement.element.querySelectorAll("pre")[0];
+          this.getSample().then((sample) => {
+            pre.innerHTML = highlightJSON(sample, JSON_COLORS);
+          });
+        }
+        const ctx = this.ctx;
+        this.lookerElement.render(this.state, this.sample);
+
+        if (!this.state.loaded || this.state.destroyed || this.waiting) {
+          return;
+        }
+
+        ctx.lineWidth = this.state.strokeWidth;
+        ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.imageSmoothingEnabled = false;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const dpr = getDPR();
+        ctx.clearRect(
+          0,
+          0,
+          this.state.windowBBox[2] * dpr,
+          this.state.windowBBox[3] * dpr
+        );
+
+        ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
+        const scale = this.state.scale * dpr;
+        ctx.scale(scale, scale);
+
+        const [tlx, tly, w, h] = this.state.canvasBBox;
+
+        ctx.drawImage(
+          this.getImageSource(),
+          0,
+          0,
+          this.state.config.dimensions[0],
+          this.state.config.dimensions[1],
+          tlx,
+          tly,
+          w,
+          h
+        );
+
+        ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
+        const numOverlays = this.currentOverlays.length;
+
+        for (let index = numOverlays - 1; index >= 0; index--) {
+          this.currentOverlays[index].draw(ctx, this.state);
+        }
+        ctx.globalAlpha = 1;
+      } catch (error) {
+        this.dispatchEvent("error", error);
       }
-
-      this.previousState = this.state;
-      this.state = mergeUpdates(this.state, updates);
-
-      if (
-        !this.state.windowBBox ||
-        this.state.destroyed ||
-        !this.state.overlaysPrepared
-      ) {
-        return;
-      }
-
-      this.pluckedOverlays = this.pluckOverlays(this.state);
-      this.state = this.postProcess();
-
-      [this.currentOverlays, this.state.rotate] = processOverlays(
-        this.state,
-        this.pluckedOverlays
-      );
-
-      this.state.mouseIsOnOverlay =
-        Boolean(this.currentOverlays.length) &&
-        this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
-      postUpdate && postUpdate(this.state, this.currentOverlays);
-
-      this.dispatchImpliedEvents(this.previousState, this.state);
-
-      if (this.state.options.showJSON) {
-        const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-        this.getSample().then((sample) => {
-          pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-        });
-      }
-      const ctx = this.ctx;
-      this.lookerElement.render(this.state, this.sample);
-
-      if (!this.state.loaded || this.state.destroyed || this.waiting) {
-        return;
-      }
-
-      ctx.lineWidth = this.state.strokeWidth;
-      ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.imageSmoothingEnabled = false;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      const dpr = getDPR();
-      ctx.clearRect(
-        0,
-        0,
-        this.state.windowBBox[2] * dpr,
-        this.state.windowBBox[3] * dpr
-      );
-
-      ctx.translate(this.state.pan[0] * dpr, this.state.pan[1] * dpr);
-      const scale = this.state.scale * dpr;
-      ctx.scale(scale, scale);
-
-      const [tlx, tly, w, h] = this.state.canvasBBox;
-      ctx.drawImage(
-        this.getImageSource(),
-        0,
-        0,
-        this.state.config.dimensions[0],
-        this.state.config.dimensions[1],
-        tlx,
-        tly,
-        w,
-        h
-      );
-
-      ctx.globalAlpha = Math.min(1, this.state.options.alpha / BASE_ALPHA);
-      const numOverlays = this.currentOverlays.length;
-      for (let index = numOverlays - 1; index >= 0; index--) {
-        this.currentOverlays[index].draw(ctx, this.state);
-      }
-      ctx.globalAlpha = 1;
     };
   }
 
@@ -318,23 +357,78 @@ export abstract class Looker<
     this.eventTarget.removeEventListener(eventType, handler, ...args);
   }
 
+  getRootEvents(): Events<State> {
+    return {
+      mouseenter: ({ update }) =>
+        update(({ config: { thumbnail } }) => {
+          if (thumbnail) {
+            return { hovering: true };
+          }
+          return {
+            hovering: true,
+            showControls: true,
+          };
+        }),
+      mouseleave: ({ update }) => {
+        !this.state.config.thumbnail &&
+          this.dispatchEvent("options", { showControls: false });
+        update({
+          hovering: false,
+          disableControls: false,
+          showOptions: false,
+          panning: false,
+        });
+      },
+      mousemove: ({ update }) => {
+        if (this.state.config.thumbnail) {
+          return;
+        }
+        if (this.hideControlsTimeout) {
+          clearTimeout(this.hideControlsTimeout);
+        }
+        this.hideControlsTimeout = setTimeout(
+          () =>
+            update(
+              ({
+                options: { showControls },
+                showOptions,
+                hoveringControls,
+              }) => {
+                this.hideControlsTimeout = null;
+                if (!showOptions && !hoveringControls && showControls) {
+                  this.dispatchEvent("options", { showControls: false });
+                }
+                return {};
+              }
+            ),
+          3500
+        );
+      },
+    };
+  }
+
   attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
     if (element === this.lookerElement.element.parentElement) {
-      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
     if (this.lookerElement.element.parentElement) {
+      const parent = this.lookerElement.element.parentElement;
       this.resizeObserver.disconnect();
-      this.lookerElement.element.parentElement.removeChild(
-        this.lookerElement.element
-      );
+      parent.removeChild(this.lookerElement.element);
+
+      for (const eventType in this.rootEvents) {
+        parent.removeEventListener(eventType, this.rootEvents[eventType]);
+      }
     }
 
+    for (const eventType in this.rootEvents) {
+      element.addEventListener(eventType, this.rootEvents[eventType]);
+    }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
     });
@@ -366,7 +460,12 @@ export abstract class Looker<
     let sample = { ...this.sample };
 
     return Promise.resolve(
-      filterSample(this.state, sample, this.state.options.fieldsMap)
+      f({
+        value: sample,
+        filter: this.state.options.filter,
+        schema: this.state.config.fieldSchema,
+        active: this.state.options.activePaths,
+      })
     );
   }
 
@@ -377,13 +476,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label.id,
-            sample_id: this.sample.id,
+            labelId: label._id,
+            sampleId: this.sample._id,
           });
         });
       } else {
-        const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample.id });
+        const { id: labelId, field } = overlay.getSelectData(this.state);
+        labels.push({ labelId, field, sampleId: this.sample._id });
       }
     });
 
@@ -435,7 +534,6 @@ export abstract class Looker<
       disableControls: false,
       hovering: false,
       hoveringControls: false,
-      showControls: false,
       showHelp: false,
       showOptions: false,
       loaded: false,
@@ -547,6 +645,7 @@ export abstract class Looker<
       }
     };
     worker.addEventListener("message", listener);
+
     worker.postMessage({
       method: "processSample",
       coloring: this.state.options.coloring,
@@ -916,6 +1015,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
     previousState: Readonly<VideoState>,
     state: Readonly<VideoState>
   ): void {
+    super.dispatchImpliedEvents(previousState, state);
     const previousPlaying = previousState.playing && !previousState.buffering;
     const playing = state.playing && !state.buffering;
 
@@ -932,13 +1032,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            label_id: label.id,
-            sample_id: this.sample.id,
+            labelId: label._id,
+            sampleId: this.sample._id,
           });
         });
       } else {
-        const { id: label_id, field } = overlay.getSelectData(this.state);
-        labels.push({ label_id, field, sample_id: this.sample.id });
+        const { id: labelId, field } = overlay.getSelectData(this.state);
+        labels.push({ labelId, field, sampleId: this.sample._id });
       }
     });
 
@@ -954,18 +1054,18 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              label_id: label.id,
-              frame_number: this.frameNumber,
-              sample_id: this.sample.id,
+              labelId: label._id,
+              frameNumber: this.frameNumber,
+              sampleId: this.sample._id,
             });
           });
         } else {
-          const { id: label_id, field } = overlay.getSelectData(this.state);
+          const { id: labelId, field } = overlay.getSelectData(this.state);
           labels.push({
-            label_id,
+            labelId,
             field,
-            sample_id: this.sample.id,
-            frame_number: this.frameNumber,
+            sampleId: this.sample._id,
+            frameNumber: this.frameNumber,
           });
         }
       });
@@ -1138,12 +1238,15 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
             frames: [
               {
                 frame_number: this.frameNumber,
-                ...filterSample(
-                  this.state,
-                  { ...this.frames.get(this.frameNumber).deref().sample },
-                  this.state.options.frameFieldsMap,
-                  "frames."
-                ),
+                ...f({
+                  filter: this.state.options.filter,
+                  value: {
+                    ...this.frames.get(this.frameNumber).deref().sample,
+                  },
+                  schema: this.state.config.fieldSchema.frames.fields,
+                  keys: ["frames"],
+                  active: this.state.options.activePaths,
+                }),
               },
             ],
           });
@@ -1264,81 +1367,93 @@ const toggleZoom = <State extends FrameState | ImageState | VideoState>(
   state.zoomToContent = false;
 };
 
-const filterSample = <S extends Sample | FrameSample>(
-  state: Readonly<BaseState>,
-  sample: S,
-  fieldsMap: { [key: string]: string },
-  prefix = ""
-): S => {
-  for (let field in sample) {
-    if (fieldsMap.hasOwnProperty(field)) {
-      sample[fieldsMap[field]] = sample[field];
-      if (field !== fieldsMap[field]) {
-        delete sample[field];
-      }
-    } else if (field.startsWith("_")) {
-      delete sample[field];
-    } else if (sample[field] && sample[field]._cls === DATE_TIME) {
-      sample[field] = new Date(sample[field].datetime);
-    } else if (Array.isArray(sample[field])) {
-      sample[field] = sample[field].map((v) =>
-        v && v._cls === DATE_TIME ? new Date(sample[field].datetime) : v
+const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
+const LABEL_LIST_KEY = Object.fromEntries(
+  Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [withPath(LABELS_PATH, k), v])
+);
+const LABELS_SET = new Set(LABELS);
+
+const mapFields = (value, schema: Schema, ftype: string) => {
+  if ([DATE_TIME_FIELD, DATE_FIELD].includes(ftype)) {
+    return new Date(value.datetime);
+  }
+
+  if (typeof value !== "object") {
+    return value;
+  }
+
+  const result = {};
+  for (let fieldName in schema) {
+    const { dbField, ftype } = schema[fieldName];
+    const key = dbField || fieldName;
+
+    if (value[key] === undefined) continue;
+
+    if (value[key] === null) {
+      result[fieldName] = null;
+      continue;
+    }
+
+    if (ftype === LIST_FIELD) {
+      result[fieldName] = value[key].map((v) =>
+        mapFields(v, schema[fieldName].fields, schema[fieldName].subfield)
       );
-    } else if (
-      sample[field] &&
-      sample[field]._cls &&
-      FROM_FO.hasOwnProperty(sample[field]._cls)
-    ) {
-      if (!state.options.activePaths.includes(prefix + field)) {
-        delete sample[field];
-        continue;
-      }
-
-      if (LABEL_LISTS[sample[field]._cls]) {
-        sample[field] = {
-          ...sample[field],
-          [LABEL_LISTS[sample[field]._cls]]: sample[field][
-            LABEL_LISTS[sample[field]._cls]
-          ]
-            .filter((label) => state.options.filter[prefix + field](label))
-            .map((label) => {
-              if (MASK_LABELS.has(label._cls) && label.mask) {
-                label.mask = {
-                  shape: label.mask.shape,
-                };
-              }
-
-              return label;
-            }),
-        };
-      } else if (!state.options.filter[prefix + field](sample[field])) {
-        delete sample[field];
-      } else if (
-        MASK_LABELS.has(sample[field]._cls) &&
-        sample[field].mask &&
-        sample[field].mask.data
-      ) {
-        sample[field] = {
-          ...sample[field],
-          mask: {
-            shape: sample[field].mask.data.shape,
-          },
-        };
-      } else if (
-        sample[field]._cls === HEATMAP &&
-        sample[field].map &&
-        sample[field].map.data
-      ) {
-        sample[field] = {
-          ...sample[field],
-          map: {
-            shape: sample[field].map.data.shape,
-          },
-        };
-      }
+    } else {
+      result[fieldName] = mapFields(
+        value[key],
+        schema[fieldName].fields,
+        schema[fieldName].ftype
+      );
     }
   }
-  return sample;
+
+  return result;
+};
+
+const f = <T extends {}>({
+  schema,
+  filter,
+  value,
+  keys = [],
+  active,
+}: {
+  active: string[];
+  value: T;
+  schema: Schema;
+  keys?: string[];
+  filter: (path: string, value) => boolean;
+}): T => {
+  const result = {};
+  for (let fieldName in schema) {
+    if (fieldName.startsWith("_")) continue;
+
+    const path = [...keys, fieldName].join(".");
+
+    const { dbField, embeddedDocType } = schema[fieldName];
+
+    if (LABEL_LISTS_PATH.has(embeddedDocType)) {
+      if (!active.includes(path)) continue;
+
+      result[dbField || fieldName] = value[dbField || fieldName];
+
+      if (result[dbField || fieldName][LABEL_LIST_KEY[embeddedDocType]]) {
+        result[dbField || fieldName][LABEL_LIST_KEY[embeddedDocType]] = result[
+          dbField || fieldName
+        ][LABEL_LIST_KEY[embeddedDocType]].filter((v) => filter(path, v));
+      }
+    } else if (
+      LABELS_SET.has(embeddedDocType) &&
+      filter(path, value[dbField || fieldName])
+    ) {
+      if (!active.includes(path)) continue;
+
+      result[dbField || fieldName] = value[dbField || fieldName];
+    } else {
+      result[dbField || fieldName] = value[dbField || fieldName];
+    }
+  }
+
+  return mapFields(result, schema, null) as T;
 };
 
 const shouldReloadSample = (

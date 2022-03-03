@@ -4,7 +4,7 @@ import { ThemeProvider } from "styled-components";
 
 import App from "./App";
 import { GlobalStyle } from "../shared/global";
-import { darkTheme } from "../shared/colors";
+import { darkTheme, lightTheme } from "../shared/colors";
 
 const Root = () => {
   return (

@@ -395,7 +395,7 @@ export const mergeUpdates = <State extends BaseState>(
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
-    if (n === null) {
+    if (n === null || o === null) {
       return n;
     }
     return mergeWith(merger, o, n);
@@ -492,15 +492,22 @@ const isElectron = (): boolean => {
 };
 
 const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+const path =
+  window.location.pathname +
+  (window.location.pathname.endsWith("/") ? "" : "/");
 
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
   : parseInt(window.location.port);
 
+const address = isElectron()
+  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
+  : window.location.hostname;
+
 export const getURL = () => {
   return isElectron()
-    ? `http://localhost:${port}`
-    : window.location.protocol + "//" + host;
+    ? `http://${address}:${port}${path}`
+    : window.location.protocol + "//" + host + path;
 };
 
 export const getMimeType = (sample: any) => {
@@ -509,55 +516,6 @@ export const getMimeType = (sample: any) => {
     mime.getType(sample.filepath) ||
     "image/jpg"
   );
-};
-
-export const formatDateTime = (timeStamp: number, timeZone: string): string => {
-  const twoDigit = "2-digit";
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone,
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-    hour: twoDigit,
-    minute: twoDigit,
-    second: twoDigit,
-  };
-
-  if (!(timeStamp % S)) {
-    delete options.second;
-  }
-
-  if (!(timeStamp % M)) {
-    delete options.minute;
-  }
-
-  if (!(timeStamp % H)) {
-    delete options.hour;
-  }
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
-};
-
-export const formatDate = (timeStamp: number): string => {
-  const twoDigit = "2-digit";
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone: "UTC",
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-  };
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
 };
 
 export const isFloatArray = (arr) =>

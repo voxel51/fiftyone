@@ -1,67 +1,91 @@
-import LRU from "lru-cache";
 import React, {
   useLayoutEffect,
   useRef,
   useState,
   MutableRefObject,
 } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import {
   atom,
+  RecoilState,
   selector,
+  Snapshot,
   useRecoilCallback,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
-
+import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import {
-  FrameLooker,
-  freeVideos,
-  ImageLooker,
-  VideoLooker,
-  zoomAspectRatio,
-} from "@fiftyone/looker";
-import { activeFields } from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
+  EMBEDDED_DOCUMENT_FIELD,
+  LIST_FIELD,
+  toSnakeCase,
+} from "@fiftyone/utilities";
+
 import * as atoms from "../recoil/atoms";
+import * as colorAtoms from "../recoil/color";
+import * as filterAtoms from "../recoil/filters";
+import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
+import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
 import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
-import { useEventHandler, useMessageHandler } from "../utils/hooks";
+import { useEventHandler, useSelect } from "../utils/hooks";
+import { pathFilter } from "./Filters";
+import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
+import { gridZoom } from "./ImageContainerHeader";
+import { store } from "./Flashlight.store";
+import { similarityParameters } from "./Actions/Similar";
+
+const setModal = async (
+  snapshot: Snapshot,
+  set: <T>(
+    recoilVal: RecoilState<T>,
+    valOrUpdater: T | ((currVal: T) => T)
+  ) => void
+) => {
+  const data = [
+    [filterAtoms.modalFilters, filterAtoms.filters],
+    [atoms.colorByLabel(true), atoms.colorByLabel(false)],
+    [
+      schemaAtoms.activeFields({ modal: true }),
+      schemaAtoms.activeFields({ modal: false }),
+    ],
+    [atoms.cropToContent(true), atoms.cropToContent(false)],
+    [atoms.colorSeed(true), atoms.colorSeed(false)],
+    [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
+    [atoms.alpha(true), atoms.alpha(false)],
+    [sidebarGroupsDefinition(true), sidebarGroupsDefinition(false)],
+    [atoms.sidebarWidth(true), atoms.sidebarWidth(false)],
+    [atoms.sidebarVisible(true), atoms.sidebarVisible(false)],
+    [textFilter(true), textFilter(false)],
+  ];
+
+  const results = await Promise.all(
+    data.map(([_, get]) => snapshot.getPromise(get as RecoilState<any>))
+  );
+
+  for (const i in results) {
+    set(data[i][0], results[i]);
+  }
+};
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [0, 10],
 });
 
-const createLookerCache = () => {
-  return new LRU<string, FrameLooker | ImageLooker | VideoLooker>({
-    max: 500,
-    dispose: (id, looker) => looker.destroy(),
-  });
-};
-
-export let samples = new Map<string, atoms.SampleData>();
-export let sampleIndices = new Map<number, string>();
 let nextIndex = 0;
-let lookers = createLookerCache();
 
-const url = (() => {
-  let origin = window.location.origin;
-  try {
-    // @ts-ignore
-    if (import.meta.env.DEV) {
-      origin = "http://localhost:5151";
-    }
-  } catch {}
-  return `${http}/page?`;
-})();
+const url = `${http}/page`;
 
 const Container = styled.div`
   width: 100%;
@@ -75,7 +99,7 @@ const flashlightOptions = selector<FlashlightOptions>({
   get: ({ get }) => {
     return {
       rowAspectRatioThreshold:
-        11 - Math.max(get(selectors.gridZoom), get(gridZoomRange)[0]),
+        11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
     };
   },
 });
@@ -84,17 +108,21 @@ const flashlightLookerOptions = selector({
   key: "flashlightLookerOptions",
   get: ({ get }) => {
     return {
-      coloring: get(selectors.coloring(false)),
-      filter: get(labelFilters(false)),
-      activePaths: get(activeFields),
-      zoom: get(selectors.isPatchesView) && get(atoms.cropToContent(false)),
+      coloring: get(colorAtoms.coloring(false)),
+      filter: get(pathFilter(false)),
+      activePaths: get(schemaAtoms.activeFields({ modal: false })),
+      zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
       inSelectionMode: get(atoms.selectedSamples).size > 0,
-      fieldsMap: get(selectors.primitivesDbMap("sample")),
-      frameFieldsMap: get(selectors.primitivesDbMap("frame")),
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
+      imageFilters: Object.fromEntries(
+        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
+          filter,
+          get(atoms.imageFilters({ modal: false, filter })),
+        ])
+      ),
     };
   },
 });
@@ -131,14 +159,15 @@ const useThumbnailClick = (
         Object.entries(itemIndexMap).map(([k, v]) => [v, k])
       );
       let selected = new Set(await snapshot.getPromise(atoms.selectedSamples));
-
+      const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
+      set(sidebarGroupsDefinition(true), groups);
       const openModal = () => {
         const getIndex = (index) => {
-          const promise = sampleIndices.has(index)
-            ? Promise.resolve(samples.get(sampleIndices.get(index)))
+          const promise = store.indices.has(index)
+            ? Promise.resolve(store.samples.get(store.indices.get(index)))
             : flashlight.current.get()?.then(() => {
-                return sampleIndices.has(index)
-                  ? samples.get(sampleIndices.get(index))
+                return store.indices.has(index)
+                  ? store.samples.get(store.indices.get(index))
                   : null;
               });
 
@@ -150,13 +179,12 @@ const useThumbnailClick = (
               })
             : clearModal();
         };
-
         set(atoms.modal, {
-          ...samples.get(sampleId),
+          ...store.samples.get(sampleId),
           index: clickedIndex,
           getIndex,
         });
-        set(labelFilters(true), {});
+        setModal(snapshot, set);
       };
 
       const addRange = () => {
@@ -208,7 +236,11 @@ const useThumbnailClick = (
         );
       };
 
-      if (!selected.size) {
+      const selectedopen = selected.size > 0 && event.type === "contextmenu";
+      if (selectedopen) {
+        event.preventDefault();
+      }
+      if (!selected.size || selectedopen) {
         openModal();
         return;
       }
@@ -233,47 +265,70 @@ const useThumbnailClick = (
   );
 };
 
-const useSelect = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async (sampleId: string) => {
-      const selected = new Set(
-        await snapshot.getPromise(atoms.selectedSamples)
-      );
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
-      set(atoms.selectedSamples, selected);
-      socket.send(
-        packageMessage("set_selection", { _ids: Array.from(selected) })
-      );
-    },
-    []
-  );
-};
+interface PageParameters {
+  filters: State.Filters;
+  dataset: string;
+  view: State.Stage[];
+}
 
-export const useSampleUpdate = () => {
-  const handler = useRecoilCallback(
-    ({ set, snapshot }) => async ({ samples: updatedSamples }) => {
-      updatedSamples.forEach((sample) => {
-        samples.set(sample._id, { ...samples.get(sample._id), sample });
-        lookers.has(sample._id) && lookers.get(sample._id).updateSample(sample);
-      });
-      set(atoms.modal, { ...(await snapshot.getPromise(atoms.modal)) });
-      set(selectors.anyTagging, false);
-    },
-    []
-  );
-  useMessageHandler("samples_update", handler);
-};
+const pageParameters = selector<PageParameters>({
+  key: "pageParameters",
+  get: ({ get }) => {
+    const similarity = get(similarityParameters);
+    return {
+      filters: get(filterAtoms.filters),
+      view: get(viewAtoms.view),
+      dataset: get(selectors.datasetName),
+      similarity: similarity ? toSnakeCase(similarity) : null,
+    };
+  },
+});
+
+const getPageParameters = selector<() => Promise<PageParameters>>({
+  key: "getPageParameters",
+  get: ({ getCallback }) => {
+    return getCallback(({ snapshot }) => async () => {
+      return await snapshot.getPromise(pageParameters);
+    });
+  },
+});
 
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
-  const lookerOptions = useRecoilValue(flashlightLookerOptions);
+  const lookerOptions = useRecoilValueLoadable(flashlightLookerOptions);
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
-  const schema = useRecoilValue(selectors.fieldSchema("sample"));
-  const isClips = useRecoilValue(selectors.isClipsView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+  const frameFieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
+  );
+  const flashlight = useRef<Flashlight<number>>();
+  const cropToContent = useRecoilValue(atoms.cropToContent(false));
+  const filters = useRecoilValue(filterAtoms.filters);
+  const datasetName = useRecoilValue(selectors.datasetName);
+  const view = useRecoilValue(viewAtoms.view);
+  const refresh = useRecoilValue(selectors.refresh);
+  const getPageParams = useRecoilValue(getPageParameters);
+  const selected = useRecoilValue(atoms.selectedSamples);
+  const onThumbnailClick = useThumbnailClick(flashlight);
+  const onSelect = useSelect();
+  const setGridZoomRange = useSetRecoilState(gridZoomRange);
+  const handleError = useErrorHandler();
+  const gridZoomRef = useRef<number>();
+  const gridZoomValue = useRecoilValue(gridZoom);
+  gridZoomRef.current = gridZoomValue;
+  const taggingLabels = useRecoilValue(
+    atoms.tagging({ modal: false, labels: true })
+  );
+
+  const taggingSamples = useRecoilValue(
+    atoms.tagging({ modal: false, labels: false })
+  );
+  const tagging = taggingLabels || taggingSamples;
   lookerGeneratorRef.current = ({
     sample,
     dimensions,
@@ -283,21 +338,33 @@ export default React.memo(() => {
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
-
-    return new constructor(
-      sample,
-      {
-        src: getSampleSrc(sample.filepath, sample._id, url),
-        thumbnail: true,
-        dimensions,
-        sampleId: sample._id,
-        frameRate,
-        frameNumber: constructor === FrameLooker ? frameNumber : null,
-        fieldSchema: Object.fromEntries(schema.map((f) => [f.name, f])),
-        ...etc,
+    const config = {
+      src: getSampleSrc(sample.filepath, sample._id, url),
+      thumbnail: true,
+      dimensions,
+      sampleId: sample._id,
+      frameRate,
+      frameNumber: constructor === FrameLooker ? frameNumber : null,
+      fieldSchema: {
+        ...fieldSchema,
+        frames: {
+          name: "frames",
+          ftype: LIST_FIELD,
+          subfield: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: "fiftyone.core.frames.FrameSample",
+          fields: frameFieldSchema,
+        },
       },
-      { ...lookerOptions, selected: selected.has(sample._id) }
-    );
+      ...etc,
+    };
+
+    const looker = new constructor(sample, config, {
+      ...lookerOptions.contents,
+      selected: selected.has(sample._id),
+    });
+    looker.addEventListener("error", (event) => handleError(event.detail));
+
+    return looker;
   };
   const aspectRatioGenerator = useRef<any>();
   aspectRatioGenerator.current = ({
@@ -305,27 +372,10 @@ export default React.memo(() => {
     dimensions: [width, height],
   }: atoms.SampleData) => {
     const aspectRatio = width / height;
-    return lookerOptions.zoom
+    return lookerOptions.contents.zoom
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
-  const [error, setError] = useState<Error>(null);
-  const flashlight = useRef<Flashlight<number>>();
-  const cropToContent = useRecoilValue(atoms.cropToContent(false));
-
-  const filters = useRecoilValue(selectors.filterStages);
-  const datasetName = useRecoilValue(selectors.datasetName);
-  const view = useRecoilValue(selectors.view);
-  const refresh = useRecoilValue(selectors.refresh);
-
-  const selected = useRecoilValue(atoms.selectedSamples);
-  const onThumbnailClick = useThumbnailClick(flashlight);
-  const onSelect = useSelect();
-  const setGridZoomRange = useSetRecoilState(gridZoomRange);
-  useSampleUpdate();
-  const gridZoomRef = useRef<number>();
-  const gridZoomValue = useRecoilValue(selectors.gridZoom);
-  gridZoomRef.current = gridZoomValue;
 
   useEventHandler(
     document,
@@ -348,14 +398,12 @@ export default React.memo(() => {
   );
 
   useLayoutEffect(() => {
-    if (!flashlight.current || !flashlight.current.isAttached()) {
+    if (!flashlight.current || !flashlight.current.isAttached() || tagging) {
       return;
     }
 
-    samples = new Map();
-    lookers.reset();
+    store.reset();
     freeVideos();
-    sampleIndices = new Map();
     nextIndex = 0;
     flashlight.current.reset();
   }, [
@@ -365,11 +413,9 @@ export default React.memo(() => {
     filterView(view),
     refresh,
     cropToContent,
+    tagging,
+    useRecoilValue(pageParameters),
   ]);
-
-  if (error) {
-    throw error;
-  }
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
@@ -395,13 +441,20 @@ export default React.memo(() => {
           };
         },
         onItemResize: (id, dimensions) => {
-          lookers.has(id) && lookers.get(id).resize(dimensions);
+          store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
+          const params = await getPageParams();
           try {
-            const { results, more } = await fetch(
-              `${url}page=${page}`
-            ).then((response) => response.json());
+            const { results, more } = await fetch(url, {
+              method: "POST",
+              cache: "no-cache",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              mode: "cors",
+              body: JSON.stringify({ ...params, page }),
+            }).then((response) => response.json());
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,
@@ -410,8 +463,8 @@ export default React.memo(() => {
                 frameNumber: result.sample.frame_number,
                 url: result.url,
               };
-              samples.set(result.sample._id, data);
-              sampleIndices.set(nextIndex, result.sample._id);
+              store.samples.set(result.sample._id, data);
+              store.indices.set(nextIndex, result.sample._id);
               nextIndex++;
 
               return data;
@@ -429,15 +482,15 @@ export default React.memo(() => {
               nextRequestKey: more ? page + 1 : null,
             };
           } catch (error) {
-            setError(error);
+            handleError(error);
           }
         },
         render: (sampleId, element, dimensions, soft, hide) => {
           try {
-            const result = samples.get(sampleId);
+            const result = store.samples.get(sampleId);
 
-            if (lookers.has(sampleId)) {
-              const looker = lookers.get(sampleId);
+            if (store.lookers.has(sampleId)) {
+              const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
 
               return null;
@@ -450,13 +503,13 @@ export default React.memo(() => {
                 ({ detail }: { detail: string }) => onSelect(detail)
               );
 
-              lookers.set(sampleId, looker);
+              store.lookers.set(sampleId, looker);
               looker.attach(element, dimensions);
             }
 
             return null;
           } catch (error) {
-            setError(error);
+            handleError(error);
           }
         },
       });
@@ -464,10 +517,10 @@ export default React.memo(() => {
     } else {
       flashlight.current.updateOptions(options);
       flashlight.current.updateItems((sampleId) => {
-        const looker = lookers.get(sampleId);
+        const looker = store.lookers.get(sampleId);
         looker &&
           looker.updateOptions({
-            ...lookerOptions,
+            ...lookerOptions.contents,
             selected: selected.has(sampleId),
             inSelectionMode: selected.size > 0,
           });

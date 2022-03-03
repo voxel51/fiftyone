@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { animated, useSpring, useSprings } from "react-spring";
+import { animated, useSpring, useSprings } from "@react-spring/web";
 import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
 
 import { useTheme } from "../utils/hooks";
@@ -19,51 +19,6 @@ export const VerticalSpacer = styled.div`
     opaque ? theme.background : undefined};
 `;
 
-export const Button = styled.button`
-  display: flex;
-  align-items: center;
-  background-color: ${({ theme }) => theme.button};
-  color: ${({ theme }) => theme.font};
-  border: 1px solid ${({ theme }) => theme.buttonBorder};
-  border-radius: 1px;
-  margin: 0 3px;
-  padding: 3px 10px;
-  font-weight: bold;
-  cursor: pointer;
-
-  svg.MuiSvgIcon-root {
-    font-size: 1.25em;
-    margin-left: -3px;
-    margin-right: 3px;
-  }
-`;
-
-export const ModalWrapper = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: ${({ theme }) => theme.overlay};
-`;
-
-export const ModalFooter = styled.div`
-  display: block;
-  border-top: 2px solid ${({ theme }) => theme.border};
-  padding: 1em;
-  background-color: ${({ theme }) => theme.backgroundLight};
-  z-index: 9000;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  min-height: 64.5px;
-`;
-
 export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
   width: 16px;
@@ -72,8 +27,16 @@ export const scrollbarStyles = ({ theme }) => `
 scrollbar-color: ${({ theme }) => theme.fontDarkest} ${({ theme }) =>
   theme.background};
 
+  scrollbar-gutter: stable;
+
+  scrollbar-width: auto;
+
 ::-webkit-scrollbar-track {
   border: solid 4px transparent ${theme.fontDarkest};
+}
+
+@-moz-document url-prefix() {
+  padding-right: 16px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -114,7 +77,6 @@ const PillButtonDiv = animated(styled.div`
   padding: 0.25rem 0.75rem;
   cursor: pointer;
   background-color: ${({ theme }) => theme.button};
-  height: 2rem;
   border-radius: 1rem;
   border: none;
   font-weight: bold;
@@ -123,6 +85,7 @@ const PillButtonDiv = animated(styled.div`
   opacity: 1;
 
   & > span {
+    text-align: center;
     margin: 0 0.25rem;
   }
   & > svg {
@@ -138,7 +101,7 @@ type PillButton = {
   text?: string;
   icon?: any;
   arrow?: boolean;
-  style?: object;
+  style?: React.CSSProperties;
   title?: string;
 };
 
@@ -167,6 +130,10 @@ export const PillButton = React.memo(
           ref={ref}
           style={{ ...props, ...style }}
           title={title}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
         >
           {text && <span>{text}</span>}
           {icon}
@@ -284,3 +251,95 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
     </TabOptionDiv>
   );
 };
+
+const ButtonDiv = animated(styled.div`
+  cursor: pointer;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 2.5px 0.5rem;
+  border-radius: 3px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+`);
+
+const OptionTextDiv = animated(styled.div`
+  padding-right: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  color: inherit;
+  line-height: 1.7;
+  & > span {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+`);
+
+export const OptionText = ({ style, children }) => {
+  return (
+    <OptionTextDiv style={style}>
+      <span>{children}</span>
+    </OptionTextDiv>
+  );
+};
+
+export const Button = ({
+  onClick,
+  text,
+  children = null,
+  style,
+  color = null,
+  title = null,
+}) => {
+  const theme = useTheme();
+  const [hover, setHover] = useState(false);
+  color = color ?? theme.brand;
+  const props = useSpring({
+    backgroundColor: hover ? color : theme.background,
+    color: hover ? theme.font : theme.fontDark,
+    config: {
+      duration: 150,
+    },
+  });
+  return (
+    <ButtonDiv
+      style={{ ...props, userSelect: "none", ...style }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={title ?? text}
+    >
+      <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
+        {text}
+      </OptionText>
+      {children}
+    </ButtonDiv>
+  );
+};
+
+export const NameAndCountContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  user-select: none;
+
+  & * {
+    user-select: none;
+  }
+
+  & > span:first-child {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 6px;
+  }
+
+  & span {
+    margin-right: 6px;
+  }
+`;

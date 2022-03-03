@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from "react";
 import { Radio as MaterialRadio } from "@material-ui/core";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";

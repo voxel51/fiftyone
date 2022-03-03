@@ -16,8 +16,10 @@ import pytz
 
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
@@ -177,6 +179,13 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
+    def validate(self, value):
+        if isinstance(self.field, EmbeddedDocumentField):
+            for v in value:
+                self.field.validate(v, clean=False, expand=True)
+        else:
+            super().validate(value)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -184,7 +193,13 @@ class HeatmapRangeField(ListField):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=FloatField(), null=True, **kwargs)
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
+        if "field" not in kwargs:
+            kwargs["field"] = FloatField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -228,15 +243,15 @@ class DictField(mongoengine.fields.DictField, Field):
         return etau.get_class_name(self)
 
     def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Value must be a dict")
-
         if not all(map(lambda k: etau.is_str(k), value)):
             self.error("Dict fields must have string keys")
 
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+        if value is not None and not isinstance(value, dict):
+            self.error("Value must be a dict")
 
 
 class IntDictField(DictField):
@@ -600,11 +615,109 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             stored in this field
     """
 
+    def __init__(self, document_type, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._parent = None
+        self.fields = kwargs.get("fields", [])
+        self._validation_schema = None
+
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def validate(self, value, clean=True, expand=False):
+        if self._validation_schema is None:
+            self._validation_schema = self.get_field_schema()
+
+        schema = self._validation_schema
+        for name in value._fields_ordered:
+            field = None
+            field_value = value.get_field(name)
+            if field_value is None:
+                continue
+
+            if name.startswith("_"):
+                continue
+
+            field = schema.get(name, None)
+            if field is None and expand:
+                field_kwargs = foo.get_implied_field_kwargs(field_value)
+                field = foo.create_field(name, **field_kwargs)
+                self._save_field(field, [name])
+            elif field is None:
+                self.error("field does not have field '%s' declared" % name)
+            elif isinstance(field, EmbeddedDocumentField):
+                field.validate(field_value, clean=False, expand=expand)
+            else:
+                field.validate(field_value)
+
+        if isinstance(value, foo.DynamicEmbeddedDocument):
+            value._set_parent(self)
+
+        super().validate(value, clean)
+
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the embedded
+        document field.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
+
+        Returns:
+             an ``OrderedDict`` mapping field names to field types
+        """
+        fields = {
+            name: field for name, field in self.document_type._fields.items()
+        }
+        fields.update({field.name: field for field in self.fields})
+
+        filtered_fields = {}
+
+        for name, field in fields.items():
+            if not include_private and name.startswith("_"):
+                continue
+
+            if ftype and not isinstance(field, ftype):
+                continue
+
+            if embedded_doc_type and (
+                not isinstance(field, EmbeddedDocumentField)
+                or embedded_doc_type != field.document_type
+            ):
+                continue
+
+            filtered_fields[name] = field
+
+        return filtered_fields
+
+    def to_python(self, value):
+        doc = super().to_python(value)
+
+        if isinstance(doc, foo.DynamicEmbeddedDocument):
+            doc._set_parent(self)
+        return doc
+
+    def _save_field(self, field, keys):
+        if keys[0] not in self.get_field_schema():
+            self.fields.append(field)
+            self._validation_schema = self.get_field_schema()
+
+        if self._parent:
+            self._parent._save_field(field, [self.name] + keys)
+
+    def _set_parent(self, parent):
+        self._parent = parent
 
 
 class EmbeddedDocumentListField(

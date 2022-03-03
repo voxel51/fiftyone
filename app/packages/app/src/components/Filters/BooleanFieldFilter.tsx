@@ -1,27 +1,34 @@
 import React from "react";
-import { animated } from "react-spring";
+
+import * as aggregationAtoms from "../../recoil/aggregations";
 
 import CategoricalFilter from "./CategoricalFilter";
-import { selectedValuesAtom } from "./BooleanFieldFilter.state";
-import { useExpand } from "./hooks";
-import { countsAtom } from "./atoms";
+import { selectedValuesAtom } from "./booleanState";
 
-const BooleanFieldFilter = ({ expanded, entry, modal }) => {
-  const [ref, props] = useExpand(expanded);
-
+const BooleanFieldFilter = ({
+  path,
+  modal,
+  ...rest
+}: {
+  path: string;
+  modal: boolean;
+  named?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  title: string;
+}) => {
   return (
-    <animated.div style={props}>
-      <CategoricalFilter
-        valueName={entry.path}
-        color={entry.color}
-        selectedValuesAtom={selectedValuesAtom({ path: entry.path, modal })}
-        countsAtom={countsAtom({ path: entry.path, modal, filtered: false })}
-        disableItems={entry.disableList}
-        path={entry.path}
-        modal={modal}
-        ref={ref}
-      />
-    </animated.div>
+    <CategoricalFilter<boolean | null>
+      selectedValuesAtom={selectedValuesAtom({ path, modal })}
+      countsAtom={aggregationAtoms.booleanCountResults({
+        path,
+        modal,
+        extended: false,
+      })}
+      modal={modal}
+      path={path}
+      {...rest}
+    />
   );
 };
 

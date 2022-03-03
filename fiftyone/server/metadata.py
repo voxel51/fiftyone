@@ -6,7 +6,6 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
-import requests
 import shutil
 import struct
 
@@ -20,9 +19,6 @@ import eta.core.video as etav
 
 import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
-import fiftyone.core.metadata as fome
-import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +30,12 @@ async def get_metadata(filepath, media_type, metadata=None):
 
     Args:
         filepath: the path to the file
-        media_type: the media type of the collection
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
-    is_video = media_type == fom.VIDEO
+    is_video = fom.get_media_type(filepath) == fom.VIDEO
 
     use_local = foc.media_cache.is_local_or_cached(filepath)
     if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
@@ -242,11 +237,6 @@ async def get_stream_info(path):
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
 
 
-def _get_image_dimensions(url):
-    with requests.get(url, stream=True) as r:
-        return fome.get_image_info(fou.ResponseStream(r))
-
-
 async def get_image_dimensions(input):
     """Gets the dimensions of an image from its file-like asynchronous byte
     stream.
@@ -392,7 +382,7 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass
 

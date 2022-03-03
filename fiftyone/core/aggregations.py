@@ -413,8 +413,11 @@ class Count(Aggregation):
             floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None, safe=False):
+    def __init__(
+        self, field_or_expr=None, expr=None, safe=False, _unwind=True
+    ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._unwind = _unwind
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -444,6 +447,7 @@ class Count(Aggregation):
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            unwind=self._unwind,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
@@ -551,6 +555,8 @@ class CountValues(Aggregation):
         _sort_by="count",
         _asc=True,
         _include=None,
+        _search="",
+        _selected=[],
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
@@ -558,6 +564,8 @@ class CountValues(Aggregation):
         self._order = 1 if _asc else -1
         self._include = _include
         self._field_type = None
+        self._search = _search
+        self._selected = _selected
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -585,11 +593,15 @@ class CountValues(Aggregation):
             p = lambda x: x
 
         if self._first is not None:
+            count = d["count"]
+            if not count:
+                return (0, [])
+
             return (
-                d["count"],
+                count[0]["count"],
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"]
+                    for i in d["result"][0]["result"]
                     if i["k"] is not None
                 ],
             )
@@ -615,33 +627,62 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first is not None:
-            sort = OrderedDict()
-            limit = self._first
+        if self._first is None:
+            return pipeline + [
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    }
+                }
+            ]
 
-            if self._include is not None:
-                limit = max(limit, len(self._include))
-                pipeline += [
-                    {"$set": {"included": {"$in": ["$_id", self._include]}}},
-                ]
-                sort["included"] = -1
+        if self._search or self._selected:
+            pipeline += [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$not": {"$in": ["$_id", self._selected]}},
+                                {
+                                    "$regexMatch": {
+                                        "input": "$_id",
+                                        "regex": self._search,
+                                        "options": None,
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                }
+            ]
 
-            sort[self._sort_by] = self._order
-            sort["count" if self._sort_by != "count" else "_id"] = self._order
+        sort = OrderedDict()
+        limit = self._first
 
-            pipeline += [{"$sort": sort}, {"$limit": limit}]
+        if self._include is not None:
+            limit = max(limit, len(self._include))
+            pipeline += [
+                {"$set": {"included": {"$in": ["$_id", self._include]}}},
+            ]
+            sort["included"] = -1
 
-        pipeline += [
+        sort[self._sort_by] = self._order
+        sort["count" if self._sort_by != "count" else "_id"] = self._order
+        result = [
+            {"$sort": sort},
+            {"$limit": limit},
             {
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
-                    "count": {"$sum": 1},
                 }
             },
         ]
 
-        return pipeline
+        return pipeline + [
+            {"$facet": {"count": [{"$count": "count"}], "result": result}}
+        ]
 
 
 class Distinct(Aggregation):
@@ -1955,7 +1996,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(field_name)
+    field_type = sample_collection.get_field(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):

@@ -2,10 +2,11 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { LABELS, LABEL_LISTS_MAP } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
-import { CHUNK_SIZE, LABELS, LABEL_LISTS } from "./constants";
+import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
-import { Coloring, FrameChunk, MaskTargets } from "./state";
+import { Coloring, FrameChunk } from "./state";
 
 interface ResolveColor {
   key: string | number;
@@ -111,14 +112,6 @@ const DESERIALIZE = {
   },
 };
 
-const mapId = (obj) => {
-  if (obj._id) {
-    obj.id = obj._id;
-    delete obj._id;
-  }
-  return obj;
-};
-
 const processLabels = (
   sample: { [key: string]: any },
   coloring: Coloring,
@@ -135,17 +128,6 @@ const processLabels = (
 
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
-    }
-
-    if (label._cls in LABELS) {
-      if (label._cls in LABEL_LISTS) {
-        const list = label[LABEL_LISTS[label._cls]];
-        if (Array.isArray(list)) {
-          label[LABEL_LISTS[label._cls]] = list.map(mapId);
-        }
-      } else {
-        mapId(label);
-      }
     }
 
     if (UPDATE_LABEL[label._cls]) {
@@ -181,8 +163,6 @@ interface ProcessSample {
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
-  mapId(sample);
-
   let bufferPromises = [processLabels(sample, coloring)];
 
   if (sample.frames && sample.frames.length) {

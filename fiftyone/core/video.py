@@ -502,6 +502,9 @@ def make_frames_dataset(
     #
 
     dataset = fod.Dataset(_frames=True)
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"

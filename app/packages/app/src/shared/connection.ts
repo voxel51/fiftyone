@@ -1,7 +1,6 @@
+import { isElectron } from "@fiftyone/utilities";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { v4 as uuid } from "uuid";
-
-import { isElectron } from "../utils/generic";
 
 class HTTPSSocket {
   location: string;
@@ -25,7 +24,6 @@ class HTTPSSocket {
 
   execute(messages) {
     if ([WebSocket.CLOSED, WebSocket.CONNECTING].includes(this.readyState)) {
-      this.events.open.forEach((h) => h(null));
       this.timeout = this.openTimeout;
       clearInterval(this.interval);
       this.interval = setInterval(() => this.gather(), this.timeout);
@@ -39,6 +37,9 @@ class HTTPSSocket {
         .then((response) => response.json())
         .then((data) => {
           this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
+        })
+        .catch(() => {
+          console.log(m);
         });
     });
   }
@@ -88,8 +89,14 @@ export const isNotebook = new URLSearchParams(window.location.search).get(
   "notebook"
 );
 
-export const isColab = new URLSearchParams(window.location.search).get(
-  "fiftyoneColab"
+export const polling = new URLSearchParams(window.location.search).get(
+  "polling"
+);
+
+export const isColab = new URLSearchParams(window.location.search).get("colab");
+
+export const isDatabricks = new URLSearchParams(window.location.search).get(
+  "databricks"
 );
 
 export const handleId = new URLSearchParams(window.location.search).get(
@@ -99,6 +106,9 @@ export const handleId = new URLSearchParams(window.location.search).get(
 export const sessionId = uuid();
 
 const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+const path = window.location.pathname.endsWith("/")
+  ? window.location.pathname.slice(0, -1)
+  : window.location.pathname;
 
 export const port = isElectron()
   ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
@@ -109,21 +119,25 @@ const address = isElectron()
   : window.location.hostname;
 
 export const http = isElectron()
-  ? `http://${address}:${port}`
-  : window.location.protocol + "//" + host;
+  ? `http://${address}:${port}${path}`
+  : window.location.protocol + "//" + host + path;
 
 export const ws = isElectron()
-  ? `ws://${address}:${port}/state`
-  : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
+  ? `ws://${address}:${port}${path}/state`
+  : `${
+      window.location.protocol === "https:" ? "wss:" : "ws:"
+    }//${host}${path}/state`;
 
 export const appContext = isElectron()
   ? "desktop"
   : isColab
   ? "colab"
+  : isDatabricks
+  ? "databricks"
   : isNotebook
   ? "notebook"
   : "browser";
 
-export default isColab
+export default polling
   ? new HTTPSSocket(`${http}/polling?sessionId=${sessionId}`)
   : new ReconnectingWebSocket(ws);

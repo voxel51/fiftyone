@@ -1,35 +1,20 @@
 import React, { useState } from "react";
+import { capitalize } from "@material-ui/core";
+import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import {
-  Assessment,
-  DragHandle,
-  Fullscreen,
-  FullscreenExit,
-} from "@material-ui/icons";
+
+import * as atoms from "../recoil/atoms";
+import * as viewAtoms from "../recoil/view";
 
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import { Resizable } from "re-resizable";
-import { capitalize } from "@material-ui/core";
 
 export type Props = {
   entries: string[];
 };
-
-const Drag = styled(DragHandle)`
-  position: absolute;
-  bottom: -0.8rem;
-  height: 1rem;
-  width: 1rem;
-  left: 50%;
-  margin-left: -0.5rem;
-  z-index: 1000;
-  pointer-events: none;
-`;
 
 const Container = styled(Resizable)`
   padding: 1rem 0 0;
@@ -104,7 +89,7 @@ const HorizontalNav = ({ entries }: Props) => {
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
 
   return (
     <Container
@@ -165,11 +150,11 @@ const HorizontalNav = ({ entries }: Props) => {
             icon={<Assessment />}
             highlight={!expanded}
             arrow={true}
+            style={{ height: "2rem" }}
           />
         </NavButtons>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
-      {expanded && !maximized && <Drag />}
     </Container>
   );
 };

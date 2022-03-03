@@ -1,6 +1,6 @@
 import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { selectorFamily, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
@@ -14,13 +14,11 @@ import {
   prettify,
 } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import * as viewAtoms from "../recoil/view";
+import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
-import { filterStages } from "./Filters/atoms";
-import { LIST_LIMIT } from "./Filters/StringFieldFilter.state";
-import {
-  isDateField,
-  isDateTimeField,
-} from "./Filters/NumericFieldFilter.state";
+import { meetsType } from "../recoil/schema";
+import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -30,6 +28,8 @@ const Container = styled.div`
   height: 100%;
   padding-left: 1rem;
 `;
+
+const LIMIT = 200;
 
 const PlotTooltip = ({ title, count }) => {
   return (
@@ -82,8 +82,10 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-  const isDateTime = useRecoilValue(isDateTimeField(name));
-  const isDate = useRecoilValue(isDateField(name));
+  const isDateTime = useRecoilValue(
+    meetsType({ path: name, ftype: DATE_TIME_FIELD })
+  );
+  const isDate = useRecoilValue(meetsType({ path: name, ftype: DATE_FIELD }));
   const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0
@@ -94,10 +96,10 @@ const Distribution = ({ distribution }) => {
 
   const strData = data.map(({ key, ...rest }) => ({
     ...rest,
-    key: isDateTime || isDate ? key : prettify(key, false),
+    key: isDateTime || isDate ? key : prettify(key),
   }));
 
-  const hasMore = data.length >= LIST_LIMIT;
+  const hasMore = data.length >= LIMIT;
 
   const map = strData.reduce(
     (acc, cur) => ({
@@ -195,19 +197,19 @@ const DistributionsContainer = styled.div`
 `;
 
 const Distributions = ({ group }: { group: string }) => {
-  const view = useRecoilValue(selectors.view);
-  const filters = useRecoilValue(filterStages);
+  const view = useRecoilValue(viewAtoms.view);
+  const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group: group.toLowerCase() }, null, [
-    JSON.stringify(view),
-    JSON.stringify(filters),
-    datasetName,
-    refresh,
-  ]);
+  useSendMessage(
+    "distributions",
+    { group: group.toLowerCase(), limit: LIMIT },
+    null,
+    [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]
+  );
 
   useMessageHandler("distributions", ({ results }) => {
     setLoading(false);

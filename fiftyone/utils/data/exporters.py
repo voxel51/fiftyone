@@ -636,9 +636,7 @@ def _make_label_coercion_functions(
         if label_field is None:
             continue
 
-        field_type = sample_collection._get_field_type(
-            label_field, is_frame_field=frames
-        )
+        field_type = sample_collection.get_field(label_field)
 
         if isinstance(field_type, fof.EmbeddedDocumentField):
             label_type = field_type.document_type

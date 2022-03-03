@@ -18,7 +18,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
@@ -217,14 +217,18 @@ class VideoMetadata(Metadata):
         )
 
 
-def compute_sample_metadata(sample, skip_failures=False):
+def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     """Populates the ``metadata`` field of the sample.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
+        overwrite (False): whether to overwrite existing metadata
         skip_failures (False): whether to gracefully continue without raising
             an error if metadata cannot be computed
     """
+    if not overwrite and sample.metadata is not None:
+        return
+
     sample.metadata = _compute_sample_metadata(
         sample.filepath, sample.media_type, skip_failures=skip_failures
     )

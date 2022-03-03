@@ -1,26 +1,40 @@
 import React, { useState } from "react";
-import { atom, selector, useRecoilCallback, useRecoilValue } from "recoil";
-import { useSpring } from "react-spring";
+import {
+  atom,
+  selector,
+  Snapshot,
+  useRecoilCallback,
+  useRecoilValue,
+} from "recoil";
+import { useSpring } from "@react-spring/web";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
-import { SwitcherDiv, SwitchDiv } from "./utils";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
 import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
-  FRAME_SUPPORT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   PATCHES_FIELDS,
-} from "../../utils/labels";
+  toSnakeCase,
+} from "@fiftyone/utilities";
+
+import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
+import * as selectors from "../../recoil/selectors";
+import * as viewAtoms from "../../recoil/view";
+import socket, { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
-import socket from "../../shared/connection";
 import { packageMessage } from "../../utils/socket";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
   CLIPS_VIEWS,
 } from "../../utils/links";
+
+import Popout from "./Popout";
+import { ActionOption } from "./Common";
+import { SwitcherDiv, SwitchDiv } from "./utils";
+import { State } from "../../recoil/types";
+import { filters } from "../../recoil/filters";
+import { similarityParameters } from "./Similar";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -30,61 +44,81 @@ export const patching = atom<boolean>({
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
-    return paths.filter((p) => PATCHES_FIELDS.includes(types[p]));
+    const paths = get(schemaAtoms.labelFields({}));
+    return paths.filter((p) =>
+      get(
+        schemaAtoms.meetsType({
+          path: p,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: PATCHES_FIELDS,
+        })
+      )
+    );
   },
 });
 
 export const clipsFields = selector<string[]>({
   key: "clipsFields",
-  get: ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    const types = get(selectors.labelTypesMap);
-    const pschema = get(selectors.primitivesSchema("sample"));
-
-    return [
-      ...paths.filter((p) =>
-        p.startsWith("frames.")
-          ? CLIPS_FRAME_FIELDS.includes(types[p])
-          : CLIPS_SAMPLE_FIELDS.includes(types[p])
+  get: ({ get }) =>
+    [
+      ...get(
+        schemaAtoms.fieldPaths({
+          space: State.SPACE.FRAME,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: CLIPS_FRAME_FIELDS,
+        })
       ),
-      ...Object.entries(pschema)
-        .filter(
-          ([_, s]) =>
-            s.ftype === FRAME_SUPPORT_FIELD ||
-            s.subfield === FRAME_SUPPORT_FIELD
-        )
-        .map(([p]) => p),
-    ].sort();
-  },
+      ...get(
+        schemaAtoms.fieldPaths({
+          space: State.SPACE.SAMPLE,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+          embeddedDocType: CLIPS_SAMPLE_FIELDS,
+        })
+      ),
+    ].sort(),
 });
 
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return Object.keys(get(atoms.stateDescription).dataset.evaluations || {});
+    return get(atoms.stateDescription).dataset.evaluations.map(
+      ({ key }) => key
+    );
   },
 });
 
+export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
+  const similarity = await snapshot.getPromise(similarityParameters);
+  return fetch(`${http}/pin`, {
+    method: "POST",
+    cache: "no-cache",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    mode: "cors",
+    body: JSON.stringify({
+      filters: await snapshot.getPromise(filters),
+      view: await snapshot.getPromise(viewAtoms.view),
+      dataset: await snapshot.getPromise(selectors.datasetName),
+      sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+      labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
+      add_stages: addStage ? [addStage] : null,
+      similarity: similarity ? toSnakeCase(similarity) : null,
+    }),
+  });
+};
+
 const useToPatches = () => {
   return useRecoilCallback(
-    ({ set }) => async (field) => {
+    ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToPatches",
-              kwargs: [
-                ["field", field],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToPatches",
+        kwargs: [
+          ["field", field],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
     },
     []
   );
@@ -92,22 +126,15 @@ const useToPatches = () => {
 
 const useToClips = () => {
   return useRecoilCallback(
-    ({ set }) => async (field) => {
+    ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToClips",
-              kwargs: [
-                ["field_or_expr", field],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToClips",
+        kwargs: [
+          ["field_or_expr", field],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
     },
     []
   );
@@ -115,22 +142,15 @@ const useToClips = () => {
 
 const useToEvaluationPatches = () => {
   return useRecoilCallback(
-    ({ set }) => async (evaluation) => {
+    ({ set, snapshot }) => async (evaluation: string) => {
       set(patching, true);
-      socket.send(
-        packageMessage("save_filters", {
-          add_stages: [
-            {
-              _cls: "fiftyone.core.stages.ToEvaluationPatches",
-              kwargs: [
-                ["eval_key", evaluation],
-                ["_state", null],
-              ],
-            },
-          ],
-          with_selected: true,
-        })
-      );
+      sendPatch(snapshot, {
+        _cls: "fiftyone.core.stages.ToEvaluationPatches",
+        kwargs: [
+          ["eval_key", evaluation],
+          ["_state", null],
+        ],
+      }).then(() => set(patching, false));
     },
     []
   );
@@ -231,8 +251,8 @@ const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
-  const isClips = useRecoilValue(selectors.isClipsView);
+    useRecoilValue(viewAtoms.isRootView);
+  const isClips = useRecoilValue(viewAtoms.isClipsView);
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({

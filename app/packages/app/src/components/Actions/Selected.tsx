@@ -1,18 +1,21 @@
 import React, { MutableRefObject, useLayoutEffect } from "react";
 import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
 
-import Popout from "./Popout";
-import { ActionOption } from "./Common";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import { State } from "../../recoil/types";
+import * as viewAtoms from "../../recoil/view";
 import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { useEventHandler } from "../../utils/hooks";
+import { packageMessage } from "../../utils/socket";
 
-const useGridActions = (close: () => void) => {
-  const elementNames = useRecoilValue(selectors.elementNames);
-  const clearSelection = useRecoilCallback(
+import { ActionOption } from "./Common";
+import Popout from "./Popout";
+
+const useClearSampleSelection = (close) => {
+  return useRecoilCallback(
     ({ set }) => async () => {
       set(atoms.selectedSamples, new Set());
       socket.send(packageMessage("clear_selection", {}));
@@ -20,6 +23,11 @@ const useGridActions = (close: () => void) => {
     },
     [close]
   );
+};
+
+const useGridActions = (close: () => void) => {
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const clearSelection = useClearSampleSelection(close);
   const addStage = useRecoilCallback(({ snapshot }) => async (name) => {
     close();
     const state = await snapshot.getPromise(atoms.stateDescription);
@@ -54,12 +62,12 @@ const useGridActions = (close: () => void) => {
   ];
 };
 
-const toLabelMap = (labels: atoms.SelectedLabel[]) =>
-  Object.fromEntries(labels.map(({ label_id, ...rest }) => [label_id, rest]));
+const toLabelMap = (labels: State.SelectedLabel[]): State.SelectedLabelMap =>
+  Object.fromEntries(labels.map(({ labelId, ...rest }) => [labelId, rest]));
 
 const useSelectVisible = (
-  visibleAtom?: RecoilValueReadOnly<atoms.SelectedLabel[]>,
-  visible?: atoms.SelectedLabel[]
+  visibleAtom?: RecoilValueReadOnly<State.SelectedLabel[]>,
+  visible?: State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabels);
@@ -88,9 +96,13 @@ const useUnselectVisible = (
   });
 };
 
-const useClearSelectedLabels = () => {
-  return useRecoilCallback(({ set }) => async () =>
-    set(selectors.selectedLabels, {})
+const useClearSelectedLabels = (close) => {
+  return useRecoilCallback(
+    ({ set }) => async () => {
+      set(selectors.selectedLabels, {});
+      close();
+    },
+    []
   );
 };
 
@@ -104,8 +116,8 @@ const useHideSelected = () => {
 };
 
 const useHideOthers = (
-  visibleAtom?: RecoilValueReadOnly<atoms.SelectedLabel[]>,
-  visible?: atoms.SelectedLabel[]
+  visibleAtom?: RecoilValueReadOnly<State.SelectedLabel[]>,
+  visible?: State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
     const selected = await snapshot.getPromise(selectors.selectedLabelIds);
@@ -113,7 +125,7 @@ const useHideOthers = (
     const hidden = await snapshot.getPromise(atoms.hiddenLabels);
     set(atoms.hiddenLabels, {
       ...hidden,
-      ...toLabelMap(visible.filter(({ label_id }) => !selected.has(label_id))),
+      ...toLabelMap(visible.filter(({ labelId }) => !selected.has(labelId))),
     });
   });
 };
@@ -124,22 +136,25 @@ const hasSetDiff = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
 const hasSetInt = <T extends unknown>(a: Set<T>, b: Set<T>): boolean =>
   new Set([...a].filter((e) => b.has(e))).size > 0;
 
-const toIds = (labels: atoms.SelectedLabel[]) =>
-  new Set([...labels].map(({ label_id }) => label_id));
+const toIds = (labels: State.SelectedLabel[]) =>
+  new Set([...labels].map(({ labelId }) => labelId));
 
 const useModalActions = (
   lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>,
   close
 ) => {
+  const selected = useRecoilValue(atoms.selectedSamples);
+  const clearSelection = useClearSampleSelection(close);
+
   const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
   const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
   const isVideo =
     useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(selectors.isRootView);
+    useRecoilValue(viewAtoms.isRootView);
   const visibleFrameLabels =
     lookerRef.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
-      : new Array<atoms.SelectedLabel>();
+      : new Array<State.SelectedLabel>();
 
   const closeAndCall = (callback) => {
     return React.useCallback(() => {
@@ -147,7 +162,7 @@ const useModalActions = (
       callback();
     }, []);
   };
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
 
   const hasVisibleUnselected = hasSetDiff(
     toIds(visibleSampleLabels),
@@ -163,6 +178,11 @@ const useModalActions = (
   );
 
   return [
+    selected.size > 0 && {
+      text: `Clear selected ${elementNames.plural}`,
+      title: `Deselect all selected ${elementNames.plural}`,
+      onClick: clearSelection,
+    },
     {
       text: `Select visible (current ${elementNames.singular})`,
       hidden: !hasVisibleUnselected,
@@ -190,7 +210,7 @@ const useModalActions = (
     {
       text: "Clear selection",
       hidden: !selectedLabels.size,
-      onClick: closeAndCall(useClearSelectedLabels()),
+      onClick: closeAndCall(useClearSelectedLabels(close)),
     },
     {
       text: "Hide selected",
