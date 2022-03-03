@@ -1,7 +1,7 @@
 # FiftyOne Teams Relase Docker Images
 
 This document describes how to build and run a customizable Docker image with a
-FiftyOne Teams release of your choice installed.
+FiftyOne Teams App release of your choice installed.
 
 ## Building an image
 
@@ -17,8 +17,9 @@ docker build \
 
 where `TOKEN` is your Teams install token.
 
-The default image uses Ubuntu 20.04 and Python 3.8, but you can customize these
-and install a specific Teams release via optional build arguments:
+The default image uses Ubuntu 20.04 and Python 3.9, but you can customize these
+and install a specific Teams release via optional build arguments. Python must
+be >= 3.9:
 
 ```shell
 docker build \
@@ -61,6 +62,7 @@ SHARED_DIR=/path/to/shared/dir
 
 docker run \
     -e FIFTYONE_DATABASE_URI=mongodb://... \
+    -e FIFTYONE_TEAMS_ORGANIZATION=... \
     -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
     -v ${SHARED_DIR}:/fiftyone \
     -p 5151:5151 -it voxel51/fiftyone-teams
@@ -69,35 +71,5 @@ docker run \
 which assumes that you have placed your AWS credentials at
 `${SHARED_DIR}/aws-credentials.ini`.
 
-The `-p 5151:5151` option is required so that when you
-[launch the App](https://voxel51.com/docs/fiftyone/user_guide/app.html#sessions)
-from within the container you can connect to it at http://localhost:5151 in
-your browser.
-
-You can provide additional environment variables via the `-e` or `--env-file`
-options if you need to further
-[configure FiftyOne](https://voxel51.com/docs/fiftyone/user_guide/config.html).
-
-By default, running the image launches an IPython shell, which you can use as
-normal:
-
-```py
-import fiftyone as fo
-
-dataset = fo.Dataset.from_images_dir("s3://bucket/folder")
-session = fo.launch_app(dataset)
-```
-
-## Miscellaneous
-
-### Connecting to a localhost database
-
-If you are using a local database that you ordinarily connect to via a URI like
-`mongodb://localhost`, then you will need to tweak this slightly when working
-in Docker. See [this question](https://stackoverflow.com/q/24319662) for
-details.
-
-On Linux, include `--network="host"` in your `docker run` command and use
-`mongodb://127.0.0.1` for your URI.
-
-On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
+The app is exposed on port 5151 by default. An arbitrary amount of these app
+services can be put behind a netwowrk configuration e.g. a load balancer.
