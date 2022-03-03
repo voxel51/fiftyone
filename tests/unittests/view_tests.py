@@ -1082,6 +1082,37 @@ class ViewSaveTest(unittest.TestCase):
         self.assertIsNone(frame12.id)
         self.assertIsNotNone(frame22.id)
 
+    def test_view_keep_fields(self):
+        dataset = self.dataset
+
+        view = dataset.exclude_fields("classifications")
+        view.keep_fields()
+
+        self.assertNotIn("classifications", view.get_field_schema())
+        self.assertNotIn("classifications", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["classifications"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["classifications"]
+
+        view = dataset.select_fields()
+        view.keep_fields()
+
+        self.assertNotIn("int_field", view.get_field_schema())
+        self.assertNotIn("int_field", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["int_field"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["int_field"]
+
 
 class ViewStageTests(unittest.TestCase):
     @drop_datasets

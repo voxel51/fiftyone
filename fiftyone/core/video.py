@@ -205,6 +205,20 @@ class FramesView(fov.DatasetView):
 
         super().keep()
 
+    def keep_fields(self):
+        """Deletes any sample fields that have been excluded in this view from
+        the frames of the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_fields()
+
+        super().keep_fields()
+
     def reload(self):
         """Reloads this view from the source collection in the database.
 
@@ -334,7 +348,7 @@ class FramesView(fov.DatasetView):
         src_schema = self._source_collection.get_frame_field_schema()
 
         add_fields = []
-        delete_fields = []
+        del_fields = []
 
         if fields is not None:
             # We're syncing specific fields; if they are not present in source
@@ -362,7 +376,7 @@ class FramesView(fov.DatasetView):
             if delete:
                 for field_name in src_schema.keys():
                     if field_name not in schema:
-                        delete_fields.append(field_name)
+                        del_fields.append(field_name)
 
         for field_name in add_fields:
             field_kwargs = foo.get_field_kwargs(schema[field_name])
@@ -371,8 +385,18 @@ class FramesView(fov.DatasetView):
             )
 
         if delete:
-            for field_name in delete_fields:
+            for field_name in del_fields:
                 self._source_collection._dataset.delete_frame_field(field_name)
+
+    def _sync_source_keep_fields(self):
+        schema = self.get_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_frames_dataset(

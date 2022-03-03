@@ -46,6 +46,38 @@ def to_mongo(expr, prefix=None):
     return expr
 
 
+def is_frames_expr(expr):
+    """Determines whether the given expression involves a ``"frames"`` field.
+
+    Args:
+        expr: a :class:`ViewExpression` or an already serialized
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+
+    Returns:
+        True/False
+    """
+    if isinstance(expr, ViewExpression):
+        expr = expr.to_mongo()
+
+    if etau.is_str(expr):
+        return expr == "$frames" or expr.startswith("$frames.")
+
+    if isinstance(expr, dict):
+        for k, v in expr.items():
+            if is_frames_expr(k):
+                return True
+
+            if is_frames_expr(v):
+                return True
+
+    if etau.is_container(expr):
+        for e in expr:
+            if is_frames_expr(e):
+                return True
+
+    return False
+
+
 class ViewExpression(object):
     """An expression defining a possibly-complex manipulation of a document.
 

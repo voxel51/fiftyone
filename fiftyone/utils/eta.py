@@ -462,7 +462,9 @@ def from_video_labels(
     return label, frames
 
 
-def to_video_labels(label=None, frames=None, warn_unsupported=True):
+def to_video_labels(
+    label=None, frames=None, support=None, warn_unsupported=True
+):
     """Converts the given labels to ``eta.core.video.VideoLabels`` format.
 
     Args:
@@ -472,13 +474,18 @@ def to_video_labels(label=None, frames=None, warn_unsupported=True):
         frames (None): frame-level labels provided as a dict mapping frame
             numbers to dicts mapping field names to
             :class:`fiftyone.core.labels.Label` instances
+        support (None): an optional ``[first, last]`` support to store on the
+            returned labels
         warn_unsupported (True): whether to issue warnings if unsupported label
             values are encountered
 
     Returns:
         a ``eta.core.video.VideoLabels``
     """
-    video_labels = etav.VideoLabels()
+    if support is not None:
+        support = etafu.FrameRanges.build_simple(*support)
+
+    video_labels = etav.VideoLabels(support=support)
 
     # Video labels
     if label is not None:
