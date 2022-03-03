@@ -535,6 +535,7 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
 
         return dataset
 
+    @skipwindows
     @drop_datasets
     def test_tf_image_classification_channels(self):
         orig_dataset = self._make_dataset()
