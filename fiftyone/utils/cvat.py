@@ -5155,7 +5155,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Non-keyframe annotations were interpolated from keyframes but
             # should not inherit their label IDs
             if anno_type == "track" and not keyframe:
-                cvat_shape._id = None
+                cvat_shape.id = None
 
             if shape_type == "rectangle":
                 label_type = "detections"

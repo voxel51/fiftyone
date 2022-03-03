@@ -6614,7 +6614,8 @@ class SampleCollection(object):
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
             _field = self._resolve_field(field)
-            is_frame_fields.append(self._is_frame_field(field))
+            _field, is_frame_field = self._handle_frame_field(_field)
+            is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
 
         if len(set(is_frame_fields)) > 1:
@@ -7193,6 +7194,9 @@ class SampleCollection(object):
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == "frames"
         )
+
+    def _handle_id_fields(self, field_name):
+        return _handle_id_fields(self, field_name)
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:
@@ -7884,7 +7888,7 @@ def _parse_field_name(
 
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
-        return field_name, False, False
+        return field_name, None, False
 
     if "." not in field_name:
         root = None
