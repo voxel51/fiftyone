@@ -169,6 +169,44 @@ class CVATTests(unittest.TestCase):
         )
         self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
 
+    def test_multiple_fields(self):
+        dataset = foz.load_zoo_dataset(
+            "open-images-v6",
+            split="validation",
+            label_types=["detections", "segmentations", "classifications"],
+            classes=["Person"],
+            max_samples=10,
+        ).clone()
+
+        anno_key = "anno_key"
+        label_schema = {
+            "detections": {},
+            "segmentations": {"type": "instances"},
+            "positive_labels": {},
+            "negative_labels": {},
+        }
+
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_schema=label_schema,
+            classes=["Person"],
+        )
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+    def test_arguments(self):
+        pass
+
+    def test_video(self):
+        pass
+
+    def test_project(self):
+        pass
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
