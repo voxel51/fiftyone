@@ -13,7 +13,6 @@ from jose import jwt
 from starlette.authentication import (
     AuthCredentials,
     AuthenticationBackend,
-    AuthenticationError,
     BaseUser,
     UnauthenticatedUser,
     requires,
@@ -22,7 +21,7 @@ from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 
-import fiftyone.teams as fot
+import fiftyone.teams.constants as fotc
 from fiftyone.teams.data import JWKS
 
 
@@ -51,8 +50,8 @@ def decode(token: str, rsa_key):
         token,
         rsa_key,
         algorithms=ALGORITHMS,
-        audience="api.dev.fiftyone.ai",
-        issuer=f"https://login.dev.fiftyone.ai/",
+        audience=fotc.FIFTYONE_TEAMS_API_AUDIENCE,
+        issuer=f"https://{fotc.FIFTYONE_TEAMS_API_DOMAIN}",
     )
 
 
@@ -114,7 +113,7 @@ def has_scope(token: str, scope: str):
 
 async def set_jwks(web: aio.ClientSession):
     async with web.get(
-        f"https://login.dev.fiftyone.ai/.well-known/jwks.json"
+        f"https://{fotc.FIFTYONE_TEAMS_API_DOMAIN}/.well-known/jwks.json"
     ) as response:
         data = await response.json()
         return from_dict(JWKS, data)
