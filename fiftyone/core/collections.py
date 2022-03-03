@@ -7821,11 +7821,10 @@ def _parse_field_name(
         prefix = ""
 
     if field is None and not allow_missing:
-        root = field_name.split(".", 1)[0]
         ftype = "Frame field" if is_frame_field else "Field"
         raise ValueError(
             "%s '%s' does not exist on collection '%s'"
-            % (ftype, root, sample_collection.name)
+            % (ftype, field_name, sample_collection.name)
         )
 
     # Detect list fields in schema
