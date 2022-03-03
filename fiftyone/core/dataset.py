@@ -2301,8 +2301,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self.clear()
+        self._sample_collection.drop()
+        fos.Sample._reset_docs(self._sample_collection_name)
+
+        # Clips datasets directly inherit frames from source dataset
+        if not self._is_clips:
+            self._frame_collection.drop()
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
         _delete_dataset_doc(self._doc)
+
         self._deleted = True
 
     def add_dir(
