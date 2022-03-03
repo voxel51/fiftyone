@@ -7,7 +7,7 @@
 # ARGs::
 #
 #   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
-#   PYTHON_VERSION (3.8): The Python version to install
+#   PYTHON_VERSION (3.9): The Python version to install. Must be >= 3.9
 #   TOKEN: Your Teams client install token
 #   TEAMS_VERSION (latest): The Teams release to install, or "latest"
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
@@ -38,8 +38,8 @@
 ARG BASE_IMAGE=ubuntu:20.04
 FROM $BASE_IMAGE
 
-# The Python version to install
-ARG PYTHON_VERSION=3.8
+# The Python version to install. Must be >= 3.9
+ARG PYTHON_VERSION=3.9
 
 #
 # Install system packages
