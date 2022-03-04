@@ -20,17 +20,14 @@ import eta.core.video as etav
 
 import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
-import fiftyone.core.metadata as fome
-import fiftyone.core.utils as fou
-
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, metadata=None):
-    """Gets the metadata for the given media file.
+async def get_metadata(filepath, media_type, metadata=None):
+    """Gets the metadata for the given local or remote media file.
 
     Args:
         filepath: the path to the file
@@ -240,11 +237,6 @@ async def get_stream_info(path):
     mime_type = etau.guess_mime_type(path)
 
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
-
-
-def _get_image_dimensions(url):
-    with requests.get(url, stream=True) as r:
-        return fome.get_image_info(fou.ResponseStream(r))
 
 
 async def get_image_dimensions(input):

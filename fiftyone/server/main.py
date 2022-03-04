@@ -21,10 +21,11 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.constants as foc
 
+
 from fiftyone.server.app import app
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and False:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)
     parser.add_argument(
@@ -35,6 +36,5 @@ if __name__ == "__main__":
 
     config.bind = [f"{args.address}:{args.port}"]
 
-    print(config.bind)
     config.use_reloader = foc.DEV_INSTALL
     asyncio.run(serve(app, config))

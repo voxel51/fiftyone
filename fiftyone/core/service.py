@@ -288,6 +288,9 @@ class DatabaseService(MultiClientService):
         if focx._get_context() == focx._COLAB:
             return ["sudo"] + args
 
+        if focx._get_context() == focx._DATABRICKS:
+            return ["sudo"] + args
+
         return args
 
     @property

@@ -629,8 +629,8 @@ Label attributes
 ----------------
 
 The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <label-attributes>` beyond the default `label`
-attribute are included in the annotation tasks.
+:ref:`custom attributes <using-labels>` beyond the default `label` attribute
+are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each

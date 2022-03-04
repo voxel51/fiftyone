@@ -6,7 +6,6 @@ Interface for sample collections.
 |
 """
 from collections import defaultdict
-from dataclasses import field
 import fnmatch
 import itertools
 import logging
@@ -17,7 +16,6 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm import document
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -462,19 +460,19 @@ class SampleCollection(object):
         if self.media_type == fom.VIDEO and keys[0] == "frames":
             schema = self.get_frame_field_schema()
             keys = keys[1:]
-            field = fofr.Frames
         else:
             schema = self.get_field_schema()
-            field = None
+
+        field = None
+        _add_mapped_fields_as_private_fields(schema)
 
         last = len(keys) - 1
-        _add_mapped_fields_as_private_fields(schema)
         for idx, field_name in enumerate(keys):
             field = schema.get(field_name, None)
             if field is None:
-                return field
+                return None
 
-            if idx != last and isinstance(field, (fof.ListField)):
+            if idx != last and isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
@@ -497,15 +495,16 @@ class SampleCollection(object):
         else:
             schema = self.get_field_schema()
 
-        last = len(keys) - 1
         _add_mapped_fields_as_private_fields(schema)
+
+        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
             field = schema.get(field_name, None)
             if field is None:
                 return None
 
             resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, (fof.ListField)):
+            if idx != last and isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
@@ -6699,7 +6698,8 @@ class SampleCollection(object):
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
             _field = self._resolve_field(field)
-            is_frame_fields.append(self._is_frame_field(field))
+            _field, is_frame_field = self._handle_frame_field(_field)
+            is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
 
         if len(set(is_frame_fields)) > 1:
@@ -7282,6 +7282,9 @@ class SampleCollection(object):
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == "frames"
         )
+
+    def _handle_id_fields(self, field_name):
+        return _handle_id_fields(self, field_name)
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:
@@ -7887,43 +7890,33 @@ def _parse_field_name(
     # Array references [] have been stripped
     field_name = "".join(chunks)
 
+    # Handle public (string) vs private (ObjectId) ID fields
+    field_name, field, id_to_str = _handle_id_fields(
+        sample_collection, field_name
+    )
+
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )
 
-    prefix = ""
     if is_frame_field:
-        prefix = sample_collection._FRAMES_PREFIX
         if field_name == "":
             return "frames", True, [], [], False
 
+        prefix = sample_collection._FRAMES_PREFIX
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
+    else:
+        prefix = ""
 
-    field = sample_collection.get_field(prefix + field_name)
-    # Validate root field, if requested
-    if (
-        not allow_missing
-        and not isinstance(field, fof.ObjectIdField)
-        and field is None
-    ):
-        root_field_name = field_name.split(".", 1)[0]
-        if is_frame_field:
-            schema = sample_collection.get_frame_field_schema(
-                include_private=True
-            )
-        else:
-            schema = sample_collection.get_field_schema(include_private=True)
-
-        if root_field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
-            raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, root_field_name, sample_collection.name)
-            )
+    if field is None and not allow_missing:
+        ftype = "Frame field" if is_frame_field else "Field"
+        raise ValueError(
+            "%s '%s' does not exist on collection '%s'"
+            % (ftype, field_name, sample_collection.name)
+        )
 
     # Detect list fields in schema
     path = None
-    resolved_keys = []
     for part in field_name.split("."):
         if path is None:
             path = part
@@ -7931,10 +7924,9 @@ def _parse_field_name(
             path += "." + part
 
         field_type = sample_collection.get_field(prefix + path)
-        if field_type is None and not allow_missing:
-            break
 
-        resolved_keys.append(getattr(field_type, "db_field", part))
+        if field_type is None:
+            break
 
         if isinstance(field_type, fof.ListField):
             if omit_terminal_lists and path == field_name:
@@ -7956,7 +7948,7 @@ def _parse_field_name(
         if auto_unwind:
             unwind_list_fields = [f for f in unwind_list_fields if f != ""]
         else:
-            resolved_keys = ["frames"] + resolved_keys
+            field_name = prefix + field_name
             unwind_list_fields = [
                 prefix + f if f else "frames" for f in unwind_list_fields
             ]
@@ -7973,13 +7965,52 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     return (
-        ".".join(resolved_keys),
+        field_name,
         is_frame_field,
         unwind_list_fields,
         other_list_fields,
-        isinstance(field, fof.ObjectIdField)
-        and not field_name.split(".")[-1].startswith("_"),
+        id_to_str,
     )
+
+
+def _handle_id_fields(sample_collection, field_name):
+    if not field_name:
+        return field_name, None, False
+
+    if "." not in field_name:
+        root = None
+        leaf = field_name
+    else:
+        root, leaf = field_name.rsplit(".", 1)
+
+    is_private = leaf.startswith("_")
+
+    if is_private:
+        private_field = field_name
+        public_field = leaf[1:]
+        if root is not None:
+            public_field = root + "." + public_field
+    else:
+        public_field = field_name
+        private_field = "_" + leaf
+        if root is not None:
+            private_field = root + "." + private_field
+
+    public_type = sample_collection.get_field(public_field)
+    private_type = sample_collection.get_field(private_field)
+
+    if isinstance(public_type, fof.ObjectIdField):
+        id_to_str = not is_private
+        return private_field, public_type, id_to_str
+
+    if isinstance(private_type, fof.ObjectIdField):
+        id_to_str = not is_private
+        return private_field, private_type, id_to_str
+
+    if is_private:
+        return field_name, private_type, False
+
+    return field_name, public_type, False
 
 
 def _transform_values(values, fcn, level=1):
@@ -8223,7 +8254,6 @@ def _handle_existing_dirs(
                     "with existing files",
                     _labels_path,
                 )
-
         elif overwrite:
             try:
                 fost.delete_file(_labels_path)

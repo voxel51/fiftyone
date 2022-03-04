@@ -678,8 +678,7 @@ class ImportPathsMixin(object):
             data_map = fos.read_json(data_path)
             data_root = os.path.dirname(data_path)
             return {
-                to_uuid(k): os.path.join(data_root, v)
-                for k, v in data_map.items()
+                to_uuid(k): fos.join(data_root, v) for k, v in data_map.items()
             }
 
         if not fos.isdir(data_path):
@@ -2148,8 +2147,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        sep = fos.sep(self.dataset_dir)
         whitelist = set(self.classes) if self.classes is not None else None
+        sep = fos.sep(self.dataset_dir)
 
         for relpath in fos.list_files(self.dataset_dir, recursive=True):
             chunks = relpath.split(sep, 1)
@@ -2302,8 +2301,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        sep = fos.sep(self.dataset_dir)
         whitelist = set(self.classes) if self.classes is not None else None
+        sep = fos.sep(self.dataset_dir)
 
         for relpath in fos.list_files(self.dataset_dir, recursive=True):
             chunks = relpath.split(sep, 1)
@@ -2327,15 +2326,15 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
 
         samples = self._preprocess_list(samples)
 
-        if whitelist is not None:
-            classes = self.classes
-        else:
-            classes = sorted(classes)
-
         if self.compute_metadata:
             metadata_map = self._get_remote_metadata([s[0] for s in samples])
         else:
             metadata_map = {}
+
+        if whitelist is not None:
+            classes = self.classes
+        else:
+            classes = sorted(classes)
 
         self._samples = samples
         self._metadata_map = metadata_map

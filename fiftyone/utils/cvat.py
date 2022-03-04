@@ -3032,6 +3032,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
+        issue_tracker (None): URL(s) of an issue tracker to link to the created
+            task(s). This argument can be a list of URLs when annotating videos
+            or when using `task_size` and generating multiple tasks
     """
 
     def __init__(
@@ -3055,6 +3058,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
+        issue_tracker=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3071,6 +3075,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
+        self.issue_tracker = issue_tracker
 
         # store privately so these aren't serialized
         self._username = username
@@ -3805,6 +3810,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         image_quality=75,
         task_assignee=None,
         project_id=None,
+        issue_tracker=None,
     ):
         """Creates a task on the CVAT server using the given label schema.
 
@@ -3817,6 +3823,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
             project_id (None): the ID of a project to which upload the task
+            issue_tracker (None): the URL of an issue tracker to link the task
 
         Returns:
             a tuple of
@@ -3847,6 +3854,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if segment_size is not None:
             task_json["segment_size"] = segment_size
+
+        if issue_tracker is not None:
+            task_json["bug_tracker"] = issue_tracker
 
         task_resp = self.post(self.tasks_url, json=task_json).json()
         task_id = task_resp["id"]
@@ -4731,12 +4741,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_assignee = config.task_assignee
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
+        issue_tracker = config.issue_tracker
 
         is_video = samples_batch.media_type == fom.VIDEO
 
         _task_assignee = task_assignee
         _job_assignees = job_assignees
         _job_reviewers = job_reviewers
+        _issue_tracker = issue_tracker
 
         if is_video:
             # Videos are uploaded in multiple tasks with 1 job per task
@@ -4753,6 +4765,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 _task_assignee = task_assignee[idx % len(task_assignee)]
 
+        if issue_tracker is not None:
+            if isinstance(issue_tracker, str):
+                _issue_tracker = issue_tracker
+            else:
+                _issue_tracker = issue_tracker[idx % len(issue_tracker)]
+
         # Create task
         task_id, class_id_map, attr_id_map = self.create_task(
             task_name,
@@ -4761,6 +4779,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             image_quality=image_quality,
             task_assignee=_task_assignee,
             project_id=project_id,
+            issue_tracker=_issue_tracker,
         )
         task_ids.append(task_id)
 
@@ -4998,7 +5017,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # Convert Polyline to instance segmentation
         if isinstance(label, fol.Polyline):
             detection = CVATShape.polyline_to_detection(label, frame_size)
-            detection.id = ObjectId(label_id)
+            detection.id = label_id
             return detection
 
         # Convert Polylines to semantic segmentation
@@ -5007,7 +5026,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             segmentation = CVATShape.polylines_to_segmentation(
                 label, frame_size, mask_targets
             )
-            segmentation.id = ObjectId(label_id)
+            segmentation.id = label_id
             return segmentation
 
         return label
@@ -5169,7 +5188,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Non-keyframe annotations were interpolated from keyframes but
             # should not inherit their label IDs
             if anno_type == "track" and not keyframe:
-                cvat_shape._id = None
+                cvat_shape.id = None
 
             if shape_type == "rectangle":
                 label_type = "detections"
@@ -6177,24 +6196,26 @@ class CVATLabel(object):
 
         # Parse label ID
         label_id = self.attributes.pop("label_id", None)
-
         if label_id is not None:
             self._set_id(label_id)
 
-        if self._id is None:
+        if self.id is None:
             label_id = server_id_map.get(server_id, None)
             if label_id is not None:
                 self._set_id(label_id)
 
     def _set_id(self, label_id):
         try:
-            self._id = ObjectId(label_id)
+            # Verify that ID is valid
+            ObjectId(label_id)
+
+            self.id = label_id
         except:
             pass
 
     def _set_attributes(self, label):
-        if self._id is not None:
-            label.id = self._id
+        if self.id is not None:
+            label.id = self.id
 
         for name, value in self.attributes.items():
             label[name] = value

@@ -34,7 +34,6 @@ class Aggregations(HTTPEndpoint):
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         hidden_labels = data.get("hidden_labels", None)
-        print(fo.config)
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
         if sample_ids:

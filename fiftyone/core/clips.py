@@ -8,6 +8,8 @@ Clips views.
 from copy import deepcopy
 from collections import defaultdict
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone.core.dataset as fod
@@ -40,7 +42,7 @@ class ClipView(fos.SampleView):
 
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     def save(self):
         """Saves the clip to the database."""

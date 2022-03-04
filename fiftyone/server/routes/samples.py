@@ -59,17 +59,20 @@ class Samples(HTTPEndpoint):
             samples = samples[:page_length]
             more = page + 1
 
-        results = await _generate_results(samples)
+        results = await _generate_results(samples, view.media_type)
 
         return {"results": results, "more": more}
 
 
-async def _generate_results(samples):
+async def _generate_results(samples, media_type):
     metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
 
     filepaths = list(metadata_map.keys())
     metadatas = await asyncio.gather(
-        *[fosm.get_metadata(f, metadata=metadata_map[f]) for f in filepaths]
+        *[
+            fosm.get_metadata(f, media_type, metadata=metadata_map[f])
+            for f in filepaths
+        ]
     )
     metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
 

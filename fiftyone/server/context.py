@@ -12,7 +12,6 @@ import strawberry.asgi as gqla
 
 
 import fiftyone as fo
-import fiftyone.constants as foc
 
 from fiftyone.server.data import Context
 from fiftyone.server.dataloader import dataloaders, get_dataloader
@@ -23,7 +22,7 @@ class GraphQL(gqla.GraphQL):
         self, request: strq.Request, response: strp.Response
     ) -> Context:
         db_client = mtr.AsyncIOMotorClient(fo.config.database_uri)
-        db = db_client[foc.DEFAULT_DATABASE]
+        db = db_client[fo.config.database_name]
         session = await db_client.start_session()
         loaders = {}
         for cls, config in dataloaders.items():

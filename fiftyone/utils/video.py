@@ -666,9 +666,17 @@ def _transform_videos(
 
                 sample.save()
 
-            if outpath != inpath and not sample_frames:
-                sample.filepath = outpath
-                sample.save()
+            if outpath != inpath:
+                if not sample_frames:
+                    sample.filepath = outpath
+                    sample.save()
+
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_video(

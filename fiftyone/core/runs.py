@@ -431,7 +431,8 @@ class Run(Configurable):
             run_doc.results = None
         else:
             # Write run result to GridFS
-            results_bytes = json_util.dumps(run_results.serialize()).encode()
+            # @todo should we allow `run_results` to contain BSON?
+            results_bytes = run_results.to_str().encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
         # Cache the results for future use in this session

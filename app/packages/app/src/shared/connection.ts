@@ -5,8 +5,14 @@ export const isNotebook = new URLSearchParams(window.location.search).get(
   "notebook"
 );
 
-export const isColab = new URLSearchParams(window.location.search).get(
-  "fiftyoneColab"
+export const polling = new URLSearchParams(window.location.search).get(
+  "polling"
+);
+
+export const isColab = new URLSearchParams(window.location.search).get("colab");
+
+export const isDatabricks = new URLSearchParams(window.location.search).get(
+  "databricks"
 );
 
 export const handleId = new URLSearchParams(window.location.search).get(
@@ -21,6 +27,8 @@ export const appContext = isElectron()
   ? "desktop"
   : isColab
   ? "colab"
+  : isDatabricks
+  ? "databricks"
   : isNotebook
   ? "notebook"
   : "browser";

@@ -96,6 +96,8 @@ Or, you can access individual samples in a view by their ID or filepath:
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
 
+.. _view-stages:
+
 View stages
 ___________
 
@@ -137,6 +139,123 @@ The sections below discuss some interesting view stages in more detail. You can
 also refer to the :mod:`fiftyone.core.stages` module documentation for examples
 of using each stage.
 
+.. _view-slicing:
+
+Slicing
+_______
+
+You can extract a range of |Sample| instances from a |Dataset| using
+:meth:`skip() <fiftyone.core.collections.SampleCollection.skip>` and
+:meth:`limit() <fiftyone.core.collections.SampleCollection.limit>` or,
+equivalently, by using array slicing:
+
+.. code-block:: python
+    :linenos:
+
+    # Skip the first 2 samples and take the next 3
+    range_view1 = dataset.skip(2).limit(3)
+
+    # Equivalently, using array slicing
+    range_view2 = dataset[2:5]
+
+Samples can be accessed from views in
+:ref:`all the same ways <accessing-samples-in-a-dataset>` as for datasets.
+This includes using :meth:`first() <fiftyone.core.view.DatasetView.first>` and
+:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
+last samples in a view, respectively, or accessing a sample directly from a
+|DatasetView| by its ID or filepath:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset[10:100]
+
+    sample10 = view.first()
+    sample100 = view.last()
+
+    also_sample10 = view[sample10.id]
+    print(also_sample10.filepath == sample10.filepath)
+    # True
+
+    also_sample100 = view[sample100.filepath]
+    print(sample100.id == also_sample100.id)
+    # True
+
+Note that, :ref:`unlike datasets <accessing-samples-in-a-dataset>`,
+|SampleView| objects are not singletons, since there are an infinite number of
+possible views into a particular |Sample|:
+
+.. code-block:: python
+    :linenos:
+
+    print(sample10 is also_sample10)
+    # False
+
+.. note::
+
+    Accessing a sample by its integer index in a |DatasetView| is not allowed.
+    The best practice is to lookup individual samples by ID or filepath, or use
+    array slicing to extract a range of samples, and iterate over samples in a
+    view.
+
+    .. code-block:: python
+
+        view[0]
+        # KeyError: Accessing samples by numeric index is not supported.
+        # Use sample IDs, filepaths, slices, boolean arrays, or a boolean ViewExpression instead
+
+You can also use boolean array indexing to create a |DatasetView| into a
+dataset or view given an array-like of bools defining the samples you wish to
+extract:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    # A boolean array encoding the samples to extract
+    bool_array = np.array(dataset.values("uniqueness")) > 0.7
+
+    view = dataset[bool_array]
+    print(len(view))
+    # 17
+
+The above syntax is equivalent to the following
+:meth:`select() <fiftyone.core.collections.SampleCollection.select>` statement:
+
+.. code-block:: python
+    :linenos:
+
+    import itertools
+
+    ids = itertools.compress(dataset.values("id"), bool_array)
+    view = dataset.select(ids)
+    print(len(view))
+    # 17
+
+Note that, whenever possible, the above operations are more elegantly
+implemented using :ref:`match filters <querying-samples>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # ViewExpression defining the samples to match
+    expr = F("uniqueness") > 0.7
+
+    # Use a match() expression to define the view
+    view = dataset.match(expr)
+    print(len(view))
+    # 17
+
+    # Equivalent: using boolean expression indexing is allowed too
+    view = dataset[expr]
+    print(len(view))
+    # 17
+
+.. _view-sorting:
+
 Sorting
 _______
 
@@ -165,42 +284,7 @@ You can also sort by :ref:`expressions <querying-samples>`!
     print(len(view.first().ground_truth.detections))  # 39
     print(len(view.last().ground_truth.detections))  # 0
 
-Slicing
-_______
-
-You can extract a range of |Sample| instances from a |Dataset| using
-:meth:`skip() <fiftyone.core.collections.SampleCollection.skip>` and
-:meth:`limit() <fiftyone.core.collections.SampleCollection.limit>` or,
-equivalently, by using array slicing:
-
-.. code-block:: python
-    :linenos:
-
-    # Skip the first 2 samples and take the next 3
-    range_view1 = dataset.skip(2).limit(3)
-
-    # Equivalently, using array slicing
-    range_view2 = dataset[2:5]
-
-Samples can be accessed from views in
-:ref:`all the same ways <accessing-samples-in-a-dataset>` as for datasets.
-This includes using :meth:`first() <fiftyone.core.view.DatasetView.first>` and
-:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
-last samples in a view, respectively, or accessing a sample directly from a
-|DatasetView| by its ID or filepath.
-
-.. note::
-
-    Accessing a sample by its integer index in a |DatasetView| is not allowed.
-    The best practice is to lookup individual samples by ID or filepath, or use
-    array slicing to extract a range of samples, and iterate over samples in a
-    view.
-
-    .. code-block:: python
-
-        view[0]
-        # KeyError: "Accessing samples by numeric index is not supported.
-        # Use sample IDs, filepaths, or slices"
+.. _view-shuffling:
 
 Shuffling
 _________
@@ -229,6 +313,8 @@ An optional ``seed`` can be provided to make the shuffle deterministic:
     print(also_view2.first().id)
     # 5f31bbfcd0d78c13abe159b1
 
+.. _view-sampling:
+
 Random sampling
 _______________
 
@@ -255,6 +341,8 @@ An optional ``seed`` can be provided to make the sampling deterministic:
     also_view2 = dataset.take(5, seed=51)
     print(also_view2.first().id)
     # 5f31bbfcd0d78c13abe159b1
+
+.. _view-filtering:
 
 Filtering
 _________

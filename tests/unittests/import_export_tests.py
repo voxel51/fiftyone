@@ -35,8 +35,8 @@ import pytest
 import eta.core.video as etav
 
 import fiftyone as fo
-import fiftyone.utils.coco as fouc
 import fiftyone.core.storage as fos
+import fiftyone.utils.coco as fouc
 import fiftyone.utils.image as foui
 import fiftyone.utils.yolo as fouy
 
@@ -44,8 +44,6 @@ from decorators import drop_datasets
 
 
 basedir = None
-
-
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )

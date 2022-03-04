@@ -23,7 +23,8 @@ import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
+import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.storage as fos
 import fiftyone.core.validation as fov
@@ -379,7 +380,7 @@ def _build_label_schema(
 
     _label_schema = {}
 
-    is_video = samples.media_type == fom.VIDEO
+    is_video = samples.media_type == fomm.VIDEO
 
     for _label_field, _label_info in label_schema.items():
         (
@@ -1072,7 +1073,7 @@ def load_annotations(
 
 
 def _handle_frame_fields(field, samples, ref_field):
-    if samples.media_type != fom.VIDEO:
+    if samples.media_type != fomm.VIDEO:
         return field
 
     if (
@@ -1132,7 +1133,7 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     if label_field is not None:
         _, is_frame_field = samples._handle_frame_field(label_field)
     else:
-        is_frame_field = samples.media_type == fom.VIDEO
+        is_frame_field = samples.media_type == fomm.VIDEO
 
     if is_frame_field:
         schema = samples.get_frame_field_schema()
@@ -1306,7 +1307,7 @@ def _merge_labels(
 
     _ensure_label_field(samples, label_field, fo_label_type)
 
-    is_video = samples.media_type == fom.VIDEO
+    is_video = samples.media_type == fomm.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
         if not existing_field:
@@ -1370,8 +1371,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     frame_labels = anno_dict[sample_id][frame_id]
                     label = frame_labels.pop(label_id)
-                    label.id = ObjectId()
-                    new_label_id = str(label.id)
+                    new_label_id = str(ObjectId())
+                    label.id = new_label_id
                     frame_labels[new_label_id] = label
                     new_ids.discard((sample_id, frame_id, label_id))
                     new_ids.add((sample_id, frame_id, new_label_id))
@@ -1381,8 +1382,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     sample_labels = anno_dict[sample_id]
                     label = sample_labels.pop(label_id)
-                    label.id = ObjectId()
-                    new_label_id = str(label.id)
+                    new_label_id = str(ObjectId())
+                    label.id = new_label_id
                     sample_labels[new_label_id] = label
                     new_ids.discard((sample_id, label_id))
                     new_ids.add((sample_id, new_label_id))
@@ -1652,7 +1653,7 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 #
                 _existing_id = id_map.get((_id, _frame_id, _index), None)
                 if _existing_id is not None:
-                    label.id = ObjectId(_existing_id)
+                    label.id = _existing_id
                     del frame_annos[_label_id]
                     frame_annos[_existing_id] = label
 
@@ -2244,13 +2245,17 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     return outpaths
 
 
-def draw_labeled_video(sample, outpath, label_fields=None, config=None):
+def draw_labeled_video(
+    sample, outpath, support=None, label_fields=None, config=None
+):
     """Renders an annotated version of the sample's video with the specified
     label data overlaid to disk.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
+        support (None): an optional ``[first, last]`` range of frames to
+            render
         label_fields (None): a list of label fields to render. If omitted, all
             compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2262,10 +2267,8 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
-    if isinstance(sample, foc.ClipView):
+    if support is None and isinstance(sample, foc.ClipView):
         support = sample.support
-    else:
-        support = None
 
     with fos.LocalFile(outpath, "w") as local_path:
         etaa.annotate_video(
@@ -2288,10 +2291,19 @@ def _to_video_labels(sample, label_fields=None):
     else:
         frame_label_fields = None
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        metadata = sample.metadata
+        if metadata is None:
+            metadata = fom.VideoMetadata.build_for(sample.filepath)
+
+        support = [1, metadata.total_frame_count]
+
     label = _get_sample_labels(sample, label_fields)
     frames = _get_frame_labels(sample, frame_label_fields)
 
-    return foue.to_video_labels(label=label, frames=frames)
+    return foue.to_video_labels(label=label, frames=frames, support=support)
 
 
 def _get_sample_labels(sample, label_fields):
