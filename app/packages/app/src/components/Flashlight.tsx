@@ -334,7 +334,7 @@ export default React.memo(() => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
     const config = {
-      src: getSampleSrc(sample.filepath, sample._id),
+      src: getSampleSrc(sample.filepath, sample._id, url),
       thumbnail: true,
       dimensions,
       sampleId: sample._id,

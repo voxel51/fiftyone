@@ -108,7 +108,7 @@ enum Events {
 export const stateDescription = atom<State.Description | null>({
   key: "stateDescription",
   default: null,
-  effects: import.meta.env.VITE_HAS_UPDATES
+  effects: false
     ? [
         ({ onSet, setSelf }) => {
           onSet((state) => {});

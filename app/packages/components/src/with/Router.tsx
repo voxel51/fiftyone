@@ -1,5 +1,5 @@
 import React from "react";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, setFetchFunction } from "@fiftyone/utilities";
 import {
   Environment,
   FetchFunction,
@@ -9,6 +9,8 @@ import {
   Store,
 } from "relay-runtime";
 import { RouteDefinition, Router, createRouter } from "../routing";
+
+setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
 async function fetchGraphQL(
   text: string | null | undefined,

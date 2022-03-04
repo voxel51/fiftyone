@@ -438,7 +438,7 @@ const Looker = ({
   );
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);

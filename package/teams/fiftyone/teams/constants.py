@@ -17,5 +17,5 @@ FIFTYONE_TEAMS_API_AUDIENCE = (
     "api.dev.fiftyone.ai" if foc.DEV_INSTALL else "api.fiftyone.ai"
 )
 FIFTYONE_TEAMS_API_DOMAIN = (
-    "login.dev.fiftyone.ai" if foc.DEV_INSTALL else "login.fiftyone.ai"
+    "dev-uqppzklh.us.auth0.com" if foc.DEV_INSTALL else "login.fiftyone.ai"
 )

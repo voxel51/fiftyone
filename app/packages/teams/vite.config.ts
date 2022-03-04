@@ -8,8 +8,5 @@ export default {
     react({ parserPlugins: ["classProperties", "classPrivateProperties"] }),
     relay,
   ],
-  server: {
-    https: true,
-  },
   envDir: "./",
 } as UserConfig;

@@ -76,8 +76,6 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
   fetchFunctionSingleton = fetchFunction;
 };
 
-setFetchFunction(import.meta.env.VITE_API || window.location.origin);
-
 class RetriableError extends Error {}
 class FatalError extends Error {}
 
