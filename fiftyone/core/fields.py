@@ -8,7 +8,7 @@ Dataset sample fields.
 from datetime import date, datetime
 import numbers
 
-from bson import SON
+from bson import ObjectId, SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -73,7 +73,17 @@ class IntField(mongoengine.fields.IntField, Field):
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return ObjectId(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return str(value)
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
@@ -706,6 +716,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         if isinstance(doc, foo.DynamicEmbeddedDocument):
             doc._set_parent(self)
+
         return doc
 
     def _save_field(self, field, keys):

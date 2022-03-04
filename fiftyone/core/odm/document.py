@@ -325,7 +325,7 @@ class BaseDocument(MongoEngineBaseDocument):
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
-        return ("id",) + tuple(f for f in self._fields_ordered if f != "id")
+        return self._fields_ordered
 
     @property
     def in_db(self):

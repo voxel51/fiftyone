@@ -319,9 +319,13 @@ class _HasID(Label):
     )
     tags = fof.ListField(fof.StringField())
 
+    @property
+    def _id(self):
+        return ObjectId(self.id)
+
     def _get_repr_fields(self):
         # pylint: disable=no-member
-        return ("id",) + self._fields_ordered
+        return self._fields_ordered
 
 
 class _HasLabelList(object):
