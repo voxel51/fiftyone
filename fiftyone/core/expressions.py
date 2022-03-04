@@ -2222,26 +2222,30 @@ class ViewExpression(object):
                 return self.let_in(expr)
 
             n = s.stop - position
-            if n < 0:
-                return ViewExpression({"$literal": []})
 
-            if position < 0:
-                position += self.length()
-                expr = ViewExpression({"$slice": [self, position, n]})
-                return self.let_in(expr)
+            # Cases
+            start_and_stop = ViewExpression({"$slice": [self, position, n]})
+            stop_before_start = ViewExpression({"$literal": []})
+            negative_start = self.let_in(
+                ViewExpression({"$slice": [self, position + self.length(), n]})
+            )
 
-            return ViewExpression({"$slice": [self, position, n]})
+            return ViewExpression(n < 0).if_else(
+                stop_before_start,
+                ViewExpression(position < 0).if_else(
+                    negative_start, start_and_stop
+                ),
+            )
 
         if s.stop is None:
             return self
 
-        if s.stop < 0:
-            n = self.length() + s.stop
-            expr = ViewExpression({"$slice": [self, n]})
-            return self.let_in(expr)
-
-        n = s.stop
-        return ViewExpression({"$slice": [self, n]})
+        return ViewExpression(s.stop < 0).if_else(
+            self.let_in(
+                ViewExpression({"$slice": [self, self.length() + s.stop]})
+            ),
+            ViewExpression({"$slice": [self, s.stop]}),
+        )
 
     def __len__(self):
         # Annoyingly, Python enforces deep in its depths that __len__ must
