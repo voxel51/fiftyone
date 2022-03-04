@@ -33,7 +33,7 @@ type Dataset {
   createdAt: Date!
   lastLoadedAt: DateTime!
   persistent: Boolean!
-  mediaType: MediaType!
+  mediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!

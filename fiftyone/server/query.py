@@ -111,7 +111,7 @@ class Dataset(HasCollection):
     created_at: date
     last_loaded_at: datetime
     persistent: bool
-    media_type: MediaType
+    media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
