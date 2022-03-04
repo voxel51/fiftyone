@@ -33,7 +33,6 @@ from .database import (
     bulk_write,
 )
 from .dataset import (
-    create_field,
     SampleFieldDocument,
     DatasetDocument,
 )
@@ -46,13 +45,14 @@ from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
 )
-from .mixins import (
-    get_default_fields,
-    get_field_kwargs,
-    validate_fields_match,
-)
+from .mixins import get_default_fields
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
-from .utils import get_implied_field_kwargs
+from .utils import (
+    create_field,
+    get_field_kwargs,
+    get_implied_field_kwargs,
+    validate_fields_match,
+)

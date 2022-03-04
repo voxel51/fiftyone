@@ -6,14 +6,15 @@ Base classes for documents that back dataset contents.
 |
 """
 import mongoengine
-from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 
-import fiftyone.core.utils as fou
+import fiftyone.core.fields as fof
 
 from .document import MongoEngineBaseDocument
-from .utils import get_implied_field_kwargs
-
-food = fou.lazy_import("fiftyone.core.odm.dataset")
+from .utils import (
+    create_field,
+    get_implied_field_kwargs,
+    validate_fields_match,
+)
 
 
 class BaseEmbeddedDocument(MongoEngineBaseDocument):
@@ -30,9 +31,10 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
         # pylint: disable=no-member
         for name, field in self._fields.items():
-            if isinstance(field, (DictField, ListField)):
+            if isinstance(field, (fof.DictField, fof.ListField)):
                 field = field.field
-            if isinstance(field, EmbeddedDocumentField):
+
+            if isinstance(field, fof.EmbeddedDocumentField):
                 field.name = name
 
         for name in getattr(self, "_dynamic_fields", {}):
@@ -75,21 +77,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
         setattr(self, name, value)
 
-    def add_implied_field(self, name, value):
-        """Adds the field to the document, inferring the field type from the
-        provided value.
-
-        Args:
-            name: the field name
-            value: the field value
-        """
-        if self.has_field(name):
-            raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, name)
-            )
-
-        self.add_field(name, **get_implied_field_kwargs(value))
-
     def add_field(
         self,
         name,
@@ -97,6 +84,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         embedded_doc_type=None,
         subfield=None,
         fields=None,
+        expand_schema=True,
         **kwargs,
     ):
         """Adds a new field to the embedded document.
@@ -117,8 +105,19 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
                 Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            expand_schema (True): whether to add new fields to the schema
+                (True) or simply validate that the field already exists with a
+                consistent type (False)
+
+        Returns:
+            True/False whether one or more fields or embedded fields were added
+            to the document or its children
+
+        Raises:
+            ValueError: if a field in the schema is not compliant with an
+                existing field of the same name
         """
-        self._add_field_schema(
+        field = create_field(
             name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -127,24 +126,76 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             **kwargs,
         )
 
-    def _add_field_schema(
-        self, name, ftype, embedded_doc_type=None, subfield=None, **kwargs,
-    ):
-        if self.has_field(name):
-            raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, name)
-            )
+        return self._add_field(field, expand_schema=expand_schema)
 
-        field = food.create_field(
-            name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-        self._declare_field(field)
+    def add_implied_field(self, name, value, expand_schema=True):
+        """Adds the field to the document, inferring the field type from the
+        provided value.
+
+        Args:
+            name: the field name
+            value: the field value
+            expand_schema (True): whether to add new fields to the schema
+                (True) or simply validate that the field already exists with a
+                consistent type (False)
+
+        Returns:
+            True/False whether one or more fields or embedded fields were added
+            to the document or its children
+
+        Raises:
+            ValueError: if a field in the schema is not compliant with an
+                existing field of the same name
+        """
+        field = create_field(name, **get_implied_field_kwargs(value))
+        return self._add_field(field, expand_schema=expand_schema)
+
+    def _add_field(self, field, expand_schema=True):
+        name = field.name
+        added = False
+
+        if self.has_field(name):
+            existing_field = self._get_field(name)
+            validate_fields_match(name, field, existing_field)
+            if isinstance(existing_field, fof.EmbeddedDocumentField):
+                added = existing_field._merge_fields(
+                    field, expand_schema=expand_schema
+                )
+        elif not expand_schema:
+            raise ValueError("%s has no field '%s'" % (self.__class__, name))
+        else:
+            self._declare_field(field)
+            added = True
+
+        return added
+
+    def _get_field(self, name):
+        # pylint: disable=no-member
+
+        if name in self._fields:
+            return self._fields[name]
+
+        if self._parent is None:
+            return self._custom_fields[name]
+
+        for field in getattr(self._parent, "fields", []):
+            if field.name == name:
+                return field
+
+    def _get_custom_fields(self):
+        if self._parent is None:
+            return self._custom_fields
+
+        fields = getattr(self._parent, "fields", [])
+        return {field.name: field for field in fields}
+
+    def _merge_fields(self, field, expand_schema=True):
+        for _field in field.get_field_schema().values():
+            self._add_field(_field, expand_schema=expand_schema)
 
     def _declare_field(self, field):
+        field._set_parent(self)
+
         if self._parent is None:
             self._custom_fields[field.name] = field
         else:
@@ -155,26 +206,18 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
         # pylint: disable=no-member
         custom_fields = getattr(self, "_custom_fields", {})
-
-        for field_name, field in {**self._fields, **custom_fields}.items():
+        for name, field in {**self._fields, **custom_fields}.items():
             set_field = field
-            if isinstance(field, (DictField, ListField)):
+            if isinstance(field, (fof.DictField, fof.ListField)):
                 set_field = field.field
 
-            if isinstance(field, EmbeddedDocumentField):
+            if isinstance(field, fof.EmbeddedDocumentField):
                 set_field._set_parent(parent)
 
-            if field_name in custom_fields:
+            if name in custom_fields:
                 self._declare_field(field)
 
         self._custom_fields = {}
-
-    def _get_custom_fields(self):
-        if not self._parent:
-            return self._custom_fields
-
-        fields = getattr(self._parent, "fields", [])
-        return {field.name: field for field in fields}
 
 
 class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
@@ -202,6 +245,5 @@ class DynamicEmbeddedDocument(
     meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
-        self._custom_fields = {}
         super().__init__(*args, **kwargs)
         self.validate()

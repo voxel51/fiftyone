@@ -1273,21 +1273,8 @@ class SampleCollection(object):
 
     def _expand_schema_from_values(self, field_name, values):
         field_name, is_frame_field = self._handle_frame_field(field_name)
-        root = field_name.split(".", 1)[0]
 
         if is_frame_field:
-            schema = self._dataset.get_frame_field_schema(include_private=True)
-
-            if root in schema:
-                return
-
-            if root != field_name:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new frame "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
-                )
-
             value = _get_non_none_value(itertools.chain.from_iterable(values))
 
             if value is None:
@@ -1305,18 +1292,6 @@ class SampleCollection(object):
 
             self._dataset._add_implied_frame_field(field_name, value)
         else:
-            schema = self._dataset.get_field_schema(include_private=True)
-
-            if root in schema:
-                return
-
-            if root != field_name:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new sample "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
-                )
-
             value = _get_non_none_value(values)
 
             if value is None:

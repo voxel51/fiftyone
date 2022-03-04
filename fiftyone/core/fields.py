@@ -687,13 +687,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        fields = {
-            name: field for name, field in self.document_type._fields.items()
-        }
-        fields.update({field.name: field for field in self.fields})
+        fields = self.document_type._fields.copy()
+        for field in self.fields:
+            fields[field.name] = field
 
         filtered_fields = {}
-
         for name, field in fields.items():
             if not include_private and name.startswith("_"):
                 continue
@@ -719,13 +717,13 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return doc
 
-    def _save_field(self, field, keys):
-        if keys[0] not in self.get_field_schema():
+    def _save_field(self, field, path):
+        if path[0] not in self.get_field_schema():
             self.fields.append(field)
             self._validation_schema = self.get_field_schema()
 
         if self._parent:
-            self._parent._save_field(field, [self.name] + keys)
+            self._parent._save_field(field, [self.name] + path)
 
     def _set_parent(self, parent):
         self._parent = parent

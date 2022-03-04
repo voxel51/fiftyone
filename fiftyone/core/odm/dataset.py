@@ -5,8 +5,6 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import inspect
-
 import eta.core.utils as etau
 
 from fiftyone.core.fields import (
@@ -23,120 +21,9 @@ from fiftyone.core.fields import (
 )
 
 from .document import Document
-from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
+from .embedded_document import EmbeddedDocument
 from .runs import RunDocument
-
-
-def create_field(
-    name,
-    ftype,
-    embedded_doc_type=None,
-    subfield=None,
-    db_field=None,
-    fields=None,
-    parent=None,
-):
-    """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
-    given specification.
-
-    .. note::
-
-        This method is used exclusively to create user-defined (non-default)
-        fields. Any parameters accepted here must be stored on
-        :class:`SampleFieldDocument` or else datasets will "lose" any
-        additional decorations when they are loaded from the database.
-
-    Args:
-        name: the field name
-        ftype: the field type to create. Must be a subclass of
-            :class:`fiftyone.core.fields.Field`
-        embedded_doc_type (None): the
-            :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the field.
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        subfield (None): the :class:`fiftyone.core.fields.Field` type of the
-            contained field. Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.ListField` or
-            :class:`fiftyone.core.fields.DictField`
-        db_field (None): the database field to store this field in. By default,
-            ``name`` is used
-        fields (None): the subfields of the
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            Only applicable when ``ftype`` is
-            :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        parent (None): a parent
-
-    Returns:
-        a :class:`fiftyone.core.fields.Field` instance
-    """
-    if not issubclass(ftype, Field):
-        raise ValueError(
-            "Invalid field type %s; must be a subclass of %s" % (ftype, Field)
-        )
-
-    if db_field is None:
-        db_field = name
-
-    # All user-defined fields are nullable
-    kwargs = dict(null=True, db_field=db_field)
-
-    if fields is not None:
-        for idx, value in enumerate(fields):
-            if isinstance(value, Field):
-                continue
-
-            fields[idx] = create_field(name, **value)
-
-    if issubclass(ftype, (ListField, DictField)):
-        if subfield is not None:
-            if inspect.isclass(subfield):
-                if issubclass(subfield, EmbeddedDocumentField):
-                    subfield = create_field(
-                        name,
-                        subfield,
-                        embedded_doc_type=embedded_doc_type,
-                        fields=fields or [],
-                        parent=parent,
-                    )
-                else:
-                    subfield = subfield()
-
-                subfield.name = name
-
-            if not isinstance(subfield, Field):
-                raise ValueError(
-                    "Invalid subfield type %s; must be a subclass of %s"
-                    % (type(subfield), Field)
-                )
-
-            kwargs["field"] = subfield
-
-    if issubclass(ftype, EmbeddedDocumentField):
-        if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
-            raise ValueError(
-                "Invalid embedded_doc_type %s; must be a subclass of %s"
-                % (embedded_doc_type, BaseEmbeddedDocument)
-            )
-
-        kwargs.update(
-            {"document_type": embedded_doc_type, "fields": fields or []}
-        )
-
-    field = ftype(**kwargs)
-    field.name = name
-
-    if parent is not None and isinstance(field, EmbeddedDocumentField):
-        field._set_parent(parent)
-
-    if fields:
-        parent = field.field if subfield else field
-        for child in fields:
-            if not isinstance(child, EmbeddedDocumentField):
-                continue
-
-            child._set_parent(parent)
-
-    return field
+from .utils import create_field
 
 
 class SampleFieldDocument(EmbeddedDocument):
@@ -249,11 +136,6 @@ class SampleFieldDocument(EmbeddedDocument):
 
         return True
 
-    @staticmethod
-    def _get_attr_repr(field, attr_name):
-        attr = getattr(field, attr_name, None)
-        return etau.get_class_name(attr) if attr else None
-
     @classmethod
     def _get_field_documents(cls, field):
         if isinstance(field, ListField):
@@ -270,9 +152,14 @@ class SampleFieldDocument(EmbeddedDocument):
             for value in field.get_field_schema().values()
         ]
 
+    @staticmethod
+    def _get_attr_repr(field, attr_name):
+        attr = getattr(field, attr_name, None)
+        return etau.get_class_name(attr) if attr else None
+
 
 class SidebarGroupDocument(EmbeddedDocument):
-    """Description of a Sidebar Group in the App."""
+    """Description of a sidebar group in the App."""
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])

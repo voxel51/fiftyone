@@ -6,6 +6,7 @@ Utilities for documents.
 |
 """
 from datetime import date, datetime
+import inspect
 import numbers
 import six
 
@@ -16,6 +17,145 @@ import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+
+def create_field(
+    name,
+    ftype,
+    embedded_doc_type=None,
+    subfield=None,
+    db_field=None,
+    fields=None,
+    parent=None,
+):
+    """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
+    given specification.
+
+    .. note::
+
+        This method is used exclusively to create user-defined (non-default)
+        fields. Any parameters accepted here must be stored on
+        :class:`fiftyone.core.odm.dataset.SampleFieldDocument` or else datasets
+        will "lose" any additional decorations when they are loaded from the
+        database.
+
+    Args:
+        name: the field name
+        ftype: the field type to create. Must be a subclass of
+            :class:`fiftyone.core.fields.Field`
+        embedded_doc_type (None): the
+            :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the field.
+            Only applicable when ``ftype`` is
+            :class:`fiftyone.core.fields.EmbeddedDocumentField`
+        subfield (None): the :class:`fiftyone.core.fields.Field` type of the
+            contained field. Only applicable when ``ftype`` is
+            :class:`fiftyone.core.fields.ListField` or
+            :class:`fiftyone.core.fields.DictField`
+        db_field (None): the database field to store this field in. By default,
+            ``name`` is used
+        fields (None): a list of :class:`fiftyone.core.fields.Field` instances
+            describing custom embedded fields of the
+            :class:`fiftyone.core.fields.EmbeddedDocumentField`. Only when
+            ``ftype`` is :class:`fiftyone.core.fields.EmbeddedDocumentField`
+        parent (None): a parent
+
+    Returns:
+        a :class:`fiftyone.core.fields.Field`
+    """
+    if not issubclass(ftype, fof.Field):
+        raise ValueError(
+            "Invalid field type %s; must be a subclass of %s"
+            % (ftype, fof.Field)
+        )
+
+    if db_field is None:
+        db_field = name
+
+    # All user-defined fields are nullable
+    kwargs = dict(null=True, db_field=db_field)
+
+    if fields is not None:
+        for idx, value in enumerate(fields):
+            if isinstance(value, fof.Field):
+                continue
+
+            fields[idx] = create_field(name, **value)
+
+    if issubclass(ftype, (fof.ListField, fof.DictField)):
+        if subfield is not None:
+            if inspect.isclass(subfield):
+                if issubclass(subfield, fof.EmbeddedDocumentField):
+                    subfield = create_field(
+                        name,
+                        subfield,
+                        embedded_doc_type=embedded_doc_type,
+                        fields=fields or [],
+                        parent=parent,
+                    )
+                else:
+                    subfield = subfield()
+
+                subfield.name = name
+
+            if not isinstance(subfield, fof.Field):
+                raise ValueError(
+                    "Invalid subfield type %s; must be a subclass of %s"
+                    % (type(subfield), fof.Field)
+                )
+
+            kwargs["field"] = subfield
+
+    if issubclass(ftype, fof.EmbeddedDocumentField):
+        if not issubclass(embedded_doc_type, foed.BaseEmbeddedDocument):
+            raise ValueError(
+                "Invalid embedded_doc_type %s; must be a subclass of %s"
+                % (embedded_doc_type, foed.BaseEmbeddedDocument)
+            )
+
+        kwargs.update(
+            {"document_type": embedded_doc_type, "fields": fields or []}
+        )
+
+    field = ftype(**kwargs)
+    field.name = name
+
+    if parent is not None and isinstance(field, fof.EmbeddedDocumentField):
+        field._set_parent(parent)
+
+    if fields:
+        parent = field.field if subfield else field
+        for child in fields:
+            if not isinstance(child, fof.EmbeddedDocumentField):
+                continue
+
+            child._set_parent(parent)
+
+    return field
+
+
+def get_field_kwargs(field):
+    """Constructs the field keyword arguments dictionary for the given
+    :class:`fiftyone.core.fields.Field` instance.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+
+    Returns:
+        a field specification dict
+    """
+    kwargs = {"ftype": type(field)}
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        field = field.field
+        kwargs["subfield"] = type(field)
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+        kwargs["fields"] = [
+            get_field_kwargs(field) for field in getattr(field, "fields", [])
+        ]
+
+    return kwargs
 
 
 def get_implied_field_kwargs(value):
@@ -32,7 +172,7 @@ def get_implied_field_kwargs(value):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": get_embedded_document_fields(value),
+            "fields": _get_embedded_document_fields(value),
         }
 
     if isinstance(value, bool):
@@ -95,7 +235,38 @@ def get_implied_field_kwargs(value):
     )
 
 
-def get_embedded_document_fields(value):
+def validate_fields_match(name, field, existing_field):
+    if type(field) is not type(existing_field):
+        raise ValueError(
+            "Field '%s' type %s does not match existing field "
+            "type %s" % (name, field, existing_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(field.document_type, existing_field.document_type):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match "
+                "existing field type %s"
+                % (name, field.document_type, existing_field.document_type,)
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if existing_field.field is not None and not isinstance(
+            field.field, type(existing_field.field)
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field.__class__.__name__,
+                    name,
+                    field.field,
+                    existing_field.field,
+                )
+            )
+
+
+def _get_embedded_document_fields(value):
     return [field for name, field in value._fields.items() if name != "_cls"]
 
 
