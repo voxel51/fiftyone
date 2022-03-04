@@ -102,7 +102,7 @@ def establish_db_conn(config):
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
 
-    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+    connect(config.database_name, **_connection_kwargs)
 
 
 def _connect():
@@ -110,7 +110,7 @@ def _connect():
     if _client is None:
         global _connection_kwargs
         _client = pymongo.MongoClient(**_connection_kwargs)
-        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+        connect(fo.config.database_name, **_connection_kwargs)
 
 
 def _async_connect():
@@ -224,7 +224,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[foc.DEFAULT_DATABASE]
+    db = _client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -235,7 +235,7 @@ def get_async_db_conn():
         a ``motor.motor_tornado.MotorDatabase``
     """
     _async_connect()
-    db = _async_client[foc.DEFAULT_DATABASE]
+    db = _async_client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -258,7 +258,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(foc.DEFAULT_DATABASE)
+    _client.drop_database(fo.config.database_name)
 
 
 def sync_database():
