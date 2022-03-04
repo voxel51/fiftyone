@@ -39,9 +39,12 @@ class Export(HTTPEndpoint):
         collection = foo.get_async_db_conn()[
             view._dataset._sample_collection_name
         ]
-        pipeline = view._pipeline() + [
-            {"$project": {"filepath": 1, "tags": tags}}
-        ]
+        pipeline = view._pipeline()
+
+        if tags:
+            pipeline += [{"$project": {"filepath": 1, "tags": 1}}]
+        else:
+            pipeline += [{"$project": {"filepath": 1}}]
 
         async def response():
             async for row in foo.aggregate(collection, pipeline):

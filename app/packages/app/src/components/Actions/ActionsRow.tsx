@@ -108,7 +108,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   if (!hasSimilarity && !hasSorting) {
     return null;
   }
-
   return (
     <ActionDiv ref={ref}>
       <PillButton

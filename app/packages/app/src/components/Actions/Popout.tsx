@@ -15,17 +15,11 @@ const Popout = ({ modal, children, style = {}, bounds }) => {
     },
   });
   const { width } = useWindowSize();
-  const position =
-    modal && bounds
-      ? {
-          position: "fixed",
-          right: width - bounds.right,
-          top: bounds.bottom + 8,
-        }
-      : {};
 
   return (
-    <PopoutDiv style={{ ...show, ...position, ...style }}>{children}</PopoutDiv>
+    <PopoutDiv style={{ ...show, ...style, zIndex: 100001 }}>
+      {children}
+    </PopoutDiv>
   );
 };
 
