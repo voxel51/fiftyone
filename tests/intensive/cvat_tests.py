@@ -205,7 +205,44 @@ class CVATTests(unittest.TestCase):
         pass
 
     def test_project(self):
-        pass
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=2)
+            .select_fields("ground_truth")
+            .clone()
+        )
+
+        anno_key = "anno_key"
+        project_name = "cvat_unittest_project"
+
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+            project_name=project_name,
+        )
+        api = results.connect_to_api()
+        project_id = api.get_project_id(project_name)
+        self.assertIsNotNone(project_id)
+        self.assertIn(project_id, results.project_ids)
+
+        anno_key2 = "anno_key2"
+        results2 = dataset.annotate(
+            anno_key2,
+            backend="cvat",
+            label_field="ground_truth",
+            project_name=project_name,
+        )
+        self.assertNotIn(project_id, results2.project_ids)
+        self.assertIsNotNone(api.get_project_id(project_name))
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        self.assertIsNotNone(api.get_project_id(project_name))
+
+        dataset.load_annotations(anno_key2, cleanup=True)
+        self.assertIsNotNone(api.get_project_id(project_name))
+        api.delete_project(project_id)
+        api = results.connect_to_api()
+        self.assertIsNone(api.get_project_id(project_name))
 
 
 if __name__ == "__main__":
