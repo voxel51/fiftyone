@@ -11,6 +11,7 @@ You must run these tests interactively as follows::
 """
 from bson import ObjectId
 from collections import defaultdict
+import os
 import unittest
 
 import fiftyone as fo
@@ -92,6 +93,8 @@ def _update_shape(
 
 
 class CVATTests(unittest.TestCase):
+    USERNAME = None
+
     def test_upload(self):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
 
@@ -198,8 +201,44 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
 
-    def test_arguments(self):
-        pass
+    def test_task_creation_arguments(self):
+        user = self.USERNAME
+        users = [user] if user is not None else None
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=4)
+            .select_fields("ground_truth")
+            .clone()
+        )
+
+        anno_key = "anno_key"
+        bug_tracker = "test_tracker"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+            task_size=2,
+            segment_size=1,
+            task_assignee=users,
+            job_assignees=users,
+            job_reviewers=users,
+            issue_tracker=bug_tracker,
+        )
+        task_ids = results.task_ids
+        api = results.connect_to_api()
+        self.assertEquals(len(task_ids), 2)
+        for task_id in task_ids:
+            task_json = api.get(api.task_url(task_id)).json()
+            self.assertEquals(task_json["bug_tracker"], bug_tracker)
+            self.assertEquals(task_json["segment_size"], 1)
+            if user is not None:
+                self.assertEquals(task_json["assignee"]["username"], user)
+            for job in api.get(api.jobs_url(task_id)).json():
+                job_json = api.get(job["url"]).json()
+                if user is not None:
+                    self.assertEquals(job_json["assignee"]["username"], user)
+                    self.assertEquals(job_json["reviewer"]["username"], user)
+
+        dataset.load_annotations(anno_key, cleanup=True)
 
     def test_video(self):
         pass
@@ -247,4 +286,7 @@ class CVATTests(unittest.TestCase):
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
+    CVATTests.USERNAME = os.environ.get(
+        "CVAT_TEST_USERNAME", CVATTests.USERNAME
+    )
     unittest.main(verbosity=2)
