@@ -370,8 +370,6 @@ class DatasetMixin(object):
 
     @classmethod
     def _declare_field(cls, field):
-        field._set_parent(cls)
-
         cls._fields[field.name] = field
         if field.name not in cls._fields_ordered:
             cls._fields_ordered += (field.name,)
