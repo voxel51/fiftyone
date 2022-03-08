@@ -36,4 +36,3 @@ class Notebook(HTTPEndpoint):
         state = get_state()
 
         state.active_handle = handle_id
-        set_state(state)

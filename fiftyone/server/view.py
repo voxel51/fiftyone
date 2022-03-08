@@ -103,19 +103,13 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
+    if similarity:
+        view = view.sort_by_similarity(**similarity)
+
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
-
-    if similarity:
-        stage = fosg.ViewStage._from_dict(
-            {
-                "_cls": "fiftyone.core.stages.SortBySimilarity",
-                "kwargs": [[k, v] for k, v in similarity.items()],
-            }
-        )
-        view = view.add_stage(stage)
 
     return view
 

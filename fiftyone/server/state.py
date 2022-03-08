@@ -42,7 +42,7 @@ _state = fos.StateDescription()
 
 
 def get_state() -> fos.StateDescription:
-    return _state
+    return fos.StateDescription()
 
 
 async def set_state(state: fos.StateDescription) -> None:

@@ -25,5 +25,3 @@ class Select(HTTPEndpoint):
 
         if labels is not None:
             state.selected_labels = labels
-
-        set_state(state)

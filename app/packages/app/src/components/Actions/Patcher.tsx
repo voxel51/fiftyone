@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   atom,
+  RecoilState,
   selector,
   Snapshot,
   useRecoilCallback,
@@ -93,9 +94,13 @@ const evaluationKeys = selector<string[]>({
 export const sendPatch = async (
   snapshot: Snapshot,
   updateState: StateUpdate,
-  addStage?: object
+  addStage?: object,
+  callback?: (
+    set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+  ) => void
 ) => {
   const similarity = await snapshot.getPromise(similarityParameters);
+
   return getFetchFunction()("POST", "/pin", {
     filters: await snapshot.getPromise(filters),
     view: await snapshot.getPromise(viewAtoms.view),
@@ -104,7 +109,10 @@ export const sendPatch = async (
     labels: toSnakeCase(await snapshot.getPromise(atoms.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
-  }).then((data) => updateState(data));
+  }).then((data) => {
+    console.log(data);
+    updateState(data, callback);
+  });
 };
 
 const useToPatches = () => {

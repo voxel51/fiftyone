@@ -118,7 +118,6 @@ class FiftyOneJSONEncoder(JSONEncoder):
     @staticmethod
     def dumps(data, *args, **kwargs) -> str:
         kwargs["cls"] = FiftyOneJSONEncoder
-        data = convert(data)
         return json_util.dumps(
             json_util.loads(
                 json_util.dumps(data, *args, **kwargs),
@@ -134,7 +133,6 @@ class FiftyOneJSONEncoder(JSONEncoder):
     @staticmethod
     def process(data, *args, **kwargs):
         kwargs["cls"] = FiftyOneJSONEncoder
-        data = convert(data)
         return json_util.loads(
             json_util.dumps(data, *args, **kwargs), parse_constant=lambda c: c
         )

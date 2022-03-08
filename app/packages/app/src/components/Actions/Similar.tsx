@@ -90,12 +90,13 @@ const useSortBySimilarity = (close) => {
       parameters: State.SortBySimilarityParameters
     ) => {
       const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+      const view = await snapshot.getPromise(viewAtoms.view);
       set(similaritySorting, true);
 
       try {
         const data = await getFetchFunction()("POST", "/sort", {
           dataset: await snapshot.getPromise(selectors.datasetName),
-          view: await snapshot.getPromise(viewAtoms.view),
+          view,
           filters: await snapshot.getPromise(filters),
           similarity: toSnakeCase({
             ...parameters,
@@ -108,8 +109,8 @@ const useSortBySimilarity = (close) => {
           set(atoms.modal, null);
           set(similaritySorting, false);
           set(aggregationsTick, (cur) => cur + 1);
+          close();
         });
-        close();
       } catch (error) {
         handleError(error);
       }

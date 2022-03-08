@@ -22,12 +22,5 @@ class Dataset(HTTPEndpoint):
         dataset = fod.load_dataset(dataset) if dataset else None
 
         state = get_state()
-        set_state(
-            fos.StateDescription(
-                dataset=dataset,
-                config=state.config,
-                active_handle=state.active_handle,
-            ).serialize()
-        )
 
         return {}

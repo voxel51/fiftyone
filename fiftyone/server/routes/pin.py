@@ -27,7 +27,7 @@ class Pin(HTTPEndpoint):
         add_stages = data.get("add_stages", None)
         similarity = data.get("similarity", None)
 
-        view = fosv.get_view(dataset, stages, filters, similarity=similarity)
+        view = fosv.get_view(dataset, stages, filters)
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
@@ -36,12 +36,13 @@ class Pin(HTTPEndpoint):
                 stage = fost.ViewStage._from_dict(d)
                 view = view.add_stage(stage)
 
+        if similarity:
+            view = view.sort_by_similarity(**similarity)
+
         state = get_state()
         state.selected = []
         state.selected_labels = []
         state.dataset = fo.load_dataset(dataset)
         state.view = view
-
-        set_state(state)
 
         return {"state": state.serialize()}
