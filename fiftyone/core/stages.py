@@ -2556,7 +2556,7 @@ class GroupBy(ViewStage):
         if etau.is_str(field_or_expr):
             return sample_collection._is_frame_field(field_or_expr)
 
-        return _is_frames_expr(field_or_expr)
+        return foe.is_frames_expr(field_or_expr)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewField):
@@ -3076,7 +3076,7 @@ class SetField(ViewStage):
             return False
 
         is_frame_field = sample_collection._is_frame_field(self._field)
-        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
+        is_frame_expr = foe.is_frames_expr(self._get_mongo_expr())
         return is_frame_field or is_frame_expr
 
     def _kwargs(self):
@@ -3245,7 +3245,7 @@ class Match(ViewStage):
         if sample_collection.media_type != fom.VIDEO:
             return False
 
-        return _is_frames_expr(self._get_mongo_expr())
+        return foe.is_frames_expr(self._get_mongo_expr())
 
     def _get_mongo_expr(self):
         if not isinstance(self._filter, foe.ViewExpression):
@@ -5092,7 +5092,7 @@ class SortBy(ViewStage):
             if etau.is_str(expr):
                 needs_frames |= sample_collection._is_frame_field(expr)
             else:
-                needs_frames |= _is_frames_expr(expr)
+                needs_frames |= foe.is_frames_expr(expr)
 
         return needs_frames
 
@@ -6113,26 +6113,6 @@ def _parse_labels(labels):
         labels_map[label["field"]].add(label["label_id"])
 
     return sample_ids, labels_map
-
-
-def _is_frames_expr(val):
-    if etau.is_str(val):
-        return val == "$frames" or val.startswith("$frames.")
-
-    if isinstance(val, dict):
-        for k, v in val.items():
-            if _is_frames_expr(k):
-                return True
-
-            if _is_frames_expr(v):
-                return True
-
-    if isinstance(val, (list, tuple)):
-        for v in val:
-            if _is_frames_expr(v):
-                return True
-
-    return False
 
 
 def _get_label_field_only_matches_expr(
