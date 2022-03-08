@@ -105,7 +105,6 @@ const ViewBar = React.memo(() => {
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
   );
 
-  console.log(view);
   return (
     <div
       style={{

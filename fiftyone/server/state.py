@@ -63,7 +63,6 @@ async def dispatch_event(event: Event):
 async def listen(request: Request,) -> t.AsyncIterator[Event]:
     _listeners[request] = asyncio.LifoQueue(maxsize=1)
 
-    yield _serialize(Capture(data={"helloo": "world"}))
     try:
         while True:
             disconnected = await request.is_disconnected()

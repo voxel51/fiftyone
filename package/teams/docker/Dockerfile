@@ -1,8 +1,7 @@
+# RELEASE CANDIDATES
+# 
 # Dockerfile for building an image with a FiftyOne Team App release atop a
 # Debian-based Linux distribution.
-#
-# By default, Ubuntu 20.04, Python 3.8, and the latest Teams release are used,
-# but these can be customized via ARGs.
 #
 # ARGs::
 #
@@ -21,10 +20,9 @@
 #       -t voxel51/fiftyone-teams-app .
 #
 #   # Run
-#   SHARED_DIR=/path/to/shared/dir
+#   SHARED_DIR=/data # if necessary
 #   docker run \
 #       -e FIFTYONE_DATABASE_URI=mongodb://... \
-#       -e FIFTYONE_TEAMS_ORGANIZATION=PROVIDED_ORG_ID
 #       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
@@ -104,14 +102,12 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 ARG TOKEN
 
 # The Teams client version to install, or "latest"
-ARG TEAMS_APP_VERSION
-ARG TEAMS_VERSION
+ARG TEAMS_APP_VERSION=0.1.0rc0
+ARG TEAMS_VERSION=0.7.1rc0
 
-RUN if [ "${TEAMS_APP_VERSION}" = "latest" ]; then \
-        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone fiftyone-teams-app; \
-    else \
-        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone==${TEAMS_VERSION} fiftyone-teams-app==${TEAMS_APP_VERSION}; \
-    fi
+RUN pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai \
+    fiftyone==${TEAMS_VERSION} \
+    fiftyone-teams-app==${TEAMS_APP_VERSION}
 
 #
 # Configure shared storage
@@ -125,7 +121,10 @@ ENV FIFTYONE_MEDIA_CACHE_DIR=${ROOT_DIR}/cache \
     FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
     FIFTYONE_DEFAULT_DATASET_DIR=${ROOT_DIR}/default \
     FIFTYONE_DATASET_ZOO_DIR=${ROOT_DIR}/zoo/datasets \
-    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models
+    FIFTYONE_MODEL_ZOO_DIR=${ROOT_DIR}/zoo/models \
+    FIFTYONE_MEDIA_CACHE_APP_IMAGES=false \
+    FIFTYONE_DATABASE_NAME=fiftyone-rc \
+    FIFTYONE_TEAMS_ORGANIZATION=org_FDd6x9VGCRqflczr
 
 #
 # Serve the app

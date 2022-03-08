@@ -1,10 +1,9 @@
 import React from "react";
 import { useSpring } from "@react-spring/web";
 
-import { useWindowSize } from "../../utils/hooks";
 import { PopoutDiv } from "../utils";
 
-const Popout = ({ modal, children, style = {}, bounds }) => {
+const Popout = ({ children, style = {} }) => {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -14,7 +13,6 @@ const Popout = ({ modal, children, style = {}, bounds }) => {
       duration: 100,
     },
   });
-  const { width } = useWindowSize();
 
   return (
     <PopoutDiv style={{ ...show, ...style, zIndex: 100001 }}>

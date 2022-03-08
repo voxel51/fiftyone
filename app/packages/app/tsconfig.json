@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "module": "ESNext",
+        "module": "esnext",
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
         "noImplicitAny": false,
         "sourceMap": true,

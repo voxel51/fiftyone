@@ -30,7 +30,7 @@ enum AppReadyState {
   CLOSED = 2,
 }
 
-setFetchFunction("http://localhost:5151");
+setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
 const App = withErrorBoundary(
   withRouter(

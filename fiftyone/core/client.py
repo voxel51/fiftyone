@@ -134,7 +134,6 @@ class HasClient(object):
             callback(self)
 
     def _handle_event(self, event: sseclient.Event):
-        print(event.event, event.data)
         return
         if event.event == "update":
             config = None

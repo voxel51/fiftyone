@@ -87,11 +87,13 @@ export const getEventSource = (
     onclose?: () => void;
     onerror?: (err: any) => number | null | undefined | void;
   },
-  signal: AbortSignal
+  signal: AbortSignal,
+  body = {}
 ) =>
   fetchEventSource(`${getFetchOrigin()}${path}`, {
     method: "POST",
     signal,
+    body: JSON.stringify(body),
     async onopen(response) {
       if (response.ok) {
         events.onopen && events.onopen(response);

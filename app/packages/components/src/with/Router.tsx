@@ -1,12 +1,18 @@
 import React from "react";
-import { getFetchFunction, setFetchFunction } from "@fiftyone/utilities";
+import {
+  getEventSource,
+  getFetchFunction,
+  setFetchFunction,
+} from "@fiftyone/utilities";
 import {
   Environment,
   FetchFunction,
   GraphQLResponse,
   Network,
+  Observable,
   RecordSource,
   Store,
+  SubscribeFunction,
 } from "relay-runtime";
 import { RouteDefinition, Router, createRouter } from "../routing";
 import { GraphQLError } from "@fiftyone/utilities/src/errors";
@@ -34,6 +40,54 @@ async function fetchGraphQL(
 
 const fetchRelay: FetchFunction = async (params, variables) => {
   return fetchGraphQL(params.text, variables);
+};
+
+const generateUUID = () => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0,
+      v = c == "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+const subscribeRelay: SubscribeFunction = (params, variables) => {
+  return Observable.create((sink) => {
+    const controller = new AbortController();
+
+    const unsubscribe = () => {
+      controller.abort();
+    };
+
+    const dispose = {
+      unsubscribe,
+      closed: false,
+    };
+
+    controller.signal.addEventListener("abort", () => {
+      dispose.closed = true;
+    });
+
+    getEventSource(
+      "/graphql",
+      {
+        onmessage: (message) => {
+          const data = JSON.parse(message.data);
+          sink.next(data);
+        },
+      },
+      controller.signal,
+      {
+        id: generateUUID(),
+        type: "subscribe",
+        payload: {
+          params,
+          variables,
+        },
+      }
+    );
+
+    return dispose;
+  });
 };
 
 export const RelayEnvironment = new Environment({
