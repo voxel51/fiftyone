@@ -261,6 +261,7 @@ def import_annotations(
                 )
     finally:
         anno_backend.delete_run(dataset, anno_key)
+        api.close()
 
 
 def _parse_task_metadata(
@@ -3159,6 +3160,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
+        api.close()
 
         if launch_editor:
             results.launch_editor()
@@ -3171,6 +3173,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(results)
         logger.info("Download complete")
+        api.close()
 
         return annotations
 
@@ -3242,6 +3245,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
         logger.info("Launching editor at '%s'...", editor_url)
         api.launch_editor(url=editor_url)
+        api.close()
 
     def get_status(self):
         """Gets the status of the assigned tasks and jobs.
@@ -3265,6 +3269,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         api.delete_tasks(task_ids)
 
         self._forget_tasks(task_ids)
+        api.close()
 
     def cleanup(self):
         """Deletes all tasks and created projects associated with this run."""
@@ -3285,6 +3290,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = {}
         self.id_map = {}
         self.frame_id_map = {}
+        api.close()
 
     def _forget_tasks(self, task_ids):
         for task_id in task_ids:
@@ -3376,6 +3382,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "last_updated": task_updated,
                     "jobs": jobs_info,
                 }
+
+        api.close()
 
         return status
 
@@ -3575,6 +3583,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
+
+    def close(self):
+        """Closes requests session for this instance of the API"""
+        self._session.close()
 
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
@@ -6634,7 +6646,7 @@ def _get_single_polyline_points(polyline):
     if num_polylines == 0:
         return []
 
-    if num_polylines > 0:
+    if num_polylines > 1:
         msg = (
             "Found polyline with more than one shape; only the first shape "
             "will be stored in CVAT format"

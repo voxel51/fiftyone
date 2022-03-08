@@ -43,27 +43,56 @@ def _delete_shape(api, task_id, label_id):
         api.patch(del_url, json=del_json)
 
 
-def _create_shape(api, task_id, shape=None):
-    if shape is None:
-        attr_id_map, class_id_map = api._get_attr_class_maps(task_id)
+def _get_label(api, task_id, label=None):
+    attr_id_map, class_id_map = api._get_attr_class_maps(task_id)
+    if isinstance(label, str):
+        label = class_id_map[label]
+    else:
         label = list(class_id_map.values())[0]
-        shape = {
-            "type": "rectangle",
-            "frame": 0,
-            "label_id": label,
-            "group": 0,
-            "attributes": [],
-            "points": [10, 10, 10, 10],
-            "occluded": False,
-        }
+    return label
 
-    create_json = {"version": 1, "tags": [], "shapes": [shape], "tracks": []}
+
+def _create_annotation(api, task_id, shape=None, tag=None):
+    shapes = []
+    tags = []
+    if shape is not None:
+        if not isinstance(shape, dict):
+            label = _get_label(api, task_id, label=shape)
+            shape = {
+                "type": "rectangle",
+                "frame": 0,
+                "label_id": label,
+                "group": 0,
+                "attributes": [],
+                "points": [10, 10, 10, 10],
+                "occluded": False,
+            }
+        shapes = [shape]
+
+    if tag is not None:
+        if not isinstance(tag, dict):
+            label = _get_label(api, task_id, label=tag)
+            tag = {
+                "frame": 0,
+                "label_id": label,
+                "group": 0,
+                "attributes": [],
+            }
+        tags = [tag]
+
+    create_json = {"version": 1, "tags": tags, "shapes": shapes, "tracks": []}
     create_url = api.task_annotation_url(task_id) + "?action=create"
     api.patch(create_url, json=create_json)
 
 
 def _update_shape(
-    api, task_id, label_id, points=None, attributes=None, occluded=None
+    api,
+    task_id,
+    label_id,
+    label=None,
+    points=None,
+    attributes=None,
+    occluded=None,
 ):
     anno_json = api.get(api.task_annotation_url(task_id)).json()
     shape = _find_shape(anno_json, label_id)
@@ -73,9 +102,19 @@ def _update_shape(
         if occluded is not None:
             shape["occluded"] = occluded
         if attributes is not None:
-            label = shape["label_id"]
-            attr_id_map, _ = api._get_attr_class_maps(task_id)
-            attr_id_map = attr_id_map[label]
+            attr_id_map, class_id_map = api._get_attr_class_maps(task_id)
+            if label is None:
+                label_id = shape["label_id"]
+                attr_id_map = attr_id_map[label_id]
+            else:
+                label_id = class_id_map[label]
+                prev_attr_id_map = attr_id_map[shape["label_id"]]
+                prev_attr_id_map = {v: k for k, v in prev_attr_id_map.items()}
+                attr_id_map = attr_id_map[label_id]
+                shape["label_id"] = label_id
+                for attr in shape["attributes"]:
+                    spec = prev_attr_id_map[attr["spec_id"]]
+                    attr["spec_id"] = attr_id_map[spec]
             for attr_name, attr_val in attributes:
                 if attr_name in attr_id_map:
                     shape["attributes"].append(
@@ -111,6 +150,7 @@ class CVATTests(unittest.TestCase):
             "sample_id"
         ]
         self.assertEqual(sample_id, dataset.first().id)
+        api.close()
 
         dataset.load_annotations(anno_key, cleanup=True)
 
@@ -142,7 +182,7 @@ class CVATTests(unittest.TestCase):
         updated_label_id = previous_label_ids[1]
 
         _delete_shape(api, task_id, deleted_label_id)
-        _create_shape(api, task_id)
+        _create_annotation(api, task_id, shape=True)
         _update_shape(
             api, task_id, updated_label_id, attributes=[("test", "1")]
         )
@@ -171,6 +211,7 @@ class CVATTests(unittest.TestCase):
             prev_updated_sample.ground_truth.detections[0].id,
         )
         self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
+        api.close()
 
     def test_multiple_fields(self):
         dataset = foz.load_zoo_dataset(
@@ -200,6 +241,7 @@ class CVATTests(unittest.TestCase):
         task_id = results.task_ids[0]
 
         dataset.load_annotations(anno_key, cleanup=True)
+        api.close()
 
     def test_task_creation_arguments(self):
         user = self.USERNAME
@@ -239,9 +281,7 @@ class CVATTests(unittest.TestCase):
                     self.assertEquals(job_json["reviewer"]["username"], user)
 
         dataset.load_annotations(anno_key, cleanup=True)
-
-    def test_video(self):
-        pass
+        api.close()
 
     def test_project(self):
         dataset = (
@@ -280,8 +320,142 @@ class CVATTests(unittest.TestCase):
         dataset.load_annotations(anno_key2, cleanup=True)
         self.assertIsNotNone(api.get_project_id(project_name))
         api.delete_project(project_id)
+        api.close()
         api = results.connect_to_api()
         self.assertIsNone(api.get_project_id(project_name))
+        api.close()
+
+    def test_example_add_new_label_fields(self):
+
+        # Test label field arguments
+
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=10).clone()
+        view = dataset.take(1)
+
+        anno_key = "cvat_new_field"
+
+        results = view.annotate(
+            anno_key,
+            label_field="new_classifications",
+            label_type="classifications",
+            classes=["dog", "cat", "person"],
+        )
+        self.assertIsNotNone(dataset.get_annotation_info(anno_key))
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        _create_annotation(api, task_id, tag="dog")
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        tags = view.first().new_classifications.classifications
+        num_tags = len(tags)
+        self.assertEqual(num_tags, 1)
+        self.assertEqual(tags[0].label, "dog")
+
+        # Test label schema
+
+        anno_key = "cvat_new_field_schema"
+
+        label_schema = {
+            "new_classifications_2": {
+                "type": "classifications",
+                "classes": ["dog", "cat", "person"],
+            }
+        }
+
+        results = view.annotate(anno_key, label_schema=label_schema)
+        self.assertIsNotNone(dataset.get_annotation_info(anno_key))
+        api.close()
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        _create_annotation(api, task_id, tag="person")
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        tags = view.first().new_classifications_2.classifications
+        num_tags = len(tags)
+        self.assertEqual(num_tags, 1)
+        self.assertEqual(tags[0].label, "person")
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        api.close()
+
+    def test_example_restricting_label_edits(self):
+        dataset = foz.load_zoo_dataset("quickstart").clone()
+
+        # Grab a sample that contains at least 2 people
+        view = dataset.match(
+            F("ground_truth.detections")
+            .filter(F("label") == "person")
+            .length()
+            > 1
+        ).limit(1)
+
+        previous_labels = view.values("ground_truth.detections", unwind=True)
+        previous_person_labels = view.filter_labels(
+            "ground_truth", F("label") == "person"
+        ).values("ground_truth.detections", unwind=True)
+
+        anno_key = "cvat_edit_restrictions"
+
+        # The new attributes that we want to populate
+        attributes = {
+            "sex": {"type": "select", "values": ["male", "female"],},
+            "age": {"type": "text",},
+        }
+
+        results = view.annotate(
+            anno_key,
+            label_field="ground_truth",
+            classes=["person", "test"],
+            attributes=attributes,
+            allow_additions=False,
+            allow_deletions=False,
+            allow_label_edits=False,
+            allow_spatial_edits=False,
+        )
+        self.assertIsNotNone(dataset.get_annotation_info(anno_key))
+
+        task_id = results.task_ids[0]
+        api = results.connect_to_api()
+
+        # Delete label
+        deleted_id = previous_person_labels[0].id
+        _delete_shape(api, task_id, deleted_id)
+
+        # Add label
+        _create_annotation(api, task_id, shape="person")
+
+        # Edit label and bounding box
+        edited_id = previous_person_labels[1].id
+        _update_shape(
+            api,
+            task_id,
+            edited_id,
+            label="test",
+            points=[10, 20, 30, 40],
+            attributes=[("sex", "male")],
+        )
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        api.close()
+        labels = view.values("ground_truth.detections", unwind=True)
+        person_labels = view.filter_labels(
+            "ground_truth", F("label") == "person"
+        ).values("ground_truth.detections", unwind=True)
+        self.assertListEqual(
+            [d.label for d in labels], [d.label for d in previous_labels],
+        )
+        self.assertListEqual(
+            [d.bounding_box for d in labels],
+            [d.bounding_box for d in previous_labels],
+        )
+        self.assertListEqual(
+            [d.id for d in labels], [d.id for d in previous_labels],
+        )
+        self.assertEqual(
+            len(dataset.filter_labels("ground_truth", F("sex") == "male")), 1,
+        )
 
 
 if __name__ == "__main__":
