@@ -9,6 +9,7 @@ import {
   Store,
 } from "relay-runtime";
 import { RouteDefinition, Router, createRouter } from "../routing";
+import { GraphQLError } from "@fiftyone/utilities/src/errors";
 
 setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
@@ -16,14 +17,19 @@ async function fetchGraphQL(
   text: string | null | undefined,
   variables: object
 ): Promise<GraphQLResponse> {
-  try {
-    return await getFetchFunction()("POST", "/graphql", {
+  const data = await getFetchFunction()<unknown, GraphQLResponse>(
+    "POST",
+    "/graphql",
+    {
       query: text,
       variables,
-    });
-  } catch (error) {
-    throw new Error("Failed request");
+    }
+  );
+
+  if ("errors" in data && data.errors) {
+    throw new GraphQLError(data.errors);
   }
+  return data;
 }
 
 const fetchRelay: FetchFunction = async (params, variables) => {

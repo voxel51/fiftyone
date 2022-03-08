@@ -1,4 +1,9 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
   atom,
   selectorFamily,
@@ -25,7 +30,6 @@ import { PopoutSectionTitle } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { store } from "../Flashlight.store";
-import { http } from "../../shared/connection";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
 import { aggregationsTick } from "../../recoil/aggregations";
@@ -78,17 +82,17 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   return modal.sample._id;
 };
 
-const useSortBySimilarity = () => {
+const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
   return useRecoilCallback(
     ({ snapshot, set }) => async (
       parameters: State.SortBySimilarityParameters
     ) => {
-      try {
-        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
-        set(similaritySorting, true);
+      const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+      set(similaritySorting, true);
 
+      try {
         const data = await getFetchFunction()("POST", "/sort", {
           dataset: await snapshot.getPromise(selectors.datasetName),
           view: await snapshot.getPromise(viewAtoms.view),
@@ -99,12 +103,13 @@ const useSortBySimilarity = () => {
           }),
         });
 
-        await update(data, (set) => {
+        update(data, (set) => {
           set(similarityParameters, { ...parameters, queryIds });
           set(atoms.modal, null);
           set(similaritySorting, false);
           set(aggregationsTick, (cur) => cur + 1);
         });
+        close();
       } catch (error) {
         handleError(error);
       }
@@ -218,7 +223,7 @@ const SortBySimilarity = React.memo(
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
     const choices = useRecoilValue(currentSimilarityKeys(modal));
-    const sortBySimilarity = useSortBySimilarity();
+    const sortBySimilarity = useSortBySimilarity(close);
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
@@ -285,7 +290,6 @@ const SortBySimilarity = React.memo(
                   text={"Apply"}
                   title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {
-                    close();
                     sortBySimilarity(state);
                   }}
                   style={{

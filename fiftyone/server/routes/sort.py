@@ -10,7 +10,7 @@ from starlette.requests import Request
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
-import fiftyone.core.state as fos
+import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 from fiftyone.server.state import get_state
@@ -32,6 +32,14 @@ class Sort(HTTPEndpoint):
             dataset.add_sample_field(dist_field, fof.FloatField)
 
         fosv.get_view(dataset_name, stages, filters, similarity=similarity)
-        return {
-            "state": fos.StateDescription.from_dict(get_state()).serialize()
-        }
+
+        state = get_state()
+        view = fosv.get_view(dataset_name, stages, filters)
+        state.dataset = view._dataset
+
+        if isinstance(view, fov.DatasetView):
+            state.view = view
+        else:
+            view = None
+
+        return {"state": state.serialize()}

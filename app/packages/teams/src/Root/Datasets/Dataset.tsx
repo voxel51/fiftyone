@@ -13,6 +13,7 @@ import { useStateUpdate } from "@fiftyone/app/src/utils/hooks";
 import { RGB } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
 import { Route } from "@fiftyone/components";
+import { useErrorHandler } from "react-error-boundary";
 
 const toStrictField = (field: Field): StrictField => {
   return {

@@ -127,9 +127,12 @@ class Dataset(HasCollection):
 
     @staticmethod
     def modifier(doc: dict) -> dict:
+
         doc["id"] = doc.pop("_id")
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
+        doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
+        doc["evaluations"] = list(doc.get("evaluations", {}).values())
         return doc
 
     @classmethod

@@ -322,12 +322,27 @@ export const useSelect = () => {
   );
 };
 
-export type StateUpdate = (data: { state?: State.Description }) => void;
+export type StateUpdate = (
+  data: { state?: State.Description },
+  callback?: (
+    set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+  ) => void
+) => void;
 
 export const useUnprocessedStateUpdate = (): StateUpdate => {
   const update = useStateUpdate();
-  return ({ state }) =>
-    update({ state: { ...toCamelCase(state), view: state.view } });
+  return (
+    { state },
+    callback?: (
+      set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+    ) => void
+  ) =>
+    update(
+      {
+        state: { ...toCamelCase(state), view: state.view } as State.Description,
+      },
+      callback
+    );
 };
 
 export const useStateUpdate = () => {

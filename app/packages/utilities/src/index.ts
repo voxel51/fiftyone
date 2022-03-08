@@ -3,7 +3,7 @@ import _ from "lodash";
 import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
-export { NotFoundError, ServerError } from "./errors";
+export { GraphQLError, NotFoundError, ServerError } from "./errors";
 export {
   getFetchFunction,
   getFetchHeaders,
