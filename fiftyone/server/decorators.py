@@ -8,11 +8,16 @@ FiftyOne Server decorators
 import traceback
 import typing as t
 
+from fiftyone.core.json import FiftyOneJSONEncoder
+
 from starlette.endpoints import HTTPEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-from fiftyone.server.json_util import FiftyOneJSONEncoder, FiftyOneResponse
+
+class FiftyOneResponse(JSONResponse):
+    def render(self, content: t.Any) -> bytes:
+        return bytes(FiftyOneJSONEncoder.dumps(content), encoding="utf-8")
 
 
 def route(func):

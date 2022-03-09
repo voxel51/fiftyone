@@ -12,6 +12,8 @@ import asyncio
 from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
+import fiftyone as fo
+
 import fiftyone.core.state as fos
 
 
@@ -60,7 +62,20 @@ async def dispatch_event(event: Event):
     await asyncio.gather(*events)
 
 
-async def listen(request: Request,) -> t.AsyncIterator[Event]:
+async def listen(request: Request, data: dict) -> t.AsyncIterator[Event]:
+    dataset = data.get("dataset", None)
+    if dataset:
+        fo.load_dataset(dataset)
+
+    state = get_state()
+    if dataset != state.dataset:
+        state.selected = []
+        state.selected_labels = []
+        state.view = None
+        state.dataset = dataset
+
+        await set_state(state)
+
     _listeners[request] = asyncio.LifoQueue(maxsize=1)
 
     try:

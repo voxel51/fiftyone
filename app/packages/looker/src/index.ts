@@ -437,6 +437,7 @@ export abstract class Looker<
     }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+      disabled: false,
     });
     element.appendChild(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
@@ -735,7 +736,11 @@ export class FrameLooker extends Looker<FrameState> {
     }
 
     if (reload) {
-      this.updater({ ...state, reloading: this.state.disabled });
+      this.updater({
+        ...state,
+        reloading: this.state.disabled,
+        disabled: false,
+      });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
@@ -816,7 +821,11 @@ export class ImageLooker extends Looker<ImageState> {
     }
 
     if (reload) {
-      this.updater({ ...state, reloading: this.state.disabled });
+      this.updater({
+        ...state,
+        reloading: this.state.disabled,
+        disabled: false,
+      });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });

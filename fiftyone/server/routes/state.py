@@ -10,8 +10,10 @@ from starlette.requests import Request
 from sse_starlette.sse import EventSourceResponse
 
 from fiftyone.server.state import listen
+from fiftyone.server.decorators import route
 
 
 class State(HTTPEndpoint):
-    async def post(self, request: Request):
-        return EventSourceResponse(listen(request))
+    @route
+    async def post(self, request: Request, data: dict):
+        return EventSourceResponse(listen(request, data))

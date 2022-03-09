@@ -11,11 +11,11 @@ from starlette.requests import Request
 
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 
 from fiftyone.server.decorators import route
-from fiftyone.server.json_util import convert
 import fiftyone.server.metadata as fosm
 import fiftyone.server.view as fosv
 
@@ -52,7 +52,6 @@ class Samples(HTTPEndpoint):
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(page_length + 1)
-        convert(samples)
 
         more = False
         if len(samples) > page_length:
@@ -61,7 +60,7 @@ class Samples(HTTPEndpoint):
 
         results = await _generate_results(samples, view.media_type)
 
-        return {"results": results, "more": more}
+        return {"results": foj.stringify(results), "more": more}
 
 
 async def _generate_results(samples, media_type):

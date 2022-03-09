@@ -1,5 +1,5 @@
 """
-FiftyOne Server JSON utilities
+FiftyOne JSON handling
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,9 +10,6 @@ from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
 import math
-import typing as t
-
-from starlette.responses import JSONResponse
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -55,7 +52,15 @@ def _is_invalid_number(value):
     return math.isnan(value) or math.isinf(value)
 
 
-def convert(d):
+def stringify(d):
+    """Converts unsafe JSON types to strings
+
+    Args:
+        d: serializable data
+
+    Returns:
+        a stringified version of the data
+    """
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
             if isinstance(v, bytes):
@@ -65,7 +70,7 @@ def convert(d):
             elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
-                convert(v)
+                stringify(v)
             elif _is_invalid_number(v):
                 d[k] = str(v)
 
@@ -82,7 +87,7 @@ def convert(d):
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
             elif isinstance(i, (dict, OrderedDict, list)):
-                convert(i)
+                stringify(i)
             elif _is_invalid_number(i):
                 d[idx] = str(i)
 
@@ -90,7 +95,7 @@ def convert(d):
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
-    """JSON encoder for the FiftyOne server.
+    """JSON encoder for FiftyOne network comms.
 
     Any classes with non-standard serialization methods should
     be accounted for in the `default()` method.
@@ -136,8 +141,3 @@ class FiftyOneJSONEncoder(JSONEncoder):
         return json_util.loads(
             json_util.dumps(data, *args, **kwargs), parse_constant=lambda c: c
         )
-
-
-class FiftyOneResponse(JSONResponse):
-    def render(self, content: t.Any) -> bytes:
-        return bytes(FiftyOneJSONEncoder.dumps(content), encoding="utf-8")

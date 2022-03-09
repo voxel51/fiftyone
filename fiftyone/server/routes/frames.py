@@ -9,11 +9,11 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.json as foj
 import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
-from fiftyone.server.json_util import convert
 import fiftyone.server.view as fosv
 
 
@@ -43,5 +43,7 @@ class Frames(HTTPEndpoint):
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(frames_only=True),
         ).to_list(end_frame - start_frame + 1)
-        convert(frames)
-        return {"frames": frames, "range": [start_frame, end_frame]}
+        return {
+            "frames": foj.stringify(frames),
+            "range": [start_frame, end_frame],
+        }

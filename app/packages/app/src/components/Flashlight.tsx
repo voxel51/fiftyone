@@ -487,7 +487,7 @@ export default React.memo(() => {
               const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
 
-              return null;
+              return;
             }
 
             if (!soft) {
@@ -500,8 +500,6 @@ export default React.memo(() => {
               store.lookers.set(sampleId, looker);
               looker.attach(element, dimensions);
             }
-
-            return null;
           } catch (error) {
             handleError(error);
           }

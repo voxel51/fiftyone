@@ -2,6 +2,7 @@ import {
   getRoutingContext,
   Loading,
   RelayEnvironment,
+  RouteData,
   RouteRenderer,
   withErrorBoundary,
   withRouter,
@@ -23,6 +24,7 @@ import { useScreenshot } from "./utils/hooks";
 import "./index.css";
 import routes from "./routes";
 import { RelayEnvironmentProvider } from "react-relay";
+import { DatasetQuery } from "./Root/Datasets/__generated__/DatasetQuery.graphql";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -32,6 +34,23 @@ enum AppReadyState {
 
 setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
+const getDatasetName = () => {
+  const context = getRoutingContext();
+  const match = context
+    .get()
+    .entries.filter(
+      (entry) =>
+        entry.routeData.isExact && entry.routeData.path === "/datasets/:name"
+    )[0];
+
+  if (match) {
+    const data = match.routeData as RouteData<DatasetQuery>;
+    return data.params.name;
+  }
+
+  return null;
+};
+
 const App = withErrorBoundary(
   withRouter(
     withTheme(() => {
@@ -39,6 +58,7 @@ const App = withErrorBoundary(
 
       useEffect(() => {
         const controller = new AbortController();
+        const dataset = getDatasetName();
 
         getEventSource(
           "/state",
@@ -50,7 +70,10 @@ const App = withErrorBoundary(
               setReadyState(AppReadyState.CLOSED);
             },
           },
-          controller.signal
+          controller.signal,
+          {
+            dataset,
+          }
         );
 
         return () => controller.abort();

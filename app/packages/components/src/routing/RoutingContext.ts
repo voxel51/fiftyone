@@ -7,12 +7,19 @@ import { NotFoundError, Resource } from "@fiftyone/utilities";
 import { Route } from "..";
 import RouteDefinition from "./RouteDefinition";
 
+export interface RouteData<T extends OperationType = OperationType> {
+  isExact: boolean;
+  params: VariablesOf<T>;
+  path: string;
+  url: string;
+}
+
 export interface Entry<T extends OperationType = OperationType> {
   pathname: string;
   entries: {
     component: Resource<Route<T>>;
     prepared: Resource<PreloadedQuery<T>>;
-    routeData: { params: VariablesOf<T> };
+    routeData: RouteData<T>;
   }[];
 }
 
@@ -26,12 +33,7 @@ export interface RoutingContext<T extends OperationType = OperationType> {
 
 interface Match<T extends OperationType = OperationType> {
   route: RouteDefinition<T>;
-  match: {
-    isExact: boolean;
-    params: VariablesOf<T>;
-    path: string;
-    url: string;
-  };
+  match: RouteData<T>;
 }
 
 export interface Router<T extends OperationType> {

@@ -9,12 +9,12 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
-from fiftyone.server.json_util import convert
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
 
@@ -79,4 +79,4 @@ class Tag(HTTPEndpoint):
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(len(sample_ids))
-        return {"samples": convert(samples)}
+        return {"samples": foj.stringify(samples)}
