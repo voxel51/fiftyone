@@ -11,6 +11,7 @@ You must run these tests interactively as follows::
 """
 from bson import ObjectId
 from collections import defaultdict
+import numpy as np
 import os
 import unittest
 
@@ -275,6 +276,8 @@ class CVATTests(unittest.TestCase):
             max_samples=10,
         ).clone()
 
+        prev_dataset = dataset.clone()
+
         anno_key = "anno_key"
         label_schema = {
             "detections": {},
@@ -295,6 +298,40 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
         api.close()
+
+        def _remove_bbox(dataset, label_field):
+            view = dataset.set_field(
+                "%s.detections" % label_field,
+                F("detections").map(
+                    F().set_field("bounding_box", []).set_field("mask", None)
+                ),
+            )
+            return view
+
+        # Ensure ids and attrs are equal
+        view = _remove_bbox(dataset, "detections")
+        prev_view = _remove_bbox(prev_dataset, "detections")
+        self.assertListEqual(
+            view.values("detections", unwind=True),
+            prev_view.values("detections", unwind=True),
+        )
+
+        view = _remove_bbox(dataset, "segmentations")
+        prev_view = _remove_bbox(prev_dataset, "segmentations")
+        self.assertListEqual(
+            view.values("segmentations", unwind=True),
+            prev_view.values("segmentations", unwind=True),
+        )
+
+        self.assertListEqual(
+            dataset.values("positive_labels", unwind=True),
+            prev_dataset.values("positive_labels", unwind=True),
+        )
+
+        self.assertListEqual(
+            dataset.values("negative_labels", unwind=True),
+            prev_dataset.values("negative_labels", unwind=True),
+        )
 
     def test_task_creation_arguments(self):
         user = self.USERNAME
@@ -323,15 +360,15 @@ class CVATTests(unittest.TestCase):
         self.assertEqual(len(task_ids), 2)
         for task_id in task_ids:
             task_json = api.get(api.task_url(task_id)).json()
-            self.assertEquals(task_json["bug_tracker"], bug_tracker)
-            self.assertEquals(task_json["segment_size"], 1)
+            self.assertEqual(task_json["bug_tracker"], bug_tracker)
+            self.assertEqual(task_json["segment_size"], 1)
             if user is not None:
-                self.assertEquals(task_json["assignee"]["username"], user)
+                self.assertEqual(task_json["assignee"]["username"], user)
             for job in api.get(api.jobs_url(task_id)).json():
                 job_json = api.get(job["url"]).json()
                 if user is not None:
-                    self.assertEquals(job_json["assignee"]["username"], user)
-                    self.assertEquals(job_json["reviewer"]["username"], user)
+                    self.assertEqual(job_json["assignee"]["username"], user)
+                    self.assertEqual(job_json["reviewer"]["username"], user)
 
         dataset.load_annotations(anno_key, cleanup=True)
         api.close()
