@@ -3,7 +3,7 @@ Tests for the :mod:`fiftyone.utils.cvat` module.
 
 You must run these tests interactively as follows::
 
-    pytest tests/intensive/cvat_tests.py -s -k <test_case>
+    CVAT_TEST_USERNAME=<valid_cvat_user> python tests/intensive/cvat_tests.py
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -320,7 +320,7 @@ class CVATTests(unittest.TestCase):
         )
         task_ids = results.task_ids
         api = results.connect_to_api()
-        self.assertEquals(len(task_ids), 2)
+        self.assertEqual(len(task_ids), 2)
         for task_id in task_ids:
             task_json = api.get(api.task_url(task_id)).json()
             self.assertEquals(task_json["bug_tracker"], bug_tracker)
