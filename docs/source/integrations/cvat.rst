@@ -16,13 +16,6 @@ In either case, FiftyOne provides :ref:`simple setup <cvat-setup>` instructions
 that you can use to specify the necessary account credentials and server
 endpoint to use.
 
-.. warning::
-
-    CVAT v2 is now available through self-hosted servers and
-    `cvat.org <https://cvat.org>`_ but is currently unsupported in
-    FiftyOne. Unexpected behavior may occur when connecting to a CVAT v2
-    server.
-
 CVAT provides three levels of abstraction for annotation workflows: projects,
 tasks, and jobs. A job contains one or more images and can be assigned to a
 specfic annotator or reviewer. A task defines the label schema to use for
@@ -489,7 +482,8 @@ provided:
     This argument can be a list of usernames when annotating videos as each
     video is uploaded to a separate task
 -   **job_assignees** (*None*): a list of usernames to assign jobs
--   **job_reviewers** (*None*): a list of usernames to assign job reviews
+-   **job_reviewers** (*None*): a list of usernames to assign job reviews. Only
+    available in CVAT v1 servers
 -   **project_name** (*None*): an optional project name to which to upload the
     created CVAT task. If a project with this name exists, it will be used,
     otherwise a new project is created. By default, no project is used

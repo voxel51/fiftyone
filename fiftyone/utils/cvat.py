@@ -2999,7 +2999,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             videos as each video is uploaded to a separate task
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
-            assigned
+            assigned. Only available in CVAT v1 servers
         project_name (None): an optional project name to which to upload the
             created CVAT task. If a project with this name is found, it will be
             used, otherwise a new project with this name is created. By
@@ -3372,7 +3372,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
                             job_id,
                             job_json["status"],
                             job_json["assignee"],
-                            job_json["reviewer"],
+                            job_json.get("reviewer", None),
                         )
 
                 status[label_field][task_id] = {
@@ -3533,6 +3533,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def project_id_search_url(self, project_id):
         return "%s/projects?id=%d" % (self.base_api_url, project_id)
 
+    @property
+    def assignee_key(self):
+        if self._version == 2:
+            return "assignee"
+        else:
+            return "assignee_id"
+
+    def _parse_reviewers(self, job_reviewers):
+        if self._version == 2 and job_reviewers is not None:
+            logger.warning(
+                "CVAT v2 servers do not support assigning users as job "
+                "reviewers, ignoring `job_reviewers` argument..."
+            )
+            return None
+
+        return job_reviewers
+
     def _setup(self):
         if not self._url:
             raise ValueError(
@@ -3571,10 +3588,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     self.login_url,
                     print_error_info=False,
                     data={"username": username, "password": password},
-                )
-                logger.warning(
-                    "WARNING: Connecting to a CVAT v2 server which is "
-                    "currently unsupported. Unexpected behavior may occur."
                 )
             else:
                 raise e
@@ -4020,7 +4033,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
-                    job_patch = {"assignee_id": user_id}
+                    job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         if job_reviewers is not None:
@@ -4052,6 +4065,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
         task_size = config.task_size
+        config.job_reviewers = self._parse_reviewers(config.job_reviewers)
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )

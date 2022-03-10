@@ -368,7 +368,10 @@ class CVATTests(unittest.TestCase):
                 job_json = api.get(job["url"]).json()
                 if user is not None:
                     self.assertEqual(job_json["assignee"]["username"], user)
-                    self.assertEqual(job_json["reviewer"]["username"], user)
+                    if api._version == 1:
+                        self.assertEqual(
+                            job_json["reviewer"]["username"], user
+                        )
 
         dataset.load_annotations(anno_key, cleanup=True)
         api.close()
