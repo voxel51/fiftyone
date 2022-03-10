@@ -529,6 +529,7 @@ class CVATTests(unittest.TestCase):
         task_id = results.task_ids[0]
         api = results.connect_to_api()
 
+        # Create overlapping tracks of different type
         _create_annotation(
             api,
             task_id,
@@ -539,6 +540,7 @@ class CVATTests(unittest.TestCase):
         _create_annotation(
             api, task_id, track=(20, 40),
         )
+
         api.close()
         data_path = os.path.dirname(dataset.first().filepath)
         imported_dataset = fo.Dataset()
