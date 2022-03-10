@@ -14,6 +14,8 @@ from collections import defaultdict
 import os
 import unittest
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
@@ -52,19 +54,27 @@ def _get_label(api, task_id, label=None):
     return label
 
 
-def _create_annotation(api, task_id, shape=None, tag=None):
+def _create_annotation(
+    api, task_id, shape=None, tag=None, track=None, points=None, _type=None
+):
+    if points is None:
+        points = [10, 20, 30, 40]
+    if _type is None:
+        _type = "rectangle"
     shapes = []
     tags = []
+    tracks = []
     if shape is not None:
         if not isinstance(shape, dict):
             label = _get_label(api, task_id, label=shape)
+
             shape = {
-                "type": "rectangle",
+                "type": _type,
                 "frame": 0,
                 "label_id": label,
                 "group": 0,
                 "attributes": [],
-                "points": [10, 10, 10, 10],
+                "points": points,
                 "occluded": False,
             }
         shapes = [shape]
@@ -80,7 +90,50 @@ def _create_annotation(api, task_id, shape=None, tag=None):
             }
         tags = [tag]
 
-    create_json = {"version": 1, "tags": tags, "shapes": shapes, "tracks": []}
+    if track is not None:
+        if not isinstance(track, dict):
+            label = _get_label(api, task_id, label=track)
+            if isinstance(track, tuple):
+                start, end = track
+            else:
+                start, end = 0, -1
+            track = {
+                "frame": start,
+                "label_id": label,
+                "group": 0,
+                "shapes": [
+                    {
+                        "type": _type,
+                        "occluded": False,
+                        "points": points,
+                        "frame": start,
+                        "outside": False,
+                        "attributes": [],
+                        "z_order": 0,
+                    }
+                ],
+                "attributes": [],
+            }
+            if end > start:
+                track["shapes"].append(
+                    {
+                        "type": _type,
+                        "occluded": False,
+                        "points": points,
+                        "frame": end,
+                        "outside": True,
+                        "attributes": [],
+                        "z_order": 0,
+                    }
+                )
+            tracks.append(track)
+
+    create_json = {
+        "version": 1,
+        "tags": tags,
+        "shapes": shapes,
+        "tracks": tracks,
+    }
     create_url = api.task_annotation_url(task_id) + "?action=create"
     api.patch(create_url, json=create_json)
 
@@ -456,6 +509,83 @@ class CVATTests(unittest.TestCase):
         self.assertEqual(
             len(dataset.filter_labels("ground_truth", F("sex") == "male")), 1,
         )
+
+    def test_issue_1634(self):
+        # tests: https://github.com/voxel51/fiftyone/issues/1634
+        dataset = (
+            foz.load_zoo_dataset("quickstart-video", max_samples=1)
+            .select_fields("frames.detections")
+            .clone()
+        )
+
+        anno_key = "issue_1634_test"
+        results = dataset.annotate(
+            anno_key,
+            label_field="frames.ground_truth",
+            label_type="detections",
+            classes=["test"],
+        )
+
+        task_id = results.task_ids[0]
+        api = results.connect_to_api()
+
+        _create_annotation(
+            api,
+            task_id,
+            track=(0, 30),
+            _type="polygon",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+        _create_annotation(
+            api, task_id, track=(20, 40),
+        )
+        api.close()
+        data_path = os.path.dirname(dataset.first().filepath)
+        imported_dataset = fo.Dataset()
+        fouc.import_annotations(
+            imported_dataset,
+            task_ids=[task_id],
+            download_media=False,
+            data_path=data_path,
+        )
+        with etau.TempDir() as tmp:
+            imported_dataset.export(
+                export_dir=tmp, dataset_type=fo.types.CVATVideoDataset
+            )
+            filename = os.path.splitext(
+                os.path.basename(imported_dataset.first().filepath)
+            )[0]
+            labels_filepath = os.path.join(tmp, "labels", "%s.xml" % filename)
+            with open(labels_filepath, "r") as f:
+                label_file_info = f.read()
+                track_1 = '<track id="1" label="test">'
+                track_2 = '<track id="2" label="test">'
+                polygon_frame_0 = '<polygon frame="0"'
+                polygon_frame_30 = '<polygon frame="30"'
+                box_frame_20 = '<box frame="20"'
+                box_frame_40 = '<box frame="40"'
+                self.assertTrue(track_1 in label_file_info)
+                self.assertTrue(track_2 in label_file_info)
+                self.assertTrue(polygon_frame_0 in label_file_info)
+                self.assertTrue(polygon_frame_30 in label_file_info)
+                self.assertTrue(box_frame_20 in label_file_info)
+                self.assertTrue(box_frame_40 in label_file_info)
+
+            cvat_video_dataset = fo.Dataset.from_dir(
+                dataset_dir=tmp, dataset_type=fo.types.CVATVideoDataset,
+            )
+            detections = cvat_video_dataset.values(
+                "frames.detections", unwind=True
+            )
+            detections = [i for i in detections if i is not None]
+            self.assertEqual(len(detections), 20)
+            polylines = cvat_video_dataset.values(
+                "frames.polylines", unwind=True
+            )
+            polylines = [i for i in polylines if i is not None]
+            self.assertEqual(len(polylines), 30)
+
+        dataset.load_annotations(anno_key, cleanup=True)
 
 
 if __name__ == "__main__":

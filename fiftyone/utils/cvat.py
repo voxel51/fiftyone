@@ -6583,13 +6583,13 @@ def _cvat_tracks_to_frames_dict(cvat_tracks):
 
 
 def _frames_to_cvat_tracks(frames, frame_size):
-    labels_map = defaultdict(dict)
+    labels_map = defaultdict(lambda: defaultdict(dict))
     no_index_map = defaultdict(list)
     found_label = False
 
     def process_label(label, frame_number):
         if label.index is not None:
-            labels_map[label.index][frame_number] = label
+            labels_map[label.index][type(label)][frame_number] = label
         else:
             no_index_map[frame_number].append(label)
 
@@ -6622,11 +6622,14 @@ def _frames_to_cvat_tracks(frames, frame_size):
 
     # Generate object tracks
     max_index = -1
+    used_indices = []
     for index in sorted(labels_map):
-        max_index = max(index, max_index)
-        labels = labels_map[index]
-        cvat_track = CVATTrack.from_labels(index, labels, frame_size)
-        cvat_tracks.append(cvat_track)
+        for label_type, labels in labels_map[index].items():
+            _index = index if index not in used_indices else max_index + 1
+            used_indices.append(_index)
+            max_index = max(_index, max_index)
+            cvat_track = CVATTrack.from_labels(_index, labels, frame_size)
+            cvat_tracks.append(cvat_track)
 
     # Generate single tracks for detections with no `index`
     index = max_index
