@@ -4669,6 +4669,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         _class_label_fields[name] = label_field
                         label_field_classes[label_field][name] = name
 
+                    if len(name) > 64:
+                        raise ValueError(
+                            "Class name `%s` is longer than 64 characters."
+                            % name
+                        )
                     cvat_schema[name] = deepcopy(attributes)
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
@@ -4697,6 +4702,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if name in _duplicate_classes:
                         name = "%s_%s" % (name, label_field)
 
+                    if len(name) > 64:
+                        raise ValueError(
+                            "Class name `%s` is longer than 64 characters."
+                            % name
+                        )
                     cvat_schema[name].update(_attrs)
                     if _occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = _occluded_attr_name
@@ -5407,6 +5417,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cvat_attrs = {}
         occluded_attr_name = None
         for attr_name, info in attributes.items():
+            if len(attr_name) > 64:
+                raise ValueError(
+                    "Attribute name `%s` is longer than 64 characters."
+                    % attr_name
+                )
             cvat_attr = {"name": attr_name, "mutable": True}
             is_occluded = False
             for attr_key, val in info.items():
