@@ -5266,7 +5266,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "keypoints"
                 label = cvat_shape.to_keypoint()
 
-            if keyframe:
+            if keyframe and label is not None:
                 label["keyframe"] = True
 
             if expected_label_type == "scalar" and assigned_scalar_attrs:
@@ -6304,6 +6304,9 @@ class CVATShape(CVATLabel):
         self.frame_size = (metadata["width"], metadata["height"])
         self.points = label_dict["points"]
         self.index = index
+
+        if "rotation" in label_dict and int(label_dict["rotation"]) != 0:
+            self.attributes["rotation"] = label_dict["rotation"]
 
         # Parse occluded attribute, if necessary
         if occluded_attrs is not None:
