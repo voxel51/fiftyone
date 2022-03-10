@@ -4361,7 +4361,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frames_metadata[sample_id] = frames[0]
                         break
 
-                    frames_metadata[sample_id] = frames[cvat_frame_id]
+                    frames_metadata[sample_id] = frames.get(
+                        cvat_frame_id, None
+                    )
 
                 # Polyline(s) corresponding to instance/semantic masks need to
                 # be converted to their final format
@@ -5034,6 +5036,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for sample_id, sample_results in type_results.items():
                 sample_metadata = frames_metadata[sample_id]
+                if sample_metadata is None:
+                    continue
                 frame_size = (
                     sample_metadata["width"],
                     sample_metadata["height"],
