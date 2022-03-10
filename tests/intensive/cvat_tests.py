@@ -3,7 +3,7 @@ Tests for the :mod:`fiftyone.utils.cvat` module.
 
 You must run these tests interactively as follows::
 
-    CVAT_TEST_USERNAME=<valid_cvat_user> python tests/intensive/cvat_tests.py
+    python tests/intensive/cvat_tests.py
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -186,8 +186,6 @@ def _update_shape(
 
 
 class CVATTests(unittest.TestCase):
-    USERNAME = None
-
     def test_upload(self):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
 
@@ -334,13 +332,14 @@ class CVATTests(unittest.TestCase):
         )
 
     def test_task_creation_arguments(self):
-        user = self.USERNAME
-        users = [user] if user is not None else None
         dataset = (
             foz.load_zoo_dataset("quickstart", max_samples=4)
             .select_fields("ground_truth")
             .clone()
         )
+        user = fo.annotation_config.backends.get("cvat", {})
+        user = user.get("username", None)
+        users = [user] if user is not None else None
 
         anno_key = "anno_key"
         bug_tracker = "test_tracker"
@@ -373,6 +372,11 @@ class CVATTests(unittest.TestCase):
                             job_json["reviewer"]["username"], user
                         )
 
+        results.print_status()
+        status = results.get_status()
+        self.assertEqual(
+            status["ground_truth"][task_ids[0]]["assignee"]["username"], user,
+        )
         dataset.load_annotations(anno_key, cleanup=True)
         api.close()
 
@@ -582,15 +586,19 @@ class CVATTests(unittest.TestCase):
         )
 
         api.close()
-        data_path = os.path.dirname(dataset.first().filepath)
         imported_dataset = fo.Dataset()
-        fouc.import_annotations(
-            imported_dataset,
-            task_ids=[task_id],
-            download_media=False,
-            data_path=data_path,
-        )
         with etau.TempDir() as tmp:
+            fouc.import_annotations(
+                imported_dataset,
+                task_ids=[task_id],
+                data_path=tmp,
+                download_media=True,
+            )
+            imported_dataset.compute_metadata()
+            self.assertEqual(
+                imported_dataset.first().metadata.total_frame_count,
+                dataset.first().metadata.total_frame_count,
+            )
             imported_dataset.export(
                 export_dir=tmp, dataset_type=fo.types.CVATVideoDataset
             )
@@ -632,7 +640,4 @@ class CVATTests(unittest.TestCase):
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
-    CVATTests.USERNAME = os.environ.get(
-        "CVAT_TEST_USERNAME", CVATTests.USERNAME
-    )
     unittest.main(verbosity=2)

@@ -4036,7 +4036,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
-        if job_reviewers is not None:
+        if job_reviewers is not None and self._version == 1:
             num_reviewers = len(job_reviewers)
             for idx, job_id in enumerate(job_ids):
                 # Round robin strategy
@@ -5700,7 +5700,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     {
                         "type": "rectangle",
                         "occluded": is_occluded,
-                        "z_order": 0,
                         "points": bbox,
                         "label_id": class_name,
                         "group": 0,
