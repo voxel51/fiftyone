@@ -419,6 +419,7 @@ export abstract class Looker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
+      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 

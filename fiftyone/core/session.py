@@ -427,7 +427,8 @@ class Session(foc.HasClient):
         except:
             # e.g. globals were already garbage-collected
             pass
-        super().__del__()
+        d = getattr(super(), "__del__", None)
+        d and d()
 
     @property
     def server_port(self):

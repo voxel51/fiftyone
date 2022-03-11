@@ -101,50 +101,9 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-enum Events {
-  UPDATE = "Update",
-}
-
 export const stateDescription = atom<State.Description | null>({
   key: "stateDescription",
   default: null,
-  effects: false
-    ? [
-        ({ onSet, setSelf }) => {
-          onSet((state) => {});
-
-          const controller = new AbortController();
-
-          getEventSource(
-            "/state",
-            {
-              onmessage: (msg) => {
-                if (msg.event === Events.UPDATE) {
-                  const state = JSON.parse(msg.data);
-                  const router = getRoutingContext();
-                  if (!state.dataset) {
-                    router.history.push("/");
-                  } else {
-                    router.history.push(`/datasets/${state.dataset.name}`);
-                  }
-
-                  setSelf({
-                    ...toCamelCase(state),
-                    view: state.view,
-                  } as State.Description);
-                }
-              },
-            },
-            controller.signal
-          );
-
-          return () => {
-            console.log("ABORTED");
-            controller.abort();
-          };
-        },
-      ]
-    : [],
 });
 
 export const selectedLabels = atom<State.SelectedLabelMap>({

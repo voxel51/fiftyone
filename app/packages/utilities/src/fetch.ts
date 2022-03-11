@@ -124,6 +124,10 @@ export const getEventSource = (
       if (err instanceof FatalError) {
         events.onerror && events.onerror(err);
       }
+
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        events.onclose && events.onclose();
+      }
     },
     openWhenHidden: true,
   });

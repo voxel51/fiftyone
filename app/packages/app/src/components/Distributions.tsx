@@ -229,8 +229,6 @@ const distributions = selectorFamily<Distribution[], string>({
 const Distributions = ({ group }: { group: string }) => {
   const data = useRecoilValueLoadable(distributions(group));
 
-  console.log(group, data);
-
   if (data.state === "loading") {
     return <Loading />;
   }

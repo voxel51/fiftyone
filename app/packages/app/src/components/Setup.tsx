@@ -126,7 +126,6 @@ const SetupWrapper = styled.div`
   overflow: auto;
   background: ${({ theme }) => theme.backgroundDark};
   border-top: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  min-height: 100%;
 
   ${scrollbarStyles};
 `;

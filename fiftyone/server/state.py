@@ -65,14 +65,14 @@ async def dispatch_event(event: Event):
 async def listen(request: Request, data: dict) -> t.AsyncIterator[Event]:
     dataset = data.get("dataset", None)
     if dataset:
-        fo.load_dataset(dataset)
+        dataset = fo.load_dataset(dataset)
 
     state = get_state()
     if dataset != state.dataset:
         state.selected = []
         state.selected_labels = []
         state.view = None
-        state.dataset = dataset
+        state.dataset = dataset or None
 
         await set_state(state)
 

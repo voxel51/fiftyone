@@ -309,14 +309,28 @@ export const useTheme = (): ColorTheme => {
   return useContext<ColorTheme>(ThemeContext);
 };
 
+const useSetState = () => {
+  const setState = useStateUpdate();
+
+  return useRecoilTransaction_UNSTABLE(
+    ({ get }) => (state: Partial<State.Description>) => {
+      const current = get(atoms.stateDescription);
+      setState({ state: { ...current, ...state } });
+    },
+    []
+  );
+};
+
 export const useSelect = () => {
+  const setState = useSetState();
   return useRecoilCallback(
-    ({ set, snapshot }) => async (sampleId: string) => {
+    ({ snapshot }) => async (sampleId: string) => {
       const selected = new Set(await snapshot.getPromise(selectedSamples));
       selected.has(sampleId)
         ? selected.delete(sampleId)
         : selected.add(sampleId);
-      set(selectedSamples, selected);
+
+      setState({ selected: [...selected] });
     },
     []
   );

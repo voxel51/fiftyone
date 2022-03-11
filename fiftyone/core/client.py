@@ -5,13 +5,19 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import requests
+from distutils.debug import DEBUG
+import logging
 from retrying import retry
 from threading import Thread
 import time
 
-from bson import json_util
+import requests
 import sseclient
+
+from fiftyone.core.json import FiftyOneJSONEncoder
+
+
+logger = logging.getLogger(__name__)
 
 
 @retry(wait_fixed=500, stop_max_delay=5000)
@@ -50,7 +56,10 @@ class HasClient(object):
                 try:
                     _ping(fiftyone_url)
                     subscribe()
-                except:
+                except Exception as e:
+                    raise e
+                    logger.debug(e)
+
                     self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
@@ -134,8 +143,9 @@ class HasClient(object):
             callback(self)
 
     def _handle_event(self, event: sseclient.Event):
+        # message = FiftyOneJSONEncoder.loads(event.data)
         return
-        if event.event == "update":
+        if event.event == "Update":
             config = None
             if self._data:
                 message["state"]["config"] = self._data.config.serialize()
@@ -145,15 +155,6 @@ class HasClient(object):
                 message["state"], with_config=config
             )
             self._update_listeners()
-
-        if event == "capture":
-            self.on_capture(message)
-
-        if event == "reactivate":
-            self.on_reactivate(message)
-
-        if event == "close":
-            self.on_close()
 
     def _post(self, data):
         requests.post(f"{self._origin}/update", json=data)

@@ -2,7 +2,6 @@ import {
   getRoutingContext,
   Loading,
   RelayEnvironment,
-  RouteData,
   RouteRenderer,
   withErrorBoundary,
   withRouter,
@@ -19,12 +18,13 @@ import { atom, RecoilRoot } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useScreenshot } from "./utils/hooks";
+import { useScreenshot, useUnprocessedStateUpdate } from "./utils/hooks";
 
 import "./index.css";
 import routes from "./routes";
 import { RelayEnvironmentProvider } from "react-relay";
-import { DatasetQuery } from "./Root/Datasets/__generated__/DatasetQuery.graphql";
+import { State } from "./recoil/types";
+import { matchRoutes } from "react-router-config";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -34,75 +34,89 @@ enum AppReadyState {
 
 setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
-const getDatasetName = () => {
-  const context = getRoutingContext();
-  const match = context
-    .get()
-    .entries.filter(
-      (entry) =>
-        entry.routeData.isExact && entry.routeData.path === "/datasets/:name"
-    )[0];
+const Network = withRouter(() => {
+  return (
+    <RelayEnvironmentProvider environment={RelayEnvironment}>
+      <Suspense fallback={<Loading>Pixelating...</Loading>}>
+        <RouteRenderer router={getRoutingContext()} />
+      </Suspense>
+    </RelayEnvironmentProvider>
+  );
+}, routes);
 
-  if (match) {
-    const data = match.routeData as RouteData<DatasetQuery>;
-    return data.params.name;
+const getDatasetName = () => {
+  const result = matchRoutes<{ name: string }>(
+    [{ path: "/datasets/:name", isExact: true }],
+    window.location.pathname
+  )[0];
+
+  if (result) {
+    return result.match.params.name;
   }
 
   return null;
 };
 
+enum Events {
+  UPDATE = "Update",
+}
+
 const App = withErrorBoundary(
-  withRouter(
-    withTheme(() => {
-      const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
+  withTheme(() => {
+    const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
+    const setState = useUnprocessedStateUpdate();
 
-      useEffect(() => {
-        const controller = new AbortController();
-        const dataset = getDatasetName();
+    useEffect(() => {
+      const controller = new AbortController();
+      const dataset = getDatasetName();
 
-        getEventSource(
-          "/state",
-          {
-            onopen: async (response) => {
-              setReadyState(AppReadyState.OPEN);
-            },
-            onclose: () => {
-              setReadyState(AppReadyState.CLOSED);
-            },
+      getEventSource(
+        "/state",
+        {
+          onopen: async (response) => {
+            setReadyState(AppReadyState.OPEN);
           },
-          controller.signal,
-          {
-            dataset,
-          }
-        );
+          onmessage: (msg) => {
+            if (msg.event === Events.UPDATE) {
+              const state = JSON.parse(msg.data) as State.Description;
+              console.log(state);
+              const router = getRoutingContext();
+              const current = getDatasetName();
 
-        return () => controller.abort();
-      }, []);
+              if (!state.dataset && current) {
+                router.history.push("/");
+              } else if (state.dataset && state.dataset.name !== current) {
+                router.history.push(`/datasets/${state.dataset.name}`);
+              }
 
-      useScreenshot();
-
-      return (
-        <>
-          {readyState < 2 ? (
-            <Suspense fallback={<Loading>Pixelating...</Loading>}>
-              <RouteRenderer router={getRoutingContext()} />
-            </Suspense>
-          ) : (
-            <Setup />
-          )}
-        </>
+              setState({ state });
+            }
+          },
+          onclose: () => {
+            setReadyState(AppReadyState.CLOSED);
+            const router = getRoutingContext();
+            router && router.history.push("/");
+          },
+        },
+        controller.signal,
+        {
+          dataset,
+        }
       );
-    }, atom({ key: "theme", default: darkTheme })),
-    routes
-  )
+
+      return () => controller.abort();
+    }, []);
+
+    useScreenshot();
+
+    return <>{readyState < 2 ? <Network /> : <Setup />}</>;
+  }, atom({ key: "theme", default: darkTheme }))
 );
 
 const Root = withErrorBoundary(() => {
   return (
     <RecoilRoot>
-      <RelayEnvironmentProvider environment={RelayEnvironment}>
-        <App />
-      </RelayEnvironmentProvider>
+      <App />
     </RecoilRoot>
   );
 });
