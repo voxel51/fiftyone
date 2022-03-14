@@ -1270,7 +1270,10 @@ def load_coco_detection_annotations(json_path, extra_attrs=True):
 
 def _parse_coco_detection_annotations(d, extra_attrs=True):
     # Load info
-    info = d.get("info", {})
+     info = {}
+        if d.get("info", {}) is not None
+            info.update(d.get("info", {}))
+            
     licenses = d.get("licenses", None)
     categories = d.get("categories", None)
     if licenses is not None:
