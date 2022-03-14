@@ -1,5 +1,5 @@
 """
-Internal string templates.
+Notebook Session HTML templates
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,7 +8,7 @@ Internal string templates.
 from jinja2 import Template
 
 
-_SCREENSHOT_STYLE = """
+SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
 #focontainer-{{ handle }} {
@@ -48,7 +48,7 @@ _SCREENSHOT_STYLE = """
 }
 """
 
-_SCREENSHOT_SCRIPT = """
+SCREENSHOT_SCRIPT = """
    (function() {
      var container = document.getElementById("focontainer-{{ handle }}");
      var overlay = document.getElementById("fooverlay-{{ handle }}");
@@ -63,7 +63,9 @@ _SCREENSHOT_SCRIPT = """
      });
    })();
 """
-_SCREENSHOT_DIV = """
+
+
+SCREENSHOT_DIV = """
 <div id="focontainer-{{ handle }}">
    <div id="fooverlay-{{ handle }}" style="display: none;">
       <button id="foactivate-{{ handle }}" >Activate</button>
@@ -72,16 +74,18 @@ _SCREENSHOT_DIV = """
 </div>
 """
 
-_SCREENSHOT_HTML = Template(
+
+SCREENSHOT_HTML = Template(
     """
 <style>%s</style>
 %s
 <script type="text/javascript">%s</script>
 """
-    % (_SCREENSHOT_STYLE, _SCREENSHOT_DIV, _SCREENSHOT_SCRIPT)
+    % (SCREENSHOT_STYLE, SCREENSHOT_DIV, SCREENSHOT_SCRIPT)
 )
 
-_SCREENSHOT_COLAB = """
+
+SCREENSHOT_COLAB = """
 <style>
 {{ style }}
 </style>
@@ -92,7 +96,8 @@ _SCREENSHOT_COLAB = """
 </div>
 """
 
-_SCREENSHOT_COLAB_SCRIPT = """
+
+SCREENSHOT_COLAB_SCRIPT = """
 (() => {
     google.colab.kernel.proxyPort({{ port }}, {
         'cache': true

@@ -9,7 +9,11 @@ import { State } from "./types";
 
 export const stateSubscription = selector<string>({
   key: "stateSubscription",
-  get: () => uuid(),
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return params.get("subscription") || uuid();
+  },
 });
 
 export const isModalActive = selector<boolean>({

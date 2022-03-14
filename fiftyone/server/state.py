@@ -13,24 +13,9 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone as fo
-
 import fiftyone.core.state as fos
 
-
-T = t.TypeVar("T")
-
-
-@dataclass
-class Event(t.Generic[T]):
-    data: T
-
-
-class Update(Event):
-    data: fos.StateDescription
-
-
-class Capture(Event):
-    data: dict
+from fiftyone.server.events import Event, Update
 
 
 def _serialize(event: Event) -> ServerSentEvent:
@@ -52,7 +37,8 @@ async def set_state(subscription: str, state: fos.StateDescription) -> None:
     _state = state
 
     await dispatch_event(
-        Update(data=state), subscription,
+        Update(data=state),
+        subscription,
     )
 
 

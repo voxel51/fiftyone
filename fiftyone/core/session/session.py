@@ -1,32 +1,36 @@
 """
-Session class for interacting with the FiftyOne App.
+Session class for interacting with the FiftyOne App
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict
+from dataclasses import dataclass
 from functools import wraps
 import logging
-import pkg_resources
 import time
-from uuid import uuid4
+import typing as t
 import webbrowser
 
-from jinja2 import Template
+try:
+    import IPython
+    import IPython.display
+except:
+    pass
 
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
-import fiftyone.core.client as foc
 from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
+
+from .client import Client
 
 
 logger = logging.getLogger(__name__)
@@ -85,16 +89,16 @@ call `session.wait()` to keep the session (and the script) alive.
 
 
 def launch_app(
-    dataset=None,
-    view=None,
-    port=None,
-    address=None,
-    remote=False,
-    desktop=None,
-    height=None,
-    auto=True,
-    config=None,
-):
+    dataset: fod.Dataset = None,
+    view: fov.DatasetView = None,
+    port: int = None,
+    address: str = None,
+    remote: bool = False,
+    desktop: bool = None,
+    height: int = None,
+    auto: bool = True,
+    config: AppConfig = None,
+) -> "Session":
     """Launches the FiftyOne App.
 
     Note that only one App instance can be opened at a time. If this method is
@@ -164,7 +168,7 @@ def launch_app(
     return _session
 
 
-def close_app():
+def close_app() -> None:
     """Closes the FiftyOne App, if necessary.
 
     If no App is currently open, this method has no effect.
@@ -175,7 +179,7 @@ def close_app():
         _session = None
 
 
-def _update_state(auto_show=False):
+def _update_state(auto_show: bool = False) -> t.Callable:
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -191,7 +195,14 @@ def _update_state(auto_show=False):
     return decorator
 
 
-class Session(foc.HasClient):
+@dataclass
+class NotebookCell:
+    subscription: str
+    active: bool
+    handle: IPython.display.DisplayHandle
+
+
+class Session(object):
     """Session that maintains a 1-1 shared state with the FiftyOne App.
 
     **Basic Usage**
@@ -255,23 +266,19 @@ class Session(foc.HasClient):
             control fine-grained default App settings
     """
 
-    _HC_NAMESPACE = "state"
-    _HC_ATTR_NAME = "state"
-    _HC_ATTR_TYPE = StateDescription
-
     def __init__(
         self,
-        dataset=None,
-        view=None,
-        plots=None,
-        port=None,
-        address=None,
-        remote=False,
-        desktop=None,
-        height=None,
-        auto=True,
-        config=None,
-    ):
+        dataset: fod.Dataset = None,
+        view: fov.DatasetView = None,
+        plots: fop.PlotManager = None,
+        port: int = None,
+        address: str = None,
+        remote: bool = False,
+        desktop: bool = None,
+        height: int = None,
+        auto: bool = True,
+        config: AppConfig = None,
+    ) -> None:
         # Allow `dataset` to be a view
         if isinstance(dataset, fov.DatasetView):
             view = dataset
@@ -291,15 +298,14 @@ class Session(foc.HasClient):
         if height is not None:
             config.notebook_height = height
 
-        state = self._HC_ATTR_TYPE()
+        state = StateDescription
         state.config = config
 
         self._context = focx._get_context()
         self._plots = None
-        self._port = port
-        self._address = address
         self._remote = remote
         self._wait_closed = False
+        self._client = Client(address, port)
 
         # Maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
@@ -307,8 +313,7 @@ class Session(foc.HasClient):
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
         self._auto = auto
-        self._handles = {}
-        self._colab_img_counter = defaultdict(int)
+        self._handles: t.Dict[str, NotebookCell] = {}
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -318,7 +323,6 @@ class Session(foc.HasClient):
 
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[port].add(self)
-        super().__init__(self._port, self._address)
 
         if desktop is None:
             if self._context == focx._NONE:
@@ -374,7 +378,13 @@ class Session(foc.HasClient):
             self.open()
             return
 
-    def _validate(self, dataset, view, plots, config):
+    def _validate(
+        self,
+        dataset: t.Optional[fod.Dataset],
+        view: t.Optional[fov.DatasetView],
+        plots: t.Optional[fop.PlotManager],
+        config: t.Optional[AppConfig],
+    ) -> None:
         if dataset is not None and not isinstance(dataset, fod.Dataset):
             raise ValueError(
                 "`dataset` must be a %s or None; found %s"
@@ -399,15 +409,10 @@ class Session(foc.HasClient):
                 % (AppConfig, type(config))
             )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.summary()
 
-    def __del__(self):
-        """Deletes the Session by removing it from the `_subscribed_sessions`
-        global and deleting (stopping) the associated
-        :class:`fiftyone.core.service.ServerService` if no other sessions are
-        subscribed.
-        """
+    def __del__(self) -> None:
         try:
             if (
                 not self._disable_wait_warning
@@ -431,45 +436,44 @@ class Session(foc.HasClient):
         d and d()
 
     @property
-    def server_port(self):
+    def server_port(self) -> int:
         """The server port for the session."""
         return self._port
 
     @property
-    def server_address(self):
+    def server_address(self) -> str:
         """The server address for the session, or None if not specified."""
-        return self._address
+        return self._client.address
 
     @property
-    def remote(self):
+    def remote(self) -> bool:
         """Whether the session is remote."""
         return self._remote
 
     @property
-    def desktop(self):
+    def desktop(self) -> bool:
         """Whether the session is connected to a desktop App."""
         return self._desktop
 
     @property
-    def url(self):
+    def url(self) -> str:
         """The URL of the session."""
         if self._context == focx._COLAB:
             # pylint: disable=no-name-in-module,import-error
             from google.colab.output import eval_js
 
-            url = eval_js(
+            return eval_js(
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
-            return "%s?polling=true&colab=true" % url
 
         if self._context == focx._DATABRICKS:
-            return f"{_get_databricks_proxy_url(self.server_port)}?polling=true&databricks=true"
+            return f"{_get_databricks_proxy_url(self.server_port)}"
 
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
 
     @property
-    def config(self):
+    def config(self) -> AppConfig:
         """The current :class:`fiftyone.core.config.AppConfig`.
 
         For changes to a session's config to take effect in the App,
@@ -489,7 +493,7 @@ class Session(foc.HasClient):
         return self.state.config
 
     @config.setter
-    def config(self, config):
+    def config(self, config: t.Optional[AppConfig]) -> None:
         if config is None:
             config = fo.app_config.copy()
 
@@ -502,14 +506,14 @@ class Session(foc.HasClient):
         self.state.config = config
 
     @property
-    def _collection(self):
+    def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
         if self.view is not None:
             return self.view
 
         return self.dataset
 
     @property
-    def dataset(self):
+    def dataset(self) -> t.Union[fod.Dataset, None]:
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session."""
         return self.state.dataset
 
@@ -728,7 +732,7 @@ class Session(foc.HasClient):
         ).untag_labels(tag)
 
     @property
-    def selected_view(self):
+    def selected_view(self) -> t.Optiona[fov.DatasetView]:
         """A :class:`fiftyone.core.view.DatasetView` containing the currently
         selected content in the App.
 
@@ -756,7 +760,7 @@ class Session(foc.HasClient):
 
         return None
 
-    def summary(self):
+    def summary(self) -> str:
         """Returns a string summary of the session.
 
         Returns:
@@ -801,7 +805,7 @@ class Session(foc.HasClient):
 
         return "\n".join(lines)
 
-    def open(self):
+    def open(self) -> None:
         """Opens the App, if necessary.
 
         The behavior of this method depends on your context:
@@ -828,7 +832,7 @@ class Session(foc.HasClient):
 
         self.open_tab()
 
-    def open_tab(self):
+    def open_tab(self) -> None:
         """Opens the App in a new tab of your browser.
 
         This method can be called from Jupyter notebooks and in desktop App
@@ -851,7 +855,7 @@ class Session(foc.HasClient):
         webbrowser.open(self.url, new=2)
 
     @_update_state()
-    def show(self, height=None):
+    def show(self, height: int = None) -> None:
         """Opens the App in the output of the current notebook cell.
 
         This method has no effect in non-notebook contexts.
@@ -861,7 +865,7 @@ class Session(foc.HasClient):
         """
         self._show(height)
 
-    def no_show(self):
+    def no_show(self) -> fou.SetAttribute:
         """Returns a context manager that temporarily prevents new App
         instances from being opened in the current notebook cell when methods
         are run that normally would show new App windows.
@@ -891,7 +895,7 @@ class Session(foc.HasClient):
         """
         return fou.SetAttributes(self, _auto=False)
 
-    def wait(self, wait=3):
+    def wait(self, wait: float = 3) -> None:
         """Blocks execution until the App is closed by the user.
 
         For browser Apps, all connected windows (tabs) must be closed before
@@ -923,7 +927,7 @@ class Session(foc.HasClient):
             self._disable_wait_warning = True
             raise
 
-    def close(self):
+    def close(self) -> None:
         """Closes the session and terminates the App, if necessary."""
         if self._remote:
             return
@@ -933,7 +937,7 @@ class Session(foc.HasClient):
         self.state.close = True
         self._update_state()
 
-    def freeze(self):
+    def freeze(self) -> None:
         """Screenshots the active App cell, replacing it with a static image.
 
         Only applicable to notebook contexts.
@@ -942,280 +946,4 @@ class Session(foc.HasClient):
             logger.warning("Only notebook sessions can be frozen")
             return
 
-        self.state.active_handle = None
-
-        self._update_state()
-        self.plots.freeze()
-
-    def _auto_show(self, height=None):
-        if self._auto and self._context != focx._NONE:
-            return self._show(height=height)
-
-        return None
-
-    def _capture(self, data):
-        from IPython.display import HTML
-
-        if self._context == focx._COLAB:
-            return
-
-        if self._context == focx._DATABRICKS:
-            return
-
-        handle = data["handle"]
-        if handle in self._handles and self._handles[handle]["active"]:
-            self._handles[handle]["active"] = False
-            self._handles[handle]["target"].update(
-                HTML(
-                    fout._SCREENSHOT_HTML.render(
-                        handle=handle,
-                        image=data["src"],
-                        url=self._base_url(),
-                        max_width=data["width"],
-                    )
-                )
-            )
-
-    def _close(self):
-        self._wait_closed = True
-
-    def _base_url(self):
-        if self._context == focx._COLAB:
-            # pylint: disable=no-name-in-module,import-error
-            from google.colab.output import eval_js
-
-            return eval_js(
-                "google.colab.kernel.proxyPort(%d)" % self.server_port
-            )
-
-        if self._context == focx._DATABRICKS:
-            return _get_databricks_proxy_url(self.server_port)
-
-        address = self.server_address or "localhost"
-        return "http://%s:%d/" % (address, self.server_port)
-
-    def _reactivate(self, data):
-        handle = data["handle"]
-        self.state.active_handle = handle
-        if handle in self._handles:
-            source = self._handles[handle]
-            source["active"] = True
-            _display(
-                self,
-                source["target"],
-                handle,
-                self._port,
-                self._address,
-                source["height"],
-                update=True,
-            )
-
-    def _reload(self):
-        if self.dataset is None:
-            return
-
-        self.dataset._reload()
-        self.dataset._reload_docs()
-
-    def _show(self, height=None):
-        if self._context == focx._NONE or self._desktop:
-            return
-
-        if self.dataset is not None:
-            self.dataset._reload()
-
-        import IPython.display
-
-        uuid = str(uuid4())
-        handle = IPython.display.DisplayHandle(display_id=uuid)
-
-        # @todo isn't it bad to set this here? The first time this is called
-        # is before `self.state` has been initialized
-        self.state.active_handle = uuid
-
-        if height is None:
-            height = self.config.notebook_height
-
-        self._handles[uuid] = {
-            "target": handle,
-            "height": height,
-            "active": True,
-        }
-
-        _display(self, handle, uuid, self._port, self._address, height)
-        return uuid
-
-    def _update_state(self):
-        self.state.datasets = fod.list_datasets()
-
-        # See ``fiftyone.core.client`` to understand this
-        self.state = self.state
-
-
-def _display(session, handle, uuid, port, address, height, update=False):
-    """Displays a running FiftyOne instance."""
-    funcs = {
-        focx._COLAB: _display_colab,
-        focx._IPYTHON: _display_ipython,
-        focx._DATABRICKS: _display_databricks,
-    }
-    fn = funcs[focx._get_context()]
-    fn(session, handle, uuid, port, address, height, update=update)
-
-
-def _display_ipython(
-    session, handle, uuid, port, address, height, update=False
-):
-    import IPython.display
-
-    address = address or "localhost"
-    src = "http://%s:%d/?notebook=true&handleId=%s" % (address, port, uuid)
-    iframe = IPython.display.IFrame(src, height=height, width="100%")
-    if update:
-        handle.update(iframe)
-    else:
-        handle.display(iframe)
-
-
-def _display_colab(session, handle, uuid, port, address, height, update=False):
-    """Display a FiftyOne instance in a Colab output frame.
-
-    The Colab VM is not directly exposed to the network, so the Colab runtime
-    provides a service worker tunnel to proxy requests from the end user's
-    browser through to servers running on the Colab VM: the output frame may
-    issue requests to https://localhost:<port> (HTTPS only), which will be
-    forwarded to the specified port on the VM.
-
-    It does not suffice to create an `iframe` and let the service worker
-    redirect its traffic (`<iframe src="https://localhost:6006">`), because for
-    security reasons service workers cannot intercept iframe traffic. Instead,
-    we manually fetch the FiftyOne index page with an XHR in the output frame,
-    and inject the raw HTML into `document.body`.
-    """
-    import IPython.display
-
-    # pylint: disable=no-name-in-module,import-error
-    from google.colab import output
-
-    style_text = Template(fout._SCREENSHOT_STYLE).render(handle=uuid)
-    html = Template(fout._SCREENSHOT_COLAB).render(
-        style=style_text, handle=uuid
-    )
-    script = Template(fout._SCREENSHOT_COLAB_SCRIPT).render(
-        port=port, handle=uuid, height=height
-    )
-
-    handle.display(IPython.display.HTML(html))
-    output.eval_js(script)
-
-    def capture(img, width):
-        idx = session._colab_img_counter[uuid]
-        session._colab_img_counter[uuid] = idx + 1
-        with output.redirect_to_element("#focontainer-%s" % uuid):
-            # pylint: disable=undefined-variable,bad-format-character
-            display(
-                IPython.display.HTML(
-                    """
-                <img id='fo-%s%d' class='foimage' src='%s'
-                    style='width: 100%%; max-width: %dpx'/>
-                <style>
-                #fo-%s%d {
-                    display: none;
-                }
-                </style>
-                """
-                    % (uuid, idx, img, width, uuid, idx - 1)
-                )
-            )
-
-    output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
-
-
-def _display_databricks(
-    session, handle, uuid, port, address, height, update=False
-):
-    """Display a FiftyOne instance in a Databricks output frame.
-
-    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
-    """
-    display_html = None
-    try:
-        import IPython
-
-        shell = IPython.get_ipython()
-        display_html = shell.user_ns["displayHTML"]
-    except ImportError as e:
-        raise ValueError(
-            "You must verify that the Databricks Runtime is installed properly."
-        ) from e
-
-    frame_id = f"fiftyone-frame-{uuid}"
-    proxy_url = f"{_get_databricks_proxy_url(port)}?notebook=true&handleId={uuid}&polling=true&databricks=true"
-    html_string = f"""
-    <div style="margin-bottom: 16px">
-        <a href="{proxy_url}">
-            Open in a new tab
-        </a>
-        <span style="margin-left: 1em; color: #a3a3a3">Note: FiftyOne is only available when this notebook remains attached to the cluster.</span>
-    </div>
-    <iframe id="{frame_id}" width="100%" height="{height}" frameborder="0" src="{proxy_url}"></iframe>
-    """
-    display_html(html_string)
-
-
-def _get_databricks_proxy_url(port):
-    dbutils = None
-    try:
-        import IPython
-
-        shell = IPython.get_ipython()
-        dbutils = shell.user_ns["dbutils"]
-    except ImportError as e:
-        raise ValueError(
-            "You must verify that the Databricks Runtime is installed properly."
-        ) from e
-
-    import json
-
-    ctx = json.loads(
-        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
-    )
-    ctx_tags = ctx["tags"]
-    browser_host_name = ctx_tags["browserHostName"]
-    org_id = ctx_tags["orgId"]
-    cluster_id = ctx_tags["clusterId"]
-
-    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
-
-
-def _import_desktop():
-    try:
-        # pylint: disable=unused-import
-        import fiftyone.desktop
-    except ImportError as e:
-        raise ValueError(
-            "You must `pip install fiftyone-teams[desktop]` in order to launch the "
-            "desktop App"
-        ) from e
-
-    # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    fiftyone_dist = pkg_resources.get_distribution("fiftyone-teams")
-    requirements = fiftyone_dist.requires(extras=["desktop"])
-    desktop_req = [
-        r for r in requirements if r.name == "fiftyone-teams-desktop"
-    ][0]
-
-    desktop_dist = pkg_resources.get_distribution("fiftyone-teams-desktop")
-
-    if not desktop_req.specifier.contains(desktop_dist.version):
-        raise ValueError(
-            "fiftyone-teams==%s requires fiftyone-teams-desktop%s, but you have "
-            "fiftyone-teams-desktop==%s installed.\n"
-            "Run `pip install fiftyone-teams[desktop]` to install the proper "
-            "desktop package version"
-            % (
-                fiftyone_dist.version,
-                desktop_req.specifier,
-                desktop_dist.version,
-            )
-        )
+        freeze(self)
