@@ -25,8 +25,9 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
   let stacks = [""];
 
   if ("errors" in error) {
-    console.log(error.errors);
-    stacks = error.errors.map((e) => e.extensions.stack.join("\n"));
+    stacks = error.errors.map(
+      (e) => e.message + "\n\n" + e.extensions.stack.join("\n")
+    );
   } else if (error.stack) {
     stacks = [error.stack];
   }

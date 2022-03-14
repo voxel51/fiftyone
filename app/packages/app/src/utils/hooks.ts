@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   RecoilState,
+  TransactionInterface_UNSTABLE,
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
@@ -28,6 +29,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
+import { useErrorHandler } from "react-error-boundary";
 
 export const useEventHandler = (
   target,
@@ -311,11 +313,23 @@ export const useTheme = (): ColorTheme => {
 
 const useSetState = () => {
   const setState = useStateUpdate();
+  const subscription = useRecoilValue(selectors.stateSubscription);
+  const handleError = useErrorHandler();
 
-  return useRecoilTransaction_UNSTABLE(
-    ({ get }) => (state: Partial<State.Description>) => {
-      const current = get(atoms.stateDescription);
-      setState({ state: { ...current, ...state } });
+  return useCallback(
+    (
+      resolve: (t: TransactionInterface_UNSTABLE) => Partial<State.Description>
+    ) => {
+      setState((t) => {
+        const current = t.get(atoms.stateDescription) as State.Description;
+        const state = { ...current, ...resolve(t) };
+        getFetchFunction()("POST", "/update", {
+          state,
+          subscription,
+        }).catch((error) => handleError(error));
+
+        return state;
+      });
     },
     []
   );
@@ -323,54 +337,41 @@ const useSetState = () => {
 
 export const useSelect = () => {
   const setState = useSetState();
-  return useRecoilCallback(
-    ({ snapshot }) => async (sampleId: string) => {
-      const selected = new Set(await snapshot.getPromise(selectedSamples));
+
+  return useCallback((sampleId: string) => {
+    setState((t) => {
+      const selected = new Set(t.get(selectedSamples));
       selected.has(sampleId)
         ? selected.delete(sampleId)
         : selected.add(sampleId);
 
-      setState({ selected: [...selected] });
-    },
-    []
-  );
+      return {
+        selected: [...selected],
+      };
+    });
+  }, []);
 };
 
-export type StateUpdate = (
-  data: { state?: State.Description },
-  callback?: (
-    set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
-  ) => void
-) => void;
+export type StateResolver =
+  | State.Description
+  | ((t: TransactionInterface_UNSTABLE) => State.Description);
 
-export const useUnprocessedStateUpdate = (): StateUpdate => {
+export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
-  return (
-    { state },
-    callback?: (
-      set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
-    ) => void
-  ) =>
-    update(
-      {
-        state: { ...toCamelCase(state), view: state.view } as State.Description,
-      },
-      callback
-    );
+  return (resolve: StateResolver) => {
+    update((t) => {
+      const state = resolve instanceof Function ? resolve(t) : resolve;
+      return { ...toCamelCase(state), view: state.view } as State.Description;
+    });
+  };
 };
 
 export const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => async (
-      { state }: { state: State.Description },
-      callback?: (
-        set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
-      ) => void
-    ) => {
-      if (!state) {
-        callback && callback(set);
-        return;
-      }
+    (t) => (resolve: StateResolver) => {
+      const state = resolve instanceof Function ? resolve(t) : resolve;
+
+      const { get, set } = t;
 
       const newSamples = new Set<string>(state.selected);
       const counter = get(atoms.viewCounter);
@@ -424,7 +425,6 @@ export const useStateUpdate = () => {
         set(atoms.colorPool, state.config.colorPool);
       }
       set(atoms.stateDescription, state);
-      callback && callback(set);
     },
     []
   );

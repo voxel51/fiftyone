@@ -1,10 +1,16 @@
 import { getFetchFunction } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
 
 import { handleId, isNotebook } from "../shared/connection";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+
+export const stateSubscription = selector<string>({
+  key: "stateSubscription",
+  get: () => uuid(),
+});
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",

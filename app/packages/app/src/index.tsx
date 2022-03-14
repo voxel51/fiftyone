@@ -14,7 +14,8 @@ import {
 } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
-import { atom, RecoilRoot } from "recoil";
+import { atom, RecoilRoot, useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 
 import Setup from "./components/Setup";
 
@@ -25,6 +26,7 @@ import routes from "./routes";
 import { RelayEnvironmentProvider } from "react-relay";
 import { State } from "./recoil/types";
 import { matchRoutes } from "react-router-config";
+import { stateSubscription } from "./recoil/selectors";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -65,6 +67,7 @@ const App = withErrorBoundary(
   withTheme(() => {
     const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
     const setState = useUnprocessedStateUpdate();
+    const subscription = useRecoilValue(stateSubscription);
 
     useEffect(() => {
       const controller = new AbortController();
@@ -79,7 +82,6 @@ const App = withErrorBoundary(
           onmessage: (msg) => {
             if (msg.event === Events.UPDATE) {
               const state = JSON.parse(msg.data) as State.Description;
-              console.log(state);
               const router = getRoutingContext();
               const current = getDatasetName();
 
@@ -89,7 +91,7 @@ const App = withErrorBoundary(
                 router.history.push(`/datasets/${state.dataset.name}`);
               }
 
-              setState({ state });
+              setState(state);
             }
           },
           onclose: () => {
@@ -101,6 +103,7 @@ const App = withErrorBoundary(
         controller.signal,
         {
           dataset,
+          subscription,
         }
       );
 

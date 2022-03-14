@@ -102,7 +102,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
           showTooltip
           timezone
         }
-        dataset(name: $name) {
+        dataset(name: $name) @required(action: THROW) {
           id
           name
           mediaType
@@ -168,7 +168,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   );
 
   if (!data.dataset) {
-    throw new NotFoundError(window.location.pathname);
+    return null;
   }
 
   const state: State.Description = {
