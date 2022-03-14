@@ -23,6 +23,8 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
+from skimage.color import rgba2rgb
+
 fou.ensure_tf(eager=True)
 import tensorflow as tf
 
@@ -942,6 +944,8 @@ class TFExampleGenerator(object):
 
             if self.force_rgb and img.shape[2] == 1:
                 img = img.repeat(3, axis=2)
+            elif self.force_rgb and img.shape[2] == 4:
+                img = rgba2rgb(img)
 
             if filename.endswith((".jpg", ".jpeg")):
                 img_bytes = tf.image.encode_jpeg(img)
