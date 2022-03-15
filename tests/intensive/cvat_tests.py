@@ -751,8 +751,12 @@ class CVATTests(unittest.TestCase):
             prev_labels, dataset.values("frames.detections", unwind=True),
         )
         self.assertEqual(
-            dataset.values("frames.detections.detections.id", unwind=True),
-            dataset.values("frames.test_field.detections.id", unwind=True),
+            sorted(
+                dataset.values("frames.detections.detections.id", unwind=True)
+            ),
+            sorted(
+                dataset.values("frames.test_field.detections.id", unwind=True)
+            ),
         )
 
 
