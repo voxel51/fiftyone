@@ -66,6 +66,13 @@ workflows.
     :tags: Basics,Model-Training
 
 .. customcarditem::
+    :header: Creating views and using view expressions
+    :description: Create views to easily query and explore your datasets in FiftyOne.
+    :link: creating_views.html
+    :image: ../_static/images/recipes/creating_views.png
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
     :header: Draw labels on samples
     :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
     :link: draw_labels.html
@@ -135,6 +142,7 @@ workflows.
    Removing duplicate labels <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
+   Creating Views <creating_views.ipynb>
    Draw labels on samples <draw_labels.ipynb>
    Convert dataset formats <convert_datasets.ipynb>
    Merge datasets <merge_datasets.ipynb>
