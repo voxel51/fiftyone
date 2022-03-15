@@ -945,7 +945,12 @@ def _format_attributes(backend, attributes):
 
 
 def load_annotations(
-    samples, anno_key, unexpected="prompt", cleanup=False, **kwargs
+    samples,
+    anno_key,
+    unexpected="prompt",
+    cleanup=False,
+    destination_field=None,
+    **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
@@ -970,6 +975,7 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
+        destination_field (None):
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
 
@@ -990,6 +996,15 @@ def load_annotations(
         expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
+
+        if etau.is_str(destination_field):
+            if len(label_schema) == 1:
+                label_field = destination_field
+            else:
+                logger.warning(
+                    "Label schema contains `%d` fields, ignoring "
+                    "`destination_field` argument" % len(label_schema)
+                )
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}

@@ -637,6 +637,75 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
 
+    def test_destination_field(self):
+        # Test images
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_labels = dataset.values("ground_truth", unwind=True)
+
+        anno_key = "test_destination_field"
+        results = dataset.annotate(anno_key, label_field="ground_truth",)
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, destination_field="test_field",
+        )
+        self.assertListEqual(
+            prev_labels, dataset.values("ground_truth", unwind=True),
+        )
+        self.assertEqual(
+            dataset.values("ground_truth.detections.id", unwind=True),
+            dataset.values("test_field.detections.id", unwind=True),
+        )
+
+        # Test modification
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "test_destination_field"
+        results = dataset.annotate(anno_key, label_field="ground_truth",)
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+
+        _delete_shape(api, task_id, shape_id)
+        _create_annotation(api, task_id, shape=True)
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, destination_field="test_field",
+        )
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("ground_truth.detections.id", unwind=True),
+        )
+
+        test_ids = dataset.values("test_field.detections.id", unwind=True)
+        self.assertEqual(len(set(test_ids) - set(prev_ids)), 1)
+        self.assertEqual(len(set(prev_ids) - set(test_ids)), 1)
+
+        # Test videos
+        dataset = foz.load_zoo_dataset(
+            "quickstart-video", max_samples=1
+        ).clone()
+
+        prev_labels = dataset.values("frames.detections", unwind=True)
+
+        anno_key = "test_destination_field"
+        results = dataset.annotate(anno_key, label_field="frames.detections",)
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, destination_field="frames.test_field",
+        )
+        self.assertListEqual(
+            prev_labels, dataset.values("frames.detections", unwind=True),
+        )
+        self.assertEqual(
+            dataset.values("frames.detections.detections.id", unwind=True),
+            dataset.values("frames.test_field.detections.id", unwind=True),
+        )
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
