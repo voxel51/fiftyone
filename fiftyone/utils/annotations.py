@@ -975,7 +975,10 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        destination_field (None):
+        destination_field (None): the name of the field into which to load
+            annotations if it is not the same field defined when creating this
+            annotaiton run. Only available for annotation runs operating on one
+            label field
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
 

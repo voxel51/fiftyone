@@ -915,6 +915,10 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
+When annotating a single label field, the `destination_field` parameter can be
+used to designate the name of the field into which to load the annotations, if
+it differs from the label field defined when creating the annotation run.
+
 Some annotation backends like CVAT cannot explicitly prevent annotators from
 creating labels that don't obey the run's label schema. You can pass the
 optional `unexpected` parameter to
