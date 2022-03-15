@@ -4432,7 +4432,6 @@ should implement is determined by the type of dataset that you are importing.
             Args:
                 dataset_dir (None): the dataset directory. This may be optional for
                     some importers
-                skip_unlabeled (False): whether to skip unlabeled images when importing
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
                 seed (None): a random seed to use when shuffling
@@ -4444,7 +4443,6 @@ should implement is determined by the type of dataset that you are importing.
             def __init__(
                 self,
                 dataset_dir=None,
-                skip_unlabeled=False,
                 shuffle=False,
                 seed=None,
                 max_samples=None,
@@ -4452,7 +4450,6 @@ should implement is determined by the type of dataset that you are importing.
             ):
                 super().__init__(
                     dataset_dir=dataset_dir,
-                    skip_unlabeled=skip_unlabeled,
                     shuffle=shuffle,
                     seed=seed,
                     max_samples=max_samples,
@@ -4803,7 +4800,6 @@ should implement is determined by the type of dataset that you are importing.
             Args:
                 dataset_dir (None): the dataset directory. This may be optional for
                     some importers
-                skip_unlabeled (False): whether to skip unlabeled videos when importing
                 shuffle (False): whether to randomly shuffle the order in which the
                     samples are imported
                 seed (None): a random seed to use when shuffling
@@ -4815,7 +4811,6 @@ should implement is determined by the type of dataset that you are importing.
             def __init__(
                 self,
                 dataset_dir=None,
-                skip_unlabeled=False,
                 shuffle=False,
                 seed=None,
                 max_samples=None,
@@ -4823,7 +4818,6 @@ should implement is determined by the type of dataset that you are importing.
             ):
                 super().__init__(
                     dataset_dir=dataset_dir,
-                    skip_unlabeled=skip_unlabeled,
                     shuffle=shuffle,
                     seed=seed,
                     max_samples=max_samples,
