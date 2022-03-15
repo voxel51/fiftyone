@@ -25,11 +25,21 @@ from fiftyone.core.expressions import ViewField as F
 
 
 def _find_shape(anno_json, label_id):
-    for shape in anno_json["shapes"]:
+    shape = _parse_shapes(anno_json["shapes"], label_id)
+    if shape is not None:
+        return shape
+
+    for track in anno_json["tracks"]:
+        shape = _parse_shapes(track["shapes"], label_id)
+        if shape is not None:
+            return shape
+
+
+def _parse_shapes(shapes, label_id):
+    for shape in shapes:
         for attr in shape["attributes"]:
             if attr["value"] == label_id:
                 return shape
-    return None
 
 
 def _get_shape(api, task_id, label_id):
@@ -187,7 +197,10 @@ def _update_shape(
 
 class CVATTests(unittest.TestCase):
     def test_upload(self):
+        # Test images
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
 
         anno_key = "anno_key"
         results = dataset.annotate(
@@ -205,6 +218,42 @@ class CVATTests(unittest.TestCase):
         api.close()
 
         dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("ground_truth.detections.id", unwind=True),
+        )
+
+        # Test Videos
+        dataset = foz.load_zoo_dataset(
+            "quickstart-video", max_samples=1
+        ).clone()
+
+        prev_ids = dataset.values(
+            "frames.detections.detections.id", unwind=True
+        )
+
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key, backend="cvat", label_field="frames.detections",
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().frames[1].detections.detections[0].id
+        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+
+        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
+            "sample_id"
+        ]
+        self.assertEqual(sample_id, dataset.first().id)
+        api.close()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("frames.detections.detections.id", unwind=True),
+        )
 
     def test_detection_labelling(self):
         dataset = (
