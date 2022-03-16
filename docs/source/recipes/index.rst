@@ -142,7 +142,7 @@ workflows.
    Removing duplicate labels <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
-   Creating Views <creating_views.ipynb>
+   Creating views <creating_views.ipynb>
    Draw labels on samples <draw_labels.ipynb>
    Convert dataset formats <convert_datasets.ipynb>
    Merge datasets <merge_datasets.ipynb>
