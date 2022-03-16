@@ -38,6 +38,13 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
+    :header: Creating views and using view expressions
+    :description: Create views to easily query and explore your datasets in FiftyOne.
+    :link: creating_views.html
+    :image: ../_static/images/recipes/creating_views.png
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
     :header: Removing duplicate images from a dataset
     :description: Automatically find and remove duplicate and near-duplicate images from your FiftyOne datasets.
     :link: image_deduplication.html
@@ -66,13 +73,6 @@ workflows.
     :tags: Basics,Model-Training
 
 .. customcarditem::
-    :header: Creating views and using view expressions
-    :description: Create views to easily query and explore your datasets in FiftyOne.
-    :link: creating_views.html
-    :image: ../_static/images/recipes/creating_views.png
-    :tags: Basics,Dataset-Curation
-
-.. customcarditem::
     :header: Draw labels on samples
     :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
     :link: draw_labels.html
@@ -87,7 +87,7 @@ workflows.
     :tags: Basics,I/O
 
 .. customcarditem::
-    :header: Merge datasets
+    :header: Merging datasets
     :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
     :link: merge_datasets.html
     :image: ../_static/images/recipes/merge_datasets.png
@@ -138,14 +138,14 @@ workflows.
    :maxdepth: 1
    :hidden:
 
+   Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
    Removing duplicate labels <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
-   Creating views <creating_views.ipynb>
    Draw labels on samples <draw_labels.ipynb>
    Convert dataset formats <convert_datasets.ipynb>
-   Merge datasets <merge_datasets.ipynb>
+   Merging datasets <merge_datasets.ipynb>
    Custom dataset importers <custom_importer.ipynb>
    Custom dataset exporters <custom_exporter.ipynb>
    Custom sample parsers <custom_parser.ipynb>
