@@ -9,6 +9,7 @@ import * as selectors from "../recoil/selectors";
 import { useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
 import * as schemaAtoms from "../recoil/schema";
+import { modal } from "../recoil/atoms";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
@@ -38,7 +39,7 @@ const useResetPaths = () => {
 };
 
 function Dataset() {
-  const isModalActive = useRecoilValue(selectors.isModalActive);
+  const isModalActive = Boolean(useRecoilValue(modal));
   const hasDataset = useRecoilValue(selectors.hasDataset);
 
   useGA();

@@ -16,16 +16,6 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => {
-    return Boolean(get(atoms.modal));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const refresh = selector<boolean>({
   key: "refresh",
   get: ({ get }) => get(atoms.stateDescription)?.refresh,

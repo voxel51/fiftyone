@@ -53,9 +53,9 @@ export const useClearModal = () => {
       }
       const currentOptions = get(atoms.savedLookerOptions);
       set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
-      set(atoms.modal, null);
       set(atoms.selectedLabels, {});
       set(atoms.hiddenLabels, {});
+      set(atoms.modal, null);
     },
     []
   );

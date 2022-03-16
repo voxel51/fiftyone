@@ -32,6 +32,7 @@ const SamplesHeader = styled.div`
     30%,
     ${({ theme }) => theme.backgroundDark}
   );
+  margin-left: -1rem;
 `;
 
 const CountDiv = styled.div`
@@ -53,9 +54,9 @@ const RightContainer = styled.div`
 
 const SliderContainer = styled.div`
   display: flex;
+  align-items: center;
   width: 8rem;
   padding-right: 1rem;
-  margin: 0.25rem 0;
 `;
 
 const Count = () => {
@@ -105,9 +106,9 @@ const ImageContainerHeader = () => {
             onClick={() => {
               setGridZoom(Math.max(gridZoomRangeValue[0], 5));
             }}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "pointer", display: "flex" }}
           >
-            <Apps style={{ marginTop: 2.5 }} />
+            <Apps />
           </div>
         </SliderContainer>
       </RightContainer>

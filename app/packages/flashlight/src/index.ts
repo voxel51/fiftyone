@@ -199,7 +199,7 @@ export default class Flashlight<K> {
         this.state.currentRowRemainder = [];
       }
 
-      this.state.height = 60;
+      this.state.height = 48;
       this.state.sections = [];
       this.state.shownSections = new Set();
       this.state.clean = new Set();
@@ -470,7 +470,7 @@ export default class Flashlight<K> {
       currentRequestKey: config.initialRequestKey,
       containerHeight: null,
       width: null,
-      height: 60,
+      height: 48,
       ...config,
       currentRemainder: [],
       currentRowRemainder: [],
@@ -512,7 +512,7 @@ export default class Flashlight<K> {
 
   private resetResize(): void {
     this.state.resized = new Set();
-    this.state.height = 60;
+    this.state.height = 48;
     this.state.resizing = true;
     this.resizeTimeout && clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {

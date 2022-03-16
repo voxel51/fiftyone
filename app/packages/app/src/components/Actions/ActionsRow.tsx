@@ -1,5 +1,6 @@
 import React, {
   MutableRefObject,
+  RefCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -45,6 +46,7 @@ import {
   useUnprocessedStateUpdate,
 } from "../../utils/hooks";
 import Similar, { similarityParameters } from "./Similar";
+import { useLayer } from "react-laag";
 
 const Loading = () => {
   const theme = useTheme();
@@ -321,10 +323,11 @@ const SaveFilters = () => {
   ) : null;
 };
 
-const ToggleSidebar = ({ modal }: { modal: boolean }) => {
+const ToggleSidebar: React.FC<{
+  modal: boolean;
+}> = React.forwardRef(({ modal, ...props }, ref) => {
   const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
 
-  const style = modal ? { right: "-3.5rem" } : { left: "-3.5rem" };
   return (
     <PillButton
       onClick={() => {
@@ -346,10 +349,10 @@ const ToggleSidebar = ({ modal }: { modal: boolean }) => {
         )
       }
       highlight={!visible}
-      style={{ height: "2rem", position: "absolute", ...style }}
+      ref={ref}
     />
   );
-};
+});
 
 const Export = () => {
   const [open, setOpen] = useState(false);
@@ -376,15 +379,16 @@ const ActionsRowDiv = styled.div`
   position: relative;
   display: flex;
   justify-content: ltr;
-  margin-top: 2.5px;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
+  align-items: center;
 `;
 
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+
   return (
-    <ActionsRowDiv style={{ marginLeft: "1rem" }}>
+    <ActionsRowDiv>
       <ToggleSidebar modal={false} />
       <Options modal={false} />
       <Tag modal={false} />
@@ -403,10 +407,10 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker>;
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+
   return (
     <ActionsRowDiv
       style={{
-        marginRight: "2rem",
         flexDirection: "row-reverse",
         justifyContent: "rtl",
         right: 0,
@@ -417,7 +421,6 @@ export const ModalActionsRow = ({
       {!isVideo && <Similarity modal={true} />}
       <Tag modal={true} lookerRef={lookerRef} />
       <Options modal={true} />
-
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );
