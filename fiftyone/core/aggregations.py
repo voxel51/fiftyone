@@ -1704,12 +1704,16 @@ def _parse_field_and_expr(
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
 
-    root = "." not in field_name
-    found_expr = expr is not None
+    if field_name is None:
+        root = True
+        field_type = None
+    else:
+        root = "." not in field_name
+        field_type = _get_field_type(
+            sample_collection, field_name, unwind=auto_unwind
+        )
 
-    field_type = _get_field_type(
-        sample_collection, field_name, unwind=auto_unwind
-    )
+    found_expr = expr is not None
 
     if safe:
         expr = _to_safe_expr(expr, field_type)
