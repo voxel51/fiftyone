@@ -2214,6 +2214,13 @@ class ViewExpression(object):
                 "Unsupported slice '%s'; step is not supported" % s
             )
 
+        # @todo could optimize this slightly (~10% based on rough benchmarks)
+        # if the `if_else()` calls were replaced by explicit logic when
+        # start/stop are numbers, not expressions
+
+        # @todo slices like `x[-a:b]` where sign(a) != sign(b) are not
+        # currently working
+
         if s.start is not None:
             position = s.start
             if s.stop is None:
