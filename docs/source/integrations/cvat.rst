@@ -661,7 +661,7 @@ attribute that you wish to label:
     anno_key = "..."
 
     attributes = {
-        "occluded": {
+        "is_truncated": {
             "type": "radio",
             "values": [True, False],
             "default": False,
@@ -849,7 +849,7 @@ object:
             "values": ["sedan", "suv", "truck"],
             "mutable": False,
         },
-        "occluded": {
+        "visible_license_plate": {
             "type": "radio",
             "values": [True, False],
             "default": False,
@@ -1423,7 +1423,7 @@ involves multiple fields:
             "type": "keypoints",
             "classes": ["person", "cat", "dog", "food"],
             "attributes": {
-                "occluded": {
+                "is_truncated": {
                     "type": "select",
                     "values": [True, False],
                 }
