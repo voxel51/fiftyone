@@ -672,7 +672,7 @@ For Labelbox, the following `type` values are supported:
 -   `text`: a free-form text box. In this case, `values` is unused
 -   `select`: a selection dropdown. In this case, `values` is required
 -   `radio`: a radio button list UI. In this case, `values` is required
--   `checkbox`: a list of checkboxes. In this case, `values` is required 
+-   `checkbox`: a list of checkboxes. In this case, `values` is required
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -687,7 +687,7 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. note:: 
+.. note::
 
     Labelbox does not support default values for attributes, so the `default`
     key :ref:`described here <annotation-label-attributes>` will be ignored if
@@ -766,6 +766,12 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
+
+The `destination_field` parameter can be used to designate the name of the
+field into which to load annotations, if it differs from the field defined in
+the label schema when creating the annotation run. If multiple fields are being
+annotated, `destination_field` expects a dictionary mapping field names defined
+in the label schema to the corresponding destination field names.
 
 .. _labelbox-managing-annotation-runs:
 
@@ -1294,7 +1300,7 @@ For example, let's upload some blurred images to Labelbox for annotation:
 .. image:: /images/integrations/labelbox_alt_media.png
    :alt: labelbox-alt-media
    :align: center
- 
+
 .. _labelbox-classes-as-attrs:
 
 Annotating classes directly
@@ -1306,7 +1312,7 @@ annotated, the class name is then selected as an attribute.
 
 However, it can be useful to directly show the object classes at the top-level
 of the sidebar to avoid additional clicks. The `classes_as_attrs` argument can
-be set to `False` to provide this functionality. 
+be set to `False` to provide this functionality.
 
 .. note::
 
@@ -1481,7 +1487,7 @@ annotation run:
 Deleting projects
 -----------------
 
-You can use 
+You can use
 :meth:`delete_project() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_project>`
 or
 :meth:`delete_projects() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_projects>`

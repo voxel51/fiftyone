@@ -693,7 +693,7 @@ class CVATTests(unittest.TestCase):
         prev_labels = dataset.values("ground_truth", unwind=True)
 
         anno_key = "test_destination_field"
-        results = dataset.annotate(anno_key, label_field="ground_truth",)
+        results = dataset.annotate(anno_key, label_field="ground_truth")
 
         dataset.load_annotations(
             anno_key, cleanup=True, destination_field="test_field",
@@ -706,13 +706,69 @@ class CVATTests(unittest.TestCase):
             dataset.values("test_field.detections.id", unwind=True),
         )
 
+        # Test dict
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_labels = dataset.values("ground_truth", unwind=True)
+
+        anno_key = "test_destination_field"
+
+        label_schema = {
+            "ground_truth": {},
+            "new_points": {"type": "keypoints", "classes": ["test"],},
+            "new_polygon": {"type": "polygons", "classes": ["test2"],},
+        }
+        results = dataset.annotate(anno_key, label_schema=label_schema)
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        _create_annotation(
+            api,
+            task_id,
+            shape="test",
+            _type="points",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+        _create_annotation(
+            api,
+            task_id,
+            shape="test2",
+            _type="polygon",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+
+        destination_field = {
+            "ground_truth": "test_field_1",
+            "new_points": "test_field_2",
+        }
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, destination_field=destination_field,
+        )
+        self.assertFalse(dataset.has_sample_field("new_points"))
+        self.assertTrue(dataset.has_sample_field("new_polygon"))
+        self.assertTrue(dataset.has_sample_field("test_field_1"))
+        self.assertTrue(dataset.has_sample_field("test_field_2"))
+        self.assertListEqual(
+            prev_labels, dataset.values("ground_truth", unwind=True),
+        )
+        self.assertEqual(
+            dataset.values("ground_truth.detections.id", unwind=True),
+            dataset.values("test_field_1.detections.id", unwind=True),
+        )
+        self.assertEqual(
+            len(dataset.values("test_field_2.keypoints.id", unwind=True)), 1,
+        )
+        self.assertEqual(
+            len(dataset.values("new_polygon.polylines.id", unwind=True)), 1,
+        )
+
         # Test modification
         dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
 
         prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
 
         anno_key = "test_destination_field"
-        results = dataset.annotate(anno_key, label_field="ground_truth",)
+        results = dataset.annotate(anno_key, label_field="ground_truth")
 
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -720,9 +776,19 @@ class CVATTests(unittest.TestCase):
 
         _delete_shape(api, task_id, shape_id)
         _create_annotation(api, task_id, shape=True)
+        _create_annotation(
+            api,
+            task_id,
+            shape=True,
+            _type="points",
+            points=[10, 20, 40, 30, 50, 60],
+        )
 
         dataset.load_annotations(
-            anno_key, cleanup=True, destination_field="test_field",
+            anno_key,
+            cleanup=True,
+            destination_field="test_field",
+            unexpected="keep",
         )
 
         self.assertListEqual(
@@ -742,7 +808,7 @@ class CVATTests(unittest.TestCase):
         prev_labels = dataset.values("frames.detections", unwind=True)
 
         anno_key = "test_destination_field"
-        results = dataset.annotate(anno_key, label_field="frames.detections",)
+        results = dataset.annotate(anno_key, label_field="frames.detections")
 
         dataset.load_annotations(
             anno_key, cleanup=True, destination_field="frames.test_field",

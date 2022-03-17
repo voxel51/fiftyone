@@ -1009,9 +1009,11 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
-When annotating a single label field, the `destination_field` parameter can be
-used to designate the name of the field into which to load the annotations, if
-it differs from the label field defined when creating the annotation run
+The `destination_field` parameter can be used to designate the name of the
+field into which to load annotations, if it differs from the field defined in
+the label schema when creating the annotation run. If multiple fields are being
+annotated, `destination_field` expects a dictionary mapping field names defined
+in the label schema to the corresponding destination field names.
 
 Note that CVAT cannot explicitly prevent annotators from creating labels that
 don't obey the run's label schema. However, you can pass the optional
@@ -1960,6 +1962,59 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
+
+
+.. _cvat-destination-field:
+
+Changing destination field
+--------------------------
+
+When annotating an existing label field, it can be useful to load the
+annotations into a different field than the one used to upload annotations. The
+`destination_field` parameter can be used for this purpose when calling
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+The `destination_field` parameter expects either a string field name or a
+dictionary mapping field names defined in the label schema to the corresponding
+destination field names. Providing a string is only allowed when annotating a
+single field. When multiple fields are being annotated, `destination_field`
+must be a dictionary.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "destination_field"
+    label_field = "ground_truth"
+
+    # Upload from `ground_truth` field
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+
+    destination_field = "test_field"
+
+    # OR
+
+    destination_field = {"ground_truth": "test_field"}
+
+    # Load into `test_field`
+    dataset.load_annotations(
+        anno_key,
+        cleanup=True,
+        destination_field=destination_field,
+    )
+    dataset.delete_annotation_run(anno_key)
+
+
 
 .. _cvat-annotating-videos:
 

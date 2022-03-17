@@ -976,9 +976,8 @@ def load_annotations(
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
         destination_field (None): the name of the field into which to load
-            annotations if it is not the same field defined when creating this
-            annotaiton run. Only available for annotation runs operating on one
-            label field
+            annotations or a dict mapping field names provided in the label
+            schema to desination field names.
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
 
@@ -1006,8 +1005,11 @@ def load_annotations(
             else:
                 logger.warning(
                     "Label schema contains `%d` fields, ignoring "
-                    "`destination_field` argument" % len(label_schema)
+                    "`destination_field` argument: `%s`"
+                    % (len(label_schema), destination_field)
                 )
+        elif isinstance(destination_field, dict):
+            label_field = destination_field.get(label_field, label_field)
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
