@@ -109,6 +109,13 @@ class _Document(object):
         return self._dataset
 
     @property
+    def _collection(self):
+        """The collection from which this sample was taken, or ``None`` if the
+        document is not in a dataset.
+        """
+        return self._dataset
+
+    @property
     def field_names(self):
         """An ordered tuple of the names of the fields of this document."""
         return self._doc.field_names
@@ -626,6 +633,10 @@ class DocumentView(_Document):
             select_fields=select_fields,
             exclude_fields=self._excluded_fields,
         )
+
+    @property
+    def _collection(self):
+        return self._view
 
     @property
     def field_names(self):
