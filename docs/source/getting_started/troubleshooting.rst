@@ -165,6 +165,18 @@ then FiftyOne's database service will attempt to start up on import using the
 MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
 importing `fiftyone` will result in exceptions being raised.
 
+.. _troubleshooting-mongodb-exists
+
+Database exits
+--------------
+
+On some UNIX systems, the default open file limit setting is too small for
+FiftyOne's MongoDB connection. The database service will exit in this case.
+Running `ulimit -n 64000` should resolve the issue. 64,000 is the recommended
+open file limit.  MongoDB has full documentation on the issue
+`here <https://docs.mongodb.com/manual/reference/ulimit/>`_. 
+
+
 .. _troubleshooting-mongodb-linux:
 
 Troubleshooting Linux imports
@@ -174,16 +186,24 @@ On Linux machines in particular, the MongoDB build works for Ubuntu
 18.04+ and several other modern distributions.
 
 However, if a suitable MongoDB build is not available or otherwise does not
-work in your environment, you may encounter a `ServerSelectionTimeoutError`
-or other exception with output similar to the following:
+work in your environment, you may encounter a `ServerSelectionTimeoutError`.
+
+If you have output similar to the below, you may just need to install
+`libssl` packages.
 
 .. code-block:: text
 
-    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: failed to launch:
-    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
+  Subprocess ['.../site-packages/fiftyone/db/bin/mongod', ...] exited with error 127:
+  .../site-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
-To resolve this, you can follow
+On Ubuntu, `libssl` packages can be install with the following command:
+
+.. code-block:: shell
+
+  sudo apt install libssl-dev
+
+If you still face issues with imports, you can follow
 :ref:`these instructions <configuring-mongodb-connection>` to configure
 FiftyOne to use a MongoDB instance that you have installed yourself.
 
