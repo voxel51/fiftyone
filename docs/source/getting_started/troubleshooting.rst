@@ -165,7 +165,7 @@ then FiftyOne's database service will attempt to start up on import using the
 MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
 importing `fiftyone` will result in exceptions being raised.
 
-.. _troubleshooting-mongodb-exists
+.. _troubleshooting-mongodb-exits
 
 Database exits
 --------------
