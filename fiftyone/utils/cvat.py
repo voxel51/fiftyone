@@ -3318,7 +3318,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 task_url = api.task_url(task_id)
 
                 try:
-                    task_json = api.get(task_url).json()
+                    task_json = api.get(
+                        task_url, print_error_info=False
+                    ).json()
                 except:
                     logger.warning(
                         "\tFailed to get info for task '%d' at %s",
@@ -3352,7 +3354,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     job_url = api.taskless_job_url(job_id)
 
                     try:
-                        job_json = api.get(job_url).json()
+                        job_json = api.get(
+                            job_url, print_error_info=False
+                        ).json()
                     except:
                         logger.warning(
                             "\t\tFailed to get info for job '%d' at %s",
@@ -3611,7 +3615,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             response.raise_for_status()
         return response
 
-    def get(self, url, **kwargs):
+    def get(self, url, print_error_info=True, **kwargs):
         """Sends a GET request to the given CVAT API URL.
 
         Args:
@@ -3621,9 +3625,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.get, url, **kwargs)
+        return self._make_request(
+            self._session.get, url, print_error_info=print_error_info, **kwargs
+        )
 
-    def patch(self, url, **kwargs):
+    def patch(self, url, print_error_info=True, **kwargs):
         """Sends a PATCH request to the given CVAT API URL.
 
         Args:
@@ -3633,9 +3639,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.patch, url, **kwargs)
+        return self._make_request(
+            self._session.patch,
+            url,
+            print_error_info=print_error_info,
+            **kwargs,
+        )
 
-    def post(self, url, **kwargs):
+    def post(self, url, print_error_info=True, **kwargs):
         """Sends a POST request to the given CVAT API URL.
 
         Args:
@@ -3645,9 +3656,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.post, url, **kwargs)
+        return self._make_request(
+            self._session.post,
+            url,
+            print_error_info=print_error_info,
+            **kwargs,
+        )
 
-    def put(self, url, **kwargs):
+    def put(self, url, print_error_info=True, **kwargs):
         """Sends a PUT request to the given CVAT API URL.
 
         Args:
@@ -3657,9 +3673,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.put, url, **kwargs)
+        return self._make_request(
+            self._session.put, url, print_error_info=print_error_info, **kwargs
+        )
 
-    def delete(self, url, **kwargs):
+    def delete(self, url, print_error_info=True, **kwargs):
         """Sends a DELETE request to the given CVAT API URL.
 
         Args:
@@ -3669,7 +3687,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(self._session.delete, url, **kwargs)
+        return self._make_request(
+            self._session.delete,
+            url,
+            print_error_info=print_error_info,
+            **kwargs,
+        )
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
