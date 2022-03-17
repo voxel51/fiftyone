@@ -87,7 +87,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         expand_schema=True,
         **kwargs,
     ):
-        """Adds a new field to the embedded document.
+        """Adds a new field to the embedded document, if necessary.
 
         Args:
             name: the field name
@@ -129,8 +129,8 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         return self._add_field(field, expand_schema=expand_schema)
 
     def add_implied_field(self, name, value, expand_schema=True):
-        """Adds the field to the document, inferring the field type from the
-        provided value.
+        """Adds the field to the document, if necessary, inferring the field
+        type from the provided value.
 
         Args:
             name: the field name

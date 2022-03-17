@@ -202,17 +202,21 @@ def get_implied_field_kwargs(value):
             kwargs["subfield"] = fof.FloatField
         elif len(value_types) == 1:
             value_type = next(iter(value_types))
+
             if value_type is not None:
                 kwargs["subfield"] = value_type
 
             if value_type == fof.EmbeddedDocumentField:
-                document_types = {v.__class__ for v in value}
+                document_types = {type(v) for v in value}
                 if len(document_types) > 1:
-                    raise ValueError("Cannot merge types")
+                    raise ValueError(
+                        "Cannot infer single type for %s with multiple value "
+                        "types %s" % (value_type, document_types)
+                    )
 
                 kwargs["embedded_doc_type"] = document_types.pop()
 
-                kwargs["fields"] = _merge_implied_fields(
+                kwargs["fields"] = _merge_implied_field_kwargs(
                     [get_implied_field_kwargs(v) for v in value]
                 )
 
@@ -236,18 +240,30 @@ def get_implied_field_kwargs(value):
 
 
 def validate_fields_match(name, field, existing_field):
+    """Validates that the types of the given fields match.
+
+    Embedded document fields are not validated, if applicable.
+
+    Args:
+        name: the field name
+        field: a :class:`fiftyone.core.fields.Field`
+        existing_field: the reference :class:`fiftyone.core.fields.Field`
+
+    Raises:
+        ValueError: if the fields do not match
+    """
     if type(field) is not type(existing_field):
         raise ValueError(
-            "Field '%s' type %s does not match existing field "
-            "type %s" % (name, field, existing_field)
+            "Field '%s' type %s does not match existing field type %s"
+            % (name, field, existing_field)
         )
 
     if isinstance(field, fof.EmbeddedDocumentField):
         if not issubclass(field.document_type, existing_field.document_type):
             raise ValueError(
-                "Embedded document field '%s' type %s does not match "
-                "existing field type %s"
-                % (name, field.document_type, existing_field.document_type,)
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (name, field.document_type, existing_field.document_type)
             )
 
     if isinstance(field, (fof.ListField, fof.DictField)):
@@ -255,8 +271,7 @@ def validate_fields_match(name, field, existing_field):
             field.field, type(existing_field.field)
         ):
             raise ValueError(
-                "%s '%s' type %s does not match existing "
-                "field type %s"
+                "%s '%s' type %s does not match existing field type %s"
                 % (
                     field.__class__.__name__,
                     name,
@@ -298,33 +313,44 @@ def _get_list_value_type(value):
     return None
 
 
-def _merge_implied_fields(implied_fields):
+# @todo this seems broken... `fields` is a list, not a dict
+def _merge_implied_field_kwargs(list_of_kwargs):
     fields = {}
-    for kwargs in implied_fields:
-        for field, field_kwargs in kwargs.get("fields", {}).items():
-            if field not in fields:
-                fields[field] = field_kwargs
+    for kwargs in list_of_kwargs:
+        for name, field_kwargs in kwargs.get("fields", {}).items():
+            if name not in fields:
+                fields[name] = field_kwargs
                 continue
 
-            ftype = fields[field]
+            ftype = fields[name]
+
             if ftype != field_kwargs["ftype"]:
-                raise TypeError("Cannot merge")
+                raise TypeError(
+                    "Cannot merge fields of types '%s' and '%s'"
+                    % (ftype, field_kwargs["ftype"])
+                )
 
             if issubclass(ftype, fof.ListField):
                 subfield = fields["subfield"]
                 if subfield != field_kwargs["subfield"]:
-                    raise TypeError("Cannot merge")
+                    raise TypeError(
+                        "Cannot merge subfields of types '%s' and '%s'"
+                        % (subfield, field_kwargs["subfield"])
+                    )
 
                 if subfield == fof.EmbeddedDocumentField:
                     ftype = subfield
 
             if ftype == fof.EmbeddedDocumentField:
-                document_type = fields[field]["document_type"]
+                document_type = fields[name]["document_type"]
                 if document_type != field_kwargs["document_type"]:
-                    raise TypeError("Cannot merge")
+                    raise TypeError(
+                        "Cannot merge documents of types '%s' and '%s'"
+                        % (document_type, field_kwargs["document_type"])
+                    )
 
-                fields[field]["fields"] = _merge_implied_fields(
-                    [fields[field]["fields"], field_kwargs["fields"]]
+                fields[name]["fields"] = _merge_implied_field_kwargs(
+                    [fields[name]["fields"], field_kwargs["fields"]]
                 )
 
-    return [dict(name=name, **kwargs) for name, kwargs in field.items()]
+    return [dict(name=name, **kwargs) for name, kwargs in fields.items()]
