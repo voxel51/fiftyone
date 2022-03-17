@@ -686,6 +686,65 @@ class CVATTests(unittest.TestCase):
 
         dataset.load_annotations(anno_key, cleanup=True)
 
+    def test_deleted_tasks(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key, backend="cvat", label_field="ground_truth",
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        api.delete_task(task_id)
+
+        status = results.get_status()
+        api.close()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.id", unwind=True),
+            prev_ids,
+        )
+
+    def test_occluded_attr(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+        anno_key = "cvat_occluded_widget"
+
+        # Populate a new `occluded` attribute on the existing `ground_truth` labels
+        # using CVAT's occluded widget
+        label_schema = {
+            "ground_truth": {"attributes": {"occluded": {"type": "occluded",}}}
+        }
+
+        results = dataset.annotate(
+            anno_key, label_schema=label_schema, backend="cvat"
+        )
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+
+        _update_shape(api, task_id, shape_id, occluded=True)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        id_occ_map = dict(
+            zip(
+                *dataset.values(
+                    [
+                        "ground_truth.detections.id",
+                        "ground_truth.detections.occluded",
+                    ],
+                    unwind=True,
+                )
+            )
+        )
+        self.assertTrue(id_occ_map.pop(shape_id))
+        self.assertFalse(any(id_occ_map.values()))
+
     def test_destination_field(self):
         # Test images
         dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
