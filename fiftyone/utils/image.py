@@ -74,6 +74,15 @@ def transform_images(
     The ``filepath`` of the samples are updated to point to the transformed
     images.
 
+    .. note::
+
+        This method will not update any outdated metadata fields on the collection
+        after resizing. This can cause annotations to show in the wrong place. To avoid
+        this, the recommended approach is to call:
+
+            sample_collection.compute_metadata(overwrite=True)
+
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
