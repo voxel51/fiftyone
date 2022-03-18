@@ -110,8 +110,8 @@ class _Document(object):
 
     @property
     def _collection(self):
-        """The collection from which this sample was taken, or ``None`` if the
-        document is not in a dataset.
+        """The :class:`fiftyone.core.collections.SampleCollection` from which
+        this document was taken, or ``None`` if it is not in a dataset.
         """
         return self._dataset
 
