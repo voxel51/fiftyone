@@ -767,11 +767,12 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
-The `destination_field` parameter can be used to designate the name of the
-field into which to load annotations, if it differs from the field defined in
-the label schema when creating the annotation run. If multiple fields are being
-annotated, `destination_field` expects a dictionary mapping field names defined
-in the label schema to the corresponding destination field names.
+You can use the optional `destination_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `destination_field` should be a
+dictionary mapping label schema field names to destination field names.
 
 .. _labelbox-managing-annotation-runs:
 
