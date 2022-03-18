@@ -76,12 +76,11 @@ def transform_images(
 
     .. note::
 
-        This method will not update any outdated metadata fields on the
-        collection after resizing. This can cause annotations to show in the
-        wrong place. To avoid this, the recommended approach is to call::
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata` field if needed
+        by calling::
 
             sample_collection.compute_metadata(overwrite=True)
-
 
     Args:
         sample_collection: a
