@@ -60,7 +60,11 @@ def is_frames_expr(expr):
         expr = expr.to_mongo()
 
     if etau.is_str(expr):
-        return expr == "$frames" or expr.startswith("$frames.")
+        return (
+            expr == "$frames"
+            or expr.startswith("$frames.")
+            or expr.startswith("$frames[].")
+        )
 
     if isinstance(expr, dict):
         for k, v in expr.items():
