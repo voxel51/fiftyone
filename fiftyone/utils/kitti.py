@@ -404,7 +404,7 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
         extra_attrs = set(extra_attrs)
 
     detections = []
-    with open(txt_path) as f:
+    with fos.open_file(txt_path, "r") as f:
         reader = csv.reader(f, delimiter=" ")
         for row in reader:
             detections.append(
@@ -458,6 +458,8 @@ def download_kitti_detection_dataset(
         overwrite (True): whether to redownload the zips if they already exist
         cleanup (True): whether to delete the downloaded zips
     """
+    fos.ensure_local(dataset_dir)
+
     labels_zip_path = os.path.join(dataset_dir, "data_object_label_2.zip")
     if overwrite or not os.path.exists(labels_zip_path):
         logger.info("Downloading labels to '%s'...", labels_zip_path)

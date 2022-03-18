@@ -18,6 +18,7 @@ import numpy as np
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 
@@ -338,7 +339,7 @@ def _do_download(task):
             if ext is not None:
                 filename = os.path.splitext(filename)[0] + ext
 
-            video_path = os.path.join(download_dir, filename)
+            video_path = fos.join(download_dir, filename)
 
         root, ext = os.path.splitext(video_path)
         stream_ext = os.path.splitext(stream.default_filename)[1]
@@ -383,7 +384,7 @@ def _do_download(task):
         else:
             _download_clip(stream, clip_segment, tmp_path)
 
-        etau.move_file(tmp_path, video_path)
+        fos.move_file(tmp_path, video_path)
     except Exception as e:
         video_path = None
         if isinstance(e, pytube.exceptions.PytubeError):
