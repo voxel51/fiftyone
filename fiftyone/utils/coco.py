@@ -1484,6 +1484,8 @@ def download_coco_dataset_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
+    fos.ensure_local(dataset_dir)
+
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported year '%s'; supported values are %s"
@@ -1500,7 +1502,12 @@ def download_coco_dataset_split(
         logger.warning("Test split is unlabeled; ignoring classes requirement")
         classes = None
 
-    if scratch_dir is None:
+    if raw_dir is not None:
+        fos.ensure_local(raw_dir)
+
+    if scratch_dir is not None:
+        fos.ensure_local(scratch_dir)
+    else:
         scratch_dir = os.path.join(dataset_dir, "scratch")
 
     anno_path = os.path.join(dataset_dir, "labels.json")
@@ -2139,7 +2146,7 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
 def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
 
     try:
         mask = etai.render_instance_image(

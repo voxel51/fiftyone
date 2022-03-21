@@ -24,6 +24,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
 
@@ -521,6 +522,7 @@ def download_open_images_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
+    fos.ensure_local(dataset_dir)
     _verify_version(version)
 
     did_download = False
@@ -1141,6 +1143,7 @@ def _get_label_data(
     if download_only:
         return set(), set(), {}, did_download
 
+    # pylint: disable=no-member
     df = _parse_csv(csv_path, dataframe=True)
     df.set_index("ImageID", drop=False, inplace=True)
     df = df.loc[df.index.intersection(image_ids)]
