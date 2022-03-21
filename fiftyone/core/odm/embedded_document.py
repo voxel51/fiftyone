@@ -171,16 +171,18 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def _get_field(self, name):
         # pylint: disable=no-member
-
         if name in self._fields:
             return self._fields[name]
 
         if self._parent is None:
             return self._custom_fields[name]
 
+        # @todo why is this necessary?
         for field in getattr(self._parent, "fields", []):
             if field.name == name:
                 return field
+
+        raise ValueError("%s has no field '%s'" % (self.__class__, name))
 
     def _get_custom_fields(self):
         if self._parent is None:
@@ -205,19 +207,24 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         self._parent = parent
 
         # pylint: disable=no-member
-        custom_fields = getattr(self, "_custom_fields", {})
-        for name, field in {**self._fields, **custom_fields}.items():
-            set_field = field
+        for name, field in self._fields.items():
             if isinstance(field, (fof.DictField, fof.ListField)):
-                set_field = field.field
+                field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
-                set_field._set_parent(parent)
+                field._set_parent(parent)
 
-            if name in custom_fields:
-                self._declare_field(field)
+        for name, field in getattr(self, "_custom_fields", {}).items():
+            self._declare_field(field)
 
-        self._custom_fields = {}
+            if isinstance(field, (fof.DictField, fof.ListField)):
+                field = field.field
+
+            if isinstance(field, fof.EmbeddedDocumentField):
+                field._set_parent(parent)
+
+        if self._custom_fields:
+            self._custom_fields = {}
 
 
 class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):

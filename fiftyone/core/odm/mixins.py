@@ -383,19 +383,20 @@ class DatasetMixin(object):
         dataset_doc = cls._dataset_doc()
         top_level_fields = dataset_doc[cls._fields_attr()]
 
-        sample_field = SampleFieldDocument.from_field(field)
+        field_doc = SampleFieldDocument.from_field(field)
 
         if len(path) == 1:
-            top_level_fields.append(sample_field)
+            top_level_fields.append(field_doc)
         else:
-            for doc_field in top_level_fields:
-                if doc_field.name == path[0]:
+            # @todo raise error if root field doesn't exist here
+            for root_field in top_level_fields:
+                if root_field.name == path[0]:
                     break
 
             for key in path[1:-1]:
-                doc_field = doc_field.get_field_schema()[key]
+                root_field = root_field._get_field(key)
 
-            doc_field.fields = list(doc_field.fields) + [sample_field]
+            root_field.fields = list(root_field.fields) + [field_doc]
 
         dataset_doc.save()
 

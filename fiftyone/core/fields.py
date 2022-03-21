@@ -627,8 +627,10 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
     def __init__(self, document_type, **kwargs):
         super().__init__(document_type, **kwargs)
-        self._parent = None
+
         self.fields = kwargs.get("fields", [])
+
+        self._parent = None
         self._validation_schema = None
 
     def __str__(self):
@@ -641,23 +643,24 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         if self._validation_schema is None:
             self._validation_schema = self.get_field_schema()
 
-        schema = self._validation_schema
         for name in value._fields_ordered:
-            field = None
+            if name.startswith("_"):
+                continue
+
             field_value = value.get_field(name)
             if field_value is None:
                 continue
 
-            if name.startswith("_"):
-                continue
-
-            field = schema.get(name, None)
+            field = self._validation_schema.get(name, None)
             if field is None and expand:
-                field_kwargs = foo.get_implied_field_kwargs(field_value)
-                field = foo.create_field(name, **field_kwargs)
+                kwargs = foo.get_implied_field_kwargs(field_value)
+                field = foo.create_field(name, **kwargs)
                 self._save_field(field, [name])
             elif field is None:
-                self.error("field does not have field '%s' declared" % name)
+                self.error(
+                    "%s has no field '%s'"
+                    % (self.document_type.__name__, name)
+                )
             elif isinstance(field, EmbeddedDocumentField):
                 field.validate(field_value, clean=False, expand=expand)
             else:
@@ -685,42 +688,66 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 ``_`` in the returned schema
 
         Returns:
-             an ``OrderedDict`` mapping field names to field types
+             a dict mapping field names to field types
         """
         fields = self.document_type._fields.copy()
         for field in self.fields:
             fields[field.name] = field
 
-        filtered_fields = {}
+        schema = {}
         for name, field in fields.items():
             if not include_private and name.startswith("_"):
                 continue
 
-            if ftype and not isinstance(field, ftype):
+            if ftype is not None and not isinstance(field, ftype):
                 continue
 
-            if embedded_doc_type and (
+            if embedded_doc_type is not None and (
                 not isinstance(field, EmbeddedDocumentField)
                 or embedded_doc_type != field.document_type
             ):
                 continue
 
-            filtered_fields[name] = field
+            schema[name] = field
 
-        return filtered_fields
+        return schema
 
     def to_python(self, value):
         doc = super().to_python(value)
 
+        # @todo why is this necessary?
         if isinstance(doc, foo.DynamicEmbeddedDocument):
             doc._set_parent(self)
 
         return doc
 
+    def _has_field(self, name):
+        if name in self.document_type._fields:
+            return True
+
+        for field in self.fields:
+            if name == field.name:
+                return True
+
+        return False
+
+    def _get_field(self, name):
+        field = self.document_type._fields.get(name, None)
+        if field is not None:
+            return field
+
+        for field in self.fields:
+            if name == field.name:
+                return field
+
+        raise ValueError(
+            "%s has no field '%s'" % (self.document_type.__name__, name)
+        )
+
     def _save_field(self, field, path):
-        if path[0] not in self.get_field_schema():
+        if not self._has_field(path[0]):
             self.fields.append(field)
-            self._validation_schema = self.get_field_schema()
+            self._validation_schema = None
 
         if self._parent:
             self._parent._save_field(field, [self.name] + path)
