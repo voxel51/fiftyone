@@ -11,7 +11,8 @@ labels on your :ref:`datasets <using-datasets>` or specific
 
 By default, all annotation is performend via a native
 :ref:`CVAT integration <cvat-integration>` that uses `cvat.org <https://cvat.org>`_, but
-you can use a :ref:`self-hosted server <cvat-setup>` or even use a
+you can use a :ref:`self-hosted CVAT server <cvat-setup>`, switch to the
+:ref:`Labelbox backend <labelbox-integration>`, or even use a
 :ref:`custom annotation backend <custom-annotation-backend>`.
 
 .. note::
@@ -202,12 +203,12 @@ Configuring your backend
 
 Annotation backends may be configured in a variety of backend-specific ways,
 which you can see by inspecting the parameters of a backend's associated
-:class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`
-class.
+|AnnotationBackendConfig| clas.
 
 The relevant classes for the builtin annotation backends are:
 
 -   `"cvat"`: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+-   `"labelbox"`: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
 You can configure an annotation backend's parameters for a specific run by
 simply passing supported config parameters as keyword arguments each time you call
@@ -700,9 +701,8 @@ default `label`.
 
 Each annotation backend may support different `type` values, as declared by the
 :meth:`supported_attr_types() <fiftyone.utils.annotations.AnnotationBackend.supported_attr_types>`
-method of its
-:class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>` class.
-For example, CVAT supports the following choices for `type`:
+method of its |AnnotationBackend| class. For example, CVAT supports the
+following choices for `type`:
 
 -   `text`: a free-form text box. In this case, `default` is optional and
     `values` is unused
@@ -1006,18 +1006,17 @@ methods will use your custom backend.
 Annotation backends are defined by writing subclasses of the following
 three classes with the appropriate abstract methods implemented:
 
--   :class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`:
-    this class implements the logic required for your annotation backend to
-    declare the types of labeling tasks that it supports, as well as the core
+-   |AnnotationBackend|: this class implements the logic required for your
+    annotation backend to declare the types of labeling tasks that it supports,
+    as well as the core
     :meth:`upload_annotations() <fiftyone.utils.annotations.AnnotationBackend.upload_annotations>`
     and
     :meth:`download_annotations() <fiftyone.utils.annotations.AnnotationBackend.download_annotations>`
     methods, which handle uploading and downloading data and labels to your
     annotation tool
 
--   :class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`:
-    this class defines the available parameters that users can pass as keyword
-    arguments to
+-   |AnnotationBackendConfig|: this class defines the available parameters that
+    users can pass as keyword arguments to
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
     customize the behavior of the annotation run
 
@@ -1043,7 +1042,7 @@ The recommended way to expose a custom backend is to add it to your
         "default_backend": "<backend>",
         "backends": {
             "<backend>": {
-                "config_cls": "your.custom.AnnotationBackendConfigSubclass",
+                "config_cls": "your.custom.AnnotationBackendConfig",
 
                 # custom parameters here
                 ...
@@ -1055,8 +1054,7 @@ In the above, `<backend>` defines the name of your custom backend, which you
 can henceforward pass as the `backend` parameter to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, and
 the `config_cls` parameter specifies the fully-qualified name of the
-:class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`
-subclass for your annotation backend.
+|AnnotationBackendConfig| subclass for your annotation backend.
 
 With the `default_backend` parameter set to your custom backend as shown above,
 calling

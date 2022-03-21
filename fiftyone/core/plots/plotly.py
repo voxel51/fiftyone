@@ -26,6 +26,7 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
@@ -1445,6 +1446,43 @@ class PlotlyWidgetMixin(object):
             # updating it and `show()`ing it, if desired
             if isinstance(self, ResponsivePlot):
                 self.connect()
+
+    def save(self, path, width=None, height=None, scale=None, **kwargs):
+        """Saves the plot as an image or HTML.
+
+        Args:
+            path: the path to write the image or HTML
+            width (None): a desired width in pixels when saving as an image.
+                By default, the layout width is used
+            height (None): a desired height in pixels when saving as an image.
+                By default, the layout height is used
+            scale (None): a scale factor to apply to the layout dimensions. By
+                default, this is 1.0
+            **kwargs: keyword arguments for
+                :meth:`plotly:plotly.graph_objects.Figure.to_image` or
+                :meth:`plotly:plotly.graph_objects.Figure.write_html`
+        """
+        fos.ensure_basedir(path)
+
+        if os.path.splitext(path)[1] == ".html":
+            with fos.LocalFile(path, "w") as local_path:
+                self._widget.write_html(local_path, **kwargs)
+
+            return
+
+        if width is None:
+            width = self._widget.layout.width
+
+        if height is None:
+            height = self._widget.layout.height
+
+        if scale is None:
+            scale = 1.0
+
+        with fos.LocalFile(path, "w") as local_path:
+            self._widget.write_image(
+                local_path, width=width, height=height, scale=scale, **kwargs
+            )
 
     def _update_layout(self, **kwargs):
         if kwargs:
