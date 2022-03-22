@@ -3160,6 +3160,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
+
         api.close()
 
         if launch_editor:
@@ -3173,6 +3174,7 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(results)
         logger.info("Download complete")
+
         api.close()
 
         return annotations
@@ -3267,7 +3269,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         """
         api = self.connect_to_api()
         api.delete_tasks(task_ids)
-
         self._forget_tasks(task_ids)
         api.close()
 
@@ -3285,12 +3286,13 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
 
+        api.close()
+
         self.project_ids = []
         self.task_ids = []
         self.job_ids = {}
         self.id_map = {}
         self.frame_id_map = {}
-        api.close()
 
     def _forget_tasks(self, task_ids):
         for task_id in task_ids:
@@ -3318,9 +3320,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 task_url = api.task_url(task_id)
 
                 try:
-                    task_json = api.get(
-                        task_url, print_error_info=False
-                    ).json()
+                    response = api.get(task_url, print_error_info=False)
+                    task_json = response.json()
                 except:
                     logger.warning(
                         "\tFailed to get info for task '%d' at %s",
@@ -3354,9 +3355,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     job_url = api.taskless_job_url(job_id)
 
                     try:
-                        job_json = api.get(
-                            job_url, print_error_info=False
-                        ).json()
+                        response = api.get(job_url, print_error_info=False)
+                        job_json = response.json()
                     except:
                         logger.warning(
                             "\t\tFailed to get info for job '%d' at %s",
@@ -3443,6 +3443,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._password = password
         self._headers = headers
 
+        self._server_version = None
         self._session = None
         self._user_id_map = {}
         self._project_id_map = {}
@@ -3455,10 +3456,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def base_api_url(self):
-        if self._version == 1:
+        if self._server_version == 1:
             return "%s/api/v1" % self.base_url
-        else:
-            return "%s/api" % self.base_url
+
+        return "%s/api" % self.base_url
 
     @property
     def login_url(self):
@@ -3539,17 +3540,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def assignee_key(self):
-        if self._version == 2:
-            return "assignee"
-        else:
+        if self._server_version == 1:
             return "assignee_id"
 
+        return "assignee"
+
     def _parse_reviewers(self, job_reviewers):
-        if self._version == 2 and job_reviewers is not None:
-            logger.warning(
-                "CVAT v2 servers do not support assigning users as job "
-                "reviewers, ignoring `job_reviewers` argument..."
-            )
+        if self._server_version == 2 and job_reviewers is not None:
+            logger.warning("CVAT v2 servers do not support `job_reviewers`")
             return None
 
         return job_reviewers
@@ -3575,8 +3573,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
-        self._version = 1
-
         try:
             response = self._make_request(
                 self._session.post,
@@ -3584,17 +3580,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 print_error_info=False,
                 data={"username": username, "password": password},
             )
+
+            self._server_version = 1
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                self._version = 2
-                response = self._make_request(
-                    self._session.post,
-                    self.login_url,
-                    print_error_info=False,
-                    data={"username": username, "password": password},
-                )
-            else:
+            if e.response.status_code != 404:
                 raise e
+
+            response = self._make_request(
+                self._session.post,
+                self.login_url,
+                print_error_info=False,
+                data={"username": username, "password": password},
+            )
+
+            self._server_version = 2
 
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
@@ -3602,7 +3601,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             ]
 
     def close(self):
-        """Closes requests session for this instance of the API"""
+        """Closes this API session."""
         self._session.close()
 
     def _make_request(
@@ -3613,9 +3612,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._validate(response, kwargs)
         else:
             response.raise_for_status()
+
         return response
 
-    def get(self, url, print_error_info=True, **kwargs):
+    def get(self, url, **kwargs):
         """Sends a GET request to the given CVAT API URL.
 
         Args:
@@ -3625,11 +3625,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(
-            self._session.get, url, print_error_info=print_error_info, **kwargs
-        )
+        return self._make_request(self._session.get, url, **kwargs)
 
-    def patch(self, url, print_error_info=True, **kwargs):
+    def patch(self, url, **kwargs):
         """Sends a PATCH request to the given CVAT API URL.
 
         Args:
@@ -3639,14 +3637,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(
-            self._session.patch,
-            url,
-            print_error_info=print_error_info,
-            **kwargs,
-        )
+        return self._make_request(self._session.patch, url, **kwargs)
 
-    def post(self, url, print_error_info=True, **kwargs):
+    def post(self, url, **kwargs):
         """Sends a POST request to the given CVAT API URL.
 
         Args:
@@ -3656,14 +3649,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(
-            self._session.post,
-            url,
-            print_error_info=print_error_info,
-            **kwargs,
-        )
+        return self._make_request(self._session.post, url, **kwargs)
 
-    def put(self, url, print_error_info=True, **kwargs):
+    def put(self, url, **kwargs):
         """Sends a PUT request to the given CVAT API URL.
 
         Args:
@@ -3673,11 +3661,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(
-            self._session.put, url, print_error_info=print_error_info, **kwargs
-        )
+        return self._make_request(self._session.put, url, **kwargs)
 
-    def delete(self, url, print_error_info=True, **kwargs):
+    def delete(self, url, **kwargs):
         """Sends a DELETE request to the given CVAT API URL.
 
         Args:
@@ -3687,12 +3673,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        return self._make_request(
-            self._session.delete,
-            url,
-            print_error_info=print_error_info,
-            **kwargs,
-        )
+        return self._make_request(self._session.delete, url, **kwargs)
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.
@@ -4059,7 +4040,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
-        if job_reviewers is not None and self._version == 1:
+        if self._server_version == 1 and job_reviewers is not None:
             num_reviewers = len(job_reviewers)
             for idx, job_id in enumerate(job_ids):
                 # Round robin strategy
@@ -4407,20 +4388,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return annotations
 
     def _get_attr_class_maps(self, task_id):
-
         task_json = self.get(self.task_url(task_id)).json()
-        attr_id_map = {}
+
         _class_map = {}
-        labels = task_json["labels"]
-        for label in labels:
+        attr_id_map = {}
+        for label in task_json["labels"]:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
                 i["name"]: i["id"] for i in label["attributes"]
             }
 
-        _class_map_rev = {n: i for i, n in _class_map.items()}
+        class_map_rev = {n: i for i, n in _class_map.items()}
 
-        return attr_id_map, _class_map_rev
+        return attr_id_map, class_map_rev
 
     def _get_paginated_results(self, url, value=None):
         results = []
@@ -4697,9 +4677,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                     if len(name) > 64:
                         raise ValueError(
-                            "Class name `%s` is longer than 64 characters."
-                            % name
+                            "Class name '%s' exceeds 64 character limit" % name
                         )
+
                     cvat_schema[name] = deepcopy(attributes)
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
@@ -4874,15 +4854,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_uploaded = task_meta.get("size", 0)
         if samples.media_type == fom.VIDEO:
             num_frames = samples.count("frames")
-            frame_type = "frames"
+            ftype = "frames"
         else:
             num_frames = len(samples)
-            frame_type = "images"
+            ftype = "images"
 
-        if num_frames != num_uploaded:
+        if num_uploaded < num_frames:
             logger.warning(
-                "Warning: Failed to upload %d %s out of %d"
-                % (num_frames, frame_type, num_frames - num_uploaded)
+                "Failed to upload %d/%d %s",
+                num_frames - num_uploaded,
+                num_frames,
+                ftype,
             )
 
     def _upload_annotations(
@@ -5074,6 +5056,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 sample_metadata = frames_metadata[sample_id]
                 if sample_metadata is None:
                     continue
+
                 frame_size = (
                     sample_metadata["width"],
                     sample_metadata["height"],
@@ -5445,9 +5428,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         for attr_name, info in attributes.items():
             if len(attr_name) > 64:
                 raise ValueError(
-                    "Attribute name `%s` is longer than 64 characters."
+                    "Attribute name '%s' exceeds 64 character limit"
                     % attr_name
                 )
+
             cvat_attr = {"name": attr_name, "mutable": True}
             is_occluded = False
             for attr_key, val in info.items():
