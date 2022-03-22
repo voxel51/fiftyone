@@ -26,7 +26,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
-import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
