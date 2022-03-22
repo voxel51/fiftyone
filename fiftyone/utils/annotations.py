@@ -408,19 +408,19 @@ def _build_label_schema(
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
         if is_video and not _is_frame_field:
-            if not backend.supports_video_sample_fields:
-                raise ValueError(
-                    "Invalid label field '%s'. Backend '%s' does not support "
-                    "annotating video fields at a sample-level. Labels must be "
-                    "stored in a frame-level field, i.e., one that starts with "
-                    "'frames.'" % (_label_field, backend.config.name)
-                )
-            elif _return_type in _SPATIAL_TYPES:
+            if _return_type in _SPATIAL_TYPES:
                 raise ValueError(
                     "Invalid label field '%s'. Spatial labels of type '%s' "
                     "being annotated on a video must be stored in a "
                     "frame-level field, i.e., one that starts with 'frames.'"
                     % (_label_field, _label_type)
+                )
+            elif not backend.supports_video_sample_fields:
+                raise ValueError(
+                    "Invalid label field '%s'. Backend '%s' does not support "
+                    "annotating video fields at a sample-level. Labels must be "
+                    "stored in a frame-level field, i.e., one that starts with "
+                    "'frames.'" % (_label_field, backend.config.name)
                 )
 
         # We found an existing field with multiple label types, so we must
@@ -1794,7 +1794,7 @@ class AnnotationBackend(foa.AnnotationMethod):
     @property
     def supports_video_sample_fields(self):
         """Whether this backend supports annotating video labels at a
-        sample-level or only at a frame-level.
+        sample-level.
         """
         raise NotImplementedError(
             "subclass must implement supports_video_sample_fields"
