@@ -3130,6 +3130,10 @@ class CVATBackend(foua.AnnotationBackend):
         return True
 
     @property
+    def supports_video_sample_fields(self):
+        return False
+
+    @property
     def requires_label_schema(self):
         return False  # schemas can be inferred from existing CVAT projects
 
