@@ -181,6 +181,34 @@ def split_prefix(path):
     return prefix, path[len(prefix) :]
 
 
+def get_bucket_name(path):
+    """Gets the bucket name from the given path.
+
+    The bucket name for local paths and http(s) paths is ``""``.
+
+    Example usages::
+
+        import fiftyone.core.storage as fos
+
+        fos.split_prefix("s3://bucket/object")  # 'bucket'
+        fos.split_prefix("gs://bucket/object")  # 'bucket'
+        fos.split_prefix("/path/to/file")       # ''
+        fos.split_prefix("a/file")              # ''
+
+    Args:
+        path: a path
+
+    Returns:
+        the bucket name string
+    """
+    fs = get_file_system(path)
+    if fs not in [FileSystem.S3, FileSystem.GCS, FileSystem.MINIO]:
+        return ""
+
+    path = split_prefix(path)[1]
+    return path.split(sep(path))[0]
+
+
 def is_local(path):
     """Determines whether the given path is local.
 
