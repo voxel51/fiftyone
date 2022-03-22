@@ -3451,6 +3451,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._setup()
 
     @property
+    def server_version(self):
+        return self._server_version
+
+    @property
     def base_url(self):
         return self._url
 
@@ -3573,36 +3577,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
-        try:
-            response = self._make_request(
-                self._session.post,
-                self.login_url,
-                print_error_info=False,
-                data={"username": username, "password": password},
-            )
+        self._server_version = 2
 
-            self._server_version = 1
+        try:
+            self._login(username, password)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code != 404:
                 raise e
 
-            response = self._make_request(
-                self._session.post,
-                self.login_url,
-                print_error_info=False,
-                data={"username": username, "password": password},
-            )
+            self._server_version = 1
+            self._login(username, password)
 
-            self._server_version = 2
+    def close(self):
+        """Closes the API session."""
+        self._session.close()
+
+    def _login(self, username, password):
+        response = self._make_request(
+            self._session.post,
+            self.login_url,
+            print_error_info=False,
+            data={"username": username, "password": password},
+        )
 
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
-
-    def close(self):
-        """Closes this API session."""
-        self._session.close()
 
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
