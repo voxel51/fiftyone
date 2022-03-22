@@ -537,6 +537,15 @@ class Plot(object):
         """
         raise NotImplementedError("Subclass must implement show()")
 
+    def save(self, path, **kwargs):
+        """Saves the plot.
+
+        Args:
+            path: the path to write the plot
+            **kwargs: subclass-specific keyword arguments
+        """
+        raise NotImplementedError("Subclass must implement save()")
+
     def freeze(self):
         """Freezes the plot, replacing it with a static image.
 

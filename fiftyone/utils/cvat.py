@@ -25,7 +25,6 @@ import urllib3
 
 import eta.core.data as etad
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -88,13 +87,12 @@ def import_annotations(
             the filenames in CVAT and the filepaths of ``sample_collection``.
             Can be any of the following:
 
-            -   a directory on disk where the media files reside. In this case,
-                the filenames must match those in CVAT
+            -   a directory where the media files reside. In this case, the
+                filenames must match those in CVAT
             -   a dict mapping CVAT filenames to absolute filepaths to the
-                corresponding media on disk
-            -   the path to a JSON manifest on disk containing a mapping
-                between CVAT filenames and absolute filepaths to the media on
-                disk
+                corresponding media
+            -   the path to a JSON manifest containing a mapping between CVAT
+                filenames and absolute filepaths to the media
 
             By default, only annotations whose filename matches an existing
             filepath in ``sample_collection`` will be imported
@@ -152,12 +150,12 @@ def import_annotations(
     if data_path is None:
         data_map = {os.path.basename(f): f for f in existing_filepaths}
     elif etau.is_str(data_path) and data_path.endswith(".json"):
-        data_map = etas.read_json(data_path)
+        data_map = fos.read_json(data_path)
     elif etau.is_str(data_path):
-        if os.path.isdir(data_path):
+        if fos.isdir(data_path):
             data_map = {
                 os.path.basename(f): f
-                for f in etau.list_files(
+                for f in fos.list_files(
                     data_path, abs_paths=True, recursive=True
                 )
             }
@@ -281,15 +279,18 @@ def _parse_task_metadata(
     chunk_size = resp.get("chunk_size", None)
 
     cvat_id_map = {}
+    new_filepaths = []
+    new_tasks = []
     for frame_id, frame in enumerate(resp["frames"]):
         filename = frame["name"]
         filepath = data_map.get(filename, None)
         if download_media:
             if filepath is None and data_dir:
-                filepath = os.path.join(data_dir, filename)
+                filepath = fos.join(data_dir, filename)
 
-            if filepath and not os.path.exists(filepath):
-                download_tasks.append(
+            if filepath is not None:
+                new_filepaths.append(filepath)
+                new_tasks.append(
                     (
                         api,
                         task_id,
@@ -306,6 +307,12 @@ def _parse_task_metadata(
             task_filepaths.append(filepath)
         else:
             ignored_filenames.append(filename)
+
+    if new_tasks:
+        exists = fos.run(fos.isfile, new_filepaths)
+        for task, _exists in zip(new_tasks, exists):
+            if not _exists:
+                download_tasks.append(task)
 
     return cvat_id_map
 
@@ -358,7 +365,7 @@ def _do_download_media(task):
             fouv.concat_videos(chunk_paths, filepath)
     else:
         resp = api.get(api.task_data_download_url(task_id, frame_id))
-        etau.write_file(resp._content, filepath)
+        fos.write_file(resp._content, filepath)
 
 
 def _download_annotations(
@@ -566,6 +573,7 @@ class CVATImageDatasetImporter(
     @property
     def label_cls(self):
         return {
+            "classifications": fol.Classifications,
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
@@ -899,6 +907,7 @@ class CVATImageDatasetExporter(
     @property
     def label_cls(self):
         return {
+            "classifications": fol.Classifications,
             "detections": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
@@ -1313,6 +1322,7 @@ class CVATImage(object):
         name: the filename of the image
         width: the width of the image, in pixels
         height: the height of the image, in pixels
+        tags (None): a list of :class:`CVATImageTag` instances
         boxes (None): a list of :class:`CVATImageBox` instances
         polygons (None): a list of :class:`CVATImagePolygon` instances
         polylines (None): a list of :class:`CVATImagePolyline` instances
@@ -1326,6 +1336,7 @@ class CVATImage(object):
         name,
         width,
         height,
+        tags=None,
         boxes=None,
         polygons=None,
         polylines=None,
@@ -1337,10 +1348,16 @@ class CVATImage(object):
         self.subset = subset
         self.width = width
         self.height = height
+        self.tags = tags or []
         self.boxes = boxes or []
         self.polygons = polygons or []
         self.polylines = polylines or []
         self.points = points or []
+
+    @property
+    def has_tags(self):
+        """Whether this image has tags."""
+        return bool(self.tags)
 
     @property
     def has_boxes(self):
@@ -1364,7 +1381,7 @@ class CVATImage(object):
             an iterator that emits :class:`CVATImageAnno` instances
         """
         return itertools.chain(
-            self.boxes, self.polygons, self.polylines, self.points
+            self.tags, self.boxes, self.polygons, self.polylines, self.points
         )
 
     def get_image_metadata(self):
@@ -1387,6 +1404,12 @@ class CVATImage(object):
         frame_size = (self.width, self.height)
 
         labels = {}
+
+        if self.tags:
+            tags = [t.to_classification() for t in self.tags]
+            labels["classifications"] = fol.Classifications(
+                classifications=tags
+            )
 
         if self.boxes:
             detections = [b.to_detection(frame_size) for b in self.boxes]
@@ -1419,12 +1442,17 @@ class CVATImage(object):
         width = metadata.width
         height = metadata.height
 
+        _classifications = []
         _detections = []
         _polygons = []
         _polylines = []
         _keypoints = []
         for _labels in labels.values():
-            if isinstance(_labels, fol.Detection):
+            if isinstance(_labels, fol.Classification):
+                _classifications.append(_labels)
+            elif isinstance(_labels, fol.Classifications):
+                _classifications.extend(_labels.classifications)
+            elif isinstance(_labels, fol.Detection):
                 _detections.append(_labels)
             elif isinstance(_labels, fol.Detections):
                 _detections.extend(_labels.detections)
@@ -1449,6 +1477,8 @@ class CVATImage(object):
                 )
                 warnings.warn(msg)
 
+        tags = [CVATImageTag.from_classification(c) for c in _classifications]
+
         boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
 
         polygons = []
@@ -1468,6 +1498,7 @@ class CVATImage(object):
             None,
             width,
             height,
+            tags=tags,
             boxes=boxes,
             polygons=polygons,
             polylines=polylines,
@@ -1491,6 +1522,10 @@ class CVATImage(object):
         width = int(d["@width"])
         height = int(d["@height"])
 
+        tags = []
+        for td in _ensure_list(d.get("tag", [])):
+            tags.append(CVATImageTag.from_tag_dict(td))
+
         boxes = []
         for bd in _ensure_list(d.get("box", [])):
             boxes.append(CVATImageBox.from_box_dict(bd))
@@ -1512,6 +1547,7 @@ class CVATImage(object):
             name,
             width,
             height,
+            tags=tags,
             boxes=boxes,
             polygons=polygons,
             polylines=polylines,
@@ -1611,6 +1647,55 @@ class CVATImageAnno(object):
                 attributes.append(CVATAttribute(name, value))
 
         return occluded, attributes
+
+
+class CVATImageTag(CVATImageAnno):
+    """A tag in CVAT image format.
+
+    Args:
+        label: the tag string
+    """
+
+    def __init__(self, label):
+        self.label = label
+        CVATImageAnno.__init__(self)
+
+    def to_classification(self):
+        """Returns a :class:`fiftyone.core.labels.Classification`
+        representation of the tag.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Classification`
+        """
+        return fol.Classification(label=self.label)
+
+    @classmethod
+    def from_classification(cls, classification):
+        """Creates a :class:`CVATImageTag` from a
+        :class:`fiftyone.core.labels.Classification`.
+
+        Args:
+            classification: a :class:`fiftyone.core.labels.Classification`
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = classification.label
+        return cls(label)
+
+    @classmethod
+    def from_tag_dict(cls, d):
+        """Creates a :class:`CVATImageTag` from a ``<tag>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<tag>`` tag
+
+        Returns:
+            a :class:`CVATImageTag`
+        """
+        label = d["@label"]
+        return cls(label)
 
 
 class CVATImageBox(CVATImageAnno):
@@ -3521,14 +3606,27 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
-        response = self.post(
-            self.login_url, data={"username": username, "password": password}
+        response = self._make_request(
+            self._session.post,
+            self.login_url,
+            print_error_info=False,
+            data={"username": username, "password": password},
         )
 
         if "csrftoken" in response.cookies:
             self._session.headers["X-CSRFToken"] = response.cookies[
                 "csrftoken"
             ]
+
+    def _make_request(
+        self, request_method, url, print_error_info=True, **kwargs
+    ):
+        response = request_method(url, verify=False, **kwargs)
+        if print_error_info:
+            self._validate(response, kwargs)
+        else:
+            response.raise_for_status()
+        return response
 
     def get(self, url, **kwargs):
         """Sends a GET request to the given CVAT API URL.
@@ -3540,9 +3638,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.get(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.get, url, **kwargs)
 
     def patch(self, url, **kwargs):
         """Sends a PATCH request to the given CVAT API URL.
@@ -3554,9 +3650,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.patch(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.patch, url, **kwargs)
 
     def post(self, url, **kwargs):
         """Sends a POST request to the given CVAT API URL.
@@ -3568,9 +3662,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.post(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.post, url, **kwargs)
 
     def put(self, url, **kwargs):
         """Sends a PUT request to the given CVAT API URL.
@@ -3582,9 +3674,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.put(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.put, url, **kwargs)
 
     def delete(self, url, **kwargs):
         """Sends a DELETE request to the given CVAT API URL.
@@ -3596,9 +3686,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the request response
         """
-        response = self._session.delete(url, verify=False, **kwargs)
-        self._validate(response, kwargs)
-        return response
+        return self._make_request(self._session.delete, url, **kwargs)
 
     def get_user_id(self, username):
         """Retrieves the CVAT user ID for the given username.

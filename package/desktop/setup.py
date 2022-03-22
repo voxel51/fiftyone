@@ -9,8 +9,7 @@ Installs the ``fiftyone-desktop`` package.
 import glob
 import os
 import shutil
-from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
 import os

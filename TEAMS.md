@@ -3,82 +3,13 @@
 This document describes how we develop FiftyOne Teams, which is a private fork
 of [FiftyOne](https://github.com/voxel51/fiftyone).
 
+## Teams Documentation
+
 The
 [FiftyOne Teams User Manual](https://docs.google.com/document/d/1Y4lZpMxlajj20EeIvDu7cRGPcjWwT4rTnG-vtjVilUc)
 currently contains the public-facing documentation for Teams.
 
-## Pulling changes from FiftyOne
-
-The `public` branch in this repository should match `develop` in
-[FiftyOne](https://github.com/voxel51/fiftyone).
-
-To merge the latest [FiftyOne](https://github.com/voxel51/fiftyone) into
-FiftyOne Teams, make sure `public` is up-to-date and then open a pull request
-into `develop`.
-
-Note that the `public` branch is protected, except for administrators, so if
-you are not an admin and need to update the `public` branch, you must do so via
-a pull request.
-
-### Administrators
-
-Be sure to have [FiftyOne](https://github.com/voxel51/fiftyone) added as the
-`public` remote:
-
-```shell
-git remote add public git@github.com:voxel51/fiftyone.git
-```
-
-Then you can merge changes from [FiftyOne](https://github.com/voxel51/fiftyone)
-into the `public` branch as follows:
-
-```
-git checkout public
-git pull public develop
-git push origin public
-```
-
-## Creating a pull request into FiftyOne
-
-When developing features privately intended to reach the public
-[FiftyOne](https://github.com/voxel51/fiftyone) repository, it is best to
-branch from `public` and not `develop`.
-
-```
-git checkout public
-git checkout -b my-feature
-# finish your feature, make commits
-```
-
-Open a pull request to merge `my-feature` into `public`.
-
-To add the changes to the public repository,
-[FiftyOne](https://github.com/voxel51/fiftyone), switch to your local clone of
-the open source project and add this repository as a remote:
-
-```shell
-cd /path/to/public/fiftyone
-git remote add teams git@github.com:voxel51/fiftyone-teams.git
-git checkout -b release-to-public
-git pull teams public
-git push origin release-to-public
-```
-
-## Adding a Teams feature to FiftyOne
-
-In this case, the assumption is that feature has been refactored to fit within
-the structure of the open source project. Branch from `public` and commit the
-the code that will be made public.
-
-Then follow the normal steps to make a pull request in the public
-[FiftyOne](https://github.com/voxel51/fiftyone) project.
-
-As these workflows solidify, syncing between the projects should be automated
-to whatever extent possible.
-
-## Documenting Teams releases
-
-Currently release notes for Teams release are documented
+Release notes for Teams releases are documented
 [in this doc](https://docs.google.com/document/d/1SvoJRXiajm14jXaenD9GottSEoQlOVCNcyMEV8qrF-g).
 
 ## Installing Teams releases
@@ -136,6 +67,91 @@ a different behavior.
 When adding data to this shared database, ensure that all media is placed
 within `/scratch/fiftyone` so other users will have access.
 
+## Pulling changes from FiftyOne
+
+The `public` branch in this repository should match `develop` in
+[FiftyOne](https://github.com/voxel51/fiftyone).
+
+To merge the latest [FiftyOne](https://github.com/voxel51/fiftyone) into this
+repository, the basic workflow is to update `public` and then open a pull
+request into `develop`. See below for details.
+
+### Setup
+
+You must add [FiftyOne](https://github.com/voxel51/fiftyone) as a remote
+repository for the `public` branch:
+
+```shell
+git remote add public git@github.com:voxel51/fiftyone.git
+```
+
+Note that the `public` branch is protected, so, if you are not an admin, you
+must replace `public` in the instructions below with another branch and then
+make a pull request into `public` rather than directly pushing to it.
+
+### Updating `public`
+
+Follow the instructions below to update the `public` branch to match
+[FiftyOne](https://github.com/voxel51/fiftyone)'s `develop` branch:
+
+```shell
+# Pull open source changes
+git checkout public
+git pull public develop
+
+# If you are not an admin, you must create a pull request into `public` instead
+git push origin public
+```
+
+### Merging `public` into `develop`
+
+Once `public` is updated, create a pull request into the `develop` branch of
+this repository like so:
+
+```shell
+git checkout develop
+git checkout -b new-branch
+
+git merge public
+
+# Resolve merge conflicts
+# Make any Teams-specific upgrades like cloud friendliness
+```
+
+Be careful that you have properly addressed any merge conflicts and performed
+any necessary upgrades such as making newly-added open source features
+cloud-friendly.
+
+See [this section](#teams-developer-guide) for more details on upgrading open
+source features.
+
+## Creating a pull request into FiftyOne
+
+The best way to develop features privately in this repository that you intend
+to reach the public [FiftyOne](https://github.com/voxel51/fiftyone) repository
+is to do your work in a branch off of `public` rather than `develop`:
+
+```shell
+git checkout public
+git checkout -b my-feature
+
+# Write, commit, etc.
+```
+
+Then open a pull request to merge `my-feature` into `public`.
+
+Finally, to publish your feature to
+[FiftyOne](https://github.com/voxel51/fiftyone), switch to your local clone of
+the open source project and add this repository as a remote:
+
+```shell
+cd /path/to/public/fiftyone
+git remote add teams git@github.com:voxel51/fiftyone-teams.git
+git checkout -b release-to-public
+git pull teams public
+git push origin release-to-public
+```
+
 ## Teams Developer Guide
 
 This section describes some basic patterns you need to know when developing
@@ -172,6 +188,19 @@ module contains a number of useful utilities for writing code that works for
 both local and cloud paths. These methods are designed to be drop-in
 replacements for the common `os` and `eta` utilities that are prevalent in open
 source FiftyOne.
+
+#### Protecting local-only code
+
+If a public method only supports local paths, use the pattern below to raise an
+informative error message if a cloud path is provided:
+
+```py
+import fiftyone.core.storage as fos
+
+def f(local_path):
+    fos.ensure_local(local_path)
+    ...
+```
 
 #### Path operations
 

@@ -28,6 +28,7 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .base import InteractivePlot
@@ -763,6 +764,24 @@ class InteractiveMatplotlibPlot(InteractivePlot):
     def show(self):
         """Shows this plot."""
         super().show()
+
+    def save(self, path, dpi=None, **kwargs):
+        """Saves the plot as an image.
+
+        Args:
+            path: the path to write the image
+            dpi (None): a resolution in dots per inch
+            **kwargs: keyword arguments for ``matplotlib.pyplot.savefig``
+        """
+        if "bbox_inches" not in kwargs:
+            kwargs["bbox_inches"] = "tight"
+
+        if dpi is not None:
+            kwargs["dpi"] = dpi
+
+        fos.ensure_basedir(path)
+        with fos.LocalFile(path, "w") as local_path:
+            self._figure.savefig(local_path, **kwargs)
 
     def _show(self, **_):
         plt.show(block=False)

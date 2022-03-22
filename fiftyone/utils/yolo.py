@@ -19,7 +19,13 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
+def add_yolo_labels(
+    sample_collection,
+    label_field,
+    labels_path,
+    classes=None,
+    include_missing=False,
+):
     """Adds the given YOLO-formatted labels to the collection.
 
     Each YOLO txt file should be a space-delimited file whose rows define
@@ -50,6 +56,10 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
         classes (None): the list of class label strings. If not provided, these
             must be available from
             :meth:`fiftyone.core.collections.SampleCollection.get_classes`
+        include_missing (False): whether to insert empty
+            :class:`Detections <fiftyone.core.labels.Detections>` instances for
+            any samples in the input collection whose ``label_field`` is
+            ``None`` after import
     """
     if classes is None:
         classes = sample_collection.get_classes(label_field)
@@ -131,6 +141,12 @@ def add_yolo_labels(sample_collection, label_field, labels_path, classes=None):
 
     view = sample_collection.select(matched_ids, ordered=True)
     view.set_values(label_field, labels)
+
+    if include_missing:
+        missing_labels = sample_collection.exists(label_field, False)
+        missing_labels.set_values(
+            label_field, [fol.Detections()] * len(missing_labels)
+        )
 
 
 class YOLOv4DatasetImporter(
