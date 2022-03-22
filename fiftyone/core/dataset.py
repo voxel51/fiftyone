@@ -2099,6 +2099,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._clear(view=clear_view)
 
+    def _keep_fields(self, view=None):
+        if view is None:
+            return
+
+        del_sample_fields = view._get_missing_fields()
+        if del_sample_fields:
+            self.delete_sample_fields(del_sample_fields)
+
+        if self.media_type == fom.VIDEO:
+            del_frame_fields = view._get_missing_fields(frames=True)
+            if del_frame_fields:
+                self.delete_frame_fields(del_frame_fields)
+
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
 
@@ -2249,8 +2262,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self.clear()
+        self._sample_collection.drop()
+        fos.Sample._reset_docs(self._sample_collection_name)
+
+        # Clips datasets directly inherit frames from source dataset
+        if not self._is_clips:
+            self._frame_collection.drop()
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
         _delete_dataset_doc(self._doc)
+
         self._deleted = True
 
     def add_dir(

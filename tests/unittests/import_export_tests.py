@@ -10,6 +10,7 @@ import random
 import string
 import unittest
 
+import cv2
 import numpy as np
 import pytest
 
@@ -514,6 +515,95 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         self.assertEqual(
             dataset.count("predictions"), dataset2.count("predictions")
         )
+
+
+class ImageChannelsDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classification(label="cat", confidence=0.9),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classification(label="dog", confidence=0.95),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @skipwindows
+    @drop_datasets
+    def test_tf_image_classification_channels(self):
+        orig_dataset = self._make_dataset()
+
+        # Export grayscale images
+
+        export_dir1 = self._new_dir()
+
+        for idx, sample in enumerate(orig_dataset, 1):
+            label = sample.predictions.label
+            outpath = os.path.join(export_dir1, label, "%06d.png" % idx)
+
+            # pylint: disable=no-member
+            img = etai.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
+            etai.write(img, outpath)
+
+        gray_dataset1 = fo.Dataset.from_dir(
+            dataset_dir=export_dir1,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+        gray_dataset1.compute_metadata()
+        self.assertEqual(gray_dataset1.first().metadata.num_channels, 1)
+
+        export_dir2 = self._new_dir()
+
+        # Export grayscale
+        gray_dataset1.export(
+            export_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            overwrite=True,
+        )
+
+        # Import grayscale
+        gray_dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir2, "images-gray"),
+        )
+        gray_dataset2.compute_metadata()
+        self.assertEqual(gray_dataset2.first().metadata.num_channels, 1)
+
+        # Force RGB at import-time
+        rgb_dataset1 = fo.Dataset.from_dir(
+            dataset_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir2, "images-rgb"),
+            force_rgb=True,
+        )
+        rgb_dataset1.compute_metadata()
+        self.assertEqual(rgb_dataset1.first().metadata.num_channels, 3)
+
+        export_dir3 = self._new_dir()
+
+        # Force RGB at export-time
+        gray_dataset1.export(
+            export_dir=export_dir3,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            force_rgb=True,
+        )
+
+        # Import RGB
+        rgb_dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir3,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir3, "images"),
+        )
+        rgb_dataset2.compute_metadata()
+        self.assertEqual(rgb_dataset2.first().metadata.num_channels, 3)
 
 
 class ImageClassificationsDatasetTests(ImageDatasetTests):

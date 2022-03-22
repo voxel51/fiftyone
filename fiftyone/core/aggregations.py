@@ -144,12 +144,16 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if self._field_name is not None:
-            return _is_frame_path(sample_collection, self._field_name)
+        if sample_collection.media_type != fom.VIDEO:
+            return False
 
-        if self._expr is not None:
-            field_name, _ = _extract_prefix_from_expr(self._expr)
-            return _is_frame_path(sample_collection, field_name)
+        if self._field_name is not None:
+            expr = F(self._field_name)
+        else:
+            expr = self._expr
+
+        if expr is not None:
+            return foe.is_frames_expr(expr)
 
         return False
 
@@ -1660,16 +1664,6 @@ class Values(Aggregation):
         return pipeline
 
 
-def _is_frame_path(sample_collection, field_name):
-    if not field_name:
-        return False
-
-    # Remove array references
-    path = "".join(field_name.split("[]"))
-
-    return sample_collection._is_frame_field(path)
-
-
 def _transform_values(values, fcn, level=1):
     if values is None:
         return None
@@ -1745,12 +1739,16 @@ def _parse_field_and_expr(
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
 
-    root = "." not in field_name
-    found_expr = expr is not None
+    if field_name is None:
+        root = True
+        field_type = None
+    else:
+        root = "." not in field_name
+        field_type = _get_field_type(
+            sample_collection, field_name, unwind=auto_unwind
+        )
 
-    field_type = _get_field_type(
-        sample_collection, field_name, unwind=auto_unwind
-    )
+    found_expr = expr is not None
 
     if safe:
         expr = _to_safe_expr(expr, field_type)
