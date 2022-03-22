@@ -769,10 +769,6 @@ def _get_classes(
     if classes:
         return classes
 
-    return _get_existing_classes(samples, label_field)
-
-
-def _get_existing_classes(samples, label_field):
     _, label_path = samples._get_label_field_path(label_field, "label")
     return sorted(
         set(samples._dataset.distinct(label_path))
@@ -1054,7 +1050,7 @@ def load_annotations(
                         _merge_scalars(samples, annos, results, new_field)
                     else:
                         _merge_labels(
-                            samples, annos, results, new_field, anno_type,
+                            samples, annos, results, new_field, anno_type
                         )
                 else:
                     if label_field:
@@ -1543,7 +1539,7 @@ def _merge_label(
     only_keyframes=False,
 ):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
-        if field == "label" and not allow_label_edits:
+        if not allow_label_edits and field == "label":
             continue
 
         if not allow_index_edits and field == "index":
