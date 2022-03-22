@@ -773,22 +773,11 @@ def _get_classes(
 
 
 def _get_existing_classes(samples, label_field):
-    mapped_labels = _get_labels_map(samples, label_field)
-
     _, label_path = samples._get_label_field_path(label_field, "label")
-    classes = samples._dataset.distinct(label_path)
-    mapped_classes = [mapped_labels.get(c, c) for c in classes]
-    return mapped_classes
-
-
-def _get_labels_map(samples, label_field):
-    mapped_labels = {}
-    for stage in samples.view()._stages:
-        if isinstance(stage, fos.MapLabels):
-            if stage.field == label_field:
-                mapped_labels.update(stage.map)
-
-    return mapped_labels
+    return sorted(
+        set(samples._dataset.distinct(label_path))
+        | set(samples.distinct(label_path))
+    )
 
 
 def _parse_classes_dict(
@@ -997,7 +986,6 @@ def load_annotations(
         found, in which case a dict containing the extra labels is returned
     """
     results = samples.load_annotation_results(anno_key, **kwargs)
-    anno_view = samples.load_annotation_view(anno_key)
     annotations = results.backend.download_annotations(results)
     label_schema = results.config.label_schema
 
@@ -1028,7 +1016,6 @@ def load_annotations(
                 else:
                     _merge_labels(
                         samples,
-                        anno_view,
                         annos,
                         results,
                         label_field,
@@ -1067,12 +1054,7 @@ def load_annotations(
                         _merge_scalars(samples, annos, results, new_field)
                     else:
                         _merge_labels(
-                            samples,
-                            anno_view,
-                            annos,
-                            results,
-                            new_field,
-                            anno_type,
+                            samples, annos, results, new_field, anno_type,
                         )
                 else:
                     if label_field:
@@ -1304,7 +1286,6 @@ def _merge_scalars(samples, anno_dict, results, label_field, label_info=None):
 
 def _merge_labels(
     samples,
-    anno_view,
     anno_dict,
     results,
     label_field,
@@ -1323,8 +1304,6 @@ def _merge_labels(
     allow_label_edits = label_info.get("allow_label_edits", True)
     allow_index_edits = label_info.get("allow_index_edits", True)
     allow_spatial_edits = label_info.get("allow_spatial_edits", True)
-
-    mapped_labels = _get_labels_map(anno_view, label_field)
 
     fo_label_type = _LABEL_TYPES_MAP[label_type]
     if issubclass(fo_label_type, fol._LABEL_LIST_FIELDS):
@@ -1486,7 +1465,6 @@ def _merge_labels(
                         _merge_label(
                             label,
                             anno_label,
-                            mapped_labels,
                             global_attrs=global_attrs,
                             class_attrs=class_attrs,
                             allow_label_edits=allow_label_edits,
@@ -1557,7 +1535,6 @@ def _ensure_label_field(samples, label_field, fo_label_type):
 def _merge_label(
     label,
     anno_label,
-    mapped_labels,
     global_attrs=None,
     class_attrs=None,
     allow_label_edits=True,
@@ -1566,14 +1543,8 @@ def _merge_label(
     only_keyframes=False,
 ):
     for field in _DEFAULT_LABEL_FIELDS_MAP.get(type(label), []):
-        if field == "label":
-            if not allow_label_edits:
-                continue
-
-            # Label was mapped in the annotation view but was not modified
-            label_name = label[field]
-            if mapped_labels.get(label_name, label_name) == anno_label[field]:
-                continue
+        if field == "label" and not allow_label_edits:
+            continue
 
         if not allow_index_edits and field == "index":
             continue

@@ -761,6 +761,13 @@ class CVATTests(unittest.TestCase):
         ].clone()
 
         prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        # Set one of the detections to upper case
+        sample = dataset.first()
+        label = sample.ground_truth.detections[0].label
+        sample.ground_truth.detections[0].label = label.upper()
+        sample.save()
+
         prev_unchanged_label = dataset.select_labels(ids=prev_ids[1]).values(
             "ground_truth.detections.label", unwind=True
         )[0]
@@ -786,13 +793,15 @@ class CVATTests(unittest.TestCase):
         loaded_ids = dataset.values("ground_truth.detections.id", unwind=True)
         self.assertEqual(len(loaded_ids), len(prev_ids))
 
-        # Ensure that existing label is unchaged
+        # We expect existing labels to have been updated according to the
+        # mapping
         unchanged_label = dataset.select_labels(ids=prev_ids[1]).values(
             "ground_truth.detections.label", unwind=True
         )[0]
-        self.assertEqual(unchanged_label, prev_unchanged_label)
+        self.assertNotEqual(unchanged_label, prev_unchanged_label)
 
-        # Ensure that newly created labels are mapped
+        # Expect newly created labels to retain whatever class they were
+        # annotated as
         new_id = list(set(loaded_ids) - set(prev_ids))[0]
         new_label = dataset.select_labels(ids=new_id).values(
             "ground_truth.detections.label", unwind=True
