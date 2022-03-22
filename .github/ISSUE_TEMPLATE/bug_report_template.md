@@ -48,7 +48,8 @@ the problem.
 
 Include any logs or source code that would be helpful to diagnose the problem.
 If including tracebacks, please include the full traceback. Large logs and
-files should be attached.
+files should be attached. Please do not use screenshots for sharing text. Code
+snippets should be used instead when providing tracebacks, logs, etc.
 
 ### What areas of FiftyOne does this bug affect?
 

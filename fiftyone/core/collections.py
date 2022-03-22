@@ -6178,8 +6178,7 @@ class SampleCollection(object):
                 used
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
-                existing files and directories (False). Not applicable when a
-                ``dataset_exporter`` was provided
+                existing files and directories (False)
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
@@ -8058,12 +8057,18 @@ def _export(
             "Either `dataset_type` or `dataset_exporter` must be provided"
         )
 
+    # Overwrite existing directories or warn if files will be merged
+    _handle_existing_dirs(
+        dataset_exporter=dataset_exporter,
+        export_dir=export_dir,
+        data_path=data_path,
+        labels_path=labels_path,
+        export_media=export_media,
+        overwrite=overwrite,
+    )
+
     # If no dataset exporter was provided, construct one
     if dataset_exporter is None:
-        _handle_existing_dirs(
-            export_dir, data_path, labels_path, export_media, overwrite
-        )
-
         dataset_exporter, kwargs = foud.build_dataset_exporter(
             dataset_type,
             warn_unused=False,  # don't warn yet, might be patches kwargs
@@ -8116,8 +8121,34 @@ def _export(
 
 
 def _handle_existing_dirs(
-    export_dir, data_path, labels_path, export_media, overwrite
+    dataset_exporter=None,
+    export_dir=None,
+    data_path=None,
+    labels_path=None,
+    export_media=False,
+    overwrite=False,
 ):
+    if dataset_exporter is not None:
+        try:
+            export_dir = dataset_exporter.export_dir
+        except:
+            pass
+
+        try:
+            data_path = dataset_exporter.data_path
+        except:
+            pass
+
+        try:
+            labels_path = dataset_exporter.labels_path
+        except:
+            pass
+
+        try:
+            export_media = dataset_exporter.export_media
+        except:
+            pass
+
     if export_dir is not None and os.path.isdir(export_dir):
         if overwrite:
             etau.delete_dir(export_dir)

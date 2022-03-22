@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.14.4"
+VERSION = "0.15.0"  # updated by https://github.com/voxel51/fiftyone/pull/1615
 
 
 def get_version():

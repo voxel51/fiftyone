@@ -627,6 +627,18 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._keep(view=self)
 
+    def keep_fields(self):
+        """Deletes all fields that are excluded from the view from the
+        underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._dataset._keep_fields(view=self)
+
     def keep_frames(self):
         """For each sample in the view, deletes all frames labels that are
         **not** in the view from the underlying dataset.
@@ -899,6 +911,9 @@ class DatasetView(foc.SampleCollection):
 
     def _get_missing_fields(self, frames=False):
         if frames:
+            if self.media_type != fom.VIDEO:
+                return set()
+
             dataset_schema = self._dataset.get_frame_field_schema()
             view_schema = self.get_frame_field_schema()
         else:
