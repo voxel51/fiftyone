@@ -41,16 +41,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             if value is not None:
                 self.add_implied_field(name, value)
 
-    def has_field(self, name):
-        # pylint: disable=no-member
-        if name in self._fields:
-            return True
-
-        if name in self._get_custom_fields():
-            return True
-
-        return False
-
     def __setattr__(self, name, value):
         if not name.startswith("_"):
             custom_fields = self._get_custom_fields()
@@ -61,6 +51,16 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def __setitem__(self, name, value):
         self.set_field(name, value, create=True)
+
+    def has_field(self, name):
+        # pylint: disable=no-member
+        if name in self._fields:
+            return True
+
+        if name in self._get_custom_fields():
+            return True
+
+        return False
 
     def set_field(self, name, value, create=False):
         if hasattr(self, name) and not self.has_field(name):
@@ -190,10 +190,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         fields = getattr(self._parent, "fields", [])
         return {field.name: field for field in fields}
 
-    def _merge_fields(self, field, expand_schema=True):
-        for _field in field.get_field_schema().values():
-            self._add_field(_field, expand_schema=expand_schema)
-
     def _declare_field(self, field):
         field._set_parent(self)
 
@@ -201,6 +197,10 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             self._custom_fields[field.name] = field
         else:
             self._parent._save_field(field, [field.name])
+
+    def _merge_fields(self, field, expand_schema=True):
+        for _field in field.get_field_schema().values():
+            self._add_field(_field, expand_schema=expand_schema)
 
     def _set_parent(self, parent):
         self._parent = parent
