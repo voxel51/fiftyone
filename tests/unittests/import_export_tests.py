@@ -46,12 +46,12 @@ class ImageDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_image(self, filename=None):
-        if filename is None:
-            filename = self._new_name()
+    def _new_image(self, name=None):
+        if name is None:
+            name = self._new_name()
+
         filepath = os.path.join(
-            self.images_dir,
-            filename + os.path.splitext(self._ref_image_path)[1],
+            self.images_dir, name + os.path.splitext(self._ref_image_path)[1],
         )
 
         etau.copy_file(self._ref_image_path, filepath)
@@ -1812,13 +1812,14 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         import import_export_utils.openlabel as ol
 
         labels_path = ol._make_image_labels(self._tmp_dir)
-        img_filepath = self._new_image(filename="openlabel_test")
+        img_filepath = self._new_image(name="openlabel_test")
 
         dataset = fo.Dataset.from_dir(
             data_path=self.images_dir,
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
+
         assert dataset.count("detections.detections.label") == 1
         assert dataset.count("segmentations.detections.label") == 2
         assert dataset.count("keypoints.keypoints.label") == 1
@@ -1828,7 +1829,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         import import_export_utils.openlabel as ol
 
         labels_path = ol._make_image_labels(self._tmp_dir)
-        img_filepath = self._new_image(filename="openlabel_test")
+        img_filepath = self._new_image(name="openlabel_test")
 
         dataset = fo.Dataset.from_dir(
             data_path=self.images_dir,
@@ -1836,6 +1837,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
             label_types="detections",
         )
+
         assert isinstance(dataset.first().ground_truth, fo.Detections)
 
     @drop_datasets
@@ -1844,13 +1846,14 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         import fiftyone.utils.labels as foul
 
         labels_path = ol._make_segmentation_labels(self._tmp_dir)
-        img_filepath = self._new_image(filename="openlabel_test")
+        img_filepath = self._new_image(name="openlabel_test")
 
         dataset = fo.Dataset.from_dir(
             data_path=self.images_dir,
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
+
         assert dataset.count("segmentations.detections.mask") == 2
 
         dataset = fo.Dataset.from_dir(
@@ -1859,6 +1862,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
             use_polylines=True,
         )
+
         assert dataset.count("segmentations.polylines") == 2
 
 
