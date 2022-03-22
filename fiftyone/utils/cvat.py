@@ -4711,9 +4711,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                     if len(name) > 64:
                         raise ValueError(
-                            "Class name `%s` is longer than 64 characters."
-                            % name
+                            "Class name '%s' exceeds 64 character limit" % name
                         )
+
                     cvat_schema[name].update(_attrs)
                     if _occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = _occluded_attr_name
