@@ -257,10 +257,15 @@ class CVATTests(unittest.TestCase):
 
     def test_detection_labelling(self):
         dataset = (
-            foz.load_zoo_dataset("quickstart", max_samples=2)
+            foz.load_zoo_dataset("quickstart")
             .select_fields("ground_truth")
             .clone()
         )
+        # Get a subset that contains at least 2 objects
+        dataset = dataset.match(F("ground_truth.detections").length() > 1)[
+            :2
+        ].clone()
+
         previous_dataset = dataset.clone()
 
         previous_label_ids = dataset.values(
@@ -743,6 +748,65 @@ class CVATTests(unittest.TestCase):
         )
         self.assertTrue(id_occ_map.pop(shape_id))
         self.assertFalse(any(id_occ_map.values()))
+
+    def test_map_view_stage(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart")
+            .select_fields("ground_truth")
+            .clone()
+        )
+        # Get a subset that contains at least 2 objects
+        dataset = dataset.match(F("ground_truth.detections").length() > 1)[
+            :1
+        ].clone()
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        # Set one of the detections to upper case
+        sample = dataset.first()
+        label = sample.ground_truth.detections[0].label
+        sample.ground_truth.detections[0].label = label.upper()
+        sample.save()
+
+        prev_unchanged_label = dataset.select_labels(ids=prev_ids[1]).values(
+            "ground_truth.detections.label", unwind=True
+        )[0]
+
+        labels = dataset.distinct("ground_truth.detections.label")
+        label_map = {l: l.upper() for l in labels}
+
+        view = dataset.map_labels("ground_truth", label_map)
+
+        anno_key = "anno_key"
+        results = view.annotate(
+            anno_key, backend="cvat", label_field="ground_truth",
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        deleted_id = prev_ids[0]
+
+        self.assertIsNotNone(_get_shape(api, task_id, deleted_id))
+        _create_annotation(api, task_id, shape=labels[0].upper())
+        _delete_shape(api, task_id, deleted_id)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+        loaded_ids = dataset.values("ground_truth.detections.id", unwind=True)
+        self.assertEqual(len(loaded_ids), len(prev_ids))
+
+        # We expect existing labels to have been updated according to the
+        # mapping
+        unchanged_label = dataset.select_labels(ids=prev_ids[1]).values(
+            "ground_truth.detections.label", unwind=True
+        )[0]
+        self.assertNotEqual(unchanged_label, prev_unchanged_label)
+
+        # Expect newly created labels to retain whatever class they were
+        # annotated as
+        new_id = list(set(loaded_ids) - set(prev_ids))[0]
+        new_label = dataset.select_labels(ids=new_id).values(
+            "ground_truth.detections.label", unwind=True
+        )[0]
+        self.assertEqual(labels[0].upper(), new_label)
 
 
 if __name__ == "__main__":

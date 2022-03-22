@@ -777,7 +777,10 @@ def _get_classes(
         return classes
 
     _, label_path = samples._get_label_field_path(label_field, "label")
-    return samples._dataset.distinct(label_path)
+    return sorted(
+        set(samples._dataset.distinct(label_path))
+        | set(samples.distinct(label_path))
+    )
 
 
 def _parse_classes_dict(
