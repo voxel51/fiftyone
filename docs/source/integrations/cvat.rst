@@ -1009,6 +1009,13 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
+You can use the optional `dest_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `dest_field` should be a
+dictionary mapping label schema field names to destination field names.
+
 Note that CVAT cannot explicitly prevent annotators from creating labels that
 don't obey the run's label schema. However, you can pass the optional
 `unexpected` parameter to
@@ -1958,6 +1965,55 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
+
+.. _cvat-destination-field:
+
+Changing destination field
+--------------------------
+
+When annotating an existing label field, it can be useful to load the
+annotations into a different field than the one used to upload annotations. The
+`dest_field` parameter can be used for this purpose when calling
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+If your annotation run involves a single label field, set `dest_field`
+to the name of the (new or existing) field you wish to load annotations into.
+
+If your annotation run involves multiple fields, `dest_field` should be
+a dictionary mapping existing field names in your run's label schema to updated
+destination fields.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "dest_field"
+    label_field = "ground_truth"
+
+    # Upload from `ground_truth` field
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Load into `test_field`
+    dest_field = "test_field"
+
+    # If your run involves multiple fields, use this syntax instead
+    # dest_field = {"ground_truth": "test_field", ...}
+
+    dataset.load_annotations(
+        anno_key,
+        cleanup=True,
+        dest_field=dest_field,
+    )
+    dataset.delete_annotation_run(anno_key)
 
 .. _cvat-annotating-videos:
 

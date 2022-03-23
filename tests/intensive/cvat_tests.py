@@ -731,6 +731,7 @@ class CVATTests(unittest.TestCase):
         api = results.connect_to_api()
         task_id = results.task_ids[0]
         shape_id = dataset.first().ground_truth.detections[0].id
+
         _update_shape(api, task_id, shape_id, occluded=True)
 
         dataset.load_annotations(anno_key, cleanup=True)
@@ -807,6 +808,142 @@ class CVATTests(unittest.TestCase):
             "ground_truth.detections.label", unwind=True
         )[0]
         self.assertEqual(labels[0].upper(), new_label)
+
+    def test_dest_field(self):
+        # Test images
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_labels = dataset.values("ground_truth", unwind=True)
+
+        anno_key = "test_dest_field"
+        results = dataset.annotate(anno_key, label_field="ground_truth")
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, dest_field="test_field",
+        )
+        self.assertListEqual(
+            prev_labels, dataset.values("ground_truth", unwind=True),
+        )
+        self.assertListEqual(
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+            sorted(dataset.values("test_field.detections.id", unwind=True)),
+        )
+
+        # Test dict
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_labels = dataset.values("ground_truth", unwind=True)
+
+        anno_key = "test_dest_field"
+
+        label_schema = {
+            "ground_truth": {},
+            "new_points": {"type": "keypoints", "classes": ["test"],},
+            "new_polygon": {"type": "polygons", "classes": ["test2"],},
+        }
+        results = dataset.annotate(anno_key, label_schema=label_schema)
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        _create_annotation(
+            api,
+            task_id,
+            shape="test",
+            _type="points",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+        _create_annotation(
+            api,
+            task_id,
+            shape="test2",
+            _type="polygon",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+
+        dest_field = {
+            "ground_truth": "test_field_1",
+            "new_points": "test_field_2",
+        }
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, dest_field=dest_field,
+        )
+        self.assertFalse(dataset.has_sample_field("new_points"))
+        self.assertTrue(dataset.has_sample_field("new_polygon"))
+        self.assertTrue(dataset.has_sample_field("test_field_1"))
+        self.assertTrue(dataset.has_sample_field("test_field_2"))
+        self.assertListEqual(
+            prev_labels, dataset.values("ground_truth", unwind=True),
+        )
+        self.assertListEqual(
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+            sorted(dataset.values("test_field_1.detections.id", unwind=True)),
+        )
+        self.assertEqual(
+            len(dataset.values("test_field_2.keypoints.id", unwind=True)), 1,
+        )
+        self.assertEqual(
+            len(dataset.values("new_polygon.polylines.id", unwind=True)), 1,
+        )
+
+        # Test modification
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=2).clone()
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "test_dest_field"
+        results = dataset.annotate(anno_key, label_field="ground_truth")
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+
+        _delete_shape(api, task_id, shape_id)
+        _create_annotation(api, task_id, shape=True)
+        _create_annotation(
+            api,
+            task_id,
+            shape=True,
+            _type="points",
+            points=[10, 20, 40, 30, 50, 60],
+        )
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, dest_field="test_field", unexpected="keep",
+        )
+
+        self.assertListEqual(
+            sorted(prev_ids),
+            sorted(dataset.values("ground_truth.detections.id", unwind=True)),
+        )
+
+        test_ids = dataset.values("test_field.detections.id", unwind=True)
+        self.assertEqual(len(set(test_ids) - set(prev_ids)), 1)
+        self.assertEqual(len(set(prev_ids) - set(test_ids)), 1)
+
+        # Test videos
+        dataset = foz.load_zoo_dataset(
+            "quickstart-video", max_samples=1
+        ).clone()
+
+        prev_labels = dataset.values("frames.detections", unwind=True)
+
+        anno_key = "test_dest_field"
+        results = dataset.annotate(anno_key, label_field="frames.detections")
+
+        dataset.load_annotations(
+            anno_key, cleanup=True, dest_field="frames.test_field",
+        )
+        self.assertListEqual(
+            prev_labels, dataset.values("frames.detections", unwind=True),
+        )
+        self.assertListEqual(
+            sorted(
+                dataset.values("frames.detections.detections.id", unwind=True)
+            ),
+            sorted(
+                dataset.values("frames.test_field.detections.id", unwind=True)
+            ),
+        )
 
 
 if __name__ == "__main__":
