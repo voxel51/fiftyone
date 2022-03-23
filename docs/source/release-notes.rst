@@ -44,6 +44,13 @@ Core
   when aggregating expressions like the following that involve both
   |Sample|-level and |Frame|-level fields
   `#1644 <https://github.com/voxel51/fiftyone/pull/1644>`_
+- Added support for the
+  `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f#_introduction>`_
+  via the
+  :class:`OpenLABELImageDataset <fiftyone.types.dataset_types.OpenLABELImageDataset>`
+  and
+  :class:`OpenLABELVideoDataset <fiftyone.types.dataset_types.OpenLABELVideoDataset>`
+  dataset types
 
 Annotation
 
