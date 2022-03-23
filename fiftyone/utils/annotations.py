@@ -960,7 +960,7 @@ def load_annotations(
     anno_key,
     unexpected="prompt",
     cleanup=False,
-    destination_field=None,
+    dest_field=None,
     **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
@@ -986,7 +986,7 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        destination_field (None): the name of the field into which to load
+        dest_field (None): the name of the field into which to load
             annotations or a dict mapping field names provided in the label
             schema to desination field names.
         **kwargs: optional keyword arguments for
@@ -1010,17 +1010,17 @@ def load_annotations(
 
         anno_dict = annotations.get(label_field, {})
 
-        if etau.is_str(destination_field):
+        if etau.is_str(dest_field):
             if len(label_schema) == 1:
-                label_field = destination_field
+                label_field = dest_field
             else:
                 logger.warning(
                     "Label schema contains `%d` fields, ignoring "
-                    "`destination_field` argument: `%s`"
-                    % (len(label_schema), destination_field)
+                    "`dest_field` argument: `%s`"
+                    % (len(label_schema), dest_field)
                 )
-        elif isinstance(destination_field, dict):
-            label_field = destination_field.get(label_field, label_field)
+        elif isinstance(dest_field, dict):
+            label_field = dest_field.get(label_field, label_field)
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}

@@ -6365,7 +6365,12 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
+        self,
+        anno_key,
+        unexpected="prompt",
+        cleanup=False,
+        dest_field=None,
+        **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6387,6 +6392,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
+            dest_field (None): the name of the field into which to load
+                annotations or a dict mapping field names provided in the label
+                schema to desination field names.
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
 
@@ -6395,7 +6403,12 @@ class SampleCollection(object):
             found, in which case a dict containing the extra labels is returned
         """
         return foua.load_annotations(
-            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
+            self,
+            anno_key,
+            unexpected=unexpected,
+            cleanup=cleanup,
+            dest_field=dest_field,
+            **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
