@@ -96,7 +96,7 @@ def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
     if image_paths:
         fos.ensure_local(image_paths[0])
 
-    
+
     def parse_sample(image_path):
         return _parse_image_tf(image_path, force_rgb=force_rgb)
 
@@ -263,7 +263,7 @@ class TFRecordsWriter(object):
         local_dir = self._local_dir.__enter__()
         tf_records_path = os.path.join(local_dir, name)
 
-        etau.ensure_basedir(tf_records_path)
+        fos.ensure_basedir(tf_records_path)
 
         if self.num_shards:
             self._num_shards = self.num_shards
@@ -961,7 +961,7 @@ class TFExampleGenerator(object):
                 filename = os.path.basename(image_path)
 
             # pylint: disable=no-member
-            img_bytes = etau.read_file(image_path, binary=True)
+            img_bytes = fos.read_file(image_path, binary=True)
             img = etai.decode(img_bytes, flag=cv2.IMREAD_ANYCOLOR)
 
             if img.ndim == 2:

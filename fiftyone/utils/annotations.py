@@ -2337,7 +2337,7 @@ def _to_video_labels(sample, label_fields=None):
     else:
         metadata = sample.metadata
         if metadata is None:
-            metadata = fom.VideoMetadata.build_for(sample.filepath)
+            metadata = fom.VideoMetadata.build_for(sample.local_path)
 
         support = [1, metadata.total_frame_count]
 
