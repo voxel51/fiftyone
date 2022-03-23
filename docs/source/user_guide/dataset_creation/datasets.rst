@@ -3373,6 +3373,12 @@ directory containing the corresponding media files by providing the
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
 
+.. note::
+
+    OpenLABEL is a flexible format that allows for many user-specific
+    decisions about how to represent labels and metadata. If you have
+    OpenLABEL-compliant data in a format not understood by the current
+    importers, please make an issue or contribute a PR!
 
 .. _OpenLABELVideoDataset-import:
 
@@ -3643,6 +3649,12 @@ directory containing the corresponding media files by providing the
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
 
+.. note::
+
+    OpenLABEL is a flexible format that allows for many user-specific
+    decisions about how to represent labels and metadata. If you have
+    OpenLABEL-compliant data in a format not understood by the current
+    importers, please make an issue or contribute a PR!
 
 .. _FiftyOneImageLabelsDataset-import:
 
