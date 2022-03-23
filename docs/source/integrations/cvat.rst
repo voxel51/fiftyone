@@ -1009,11 +1009,12 @@ to see the available keys on a dataset.
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
 
-The `dest_field` parameter can be used to designate the name of the
-field into which to load annotations, if it differs from the field defined in
-the label schema when creating the annotation run. If multiple fields are being
-annotated, `dest_field` expects a dictionary mapping field names defined
-in the label schema to the corresponding destination field names.
+You can use the optional `dest_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `dest_field` should be a
+dictionary mapping label schema field names to destination field names.
 
 Note that CVAT cannot explicitly prevent annotators from creating labels that
 don't obey the run's label schema. However, you can pass the optional
@@ -1973,11 +1974,12 @@ annotations into a different field than the one used to upload annotations. The
 `dest_field` parameter can be used for this purpose when calling
 :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
 
-The `dest_field` parameter expects either a string field name or a
-dictionary mapping field names defined in the label schema to the corresponding
-destination field names. Providing a string is only allowed when annotating a
-single field. When multiple fields are being annotated, `dest_field`
-must be a dictionary.
+If your annotation run involves a single label field, set `dest_field`
+to the name of the (new or existing) field you wish to load annotations into.
+
+If your annotation run involves multiple fields, `dest_field` should be
+a dictionary mapping existing field names in your run's label schema to updated
+destination fields.
 
 .. code:: python
     :linenos:
@@ -1998,14 +2000,12 @@ must be a dictionary.
     )
     print(dataset.get_annotation_info(anno_key))
 
-
+    # Load into `test_field`
     dest_field = "test_field"
 
-    # OR
+    # If your run involves multiple fields, use this syntax instead
+    # dest_field = {"ground_truth": "test_field", ...}
 
-    dest_field = {"ground_truth": "test_field"}
-
-    # Load into `test_field`
     dataset.load_annotations(
         anno_key,
         cleanup=True,

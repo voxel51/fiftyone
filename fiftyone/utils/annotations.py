@@ -958,9 +958,9 @@ def _format_attributes(backend, attributes):
 def load_annotations(
     samples,
     anno_key,
+    dest_field=None,
     unexpected="prompt",
     cleanup=False,
-    dest_field=None,
     **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
@@ -973,6 +973,9 @@ def load_annotations(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         anno_key: an annotation key
+        dest_field (None): an optional name of a new destination field
+            into which to load the annotations, or a dict mapping field names
+            in the run's label schema to new desination field names
         unexpected ("prompt"): how to deal with any unexpected labels that
             don't match the run's label schema when importing. The supported
             values are:
@@ -986,9 +989,6 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
-        dest_field (None): the name of the field into which to load
-            annotations or a dict mapping field names provided in the label
-            schema to desination field names.
         **kwargs: optional keyword arguments for
             :meth:`AnnotationResults.load_credentials`
 
@@ -1015,11 +1015,12 @@ def load_annotations(
                 label_field = dest_field
             else:
                 logger.warning(
-                    "Label schema contains `%d` fields, ignoring "
-                    "`dest_field` argument: `%s`"
-                    % (len(label_schema), dest_field)
+                    "Ignoring string `dest_field=%s` since the label "
+                    "schema contains %d > 1 fields",
+                    dest_field,
+                    len(label_schema),
                 )
-        elif isinstance(dest_field, dict):
+        elif dest_field is not None:
             label_field = dest_field.get(label_field, label_field)
 
         if expected_type and expected_type not in anno_dict:

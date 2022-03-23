@@ -6367,9 +6367,9 @@ class SampleCollection(object):
     def load_annotations(
         self,
         anno_key,
+        dest_field=None,
         unexpected="prompt",
         cleanup=False,
-        dest_field=None,
         **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
@@ -6381,6 +6381,9 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            dest_field (None): an optional name of a new destination field
+                into which to load the annotations, or a dict mapping field names
+                in the run's label schema to new desination field names
             unexpected ("prompt"): how to deal with any unexpected labels that
                 don't match the run's label schema when importing. The
                 supported values are:
@@ -6392,9 +6395,6 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
-            dest_field (None): the name of the field into which to load
-                annotations or a dict mapping field names provided in the label
-                schema to desination field names.
             **kwargs: optional keyword arguments for
                 :meth:`fiftyone.utils.annotations.AnnotationResults.load_credentials`
 
@@ -6405,9 +6405,9 @@ class SampleCollection(object):
         return foua.load_annotations(
             self,
             anno_key,
+            dest_field=dest_field,
             unexpected=unexpected,
             cleanup=cleanup,
-            dest_field=dest_field,
             **kwargs,
         )
 
