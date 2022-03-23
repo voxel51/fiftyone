@@ -63,6 +63,8 @@ Annotation
 - Added a property to annotation backends that decides whether to allow
   annotation of video-level labels
   `#1655 <https://github.com/voxel51/fiftyone/pull/1655>`_
+- Added support for CVATv2 servers when using the CVAT backend
+  `#1638 <https://github.com/voxel51/fiftyone/pull/1638>`_
 
 Docs
 
