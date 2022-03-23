@@ -573,15 +573,15 @@ class OpenLABELAnnotations(object):
                     )
 
     def get_objects(self, uri):
-        """Get the :class:`OpenLABELObjects` or :class:`OpenLABELFrames` corresponding to a
-        given uri.
+        """Get the :class:`OpenLABELObjects` or :class:`OpenLABELFrames`
+        corresponding to a given uri.
 
         Args:
             uri: the uri of the media for which to get objects
 
         Returns:
-            the :class:`OpenLABELObjects` or :class:`OpenLABELFrames` corresponding to the
-            given uri
+            the :class:`OpenLABELObjects` or :class:`OpenLABELFrames`
+            corresponding to the given uri
         """
         if self.is_video:
             return self.objects.get(uri, OpenLABELFrames({}))
@@ -824,6 +824,19 @@ class OpenLABELFrames(object):
     def to_labels(
         self, frame_size, label_types, seg_type=SegmentationType.POLYLINE
     ):
+        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
+
+        Args:
+            frame_size: the size of the image frame in pixels (width, height)
+            label_types: a list of label types to load
+            seg_type (SegmentationType.INSTANCE): the type to use to store
+                segmentations
+
+        Returns:
+            a dict mapping frame numbers to dicts mapping the specified label
+            types to FiftyOne labels
+        """
+
         frame_labels = {}
         for frame_number, objects in self.frame_objects.items():
             frame_label = {}
