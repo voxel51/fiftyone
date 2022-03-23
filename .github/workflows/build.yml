@@ -168,13 +168,14 @@ jobs:
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
       # these are somewhat slower/more bandwidth-intensive, so only run them if
       # github_actions_flags.py determined that they should be run
-      - name: Test quickstarts
-        if: ${{ steps.test_config.outputs.run_integration == 'true' }}
-        env:
-          FIFTYONE_EXIT: 1
-        run: |
-          fiftyone quickstart --remote
-          fiftyone quickstart --remote --video
+      # Skip: Google Drive unstable
+      # - name: Test quickstarts
+      #  if: ${{ steps.test_config.outputs.run_integration == 'true' }}
+      #  env:
+      #    FIFTYONE_EXIT: 1
+      #  run: |
+      #    fiftyone quickstart --remote
+      #    fiftyone quickstart --remote --video
 
   all-tests:
     needs: test
