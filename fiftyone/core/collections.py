@@ -2335,10 +2335,9 @@ class SampleCollection(object):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -2473,8 +2472,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to exclude
 
             omit_empty (True): whether to omit samples that have no frames
                 after excluding the specified frames
@@ -4129,10 +4128,9 @@ class SampleCollection(object):
                     encoding which samples to select
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
@@ -4285,8 +4283,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                    whose frames to select
 
             omit_empty (True): whether to omit samples that have no frames
                 after selecting the specified frames
@@ -6365,7 +6363,12 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
+        self,
+        anno_key,
+        dest_field=None,
+        unexpected="prompt",
+        cleanup=False,
+        **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6376,6 +6379,9 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            dest_field (None): an optional name of a new destination field
+                into which to load the annotations, or a dict mapping field names
+                in the run's label schema to new desination field names
             unexpected ("prompt"): how to deal with any unexpected labels that
                 don't match the run's label schema when importing. The
                 supported values are:
@@ -6395,7 +6401,12 @@ class SampleCollection(object):
             found, in which case a dict containing the extra labels is returned
         """
         return foua.load_annotations(
-            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
+            self,
+            anno_key,
+            dest_field=dest_field,
+            unexpected=unexpected,
+            cleanup=cleanup,
+            **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
