@@ -1645,7 +1645,8 @@ specify which users will be assigned to the created tasks:
     can be a list of usernames when annotating videos as each
     video is uploaded to a separate task
 -   `job_assignees`: a list of usernames to assign jobs
--   `job_reviewers`: a list of usernames to assign job reviews
+-   `job_reviewers`: a list of usernames to assign job reviews. Only available
+    in CVAT v1 servers
 
 If the number of jobs exceeds the number of assignees or reviewers, the jobs
 will be assigned using a round-robin strategy.
@@ -1663,7 +1664,9 @@ will be assigned using a round-robin strategy.
 
     task_assignee = "username1"
     job_assignees = ["username2", "username3"]
-    job_reviewers = ["username4", "username5", "username6", "username7"]
+
+    # If using a CVAT v1 server
+    # job_reviewers = ["username4", "username5", "username6", "username7"]
 
     # Load "ground_truth" field into one task
     # Create another task for "keypoints" field
@@ -1681,7 +1684,6 @@ will be assigned using a round-robin strategy.
         segment_size=2,
         task_assignee=task_assignee,
         job_assignees=job_assignees,
-        job_reviewers=job_reviewers,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
