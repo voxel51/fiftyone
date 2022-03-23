@@ -3113,11 +3113,14 @@ type represents a labeled dataset consisting of images and their associated
 multitask predictions stored in
 `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
 
+OpenLABEL is a flexible format which allows labels to be stored in a variety of
+different ways with respect to the corresponding media files. The following
+list the possible structures in which media data and OpenLABEL formatted label
+fields can be stored in ways that is understood by FiftyOne:
 
-Datasets of this type are read in the following formats:
-
-
-One label file per image:
+One label file per image. Each label contains only the metadata and labels
+associated with the image of the same name. In this case, the `labels_path`
+argument is expected to be a directory, if provided:
 
 .. code-block:: text
 
@@ -3131,8 +3134,11 @@ One label file per image:
             <uuid2>.json
             ...
 
-
-One label file for all images. Image filepaths are stored in labels as streams:
+One label file for all images. The label file contains all of the metadata and
+labels associated with every image. In this case, there needs to be additional
+information provided in the label file to match labels to images. Specifically
+the image filepath corresponding to a label must be stored as the stream
+attribute:
 
 .. code-block:: text
 
@@ -3143,9 +3149,11 @@ One label file for all images. Image filepaths are stored in labels as streams:
             ...
         labels.json
 
-
-Multiple label files, each corresponding to one or more images. Image filepaths
-are stored in labels as streams:
+Multiple label files, each corresponding to one or more images. This case is
+similar to when there is a single label file, except that the label information
+may be spread out over multiple files. Since the filenames cannot be used to
+match labels to images, the image filepaths must again be stored as streams in
+the labels files:
 
 .. code-block:: text
 
@@ -3159,9 +3167,9 @@ are stored in labels as streams:
             <label_uuid2>.json
             ...
 
-
-Labels are stored in one or more JSON files and can follow a variety of
-formats. In general following the format:
+As for the actual structure of the labels files themselves, labels are stored
+in one or more JSON files and can follow a variety of formats. In general
+following this format:
 
 .. code-block:: text
 
@@ -3257,7 +3265,6 @@ formats. In general following the format:
             "tags": {NOT PARSED}
         }
     }
-
 
 For image datasets, all object information stored in frames is applied to the
 label's corresponding image.
@@ -3378,7 +3385,7 @@ directory containing the corresponding media files by providing the
     OpenLABEL is a flexible format that allows for many user-specific
     decisions about how to represent labels and metadata. If you have
     OpenLABEL-compliant data in a format not understood by the current
-    importers, please make an issue or contribute a PR!
+    importers, please make an issue or contribute a pull request!
 
 .. _OpenLABELVideoDataset-import:
 
@@ -3390,11 +3397,14 @@ type represents a labeled dataset consisting of videos and their associated
 multitask predictions stored in
 `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f>`_.
 
+OpenLABEL is a flexible format which allows labels to be stored in a variety of
+different ways with respect to the corresponding media files. The following
+list the possible structures in which media data and OpenLABEL formatted label
+fields can be stored in ways that is understood by FiftyOne:
 
-Datasets of this type are read in the following formats:
-
-
-One label file per video:
+One label file per video. Each label contains only the metadata and labels
+associated with the video of the same name. In this case, the `labels_path`
+argument is expected to be a directory, if provided:
 
 .. code-block:: text
 
@@ -3408,8 +3418,11 @@ One label file per video:
             <uuid2>.json
             ...
 
-
-One label file for all videos. Video filepaths are stored in labels as streams:
+One label file for all videos. The label file contains all of the metadata and
+labels associated with every video. In this case, there needs to be additional
+information provided in the label file to match labels to videos. Specifically
+the video filepath corresponding to a label must be stored as the stream
+attribute:
 
 .. code-block:: text
 
@@ -3420,9 +3433,11 @@ One label file for all videos. Video filepaths are stored in labels as streams:
             ...
         labels.json
 
-
-Multiple label files, each corresponding to one or more videos. Video filepaths
-are stored in labels as streams:
+Multiple label files, each corresponding to one or more videos. This case is
+similar to when there is a single label file, except that the label information
+may be spread out over multiple files. Since the filenames cannot be used to
+match labels to videos, the video filepaths must again be stored as streams in
+the labels files:
 
 .. code-block:: text
 
@@ -3436,9 +3451,9 @@ are stored in labels as streams:
             <label_uuid2>.json
             ...
 
-
-Labels are stored in one or more JSON files and can follow a variety of
-formats. In general following the format:
+As for the actual structure of the labels files themselves, labels are stored
+in one or more JSON files and can follow a variety of formats. In general
+following this format:
 
 .. code-block:: text
 
@@ -3536,7 +3551,6 @@ formats. In general following the format:
             "tags": {NOT PARSED}
         }
     }
-
 
 .. note::
 
@@ -3654,7 +3668,7 @@ directory containing the corresponding media files by providing the
     OpenLABEL is a flexible format that allows for many user-specific
     decisions about how to represent labels and metadata. If you have
     OpenLABEL-compliant data in a format not understood by the current
-    importers, please make an issue or contribute a PR!
+    importers, please make an issue or contribute a pull request!
 
 .. _FiftyOneImageLabelsDataset-import:
 
