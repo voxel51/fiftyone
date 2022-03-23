@@ -6363,7 +6363,12 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
+        self,
+        anno_key,
+        dest_field=None,
+        unexpected="prompt",
+        cleanup=False,
+        **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6374,6 +6379,9 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            dest_field (None): an optional name of a new destination field
+                into which to load the annotations, or a dict mapping field names
+                in the run's label schema to new desination field names
             unexpected ("prompt"): how to deal with any unexpected labels that
                 don't match the run's label schema when importing. The
                 supported values are:
@@ -6393,7 +6401,12 @@ class SampleCollection(object):
             found, in which case a dict containing the extra labels is returned
         """
         return foua.load_annotations(
-            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
+            self,
+            anno_key,
+            dest_field=dest_field,
+            unexpected=unexpected,
+            cleanup=cleanup,
+            **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
