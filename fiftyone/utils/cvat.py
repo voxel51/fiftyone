@@ -4024,9 +4024,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 files["client_files[%d]" % idx] = (filename, open_file)
                 open_files.append(open_file)
 
-        self.post(self.task_data_url(task_id), data=data, files=files)
-        for f in open_files:
-            f.close()
+        try:
+            self.post(self.task_data_url(task_id), data=data, files=files)
+        finally:
+            for f in open_files:
+                f.close()
 
         # @todo is this loop really needed?
         job_ids = []
@@ -6672,11 +6674,11 @@ def _frames_to_cvat_tracks(frames, frame_size):
 
     # Generate object tracks
     max_index = -1
-    used_indices = []
+    used_indices = set()
     for index in sorted(labels_map):
         for label_type, labels in labels_map[index].items():
             _index = index if index not in used_indices else max_index + 1
-            used_indices.append(_index)
+            used_indices.add(_index)
             max_index = max(_index, max_index)
             cvat_track = CVATTrack.from_labels(_index, labels, frame_size)
             cvat_tracks.append(cvat_track)
