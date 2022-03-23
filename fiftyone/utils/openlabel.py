@@ -745,7 +745,8 @@ class OpenLABELObjects(object):
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type (SegmentationType.INSTANCE): the type to use to store segmentations
+            seg_type (SegmentationType.INSTANCE): the type to use to store
+                segmentations
 
         Returns:
             a dict mapping the specified label types to FiftyOne labels
@@ -855,8 +856,8 @@ class OpenLABELFrames(object):
         """Adds additional OpenLABEL frames to this collection.
 
         Args:
-            new_objects: either a dict of framewise :class`OpenLABELObjects` or a different
-                :class:`OpenLABELFrames`
+            new_objects: either a dict of framewise :class`OpenLABELObjects`
+                or a different :class:`OpenLABELFrames`
         """
 
         if isinstance(new_objects, OpenLABELFrames):
@@ -1213,8 +1214,8 @@ class OpenLABELObject(object):
             d: dict containing the information for this object
 
         Returns:
-            a tuple containing the :class:`OpenLABELObject` and the frame numbers the
-            object corresponds to, if any.
+            a tuple containing the :class:`OpenLABELObject` and the frame
+            numbers the object corresponds to, if any.
         """
         (
             bboxes,
