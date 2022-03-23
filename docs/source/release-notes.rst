@@ -50,7 +50,7 @@ Core
   :class:`OpenLABELImageDataset <fiftyone.types.dataset_types.OpenLABELImageDataset>`
   and
   :class:`OpenLABELVideoDataset <fiftyone.types.dataset_types.OpenLABELVideoDataset>`
-  dataset types
+  dataset types `#1609 <https://github.com/voxel51/fiftyone/pull/1609>`_
 
 Annotation
 
