@@ -14,7 +14,6 @@ import os
 from bson import ObjectId
 
 import eta.core.annotations as etaa
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -27,8 +26,10 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+import fiftyone.core.storage as fos
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
+import fiftyone.utils.image as foui
 
 
 logger = logging.getLogger(__name__)
@@ -2190,18 +2191,23 @@ def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
     if config is None:
         config = DrawConfig.default()
 
+    samples.download_media()
+
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    for sample in samples.iter_samples(progress=True):
-        outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
-        )
-        draw_labeled_image(
-            sample, outpath, label_fields=label_fields, config=config
-        )
-        outpaths.append(outpath)
+    with fos.FileWriter(type_str="images") as writer:
+        for sample in samples.iter_samples(progress=True):
+            outpath = filename_maker.get_output_path(
+                sample.local_path, output_ext=output_ext
+            )
+            local_path = writer.get_local_path(outpath)
+
+            draw_labeled_image(
+                sample, local_path, label_fields=label_fields, config=config
+            )
+            outpaths.append(outpath)
 
     return outpaths
 
@@ -2222,12 +2228,12 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
         config = DrawConfig.default()
 
     fov.validate_image_sample(sample)
-    img = etai.read(sample.filepath)
+    img = foui.read(sample.local_path)
 
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
     anno_img = etaa.annotate_image(img, image_labels, annotation_config=config)
-    etai.write(anno_img, outpath)
+    foui.write(anno_img, outpath)
 
 
 def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
@@ -2264,12 +2270,12 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     for idx, sample in enumerate(samples, 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
-            base, ext = os.path.splitext(sample.filepath)
+            base, ext = os.path.splitext(sample.local_path)
             first, last = sample.support
             inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
         else:
             logger.info("Drawing labels for video %d/%d", idx, num_videos)
-            inpath = sample.filepath
+            inpath = sample.local_path
 
         outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
@@ -2299,19 +2305,20 @@ def draw_labeled_video(
     if config is None:
         config = DrawConfig.default()
 
-    video_path = sample.filepath
+    video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
     if support is None and isinstance(sample, foc.ClipView):
         support = sample.support
 
-    etaa.annotate_video(
-        video_path,
-        video_labels,
-        outpath,
-        support=support,
-        annotation_config=config,
-    )
+    with fos.LocalFile(outpath, "w") as local_path:
+        etaa.annotate_video(
+            video_path,
+            video_labels,
+            local_path,
+            support=support,
+            annotation_config=config,
+        )
 
 
 def _to_image_labels(sample, label_fields=None):

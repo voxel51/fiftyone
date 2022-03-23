@@ -8,7 +8,11 @@ import { http } from "../shared/connection";
 
 type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
 
-export const getSampleSrc = (filepath: string, id: string) => {
+export const getSampleSrc = (filepath: string, id: string, url?: string) => {
+  if (url) {
+    return url;
+  }
+
   return `${http}/filepath/${encodeURIComponent(filepath)}?id=${id}`;
 };
 

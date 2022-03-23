@@ -16,7 +16,7 @@ import os
 import shutil
 
 
-VERSION = "0.19.2"
+VERSION = "0.10.2"
 
 
 def get_version():
@@ -164,11 +164,9 @@ with open("README.md", "r") as fh:
 setup(
     name="fiftyone-desktop",
     version=get_version(),
-    description="FiftyOne Desktop",
+    description="FiftyOne Teams Desktop",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    url="https://github.com/voxel51/fiftyone",
-    license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["fiftyone.desktop"],

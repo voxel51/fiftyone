@@ -1,28 +1,50 @@
 """
 FiftyOne import/export-related unit tests.
 
+These tests can optionally be configured to read/write from a cloud bucket
+rather than a local directory by passing the extra ``--basedir`` argument::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py --basedir $BASEDIR
+
+You can run specific test(s) as follows::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py \
+        ClassName.method_name \
+        --basedir $BASEDIR
+
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import argparse
 import os
 import random
 import string
+import sys
 import unittest
 
 import cv2
 import numpy as np
 import pytest
 
-import eta.core.image as etai
-import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.image as foui
 import fiftyone.utils.yolo as fouy
 
 from decorators import drop_datasets
+
+
+basedir = None
 
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
@@ -31,13 +53,13 @@ skipwindows = pytest.mark.skipif(
 
 class ImageDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         tmp_dir = temp_dir.__enter__()
-        ref_image_path = os.path.join(tmp_dir, "_ref_image.jpg")
-        images_dir = os.path.join(tmp_dir, "_images")
+        ref_image_path = fos.join(tmp_dir, "_ref_image.jpg")
+        images_dir = fos.join(tmp_dir, "_images")
 
         img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
-        etai.write(img, ref_image_path)
+        foui.write(img, ref_image_path)
 
         self._temp_dir = temp_dir
         self._tmp_dir = tmp_dir
@@ -50,12 +72,13 @@ class ImageDatasetTests(unittest.TestCase):
     def _new_image(self, name=None):
         if name is None:
             name = self._new_name()
-
-        filepath = os.path.join(
-            self.images_dir, name + os.path.splitext(self._ref_image_path)[1],
+   
+        filepath = fos.join(
+            self.images_dir,
+            name + os.path.splitext(self._ref_image_path)[1],
         )
 
-        etau.copy_file(self._ref_image_path, filepath)
+        fos.copy_file(self._ref_image_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -65,7 +88,7 @@ class ImageDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self._tmp_dir, self._new_name())
+        return fos.join(self._tmp_dir, self._new_name())
 
 
 class DuplicateImageExportTests(ImageDatasetTests):
@@ -422,7 +445,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
@@ -496,7 +519,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
 
         # Direct records path w/ sharding
 
-        tf_records_path = os.path.join(self._new_dir(), "tf.records")
+        tf_records_path = fos.join(self._new_dir(), "tf.records")
         tf_records_patt = tf_records_path + "-*-of-*"
         images_dir = self._new_dir()
 
@@ -784,7 +807,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
@@ -836,7 +859,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Direct records path w/ sharding
 
-        tf_records_path = os.path.join(self._new_dir(), "tf.records")
+        tf_records_path = fos.join(self._new_dir(), "tf.records")
         tf_records_patt = tf_records_path + "-*-of-*"
         images_dir = self._new_dir()
 
@@ -922,7 +945,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.COCODetectionDataset,
@@ -1002,7 +1025,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.xml")
+        labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
             dataset_type=fo.types.VOCDetectionDataset, labels_path=labels_path,
@@ -1074,7 +1097,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             dataset_type=fo.types.KITTIDetectionDataset,
@@ -1151,7 +1174,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = os.path.dirname(dataset.first().filepath)
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             dataset_type=fo.types.YOLOv4Dataset, labels_path=labels_path,
@@ -1171,7 +1194,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             dataset2.count("predictions.detections"),
         )
         for sample in dataset2:
-            self.assertTrue(os.path.isfile(sample.filepath))
+            self.assertTrue(fos.isfile(sample.filepath))
 
     @drop_datasets
     def test_yolov5_dataset(self):
@@ -1469,7 +1492,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             dataset_type=fo.types.ImageSegmentationDirectory,
@@ -1509,8 +1532,8 @@ class DICOMDatasetTests(ImageDatasetTests):
         images_dir = self._new_dir()
 
         ref_path = self._get_dcm_path()
-        dicom_path = os.path.join(dataset_dir, "test.dcm")
-        etau.copy_file(ref_path, dicom_path)
+        dicom_path = fos.join(dataset_dir, "test.dcm")
+        fos.copy_file(ref_path, dicom_path)
 
         # Standard format
 
@@ -1602,7 +1625,7 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path, dataset_type=fo.types.GeoJSONDataset,
@@ -1753,7 +1776,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path, dataset_type=fo.types.BDDDataset,
@@ -1817,7 +1840,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.xml")
+        labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
             labels_path=labels_path, dataset_type=fo.types.CVATImageDataset,
@@ -1959,17 +1982,18 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         tmp_dir = temp_dir.__enter__()
-        ref_video_path = os.path.join(tmp_dir, "_ref_video.mp4")
-        videos_dir = os.path.join(tmp_dir, "_videos")
+        ref_video_path = fos.join(tmp_dir, "_ref_video.mp4")
+        videos_dir = fos.join(tmp_dir, "_videos")
 
-        with etav.FFmpegVideoWriter(ref_video_path, 5, (640, 480)) as writer:
-            for _ in range(5):
-                img = np.random.randint(
-                    255, size=(480, 640, 3), dtype=np.uint8
-                )
-                writer.write(img)
+        with fos.LocalFile(ref_video_path, "w") as local_path:
+            with etav.FFmpegVideoWriter(local_path, 5, (640, 480)) as writer:
+                for _ in range(5):
+                    img = np.random.randint(
+                        255, size=(480, 640, 3), dtype=np.uint8
+                    )
+                    writer.write(img)
 
         self._temp_dir = temp_dir
         self._tmp_dir = tmp_dir
@@ -1979,15 +2003,16 @@ class VideoDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
+
     def _new_video(self, filename=None):
         if filename is None:
             filename = self._new_name()
-        filepath = os.path.join(
+        filepath = fos.join(
             self.videos_dir,
             filename + os.path.splitext(self._ref_video_path)[1],
         )
 
-        etau.copy_file(self._ref_video_path, filepath)
+        fos.copy_file(self._ref_video_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -1997,7 +2022,7 @@ class VideoDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self._tmp_dir, self._new_name())
+        return fos.join(self._tmp_dir, self._new_name())
 
 
 class OpenLABELVideoDatasetTests(VideoDatasetTests):
@@ -2496,7 +2521,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         # Labels-only
 
         data_path = self.videos_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             labels_path=labels_path, dataset_type=fo.types.CVATVideoDataset,
@@ -2517,5 +2542,10 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
 
 
 if __name__ == "__main__":
-    fo.config.show_progress_bars = False
-    unittest.main(verbosity=2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--basedir", default=None)
+    options, args = parser.parse_known_args()
+    basedir = options.basedir
+
+    # fo.config.show_progress_bars = False
+    unittest.main(argv=sys.argv[:1] + args, verbosity=2)

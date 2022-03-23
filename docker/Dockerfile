@@ -1,25 +1,30 @@
-# Dockerfile for building an image with a source FiftyOne Teams install atop a
+# Dockerfile for building an image with a FiftyOne Teams release atop a
 # Debian-based Linux distribution.
 #
-# By default, Ubuntu 20.04 and Python 3.8 are used, but these can be customized
-# via ARGs.
+# By default, Ubuntu 20.04, Python 3.8, and the latest Teams release are used,
+# but these can be customized via ARGs.
 #
 # ARGs::
 #
 #   BASE_IMAGE (ubuntu:20.04): The Debian-based image to build from
 #   PYTHON_VERSION (3.8): The Python version to install
+#   TOKEN: Your Teams client install token
+#   TEAMS_VERSION (latest): The Teams release to install, or "latest"
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
 #       should be mounted when running
 #
 # Example usage::
 #
 #   # Build
-#   make python
-#   docker build -t voxel51/fiftyone-teams .
+#   docker build \
+#       --build-arg TOKEN=${TOKEN} \
+#       -t voxel51/fiftyone-teams .
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
 #   docker run \
+#       -e FIFTYONE_DATABASE_URI=mongodb://... \
+#       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
 #       -v ${SHARED_DIR}:/fiftyone \
 #       -p 5151:5151 \
 #       -it voxel51/fiftyone-teams
@@ -91,11 +96,20 @@ RUN apt -y update \
 RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 
 #
-# Install FiftyOne Teams from source
+# Install FiftyOne Teams
 #
 
-COPY dist dist
-RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
+# Your install token
+ARG TOKEN
+
+# The Teams client version to install, or "latest"
+ARG TEAMS_VERSION=latest
+
+RUN if [ "${TEAMS_VERSION}" = "latest" ]; then \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone; \
+    else \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone==${TEAMS_VERSION}; \
+    fi
 
 #
 # Configure shared storage

@@ -16,7 +16,9 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.cache as foc
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -75,13 +77,16 @@ def extract_clip(
     start_time = timestamps[0]
     duration = timestamps[1] - start_time
 
-    etav.extract_clip(
-        video_path,
-        output_path,
-        start_time=start_time,
-        duration=duration,
-        fast=fast,
-    )
+    with fos.FileWriter() as f:
+        inpath = fos.to_readable(video_path)
+        outpath = f.get_local_path(output_path)
+        etav.extract_clip(
+            inpath,
+            outpath,
+            start_time=start_time,
+            duration=duration,
+            fast=fast,
+        )
 
 
 def reencode_videos(
@@ -554,16 +559,22 @@ def concat_videos(input_paths, output_path, verbose=False):
         output_path: the path to write the output video
         verbose (False): whether to log the ``ffmpeg`` command that is executed
     """
-    with etau.TempDir() as tmp_dir:
-        input_list_path = os.path.join(tmp_dir, "input_list.txt")
-        with open(input_list_path, "w") as f:
-            f.write("\n".join(["file '%s'" % path for path in input_paths]))
+    with fos.LocalFiles(input_paths, "r", type_str="videos") as local_inpaths:
+        with fos.LocalFile(output_path, "w") as local_outpath:
+            with etau.TempDir() as tmp_dir:
+                input_list_path = os.path.join(tmp_dir, "input_list.txt")
+                with open(input_list_path, "w") as f:
+                    f.write(
+                        "\n".join(
+                            ["file '%s'" % path for path in local_inpaths]
+                        )
+                    )
 
-        in_opts = ["-f", "concat", "-safe", "0"]
-        out_opts = ["-c", "copy"]
+                in_opts = ["-f", "concat", "-safe", "0"]
+                out_opts = ["-c", "copy"]
 
-        with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
-            ffmpeg.run(input_list_path, output_path, verbose=verbose)
+                with etav.FFmpeg(in_opts=in_opts, out_opts=out_opts) as ffmpeg:
+                    ffmpeg.run(input_list_path, local_outpath, verbose=verbose)
 
 
 def _transform_videos(
@@ -594,6 +605,7 @@ def _transform_videos(
             )
 
     view = sample_collection.select_fields()
+    stale_paths = []
 
     if frames is None:
         frames = itertools.repeat(None)
@@ -604,12 +616,12 @@ def _transform_videos(
 
             if sample_frames:
                 outdir = os.path.splitext(inpath)[0]
-                outpath = os.path.join(outdir, frames_patt)
+                outpath = fos.join(outdir, frames_patt)
 
                 # If sampling was not forced and the first frame exists, assume
                 # that all frames exist
                 fn = _frames[0] if _frames else 1
-                if not force_reencode and os.path.isfile(outpath % fn):
+                if not force_reencode and fos.isfile(outpath % fn):
                     continue
             elif reencode:
                 root, ext = os.path.splitext(inpath)
@@ -620,7 +632,7 @@ def _transform_videos(
             else:
                 outpath = inpath
 
-            _transform_video(
+            did_transform = _transform_video(
                 inpath,
                 outpath,
                 frames=_frames,
@@ -655,16 +667,25 @@ def _transform_videos(
                         _frames = []
                         logger.warning(e)
 
-                for fn in _frames:
-                    frame_path = outpath % fn
-                    if os.path.isfile(frame_path):
+                _frame_paths = [outpath % fn for fn in _frames]
+                _exists = fos.run(fos.isfile, _frame_paths)
+                for fn, frame_path, e in zip(_frames, _frame_paths, _exists):
+                    if e:
                         sample.frames[fn]["filepath"] = frame_path
 
                 sample.save()
 
-            if outpath != inpath and not sample_frames:
-                sample.filepath = outpath
-                sample.save()
+            if outpath != inpath:
+                if not sample_frames:
+                    sample.filepath = outpath
+                    sample.save()
+
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_video(
@@ -686,8 +707,8 @@ def _transform_video(
     verbose=False,
     **kwargs
 ):
-    inpath = fou.normalize_path(inpath)
-    outpath = fou.normalize_path(outpath)
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -749,31 +770,58 @@ def _transform_video(
 
         if (inpath == outpath) and should_reencode:
             _inpath = inpath
-            inpath = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(_inpath, inpath)
+            root, ext = os.path.splitext(inpath)
+            inpath = root + "-original" + ext
+            fos.move_file(_inpath, inpath)
 
         diff_path = inpath != outpath
 
         if frames is not None:
-            etav.sample_select_frames(
-                inpath, frames, output_patt=outpath, size=size, fast=True
-            )
+            inpath = fos.to_readable(inpath)
+            outdir, patt = os.path.split(outpath)
+            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+                local_patt = os.path.join(local_dir, patt)
+                etav.sample_select_frames(
+                    inpath,
+                    frames,
+                    output_patt=local_patt,
+                    size=size,
+                    fast=True,
+                )
+
+            did_transform = True
+        elif not etav.is_video_mime_type(inpath):
+            indir, patt = os.path.split(inpath)
+            with fos.LocalDir(indir, "r", quiet=True) as local_dir:
+                local_inpath = os.path.join(local_dir, patt)
+                with fos.LocalFile(outpath, "w") as local_outpath:
+                    with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                        ffmpeg.run(
+                            local_inpath, local_outpath, verbose=verbose
+                        )
+
             did_transform = True
         elif not etav.is_video_mime_type(outpath):
-            with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
-                ffmpeg.run(inpath, outpath, verbose=verbose)
+            inpath = fos.to_readable(inpath)
+            outdir, patt = os.path.split(outpath)
+            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+                local_path = os.path.join(local_dir, patt)
+                with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                    ffmpeg.run(inpath, local_path, verbose=verbose)
 
             did_transform = True
         elif should_reencode:
-            with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
-                ffmpeg.run(inpath, outpath, verbose=verbose)
+            inpath = fos.to_readable(inpath)
+            with fos.LocalFile(outpath, "w") as local_path:
+                with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                    ffmpeg.run(inpath, local_path, verbose=verbose)
 
             did_transform = True
         elif diff_path:
-            etau.copy_file(inpath, outpath)
+            fos.copy_file(inpath, outpath)
 
         if delete_original and diff_path:
-            etau.delete_file(inpath)
+            fos.delete_file(inpath)
     except Exception as e:
         if not skip_failures:
             raise

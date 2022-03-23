@@ -12,11 +12,59 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 
 logger = logging.getLogger(__name__)
+
+
+def read(path, include_alpha=False, flag=None):
+    """Reads the image from the given path as a numpy array.
+
+    Color images are returned as RGB arrays.
+
+    Args:
+        path: the path to the image
+        include_alpha (False): whether to include the alpha channel of the
+            image, if present, in the returned array
+        flag (None): an optional OpenCV image format flag to use. If provided,
+            this flag takes precedence over ``include_alpha``
+
+    Returns:
+        a uint8 numpy array containing the image
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        return etai.read(path, include_alpha=include_alpha, flag=flag)
+
+    client = fos.get_client(fs)
+    b = client.download_bytes(path)
+
+    return etai.decode(b, include_alpha=include_alpha, flag=flag)
+
+
+def write(img, path):
+    """Writes image to file.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    """
+    fs = fos.get_file_system(path)
+
+    if fs == fos.FileSystem.LOCAL:
+        etai.write(img, path)
+        return
+
+    ext = os.path.splitext(path)[1]
+    b = etai.encode(img, ext)
+
+    client = fos.get_client(fs)
+    client.upload_bytes(b, path)
 
 
 def reencode_images(
@@ -209,6 +257,7 @@ def _transform_images_single(
     skip_failures=False,
 ):
     view = sample_collection.select_fields()
+    stale_paths = []
 
     with fou.ProgressBar() as pb:
         for sample in pb(view):
@@ -219,7 +268,7 @@ def _transform_images_single(
             else:
                 outpath = inpath
 
-            _transform_image(
+            did_transform = _transform_image(
                 inpath,
                 outpath,
                 size=size,
@@ -233,6 +282,12 @@ def _transform_images_single(
             if outpath != inpath:
                 sample.filepath = outpath
                 sample.save()
+                if delete_originals:
+                    stale_paths.append(inpath)
+            elif did_transform:
+                stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _transform_images_multi(
@@ -270,16 +325,23 @@ def _transform_images_multi(
         )
 
     view = sample_collection.select_fields()
+    stale_paths = []
 
     with fou.ProgressBar(inputs) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
-            for sample_id, inpath, outpath, _ in pb(
+            for sample_id, inpath, outpath, did_transform in pb(
                 pool.imap_unordered(_do_transform, inputs)
             ):
                 if outpath != inpath:
                     sample = view[sample_id]
                     sample.filepath = outpath
                     sample.save()
+                    if delete_originals:
+                        stale_paths.append(inpath)
+                elif did_transform:
+                    stale_paths.append(inpath)
+
+    foc.media_cache.clear(filepaths=stale_paths)
 
 
 def _do_transform(args):
@@ -298,8 +360,8 @@ def _transform_image(
     delete_original=False,
     skip_failures=False,
 ):
-    inpath = fou.normalize_path(inpath)
-    outpath = fou.normalize_path(outpath)
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -313,7 +375,7 @@ def _transform_image(
             or in_ext != out_ext
             or force_reencode
         ):
-            img = etai.read(inpath)
+            img = read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
         diff_params = size is not None
@@ -322,22 +384,23 @@ def _transform_image(
         if (inpath == outpath) and should_reencode and not delete_original:
             _inpath = inpath
             inpath = etau.make_unique_path(inpath, suffix="-original")
-            etau.move_file(_inpath, inpath)
+            fos.move_file(_inpath, inpath)
 
         diff_path = inpath != outpath
 
         if diff_params:
             img = etai.resize(img, width=size[0], height=size[1])
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif force_reencode or (in_ext != out_ext):
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif diff_path:
-            etau.copy_file(inpath, outpath)
+            fos.copy_file(inpath, outpath)
 
         if delete_original and diff_path:
-            etau.delete_file(inpath)
+            fos.delete_file(inpath)
+
     except Exception as e:
         if not skip_failures:
             raise

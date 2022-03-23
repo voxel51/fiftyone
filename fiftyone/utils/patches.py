@@ -71,7 +71,7 @@ class ImagePatchesExtractor(object):
 
             if patches is not None:
                 fov.validate_image_sample(sample)
-                img = _load_image(sample.filepath, force_rgb=self.force_rgb)
+                img = _load_image(sample.local_path, force_rgb=self.force_rgb)
                 for detection in patches.detections:
                     patch = extract_patch(
                         img,

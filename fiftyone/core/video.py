@@ -20,6 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.utils as fou
@@ -687,7 +688,7 @@ def _init_frames(
             support = None
 
         outdir = os.path.splitext(video_path)[0]
-        images_patt = os.path.join(outdir, frames_patt)
+        images_patt = fost.join(outdir, frames_patt)
 
         # Determine which frame numbers to include in the frames dataset and
         # whether any frame images need to be sampled
@@ -915,4 +916,12 @@ def _parse_video_frames(
 
 
 def _get_non_existent_frame_numbers(images_patt, frame_numbers):
-    return [fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)]
+    if fost.is_local(images_patt):
+        return [
+            fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)
+        ]
+
+    images_dir = os.path.dirname(images_patt)
+    frames_patt = os.path.basename(images_patt)
+    existing = set(fost.list_files(images_dir, sort=False))
+    return [fn for fn in frame_numbers if (frames_patt % fn) not in existing]

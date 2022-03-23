@@ -135,6 +135,8 @@ def apply_model(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         try:
             if confidence_thresh is not None:
@@ -229,7 +231,7 @@ def _apply_image_model_single(
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             try:
-                img = etai.read(sample.filepath)
+                img = etai.read(sample.local_path)
                 labels = model.predict(img)
 
                 sample.add_labels(
@@ -251,7 +253,9 @@ def _apply_image_model_batch(
     with fou.ProgressBar(samples) as pb:
         for sample_batch in samples_loader:
             try:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    etai.read(sample.local_path) for sample in sample_batch
+                ]
                 labels_batch = model.predict_all(imgs)
 
                 for sample, labels in zip(sample_batch, labels_batch):
@@ -335,7 +339,7 @@ def _apply_image_model_to_frames_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         labels = model.predict(img)
@@ -374,7 +378,7 @@ def _apply_image_model_to_frames_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         labels_batch = model.predict_all(imgs)
@@ -415,7 +419,7 @@ def _apply_video_model(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     labels = model.predict(video_reader)
 
@@ -645,6 +649,8 @@ def compute_embeddings(
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -708,7 +714,7 @@ def _compute_image_embeddings_single(
             embedding = None
 
             try:
-                img = etai.read(sample.filepath)
+                img = etai.read(sample.local_path)
                 embedding = model.embed(img)[0]
             except Exception as e:
                 if not skip_failures:
@@ -746,7 +752,9 @@ def _compute_image_embeddings_batch(
             embeddings_batch = [None] * len(sample_batch)
 
             try:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    etai.read(sample.local_path) for sample in sample_batch
+                ]
                 embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
                 if not skip_failures:
@@ -849,7 +857,7 @@ def _compute_frame_embeddings_single(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         embedding = model.embed(img)[0]
@@ -907,7 +915,7 @@ def _compute_frame_embeddings_batch(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for fns, imgs in _iter_batches(video_reader, batch_size):
                         embeddings_batch = list(model.embed_all(imgs))
@@ -966,7 +974,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     embedding = model.embed(video_reader)[0]
 
@@ -1123,6 +1131,8 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
+    samples.download_media(skip_failures=skip_failures)
+
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
@@ -1196,7 +1206,7 @@ def _embed_patches(
                 )
 
                 if patches is not None:
-                    img = etai.read(sample.filepath)
+                    img = etai.read(sample.local_path)
 
                     if batch_size is None:
                         embeddings = _embed_patches_single(
@@ -1347,7 +1357,7 @@ def _embed_frame_patches(
 
             try:
                 with etav.FFmpegVideoReader(
-                    sample.filepath, frames=frames
+                    sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
                         frame_number = video_reader.frame_number

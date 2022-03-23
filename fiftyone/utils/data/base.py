@@ -19,6 +19,7 @@ import eta.core.video as etav
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 
@@ -35,7 +36,7 @@ def parse_images_dir(dataset_dir, recursive=True):
     Returns:
         a list of image paths
     """
-    filepaths = etau.list_files(
+    filepaths = fos.list_files(
         dataset_dir, abs_paths=True, recursive=recursive
     )
     return [p for p in filepaths if etai.is_image_mime_type(p)]
@@ -51,7 +52,7 @@ def parse_videos_dir(dataset_dir, recursive=True):
     Returns:
         a list of video paths
     """
-    filepaths = etau.list_files(
+    filepaths = fos.list_files(
         dataset_dir, abs_paths=True, recursive=recursive
     )
     return [p for p in filepaths if etav.is_video_mime_type(p)]
@@ -79,7 +80,7 @@ def parse_image_classification_dir_tree(dataset_dir):
         classes: a list of class label strings
     """
     samples = []
-    for filepath in etau.list_files(dataset_dir, recursive=True):
+    for filepath in fos.list_files(dataset_dir, recursive=True):
         chunks = pathlib.PurePath(filepath).parts
 
         if any(c.startswith(".") for c in chunks):
@@ -91,7 +92,7 @@ def parse_image_classification_dir_tree(dataset_dir):
     labels_map_rev = {c: i for i, c in enumerate(classes)}
 
     samples = [
-        (os.path.join(dataset_dir, f), labels_map_rev[c]) for f, c in samples
+        (fos.join(dataset_dir, f), labels_map_rev[c]) for f, c in samples
     ]
 
     return samples, classes
@@ -122,10 +123,12 @@ def download_image_classification_dataset(
         num_workers (None): the number of processes to use to download images.
             By default, ``multiprocessing.cpu_count()`` is used
     """
+    fos.ensure_local(dataset_dir)
+
     labels, image_urls = zip(
         *[
             tuple(line.split(",", 1))
-            for line in etau.read_file(csv_path).splitlines()
+            for line in fos.read_file(csv_path).splitlines()
         ]
     )
 
@@ -168,6 +171,8 @@ def download_images(image_urls, output_dir, num_workers=None):
     Returns:
         the list of downloaded image paths
     """
+    fos.ensure_local(output_dir)
+
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 

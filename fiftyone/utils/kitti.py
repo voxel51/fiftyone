@@ -15,6 +15,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -112,7 +113,9 @@ class KITTIDetectionDatasetImporter(
         self.include_all_data = include_all_data
         self.extra_attrs = extra_attrs
 
+        self._local_files = None
         self._image_paths_map = None
+        self._metadata_map = None
         self._labels_paths_map = None
         self._uuids = None
         self._iter_uuids = None
@@ -133,7 +136,9 @@ class KITTIDetectionDatasetImporter(
         except KeyError:
             raise ValueError("No image found for sample '%s'" % uuid)
 
-        image_metadata = fom.ImageMetadata.build_for(image_path)
+        image_metadata = self._metadata_map.get(uuid, None)
+        if image_metadata is None:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
 
         labels_path = self._labels_paths_map.get(uuid, None)
         if labels_path:
@@ -165,10 +170,10 @@ class KITTIDetectionDatasetImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        if self.labels_path is not None and os.path.isdir(self.labels_path):
+        if self.labels_path is not None and fos.isdir(self.labels_path):
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: fos.join(self.labels_path, p)
+                for p in fos.list_files(self.labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}
@@ -180,15 +185,33 @@ class KITTIDetectionDatasetImporter(
 
         uuids = self._preprocess_list(sorted(uuids))
 
+        metadata_map = self._get_remote_metadata(image_paths_map, keys=uuids)
+
+        if self.max_samples is not None:
+            _uuids = set(uuids)
+            labels_paths_map = {
+                uuid: path
+                for uuid, path in labels_paths_map.items()
+                if uuid in _uuids
+            }
+
+        local_files = fos.LocalFiles(labels_paths_map, "r", type_str="labels")
+        labels_paths_map = local_files.__enter__()
+
         self._image_paths_map = image_paths_map
+        self._metadata_map = metadata_map
         self._labels_paths_map = labels_paths_map
+        self._local_files = local_files
         self._uuids = uuids
         self._num_samples = len(uuids)
+
+    def close(self, *args):
+        self._local_files.__exit__(*args)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(os.path.join(dataset_dir, "data")))
+        return len(fos.list_files(fos.join(dataset_dir, "data")))
 
 
 class KITTIDetectionDatasetExporter(
@@ -278,6 +301,7 @@ class KITTIDetectionDatasetExporter(
 
         self._writer = None
         self._media_exporter = None
+        self._labels_exporter = None
 
     @property
     def requires_image_metadata(self):
@@ -297,7 +321,10 @@ class KITTIDetectionDatasetExporter(
         )
         self._media_exporter.setup()
 
-        etau.ensure_dir(self.labels_path)
+        self._labels_exporter = foud.LabelsExporter()
+        self._labels_exporter.setup()
+
+        fos.ensure_dir(self.labels_path)
 
     def export_sample(self, image_or_path, detections, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
@@ -305,15 +332,17 @@ class KITTIDetectionDatasetExporter(
         if detections is None:
             return
 
-        out_labels_path = os.path.join(self.labels_path, uuid + ".txt")
+        out_labels_path = fos.join(self.labels_path, uuid + ".txt")
+        local_path = self._labels_exporter.get_local_path(out_labels_path)
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(image_or_path)
 
-        self._writer.write(detections, metadata, out_labels_path)
+        self._writer.write(detections, metadata, local_path)
 
     def close(self, *args):
         self._media_exporter.close()
+        self._labels_exporter.close()
 
 
 class KITTIAnnotationWriter(object):
@@ -337,7 +366,7 @@ class KITTIAnnotationWriter(object):
             row = _make_kitti_detection_row(detection, frame_size)
             rows.append(row)
 
-        etau.write_file("\n".join(rows), txt_path)
+        fos.write_file("\n".join(rows), txt_path)
 
 
 def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
@@ -375,7 +404,7 @@ def load_kitti_detection_annotations(txt_path, frame_size, extra_attrs=True):
         extra_attrs = set(extra_attrs)
 
     detections = []
-    with open(txt_path) as f:
+    with fos.open_file(txt_path, "r") as f:
         reader = csv.reader(f, delimiter=" ")
         for row in reader:
             detections.append(
@@ -429,6 +458,8 @@ def download_kitti_detection_dataset(
         overwrite (True): whether to redownload the zips if they already exist
         cleanup (True): whether to delete the downloaded zips
     """
+    fos.ensure_local(dataset_dir)
+
     labels_zip_path = os.path.join(dataset_dir, "data_object_label_2.zip")
     if overwrite or not os.path.exists(labels_zip_path):
         logger.info("Downloading labels to '%s'...", labels_zip_path)

@@ -1,13 +1,12 @@
-name: Build
+name: Build Teams
 
 on:
   push:
     branches:
       - develop
-      - github-actions-*
     tags:
-      - v*
       - docker-build
+      - teams-v*
   pull_request:
     types: [opened, synchronize]
     branches:
@@ -42,8 +41,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-v//")" >> $GITHUB_ENV
           fi
       - name: Build python
         run: make python -o app
@@ -52,6 +51,7 @@ jobs:
         with:
           name: dist
           path: dist/
+          retention-days: 1
 
   test:
     runs-on: ${{ matrix.os }}
@@ -69,6 +69,8 @@ jobs:
           - 3.8
         exclude:
           - os: windows-latest
+            python: 3.6
+          - os: ubuntu-20.04
             python: 3.6
     defaults:
       run:
@@ -106,7 +108,6 @@ jobs:
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
-      # install test versions of fiftyone-db and fiftyone-desktop from source
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
@@ -119,8 +120,8 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install -r requirements/extras.txt
+          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta["storage"]
           pip install -e .
-          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |
@@ -185,7 +186,7 @@ jobs:
 
   publish:
     needs: [build, test]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/teams-v')
     runs-on: ubuntu-20.04
     steps:
       - name: Download dist
@@ -196,23 +197,13 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install twine
-      - name: Set environment
-        env:
-          RELEASE_TAG: ${{ github.ref }}
-        run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-          else
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-          fi
       - name: Upload to pypi
         env:
-          TWINE_USERNAME: __token__
+          TWINE_USERNAME: teams-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload dist/*
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai dist/*
 
   build-image:
     needs: [build, test]
@@ -232,4 +223,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: docker-image
-          path: fiftyone.tar.gz
+          path: fiftyone-teams.tar.gz

@@ -29,6 +29,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.video as fov
 
@@ -1100,8 +1101,9 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         if dpi is not None:
             kwargs["dpi"] = dpi
 
-        etau.ensure_basedir(path)
-        self._figure.savefig(path, **kwargs)
+        fos.ensure_basedir(path)
+        with fos.LocalFile(path, "w") as local_path:
+            self._figure.savefig(local_path, **kwargs)
 
     def _show(self, **_):
         plt.show(block=False)

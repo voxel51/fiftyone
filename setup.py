@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs FiftyOne Teams.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.15.0"  # updated by https://github.com/voxel51/fiftyone/pull/1615
+VERSION = "0.7.0"
 
 
 def get_version():
@@ -32,7 +32,6 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
-    "boto3",
     "Deprecated",
     "eventlet",
     "future",
@@ -60,10 +59,19 @@ INSTALL_REQUIRES = [
     "tornado>=5.1.1,<7",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
+    # teams specific
+    "aiohttp",
+    "boto3>=1.15",
+    "google-api-python-client",
+    "google-cloud-storage>=1.36",
+    "pysftp",
+    "schedule",
+    "yarl",
+    "wcmatch",
     # internal packages
     "fiftyone-brain>=0.8,<0.9",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.6.3,<0.7",
+    "voxel51-eta>=0.6.4,<0.7",
 ]
 
 
@@ -100,7 +108,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.2,<0.20"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10.2,<0.11"]}
 
 
 with open("README.md", "r") as fh:
@@ -111,14 +119,12 @@ setup(
     name="fiftyone",
     version=get_version(),
     description=(
-        "FiftyOne: the open-source tool for building high-quality datasets "
+        "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    url="https://github.com/voxel51/fiftyone",
     extras_require=EXTRAS_REQUIREMENTS,
-    license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(

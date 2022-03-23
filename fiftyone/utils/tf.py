@@ -21,6 +21,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -48,6 +49,7 @@ def from_images_dir(
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
+    fos.ensure_local(images_dir)
     image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
     return from_images(
         image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
@@ -68,6 +70,7 @@ def from_images_patt(images_patt, force_rgb=False, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
+    fos.ensure_local(images_patt)
     image_paths = etau.get_glob_matches(images_patt)
     return from_images(
         image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
@@ -88,14 +91,18 @@ def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
+    image_paths = list(image_paths)
 
+    if image_paths:
+        fos.ensure_local(image_paths[0])
+
+    
     def parse_sample(image_path):
         return _parse_image_tf(image_path, force_rgb=force_rgb)
 
-    return tf.data.Dataset.from_tensor_slices(list(image_paths)).map(
+    return tf.data.Dataset.from_tensor_slices(image_paths).map(
         parse_sample, num_parallel_calls=num_parallel_calls
     )
-
 
 def from_image_paths_and_labels(
     image_paths, labels, force_rgb=False, num_parallel_calls=None
@@ -115,14 +122,19 @@ def from_image_paths_and_labels(
     Returns:
         a ``tf.data.Dataset`` that emits ``(img, label)`` pairs
     """
+    image_paths = list(image_paths)
+    labels = list(labels)
+
+    if image_paths:
+        fos.ensure_local(image_paths[0])
 
     def parse_sample(image_path, label):
         img = _parse_image_tf(image_path, force_rgb=force_rgb)
         return img, label
 
-    return tf.data.Dataset.from_tensor_slices(
-        (list(image_paths), list(labels))
-    ).map(parse_sample, num_parallel_calls=num_parallel_calls)
+    return tf.data.Dataset.from_tensor_slices((image_paths, labels)).map(
+        parse_sample, num_parallel_calls=num_parallel_calls
+    )
 
 
 def from_image_classification_dir_tree(
@@ -157,6 +169,7 @@ def from_image_classification_dir_tree(
         -   **dataset**: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
         -   **classes**: a list of class label strings
     """
+    fos.ensure_local(dataset_dir)
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
@@ -188,6 +201,8 @@ def from_tf_records(
     Returns:
         a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos
     """
+    fos.ensure_local(tf_records_patt)
+
     if num_parallel_reads is not None and num_parallel_reads < 0:
         num_parallel_reads = multiprocessing.cpu_count()
 
@@ -199,7 +214,7 @@ def from_tf_records(
 
 
 def write_tf_records(examples, tf_records_path, num_shards=None):
-    """Writes the given ``tf.train.Example`` protos to disk as TFRecords.
+    """Writes the given ``tf.train.Example`` protos as TFRecords.
 
     Args:
         examples: an iterable that emits ``tf.train.Example`` protos
@@ -214,7 +229,7 @@ def write_tf_records(examples, tf_records_path, num_shards=None):
 
 
 class TFRecordsWriter(object):
-    """Class for writing TFRecords to disk.
+    """Class for writing TFRecords.
 
     Example Usage::
 
@@ -235,6 +250,7 @@ class TFRecordsWriter(object):
         self.num_shards = num_shards
 
         self._idx = None
+        self._local_dir = None
         self._num_shards = None
         self._writers = None
         self._writers_context = None
@@ -242,18 +258,23 @@ class TFRecordsWriter(object):
     def __enter__(self):
         self._idx = -1
 
-        etau.ensure_basedir(self.tf_records_path)
+        export_dir, name = os.path.split(self.tf_records_path)
+        self._local_dir = fos.LocalDir(export_dir, "w")
+        local_dir = self._local_dir.__enter__()
+        tf_records_path = os.path.join(local_dir, name)
+
+        etau.ensure_basedir(tf_records_path)
 
         if self.num_shards:
             self._num_shards = self.num_shards
-            tf_records_patt = self.tf_records_path + "-%05d-of-%05d"
+            tf_records_patt = tf_records_path + "-%05d-of-%05d"
             tf_records_paths = [
                 tf_records_patt % (i, self.num_shards)
                 for i in range(1, self.num_shards + 1)
             ]
         else:
             self._num_shards = 1
-            tf_records_paths = [self.tf_records_path]
+            tf_records_paths = [tf_records_path]
 
         self._writers_context = contextlib.ExitStack()
         c = self._writers_context.__enter__()
@@ -267,6 +288,7 @@ class TFRecordsWriter(object):
 
     def __exit__(self, *args):
         self._writers_context.__exit__(*args)
+        self._local_dir.__exit__(*args)
 
     def write(self, tf_example):
         """Writres the ``tf.train.Example`` proto to disk.
@@ -561,6 +583,8 @@ class TFRecordsLabeledImageDatasetImporter(
         self.force_rgb = force_rgb
 
         self._sample_parser = self._make_sample_parser()
+        self._tf_records_dir = None
+        self._images_dir = None
         self._dataset_ingestor = None
         self._iter_dataset_ingestor = None
 
@@ -580,9 +604,24 @@ class TFRecordsLabeledImageDatasetImporter(
         return self._sample_parser.has_image_metadata
 
     def setup(self):
+        dataset_dir, name_or_patt = os.path.split(self.tf_records_path)
+        if not fos.is_local(dataset_dir) and fos.get_glob_root(dataset_dir)[1]:
+            raise ValueError(
+                "Invalid TFRecords path '%s'; remote paths that contain glob "
+                "patterns in their directory component are not supported"
+                % self.tf_records_path,
+            )
+
+        self._tf_records_dir = fos.LocalDir(dataset_dir, "r")
+        local_dir = self._tf_records_dir.__enter__()
+        tf_records_path = os.path.join(local_dir, name_or_patt)
+
+        self._images_dir = fos.LocalDir(self.images_dir, "w")
+        images_dir = self._images_dir.__enter__()
+
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            self.images_dir,
-            from_tf_records(self.tf_records_path),
+            images_dir,
+            from_tf_records(tf_records_path),
             self._sample_parser,
             image_format=self.image_format,
             max_samples=self.max_samples,
@@ -591,6 +630,8 @@ class TFRecordsLabeledImageDatasetImporter(
 
     def close(self, *args):
         self._dataset_ingestor.close(*args)
+        self._images_dir.__exit__(*args)
+        self._tf_records_dir.__exit__(*args)
 
     def _make_sample_parser(self):
         """Returns a :class:`TFRecordSampleParser` instance for parsing

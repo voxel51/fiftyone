@@ -7,6 +7,7 @@ Dataset samples.
 """
 import os
 
+import fiftyone.core.cache as foc
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -80,6 +81,55 @@ class _SampleMixin(object):
     def media_type(self):
         """The media type of the sample."""
         return self._media_type
+
+    @property
+    def local_path(self):
+        """The local path to the sample's media.
+
+        Accessing this property will cause remote files to be downloaded to
+        FiftyOne's local media cache, if necessary.
+        """
+        return self.get_local_path()
+
+    @property
+    def is_local(self):
+        """Determines whether the sample's media is local.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local(self.filepath)
+
+    @property
+    def is_local_or_cached(self):
+        """Determines whether the sample's media is either local or a remote
+        file that is currently in FiftyOne's local media cache.
+
+        If this method returns True, calling :meth:`local_path` will not cause
+        a media download.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local_or_cached(self.filepath)
+
+    def get_local_path(self, download=True, skip_failures=True):
+        """Returns the local path to the sample's media.
+
+        This method is only useful for samples backed by remote media.
+
+        Args:
+            download (True): whether to download the remote file to FiftyOne's
+                local media cache, if necessary
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            the local filepath
+        """
+        return foc.media_cache.get_local_path(
+            self.filepath, download=download, skip_failures=skip_failures
+        )
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -372,7 +422,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     Args:
         filepath: the path to the data on disk. The path is converted to an
             absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fifftyone.core.storage.normalize_path`
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample

@@ -1,13 +1,15 @@
-name: Build Desktop App
+name: Build Teams Desktop App
 
 on:
   push:
+    branches:
+      - develop
     tags:
-      - desktop-v*
+      - teams-desktop-v*
   pull_request:
+    branches:
+      - develop
     paths:
-      - app/**
-      - package/desktop/**
       - .github/workflows/build-desktop.yml
 
 jobs:
@@ -70,8 +72,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/desktop-v//")" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-desktop-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-desktop-v//")" >> $GITHUB_ENV
           fi
       - name: Build wheel
         working-directory: package/desktop
@@ -81,11 +83,12 @@ jobs:
         with:
           name: wheel-${{ matrix.platform }}
           path: package/desktop/dist/*.whl
+          retention-days: 1
 
   publish:
     runs-on: ubuntu-20.04
     needs: [build]
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    if: startsWith(github.ref, 'refs/tags/teams-desktop-v')
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v2
@@ -94,20 +97,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install twine
-      - name: Set environment
-        env:
-          RELEASE_TAG: ${{ github.ref }}
-        run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-          else
-             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-          fi
       - name: Upload to pypi
         env:
-          TWINE_USERNAME: __token__
+          TWINE_USERNAME: teams-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/wheel-*/*.whl
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai downloads/wheel-*/*.whl

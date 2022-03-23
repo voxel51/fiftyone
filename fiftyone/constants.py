@@ -23,6 +23,9 @@ FIFTYONE_ANNOTATION_CONFIG_PATH = os.path.join(
     FIFTYONE_CONFIG_DIR, "annotation_config.json"
 )
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
+FIFTYONE_MEDIA_CACHE_CONFIG_PATH = os.path.join(
+    FIFTYONE_CONFIG_DIR, "media_cache_config.json"
+)
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
@@ -30,13 +33,14 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = _META["version"]
+VERSION = "0.14.4"  # open source compatibility version
+TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
-VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
+VERSION_LONG = "FiftyOne Teams v%s, %s" % (TEAMS_VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 DEV_INSTALL = os.path.isdir(
@@ -44,7 +48,7 @@ DEV_INSTALL = os.path.isdir(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
     )
 )
-RC_INSTALL = "rc" in VERSION
+RC_INSTALL = "rc" in TEAMS_VERSION
 
 # App configuration
 DEFAULT_APP_COLOR_POOL = [

@@ -718,9 +718,9 @@ class DatasetView(foc.SampleCollection):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
-                case for this argument is that your source data lives in a
-                single directory and you wish to serialize relative, rather
+                :func:`fiftyone.core.storage.normalize_path`. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
