@@ -1819,9 +1819,9 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
-        assert dataset.count("detections.detections.label") == 1
-        assert dataset.count("segmentations.detections.label") == 2
-        assert dataset.count("keypoints.keypoints.label") == 1
+        self.assertEqual(dataset.count("detections.detections.label"), 1)
+        self.assertEqual(dataset.count("segmentations.detections.label"), 2)
+        self.assertEqual(dataset.count("keypoints.keypoints.label"), 1)
 
     @drop_datasets
     def test_openlabel_single_type_dataset(self):
@@ -1836,7 +1836,9 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
             label_types="detections",
         )
-        assert isinstance(dataset.first().ground_truth, fo.Detections)
+        self.assertTrue(
+            isinstance(dataset.first().ground_truth, fo.Detections)
+        )
 
     @drop_datasets
     def test_openlabel_segmentation_dataset(self):
@@ -1851,7 +1853,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELImageDataset,
         )
-        assert dataset.count("segmentations.detections.mask") == 2
+        self.assertEqual(dataset.count("segmentations.detections.mask"), 2)
 
         dataset = fo.Dataset.from_dir(
             data_path=self.images_dir,
@@ -1859,7 +1861,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             dataset_type=fo.types.OpenLABELImageDataset,
             use_polylines=True,
         )
-        assert dataset.count("segmentations.polylines") == 2
+        self.assertEqual(dataset.count("segmentations.polylines"), 2)
 
 
 class VideoDatasetTests(unittest.TestCase):
@@ -1918,9 +1920,13 @@ class OpenLABELVideoDatasetTests(VideoDatasetTests):
             labels_path=labels_path,
             dataset_type=fo.types.OpenLABELVideoDataset,
         )
-        assert dataset.count("frames.detections.detections.label") == 5
-        assert dataset.count("frames.segmentations.detections.label") == 5
-        assert dataset.count("frames.keypoints.keypoints.label") == 5
+        self.assertEqual(
+            dataset.count("frames.detections.detections.label"), 5
+        )
+        self.assertEqual(
+            dataset.count("frames.segmentations.detections.label"), 5
+        )
+        self.assertEqual(dataset.count("frames.keypoints.keypoints.label"), 5)
 
 
 class VideoExportCoersionTests(VideoDatasetTests):
