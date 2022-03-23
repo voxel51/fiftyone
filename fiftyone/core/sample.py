@@ -152,14 +152,17 @@ class _SampleMixin(object):
 
         super().clear_field(field_name)
 
-    def compute_metadata(self, skip_failures=False):
+    def compute_metadata(self, overwrite=False, skip_failures=False):
         """Populates the ``metadata`` field of the sample.
 
         Args:
+            overwrite (False): whether to overwrite existing metadata
             skip_failures (False): whether to gracefully continue without
                 raising an error if metadata cannot be computed
         """
-        fom.compute_sample_metadata(self, skip_failures=skip_failures)
+        fom.compute_sample_metadata(
+            self, overwrite=overwrite, skip_failures=skip_failures
+        )
 
     def add_labels(
         self, labels, label_field, confidence_thresh=None, expand_schema=True

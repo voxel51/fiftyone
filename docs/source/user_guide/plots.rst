@@ -295,7 +295,6 @@ notebook:
     # Compute 2D embeddings
     results = fob.compute_visualization(dataset, embeddings=images, seed=51)
 
-    # Launch the App
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -305,7 +304,6 @@ notebook:
     plot = results.visualize(labels="ground_truth.label")
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 To give a taste of the possible interactions, let's hide all zero digit images
@@ -379,7 +377,7 @@ contains |GeoLocation| data in its ``location`` field:
     uniqueness = dataset.values("uniqueness")
 
     # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    num_objects = dataset.values(F("ground_truth.detections").length())
 
     # Create scatterplot
     plot = fo.location_scatterplot(
@@ -452,7 +450,6 @@ notebook:
     # Index the dataset by visual uniqueness
     fob.compute_uniqueness(dataset)
 
-    # Launch the App
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -460,8 +457,8 @@ notebook:
 
     from fiftyone import ViewField as F
 
-    # The number of ground truth objects in each sample
-    num_objects = dataset.values("ground_truth", F("detections").length())
+    # Computes the number of ground truth objects in each sample
+    num_objects = F("ground_truth.detections").length()
 
     # Create the scatterplot
     plot = fo.location_scatterplot(
@@ -472,7 +469,6 @@ notebook:
     )
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/location-scatterplot-interactive.gif
@@ -542,7 +538,6 @@ notebook:
         eval_key="eval",
     )
 
-    # Launch the App to explore
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -553,11 +548,71 @@ notebook:
     plot = results.plot_results(labels="weather", sizes="predictions.confidence")
     plot.show()
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/regression-evaluation.gif
    :alt: regression-evaluation
+   :align: center
+
+.. _line-plots:
+
+Line plots
+__________
+
+You can use :func:`lines() <fiftyone.core.plots.base.lines>` to generate
+interactive line plots whose points represent data associated with the samples,
+frames, or labels of a dataset. These plots can then be attached to App
+instances to interactively explore specific slices of your dataset based on
+their corresponding line data.
+
+The example below demonstrates using an interactive lines plot to view the
+frames of the :ref:`quickstart-video <dataset-zoo-quickstart-video>` dataset
+that contain the most vehicles. In this setup, you can lasso scatter points to
+select the corresponding frames in a :ref:`frames view <frame-views>` in the
+App.
+
+Each block in the example code below denotes a separate cell in a Jupyter
+notebook:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.core.plots as fop
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+
+    # Ensure dataset has sampled frames available so we can use frame selection
+    dataset.to_frames(sample_frames=True)
+
+    session = fo.launch_app(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset.filter_labels("frames.detections", F("label") == "vehicle")
+
+    # Plot the number of vehicles in each frame of a video dataset
+    plot = fop.lines(
+        x="frames.frame_number",
+        y=F("frames.detections.detections").length(),
+        labels="id",
+        samples=view,
+        xaxis_title="frame number",
+        yaxis_title="num vehicles",
+    )
+    plot.show()
+
+    # When points are selected in the plot, load the corresponding frames in
+    # frames views in the App
+    plot.selection_mode = "frames"
+
+    session.plots.attach(plot)
+
+.. image:: /images/plots/lines.gif
+   :alt: lines
    :align: center
 
 .. _confusion-matrix-plots:
@@ -614,7 +669,6 @@ notebook:
     counts = dataset.count_values("ground_truth.detections.label")
     classes = sorted(counts, key=counts.get, reverse=True)[:10]
 
-    # Launch App instance
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -624,12 +678,43 @@ notebook:
     plot = results.plot_confusion_matrix(classes=classes)
     plot.show(height=600)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/detection-evaluation.gif
    :alt: detection-evaluation
    :align: center
+
+When you pass an `eval_key` to
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+confusion matrices attached to App instances have a different default behavior:
+when you select cell(s), the corresponding
+:ref:`evaluation patches <evaluation-patches>` for the run are shown in the
+App. This allows you to visualize each TP, FP, and FN example in a fine-grained
+manner:
+
+.. code-block:: python
+    :linenos:
+
+    results = dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+.. code-block:: python
+    :linenos:
+
+    # Since these results have an `eval_key`, selecting cells in this plot will
+    # load evaluation patch views
+    plot = results.plot_confusion_matrix(classes=classes)
+    plot.show(height=600)
+
+    session.plots.attach(plot)
+
+.. image:: /images/plots/detection-evaluation-patches.gif
+   :alt: detection-evaluation-patches
+   :align: center
+
+If you prefer a different selection behavior, you can simply change the plot's
+:ref:`selection mode <plot-selection-modes>`.
 
 .. _view-plots:
 
@@ -672,7 +757,6 @@ notebook:
     plot3 = fo.CategoricalHistogram("ground_truth.detections.label", order="frequency")
     plot4 = fo.CategoricalHistogram("predictions.detections.label", order="frequency")
 
-    # Launch App instance
     session = fo.launch_app(dataset)
 
 .. code-block:: python
@@ -682,7 +766,6 @@ notebook:
     plot = fo.ViewGrid([plot1, plot2, plot3, plot4], init_view=dataset)
     plot.show(height=720)
 
-    # Connect to session
     session.plots.attach(plot)
 
 .. image:: /images/plots/view-plots.gif
@@ -731,7 +814,6 @@ to a |Session|:
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
 
-    # Launch an App instance
     session = fo.launch_app(dataset)
 
     # Create a responsive location plot
@@ -1014,24 +1096,35 @@ Plot selection modes
 --------------------
 
 When working with :ref:`scatterplots <embeddings-plots>` and
-:ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to labels,
-you may prefer to see different views loaded in the App when you make a
-selection in the plot. For example, you may want to see the corresponding
-objects in a :ref:`patches view <object-patches-views>`, or you may wish to see
-the samples containing the objects but with all other labels also visible.
+:ref:`interactive heatmaps <confusion-matrix-plots>` that are linked to frames
+or labels, you may prefer to see different views loaded in the App when you
+make a selection in the plot. For example, you may want to see the
+corresponding objects in a :ref:`patches view <object-patches-views>`, or you
+may wish to see the samples containing the objects but with all other labels
+also visible.
 
 You can use the
 :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
 property of |InteractivePlot| instances to change the behavior of App updates
 when selections are made in :ref:`connected plots <attaching-plots>`.
 
-The available options for
+When a plot is linked to frames, the available
 :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
-are:
+options are:
+
+-   `"select"` (*default*): show video samples with labels only for the
+    selected frames
+-   `"match"`: show unfiltered video samples containing at least one selected
+    frame
+-   `"frames"`: show only the selected frames in a frames view
+
+Wehn a plot is linked to labels, the available
+:meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
+options are:
 
 -   `"patches"` (*default*): show the selected labels in a patches view
 -   `"select"`: show only the selected labels
--   `"match"`: show unfiltered samples containing the selected labels
+-   `"match"`: show unfiltered samples containing at least one selected label
 
 For example, by default, clicking on cells in a confusion matrix for a
 :ref:`detection evaluation <evaluating-detections-coco>` will show the

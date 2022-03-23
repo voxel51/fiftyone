@@ -35,7 +35,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "eventlet",
     "future",
-    "Jinja2",
+    "Jinja2>=3",
     "kaleido",
     "matplotlib",
     "mongoengine==0.20.0",

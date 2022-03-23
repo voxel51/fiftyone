@@ -23,7 +23,8 @@ import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
+import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.storage as fos
 import fiftyone.core.validation as fov
@@ -379,7 +380,7 @@ def _build_label_schema(
 
     _label_schema = {}
 
-    is_video = samples.media_type == fom.VIDEO
+    is_video = samples.media_type == fomm.VIDEO
 
     for _label_field, _label_info in label_schema.items():
         (
@@ -407,13 +408,21 @@ def _build_label_schema(
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
-        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
-            raise ValueError(
-                "Invalid label field '%s'. Spatial labels of type '%s' being "
-                "annotated on a video must be stored in a frame-level field, "
-                "i.e., one that starts with 'frames.'"
-                % (_label_field, _label_type)
-            )
+        if is_video and not _is_frame_field:
+            if _return_type in _SPATIAL_TYPES:
+                raise ValueError(
+                    "Invalid label field '%s'. Spatial labels of type '%s' "
+                    "being annotated on a video must be stored in a "
+                    "frame-level field, i.e., one that starts with 'frames.'"
+                    % (_label_field, _label_type)
+                )
+            elif not backend.supports_video_sample_fields:
+                raise ValueError(
+                    "Invalid label field '%s'. Backend '%s' does not support "
+                    "annotating video fields at a sample-level. Labels must be "
+                    "stored in a frame-level field, i.e., one that starts with "
+                    "'frames.'" % (_label_field, backend.config.name)
+                )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -769,7 +778,10 @@ def _get_classes(
         return classes
 
     _, label_path = samples._get_label_field_path(label_field, "label")
-    return samples._dataset.distinct(label_path)
+    return sorted(
+        set(samples._dataset.distinct(label_path))
+        | set(samples.distinct(label_path))
+    )
 
 
 def _parse_classes_dict(
@@ -945,7 +957,12 @@ def _format_attributes(backend, attributes):
 
 
 def load_annotations(
-    samples, anno_key, unexpected="prompt", cleanup=False, **kwargs
+    samples,
+    anno_key,
+    dest_field=None,
+    unexpected="prompt",
+    cleanup=False,
+    **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
@@ -957,6 +974,9 @@ def load_annotations(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         anno_key: an annotation key
+        dest_field (None): an optional name of a new destination field
+            into which to load the annotations, or a dict mapping field names
+            in the run's label schema to new desination field names
         unexpected ("prompt"): how to deal with any unexpected labels that
             don't match the run's label schema when importing. The supported
             values are:
@@ -990,6 +1010,19 @@ def load_annotations(
         expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
+
+        if etau.is_str(dest_field):
+            if len(label_schema) == 1:
+                label_field = dest_field
+            else:
+                logger.warning(
+                    "Ignoring string `dest_field=%s` since the label "
+                    "schema contains %d > 1 fields",
+                    dest_field,
+                    len(label_schema),
+                )
+        elif dest_field is not None:
+            label_field = dest_field.get(label_field, label_field)
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
@@ -1072,7 +1105,7 @@ def load_annotations(
 
 
 def _handle_frame_fields(field, samples, ref_field):
-    if samples.media_type != fom.VIDEO:
+    if samples.media_type != fomm.VIDEO:
         return field
 
     if (
@@ -1132,7 +1165,7 @@ def _prompt_field(samples, label_type, label_field, label_schema):
     if label_field is not None:
         _, is_frame_field = samples._handle_frame_field(label_field)
     else:
-        is_frame_field = samples.media_type == fom.VIDEO
+        is_frame_field = samples.media_type == fomm.VIDEO
 
     if is_frame_field:
         schema = samples.get_frame_field_schema()
@@ -1306,7 +1339,7 @@ def _merge_labels(
 
     _ensure_label_field(samples, label_field, fo_label_type)
 
-    is_video = samples.media_type == fom.VIDEO
+    is_video = samples.media_type == fomm.VIDEO
 
     if is_video and label_type in _TRACKABLE_TYPES:
         if not existing_field:
@@ -1784,6 +1817,15 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError("subclass must implement supports_keyframes")
 
     @property
+    def supports_video_sample_fields(self):
+        """Whether this backend supports annotating video labels at a
+        sample-level.
+        """
+        raise NotImplementedError(
+            "subclass must implement supports_video_sample_fields"
+        )
+
+    @property
     def requires_label_schema(self):
         """Whether this backend requires a pre-defined label schema for its
         annotation runs.
@@ -2244,13 +2286,17 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     return outpaths
 
 
-def draw_labeled_video(sample, outpath, label_fields=None, config=None):
+def draw_labeled_video(
+    sample, outpath, support=None, label_fields=None, config=None
+):
     """Renders an annotated version of the sample's video with the specified
     label data overlaid to disk.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
+        support (None): an optional ``[first, last]`` range of frames to
+            render
         label_fields (None): a list of label fields to render. If omitted, all
             compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2262,10 +2308,8 @@ def draw_labeled_video(sample, outpath, label_fields=None, config=None):
     video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
-    if isinstance(sample, foc.ClipView):
+    if support is None and isinstance(sample, foc.ClipView):
         support = sample.support
-    else:
-        support = None
 
     with fos.LocalFile(outpath, "w") as local_path:
         etaa.annotate_video(
@@ -2288,10 +2332,19 @@ def _to_video_labels(sample, label_fields=None):
     else:
         frame_label_fields = None
 
+    if isinstance(sample, foc.ClipView):
+        support = sample.support
+    else:
+        metadata = sample.metadata
+        if metadata is None:
+            metadata = fom.VideoMetadata.build_for(sample.filepath)
+
+        support = [1, metadata.total_frame_count]
+
     label = _get_sample_labels(sample, label_fields)
     frames = _get_frame_labels(sample, frame_label_fields)
 
-    return foue.to_video_labels(label=label, frames=frames)
+    return foue.to_video_labels(label=label, frames=frames, support=support)
 
 
 def _get_sample_labels(sample, label_fields):
