@@ -12,8 +12,7 @@ FiftyOne 0.15.0
 App
 
 - Fixed :class:`Regression <fiftyone.core.labels.Regression>` rendering in the
-  visualizer (`#1604 <https://github.com/voxel51/fiftyone/pull/1604>`_
-
+  visualizer `#1604 <https://github.com/voxel51/fiftyone/pull/1604>`_
 
 Core
 
