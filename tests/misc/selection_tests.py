@@ -15,7 +15,7 @@ import fiftyone.zoo as foz
 
 
 class SelectionTests(unittest.TestCase):
-    def test_select_labels(self):
+    def skip_test_select_labels(self):
         num_samples_to_select = 5
         max_labels_per_sample_to_select = 3
 
