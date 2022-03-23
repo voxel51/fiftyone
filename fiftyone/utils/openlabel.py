@@ -57,7 +57,7 @@ class OpenLABELImageDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
-            -   a dict mapping filenames to absolute filepaths
+            -   a dict mapping file_ids to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -136,31 +136,30 @@ class OpenLABELImageDatasetImporter(
 
         self._info = None
         self._image_paths_map = None
-        self._image_dicts_map = None
         self._annotations = None
-        self._filenames = None
-        self._iter_filenames = None
+        self._file_ids = None
+        self._iter_file_ids = None
 
     def __iter__(self):
-        self._iter_filenames = iter(self._filenames)
+        self._iter_file_ids = iter(self._file_ids)
         return self
 
     def __len__(self):
-        return len(self._filenames)
+        return len(self._file_ids)
 
     def __next__(self):
-        filename = next(self._iter_filenames)
+        file_id = next(self._iter_file_ids)
 
-        if os.path.exists(filename):
-            sample_path = filename
-        elif _to_uuid(filename) in self._sample_paths_map:
-            sample_path = self._sample_paths_map[_to_uuid(filename)]
+        if os.path.isfile(file_id):
+            sample_path = file_id
+        elif _remove_ext(file_id) in self._image_paths_map:
+            sample_path = self._image_paths_map[_remove_ext(file_id)]
         else:
-            sample_path = self._sample_paths_map[
-                _to_uuid(os.path.basename(filename))
+            sample_path = self._image_paths_map[
+                _remove_ext(os.path.basename(file_id))
             ]
 
-        stream = self._annotations.get_stream(filename)
+        stream = self._annotations.get_stream(file_id)
         height, width = stream.height, stream.width
 
         if height is None or width is None:
@@ -170,7 +169,7 @@ class OpenLABELImageDatasetImporter(
             sample_metadata = fomt.ImageMetadata(width=width, height=height)
 
         frame_size = (width, height)
-        objects = self._annotations.get_objects(filename)
+        objects = self._annotations.get_objects(file_id)
         seg_type = (
             SegmentationType.POLYLINE
             if self.use_polylines
@@ -210,11 +209,11 @@ class OpenLABELImageDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        sample_paths_map = self._load_data_map(
+        image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
         info = {}
-        potential_filenames = []
+        potential_file_ids = []
         annotations = OpenLABELAnnotations(fom.IMAGE)
 
         if self.labels_path is not None:
@@ -228,16 +227,16 @@ class OpenLABELImageDatasetImporter(
 
             base_dir = fou.normalize_path(self.labels_dir)
             for label_path in label_paths:
-                potential_filenames.extend(
+                potential_file_ids.extend(
                     annotations.parse_labels(base_dir, label_path)
                 )
 
         self._annotations = annotations
         self._info = info
-        self._filenames = _validate_filenames(
-            potential_filenames, sample_paths_map
+        self._file_ids = _validate_file_ids(
+            potential_file_ids, image_paths_map
         )
-        self._sample_paths_map = sample_paths_map
+        self._image_paths_map = image_paths_map
 
     def get_dataset_info(self):
         return self._info
@@ -266,7 +265,7 @@ class OpenLABELVideoDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
-            -   a dict mapping filenames to absolute filepaths
+            -   a dict mapping file_ids to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -282,7 +281,7 @@ class OpenLABELVideoDatasetImporter(
                 ``dataset_dir`` has no effect on the location of the labels
 
             If None, the parameter will default to looking for ``labels.json``
-            and ``label/``
+            and ``labels/``
         label_types (None): a label type or list of label types to load. The
             supported values are
             ``("detections", "segmentations", "keypoints", "polylines")``.
@@ -345,31 +344,30 @@ class OpenLABELVideoDatasetImporter(
 
         self._info = None
         self._video_paths_map = None
-        self._video_dicts_map = None
         self._annotations = None
-        self._filenames = None
-        self._iter_filenames = None
+        self._file_ids = None
+        self._iter_file_ids = None
 
     def __iter__(self):
-        self._iter_filenames = iter(self._filenames)
+        self._iter_file_ids = iter(self._file_ids)
         return self
 
     def __len__(self):
-        return len(self._filenames)
+        return len(self._file_ids)
 
     def __next__(self):
-        filename = next(self._iter_filenames)
+        file_id = next(self._iter_file_ids)
 
-        if os.path.exists(filename):
-            sample_path = filename
-        elif _to_uuid(filename) in self._sample_paths_map:
-            sample_path = self._sample_paths_map[_to_uuid(filename)]
+        if os.path.isfile(file_id):
+            sample_path = file_id
+        elif _remove_ext(file_id) in self._video_paths_map:
+            sample_path = self._video_paths_map[_remove_ext(file_id)]
         else:
-            sample_path = self._sample_paths_map[
-                _to_uuid(os.path.basename(filename))
+            sample_path = self._video_paths_map[
+                _remove_ext(os.path.basename(file_id))
             ]
 
-        stream = self._annotations.get_stream(filename)
+        stream = self._annotations.get_stream(file_id)
         height, width = stream.height, stream.width
 
         if height is None or width is None:
@@ -384,7 +382,7 @@ class OpenLABELVideoDatasetImporter(
             )
 
         frame_size = (width, height)
-        frames = self._annotations.get_objects(filename)
+        frames = self._annotations.get_objects(file_id)
         seg_type = (
             SegmentationType.POLYLINE
             if self.use_polylines
@@ -423,11 +421,11 @@ class OpenLABELVideoDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        sample_paths_map = self._load_data_map(
+        video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
         info = {}
-        potential_filenames = []
+        potential_file_ids = []
         annotations = OpenLABELAnnotations(fom.VIDEO)
 
         if self.labels_path is not None:
@@ -441,16 +439,16 @@ class OpenLABELVideoDatasetImporter(
 
             base_dir = fou.normalize_path(self.labels_dir)
             for label_path in label_paths:
-                potential_filenames.extend(
+                potential_file_ids.extend(
                     annotations.parse_labels(base_dir, label_path)
                 )
 
         self._annotations = annotations
         self._info = info
-        self._filenames = _validate_filenames(
-            potential_filenames, sample_paths_map
+        self._file_ids = _validate_file_ids(
+            potential_file_ids, video_paths_map
         )
-        self._sample_paths_map = sample_paths_map
+        self._video_paths_map = video_paths_map
 
     def get_dataset_info(self):
         return self._info
@@ -488,44 +486,44 @@ class OpenLABELAnnotations(object):
             labels_path: path to the labels json file
 
         Returns:
-            a list of potential filenames that the parsed labels correspond to
+            a list of potential file_ids that the parsed labels correspond to
         """
         abs_path = labels_path
         if not os.path.isabs(abs_path):
             abs_path = os.path.join(base_dir, labels_path)
 
         labels = etas.load_json(abs_path).get("openlabel", {})
-        label_filename = _to_uuid(labels_path)
-        potential_filenames = [label_filename]
+        label_file_id = _remove_ext(labels_path)
+        potential_file_ids = [label_file_id]
 
         metadata = OpenLABELMetadata(labels.get("metadata", {}))
-        self.metadata[label_filename] = metadata
-        potential_filenames.extend(metadata.parse_potential_filenames())
+        self.metadata[label_file_id] = metadata
+        potential_file_ids.extend(metadata.parse_potential_file_ids())
 
         if self.is_video:
             object_parser = OpenLABELFramesParser()
         else:
             object_parser = OpenLABELObjectsParser()
-        self._parse_streams(labels, label_filename)
+        self._parse_streams(labels, label_file_id)
         self._parse_objects(labels, object_parser)
-        self._parse_frames(labels, label_filename, object_parser)
-        self._store_objects(object_parser, label_filename, potential_filenames)
+        self._parse_frames(labels, label_file_id, object_parser)
+        self._store_objects(object_parser, label_file_id, potential_file_ids)
 
-        potential_filenames.extend(self._update_stream_uris(label_filename))
+        potential_file_ids.extend(self._update_stream_uris(label_file_id))
 
-        return potential_filenames
+        return potential_file_ids
 
-    def _update_stream_uris(self, label_filename):
-        filenames = self.streams[label_filename].uris
-        for uri in filenames:
-            self.uri_to_streams[uri] = label_filename
+    def _update_stream_uris(self, label_file_id):
+        file_ids = self.streams[label_file_id].uris
+        for uri in file_ids:
+            self.uri_to_streams[uri] = label_file_id
 
-        return filenames
+        return file_ids
 
-    def _parse_streams(self, labels, label_filename):
-        self.streams[label_filename] = OpenLABELStreams()
+    def _parse_streams(self, labels, label_file_id):
+        self.streams[label_file_id] = OpenLABELStreams()
         for stream_name, stream_info in labels.get("streams", {}).items():
-            self.streams[label_filename].add_stream_dict(
+            self.streams[label_file_id].add_stream_dict(
                 stream_name, stream_info
             )
 
@@ -533,30 +531,30 @@ class OpenLABELAnnotations(object):
         for obj_id, obj_d in labels.get("objects", {}).items():
             parser.add_object_dict(obj_id, obj_d)
 
-    def _store_objects(self, parser, label_filename, potential_filenames):
+    def _store_objects(self, parser, label_file_id, potential_file_ids):
         for stream_name, objects in parser.to_stream_objects_map().items():
             _uris = []
             if stream_name is not None:
-                stream = self.streams[label_filename].streams.get(
+                stream = self.streams[label_file_id].streams.get(
                     stream_name, None
                 )
                 if stream:
                     _uris.append(stream.uri)
 
-            for uri in set(_uris + potential_filenames):
+            for uri in set(_uris + potential_file_ids):
                 if uri in self.objects:
                     self.objects[uri].add_objects(objects)
                 else:
                     self.objects[uri] = deepcopy(objects)
 
-    def _parse_frames(self, labels, label_filename, object_parser):
+    def _parse_frames(self, labels, label_file_id, object_parser):
         for frame_ind, frame in labels.get("frames", {}).items():
-            frame_num = int(frame_ind) + 1
+            frame_number = int(frame_ind) + 1
             _objects = frame.get("objects", {})
             for obj_id, obj_d in _objects.items():
                 if self.is_video:
                     object_parser.add_object_dict(
-                        obj_id, obj_d, frame_num=frame_num
+                        obj_id, obj_d, frame_number=frame_number
                     )
                 else:
                     object_parser.add_object_dict(obj_id, obj_d)
@@ -564,7 +562,7 @@ class OpenLABELAnnotations(object):
             _streams = frame.get("frame_properties", {}).get("streams", None)
             if _streams:
                 for stream_name, stream_info in _streams.items():
-                    self.streams[label_filename].add_stream_dict(
+                    self.streams[label_file_id].add_stream_dict(
                         stream_name, stream_info
                     )
 
@@ -596,8 +594,8 @@ class OpenLABELAnnotations(object):
         if uri not in self.uri_to_streams:
             return OpenLABELStream(uri=uri)
 
-        label_filename = self.uri_to_streams[uri]
-        streams = self.streams[label_filename]
+        label_file_id = self.uri_to_streams[uri]
+        streams = self.streams[label_file_id]
         return streams.get_one_stream(uri)
 
 
@@ -621,9 +619,9 @@ class OpenLABELParser(object):
 
     def _parse_object(self, obj, obj_id, obj_d):
         if obj is None:
-            obj, frame_nums = OpenLABELObject.from_anno_dict(obj_id, obj_d)
+            obj, frame_numbers = OpenLABELObject.from_anno_dict(obj_id, obj_d)
         else:
-            frame_nums = obj.update_object_dict(obj_d)
+            frame_numbers = obj.update_object_dict(obj_d)
 
         stream = obj.stream
         if stream is None:
@@ -633,7 +631,7 @@ class OpenLABELParser(object):
                 self.streamless_objects.remove(obj_id)
             self.stream_to_id_map[stream].append(obj_id)
 
-        return obj, frame_nums
+        return obj, frame_numbers
 
     def to_stream_objects_map(self):
         """Get the parsed objects for each stream
@@ -771,38 +769,38 @@ class OpenLABELFramesParser(OpenLABELParser):
     def _label_type(self):
         return OpenLABELFrames
 
-    def add_object_dict(self, obj_id, obj_d, frame_num=None):
+    def add_object_dict(self, obj_id, obj_d, frame_number=None):
         """Parses the given raw object dictionary.
 
         Args:
             obj_id: the string id of the given object
             obj_d: a dict containing object information to parse
-            frame_num (None): the frame number corresponding to the given
+            frame_number (None): the frame number corresponding to the given
                 object
         """
-        obj = self.framewise_objects[frame_num].get(obj_id, None)
-        obj, frame_nums = self._parse_object(obj, obj_id, obj_d)
+        obj = self.framewise_objects[frame_number].get(obj_id, None)
+        obj, frame_numbers = self._parse_object(obj, obj_id, obj_d)
 
-        if frame_nums:
-            if frame_num is not None:
-                frame_nums.append(frame_num)
-                frame_nums = sorted(set(frame_nums))
+        if frame_numbers:
+            if frame_number is not None:
+                frame_numbers.append(frame_number)
+                frame_numbers = sorted(set(frame_numbers))
         else:
-            frame_nums = [frame_num]
+            frame_numbers = [frame_number]
 
-        for frame_num in frame_nums:
-            if frame_num is not None and self.framewise_objects[None].get(
+        for frame_number in frame_numbers:
+            if frame_number is not None and self.framewise_objects[None].get(
                 obj_id, False
             ):
                 del self.framewise_objects[None][obj_id]
-            self.framewise_objects[frame_num][obj_id] = deepcopy(obj)
+            self.framewise_objects[frame_number][obj_id] = deepcopy(obj)
 
     def _get_objects_for_ids(self, ids):
         frame_objects = {}
-        for frame_num, objects in self.framewise_objects.items():
+        for frame_number, objects in self.framewise_objects.items():
             _objects = [objects[i] for i in ids if i in objects]
             if _objects:
-                frame_objects[frame_num] = OpenLABELObjects(_objects)
+                frame_objects[frame_number] = OpenLABELObjects(_objects)
         return frame_objects
 
 
@@ -821,7 +819,7 @@ class OpenLABELFrames(object):
         self, frame_size, label_types, seg_type=SegmentationType.POLYLINE
     ):
         frame_labels = {}
-        for frame_num, objects in self.frame_objects.items():
+        for frame_number, objects in self.frame_objects.items():
             frame_label = {}
             if "detections" in label_types:
                 frame_label["detections"] = objects._to_detections(frame_size)
@@ -831,7 +829,7 @@ class OpenLABELFrames(object):
                 frame_label["segmentations"] = objects._to_segmentations(
                     frame_size, seg_type=seg_type
                 )
-            frame_labels[frame_num] = frame_label
+            frame_labels[frame_number] = frame_label
         return frame_labels
 
     def add_objects(self, new_objects):
@@ -845,11 +843,11 @@ class OpenLABELFrames(object):
         if isinstance(new_objects, OpenLABELFrames):
             new_objects = new_objects.frame_objects
 
-        for frame_num, objects in new_objects.items():
-            if frame_num not in self.frame_objects:
-                self.frame_objects[frame_num] = objects
+        for frame_number, objects in new_objects.items():
+            if frame_number not in self.frame_objects:
+                self.frame_objects[frame_number] = objects
             else:
-                self.frame_objects[frame_num].add_objects(objects)
+                self.frame_objects[frame_number].add_objects(objects)
 
 
 class OpenLABELStreams(object):
@@ -861,7 +859,7 @@ class OpenLABELStreams(object):
 
     @property
     def uris(self):
-        """The list of uris or filenames corresponding to the streams in this
+        """The list of uris or file_ids corresponding to the streams in this
         collection
         """
         return list(self.uri_to_names_map.keys())
@@ -886,10 +884,10 @@ class OpenLABELStreams(object):
 
     def get_one_stream(self, uri):
         """Get the `OpenLABELStream` corresponding to a
-        given uri or filename.
+        given uri or file_id.
 
         Args:
-            uri: the uri or filename for which to get the stream
+            uri: the uri or file_id for which to get the stream
 
         Returns:
             An `OpenLABELStream`
@@ -903,13 +901,13 @@ class OpenLABELStreams(object):
 
 
 class OpenLABELStream(object):
-    """An OpenLABEL stream corresponding to one uri or filename.
+    """An OpenLABEL stream corresponding to one uri or file_id.
 
     Args:
         name (None): the name of the stream
         type (None): the type of the stream
         description (None): a string description for this stream
-        uri (None): the uri or filename of the media corresponding to this
+        uri (None): the uri or file_id of the media corresponding to this
             stream
         properties (None): a dict of properties for this stream
     """
@@ -1005,7 +1003,7 @@ class OpenLABELStream(object):
 class OpenLABELMetadata(object):
     """A parser and storage for OpenLABEL metadata"""
 
-    _POTENTIAL_FILENAME_KEYS = ["uuid", "uri", "filename", "filepath"]
+    _POTENTIAL_FILENAME_KEYS = ["file_id", "uri", "file_id", "filepath"]
 
     def __init__(self, metadata_dict):
         self.metadata_dict = metadata_dict
@@ -1021,18 +1019,18 @@ class OpenLABELMetadata(object):
             ):
                 self.seg_type = SegmentationType.SEMANTIC
 
-    def parse_potential_filenames(self):
+    def parse_potential_file_ids(self):
         """Parses metadata for any fields that may correspond to a label-wide
-        media filename.
+        media file_id.
 
         Returns:
-            a list of potential filename strings
+            a list of potential file_id strings
         """
-        filenames = []
+        file_ids = []
         for k, v in self.metadata_dict.items():
             if k.lower() in self._POTENTIAL_FILENAME_KEYS:
-                filenames.append(v)
-        return filenames
+                file_ids.append(v)
+        return file_ids
 
 
 class OpenLABELObject(object):
@@ -1207,7 +1205,7 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
-            frame_nums,
+            frame_numbers,
         ) = cls._parse_object_dict(d)
 
         obj = cls(
@@ -1220,7 +1218,7 @@ class OpenLABELObject(object):
             stream=stream,
             attributes=attributes,
         )
-        return obj, frame_nums
+        return obj, frame_numbers
 
     @classmethod
     def _parse_obj_type(
@@ -1260,7 +1258,7 @@ class OpenLABELObject(object):
         attrs, attr_stream = cls._parse_attributes(d)
         attributes.update(attrs)
 
-        frame_nums = cls._parse_frame_nums(d)
+        frame_numbers = cls._parse_frame_numbers(d)
 
         if stream is None:
             stream = attr_stream
@@ -1273,18 +1271,18 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
-            frame_nums,
+            frame_numbers,
         )
 
     @classmethod
-    def _parse_frame_nums(cls, d):
-        frame_nums = []
+    def _parse_frame_numbers(cls, d):
+        frame_numbers = []
         for frame_interval in d.get("frame_intervals", []):
             fs = int(frame_interval["frame_start"]) + 1
             fe = int(frame_interval["frame_end"]) + 2
-            frame_nums += list(range(fs, fe))
+            frame_numbers += list(range(fs, fe))
 
-        return sorted(set(frame_nums))
+        return sorted(set(frame_numbers))
 
     @classmethod
     def _parse_object_data(cls, object_data_list):
@@ -1343,7 +1341,7 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
-            frame_nums,
+            frame_numbers,
         ) = self._parse_object_dict(d)
 
         self.bboxes.extend(bboxes)
@@ -1358,7 +1356,7 @@ class OpenLABELObject(object):
 
         self.attributes.update(attributes)
 
-        return frame_nums
+        return frame_numbers
 
     def _get_object_attributes(self):
         attributes = {}
@@ -1374,15 +1372,17 @@ class OpenLABELObject(object):
         return attributes
 
 
-def _validate_filenames(potential_filenames, sample_paths_map):
-    filenames = []
-    for filename in set(potential_filenames):
-        is_file = os.path.exists(filename)
-        has_uuid = _to_uuid(filename) in sample_paths_map
-        has_basename = _to_uuid(os.path.basename(filename)) in sample_paths_map
-        if is_file or has_uuid or has_basename:
-            filenames.append(filename)
-    return filenames
+def _validate_file_ids(potential_file_ids, sample_paths_map):
+    file_ids = []
+    for file_id in set(potential_file_ids):
+        is_file = os.path.exists(file_id)
+        has_file_id = _remove_ext(file_id) in sample_paths_map
+        has_basename = (
+            _remove_ext(os.path.basename(file_id)) in sample_paths_map
+        )
+        if is_file or has_file_id or has_basename:
+            file_ids.append(file_id)
+    return file_ids
 
 
 def _parse_label_types(label_types):
@@ -1423,5 +1423,5 @@ def _pairwise(x):
     return zip(y, y)
 
 
-def _to_uuid(p):
+def _remove_ext(p):
     return os.path.splitext(p)[0]
