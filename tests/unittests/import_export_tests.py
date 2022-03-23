@@ -1809,7 +1809,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 class OpenLABELImageDatasetTests(ImageDatasetTests):
     @drop_datasets
     def test_openlabel_dataset(self):
-        import import_export_utils.openlabel as ol
+        import utils.openlabel as ol
 
         labels_path = ol._make_image_labels(self._tmp_dir)
         img_filepath = self._new_image(filename="openlabel_test")
@@ -1825,7 +1825,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
     @drop_datasets
     def test_openlabel_single_type_dataset(self):
-        import import_export_utils.openlabel as ol
+        import utils.openlabel as ol
 
         labels_path = ol._make_image_labels(self._tmp_dir)
         img_filepath = self._new_image(filename="openlabel_test")
@@ -1842,8 +1842,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
     @drop_datasets
     def test_openlabel_segmentation_dataset(self):
-        import import_export_utils.openlabel as ol
-        import fiftyone.utils.labels as foul
+        import utils.openlabel as ol
 
         labels_path = ol._make_segmentation_labels(self._tmp_dir)
         img_filepath = self._new_image(filename="openlabel_test")
@@ -1910,7 +1909,7 @@ class VideoDatasetTests(unittest.TestCase):
 class OpenLABELVideoDatasetTests(VideoDatasetTests):
     @drop_datasets
     def test_openlabel_dataset(self):
-        import import_export_utils.openlabel as ol
+        import utils.openlabel as ol
 
         labels_path = ol._make_video_labels(self._tmp_dir)
         vid_filepath = self._new_video(filename="openlabel_test")
