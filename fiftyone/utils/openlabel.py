@@ -76,7 +76,7 @@ class OpenLABELImageDatasetImporter(
             and ``label/``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "segmentations", "keypoints", "polylines")``.
+            ``("detections", "segmentations", "keypoints")``.
             By default, all labels are loaded
         use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -108,11 +108,6 @@ class OpenLABELImageDatasetImporter(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
 
-        labels_dir = self._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels/",
-        )
         labels_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
             labels_path=labels_path,
@@ -129,7 +124,6 @@ class OpenLABELImageDatasetImporter(
         )
 
         self.data_path = data_path
-        self.labels_dir = labels_dir
         self.labels_path = labels_path
         self._label_types = _label_types
         self.use_polylines = use_polylines
@@ -217,15 +211,24 @@ class OpenLABELImageDatasetImporter(
         annotations = OpenLABELAnnotations(fom.IMAGE)
 
         if self.labels_path is not None:
+            base_dir = None
             if os.path.isfile(self.labels_path):
                 label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_dir):
-                label_paths = etau.list_files(self.labels_dir, recursive=True)
-                label_paths = [l for l in label_paths if l.endswith(".json")]
+            elif os.path.isdir(self.labels_path):
+                base_dir = self.labels_path
+            elif os.path.basename(
+                self.labels_path
+            ) == "labels.json" and os.path.isdir(
+                _remove_ext(self.labels_path)
+            ):
+                base_dir = _remove_ext(self.labels_path)
             else:
                 label_paths = []
 
-            base_dir = fou.normalize_path(self.labels_dir)
+            if base_dir is not None:
+                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = [l for l in label_paths if l.endswith(".json")]
+
             for label_path in label_paths:
                 potential_file_ids.extend(
                     annotations.parse_labels(base_dir, label_path)
@@ -284,7 +287,7 @@ class OpenLABELVideoDatasetImporter(
             and ``labels/``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "segmentations", "keypoints", "polylines")``.
+            ``("detections", "segmentations", "keypoints")``.
             By default, all labels are loaded
         use_polylines (False): whether to represent segmentations as
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -316,11 +319,6 @@ class OpenLABELVideoDatasetImporter(
             dataset_dir=dataset_dir, data_path=data_path, default="data/",
         )
 
-        labels_dir = self._parse_labels_path(
-            dataset_dir=dataset_dir,
-            labels_path=labels_path,
-            default="labels/",
-        )
         labels_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
             labels_path=labels_path,
@@ -337,7 +335,6 @@ class OpenLABELVideoDatasetImporter(
         )
 
         self.data_path = data_path
-        self.labels_dir = labels_dir
         self.labels_path = labels_path
         self._label_types = _label_types
         self.use_polylines = use_polylines
@@ -429,15 +426,24 @@ class OpenLABELVideoDatasetImporter(
         annotations = OpenLABELAnnotations(fom.VIDEO)
 
         if self.labels_path is not None:
+            base_dir = None
             if os.path.isfile(self.labels_path):
                 label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_dir):
-                label_paths = etau.list_files(self.labels_dir, recursive=True)
-                label_paths = [l for l in label_paths if l.endswith(".json")]
+            elif os.path.isdir(self.labels_path):
+                base_dir = self.labels_path
+            elif os.path.basename(
+                self.labels_path
+            ) == "labels.json" and os.path.isdir(
+                _remove_ext(self.labels_path)
+            ):
+                base_dir = _remove_ext(self.labels_path)
             else:
                 label_paths = []
 
-            base_dir = fou.normalize_path(self.labels_dir)
+            if base_dir is not None:
+                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = [l for l in label_paths if l.endswith(".json")]
+
             for label_path in label_paths:
                 potential_file_ids.extend(
                     annotations.parse_labels(base_dir, label_path)
