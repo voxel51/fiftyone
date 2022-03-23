@@ -12,12 +12,12 @@ import enum
 import logging
 import os
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.labels as foul
@@ -144,7 +144,7 @@ class OpenLABELImageDatasetImporter(
     def __next__(self):
         file_id = next(self._iter_file_ids)
 
-        if os.path.isfile(file_id):
+        if fos.isfile(file_id):
             sample_path = file_id
         elif _remove_ext(file_id) in self._image_paths_map:
             sample_path = self._image_paths_map[_remove_ext(file_id)]
@@ -212,13 +212,13 @@ class OpenLABELImageDatasetImporter(
 
         if self.labels_path is not None:
             base_dir = None
-            if os.path.isfile(self.labels_path):
+            if fos.isfile(self.labels_path):
                 label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
+            elif fos.isdir(self.labels_path):
                 base_dir = self.labels_path
             elif os.path.basename(
                 self.labels_path
-            ) == "labels.json" and os.path.isdir(
+            ) == "labels.json" and fos.isdir(
                 _remove_ext(self.labels_path)
             ):
                 base_dir = _remove_ext(self.labels_path)
@@ -226,7 +226,7 @@ class OpenLABELImageDatasetImporter(
                 label_paths = []
 
             if base_dir is not None:
-                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = fos.list_files(base_dir, recursive=True)
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
@@ -355,7 +355,7 @@ class OpenLABELVideoDatasetImporter(
     def __next__(self):
         file_id = next(self._iter_file_ids)
 
-        if os.path.isfile(file_id):
+        if fos.isfile(file_id):
             sample_path = file_id
         elif _remove_ext(file_id) in self._video_paths_map:
             sample_path = self._video_paths_map[_remove_ext(file_id)]
@@ -427,13 +427,13 @@ class OpenLABELVideoDatasetImporter(
 
         if self.labels_path is not None:
             base_dir = None
-            if os.path.isfile(self.labels_path):
+            if fos.isfile(self.labels_path):
                 label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
+            elif fos.isdir(self.labels_path):
                 base_dir = self.labels_path
             elif os.path.basename(
                 self.labels_path
-            ) == "labels.json" and os.path.isdir(
+            ) == "labels.json" and fos.isdir(
                 _remove_ext(self.labels_path)
             ):
                 base_dir = _remove_ext(self.labels_path)
@@ -441,7 +441,7 @@ class OpenLABELVideoDatasetImporter(
                 label_paths = []
 
             if base_dir is not None:
-                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = fos.list_files(base_dir, recursive=True)
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
@@ -488,10 +488,10 @@ class OpenLABELAnnotations(object):
             a list of potential file_ids that the parsed labels correspond to
         """
         abs_path = labels_path
-        if not os.path.isabs(abs_path):
-            abs_path = os.path.join(base_dir, labels_path)
+        if not fos.isabs(abs_path):
+            abs_path = fos.join(base_dir, labels_path)
 
-        labels = etas.load_json(abs_path).get("openlabel", {})
+        labels = fos.read_json(abs_path).get("openlabel", {})
         label_file_id = _remove_ext(labels_path)
         potential_file_ids = [label_file_id]
 
@@ -1411,7 +1411,7 @@ class OpenLABELObject(object):
 def _validate_file_ids(potential_file_ids, sample_paths_map):
     file_ids = []
     for file_id in set(potential_file_ids):
-        is_file = os.path.exists(file_id)
+        is_file = fos.exists(file_id)
         has_file_id = _remove_ext(file_id) in sample_paths_map
         has_basename = (
             _remove_ext(os.path.basename(file_id)) in sample_paths_map
