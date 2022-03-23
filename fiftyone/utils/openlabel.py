@@ -26,7 +26,7 @@ import fiftyone.utils.labels as foul
 logger = logging.getLogger(__name__)
 
 
-class SegType(enum.Enum):
+class SegmentationType(enum.Enum):
     """The FiftyOne label type to load segmentations into"""
 
     INSTANCE = 1
@@ -171,7 +171,11 @@ class OpenLABELImageDatasetImporter(
 
         frame_size = (width, height)
         objects = self._annotations.get_objects(filename)
-        seg_type = SegType.POLYLINE if self.use_polylines else SegType.INSTANCE
+        seg_type = (
+            SegmentationType.POLYLINE
+            if self.use_polylines
+            else SegmentationType.INSTANCE
+        )
         label = objects.to_labels(frame_size, self._label_types, seg_type)
 
         if self._has_scalar_labels:
@@ -381,7 +385,11 @@ class OpenLABELVideoDatasetImporter(
 
         frame_size = (width, height)
         frames = self._annotations.get_objects(filename)
-        seg_type = SegType.POLYLINE if self.use_polylines else SegType.INSTANCE
+        seg_type = (
+            SegmentationType.POLYLINE
+            if self.use_polylines
+            else SegmentationType.INSTANCE
+        )
         frame_labels = frames.to_labels(
             frame_size, self._label_types, seg_type
         )
@@ -704,9 +712,11 @@ class OpenLABELObjects(object):
             frame_size, fol.Polylines, OpenLABELObject.to_polylines,
         )
 
-    def _to_segmentations(self, frame_size, seg_type=SegType.INSTANCE):
+    def _to_segmentations(
+        self, frame_size, seg_type=SegmentationType.INSTANCE
+    ):
         polylines = self._to_polylines(frame_size)
-        if seg_type == SegType.POLYLINE:
+        if seg_type == SegmentationType.POLYLINE:
             return polylines
         else:
             return polylines.to_detections(frame_size=frame_size)
@@ -723,13 +733,15 @@ class OpenLABELObjects(object):
         else:
             self.objects.extend(new_objects)
 
-    def to_labels(self, frame_size, label_types, seg_type=SegType.INSTANCE):
+    def to_labels(
+        self, frame_size, label_types, seg_type=SegmentationType.INSTANCE
+    ):
         """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
 
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type (SegType.INSTANCE): the type to use to store segmentations
+            seg_type (SegmentationType.INSTANCE): the type to use to store segmentations
 
         Returns:
             a dict mapping the specified label types to FiftyOne labels
@@ -805,7 +817,9 @@ class OpenLABELFrames(object):
     def __init__(self, frame_objects):
         self.frame_objects = frame_objects
 
-    def to_labels(self, frame_size, label_types, seg_type=SegType.POLYLINE):
+    def to_labels(
+        self, frame_size, label_types, seg_type=SegmentationType.POLYLINE
+    ):
         frame_labels = {}
         for frame_num, objects in self.frame_objects.items():
             frame_label = {}
@@ -999,13 +1013,13 @@ class OpenLABELMetadata(object):
 
     def _parse_seg_type(self):
         # Currently unused
-        self.seg_type = SegType.INSTANCE
+        self.seg_type = SegmentationType.INSTANCE
         if "annotation_type" in self.metadata_dict:
             if (
                 self.metadata_dict["annotation_type"]
                 == "semantic segmentation"
             ):
-                self.seg_type = SegType.SEMANTIC
+                self.seg_type = SegmentationType.SEMANTIC
 
     def parse_potential_filenames(self):
         """Parses metadata for any fields that may correspond to a label-wide
