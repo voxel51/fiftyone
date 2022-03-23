@@ -2335,10 +2335,9 @@ class SampleCollection(object):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -2473,8 +2472,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to exclude
 
             omit_empty (True): whether to omit samples that have no frames
                 after excluding the specified frames
@@ -4129,10 +4128,9 @@ class SampleCollection(object):
                     encoding which samples to select
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
@@ -4285,8 +4283,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                    whose frames to select
 
             omit_empty (True): whether to omit samples that have no frames
                 after selecting the specified frames
