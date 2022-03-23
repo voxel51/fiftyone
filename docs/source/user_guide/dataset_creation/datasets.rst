@@ -3102,7 +3102,6 @@ directory containing the corresponding media files by providing the
                 data_path=$DATA_PATH \
                 labels_path=$LABELS_PATH
 
-
 .. _OpenLABELImageDataset-import:
 
 OpenLABELImageDataset
@@ -3115,12 +3114,12 @@ multitask predictions stored in
 
 OpenLABEL is a flexible format which allows labels to be stored in a variety of
 different ways with respect to the corresponding media files. The following
-list the possible structures in which media data and OpenLABEL formatted label
-fields can be stored in ways that is understood by FiftyOne:
+enumerates the possible structures in which media data and OpenLABEL formatted
+label files can be stored in ways that is understood by FiftyOne:
 
-One label file per image. Each label contains only the metadata and labels
-associated with the image of the same name. In this case, the `labels_path`
-argument is expected to be a directory, if provided:
+1. One label file per image. Each label contains only the metadata and labels
+   associated with the image of the same name. In this case, the `labels_path`
+   argument is expected to be a directory, if provided:
 
 .. code-block:: text
 
@@ -3134,11 +3133,11 @@ argument is expected to be a directory, if provided:
             <uuid2>.json
             ...
 
-One label file for all images. The label file contains all of the metadata and
-labels associated with every image. In this case, there needs to be additional
-information provided in the label file to match labels to images. Specifically
-the image filepath corresponding to a label must be stored as the stream
-attribute:
+2. One label file for all images. The label file contains all of the metadata
+   and labels associated with every image. In this case, there needs to be
+   additional information provided in the label file to match labels to
+   images. Specifically, the image filepath corresponding to a label must be
+   stored as a stream:
 
 .. code-block:: text
 
@@ -3149,11 +3148,11 @@ attribute:
             ...
         labels.json
 
-Multiple label files, each corresponding to one or more images. This case is
-similar to when there is a single label file, except that the label information
-may be spread out over multiple files. Since the filenames cannot be used to
-match labels to images, the image filepaths must again be stored as streams in
-the labels files:
+3. Multiple label files, each corresponding to one or more images. This case is
+   similar to when there is a single label file, except that the label
+   information may be spread out over multiple files. Since the filenames
+   cannot be used to match labels to images, the image filepaths must again be
+   stored as streams in the labels files:
 
 .. code-block:: text
 
@@ -3163,21 +3162,26 @@ the labels files:
             <uuid2>.<ext>
             ...
         labels/
-            <label_uuid1>.json
-            <label_uuid2>.json
+            <labels-filename1>.json
+            <labels-filename2>.json
             ...
 
 As for the actual structure of the labels files themselves, labels are stored
 in one or more JSON files and can follow a variety of formats. In general
 following this format:
 
+.. note::
+
+    All object information stored in the `frames` key is applied to the
+    corresponding image.
+
 .. code-block:: text
 
     {
         "openlabel": {
             "metadata": {
-                "schema_version":"1.0.0",
-                "uri":"/path/to/image.ext",
+                "schema_version": "1.0.0",
+                "uri": "/path/to/<uuid>.<ext>",
             },
             "objects": {
                 "object_uuid1": {
@@ -3200,32 +3204,32 @@ following this format:
                 "object_uuid2": {
                     "name": "instance1",
                     "type": "label2",
-                    "object_data": {}, # Defined in frames
+                    "object_data": {},  # DEFINED IN FRAMES
                 }
             },
             "frames": {
-                "0":{
-                   "frame_properties":{
-                      "streams":{
-                         "Camera1":{
-                            "uri":"image1.ext"
+                "0": {
+                   "frame_properties": {
+                      "streams": {
+                         "Camera1": {
+                            "uri": "<uuid>.<ext>"
                          }
                       }
                    },
-                   "objects":{
-                      "object_uuid2":{
-                         "object_data":{
-                            "poly2d":[
+                   "objects": {
+                      "object_uuid2": {
+                         "object_data": {
+                            "poly2d": [
                                {
-                                  "attributes":{
-                                     "boolean":[
+                                  "attributes": {
+                                     "boolean": [
                                         {
-                                           "name":"is_hole",
+                                           "name": "is_hole",
                                            "val": false
                                         }
                                      ],
-                                     "text":[
-                                        { # If not provided otherwise
+                                     "text": [
+                                        {  # IF NOT PROVIDED OTHERWISE
                                            "name": "stream",
                                            "val": "Camera1"
                                         }
@@ -3234,7 +3238,7 @@ following this format:
                                   "closed": true,
                                   "mode": "MODE_POLY2D_ABSOLUTE",
                                   "name": "polygon_name",
-                                  "stream": "Camera1", # If not in "attributes"
+                                  "stream": "Camera1",  # IF NOT IN ATTRIBUTES
                                   "val": [
                                      point1-x,
                                      point1-y,
@@ -3259,15 +3263,12 @@ following this format:
                   "type": "camera"
                }
             },
-            "ontologies": {NOT PARSED},
-            "relations": {NOT PARSED},
-            "resources": {NOT PARSED},
-            "tags": {NOT PARSED}
+            "ontologies": ... # NOT PARSED
+            "relations": ... # NOT PARSED
+            "resources": ... # NOT PARSED
+            "tags": ... # NOT PARSED
         }
     }
-
-For image datasets, all object information stored in frames is applied to the
-label's corresponding image.
 
 .. note::
 
@@ -3276,8 +3277,8 @@ label's corresponding image.
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
-You can create a FiftyOne dataset from a OpenLABEL image dataset stored in the above
-format as follows:
+You can create a FiftyOne dataset from a OpenLABEL image dataset stored in the
+above format as follows:
 
 .. tabs::
 
@@ -3323,8 +3324,9 @@ format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a OpenLABEL image dataset stored in the above format in the FiftyOne
-    App without creating a persistent FiftyOne dataset, you can execute:
+    To view a OpenLABEL image dataset stored in the above format in the
+    FiftyOne App without creating a persistent FiftyOne dataset, you can
+    execute:
 
     .. code-block:: shell
 
@@ -3350,9 +3352,9 @@ directory containing the corresponding media files by providing the
 
         name = "my-dataset"
         data_path = "/path/to/images"
+
         labels_path = "/path/to/openlabel-labels.json"
-        # OR a directory of files
-        labels_path = "/path/to/openlabel-labels"
+        # labels_path = "/path/to/openlabel-labels"
 
         # Import dataset by explicitly providing paths to the source media and labels
         dataset = fo.Dataset.from_dir(
@@ -3368,9 +3370,9 @@ directory containing the corresponding media files by providing the
 
         NAME=my-dataset
         DATA_PATH=/path/to/images
+
         LABELS_PATH=/path/to/openlabel-labels.json
-        # OR a directory of files
-        LABELS_PATH=/path/to/openlabel-labels
+        # LABELS_PATH=/path/to/openlabel-labels
 
         # Import dataset by explicitly providing paths to the source media and labels
         fiftyone datasets create \
@@ -3399,12 +3401,12 @@ multitask predictions stored in
 
 OpenLABEL is a flexible format which allows labels to be stored in a variety of
 different ways with respect to the corresponding media files. The following
-list the possible structures in which media data and OpenLABEL formatted label
-fields can be stored in ways that is understood by FiftyOne:
+enumerates the possible structures in which media data and OpenLABEL formatted
+label files can be stored in ways that is understood by FiftyOne:
 
-One label file per video. Each label contains only the metadata and labels
-associated with the video of the same name. In this case, the `labels_path`
-argument is expected to be a directory, if provided:
+1. One label file per video. Each label contains only the metadata and labels
+   associated with the video of the same name. In this case, the `labels_path`
+   argument is expected to be a directory, if provided:
 
 .. code-block:: text
 
@@ -3418,11 +3420,11 @@ argument is expected to be a directory, if provided:
             <uuid2>.json
             ...
 
-One label file for all videos. The label file contains all of the metadata and
-labels associated with every video. In this case, there needs to be additional
-information provided in the label file to match labels to videos. Specifically
-the video filepath corresponding to a label must be stored as the stream
-attribute:
+2. One label file for all videos. The label file contains all of the metadata
+   and labels associated with every video. In this case, there needs to be
+   additional information provided in the label file to match labels to
+   videos. Specifically, the video filepath corresponding to a label must be
+   stored as a stream:
 
 .. code-block:: text
 
@@ -3433,11 +3435,11 @@ attribute:
             ...
         labels.json
 
-Multiple label files, each corresponding to one or more videos. This case is
-similar to when there is a single label file, except that the label information
-may be spread out over multiple files. Since the filenames cannot be used to
-match labels to videos, the video filepaths must again be stored as streams in
-the labels files:
+3. Multiple label files, each corresponding to one or more videos. This case is
+   similar to when there is a single label file, except that the label
+   information may be spread out over multiple files. Since the filenames
+   cannot be used to match labels to videos, the video filepaths must again be
+   stored as streams in the labels files:
 
 .. code-block:: text
 
@@ -3447,8 +3449,8 @@ the labels files:
             <uuid2>.<ext>
             ...
         labels/
-            <label_uuid1>.json
-            <label_uuid2>.json
+            <labaels-filename1>.json
+            <labaels-filename2>.json
             ...
 
 As for the actual structure of the labels files themselves, labels are stored
@@ -3460,8 +3462,8 @@ following this format:
     {
         "openlabel": {
             "metadata": {
-                "schema_version":"1.0.0",
-                "uri":"/path/to/video.ext",
+                "schema_version": "1.0.0",
+                "uri": "/path/to/<uuid>.<ext>",
             },
             "objects": {
                 "object_uuid1": {
@@ -3485,32 +3487,32 @@ following this format:
                 "object_uuid2": {
                     "name": "instance1",
                     "type": "label2",
-                    "object_data": {}, # Defined in frames
+                    "object_data": {},  # DEFINED IN FRAMES
                 }
             },
             "frames": {
-                "0":{
-                   "frame_properties":{
-                      "streams":{
-                         "Camera1":{
-                            "uri":"video1.ext"
+                "0": {
+                   "frame_properties": {
+                      "streams": {
+                         "Camera1": {
+                            "uri":"<uuid>.<ext>"
                          }
                       }
                    },
-                   "objects":{
-                      "object_uuid2":{
-                         "object_data":{
-                            "poly2d":[
+                   "objects": {
+                      "object_uuid2": {
+                         "object_data": {
+                            "poly2d": [
                                {
-                                  "attributes":{
-                                     "boolean":[
+                                  "attributes": {
+                                     "boolean": [
                                         {
-                                           "name":"is_hole",
+                                           "name": "is_hole",
                                            "val": false
                                         }
                                      ],
-                                     "text":[
-                                        { # If not provided otherwise
+                                     "text": [
+                                        {  # IF NOT PROVIDED OTHERWISE
                                            "name": "stream",
                                            "val": "Camera1"
                                         }
@@ -3519,7 +3521,7 @@ following this format:
                                   "closed": true,
                                   "mode": "MODE_POLY2D_ABSOLUTE",
                                   "name": "polygon_name",
-                                  "stream": "Camera1", # If not in "attributes"
+                                  "stream": "Camera1",  # IF NOT IN ATTRIBUTES
                                   "val": [
                                      point1-x,
                                      point1-y,
@@ -3545,10 +3547,10 @@ following this format:
                   "type": "camera"
                }
             },
-            "ontologies": {NOT PARSED},
-            "relations": {NOT PARSED},
-            "resources": {NOT PARSED},
-            "tags": {NOT PARSED}
+            "ontologies": ...  # NOT PARSED
+            "relations" ...  # NOT PARSED
+            "resources" ...  # NOT PARSED
+            "tags": ...  # NOT PARSED
         }
     }
 
@@ -3559,8 +3561,8 @@ following this format:
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
-You can create a FiftyOne dataset from a OpenLABEL video dataset stored in the above
-format as follows:
+You can create a FiftyOne dataset from a OpenLABEL video dataset stored in the
+above format as follows:
 
 .. tabs::
 
@@ -3633,9 +3635,9 @@ directory containing the corresponding media files by providing the
 
         name = "my-dataset"
         data_path = "/path/to/videos"
+
         labels_path = "/path/to/openlabel-labels.json"
-        # OR a directory of files
-        labels_path = "/path/to/openlabel-labels"
+        # labels_path = "/path/to/openlabel-labels"
 
         # Import dataset by explicitly providing paths to the source media and labels
         dataset = fo.Dataset.from_dir(
@@ -3651,9 +3653,9 @@ directory containing the corresponding media files by providing the
 
         NAME=my-dataset
         DATA_PATH=/path/to/videos
+
         LABELS_PATH=/path/to/openlabel-labels.json
-        # OR a directory of files
-        LABELS_PATH=/path/to/openlabel-labels
+        # LABELS_PATH=/path/to/openlabel-labels
 
         # Import dataset by explicitly providing paths to the source media and labels
         fiftyone datasets create \
