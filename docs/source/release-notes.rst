@@ -52,7 +52,7 @@ Annotation
   to pass in one or more URL strings to attach to the created task(s) when
   using the CVAT backend
   `#1625 <https://github.com/voxel51/fiftyone/pull/1625>`_
-- Added a ``destination_field`` argument to
+- Added a ``dest_field`` argument to
   :func:`load_annotations() <fiftyone.utils.annotations.load_annotations>`
   which allows you to specify the name of the field to which to load annotations
   `#1642 <https://github.com/voxel51/fiftyone/pull/1642>`_
