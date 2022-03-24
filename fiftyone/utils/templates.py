@@ -99,7 +99,8 @@ _SCREENSHOT_COLAB_SCRIPT = """
     }).then((baseURL) => {
         const url = new URL(baseURL);
         const handleId = "{{ handle }}";
-        url.searchParams.set('fiftyoneColab', 'true');
+        url.searchParams.set('colab', 'true');
+        url.searchParams.set('polling', 'true');
         url.searchParams.set('notebook', 'true');
         url.searchParams.set('handleId', handleId);
         const iframe = document.createElement('iframe');
