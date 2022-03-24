@@ -12,7 +12,9 @@ import enum
 import logging
 import os
 
+import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -157,8 +159,16 @@ class OpenLABELImageDatasetImporter(
         height, width = stream.height, stream.width
 
         if height is None or width is None:
-            sample_metadata = fomt.ImageMetadata.build_for(sample_path)
-            height, width = sample_metadata["height"], sample_metadata["width"]
+            try:
+                sample_metadata = fomt.ImageMetadata.build_for(sample_path)
+                height, width = sample_metadata["height"], sample_metadata["width"]
+            except KeyError:
+                logger.warning(
+                    "Could not build metadata for '%s', skipping labels..." %
+                    sample_path
+                )
+                return sample_path, None, None
+
         else:
             sample_metadata = fomt.ImageMetadata(width=width, height=height)
 
@@ -237,7 +247,7 @@ class OpenLABELImageDatasetImporter(
         self._annotations = annotations
         self._info = info
         self._file_ids = _validate_file_ids(
-            potential_file_ids, image_paths_map
+            potential_file_ids, image_paths_map, _ensure_image
         )
         self._image_paths_map = image_paths_map
 
@@ -368,11 +378,18 @@ class OpenLABELVideoDatasetImporter(
         height, width = stream.height, stream.width
 
         if height is None or width is None:
-            sample_metadata = fomt.VideoMetadata.build_for(sample_path)
-            height, width = (
-                sample_metadata["frame_height"],
-                sample_metadata["frame_width"],
-            )
+            try:
+                sample_metadata = fomt.VideoMetadata.build_for(sample_path)
+                height, width = (
+                    sample_metadata["frame_height"],
+                    sample_metadata["frame_width"],
+                )
+            except KeyError:
+                logger.warning(
+                    "Could not build metadata for '%s', skipping labels..." %
+                    sample_path
+                )
+                return sample_path, None, None
         else:
             sample_metadata = fomt.VideoMetadata(
                 frame_width=width, frame_height=height
@@ -452,7 +469,7 @@ class OpenLABELVideoDatasetImporter(
         self._annotations = annotations
         self._info = info
         self._file_ids = _validate_file_ids(
-            potential_file_ids, video_paths_map
+            potential_file_ids, video_paths_map, _ensure_video
         )
         self._video_paths_map = video_paths_map
 
@@ -1408,15 +1425,20 @@ class OpenLABELObject(object):
         return attributes
 
 
-def _validate_file_ids(potential_file_ids, sample_paths_map):
+def _validate_file_ids(potential_file_ids, sample_paths_map, mime_type_fcn):
     file_ids = []
     for file_id in set(potential_file_ids):
+        if fos.get_file_system(file_id) == fos.FileSystem.HTTP:
+            if not os.path.splitext(file_id)[1] or not mime_type_fcn(file_id):
+                continue
+
         is_file = fos.exists(file_id)
+        is_media = is_file and mime_type_fcn(file_id)
         has_file_id = _remove_ext(file_id) in sample_paths_map
         has_basename = (
             _remove_ext(os.path.basename(file_id)) in sample_paths_map
         )
-        if is_file or has_file_id or has_basename:
+        if is_media or has_file_id or has_basename:
             file_ids.append(file_id)
 
     return file_ids
@@ -1462,3 +1484,17 @@ def _pairwise(x):
 
 def _remove_ext(p):
     return os.path.splitext(p)[0]
+
+
+def _ensure_video(path):
+    if etav.is_video_mime_type(path):
+        return True
+
+    return False
+
+
+def _ensure_image(path):
+    if etai.is_image_mime_type(path):
+        return True
+
+    return False
