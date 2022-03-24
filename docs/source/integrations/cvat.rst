@@ -480,9 +480,10 @@ provided:
 -   **chunk_size** (*None*): the number of frames to upload per ZIP chunk
 -   **task_assignee** (*None*): the username to assign the generated tasks.
     This argument can be a list of usernames when annotating videos as each
-    video is uploaded to a separate task 
+    video is uploaded to a separate task
 -   **job_assignees** (*None*): a list of usernames to assign jobs
--   **job_reviewers** (*None*): a list of usernames to assign job reviews
+-   **job_reviewers** (*None*): a list of usernames to assign job reviews. Only
+    available in CVAT v1 servers
 -   **project_name** (*None*): an optional project name to which to upload the
     created CVAT task. If a project with this name exists, it will be used,
     otherwise a new project is created. By default, no project is used
@@ -491,6 +492,9 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
+-   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
+    created task(s). This argument can be a list of URLs when annotating videos
+    or when using `task_size` and generating multiple tasks
 
 .. _cvat-label-schema:
 
@@ -644,8 +648,8 @@ Label attributes
 ----------------
 
 The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <label-attributes>` beyond the default `label`
-attribute are included in the annotation tasks.
+:ref:`custom attributes <using-labels>` beyond the default `label` attribute
+are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each
@@ -657,7 +661,7 @@ attribute that you wish to label:
     anno_key = "..."
 
     attributes = {
-        "occluded": {
+        "is_truncated": {
             "type": "radio",
             "values": [True, False],
             "default": False,
@@ -845,7 +849,7 @@ object:
             "values": ["sedan", "suv", "truck"],
             "mutable": False,
         },
-        "occluded": {
+        "visible_license_plate": {
             "type": "radio",
             "values": [True, False],
             "default": False,
@@ -1004,6 +1008,13 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
+
+You can use the optional `dest_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `dest_field` should be a
+dictionary mapping label schema field names to destination field names.
 
 Note that CVAT cannot explicitly prevent annotators from creating labels that
 don't obey the run's label schema. However, you can pass the optional
@@ -1413,7 +1424,7 @@ involves multiple fields:
             "type": "keypoints",
             "classes": ["person", "cat", "dog", "food"],
             "attributes": {
-                "occluded": {
+                "is_truncated": {
                     "type": "select",
                     "values": [True, False],
                 }
@@ -1639,9 +1650,10 @@ specify which users will be assigned to the created tasks:
 -   `segment_size`: the maximum number of images to include in a single job
 -   `task_assignee`: a username to assign the generated tasks. This argument
     can be a list of usernames when annotating videos as each
-    video is uploaded to a separate task 
+    video is uploaded to a separate task
 -   `job_assignees`: a list of usernames to assign jobs
--   `job_reviewers`: a list of usernames to assign job reviews
+-   `job_reviewers`: a list of usernames to assign job reviews. Only available
+    in CVAT v1 servers
 
 If the number of jobs exceeds the number of assignees or reviewers, the jobs
 will be assigned using a round-robin strategy.
@@ -1659,7 +1671,9 @@ will be assigned using a round-robin strategy.
 
     task_assignee = "username1"
     job_assignees = ["username2", "username3"]
-    job_reviewers = ["username4", "username5", "username6", "username7"]
+
+    # If using a CVAT v1 server
+    # job_reviewers = ["username4", "username5", "username6", "username7"]
 
     # Load "ground_truth" field into one task
     # Create another task for "keypoints" field
@@ -1677,7 +1691,6 @@ will be assigned using a round-robin strategy.
         segment_size=2,
         task_assignee=task_assignee,
         job_assignees=job_assignees,
-        job_reviewers=job_reviewers,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -1952,6 +1965,55 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
+
+.. _cvat-destination-field:
+
+Changing destination field
+--------------------------
+
+When annotating an existing label field, it can be useful to load the
+annotations into a different field than the one used to upload annotations. The
+`dest_field` parameter can be used for this purpose when calling
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`.
+
+If your annotation run involves a single label field, set `dest_field`
+to the name of the (new or existing) field you wish to load annotations into.
+
+If your annotation run involves multiple fields, `dest_field` should be
+a dictionary mapping existing field names in your run's label schema to updated
+destination fields.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "dest_field"
+    label_field = "ground_truth"
+
+    # Upload from `ground_truth` field
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Load into `test_field`
+    dest_field = "test_field"
+
+    # If your run involves multiple fields, use this syntax instead
+    # dest_field = {"ground_truth": "test_field", ...}
+
+    dataset.load_annotations(
+        anno_key,
+        cleanup=True,
+        dest_field=dest_field,
+    )
+    dataset.delete_annotation_run(anno_key)
 
 .. _cvat-annotating-videos:
 

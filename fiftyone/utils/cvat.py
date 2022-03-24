@@ -261,6 +261,7 @@ def import_annotations(
                 )
     finally:
         anno_backend.delete_run(dataset, anno_key)
+        api.close()
 
 
 def _parse_task_metadata(
@@ -2998,7 +2999,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             videos as each video is uploaded to a separate task
         job_assignees (None): a list of usernames to which jobs were assigned
         job_reviewers (None): a list of usernames to which job reviews were
-            assigned
+            assigned. Only available in CVAT v1 servers
         project_name (None): an optional project name to which to upload the
             created CVAT task. If a project with this name is found, it will be
             used, otherwise a new project with this name is created. By
@@ -3008,6 +3009,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
+        issue_tracker (None): URL(s) of an issue tracker to link to the created
+            task(s). This argument can be a list of URLs when annotating videos
+            or when using `task_size` and generating multiple tasks
     """
 
     def __init__(
@@ -3031,6 +3035,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
+        issue_tracker=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3047,6 +3052,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
+        self.issue_tracker = issue_tracker
 
         # store privately so these aren't serialized
         self._username = username
@@ -3124,6 +3130,10 @@ class CVATBackend(foua.AnnotationBackend):
         return True
 
     @property
+    def supports_video_sample_fields(self):
+        return False
+
+    @property
     def requires_label_schema(self):
         return False  # schemas can be inferred from existing CVAT projects
 
@@ -3155,6 +3165,8 @@ class CVATBackend(foua.AnnotationBackend):
         results = api.upload_samples(samples, self)
         logger.info("Upload complete")
 
+        api.close()
+
         if launch_editor:
             results.launch_editor()
 
@@ -3166,6 +3178,8 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(results)
         logger.info("Download complete")
+
+        api.close()
 
         return annotations
 
@@ -3237,6 +3251,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
         logger.info("Launching editor at '%s'...", editor_url)
         api.launch_editor(url=editor_url)
+        api.close()
 
     def get_status(self):
         """Gets the status of the assigned tasks and jobs.
@@ -3258,8 +3273,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
         """
         api = self.connect_to_api()
         api.delete_tasks(task_ids)
-
         self._forget_tasks(task_ids)
+        api.close()
 
     def cleanup(self):
         """Deletes all tasks and created projects associated with this run."""
@@ -3274,6 +3289,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
             if projects_to_delete:
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
+
+        api.close()
 
         self.project_ids = []
         self.task_ids = []
@@ -3307,7 +3324,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                 task_url = api.task_url(task_id)
 
                 try:
-                    task_json = api.get(task_url).json()
+                    response = api.get(task_url, print_error_info=False)
+                    task_json = response.json()
                 except:
                     logger.warning(
                         "\tFailed to get info for task '%d' at %s",
@@ -3341,7 +3359,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     job_url = api.taskless_job_url(job_id)
 
                     try:
-                        job_json = api.get(job_url).json()
+                        response = api.get(job_url, print_error_info=False)
+                        job_json = response.json()
                     except:
                         logger.warning(
                             "\t\tFailed to get info for job '%d' at %s",
@@ -3361,7 +3380,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
                             job_id,
                             job_json["status"],
                             job_json["assignee"],
-                            job_json["reviewer"],
+                            job_json.get("reviewer", None),
                         )
 
                 status[label_field][task_id] = {
@@ -3371,6 +3390,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "last_updated": task_updated,
                     "jobs": jobs_info,
                 }
+
+        api.close()
 
         return status
 
@@ -3426,6 +3447,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._password = password
         self._headers = headers
 
+        self._server_version = None
         self._session = None
         self._user_id_map = {}
         self._project_id_map = {}
@@ -3433,12 +3455,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._setup()
 
     @property
+    def server_version(self):
+        return self._server_version
+
+    @property
     def base_url(self):
         return self._url
 
     @property
     def base_api_url(self):
-        return "%s/api/v1" % self.base_url
+        if self._server_version == 1:
+            return "%s/api/v1" % self.base_url
+
+        return "%s/api" % self.base_url
 
     @property
     def login_url(self):
@@ -3517,6 +3546,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def project_id_search_url(self, project_id):
         return "%s/projects?id=%d" % (self.base_api_url, project_id)
 
+    @property
+    def assignee_key(self):
+        if self._server_version == 1:
+            return "assignee_id"
+
+        return "assignee"
+
+    def _parse_reviewers(self, job_reviewers):
+        if self._server_version == 2 and job_reviewers is not None:
+            logger.warning("CVAT v2 servers do not support `job_reviewers`")
+            return None
+
+        return job_reviewers
+
     def _setup(self):
         if not self._url:
             raise ValueError(
@@ -3538,6 +3581,22 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if self._headers:
             self._session.headers.update(self._headers)
 
+        self._server_version = 2
+
+        try:
+            self._login(username, password)
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code != 404:
+                raise e
+
+            self._server_version = 1
+            self._login(username, password)
+
+    def close(self):
+        """Closes the API session."""
+        self._session.close()
+
+    def _login(self, username, password):
         response = self._make_request(
             self._session.post,
             self.login_url,
@@ -3558,6 +3617,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._validate(response, kwargs)
         else:
             response.raise_for_status()
+
         return response
 
     def get(self, url, **kwargs):
@@ -3778,6 +3838,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         image_quality=75,
         task_assignee=None,
         project_id=None,
+        issue_tracker=None,
     ):
         """Creates a task on the CVAT server using the given label schema.
 
@@ -3790,6 +3851,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
             project_id (None): the ID of a project to which upload the task
+            issue_tracker (None): the URL of an issue tracker to link the task
 
         Returns:
             a tuple of
@@ -3820,6 +3882,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if segment_size is not None:
             task_json["segment_size"] = segment_size
+
+        if issue_tracker is not None:
+            task_json["bug_tracker"] = issue_tracker
 
         task_resp = self.post(self.tasks_url, json=task_json).json()
         task_id = task_resp["id"]
@@ -3940,11 +4005,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             data["chunk_size"] = chunk_size
 
         files = {}
+        open_files = []
 
         if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
             # Video task
             filename = os.path.basename(paths[0])
-            files["client_files[0]"] = (filename, open(paths[0], "rb"))
+            open_file = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, open_file)
+            open_files.append(open_file)
         else:
             # Image task
             for idx, path in enumerate(paths):
@@ -3952,9 +4020,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # by filename, so we must give CVAT filenames whose
                 # alphabetical order matches the order of `paths`
                 filename = "%06d_%s" % (idx, os.path.basename(path))
-                files["client_files[%d]" % idx] = (filename, open(path, "rb"))
+                open_file = open(path, "rb")
+                files["client_files[%d]" % idx] = (filename, open_file)
+                open_files.append(open_file)
 
-        self.post(self.task_data_url(task_id), data=data, files=files)
+        try:
+            self.post(self.task_data_url(task_id), data=data, files=files)
+        finally:
+            for f in open_files:
+                f.close()
 
         # @todo is this loop really needed?
         job_ids = []
@@ -3970,10 +4044,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 user_id = self.get_user_id(assignee)
                 if assignee is not None and user_id is not None:
-                    job_patch = {"assignee_id": user_id}
+                    job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
-        if job_reviewers is not None:
+        if self._server_version == 1 and job_reviewers is not None:
             num_reviewers = len(job_reviewers)
             for idx, job_id in enumerate(job_ids):
                 # Round robin strategy
@@ -4002,6 +4076,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
         task_size = config.task_size
+        config.job_reviewers = self._parse_reviewers(config.job_reviewers)
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
@@ -4184,18 +4259,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 continue
 
             # Download task data
-            task_json = self.get(self.task_url(task_id)).json()
-            attr_id_map = {}
-            _class_map = {}
-            labels = task_json["labels"]
-            for label in labels:
-                _class_map[label["id"]] = label["name"]
-                attr_id_map[label["id"]] = {
-                    i["name"]: i["id"] for i in label["attributes"]
-                }
-
-            _class_map_rev = {n: i for i, n in _class_map.items()}
-
+            attr_id_map, _class_map_rev = self._get_attr_class_maps(task_id)
             task_resp = self.get(self.task_annotation_url(task_id)).json()
             all_shapes = task_resp["shapes"]
             all_tags = task_resp["tags"]
@@ -4308,7 +4372,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         frames_metadata[sample_id] = frames[0]
                         break
 
-                    frames_metadata[sample_id] = frames[cvat_frame_id]
+                    if len(frames) > cvat_frame_id:
+                        frame_metadata = frames[cvat_frame_id]
+                    else:
+                        frame_metadata = None
+
+                    frames_metadata[sample_id] = frame_metadata
 
                 # Polyline(s) corresponding to instance/semantic masks need to
                 # be converted to their final format
@@ -4324,6 +4393,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             results._forget_tasks(deleted_tasks)
 
         return annotations
+
+    def _get_attr_class_maps(self, task_id):
+        task_json = self.get(self.task_url(task_id)).json()
+
+        _class_map = {}
+        attr_id_map = {}
+        for label in task_json["labels"]:
+            _class_map[label["id"]] = label["name"]
+            attr_id_map[label["id"]] = {
+                i["name"]: i["id"] for i in label["attributes"]
+            }
+
+        class_map_rev = {n: i for i, n in _class_map.items()}
+
+        return attr_id_map, class_map_rev
 
     def _get_paginated_results(self, url, value=None):
         results = []
@@ -4598,6 +4682,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         _class_label_fields[name] = label_field
                         label_field_classes[label_field][name] = name
 
+                    if len(name) > 64:
+                        raise ValueError(
+                            "Class name '%s' exceeds 64 character limit" % name
+                        )
+
                     cvat_schema[name] = deepcopy(attributes)
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
@@ -4625,6 +4714,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for name in _classes:
                     if name in _duplicate_classes:
                         name = "%s_%s" % (name, label_field)
+
+                    if len(name) > 64:
+                        raise ValueError(
+                            "Class name '%s' exceeds 64 character limit" % name
+                        )
 
                     cvat_schema[name].update(_attrs)
                     if _occluded_attr_name is not None:
@@ -4704,12 +4798,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_assignee = config.task_assignee
         job_assignees = config.job_assignees
         job_reviewers = config.job_reviewers
+        issue_tracker = config.issue_tracker
 
         is_video = samples_batch.media_type == fom.VIDEO
 
         _task_assignee = task_assignee
         _job_assignees = job_assignees
         _job_reviewers = job_reviewers
+        _issue_tracker = issue_tracker
 
         if is_video:
             # Videos are uploaded in multiple tasks with 1 job per task
@@ -4726,6 +4822,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 _task_assignee = task_assignee[idx % len(task_assignee)]
 
+        if issue_tracker is not None:
+            if isinstance(issue_tracker, str):
+                _issue_tracker = issue_tracker
+            else:
+                _issue_tracker = issue_tracker[idx % len(issue_tracker)]
+
         # Create task
         task_id, class_id_map, attr_id_map = self.create_task(
             task_name,
@@ -4734,6 +4836,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             image_quality=image_quality,
             task_assignee=_task_assignee,
             project_id=project_id,
+            issue_tracker=_issue_tracker,
         )
         task_ids.append(task_id)
 
@@ -4748,9 +4851,28 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             job_assignees=_job_assignees,
             job_reviewers=_job_reviewers,
         )
+        self._verify_uploaded_frames(task_id, samples_batch)
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
         return task_id, class_id_map, attr_id_map
+
+    def _verify_uploaded_frames(self, task_id, samples):
+        task_meta = self.get(self.task_data_meta_url(task_id)).json()
+        num_uploaded = task_meta.get("size", 0)
+        if samples.media_type == fom.VIDEO:
+            num_frames = samples.count("frames")
+            ftype = "frames"
+        else:
+            num_frames = len(samples)
+            ftype = "images"
+
+        if num_uploaded < num_frames:
+            logger.warning(
+                "Failed to upload %d/%d %s",
+                num_frames - num_uploaded,
+                num_frames,
+                ftype,
+            )
 
     def _upload_annotations(
         self,
@@ -4939,6 +5061,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             for sample_id, sample_results in type_results.items():
                 sample_metadata = frames_metadata[sample_id]
+                if sample_metadata is None:
+                    continue
+
                 frame_size = (
                     sample_metadata["width"],
                     sample_metadata["height"],
@@ -5171,7 +5296,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = "keypoints"
                 label = cvat_shape.to_keypoint()
 
-            if keyframe:
+            if keyframe and label is not None:
                 label["keyframe"] = True
 
             if expected_label_type == "scalar" and assigned_scalar_attrs:
@@ -5308,6 +5433,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cvat_attrs = {}
         occluded_attr_name = None
         for attr_name, info in attributes.items():
+            if len(attr_name) > 64:
+                raise ValueError(
+                    "Attribute name '%s' exceeds 64 character limit"
+                    % attr_name
+                )
+
             cvat_attr = {"name": attr_name, "mutable": True}
             is_occluded = False
             for attr_key, val in info.items():
@@ -5605,7 +5736,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     {
                         "type": "rectangle",
                         "occluded": is_occluded,
-                        "z_order": 0,
                         "points": bbox,
                         "label_id": class_name,
                         "group": 0,
@@ -6211,6 +6341,9 @@ class CVATShape(CVATLabel):
         self.points = label_dict["points"]
         self.index = index
 
+        if "rotation" in label_dict and int(label_dict["rotation"]) != 0:
+            self.attributes["rotation"] = label_dict["rotation"]
+
         # Parse occluded attribute, if necessary
         if occluded_attrs is not None:
             occluded_attr_name = occluded_attrs.get(self.label, None)
@@ -6502,13 +6635,13 @@ def _cvat_tracks_to_frames_dict(cvat_tracks):
 
 
 def _frames_to_cvat_tracks(frames, frame_size):
-    labels_map = defaultdict(dict)
+    labels_map = defaultdict(lambda: defaultdict(dict))
     no_index_map = defaultdict(list)
     found_label = False
 
     def process_label(label, frame_number):
         if label.index is not None:
-            labels_map[label.index][frame_number] = label
+            labels_map[label.index][type(label)][frame_number] = label
         else:
             no_index_map[frame_number].append(label)
 
@@ -6541,11 +6674,14 @@ def _frames_to_cvat_tracks(frames, frame_size):
 
     # Generate object tracks
     max_index = -1
+    used_indices = set()
     for index in sorted(labels_map):
-        max_index = max(index, max_index)
-        labels = labels_map[index]
-        cvat_track = CVATTrack.from_labels(index, labels, frame_size)
-        cvat_tracks.append(cvat_track)
+        for label_type, labels in labels_map[index].items():
+            _index = index if index not in used_indices else max_index + 1
+            used_indices.add(_index)
+            max_index = max(_index, max_index)
+            cvat_track = CVATTrack.from_labels(_index, labels, frame_size)
+            cvat_tracks.append(cvat_track)
 
     # Generate single tracks for detections with no `index`
     index = max_index
@@ -6565,7 +6701,7 @@ def _get_single_polyline_points(polyline):
     if num_polylines == 0:
         return []
 
-    if num_polylines > 0:
+    if num_polylines > 1:
         msg = (
             "Found polyline with more than one shape; only the first shape "
             "will be stored in CVAT format"

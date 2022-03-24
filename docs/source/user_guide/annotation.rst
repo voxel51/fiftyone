@@ -661,8 +661,8 @@ Label attributes
 ----------------
 
 The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <label-attributes>` beyond the default `label`
-attribute are included in the annotation tasks.
+:ref:`custom attributes <using-labels>` beyond the default `label` attribute
+are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each
@@ -914,6 +914,13 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
+
+You can use the optional `dest_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `dest_field` should be a
+dictionary mapping label schema field names to destination field names.
 
 Some annotation backends like CVAT cannot explicitly prevent annotators from
 creating labels that don't obey the run's label schema. You can pass the

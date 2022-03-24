@@ -353,9 +353,9 @@ class Session(foc.HasClient):
             return
 
         if self._desktop:
-            if self._context == focx._COLAB:
+            if self._context == focx._COLAB or self._context == focx._DATABRICKS:
                 raise ValueError(
-                    "Cannot open a Desktop App instance from a Colab notebook"
+                    "Cannot open a Desktop App instance from a %s notebook" % self._context
                 )
 
             if not focn.DEV_INSTALL:
@@ -455,7 +455,10 @@ class Session(foc.HasClient):
             url = eval_js(
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
-            return "%s?fiftyoneColab=true" % url
+            return "%s?polling=true&colab=true" % url
+
+        if self._context == focx._DATABRICKS:
+            return f"{_get_databricks_proxy_url(self.server_port)}?polling=true&databricks=true"
 
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
@@ -502,8 +505,7 @@ class Session(foc.HasClient):
 
     @property
     def dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
-        """
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session."""
         return self.state.dataset
 
     @dataset.setter
@@ -771,6 +773,8 @@ class Session(foc.HasClient):
             type_ = "remote"
         elif self._context == focx._COLAB:
             type_ = "colab"
+        elif self._context == focx._DATABRICKS:
+            type_ = "databricks"
         elif self._desktop:
             type_ = "desktop"
         else:
@@ -950,6 +954,9 @@ class Session(foc.HasClient):
         if self._context == focx._COLAB:
             return
 
+        if self._context == focx._DATABRICKS:
+            return
+
         handle = data["handle"]
         if handle in self._handles and self._handles[handle]["active"]:
             self._handles[handle]["active"] = False
@@ -975,6 +982,9 @@ class Session(foc.HasClient):
             return eval_js(
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
+
+        if self._context == focx._DATABRICKS:
+            return _get_databricks_proxy_url(self.server_port)
 
         address = self.server_address or "localhost"
         return "http://%s:%d/" % (address, self.server_port)
@@ -1039,7 +1049,11 @@ class Session(foc.HasClient):
 
 def _display(session, handle, uuid, port, address, height, update=False):
     """Displays a running FiftyOne instance."""
-    funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
+    funcs = {
+        focx._COLAB: _display_colab,
+        focx._IPYTHON: _display_ipython,
+        focx._DATABRICKS: _display_databricks,
+    }
     fn = funcs[focx._get_context()]
     fn(session, handle, uuid, port, address, height, update=update)
 
@@ -1110,6 +1124,63 @@ def _display_colab(session, handle, uuid, port, address, height, update=False):
             )
 
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
+
+
+def _display_databricks(
+    session, handle, uuid, port, address, height, update=False
+):
+    """Display a FiftyOne instance in a Databricks output frame.
+
+    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
+    """
+    display_html = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        display_html = shell.user_ns["displayHTML"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    frame_id = f"fiftyone-frame-{uuid}"
+    proxy_url = f"{_get_databricks_proxy_url(port)}?notebook=true&handleId={uuid}&polling=true&databricks=true"
+    html_string = f"""
+    <div style="margin-bottom: 16px">
+        <a href="{proxy_url}">
+            Open in a new tab
+        </a>
+        <span style="margin-left: 1em; color: #a3a3a3">Note: FiftyOne is only available when this notebook remains attached to the cluster.</span>
+    </div>
+    <iframe id="{frame_id}" width="100%" height="{height}" frameborder="0" src="{proxy_url}"></iframe>
+    """
+    display_html(html_string)
+
+
+def _get_databricks_proxy_url(port):
+    dbutils = None
+    try:
+        import IPython
+
+        shell = IPython.get_ipython()
+        dbutils = shell.user_ns["dbutils"]
+    except ImportError as e:
+        raise ValueError(
+            "You must verify that the Databricks Runtime is installed properly."
+        ) from e
+
+    import json
+
+    ctx = json.loads(
+        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
+    )
+    ctx_tags = ctx["tags"]
+    browser_host_name = ctx_tags["browserHostName"]
+    org_id = ctx_tags["orgId"]
+    cluster_id = ctx_tags["clusterId"]
+
+    return f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
 
 
 def _import_desktop():

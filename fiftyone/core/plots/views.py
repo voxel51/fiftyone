@@ -305,7 +305,10 @@ class CategoricalHistogram(PlotlyViewPlot):
                 counts = agg_results[0]
             else:
                 counts = view.aggregate(self._aggregations[0])
+        else:
+            counts = None
 
+        if counts:
             keys, values = zip(
                 *sorted(counts.items(), key=self._order, reverse=self._reverse)
             )
