@@ -33,6 +33,7 @@ import cv2
 import numpy as np
 import pytest
 
+import eta.core.image as etai
 import eta.core.video as etav
 
 import fiftyone as fo
@@ -72,7 +73,7 @@ class ImageDatasetTests(unittest.TestCase):
     def _new_image(self, name=None):
         if name is None:
             name = self._new_name()
-   
+
         filepath = fos.join(
             self.images_dir,
             name + os.path.splitext(self._ref_image_path)[1],
