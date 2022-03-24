@@ -21,6 +21,7 @@ from bson import ObjectId
 import jinja2
 import numpy as np
 import requests
+from urllib.parse import parse_qsl
 import urllib3
 
 import eta.core.data as etad
@@ -4079,6 +4080,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if chunk_size:
             data["chunk_size"] = chunk_size
 
+        files = {}
+        open_files = []
+
         if cloud_manifest:
             if not etau.is_str(cloud_manifest):
                 # Use default manifest name and location at root of bucket
@@ -4098,11 +4102,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._verify_cloud_files(root_dir, cloud_storage_id, manifest_filename, paths)
             data["cloud_storage_id"] = cloud_storage_id
 
-        files = {}
-        open_files = []
+            for idx, path in enumerate(paths):
+                # Samples are pre-sorted if using to cloud storage
+                data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
 
-        for idx, path in enumerate(paths):
-            if focc.media_cache.is_local(path):
+            data["server_files[%d]" % (idx+1)] = manifest_filename
+
+        else:
+            paths = focc.media_cache.get_local_paths(paths)
+
+            for idx, path in enumerate(paths):
                 if fom.get_media_type(path) == fom.VIDEO:
                     filename = os.path.basename(path)
                 else:
@@ -4111,15 +4120,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # alphabetical order matches the order of `paths`
                     filename = "%06d_%s" % (idx, os.path.basename(path))
 
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(
+                        "Could not find file '%s'. If using cloud-backed "
+                        "media, ensure this file was downloaded correctly" % path
+                    )
+
                 open_file = open(path, "rb")
                 open_files.append(open_file)
                 files["client_files[%d]" % idx] = (filename, open_file)
-            else:
-                # Samples are pre-sorted if using to cloud storage
-                data["server_files[%d]" % idx] = path[len(root_dir):]
-
-        if cloud_manifest:
-            data["server_files[%d]" % (idx+1)] = manifest_filename
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
@@ -4948,12 +4957,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         task_ids.append(task_id)
 
-        if cloud_manifest:
-            # Use attached cloud storage
-            media_paths = samples_batch.values(media_field)
-        else:
-            # Download cloud data locally and upload to CVAT
-            media_paths = samples_batch.get_local_paths()
+        media_paths = samples_batch.values(media_field)
 
         # Upload media
         job_ids[task_id] = self.upload_data(
@@ -6339,23 +6343,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError(
                 "File system %s is not a valid CVAT cloud storage provider." % str(file_system)
             )
+        endpoint = None
+        if file_system == fos.FileSystem.MINIO:
+            endpoint = fos.minio_endpoint_prefix
 
         provider_type = _CLOUD_PROVIDER_MAP[file_system]
         prefix, _ = fos.split_prefix(cloud_manifest)
         resource = fos.get_bucket_name(cloud_manifest)
-        root_dir = prefix + resource + fos.sep(cloud_manifest)
-        manifest_filename = cloud_manifest[len(root_dir):]
-        cloud_storage_id = self._get_cloud_storage_id(provider_type, resource, manifest_filename)
+        root_dir = prefix + resource
+        manifest_filename = _to_rel_url(cloud_manifest, root_dir)
+
+        cloud_storage_id = self._get_cloud_storage_id(provider_type, resource, manifest_filename, endpoint=endpoint)
         return root_dir, manifest_filename, cloud_storage_id
 
-    def _get_cloud_storage_id(self, provider_type, resource, manifest_filename):
+    def _get_cloud_storage_id(self, provider_type, resource, manifest_filename, endpoint=None):
         cloud_storages_search_url = self.cloud_storages_search_url(provider_type=provider_type, resource=resource)
         resp = self.get(cloud_storages_search_url).json()
         results = resp["results"]
         cloud_storage_id = None
 
         for result in results:
-            if manifest_filename in result["manifests"]:
+            specific_attrs = self._parse_specific_attributes(result["specific_attributes"])
+            result_endpoint = specific_attrs.get("endpoint_url", None)
+            if etau.is_str(result_endpoint):
+                result_endpoint = result_endpoint.rstrip("/") + "/"
+
+            if manifest_filename in result["manifests"] and endpoint == result_endpoint:
                 cloud_storage_id = result["id"]
 
         if cloud_storage_id is None:
@@ -6368,16 +6381,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return cloud_storage_id
 
     def _verify_cloud_files(self, root_dir, cloud_storage_id, manifest_filename, paths):
+        file_systems = {fos.get_file_system(p) for p in paths}
+        root_fs = fos.get_file_system(root_dir)
+        if len(file_systems) > 1:
+            raise ValueError(
+                "Attempting to use manifest from file system '%s' but found "
+                "samples from multiple file systems: %s" % (root_fs, file_systems)
+            )
+
+        paths_fs = list(file_systems)[0]
+        if root_fs != paths_fs:
+            raise ValueError(
+                "File system of the manifest '%s' does not match the file "
+                "system of samples '%s'" % (root_fs, paths_fs)
+            )
+
         content_url = self.cloud_storages_content_url(cloud_storage_id, manifest=manifest_filename)
         manifest_files = self.get(content_url).json()
-        root_dir_len = len(root_dir)
-        formatted_paths = set([p[len(root_dir):] for p in paths])
+        formatted_paths = set([_to_rel_url(p, root_dir) for p in paths])
         unspecified_paths = formatted_paths - set(manifest_files)
         if unspecified_paths:
             raise ValueError(
                 "Found %d files that are not specified in the given manifest "
                 "`%s` in cloud storage `%d`" % (len(unspecified_paths), manifest_filename, cloud_storage_id)
             )
+
+    def _parse_specific_attributes(self, specific_attributes):
+        return {k:v for (k,v) in parse_qsl(specific_attributes)}
 
     def _validate(self, response, kwargs):
         try:
@@ -6784,6 +6814,7 @@ class CloudProviders(object):
 
 _CLOUD_PROVIDER_MAP = {
     fos.FileSystem.S3: CloudProviders.S3,
+    fos.FileSystem.MINIO: CloudProviders.S3,
     fos.FileSystem.GCS: CloudProviders.GCS,
 }
 
@@ -6917,6 +6948,12 @@ def _stringify_value(value):
         return "false"
 
     return str(value)
+
+
+def _to_rel_url(url, dir_path):
+    url = fos.split_prefix(url)[1]
+    dir_path = fos.split_prefix(dir_path)[1]
+    return os.path.relpath(url, dir_path)
 
 
 def _to_int_bool(value):
