@@ -142,6 +142,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     def supports_keyframes(self):
         return False
 
+    @property
+    def supports_video_sample_fields(self):
+        return False  # @todo resolve FiftyOne bug to allow this to be True
+
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
             return {"type": "radio", "values": [True, False]}

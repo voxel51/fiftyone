@@ -60,7 +60,11 @@ def is_frames_expr(expr):
         expr = expr.to_mongo()
 
     if etau.is_str(expr):
-        return expr == "$frames" or expr.startswith("$frames.")
+        return (
+            expr == "$frames"
+            or expr.startswith("$frames.")
+            or expr.startswith("$frames[].")
+        )
 
     if isinstance(expr, dict):
         for k, v in expr.items():
@@ -2214,6 +2218,13 @@ class ViewExpression(object):
                 "Unsupported slice '%s'; step is not supported" % s
             )
 
+        # @todo could optimize this slightly (~10% based on rough benchmarks)
+        # if the `if_else()` calls were replaced by explicit logic when
+        # start/stop are numbers, not expressions
+
+        # @todo slices like `x[-a:b]` where sign(a) != sign(b) are not
+        # currently working
+
         if s.start is not None:
             position = s.start
             if s.stop is None:
@@ -2222,26 +2233,24 @@ class ViewExpression(object):
                 return self.let_in(expr)
 
             n = s.stop - position
-            if n < 0:
-                return ViewExpression({"$literal": []})
 
-            if position < 0:
-                position += self.length()
-                expr = ViewExpression({"$slice": [self, position, n]})
-                return self.let_in(expr)
-
-            return ViewExpression({"$slice": [self, position, n]})
+            pos_start = ViewExpression({"$slice": [self, position, n]})
+            neg_start = ViewExpression(
+                {"$slice": [self, position + self.length(), n]}
+            )
+            expr = ViewExpression(n >= 0).if_else(
+                ViewExpression(position >= 0).if_else(pos_start, neg_start),
+                ViewExpression({"$literal": []}),
+            )
+            return self.let_in(expr)
 
         if s.stop is None:
             return self
 
-        if s.stop < 0:
-            n = self.length() + s.stop
-            expr = ViewExpression({"$slice": [self, n]})
-            return self.let_in(expr)
-
-        n = s.stop
-        return ViewExpression({"$slice": [self, n]})
+        pos_stop = ViewExpression({"$slice": [self, s.stop]})
+        neg_stop = ViewExpression({"$slice": [self, self.length() + s.stop]})
+        expr = ViewExpression(s.stop >= 0).if_else(pos_stop, neg_stop)
+        return self.let_in(expr)
 
     def __len__(self):
         # Annoyingly, Python enforces deep in its depths that __len__ must

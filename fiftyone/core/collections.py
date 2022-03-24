@@ -2397,10 +2397,9 @@ class SampleCollection(object):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -2535,8 +2534,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to exclude
 
             omit_empty (True): whether to omit samples that have no frames
                 after excluding the specified frames
@@ -4191,10 +4190,9 @@ class SampleCollection(object):
                     encoding which samples to select
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
 
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
@@ -4347,8 +4345,8 @@ class SampleCollection(object):
                     :class:`fiftyone.core.frame.FrameView`
                 -   an iterable of :class:`fiftyone.core.frame.Frame` or
                     :class:`fiftyone.core.frame.FrameView` instances
-                -   a :class:`fiftyone.core.collections.SampleCollection`, in
-                    which case the frame IDs in the collection are used
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                    whose frames to select
 
             omit_empty (True): whether to omit samples that have no frames
                 after selecting the specified frames
@@ -6188,8 +6186,7 @@ class SampleCollection(object):
                 used
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
-                existing files and directories (False). Not applicable when a
-                ``dataset_exporter`` was provided
+                existing files and directories (False)
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
@@ -6445,7 +6442,12 @@ class SampleCollection(object):
         )
 
     def load_annotations(
-        self, anno_key, unexpected="prompt", cleanup=False, **kwargs
+        self,
+        anno_key,
+        dest_field=None,
+        unexpected="prompt",
+        cleanup=False,
+        **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
         annotation backend and merges them into this collection.
@@ -6456,6 +6458,9 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
+            dest_field (None): an optional name of a new destination field
+                into which to load the annotations, or a dict mapping field names
+                in the run's label schema to new desination field names
             unexpected ("prompt"): how to deal with any unexpected labels that
                 don't match the run's label schema when importing. The
                 supported values are:
@@ -6475,7 +6480,12 @@ class SampleCollection(object):
             found, in which case a dict containing the extra labels is returned
         """
         return foua.load_annotations(
-            self, anno_key, unexpected=unexpected, cleanup=cleanup, **kwargs,
+            self,
+            anno_key,
+            dest_field=dest_field,
+            unexpected=unexpected,
+            cleanup=cleanup,
+            **kwargs,
         )
 
     def delete_annotation_run(self, anno_key):
@@ -8188,12 +8198,18 @@ def _export(
             "Either `dataset_type` or `dataset_exporter` must be provided"
         )
 
+    # Overwrite existing directories or warn if files will be merged
+    _handle_existing_dirs(
+        dataset_exporter=dataset_exporter,
+        export_dir=export_dir,
+        data_path=data_path,
+        labels_path=labels_path,
+        export_media=export_media,
+        overwrite=overwrite,
+    )
+
     # If no dataset exporter was provided, construct one
     if dataset_exporter is None:
-        _handle_existing_dirs(
-            export_dir, data_path, labels_path, export_media, overwrite
-        )
-
         dataset_exporter, kwargs = foud.build_dataset_exporter(
             dataset_type,
             warn_unused=False,  # don't warn yet, might be patches kwargs
@@ -8246,8 +8262,34 @@ def _export(
 
 
 def _handle_existing_dirs(
-    export_dir, data_path, labels_path, export_media, overwrite
+    dataset_exporter=None,
+    export_dir=None,
+    data_path=None,
+    labels_path=None,
+    export_media=False,
+    overwrite=False,
 ):
+    if dataset_exporter is not None:
+        try:
+            export_dir = dataset_exporter.export_dir
+        except:
+            pass
+
+        try:
+            data_path = dataset_exporter.data_path
+        except:
+            pass
+
+        try:
+            labels_path = dataset_exporter.labels_path
+        except:
+            pass
+
+        try:
+            export_media = dataset_exporter.export_media
+        except:
+            pass
+
     if export_dir is not None and os.path.isdir(export_dir):
         if overwrite:
             etau.delete_dir(export_dir)

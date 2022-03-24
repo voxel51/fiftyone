@@ -444,18 +444,21 @@ class ViewExpressionTests(unittest.TestCase):
                     tags=["train"],
                     my_int=5,
                     my_list=["a", "b"],
+                    my_int_list=list(range(8)),
                 ),
                 fo.Sample(
                     filepath="filepath2.jpg",
                     tags=["train"],
                     my_int=6,
                     my_list=["b", "c"],
+                    my_int_list=list(range(10)),
                 ),
                 fo.Sample(
                     filepath="filepath3.jpg",
                     tags=["test"],
                     my_int=7,
                     my_list=["c", "d"],
+                    my_int_list=list(range(10)),
                 ),
             ]
         )
@@ -474,7 +477,7 @@ class ViewExpressionTests(unittest.TestCase):
         view = dataset.match(F("my_int").is_in(my_ints))
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
-        # test __getitem__
+        # test __getitem__ integer index
         idx = 1
         value = "c"
         manual_ids = [
@@ -482,6 +485,37 @@ class ViewExpressionTests(unittest.TestCase):
         ]
         view = dataset.match(F("my_list")[idx] == value)
         self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __getitem__ expression index
+        manual_index = [
+            sample.my_int_list[sample.my_int] for sample in dataset
+        ]
+        index = dataset.values(F("my_int_list")[F("my_int")])
+        self.assertListEqual(index, manual_index)
+
+        # test __getitem__ slice to stop
+        manual_slices = [
+            sample.my_int_list[: sample.my_int] for sample in dataset
+        ]
+        slices = dataset.values(F("my_int_list")[: F("my_int")])
+        self.assertListEqual(slices, manual_slices)
+
+        # test __getitem__ slice from start
+        manual_slices = [
+            sample.my_int_list[sample.my_int :] for sample in dataset
+        ]
+        slices = dataset.values(F("my_int_list")[F("my_int") :])
+        self.assertListEqual(slices, manual_slices)
+
+        # test __getitem__ slice start to stop
+        manual_slices = [
+            sample.my_int_list[sample.my_int - 1 : sample.my_int]
+            for sample in dataset
+        ]
+        slices = dataset.values(
+            F("my_int_list")[F("my_int") - 1 : F("my_int")]
+        )
+        self.assertListEqual(slices, manual_slices)
 
     @drop_datasets
     def test_str(self):

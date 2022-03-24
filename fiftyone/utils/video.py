@@ -166,6 +166,14 @@ def transform_videos(
             -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -vsync 0 -an \\
             $OUTPUT_PATH
 
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`

@@ -1463,6 +1463,64 @@ class DatasetDeletionTests(unittest.TestCase):
 
         self.assertEqual(num_samples_after, num_samples - num_view)
 
+    def test_delete_frames(self):
+        self._setUp_video_classification()
+
+        frames = [
+            self.dataset.first().frames.first(),
+            self.dataset.last().frames.last(),
+        ]
+
+        num_frames = self.dataset.count("frames")
+        num_del = len(frames)
+
+        self.dataset.delete_frames(frames)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
+
+    def test_delete_frames_ids(self):
+        self._setUp_video_classification()
+
+        frame_ids = [
+            self.dataset.first().frames.first().id,
+            self.dataset.last().frames.last().id,
+        ]
+
+        num_frames = self.dataset.count("frames")
+        num_del = len(frame_ids)
+
+        self.dataset.delete_frames(frame_ids)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
+
+    def test_delete_frames_samples(self):
+        self._setUp_video_classification()
+
+        samples = list(self.dataset)
+        self.dataset.delete_frames(samples)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, 0)
+
+    def test_delete_frames_view(self):
+        self._setUp_video_classification()
+
+        view = self.dataset.match_frames(F("frame_number") == 1)
+
+        num_frames = self.dataset.count("frames")
+        num_del = view.count("frames")
+
+        self.dataset.delete_frames(view)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
+
     def test_delete_classification_ids(self):
         self._setUp_classification()
 
