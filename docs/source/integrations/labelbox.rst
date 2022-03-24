@@ -629,8 +629,8 @@ Label attributes
 ----------------
 
 The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <label-attributes>` beyond the default `label`
-attribute are included in the annotation tasks.
+:ref:`custom attributes <using-labels>` beyond the default `label` attribute
+are included in the annotation tasks.
 
 When adding new label fields for which you want to include attributes, you must
 use the dictionary syntax demonstrated below to define the schema of each
@@ -672,7 +672,7 @@ For Labelbox, the following `type` values are supported:
 -   `text`: a free-form text box. In this case, `values` is unused
 -   `select`: a selection dropdown. In this case, `values` is required
 -   `radio`: a radio button list UI. In this case, `values` is required
--   `checkbox`: a list of checkboxes. In this case, `values` is required 
+-   `checkbox`: a list of checkboxes. In this case, `values` is required
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -687,7 +687,7 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. note:: 
+.. note::
 
     Labelbox does not support default values for attributes, so the `default`
     key :ref:`described here <annotation-label-attributes>` will be ignored if
@@ -766,6 +766,13 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
+
+You can use the optional `dest_field` parameter to override the task's
+label schema and instead load annotations into different field name(s) of your
+dataset. This can be useful, for example, when editing existing annotations, if
+you would like to do a before/after comparison of the edits that you import. If
+the annotation run involves multiple fields, `dest_field` should be a
+dictionary mapping label schema field names to destination field names.
 
 .. _labelbox-managing-annotation-runs:
 
@@ -1294,7 +1301,7 @@ For example, let's upload some blurred images to Labelbox for annotation:
 .. image:: /images/integrations/labelbox_alt_media.png
    :alt: labelbox-alt-media
    :align: center
- 
+
 .. _labelbox-classes-as-attrs:
 
 Annotating classes directly
@@ -1306,7 +1313,7 @@ annotated, the class name is then selected as an attribute.
 
 However, it can be useful to directly show the object classes at the top-level
 of the sidebar to avoid additional clicks. The `classes_as_attrs` argument can
-be set to `False` to provide this functionality. 
+be set to `False` to provide this functionality.
 
 .. note::
 
@@ -1481,7 +1488,7 @@ annotation run:
 Deleting projects
 -----------------
 
-You can use 
+You can use
 :meth:`delete_project() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_project>`
 or
 :meth:`delete_projects() <fiftyone.utils.labelbox.LabelboxAnnotationAPI.delete_projects>`

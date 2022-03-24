@@ -118,18 +118,8 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               color={entry.color}
               name={"Value"}
-              noneAtom={numericField.noneAtom({
-                modal,
-                path: vPath,
-              })}
-              noneCountAtom={noneCount({ path: vPath, modal })}
-              boundsAtom={numericField.boundsAtom({
-                path: vPath,
-              })}
-              valueAtom={numericField.rangeAtom({
-                modal,
-                path: vPath,
-              })}
+              path={vPath}
+              modal={modal}
               fieldType={FLOAT_FIELD}
             />
           )}
