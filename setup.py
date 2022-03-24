@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.15.0"  # updated by https://github.com/voxel51/fiftyone/pull/1615
+VERSION = "0.15.0"
 
 
 def get_version():
@@ -36,7 +36,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "eventlet",
     "future",
-    "Jinja2",
+    "Jinja2>=3",
     "kaleido",
     "matplotlib",
     "mongoengine==0.20.0",
@@ -100,7 +100,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.2,<0.20"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.3,<0.20"]}
 
 
 with open("README.md", "r") as fh:

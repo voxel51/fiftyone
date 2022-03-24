@@ -47,10 +47,12 @@ class ImageDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_image(self):
+    def _new_image(self, name=None):
+        if name is None:
+            name = self._new_name()
+
         filepath = os.path.join(
-            self.images_dir,
-            self._new_name() + os.path.splitext(self._ref_image_path)[1],
+            self.images_dir, name + os.path.splitext(self._ref_image_path)[1],
         )
 
         etau.copy_file(self._ref_image_path, filepath)
@@ -1894,6 +1896,67 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertEqual(info.key, info2.key)
 
 
+class OpenLABELImageDatasetTests(ImageDatasetTests):
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+        )
+
+        self.assertEqual(dataset.count("detections.detections.label"), 1)
+        self.assertEqual(dataset.count("segmentations.detections.label"), 2)
+        self.assertEqual(dataset.count("keypoints.keypoints.label"), 1)
+
+    @drop_datasets
+    def test_openlabel_single_type_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            label_types="detections",
+        )
+
+        self.assertTrue(
+            isinstance(dataset.first().ground_truth, fo.Detections)
+        )
+
+    @drop_datasets
+    def test_openlabel_segmentation_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_segmentation_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+        )
+
+        self.assertEqual(dataset.count("segmentations.detections.mask"), 2)
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            use_polylines=True,
+        )
+
+        self.assertEqual(dataset.count("segmentations.polylines"), 2)
+
+
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
@@ -1916,10 +1979,12 @@ class VideoDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_video(self):
+    def _new_video(self, filename=None):
+        if filename is None:
+            filename = self._new_name()
         filepath = os.path.join(
             self.videos_dir,
-            self._new_name() + os.path.splitext(self._ref_video_path)[1],
+            filename + os.path.splitext(self._ref_video_path)[1],
         )
 
         etau.copy_file(self._ref_video_path, filepath)
@@ -1933,6 +1998,29 @@ class VideoDatasetTests(unittest.TestCase):
 
     def _new_dir(self):
         return os.path.join(self._tmp_dir, self._new_name())
+
+
+class OpenLABELVideoDatasetTests(VideoDatasetTests):
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_video_labels(self._tmp_dir)
+        vid_filepath = self._new_video(filename="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.videos_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELVideoDataset,
+        )
+
+        self.assertEqual(
+            dataset.count("frames.detections.detections.label"), 5
+        )
+        self.assertEqual(
+            dataset.count("frames.segmentations.detections.label"), 5
+        )
+        self.assertEqual(dataset.count("frames.keypoints.keypoints.label"), 5)
 
 
 class VideoExportCoersionTests(VideoDatasetTests):

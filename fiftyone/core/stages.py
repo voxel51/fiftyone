@@ -311,10 +311,9 @@ class Exclude(ViewStage):
             -   an iterable of sample IDs
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
-            -   an iterable of sample IDs
-            -   a :class:`fiftyone.core.collections.SampleCollection`
             -   an iterable of :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`
     """
 
     def __init__(self, sample_ids):
@@ -618,8 +617,8 @@ class ExcludeFrames(ViewStage):
                 :class:`fiftyone.core.frame.FrameView`
             -   an iterable of :class:`fiftyone.core.frame.Frame` or
                 :class:`fiftyone.core.frame.FrameView` instances
-            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
-                case the frame IDs in the collection are used
+            -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                frames to exclude
 
         omit_empty (True): whether to omit samples that have no frames after
             excluding the specified frames
@@ -4034,10 +4033,9 @@ class Select(ViewStage):
                 encoding which samples to select
             -   a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
-            -   an iterable of sample IDs
-            -   a :class:`fiftyone.core.collections.SampleCollection`
             -   an iterable of :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView` instances
+            -   a :class:`fiftyone.core.collections.SampleCollection`
 
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
@@ -4413,8 +4411,8 @@ class SelectFrames(ViewStage):
                 :class:`fiftyone.core.frame.FrameView`
             -   an iterable of :class:`fiftyone.core.frame.Frame` or
                 :class:`fiftyone.core.frame.FrameView` instances
-            -   a :class:`fiftyone.core.collections.SampleCollection`, in which
-                case the frame IDs in the collection are used
+            -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                frames to select
 
         omit_empty (True): whether to omit samples that have no frames after
             selecting the specified frames
@@ -6010,53 +6008,53 @@ class ToFrames(ViewStage):
         ]
 
 
-def _parse_sample_ids(samples_or_ids):
+def _parse_sample_ids(arg):
     from fiftyone.core.collections import SampleCollection
 
-    if etau.is_str(samples_or_ids):
-        return [samples_or_ids], False
+    if etau.is_str(arg):
+        return [arg], False
 
-    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id], False
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return [arg.id], False
 
-    if isinstance(samples_or_ids, SampleCollection):
-        return samples_or_ids.values("id"), False
+    if isinstance(arg, SampleCollection):
+        return arg.values("id"), False
 
-    samples_or_ids = list(samples_or_ids)
+    arg = list(arg)
 
-    if not samples_or_ids:
+    if not arg:
         return [], False
 
-    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids], False
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return [s.id for s in arg], False
 
-    if isinstance(samples_or_ids[0], (bool, np.bool_)):
-        return samples_or_ids, True
+    if isinstance(arg[0], (bool, np.bool_)):
+        return arg, True
 
-    return samples_or_ids, False
+    return arg, False
 
 
-def _parse_frame_ids(frames_or_ids):
+def _parse_frame_ids(arg):
     from fiftyone.core.collections import SampleCollection
 
-    if etau.is_str(frames_or_ids):
-        return [frames_or_ids]
+    if etau.is_str(arg):
+        return [arg]
 
-    if isinstance(frames_or_ids, (fofr.Frame, fofr.FrameView)):
-        return [frames_or_ids.id]
+    if isinstance(arg, (fofr.Frame, fofr.FrameView)):
+        return [arg.id]
 
-    if isinstance(frames_or_ids, SampleCollection):
-        return frames_or_ids.values("frames.id", unwind=True)
+    if isinstance(arg, SampleCollection):
+        return arg.values("frames.id", unwind=True)
 
-    frames_or_ids = list(frames_or_ids)
+    arg = list(arg)
 
-    if not frames_or_ids:
+    if not arg:
         return []
 
-    if isinstance(frames_or_ids[0], (fofr.Frame, fofr.FrameView)):
-        return [s.id for s in frames_or_ids]
+    if isinstance(arg[0], (fofr.Frame, fofr.FrameView)):
+        return [s.id for s in arg]
 
-    return frames_or_ids
+    return arg
 
 
 def _get_rng(seed):

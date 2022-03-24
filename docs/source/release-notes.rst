@@ -3,6 +3,82 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.15.0:
+
+FiftyOne 0.15.0
+---------------
+*Released March 23, 2022*
+
+App
+
+- Fixed :class:`Regression <fiftyone.core.labels.Regression>` rendering in the
+  visualizer `#1604 <https://github.com/voxel51/fiftyone/pull/1604>`_
+
+Core
+
+- Added a :meth:`Dataset.delete_frames() <fiftyone.core.dataset.Dataset.delete_frames>`
+  method that allows for deleting frames by ID
+  `#1650 <https://github.com/voxel51/fiftyone/pull/1650>`_
+- Added a :meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
+  method to |DatasetView| and its subclasses
+  `#1616 <https://github.com/voxel51/fiftyone/pull/1616>`_
+- Added a :func:`fiftyone.core.plots.base.lines()` method that allows for
+  plotting lines whose scatter points can be interactively selected via the
+  typical
+  `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
+  `#1614 <https://github.com/voxel51/fiftyone/pull/1614>`_
+- Added an optional `force_rgb=True` syntax when importing/exporting/creating
+  TF records using all relevant methods in :mod:`fiftyone.utils.tf`
+  `#1612 <https://github.com/voxel51/fiftyone/pull/1612>`_
+- Added support for passing additional kwargs to the `fiftyone convert` CLI
+  command
+  `#1612 <https://github.com/voxel51/fiftyone/pull/1612>`_
+- Added support for annotating video-level labels when using
+  :func:`draw_labeled_videos() <fiftyone.utils.annotations.draw_labeled_videos>`
+  `#1619 <https://github.com/voxel51/fiftyone/pull/1619>`_
+- Added the ability to slice using a |ViewField|
+  `#1630 <https://github.com/voxel51/fiftyone/pull/1630>`_
+- Fixed bug in :func:`from_images_dir() <fiftyone.utils.tf.from_images_dir>`
+  where attempting to load 4-channel images errored even if `force_rgb=True`
+  `#1632 <https://github.com/voxel51/fiftyone/pull/1632>`_
+- Fixed a bug that prevented frames from being attached to video collections
+  when aggregating expressions that involve both |Sample|-level and
+  |Frame|-level fields
+  `#1644 <https://github.com/voxel51/fiftyone/pull/1644>`_
+- Added support for importing :ref:`image <OpenLABELImageDataset-import>` and
+  :ref:`video <OpenLABELVideoDataset-import>` datasets in
+  `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f#_introduction>`_
+  `#1609 <https://github.com/voxel51/fiftyone/pull/1609>`_
+
+Annotation
+
+- Added support for CVATv2 servers when using the CVAT backend
+  `#1638 <https://github.com/voxel51/fiftyone/pull/1638>`_
+- Added an `issue_tracker` argument to
+  :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+  when using the CVAT backend
+  `#1625 <https://github.com/voxel51/fiftyone/pull/1625>`_
+- Added a `dest_field` argument to
+  :func:`load_annotations() <fiftyone.utils.annotations.load_annotations>`
+  which allows you to specify the name of the field to which to load annotations
+  `#1642 <https://github.com/voxel51/fiftyone/pull/1642>`_
+- Added a property to annotation backends that decides whether to allow
+  annotation of video-level labels
+  `#1655 <https://github.com/voxel51/fiftyone/pull/1655>`_
+- Fixed a bug where views that dynamically modify label strings would result in
+  labels not being uploaded to the annotation backend
+  `#1647 <https://github.com/voxel51/fiftyone/pull/1647>`_
+
+Docs
+
+- Added :ref:`documentation <custom-embedded-documents>` for defining custom
+  |EmbeddedDocument| and |DynamicEmbeddedDocument| classes
+  `#1617 <https://github.com/voxel51/fiftyone/pull/1617>`_
+- Added :ref:`documentation <view-slicing>` about boolean view indexing to the
+  user guide `#1617 <https://github.com/voxel51/fiftyone/pull/1617>`_
+- Added a :doc:`recipe </recipes/creating_views>` for creating views and view
+  expressions `#1641 <https://github.com/voxel51/fiftyone/pull/1641>`_
+
 .. _release-notes-v0.14.4:
 
 FiftyOne 0.14.4

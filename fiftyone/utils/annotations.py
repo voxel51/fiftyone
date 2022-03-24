@@ -407,13 +407,21 @@ def _build_label_schema(
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
-        if is_video and _return_type in _SPATIAL_TYPES and not _is_frame_field:
-            raise ValueError(
-                "Invalid label field '%s'. Spatial labels of type '%s' being "
-                "annotated on a video must be stored in a frame-level field, "
-                "i.e., one that starts with 'frames.'"
-                % (_label_field, _label_type)
-            )
+        if is_video and not _is_frame_field:
+            if _return_type in _SPATIAL_TYPES:
+                raise ValueError(
+                    "Invalid label field '%s'. Spatial labels of type '%s' "
+                    "being annotated on a video must be stored in a "
+                    "frame-level field, i.e., one that starts with 'frames.'"
+                    % (_label_field, _label_type)
+                )
+            elif not backend.supports_video_sample_fields:
+                raise ValueError(
+                    "Invalid label field '%s'. Backend '%s' does not support "
+                    "annotating video fields at a sample-level. Labels must be "
+                    "stored in a frame-level field, i.e., one that starts with "
+                    "'frames.'" % (_label_field, backend.config.name)
+                )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -769,7 +777,10 @@ def _get_classes(
         return classes
 
     _, label_path = samples._get_label_field_path(label_field, "label")
-    return samples._dataset.distinct(label_path)
+    return sorted(
+        set(samples._dataset.distinct(label_path))
+        | set(samples.distinct(label_path))
+    )
 
 
 def _parse_classes_dict(
@@ -945,7 +956,12 @@ def _format_attributes(backend, attributes):
 
 
 def load_annotations(
-    samples, anno_key, unexpected="prompt", cleanup=False, **kwargs
+    samples,
+    anno_key,
+    dest_field=None,
+    unexpected="prompt",
+    cleanup=False,
+    **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
     backend and merges them into the collection.
@@ -957,6 +973,9 @@ def load_annotations(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         anno_key: an annotation key
+        dest_field (None): an optional name of a new destination field
+            into which to load the annotations, or a dict mapping field names
+            in the run's label schema to new desination field names
         unexpected ("prompt"): how to deal with any unexpected labels that
             don't match the run's label schema when importing. The supported
             values are:
@@ -990,6 +1009,19 @@ def load_annotations(
         expected_type = _RETURN_TYPES_MAP.get(label_type, None)
 
         anno_dict = annotations.get(label_field, {})
+
+        if etau.is_str(dest_field):
+            if len(label_schema) == 1:
+                label_field = dest_field
+            else:
+                logger.warning(
+                    "Ignoring string `dest_field=%s` since the label "
+                    "schema contains %d > 1 fields",
+                    dest_field,
+                    len(label_schema),
+                )
+        elif dest_field is not None:
+            label_field = dest_field.get(label_field, label_field)
 
         if expected_type and expected_type not in anno_dict:
             anno_dict[expected_type] = {}
@@ -1782,6 +1814,15 @@ class AnnotationBackend(foa.AnnotationMethod):
         existing video track annotations.
         """
         raise NotImplementedError("subclass must implement supports_keyframes")
+
+    @property
+    def supports_video_sample_fields(self):
+        """Whether this backend supports annotating video labels at a
+        sample-level.
+        """
+        raise NotImplementedError(
+            "subclass must implement supports_video_sample_fields"
+        )
 
     @property
     def requires_label_schema(self):
