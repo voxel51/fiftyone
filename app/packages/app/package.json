@@ -1,6 +1,6 @@
 {
     "name": "@fiftyone/app",
-    "version": "0.10.2",
+    "version": "0.10.3",
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
