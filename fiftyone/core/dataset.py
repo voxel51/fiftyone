@@ -9,6 +9,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import fnmatch
+import itertools
 import logging
 import numbers
 import os
@@ -1743,13 +1744,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         sample_ids = _get_sample_ids(samples_or_ids)
         self._clear(sample_ids=sample_ids)
+
+    def delete_frames(self, frames_or_ids):
+        """Deletes the given frames(s) from the dataset.
+
+        If reference to a frame exists in memory, the frame will be updated
+        such that ``frame.in_dataset`` is False.
+
+        Args:
+            frames_or_ids: the frame(s) to delete. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` whose frames to
+                    delete
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances whose
+                    frames to delete
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to delete
+        """
+        frame_ids = _get_frame_ids(frames_or_ids)
+        self._clear_frames(frame_ids=frame_ids)
 
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
@@ -2061,10 +2088,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         self.delete_samples(samples_or_ids)
 
@@ -2137,6 +2163,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             clear_view = self.exclude(sample_ids)
 
         self._clear(view=clear_view)
+
+    def _keep_fields(self, view=None):
+        if view is None:
+            return
+
+        del_sample_fields = view._get_missing_fields()
+        if del_sample_fields:
+            self.delete_sample_fields(del_sample_fields)
+
+        if self.media_type == fom.VIDEO:
+            del_frame_fields = view._get_missing_fields(frames=True)
+            if del_frame_fields:
+                self.delete_frame_fields(del_frame_fields)
 
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
@@ -2288,8 +2327,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self.clear()
+        self._sample_collection.drop()
+        fos.Sample._reset_docs(self._sample_collection_name)
+
+        # Clips datasets directly inherit frames from source dataset
+        if not self._is_clips:
+            self._frame_collection.drop()
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
         _delete_dataset_doc(self._doc)
+
         self._deleted = True
 
     def add_dir(
@@ -5873,25 +5920,62 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     foo.bulk_write(ops, frame_coll)
 
 
-def _get_sample_ids(samples_or_ids):
-    if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+def _get_sample_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
 
-    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return [arg.id]
 
-    if isinstance(samples_or_ids, foc.SampleCollection):
-        return samples_or_ids.values("id")
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("id")
 
-    samples_or_ids = list(samples_or_ids)
+    arg = list(arg)
 
-    if not samples_or_ids:
+    if not arg:
         return []
 
-    if isinstance(samples_or_ids[0], (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return [sample.id for sample in arg]
 
-    return samples_or_ids
+    return arg
+
+
+def _get_frame_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (fofr.Frame, fofr.FrameView)):
+        return [arg.id]
+
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return _get_frame_ids_for_sample(arg)
+
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("frames.id", unwind=True)
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (fofr.Frame, fofr.FrameView)):
+        return [frame.id for frame in arg]
+
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return itertools.chain.from_iterable(
+            _get_frame_ids_for_sample(a) for a in arg
+        )
+
+    return arg
+
+
+def _get_frame_ids_for_sample(sample):
+    if sample.in_dataset:
+        view = sample._collection.select(sample.id)
+        return view.values("frames.id", unwind=True)
+
+    return [frame.id for frame in sample.frames.values()]
 
 
 def _parse_fields(field_names):

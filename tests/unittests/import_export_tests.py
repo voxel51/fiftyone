@@ -29,9 +29,11 @@ import string
 import sys
 import unittest
 
+import cv2
 import numpy as np
 import pytest
 
+import eta.core.image as etai
 import eta.core.video as etav
 
 import fiftyone as fo
@@ -68,10 +70,13 @@ class ImageDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_image(self):
+    def _new_image(self, name=None):
+        if name is None:
+            name = self._new_name()
+
         filepath = fos.join(
             self.images_dir,
-            self._new_name() + os.path.splitext(self._ref_image_path)[1],
+            name + os.path.splitext(self._ref_image_path)[1],
         )
 
         fos.copy_file(self._ref_image_path, filepath)
@@ -536,6 +541,95 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         self.assertEqual(
             dataset.count("predictions"), dataset2.count("predictions")
         )
+
+
+class ImageChannelsDatasetTests(ImageDatasetTests):
+    def _make_dataset(self):
+        samples = [
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classification(label="cat", confidence=0.9),
+            ),
+            fo.Sample(
+                filepath=self._new_image(),
+                predictions=fo.Classification(label="dog", confidence=0.95),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        return dataset
+
+    @skipwindows
+    @drop_datasets
+    def test_tf_image_classification_channels(self):
+        orig_dataset = self._make_dataset()
+
+        # Export grayscale images
+
+        export_dir1 = self._new_dir()
+
+        for idx, sample in enumerate(orig_dataset, 1):
+            label = sample.predictions.label
+            outpath = os.path.join(export_dir1, label, "%06d.png" % idx)
+
+            # pylint: disable=no-member
+            img = etai.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
+            etai.write(img, outpath)
+
+        gray_dataset1 = fo.Dataset.from_dir(
+            dataset_dir=export_dir1,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+        gray_dataset1.compute_metadata()
+        self.assertEqual(gray_dataset1.first().metadata.num_channels, 1)
+
+        export_dir2 = self._new_dir()
+
+        # Export grayscale
+        gray_dataset1.export(
+            export_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            overwrite=True,
+        )
+
+        # Import grayscale
+        gray_dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir2, "images-gray"),
+        )
+        gray_dataset2.compute_metadata()
+        self.assertEqual(gray_dataset2.first().metadata.num_channels, 1)
+
+        # Force RGB at import-time
+        rgb_dataset1 = fo.Dataset.from_dir(
+            dataset_dir=export_dir2,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir2, "images-rgb"),
+            force_rgb=True,
+        )
+        rgb_dataset1.compute_metadata()
+        self.assertEqual(rgb_dataset1.first().metadata.num_channels, 3)
+
+        export_dir3 = self._new_dir()
+
+        # Force RGB at export-time
+        gray_dataset1.export(
+            export_dir=export_dir3,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            force_rgb=True,
+        )
+
+        # Import RGB
+        rgb_dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir3,
+            dataset_type=fo.types.TFImageClassificationDataset,
+            images_dir=os.path.join(export_dir3, "images"),
+        )
+        rgb_dataset2.compute_metadata()
+        self.assertEqual(rgb_dataset2.first().metadata.num_channels, 3)
 
 
 class ImageClassificationsDatasetTests(ImageDatasetTests):
@@ -1826,6 +1920,67 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         self.assertEqual(info.key, info2.key)
 
 
+class OpenLABELImageDatasetTests(ImageDatasetTests):
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+        )
+
+        self.assertEqual(dataset.count("detections.detections.label"), 1)
+        self.assertEqual(dataset.count("segmentations.detections.label"), 2)
+        self.assertEqual(dataset.count("keypoints.keypoints.label"), 1)
+
+    @drop_datasets
+    def test_openlabel_single_type_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            label_types="detections",
+        )
+
+        self.assertTrue(
+            isinstance(dataset.first().ground_truth, fo.Detections)
+        )
+
+    @drop_datasets
+    def test_openlabel_segmentation_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_segmentation_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+        )
+
+        self.assertEqual(dataset.count("segmentations.detections.mask"), 2)
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            use_polylines=True,
+        )
+
+        self.assertEqual(dataset.count("segmentations.polylines"), 2)
+
+
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
         temp_dir = fos.TempDir(basedir=basedir)
@@ -1849,10 +2004,13 @@ class VideoDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-    def _new_video(self):
+
+    def _new_video(self, filename=None):
+        if filename is None:
+            filename = self._new_name()
         filepath = fos.join(
             self.videos_dir,
-            self._new_name() + os.path.splitext(self._ref_video_path)[1],
+            filename + os.path.splitext(self._ref_video_path)[1],
         )
 
         fos.copy_file(self._ref_video_path, filepath)
@@ -1866,6 +2024,29 @@ class VideoDatasetTests(unittest.TestCase):
 
     def _new_dir(self):
         return fos.join(self._tmp_dir, self._new_name())
+
+
+class OpenLABELVideoDatasetTests(VideoDatasetTests):
+    @drop_datasets
+    def test_openlabel_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_video_labels(self._tmp_dir)
+        vid_filepath = self._new_video(filename="openlabel_test")
+
+        dataset = fo.Dataset.from_dir(
+            data_path=self.videos_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELVideoDataset,
+        )
+
+        self.assertEqual(
+            dataset.count("frames.detections.detections.label"), 5
+        )
+        self.assertEqual(
+            dataset.count("frames.segmentations.detections.label"), 5
+        )
+        self.assertEqual(dataset.count("frames.keypoints.keypoints.label"), 5)
 
 
 class VideoExportCoersionTests(VideoDatasetTests):

@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.6.7.3"
+VERSION = "0.7.0"
 
 
 def get_version():
@@ -35,7 +35,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "eventlet",
     "future",
-    "Jinja2",
+    "Jinja2>=3",
     "kaleido",
     "matplotlib",
     "mongoengine==0.20.0",
@@ -108,7 +108,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10.1,<0.11"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10.2,<0.11"]}
 
 
 with open("README.md", "r") as fh:
