@@ -43,6 +43,11 @@ client_lock = threading.Lock()
 minio_alias_prefix = None
 minio_endpoint_prefix = None
 
+S3_PREFIX = "s3://"
+GS_PREFIX = "gs://"
+HTTP_PREFIX = "http://"
+HTTPS_PREFIX = "https://"
+
 
 def init_storage():
     """Initializes storage client use."""
@@ -128,13 +133,13 @@ def get_file_system(path):
     ):
         return FileSystem.MINIO
 
-    if path.startswith("s3://"):
+    if path.startswith(S3_PREFIX):
         return FileSystem.S3
 
-    if path.startswith("gs://"):
+    if path.startswith(GS_PREFIX):
         return FileSystem.GCS
 
-    if path.startswith(("http://", "https://")):
+    if path.startswith((HTTP_PREFIX, HTTPS_PREFIX)):
         return FileSystem.HTTP
 
     return FileSystem.LOCAL
@@ -167,14 +172,14 @@ def split_prefix(path):
         minio_endpoint_prefix
     ):
         prefix = minio_endpoint_prefix
-    elif path.startswith("s3://"):
-        prefix = "s3://"
-    elif path.startswith("gs://"):
-        prefix = "gs://"
-    elif path.startswith("http://"):
-        prefix = "http://"
-    elif path.startswith("https://"):
-        prefix = "https://"
+    elif path.startswith(S3_PREFIX):
+        prefix = S3_PREFIX
+    elif path.startswith(GS_PREFIX):
+        prefix = GS_PREFIX
+    elif path.startswith(HTTP_PREFIX):
+        prefix = HTTP_PREFIX
+    elif path.startswith(HTTPS_PREFIX):
+        prefix = HTTPS_PREFIX
     else:
         prefix = ""
 

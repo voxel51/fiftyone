@@ -955,21 +955,32 @@ class CVATCloudTests(unittest.TestCase):
         https://openvinotoolkit.github.io/cvat/docs/manual/basics/attach-cloud-storage/#prepare-manifest-file
 
     """
-    def __init__(self, *args, **kwargs):
-        self.s3_root_dir = "s3://voxel51-test/quickstart"
-        self.gs_root_dir = "gs://voxel51-test/quickstart"
+    def setUp(self):
+        super().setUp()
+        data_root = "voxel51-test/quickstart"
+        manifest = "voxel51-test/manifest.jsonl"
 
-        # Spin up default local MinIO server and load in quickstart data
-        self.minio_root_dir = "http://127.0.0.1:9000/voxel51-test/quickstart"
+        self.s3_root_dir = fos.S3_PREFIX + data_root
+        self.s3_manifest = fos.S3_PREFIX + manifest
 
-        super().__init__(*args, **kwargs)
+        self.gs_root_dir = fos.GS_PREFIX + data_root
+        self.gs_manifest = fos.GS_PREFIX + manifest
 
-    def test_s3(self):
+        self.minio_root_dir = None
+        self.minio_manifest = None
+
+        if fos.minio_endpoint_prefix is not None:
+            # Spin up default local MinIO server and load in quickstart data
+            self.minio_root_dir = fos.minio_endpoint_prefix + data_root
+            self.minio_manifest = fos.minio_endpoint_prefix + manifest
+
+
+    def _test_cloud(self, root_dir, cloud_manifest):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
 
         fos.upload_media(
             dataset,
-            self.s3_root_dir,
+            root_dir,
             update_filepaths=True,
             overwrite=False,
         )
@@ -981,7 +992,7 @@ class CVATCloudTests(unittest.TestCase):
             anno_key,
             backend="cvat",
             label_field="ground_truth",
-            cloud_manifest="s3://voxel51-test/manifest.jsonl",
+            cloud_manifest=cloud_manifest,
         )
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -1001,6 +1012,15 @@ class CVATCloudTests(unittest.TestCase):
             dataset.values("ground_truth.detections.id", unwind=True),
         )
 
+    def test_s3(self):
+        self._test_cloud(self.s3_root_dir, self.s3_manifest)
+
+    def test_gs(self):
+        self._test_cloud(self.gs_root_dir, self.gs_manifest)
+
+    def test_minio(self):
+        if self.minio_root_dir:
+            self._test_cloud(self.minio_root_dir, self.minio_manifest)
 
 
 if __name__ == "__main__":
