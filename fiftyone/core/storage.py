@@ -1621,7 +1621,7 @@ def upload_media(
     remote_dir,
     rel_dir=None,
     update_filepaths=False,
-    overwrite=True,
+    overwrite=False,
     skip_failures=False,
     progress=False,
 ):
@@ -1641,7 +1641,7 @@ def upload_media(
             filepath when constructing the corresponding remote path
         update_filepaths (False): whether to update the ``filepath`` of each
             sample in the collection to its remote path
-        overwrite (True): whether to overwrite (True) or skip (False) existing
+        overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
@@ -1653,14 +1653,15 @@ def upload_media(
     """
     filepaths = sample_collection.values("filepath")
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=remote_dir, rel_dir=rel_dir
-    )
-
     paths_map = {}
     for filepath in filepaths:
         if filepath not in paths_map:
-            paths_map[filepath] = filename_maker.get_output_path(filepath)
+            if rel_dir:
+                filename = os.path.relpath(filepath, rel_dir)
+            else:
+                filename = os.path.basename(filepath)
+
+            paths_map[filepath] = join(remote_dir, filename)
 
     remote_paths = [paths_map[f] for f in filepaths]
 
