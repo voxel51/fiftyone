@@ -1,7 +1,7 @@
 """
 Plotly plots.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -26,7 +26,9 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
+import fiftyone.core.video as fov
 
 from .base import Plot, InteractivePlot, ResponsivePlot
 
@@ -53,6 +55,7 @@ def plot_confusion_matrix(
     pred_field=None,
     colorscale="oranges",
     log_colorscale=False,
+    title=None,
     **kwargs,
 ):
     """Plots a confusion matrix.
@@ -65,9 +68,9 @@ def plot_confusion_matrix(
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
-        ids (None): an optional array of same shape as ``confusion_matrix``
-            containing lists of IDs corresponding to each cell
+        labels: a ``max(num_true, num_preds)`` array-like of class labels
+        ids (None): an array-like of same shape as ``confusion_matrix`` whose
+            elements are array-likes of label IDs corresponding to each cell
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the confusion matrix was generated. Only used when
             ``ids`` are also provided to update an attached session
@@ -79,11 +82,12 @@ def plot_confusion_matrix(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`InteractiveHeatmap`, if ``ids`` are provided
         -   a :class:`PlotlyNotebookPlot`, if no ``ids`` are provided and you
@@ -96,7 +100,11 @@ def plot_confusion_matrix(
 
     if ids is None:
         return _plot_confusion_matrix_static(
-            confusion_matrix, labels, colorscale=colorscale, **kwargs
+            confusion_matrix,
+            labels,
+            colorscale=colorscale,
+            title=title,
+            **kwargs,
         )
 
     return _plot_confusion_matrix_interactive(
@@ -108,12 +116,13 @@ def plot_confusion_matrix(
         gt_field=gt_field,
         pred_field=pred_field,
         colorscale=colorscale,
+        title=title,
         **kwargs,
     )
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, **kwargs
+    confusion_matrix, labels, colorscale=None, title=None, **kwargs
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
@@ -158,6 +167,7 @@ def _plot_confusion_matrix_static(
         ),
         xaxis_title="Predicted label",
         yaxis_title="True label",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -178,6 +188,7 @@ def _plot_confusion_matrix_interactive(
     gt_field=None,
     pred_field=None,
     colorscale=None,
+    title=None,
     **kwargs,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
@@ -202,10 +213,10 @@ def _plot_confusion_matrix_interactive(
 
     if eval_key is not None:
         selection_mode = "patches"
-        init_patches_fcn = lambda view: view.to_evaluation_patches(eval_key)
+        init_fcn = lambda view: view.to_evaluation_patches(eval_key)
     else:
         selection_mode = "select"
-        init_patches_fcn = None
+        init_fcn = None
 
     plot = InteractiveHeatmap(
         confusion_matrix,
@@ -218,11 +229,11 @@ def _plot_confusion_matrix_interactive(
         init_view=samples,
         label_fields=label_fields,
         selection_mode=selection_mode,
-        init_patches_fcn=init_patches_fcn,
+        init_fcn=init_fcn,
     )
 
     plot.update_layout(**_DEFAULT_LAYOUT)
-    plot.update_layout(**kwargs)
+    plot.update_layout(title=title, **kwargs)
 
     return plot
 
@@ -240,6 +251,7 @@ def plot_regressions(
     figure=None,
     best_fit_label=None,
     marker_size=None,
+    title=None,
     labels_title=None,
     sizes_title=None,
     show_colorbar_title=None,
@@ -255,12 +267,12 @@ def plot_regressions(
     the plot.
 
     Args:
-        ytrue: an array of ground truth values
-        ypred: an array of predicted values
+        ytrue: an array-like of ground truth values
+        ypred: an array-like of predicted values
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were generated. Only used by the "plotly"
             backend when IDs are provided
-        ids (None): an array of IDs corresponding to the regressions
+        ids (None): an array-like of IDs corresponding to the regressions
         labels (None): data to use to color the points. Can be any of the
             following:
 
@@ -269,9 +281,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -280,21 +292,22 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         best_fit_label (None): a custom legend label for the best fit line
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
+        title (None): a title for the plot
         labels_title (None): a title string to use for ``labels`` in the
             tooltip and the colorbar title. By default, if ``labels`` is a
             field name, this name will be used, otherwise the colorbar will not
@@ -310,7 +323,7 @@ def plot_regressions(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`InteractiveScatter`, if IDs are provided
         -   a :class:`PlotlyNotebookPlot`, if no IDs are provided but you are
@@ -387,6 +400,7 @@ def plot_regressions(
         sizes=sizes,
         figure=figure,
         marker_size=marker_size,
+        title=title,
         trace_title="regressions",
         labels_title=labels_title,
         sizes_title=sizes_title,
@@ -397,23 +411,32 @@ def plot_regressions(
 
 
 def plot_pr_curve(
-    precision, recall, label=None, style="area", figure=None, **kwargs
+    precision,
+    recall,
+    thresholds=None,
+    label=None,
+    style="area",
+    figure=None,
+    title=None,
+    **kwargs,
 ):
     """Plots a precision-recall (PR) curve.
 
     Args:
-        precision: an array of precision values
-        recall: an array of recall values
+        precision: an array-like of precision values
+        recall: an array-like of recall values
+        thresholds (None): an array-like of decision thresholds
         label (None): a label for the curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -431,15 +454,33 @@ def plot_pr_curve(
     if style == "area":
         params["fill"] = "tozeroy"
 
-    figure.add_trace(go.Scatter(x=recall, y=precision, **params))
+    hover_lines = [
+        "recall: %{x:.3f}",
+        "precision: %{y:.3f}",
+    ]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    figure.add_trace(
+        go.Scatter(
+            x=recall,
+            y=precision,
+            hovertemplate=hovertemplate,
+            customdata=thresholds,
+            **params,
+        )
+    )
 
     # Add 50/50 line
     figure.add_shape(
         type="line", x0=0, x1=1, y0=1, y1=0, line=dict(dash="dash")
     )
 
-    if label is not None:
-        figure.update_layout(title=dict(text=label, x=0.5, xanchor="center"))
+    if title is None and label is not None:
+        title = label
 
     figure.update_layout(
         xaxis=dict(range=[0, 1], constrain="domain"),
@@ -448,6 +489,7 @@ def plot_pr_curve(
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -459,21 +501,32 @@ def plot_pr_curve(
     return figure
 
 
-def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
+def plot_pr_curves(
+    precisions,
+    recall,
+    classes,
+    thresholds=None,
+    figure=None,
+    title=None,
+    **kwargs,
+):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
+        precisions: a ``num_classes x num_recalls`` array-like of per-class
             precision values
-        recall: an array of recall values
+        recall: an array-like of recall values
         classes: the list of classes
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plots
+        thresholds (None): a ``num_classes x num_recalls`` array-like of
+            decision thresholds
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plots
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -489,9 +542,12 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
 
     hover_lines = [
         "<b>class: %{text}</b>",
-        "recall: %{x}",
-        "precision: %{y}",
+        "recall: %{x:.3f}",
+        "precision: %{y:.3f}",
     ]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
 
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
@@ -507,6 +563,11 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
         avg_precision = avg_precisions[idx]
         label = "%s (AP = %.3f)" % (_class, avg_precision)
 
+        if thresholds is not None:
+            customdata = thresholds[idx]
+        else:
+            customdata = None
+
         line = go.Scatter(
             x=recall,
             y=precision,
@@ -515,6 +576,7 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
             line_color=color,
             text=np.full(recall.shape, _class),
             hovertemplate=hovertemplate,
+            customdata=customdata,
         )
 
         figure.add_trace(line)
@@ -526,6 +588,7 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
         ),
         xaxis_title="Recall",
         yaxis_title="Precision",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -538,23 +601,32 @@ def plot_pr_curves(precisions, recall, classes, figure=None, **kwargs):
 
 
 def plot_roc_curve(
-    fpr, tpr, roc_auc=None, style="area", figure=None, **kwargs
+    fpr,
+    tpr,
+    thresholds=None,
+    roc_auc=None,
+    style="area",
+    figure=None,
+    title=None,
+    **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array of false postive rates
-        tpr: an array of true postive rates
+        fpr: an array-like of false postive rates
+        tpr: an array-like of true postive rates
+        thresholds (None): an array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
             ``("area", "line")``
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
+        title (None): a title for the plot
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`PlotlyNotebookPlot`, if you are working in a Jupyter
             notebook
@@ -572,17 +644,30 @@ def plot_roc_curve(
     if style == "area":
         params["fill"] = "tozeroy"
 
-    figure.add_trace(go.Scatter(x=fpr, y=tpr, **params))
+    hover_lines = ["fpr: %{x:.3f}", "tpr: %{y:.3f}"]
+
+    if thresholds is not None:
+        hover_lines.append("threshold: %{customdata:.3f}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    figure.add_trace(
+        go.Scatter(
+            x=fpr,
+            y=tpr,
+            hovertemplate=hovertemplate,
+            customdata=thresholds,
+            **params,
+        )
+    )
 
     # Add 50/50 line
     figure.add_shape(
         type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1
     )
 
-    if roc_auc is not None:
-        figure.update_layout(
-            title=dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
-        )
+    if title is None and roc_auc is not None:
+        title = dict(text="AUC: %.5f" % roc_auc, x=0.5, xanchor="center")
 
     figure.update_layout(
         xaxis=dict(range=[0, 1], constrain="domain"),
@@ -591,6 +676,7 @@ def plot_roc_curve(
         ),
         xaxis_title="False positive rate",
         yaxis_title="True positive rate",
+        title=title,
     )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
@@ -600,6 +686,291 @@ def plot_roc_curve(
         figure = PlotlyNotebookPlot(figure)
 
     return figure
+
+
+def lines(
+    x=None,
+    y=None,
+    samples=None,
+    ids=None,
+    link_field=None,
+    sizes=None,
+    labels=None,
+    colors=None,
+    marker_size=None,
+    figure=None,
+    title=None,
+    xaxis_title=None,
+    yaxis_title=None,
+    sizes_title=None,
+    axis_equal=False,
+    **kwargs,
+):
+    """Plots the given lines(s) data.
+
+    You can attach plots generated by this method to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot. To enable this functionality, you must pass ``samples`` to this
+    method.
+
+    You can use the ``sizes`` parameter to scale the sizes of the points.
+
+    Args:
+        x (None): the x data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        y (None): the y data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        ids (None): an array-like of IDs of same shape as ``y``. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
+        link_field (None): a field of ``samples`` whose data corresponds to
+            ``y``. Can be any of the following:
+
+            -   ``None``, if the line data correspond to samples (single trace)
+                or frames (multiple traces)
+            -   ``"frames"``, if the line data correspond to frames (multiple
+                traces). This option exists only for consistency with other
+                plotting methods; in practice, it will be automatically
+                inferred whenever multiple traces are being plotted
+            -   the name of a :class:`fiftyone.core.labels.Label` field, if the
+                line data correspond to the labels in this field
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   an array-like of numeric values of same shape as ``y``
+            -   the name of a sample field (single trace) or frame field
+                (multiple traces) from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                sample-level (single trace) or frame-level (multiple traces)
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        labels (None): a name or list of names for the line traces
+        colors (None): a list of colors to use for the line traces. See
+            https://plotly.com/python/colorscales for options
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
+        title (None): a title for the plot
+        xaxis_title (None): an x-axis title
+        yaxis_title (None): a y-axis title
+        sizes_title (None): a title string to use for ``sizes`` in the tooltip.
+            By default, if ``sizes`` is a field name, this name will be used,
+            otherwise the tooltip will use "size"
+        axis_equal (False): whether to set the axes to equal scale
+        **kwargs: optional keyword arguments for
+            :meth:`plotly:plotly.graph_objects.Figure.update_layout`
+
+    Returns:
+        one of the following
+
+        -   an :class:`InteractiveScatter`, when IDs are available
+        -   a :class:`PlotlyNotebookPlot`, if you're working in a Jupyter
+            notebook but the above conditions aren't met
+        -   a plotly figure, otherwise
+    """
+    if y is None:
+        raise ValueError("You must provide 'y' values")
+
+    if xaxis_title is not None:
+        x_title = xaxis_title.rsplit(".", 1)[-1]
+    else:
+        x_title = "x"
+
+    if yaxis_title is not None:
+        y_title = yaxis_title.rsplit(".", 1)[-1]
+    else:
+        y_title = "y"
+
+    if sizes is not None and sizes_title is None:
+        if etau.is_str(sizes):
+            sizes_title = sizes.rsplit(".", 1)[-1]
+        else:
+            sizes_title = "size"
+
+    hover_lines = ["%s: %%{x}" % x_title, "%s: %%{y}" % y_title]
+
+    if sizes is not None:
+        hover_lines.append("%s: %%{marker.size}" % sizes_title)
+
+    if ids is not None or samples is not None:
+        hover_lines.append("ID: %{customdata}")
+
+    hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
+
+    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
+        if samples is not None and samples.media_type == fom.VIDEO:
+            is_frames = foe.is_frames_expr(y)
+        else:
+            is_frames = False
+    else:
+        is_frames = y and etau.is_container(y[0])
+
+    if is_frames and link_field is None:
+        link_field = "frames"
+
+    y = _parse_values(y, "y", samples=samples, is_frames=is_frames)
+
+    if x is None:
+        if is_frames:
+            x = [np.arange(1, len(yi) + 1) for yi in y]
+        else:
+            x = np.arange(1, len(y) + 1)
+    else:
+        x = _parse_values(x, "x", samples=samples, ref=y, is_frames=is_frames)
+
+    if is_frames and x and not etau.is_container(x[0]):
+        x = [x] * len(y)
+
+    sizes = _parse_values(
+        sizes, "sizes", samples=samples, ref=y, is_frames=is_frames
+    )
+
+    if sizes is not None:
+        if marker_size is None:
+            marker_size = 15  # max marker size
+
+        if is_frames:
+            _sizes = list(itertools.chain(*sizes))
+        else:
+            _sizes = sizes
+
+        try:
+            sizeref = 0.5 * max(_sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
+    if ids is None and samples is not None:
+        ids = _get_ids(
+            samples, link_field=link_field, ref=y, is_frames=is_frames
+        )
+
+    if is_frames:
+        if sizes is None:
+            sizes = itertools.repeat(None)
+
+        if ids is None:
+            ids = itertools.repeat(None)
+
+        if labels is None:
+            labels = [str(i) for i in range(1, len(y) + 1)]
+        elif etau.is_str(labels):
+            labels = _parse_values(labels, "labels", samples=samples)
+
+        showlegend = True
+    else:
+        x = [x]
+        y = [y]
+        ids = [ids]
+        sizes = [sizes]
+        labels = [labels]
+        showlegend = labels[0] is not None
+
+    colors = _get_qualitative_colors(len(y), colors=colors)
+
+    traces = []
+    for _x, _y, _i, _s, _l, _c in zip(x, y, ids, sizes, labels, colors):
+        marker = {}
+        if _s is not None:
+            marker.update(
+                dict(size=_s, sizemode="diameter", sizeref=sizeref, sizemin=4)
+            )
+        elif marker_size is not None:
+            marker.update(dict(size=marker_size))
+
+        traces.append(
+            go.Scatter(
+                x=_x,
+                y=_y,
+                customdata=_i,
+                mode="lines+markers",
+                line_color=_c,
+                marker=marker,
+                hovertemplate=hovertemplate,
+                name=_l,
+                showlegend=showlegend,
+            )
+        )
+
+    if figure is None:
+        figure = go.Figure()
+
+    figure.add_traces(traces)
+
+    figure.update_layout(**_DEFAULT_LAYOUT)
+    figure.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        **kwargs,
+    )
+
+    if axis_equal:
+        figure.update_layout(yaxis_scaleanchor="x")
+
+    if ids is None:
+        if foc.is_jupyter_context():
+            return PlotlyNotebookPlot(figure)
+
+        return figure
+
+    selection_mode = None
+    init_fcn = None
+
+    if link_field is None:
+        if isinstance(samples, fov.FramesView):
+            link_type = "frames"
+        elif isinstance(samples, fop.PatchesView):
+            link_type = "labels"
+            link_field = samples._label_fields
+        else:
+            link_type = "samples"
+    elif link_field == "frames":
+        if isinstance(samples, fov.FramesView):
+            link_type = "frames"
+        else:
+            link_type = "frames"
+            init_fcn = lambda view: view.to_frames()
+    else:
+        link_type = "labels"
+        selection_mode = "patches"
+        init_fcn = lambda view: view.to_patches(link_field)
+
+    return InteractiveScatter(
+        figure,
+        link_type=link_type,
+        init_view=samples,
+        label_fields=link_field,
+        selection_mode=selection_mode,
+        init_fcn=init_fcn,
+    )
 
 
 def scatterplot(
@@ -616,6 +987,7 @@ def scatterplot(
     marker_size=None,
     colorscale=None,
     log_colorscale=False,
+    title=None,
     trace_title=None,
     labels_title=None,
     sizes_title=None,
@@ -639,10 +1011,10 @@ def scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        points: a ``num_points x num_dims`` array of points
+        points: a ``num_points x num_dims`` array-like of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the points. If not
+        ids (None): an array-like of IDs corresponding to the points. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
@@ -660,9 +1032,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
@@ -672,20 +1044,20 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-        edges (None): an optional ``num_edges x 2`` array of row indices into
-            ``points`` defining undirected edges between points to render as a
-            separate trace on the scatterplot
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        edges (None): a ``num_edges x 2`` array of row indices into ``points``
+            defining undirected edges between points to render as a separate
+            trace on the scatterplot
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
@@ -697,6 +1069,7 @@ def scatterplot(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         trace_title (None): a name for the scatter trace. Only applicable when
             plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
@@ -717,10 +1090,10 @@ def scatterplot(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveScatter`, for 2D points and when ``samples``
-            are provided
+        -   an :class:`InteractiveScatter`, for 2D points and when IDs are
+            available
         -   a :class:`PlotlyNotebookPlot`, if you're working in a Jupyter
             notebook but the above conditions aren't met
         -   a plotly figure, otherwise
@@ -804,7 +1177,7 @@ def scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-    figure.update_layout(**kwargs)
+    figure.update_layout(title=title, **kwargs)
 
     if num_dims == 3:
         if samples is not None:
@@ -822,18 +1195,27 @@ def scatterplot(
 
         return figure
 
+    selection_mode = None
+    init_fcn = None
+
     if link_field is None:
-        link_type = "samples"
-        selection_mode = None
-        init_patches_fcn = None
-    elif link_field == "frames" and samples.media_type == fom.VIDEO:
-        link_type = "frames"
-        selection_mode = None
-        init_patches_fcn = None
+        if isinstance(samples, fov.FramesView):
+            link_type = "frames"
+        elif isinstance(samples, fop.PatchesView):
+            link_type = "labels"
+            link_field = samples._label_fields
+        else:
+            link_type = "samples"
+    elif link_field == "frames":
+        if isinstance(samples, fov.FramesView):
+            link_type = "frames"
+        else:
+            link_type = "frames"
+            init_fcn = lambda view: view.to_frames()
     else:
         link_type = "labels"
         selection_mode = "patches"
-        init_patches_fcn = lambda view: view.to_patches(link_field)
+        init_fcn = lambda view: view.to_patches(link_field)
 
     return InteractiveScatter(
         figure,
@@ -841,7 +1223,7 @@ def scatterplot(
         init_view=samples,
         label_fields=link_field,
         selection_mode=selection_mode,
-        init_patches_fcn=init_patches_fcn,
+        init_fcn=init_fcn,
     )
 
 
@@ -873,20 +1255,20 @@ def _parse_scatter_inputs(
 ):
     num_dims = points.shape[1]
 
-    labels = _get_data_for_points(points, samples, labels, "labels")
-    sizes = _get_data_for_points(points, samples, sizes, "sizes")
+    labels = _parse_values(labels, "labels", samples=samples, ref=points)
+    sizes = _parse_values(sizes, "sizes", samples=samples, ref=points)
 
     if ids is None and samples is not None:
         if num_dims != 2:
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
         else:
-            ids = _get_ids_for_points(points, samples, link_field=link_field)
+            ids = _get_ids(samples, link_field=link_field, ref=points)
 
-    return _parse_data(points, ids, labels, sizes, edges, classes)
+    return _parse_scatter_data(points, ids, labels, sizes, edges, classes)
 
 
-def _get_data_for_points(points, samples, values, parameter):
+def _parse_values(values, parameter, samples=None, ref=None, is_frames=False):
     if values is None:
         return None
 
@@ -897,50 +1279,81 @@ def _get_data_for_points(points, samples, values, parameter):
                 "for the `%s` parameter" % parameter
             )
 
-        values = samples.values(values, unwind=True)
+        values = samples.values(values)
+
+    if is_frames:
+        values = [_unwind_values(v) for v in values]
     else:
         values = _unwind_values(values)
 
-    if len(values) != len(points):
-        raise ValueError(
-            "Number of %s (%d) does not match number of points (%d). You "
-            "may have missing data/labels that you need to omit from your "
-            "view" % (parameter, len(values), len(points))
-        )
+    if ref is not None:
+        _validate_values(values, ref, parameter, is_frames=is_frames)
 
     return values
 
 
-def _unwind_values(values):
-    while any(isinstance(v, (list, tuple)) for v in values):
-        values = list(itertools.chain.from_iterable(v for v in values if v))
-
-    return values
-
-
-def _get_ids_for_points(points, samples, link_field=None):
+def _get_ids(samples, link_field=None, ref=None, is_frames=False):
     if link_field is None:
         ids = samples.values("id")
         ptype = "sample"
-    elif link_field == "frames" and samples.media_type == fom.VIDEO:
-        ids = samples.values("frames.id", unwind=True)
+    elif link_field == "frames":
+        ids = samples.values("frames.id")
         ptype = "frame"
     else:
-        ids = samples._get_label_ids(fields=link_field)
+        _, id_path = samples._get_label_field_path(link_field, "id")
+        ids = samples.values(id_path)
         ptype = "label"
 
-    if len(ids) != len(points):
+    if is_frames:
+        ids = [_unwind_values(_ids) for _ids in ids]
+    else:
+        ids = _unwind_values(ids)
+
+    if ref is not None:
+        values_type = "%s IDs" % ptype
+        _validate_values(ids, ref, values_type, is_frames=is_frames)
+
+    return ids
+
+
+def _unwind_values(values):
+    if values is None:
+        return None
+
+    while any(etau.is_container(v) for v in values):
+        values = list(itertools.chain.from_iterable(v for v in values if v))
+
+    return np.array(values)
+
+
+def _validate_values(values, ref, values_type, is_frames=False):
+    if not is_frames:
+        if len(values) != len(ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d). You may have missing "
+                "data/labels that you need to omit from your view"
+                % (values_type, len(values), len(ref))
+            )
+
+        return
+
+    if len(values) != len(ref):
         raise ValueError(
-            "Number of %s IDs (%d) does not match number of points "
-            "(%d). You may have missing data/labels that you need to omit "
-            "from your view before visualizing"
-            % (ptype, len(ids), len(points))
+            "Inconsistent number of %s traces (%d != %d). You may have "
+            "missing data/labels that you need to omit from your view"
+            % (values_type, len(values), len(ref))
         )
 
-    return np.array(ids)
+    for idx, (_values, _ref) in enumerate(zip(values, ref), 1):
+        if len(_values) != len(_ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d) in trace %d/%d. You may "
+                "have missing data/labels that you need to omit from your view"
+                % (values_type, len(_values), len(_ref), idx, len(values))
+            )
 
 
-def _parse_data(points, ids, labels, sizes, edges, classes):
+def _parse_scatter_data(points, ids, labels, sizes, edges, classes):
     if ids is not None:
         ids = np.asarray(ids)
 
@@ -995,6 +1408,7 @@ def location_scatterplot(
     marker_size=None,
     colorscale=None,
     log_colorscale=False,
+    title=None,
     trace_title=None,
     labels_title=None,
     sizes_title=None,
@@ -1023,14 +1437,14 @@ def location_scatterplot(
             -   None, in which case ``samples`` must have a single
                 :class:`fiftyone.core.labels.GeoLocation` field whose ``point``
                 attribute contains location data
-            -   a ``num_locations x 2`` array of ``(longitude, latitude)``
+            -   a ``num_locations x 2`` array-like of ``(longitude, latitude)``
                 coordinates
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the locations. If not
+        ids (None): an array-like of IDs corresponding to the locations. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -1041,7 +1455,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
+            -   an array-like of numeric or string values
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -1050,22 +1464,22 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-        edges (None): an optional ``num_edges x 2`` array of row indices into
+            -   an array-like of numeric values
+        edges (None): a ``num_edges x 2`` array-like of row indices into
             ``locations`` defining undirected edges between points to render as
             a separate trace on the scatterplot
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings. If provided, the
-            element order of this list also controls the z-order and legend
-            order of multitrace plots (first class is rendered first, and thus
-            on the bottom, and appears first in the legend)
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings. If provided, the element order of
+            this list also controls the z-order and legend order of multitrace
+            plots (first class is rendered first, and thus on the bottom, and
+            appears first in the legend)
         style (None): the plot style to use. Only applicable when the color
             data is numeric. Supported values are ``("scatter", "density")``
         radius (None): the radius of influence of each lat/lon point. Only
             applicable when ``style`` is "density". Larger values will make
             density plots smoother and less detailed
-        figure (None): an optional :class:`plotly:plotly.graph_objects.Figure`
-            to which to add the plot
+        figure (None): a :class:`plotly:plotly.graph_objects.Figure` to which
+            to add the plot
         multi_trace (None): whether to render each class as a separate trace.
             Only applicable when ``labels`` contains strings. By default, this
             will be true if there are up to 25 classes
@@ -1077,6 +1491,7 @@ def location_scatterplot(
         log_colorscale (False): whether to apply the colorscale on a log scale.
             This is useful to better visualize variations in smaller values
             when large values are also present
+        title (None): a title for the plot
         trace_title (None): a name for the scatter trace. Only applicable when
             plotting a single trace
         labels_title (None): a title string to use for ``labels`` in the
@@ -1096,11 +1511,11 @@ def location_scatterplot(
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveScatter`, if ``samples`` are provided
-        -   a :class:`PlotlyNotebookPlot`, if ``samples`` are not provided but
-            you're working in a Jupyter notebook
+        -   an :class:`InteractiveScatter`, if IDs are available
+        -   a :class:`PlotlyNotebookPlot`, if IDs are not available but you're
+            working in a Jupyter notebook
         -   a plotly figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -1197,7 +1612,7 @@ def location_scatterplot(
         )
 
     figure.update_layout(**_DEFAULT_LAYOUT)
-    figure.update_layout(**kwargs)
+    figure.update_layout(title=title, **kwargs)
 
     if style == "density" and not categorical:
         msg = "Density plots do not yet support interactivity"
@@ -1385,6 +1800,40 @@ class PlotlyWidgetMixin(object):
             # updating it and `show()`ing it, if desired
             if isinstance(self, ResponsivePlot):
                 self.connect()
+
+    def save(self, path, width=None, height=None, scale=None, **kwargs):
+        """Saves the plot as an image or HTML.
+
+        Args:
+            path: the path to write the image or HTML
+            width (None): a desired width in pixels when saving as an image.
+                By default, the layout width is used
+            height (None): a desired height in pixels when saving as an image.
+                By default, the layout height is used
+            scale (None): a scale factor to apply to the layout dimensions. By
+                default, this is 1.0
+            **kwargs: keyword arguments for
+                :meth:`plotly:plotly.graph_objects.Figure.to_image` or
+                :meth:`plotly:plotly.graph_objects.Figure.write_html`
+        """
+        etau.ensure_basedir(path)
+
+        if os.path.splitext(path)[1] == ".html":
+            self._widget.write_html(path, **kwargs)
+            return
+
+        if width is None:
+            width = self._widget.layout.width
+
+        if height is None:
+            height = self._widget.layout.height
+
+        if scale is None:
+            scale = 1.0
+
+        self._widget.write_image(
+            path, width=width, height=height, scale=scale, **kwargs
+        )
 
     def _update_layout(self, **kwargs):
         if kwargs:
@@ -1717,8 +2166,8 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
     the proportions of each cell included in the selection.
 
     Args:
-        Z: a ``num_cols x num_rows`` array of heatmap values
-        ids: an array of same shape as ``Z`` whose elements contain lists
+        Z: a ``num_cols x num_rows`` array-like of heatmap values
+        ids: an array-like of same shape as ``Z`` whose elements contain lists
             of IDs for the heatmap cells
         xlabels (None): a ``num_rows`` array of x labels
         ylabels (None): a ``num_cols`` array of y labels
@@ -2165,13 +2614,13 @@ def _plot_scatter_categorical_single_trace(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2268,13 +2717,13 @@ def _plot_scatter_numeric(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2355,7 +2804,11 @@ def _plot_scatter_mapbox_categorical(
         if marker_size is None:
             marker_size = 15  # max marker size
 
-        sizeref = 0.5 * max(sizes) / marker_size
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         hover_lines.append("%s: %%{marker.size}" % sizes_title)
 
     hover_lines.append("lat: %{lat:.5f}<br>lon: %{lon:.5f}")
@@ -2462,13 +2915,13 @@ def _plot_scatter_mapbox_categorical_single_trace(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2555,13 +3008,13 @@ def _plot_scatter_mapbox_numeric(
         if marker_size is None:
             marker_size = 15  # max marker size
 
+        try:
+            sizeref = 0.5 * max(sizes) / marker_size
+        except ValueError:
+            sizeref = 1
+
         marker.update(
-            dict(
-                size=sizes,
-                sizemode="diameter",
-                sizeref=0.5 * max(sizes) / marker_size,
-                sizemin=4,
-            )
+            dict(size=sizes, sizemode="diameter", sizeref=sizeref, sizemin=4)
         )
     elif marker_size is not None:
         marker.update(dict(size=marker_size))
@@ -2741,12 +3194,15 @@ def _get_qualitative_colors(num_classes, colors=None):
     # Some color choices:
     # https://plotly.com/python/discrete-color/#color-sequences-in-plotly-express
     if colors is None:
-        if num_classes <= 10:
+        if num_classes == 1:
+            colors = [_DEFAULT_LINE_COLOR]
+        elif num_classes <= 10:
             colors = px.colors.qualitative.G10
         else:
             colors = px.colors.qualitative.Alphabet
 
     # @todo can we blend when there are more classes than colors?
+    colors = list(colors)
     return [colors[i % len(colors)] for i in range(num_classes)]
 
 

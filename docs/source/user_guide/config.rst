@@ -76,6 +76,9 @@ FiftyOne supports the configuration options described below:
 | `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
 |                               |                                     |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
+|                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -129,6 +132,7 @@ and the CLI:
             "do_not_track": false,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
+            "module_path": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -167,6 +171,7 @@ and the CLI:
             "do_not_track": false,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
+            "module_path": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -284,6 +289,23 @@ or you can set the following environment variable:
 .. code-block:: shell
 
     export FIFTYONE_DATABASE_URI=mongodb://[username:password@]host[:port]
+
+If you are running MongoDB with authentication enabled (the `--auth` flag),
+FiftyOne must connect as a root user.
+
+You can create a root user with the Mongo shell as follows:
+
+.. code-block:: shell
+
+    mongo --shell
+    > use admin
+    > db.createUser({user: "username", pwd: passwordPrompt(), roles: ["root"]})
+
+You must also add `?authSource=admin` to your database URI:
+
+.. code-block:: text
+
+    mongodb://[username:password@]host[:port]/?authSource=admin
 
 .. note::
 

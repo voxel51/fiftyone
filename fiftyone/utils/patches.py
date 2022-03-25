@@ -1,7 +1,7 @@
 """
 Image patch utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -154,7 +154,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
     Returns:
         the image patch
     """
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
 
     bbox = dobj.bounding_box
     if alpha is not None:

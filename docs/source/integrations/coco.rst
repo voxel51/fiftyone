@@ -6,7 +6,7 @@ COCO Integration
 .. default-role:: code
 
 With support from the team behind the `COCO dataset <https://cocodataset.org>`_,
-we've made it easy to dowload, visualize, and evaluate on the COCO dataset
+we've made it easy to download, visualize, and evaluate on the COCO dataset
 natively in FiftyOne!
 
 .. note::

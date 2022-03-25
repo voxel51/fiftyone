@@ -9,6 +9,7 @@
 />
 {% endblock %} {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
+  <!--
   <a class="banner" href="{{banner_link}}">
     <div>
       <span>
@@ -19,6 +20,7 @@
       >
     </div>
   </a>
+  -->
 
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
@@ -154,7 +156,7 @@ endblock %} {% block custom_footer %}
 
     <div class="footer__copyright">
       <ul class="list-inline">
-        <li>&copy; 2021 Voxel51 Inc.</li>
+        <li>&copy; 2022 Voxel51 Inc.</li>
         <li>
           <a href="{{link_privacypolicy}}">Privacy Policy</a>
         </li>
@@ -165,30 +167,6 @@ endblock %} {% block custom_footer %}
     </div>
   </div>
 </footer>
-
-<div class="modal" id="early-access">
-  <div class="modal-content">
-    <h2 class="text-primary-on-light">
-      Get&nbsp;<span
-        ><b class="text-secondary-on-dark">Fifty</b
-        ><b class="text-brand">One</b></span
-      >
-      for your team
-    </h2>
-    <p style="padding: 1.5rem 0">
-      FiftyOne is and will always be open source software that is freely
-      available to individual users, all 20,000 and counting. However, if you’re
-      part of a team, you may need more. That’s why we’ve begun deploying
-      team-based versions of FiftyOne with multi-user collaboration features to
-      early adopters.
-      <br />
-      <br />
-      Are you interested in a team-based deployment of FiftyOne? Let us know how
-      to contact you and our founders will reach out to make it happen!
-    </p>
-    <div id="early-access-form"></div>
-  </div>
-</div>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script
@@ -203,19 +181,6 @@ endblock %} {% block custom_footer %}
   gtag("js", new Date());
 
   gtag("config", "UA-141773487-1");
-</script>
-<script
-  charset="utf-8"
-  type="text/javascript"
-  src="https://js.hsforms.net/forms/v2.js"
-></script>
-<script>
-  hbspt.forms.create({
-    region: "na1",
-    portalId: "4972700",
-    formId: "87aa5367-a8f1-4ed4-9e23-1fdf8448d807",
-    target: "#early-access-form",
-  });
 </script>
 <script>
   function open_modal(modal_id, modal_closer_id) {

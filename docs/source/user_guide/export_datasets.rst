@@ -2058,16 +2058,19 @@ and `images.txt` contains the list of images in `data/`:
     ...
 
 and the TXT files in `data/` are space-delimited files where each row
-corresponds to an object in the image of the same name, in the following
-format:
+corresponds to an object in the image of the same name, in one of the following
+formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
-where `<target>` is the zero-based integer index of the object class
-label from `obj.names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+where `<target>` is the zero-based integer index of the object class label from
+`obj.names`, the bounding box coordinates are expressed as relative coordinates
+in `[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which
+will be included only if you pass the optional `include_confidence=True` flag
+to the export.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2224,15 +2227,18 @@ specific split being imported or exported is specified by the `split` argument
 to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
-to an object in the image of the same name, in the following format:
+to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
     <target> <x-center> <y-center> <width> <height>
+    <target> <x-center> <y-center> <width> <height> <confidence>
 
 where `<target>` is the zero-based integer index of the object class label from
-`names` and the bounding box coordinates are expressed as
-relative coordinates in `[0, 1] x [0, 1]`.
+`names`, the bounding box coordinates are expressed as relative coordinates in
+`[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which will
+be included only if you pass the optional `include_confidence=True` flag to
+the export.
 
 Unlabeled images have no corresponding TXT file in `labels/`.
 
@@ -2565,11 +2571,11 @@ CVATImageDataset
 .. admonition:: Supported label types
     :class: note
 
-    |Detections|, |Polylines|, |Keypoints|
+    |Classifications|, |Detections|, |Polylines|, |Keypoints|
 
 The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
 type represents a labeled dataset consisting of images and their associated
-object detections stored in
+tags and object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -2640,6 +2646,8 @@ where `labels.xml` is an XML file in the following format:
             <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
         </meta>
         <image id="0" name="<uuid1>.<ext>" width="640" height="480">
+            <tag label="urban"></tag>
+            ...
             <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
                 <attribute name="type">sedan</attribute>
                 ...
@@ -2905,7 +2913,7 @@ as follows:
         import fiftyone as fo
 
         export_dir = "/path/for/cvat-video-dataset"
-        label_field = "frames.ground_truth"  # for example
+        label_field = "ground_truth"  # for example
 
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
@@ -2914,7 +2922,7 @@ as follows:
         dataset_or_view.export(
             export_dir=export_dir,
             dataset_type=fo.types.CVATVideoDataset,
-            label_field=label_field,
+            frame_labels_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -2923,13 +2931,13 @@ as follows:
 
         NAME=my-dataset
         EXPORT_DIR=/path/for/cvat-video-dataset
-        LABEL_FIELD=frames.ground_truth  # for example
+        LABEL_FIELD=ground_truth  # for example
 
         # Export the dataset
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
-            --label-field $LABEL_FIELD \
-            --type fiftyone.types.CVATVideoDataset
+            --type fiftyone.types.CVATVideoDataset \
+            --kwargs frame_labels_field=$LABEL_FIELD
 
 You can also perform labels-only exports of CVAT-formatted labels by providing
 the `labels_path` parameter instead of `export_dir`:
@@ -2944,7 +2952,7 @@ the `labels_path` parameter instead of `export_dir`:
         import fiftyone as fo
 
         labels_path = "/path/for/cvat-labels"
-        label_field = "frames.ground_truth"  # for example
+        label_field = "ground_truth"  # for example
 
         # The dataset or view to export
         dataset_or_view = fo.Dataset(...)
@@ -2953,7 +2961,7 @@ the `labels_path` parameter instead of `export_dir`:
         dataset_or_view.export(
             dataset_type=fo.types.CVATVideoDataset,
             labels_path=labels_path,
-            label_field=label_field,
+            frame_labels_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -2962,13 +2970,13 @@ the `labels_path` parameter instead of `export_dir`:
 
         NAME=my-dataset
         LABELS_PATH=/path/for/cvat-labels
-        LABEL_FIELD=frames.ground_truth  # for example
+        LABEL_FIELD=ground_truth  # for example
 
         # Export labels
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATVideoDataset \
-            --kwargs labels_path=$LABELS_PATH
+            --kwargs frames_labels_path=$LABELS_PATH
 
 .. _FiftyOneImageLabelsDataset-export:
 

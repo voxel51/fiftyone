@@ -1,7 +1,7 @@
 """
 Dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -102,14 +102,17 @@ class _SampleMixin(object):
 
         super().clear_field(field_name)
 
-    def compute_metadata(self, skip_failures=False):
+    def compute_metadata(self, overwrite=False, skip_failures=False):
         """Populates the ``metadata`` field of the sample.
 
         Args:
+            overwrite (False): whether to overwrite existing metadata
             skip_failures (False): whether to gracefully continue without
                 raising an error if metadata cannot be computed
         """
-        fom.compute_sample_metadata(self, skip_failures=skip_failures)
+        fom.compute_sample_metadata(
+            self, overwrite=overwrite, skip_failures=skip_failures
+        )
 
     def add_labels(
         self, labels, label_field, confidence_thresh=None, expand_schema=True
@@ -328,8 +331,6 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
-        value = os.path.abspath(os.path.expanduser(value))
-
         new_media_type = fomm.get_media_type(value)
         if self.media_type != new_media_type:
             raise fomm.MediaTypeError(
@@ -371,7 +372,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     Args:
         filepath: the path to the data on disk. The path is converted to an
             absolute path (if necessary) via
-            ``os.path.abspath(os.path.expanduser(filepath))``
+            :func:`fiftyone.core.utils.normalize_path`
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample

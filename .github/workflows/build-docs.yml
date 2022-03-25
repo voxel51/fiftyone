@@ -49,11 +49,6 @@ jobs:
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Install fiftyone-db
-        working-directory: package/db
-        run: |
-          python setup.py bdist_wheel
-          pip install dist/*.whl
       - name: Install ETA from source
         run: |
           git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
@@ -63,9 +58,9 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
-          pip install scikit-learn scikit-image
-          pip install --use-deprecated=legacy-resolver -r requirements/docs.txt
-          pip install fiftyone-brain
+          pip install -r requirements/extras.txt
+          pip install -r requirements/docs.txt
+          pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install -e .
       - name: Build docs

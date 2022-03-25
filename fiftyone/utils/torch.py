@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
+import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.learning as etal
 import eta.core.utils as etau
@@ -22,7 +23,6 @@ import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
-import fiftyone.utils.eta as foue
 
 fou.ensure_torch()
 import torch
@@ -114,8 +114,9 @@ class TorchImageModelConfig(foc.Config):
         image_min_dim (None): resize input images during preprocessing, if
             necessary, so that the smaller image dimension is at least this
             value
-        image_max_size (None): resize the input images during preprocessing so 
-            that the image dimensions are at most this ``(width, height)``
+        image_max_size (None): resize the input images during preprocessing, if
+            necessary, so that the image dimensions are at most this
+            ``(width, height)``
         image_max_dim (None): resize input images during preprocessing, if
             necessary, so that the largest image dimension is at most this
             value.
@@ -171,7 +172,6 @@ class TorchImageModelConfig(foc.Config):
         self.image_dim = self.parse_number(d, "image_dim", default=None)
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
-        
         self.embeddings_layer = self.parse_string(
             d, "embeddings_layer", default=None
         )
@@ -388,21 +388,22 @@ class TorchImageModel(
         ragged_batches = True
         transforms = [ToPILImage()]
 
-        if config.image_min_size:
-            transforms.append(MinResize(config.image_min_size))
-        elif config.image_min_dim:
-            transforms.append(MinResize(config.image_min_dim))
-        elif config.image_size:
+        if config.image_size:
             ragged_batches = False
             transforms.append(torchvision.transforms.Resize(config.image_size))
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
+        else:
+            if config.image_min_size:
+                transforms.append(MinResize(config.image_min_size))
+            elif config.image_min_dim:
+                transforms.append(MinResize(config.image_min_dim))
 
-        if config.image_max_size:
-            transforms.append(MaxResize(config.image_max_size))
-        elif config.image_max_dim:
-            transforms.append(MaxResize(config.image_max_dim))
-        
+            if config.image_max_size:
+                transforms.append(MaxResize(config.image_max_size))
+            elif config.image_max_dim:
+                transforms.append(MaxResize(config.image_max_dim))
+
         # Converts PIL/numpy (HWC) to Torch tensor (CHW) in [0, 1]
         transforms.append(torchvision.transforms.ToTensor())
 
@@ -470,9 +471,9 @@ class MinResize(object):
     that its minimum dimensions are at least the specified size.
 
     Args:
-        min_output_size: Desired minimum output dimensions. Can either be a
+        min_output_size: desired minimum output dimensions. Can either be a
             ``(min_height, min_width)`` tuple or a single ``min_dim``
-        interpolation (None): Optional interpolation mode. Passed directly to
+        interpolation (None): optional interpolation mode. Passed directly to
             :func:`torchvision:torchvision.transforms.functional.resize`
     """
 
@@ -502,15 +503,15 @@ class MinResize(object):
         size = (int(round(alpha * h)), int(round(alpha * w)))
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
-    
+
 class MaxResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
-    that its maximum dimensions do not cause memory overflow.
+    that its maximum dimensions are at most the specified size.
 
     Args:
-        max_output_size: Desired maximum output dimensions. Can either be a
+        max_output_size: desired maximum output dimensions. Can either be a
             ``(max_height, max_width)`` tuple or a single ``max_dim``
-        interpolation (None): Optional interpolation mode. Passed directly to
+        interpolation (None): optional interpolation mode. Passed directly to
             :func:`torchvision:torchvision.transforms.functional.resize`
     """
 
@@ -532,7 +533,7 @@ class MaxResize(object):
             w, h = pil_image_or_tensor.size
 
         maxh, maxw = self.max_output_size
-        
+
         if h <= maxh and w <= maxw:
             return pil_image_or_tensor
 
@@ -934,8 +935,14 @@ def recommend_num_workers():
     :class:`torch:torch.utils.data.DataLoader`.
 
     Returns:
-        the recommended ``num_workers``
+        the recommended number of workers
     """
+    if sys.platform.startswith("win"):
+        # Windows tends to have multiprocessing issues, so default to 0 workers
+        # https://github.com/voxel51/fiftyone/issues/1531
+        # https://stackoverflow.com/q/20222534
+        return 0
+
     if sys.platform == "darwin" and not torch.cuda.is_available():
         # There is a parallelism bug on macOS with CPU that prevents us from
         # using `num_workers > 0`
@@ -949,20 +956,38 @@ def recommend_num_workers():
         return 4
 
 
+def _to_bytes_array(strs):
+    # Variation of idea below that handles non-ASCII strings
+    # https://github.com/pytorch/pytorch/issues/13246#issuecomment-715050814
+    return np.array([s.encode() for s in strs])
+
+
+def _is_string_array(targets):
+    try:
+        return etau.is_str(next(iter(targets)))
+    except StopIteration:
+        return False
+
+
 class TorchImageDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of images.
 
     Instances of this dataset emit images for each sample, or
-    ``(img, sample_id)`` pairs if ``sample_ids`` are provided.
+    ``(img, sample_id)`` pairs if ``sample_ids`` are provided or
+    ``include_ids == True``.
 
     By default, this class will load images in PIL format and emit Torch
     tensors, but you can use numpy images/tensors instead by passing
     ``use_numpy = True``.
 
     Args:
-        image_paths: an iterable of image paths
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        image_paths (None): an iterable of image paths
+        samples (None): a :class:`fiftyone.core.collections.SampleCollection`
+            from which to extract image paths
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
+        include_ids (False): whether to include the IDs of the ``samples`` in
+            the returned items
         transform (None): an optional transform function to apply to each image
             patch. When ``use_numpy == False``, this is typically a torchvision
             transform
@@ -975,15 +1000,24 @@ class TorchImageDataset(Dataset):
 
     def __init__(
         self,
-        image_paths,
+        image_paths=None,
+        samples=None,
         sample_ids=None,
+        include_ids=False,
         transform=None,
         use_numpy=False,
         force_rgb=False,
         skip_failures=False,
     ):
-        self.image_paths = list(image_paths)
-        self.sample_ids = list(sample_ids) if sample_ids else None
+        image_paths, sample_ids = self._parse_inputs(
+            image_paths=image_paths,
+            samples=samples,
+            sample_ids=sample_ids,
+            include_ids=include_ids,
+        )
+
+        self.image_paths = image_paths
+        self.sample_ids = sample_ids
         self.transform = transform
         self.force_rgb = force_rgb
         self.use_numpy = use_numpy
@@ -994,7 +1028,7 @@ class TorchImageDataset(Dataset):
 
     def __getitem__(self, idx):
         try:
-            image_path = self.image_paths[idx]
+            image_path = self.image_paths[idx].decode()
 
             img = _load_image(image_path, self.use_numpy, self.force_rgb)
 
@@ -1008,7 +1042,7 @@ class TorchImageDataset(Dataset):
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
-            return img, self.sample_ids[idx]
+            return img, self.sample_ids[idx].decode()
 
         return img
 
@@ -1017,23 +1051,54 @@ class TorchImageDataset(Dataset):
         """Whether this dataset has sample IDs."""
         return self.sample_ids is not None
 
+    def _parse_inputs(
+        self,
+        image_paths=None,
+        samples=None,
+        sample_ids=None,
+        include_ids=False,
+    ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
+        if image_paths is None:
+            image_paths = samples.values("filepath")
+
+        image_paths = _to_bytes_array(image_paths)
+
+        if include_ids and sample_ids is None:
+            sample_ids = samples.values("id")
+
+        if sample_ids is not None:
+            sample_ids = _to_bytes_array(sample_ids)
+
+        return image_paths, sample_ids
+
 
 class TorchImageClassificationDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` for image classification.
 
     Instances of this dataset emit images and their associated targets for each
     sample, either directly as ``(img, target)`` pairs or as
-    ``(img, target, sample_id)`` pairs if ``sample_ids`` are provided.
+    ``(img, target, sample_id)`` pairs if ``sample_ids`` are provided or
+    ``include_ids == True``.
 
     By default, this class will load images in PIL format and emit Torch
     tensors, but you can use numpy images/tensors instead by passing
     ``use_numpy = True``.
 
     Args:
-        image_paths: an iterable of image paths
-        targets: an iterable of targets
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        image_paths (None): an iterable of image paths
+        targets (None): an iterable of targets, or the name of a field or
+            embedded field of ``samples`` to use as targets
+        samples (None): a :class:`fiftyone.core.collections.SampleCollection`
+            from which to extract image paths and targets
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
+        include_ids (False): whether to include the IDs of the ``samples`` in
+            the returned items
         transform (None): an optional transform function to apply to each image
             patch. When ``use_numpy == False``, this is typically a torchvision
             transform
@@ -1046,30 +1111,45 @@ class TorchImageClassificationDataset(Dataset):
 
     def __init__(
         self,
-        image_paths,
-        targets,
+        image_paths=None,
+        targets=None,
+        samples=None,
         sample_ids=None,
+        include_ids=False,
         transform=None,
         use_numpy=False,
         force_rgb=False,
         skip_failures=False,
     ):
-        self.image_paths = list(image_paths)
-        self.targets = list(targets)
-        self.sample_ids = list(sample_ids) if sample_ids else None
+        image_paths, sample_ids, targets, str_targets = self._parse_inputs(
+            image_paths=image_paths,
+            targets=targets,
+            samples=samples,
+            sample_ids=sample_ids,
+            include_ids=include_ids,
+        )
+
+        self.image_paths = image_paths
+        self.targets = targets
+        self.sample_ids = sample_ids
         self.transform = transform
         self.use_numpy = use_numpy
         self.force_rgb = force_rgb
         self.skip_failures = skip_failures
+
+        self._str_targets = str_targets
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         try:
-            image_path = self.image_paths[idx]
+            image_path = self.image_paths[idx].decode()
             img = _load_image(image_path, self.use_numpy, self.force_rgb)
+
             target = self.targets[idx]
+            if self._str_targets:
+                target = target.decode()
 
             if self.transform is not None:
                 img = self.transform(img)
@@ -1082,7 +1162,7 @@ class TorchImageClassificationDataset(Dataset):
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
-            return img, target, self.sample_ids[idx]
+            return img, target, self.sample_ids[idx].decode()
 
         return img, target
 
@@ -1091,13 +1171,54 @@ class TorchImageClassificationDataset(Dataset):
         """Whether this dataset has sample IDs."""
         return self.sample_ids is not None
 
+    def _parse_inputs(
+        self,
+        image_paths=None,
+        targets=None,
+        samples=None,
+        sample_ids=None,
+        include_ids=False,
+    ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
+        if image_paths is None:
+            image_paths = samples.values("filepath")
+
+        image_paths = _to_bytes_array(image_paths)
+
+        if include_ids and sample_ids is None:
+            sample_ids = samples.values("id")
+
+        if sample_ids is not None:
+            sample_ids = _to_bytes_array(sample_ids)
+
+        if etau.is_str(targets):
+            targets = samples.values(targets)
+        else:
+            targets = list(targets)
+
+        str_targets = _is_string_array(targets)
+        if str_targets:
+            targets = _to_bytes_array(targets)
+        else:
+            targets = np.array(targets)
+
+        return image_paths, sample_ids, targets, str_targets
+
 
 class TorchImagePatchesDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of image patch tensors
     extracted from a list of images.
 
+    Provide either ``image_paths`` and ``patches`` or ``samples`` and
+    ``patches_field`` in order to use this dataset.
+
     Instances of this dataset emit image patches for each sample, or
-    ``(patches, sample_id)`` tuples if ``sample_ids`` are provided.
+    ``(patches, sample_id)`` tuples if ``sample_ids`` are provided or
+    ``include_ids == True``.
 
     By default, this class will load images in PIL format and emit Torch
     tensors, but you can use numpy images/tensors instead by passing
@@ -1111,15 +1232,35 @@ class TorchImagePatchesDataset(Dataset):
     If ``ragged_batches = True``, lists of patch tensors will be returned.
 
     Args:
-        image_paths: an iterable of image paths
-        detections: an iterable of :class:`fiftyone.core.labels.Detections`
-            instances specifying the image patch(es) to extract from each
-            image
+        image_paths (None): an iterable of image paths
+        patches (None): a list of labels of type
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines` specifying the image
+            patch(es) to extract from each image. Elements can be ``None`` if
+            an image has no patches
+        samples (None): a :class:`fiftyone.core.collections.SampleCollection`
+            from which to extract patches
+        patches_field (None): the name of the field defining the image patches
+            in ``samples`` to extract. Must be of type
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines`
+        handle_missing ("skip"): how to handle images with no patches. The
+            supported values are:
+
+            -   "skip": skip the image and assign its embedding as ``None``
+            -   "image": use the whole image as a single patch
+            -   "error": raise an error
         transform (None): an optional transform function to apply to each image
             patch. When ``use_numpy == False``, this is typically a torchvision
             transform
-        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
-            IDs corresponding to each image
+        sample_ids (None): an iterable of sample IDs corresponding to each
+            image
+        include_ids (False): whether to include the IDs of the ``samples`` in
+            the returned items
         ragged_batches (False): whether the provided ``transform`` may return
             tensors of different dimensions and thus cannot be stacked
         use_numpy (False): whether to use numpy arrays rather than PIL images
@@ -1139,10 +1280,14 @@ class TorchImagePatchesDataset(Dataset):
 
     def __init__(
         self,
-        image_paths,
-        detections,
+        image_paths=None,
+        patches=None,
+        samples=None,
+        patches_field=None,
+        handle_missing="skip",
         transform=None,
         sample_ids=None,
+        include_ids=False,
         ragged_batches=False,
         use_numpy=False,
         force_rgb=False,
@@ -1150,10 +1295,19 @@ class TorchImagePatchesDataset(Dataset):
         alpha=None,
         skip_failures=False,
     ):
-        self.image_paths = list(image_paths)
-        self.detections = list(detections)
+        image_paths, sample_ids, patch_edges, patches = self._parse_inputs(
+            image_paths=image_paths,
+            patches=patches,
+            samples=samples,
+            patches_field=patches_field,
+            handle_missing=handle_missing,
+            sample_ids=sample_ids,
+            include_ids=include_ids,
+        )
+
+        self.image_paths = image_paths
         self.transform = transform
-        self.sample_ids = list(sample_ids) if sample_ids else None
+        self.sample_ids = sample_ids
         self.ragged_batches = ragged_batches
         self.use_numpy = use_numpy
         self.force_rgb = force_rgb
@@ -1161,17 +1315,23 @@ class TorchImagePatchesDataset(Dataset):
         self.alpha = alpha
         self.skip_failures = skip_failures
 
+        self._patch_edges = patch_edges
+        self._patches = patches
+
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
+        first = self._patch_edges[idx]
+        last = self._patch_edges[idx + 1]
+
         try:
-            detections = self.detections[idx]
-            if detections is None or not detections.detections:
+            if first >= last:
                 img_patches = None
             else:
-                image_path = self.image_paths[idx]
-                img_patches = self._extract_patches(image_path, detections)
+                image_path = self.image_paths[idx].decode()
+                patches = self._patches[first:last, :]
+                img_patches = self._extract_patches(image_path, patches)
         except Exception as e:
             if not self.skip_failures:
                 raise e
@@ -1180,7 +1340,7 @@ class TorchImagePatchesDataset(Dataset):
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
-            return img_patches, self.sample_ids[idx]
+            return img_patches, self.sample_ids[idx].decode()
 
         return img_patches
 
@@ -1189,14 +1349,13 @@ class TorchImagePatchesDataset(Dataset):
         """Whether this dataset has sample IDs."""
         return self.sample_ids is not None
 
-    def _extract_patches(self, image_path, detections):
+    def _extract_patches(self, image_path, patches):
         img = _load_image(image_path, True, self.force_rgb)
 
         img_patches = []
-        for detection in detections.detections:
-            dobj = foue.to_detected_object(detection)
+        for bounding_box in patches:
+            bbox = _to_eta_bbox(bounding_box)
 
-            bbox = dobj.bounding_box
             if self.alpha is not None:
                 bbox = bbox.pad_relative(self.alpha)
 
@@ -1219,6 +1378,129 @@ class TorchImagePatchesDataset(Dataset):
             img_patches = torch.stack(img_patches, dim=0)
 
         return img_patches
+
+    def _parse_inputs(
+        self,
+        image_paths=None,
+        patches=None,
+        samples=None,
+        patches_field=None,
+        handle_missing="skip",
+        sample_ids=None,
+        include_ids=False,
+    ):
+        if image_paths is None and samples is None:
+            raise ValueError(
+                "Either `image_paths` or `samples` must be provided"
+            )
+
+        if image_paths is None:
+            image_paths = samples.values("filepath")
+
+        image_paths = _to_bytes_array(image_paths)
+
+        if include_ids and sample_ids is None:
+            sample_ids = samples.values("id")
+
+        if sample_ids is not None:
+            sample_ids = _to_bytes_array(sample_ids)
+
+        if patches is not None:
+            bboxes = []
+
+            for p in patches:
+                if p is None:
+                    boxes = None
+                elif isinstance(p, fol.Detection):
+                    boxes = [p.bounding_box]
+                elif isinstance(p, fol.Detections):
+                    boxes = [d.bounding_box for d in p.detections]
+                elif isinstance(p, fol.Polyline):
+                    boxes = [p.to_detection().bounding_box]
+                elif isinstance(p, fol.Polylines):
+                    boxes = [
+                        _p.to_detection().bounding_box for _p in p.polylines
+                    ]
+                else:
+                    raise ValueError("Unsupported patches type %s" % type(p))
+
+                bboxes.append(boxes)
+        elif patches_field is not None:
+            label_type = samples._get_label_field_type(patches_field)
+
+            if issubclass(label_type, (fol.Detection, fol.Detections)):
+                _, bbox_path = samples._get_label_field_path(
+                    patches_field, "bounding_box"
+                )
+                bboxes = samples.values(bbox_path)
+            elif issubclass(label_type, (fol.Polyline, fol.Polylines)):
+                _, points_path = samples._get_label_field_path(
+                    patches_field, "points"
+                )
+                points = samples.values(points_path)
+
+                if issubclass(label_type, fol.Polyline):
+                    bboxes = [_polyline_to_bbox(p) for p in points]
+                else:
+                    bboxes = [_polylines_to_bboxes(p) for p in points]
+            else:
+                raise ValueError(
+                    "Patches field '%s' has unsupported type %s"
+                    % (patches_field, label_type)
+                )
+
+            if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                bboxes = [[b] if b is not None else None for b in bboxes]
+        else:
+            raise ValueError(
+                "Either `patches` or `patches_field` must be provided"
+            )
+
+        num_patches = 0
+        patch_edges = [0]
+        patches = []
+
+        for filepath, boxes in zip(image_paths, bboxes):
+            if not boxes:
+                if handle_missing == "skip":
+                    boxes = []
+                elif handle_missing == "image":
+                    boxes = [[0, 0, 1, 1]]
+                else:
+                    raise ValueError("Image '%s' has no patches" % filepath)
+
+            num_patches += len(boxes)
+            patch_edges.append(num_patches)
+            patches.extend(boxes)
+
+        patch_edges = np.array(patch_edges)
+        patches = np.array(patches)
+
+        return image_paths, sample_ids, patch_edges, patches
+
+
+def _to_eta_bbox(bounding_box):
+    tlx, tly, w, h = bounding_box
+    return etag.BoundingBox.from_coords(tlx, tly, tlx + w, tly + h)
+
+
+def _polylines_to_bboxes(points):
+    if points is None:
+        return None
+
+    return [_polyline_to_bbox(p) for p in points]
+
+
+def _polyline_to_bbox(points):
+    if points is None:
+        return None
+
+    x, y = zip(*list(itertools.chain(*points)))
+    xtl = min(x)
+    ytl = min(y)
+    xbr = max(x)
+    ybr = max(y)
+    return [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
 
 def from_image_classification_dir_tree(dataset_dir):

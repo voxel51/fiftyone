@@ -1,7 +1,7 @@
 """
 Aggregations.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -144,12 +144,16 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if self._field_name is not None:
-            return _is_frame_path(sample_collection, self._field_name)
+        if sample_collection.media_type != fom.VIDEO:
+            return False
 
-        if self._expr is not None:
-            field_name, _ = _extract_prefix_from_expr(self._expr)
-            return _is_frame_path(sample_collection, field_name)
+        if self._field_name is not None:
+            expr = F(self._field_name)
+        else:
+            expr = self._expr
+
+        if expr is not None:
+            return foe.is_frames_expr(expr)
 
         return False
 
@@ -1619,16 +1623,6 @@ class Values(Aggregation):
         return pipeline
 
 
-def _is_frame_path(sample_collection, field_name):
-    if not field_name:
-        return False
-
-    # Remove array references
-    path = "".join(field_name.split("[]"))
-
-    return sample_collection._is_frame_field(path)
-
-
 def _transform_values(values, fcn, level=1):
     if values is None:
         return None
@@ -1704,11 +1698,16 @@ def _parse_field_and_expr(
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
 
-    found_expr = expr is not None
+    if field_name is None:
+        root = True
+        field_type = None
+    else:
+        root = "." not in field_name
+        field_type = _get_field_type(
+            sample_collection, field_name, unwind=auto_unwind
+        )
 
-    field_type = _get_field_type(
-        sample_collection, field_name, unwind=auto_unwind
-    )
+    found_expr = expr is not None
 
     if safe:
         expr = _to_safe_expr(expr, field_type)
@@ -1754,9 +1753,12 @@ def _parse_field_and_expr(
 
     if keep_top_level:
         if is_frame_field:
-            path = "frames." + path
-            unwind_list_fields = ["frames." + f for f in unwind_list_fields]
-            other_list_fields = ["frames." + f for f in other_list_fields]
+            if not root:
+                prefix = "frames."
+                path = prefix + path
+                unwind_list_fields = [prefix + f for f in unwind_list_fields]
+                other_list_fields = [prefix + f for f in other_list_fields]
+
             other_list_fields.insert(0, "frames")
         elif unwind_list_fields:
             first_field = unwind_list_fields.pop(0)
@@ -1765,13 +1767,14 @@ def _parse_field_and_expr(
         pipeline.append({"$project": {path: True}})
     elif auto_unwind:
         if is_frame_field:
-            pipeline.extend(
-                [
-                    {"$unwind": "$frames"},
-                    {"$project": {"frames." + path: True}},
-                    {"$replaceRoot": {"newRoot": "$frames"}},
-                ]
-            )
+            pipeline.append({"$unwind": "$frames"})
+            if not root:
+                pipeline.extend(
+                    [
+                        {"$project": {"frames." + path: True}},
+                        {"$replaceRoot": {"newRoot": "$frames"}},
+                    ]
+                )
         else:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:

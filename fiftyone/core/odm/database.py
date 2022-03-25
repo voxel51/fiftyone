@@ -1,11 +1,10 @@
 """
 Database utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
 from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
@@ -15,6 +14,7 @@ import asyncio
 from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
+import mongoengine.errors as moe
 import motor
 from packaging.version import Version
 import pymongo
@@ -26,8 +26,11 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
+import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+
+from .document import Document
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +42,28 @@ _connection_kwargs = {}
 _db_service = None
 
 
-_PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
+class DatabaseConfigDocument(Document):
+    """Backing document for the database config."""
+
+    meta = {"collection": "config"}
+
+    version = fof.StringField()
+
+
+def get_db_config():
+    """Retrieves the database config.
+
+    Returns:
+        a :class:`DatabaseConfigDocument`
+    """
+    try:
+        # pylint: disable=no-member
+        config = DatabaseConfigDocument.objects.get()
+    except moe.DoesNotExist:
+        config = DatabaseConfigDocument()
+        config.save()
+
+    return config
 
 
 def establish_db_conn(config):
@@ -82,15 +106,23 @@ def establish_db_conn(config):
             os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
         except fos.ServiceExecutableNotFound as error:
-            if not fou.is_arm_mac():
-                raise error
+            if fou.is_32_bit():
+                raise FiftyOneConfigError(
+                    "MongoDB is not supported on 32-bit systems. Please "
+                    "define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to define a "
+                    "connection to your own MongoDB instance or cluster "
+                )
 
-            raise FiftyOneConfigError(
-                "MongoDB is not yet supported on Apple Silicon Macs. Please"
-                "define a `database_uri` in your"
-                "`fiftyone.core.config.FiftyOneConfig` to define a connection"
-                "to your own MongoDB instance or cluster"
-            )
+            if fou.is_arm_mac():
+                raise FiftyOneConfigError(
+                    "MongoDB is not yet supported on Apple Silicon Macs. "
+                    "Please define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to define a "
+                    "connection to your own MongoDB instance or cluster"
+                )
+
+            raise error
 
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
@@ -123,7 +155,7 @@ def _validate_db_version(config, client):
         raise RuntimeError("Failed to validate `mongod` version") from e
 
     min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-    if config.database_validation and not (min_ver <= version < max_ver):
+    if config.database_validation and not min_ver <= version < max_ver:
         raise RuntimeError(
             "Found `mongod` version %s, but only [%s, %s) are compatible. "
             "You can suppress this exception by setting your "
@@ -282,8 +314,9 @@ def drop_orphan_collections(dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    colls_in_use = copy(_PERMANENT_COLLS)
+    colls_in_use = set()
     for name in list_datasets():
         dataset_dict = conn.datasets.find_one({"name": name})
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
@@ -291,11 +324,16 @@ def drop_orphan_collections(dry_run=False):
             colls_in_use.add(sample_coll_name)
             colls_in_use.add("frames." + sample_coll_name)
 
-    for name in conn.list_collection_names():
-        if name not in colls_in_use:
-            logger.info("Dropping collection '%s'", name)
+    # Only collections with these prefixes may be deleted
+    coll_prefixes = ("samples.", "frames.", "patches.", "clips.")
+
+    for coll_name in conn.list_collection_names():
+        if coll_name not in colls_in_use and any(
+            coll_name.startswith(prefix) for prefix in coll_prefixes
+        ):
+            _logger.info("Dropping collection '%s'", coll_name)
             if not dry_run:
-                conn.drop_collection(name)
+                conn.drop_collection(coll_name)
 
 
 def drop_orphan_run_results(dry_run=False):
@@ -309,6 +347,7 @@ def drop_orphan_run_results(dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
     results_in_use = set()
     for name in list_datasets():
@@ -324,7 +363,7 @@ def drop_orphan_run_results(dry_run=False):
     if not orphan_results:
         return
 
-    logger.info(
+    _logger.info(
         "Deleting %d orphan run result(s): %s",
         len(orphan_results),
         orphan_results,
@@ -497,18 +536,19 @@ def delete_dataset(name, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
     dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
-    logger.info("Dropping document '%s' from 'datasets' collection", name)
+    _logger.info("Dropping document '%s' from 'datasets' collection", name)
     if not dry_run:
         conn.datasets.delete_one({"name": name})
 
     if "sample_collection_name" not in dataset_dict:
-        logger.warning(
+        _logger.warning(
             "Cannot find sample/frame collections for dataset '%s'; stopping "
             "now. Use `drop_orphan_collections()` to cleanup any dangling "
             "collections",
@@ -520,20 +560,20 @@ def delete_dataset(name, dry_run=False):
 
     sample_collection_name = dataset_dict["sample_collection_name"]
     if sample_collection_name in collections:
-        logger.info("Dropping collection '%s'", sample_collection_name)
+        _logger.info("Dropping collection '%s'", sample_collection_name)
         if not dry_run:
             conn.drop_collection(sample_collection_name)
 
     frame_collection_name = "frames." + sample_collection_name
     if frame_collection_name in collections:
-        logger.info("Dropping collection '%s'", frame_collection_name)
+        _logger.info("Dropping collection '%s'", frame_collection_name)
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
     delete_results = _get_result_ids(dataset_dict)
 
     if delete_results:
-        logger.info("Deleting %d run result(s)", len(delete_results))
+        _logger.info("Deleting %d run result(s)", len(delete_results))
         if not dry_run:
             _delete_run_results(delete_results)
 
@@ -558,16 +598,16 @@ def delete_annotation_run(name, anno_key, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
-        logger.warning(
+        _logger.warning(
             "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
         )
         return
@@ -576,15 +616,15 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting run result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
-    logger.info(
+    _logger.info(
         "Deleting annotation run '%s' from dataset '%s'", anno_key, name
     )
     if not dry_run:
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_annotation_runs(name, dry_run=False):
@@ -605,11 +645,11 @@ def delete_annotation_runs(name, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     anno_keys = []
@@ -622,16 +662,16 @@ def delete_annotation_runs(name, dry_run=False):
             result_ids.append(result_id)
 
     if result_ids:
-        logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
-    logger.info(
+    _logger.info(
         "Deleting annotation runs %s from dataset '%s'", anno_keys, name
     )
     if not dry_run:
         dataset_dict["annotation_runs"] = {}
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_brain_run(name, brain_key, dry_run=False):
@@ -654,16 +694,16 @@ def delete_brain_run(name, brain_key, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     brain_methods = dataset_dict.get("brain_methods", {})
     if brain_key not in brain_methods:
-        logger.warning(
+        _logger.warning(
             "Dataset '%s' has no brain method run with key '%s'",
             name,
             brain_key,
@@ -674,15 +714,15 @@ def delete_brain_run(name, brain_key, dry_run=False):
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting run result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
-    logger.info(
+    _logger.info(
         "Deleting brain method run '%s' from dataset '%s'", brain_key, name
     )
     if not dry_run:
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_brain_runs(name, dry_run=False):
@@ -703,11 +743,11 @@ def delete_brain_runs(name, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     brain_keys = []
@@ -720,16 +760,16 @@ def delete_brain_runs(name, dry_run=False):
             result_ids.append(result_id)
 
     if result_ids:
-        logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
-    logger.info(
+    _logger.info(
         "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
     )
     if not dry_run:
         dataset_dict["brain_methods"] = {}
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_evaluation(name, eval_key, dry_run=False):
@@ -752,16 +792,16 @@ def delete_evaluation(name, eval_key, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     evaluations = dataset_dict.get("evaluations", {})
     if eval_key not in evaluations:
-        logger.warning(
+        _logger.warning(
             "Dataset '%s' has no evaluation with key '%s'", name, eval_key
         )
         return
@@ -770,13 +810,13 @@ def delete_evaluation(name, eval_key, dry_run=False):
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting run result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
-    logger.info("Deleting evaluation '%s' from dataset '%s'", eval_key, name)
+    _logger.info("Deleting evaluation '%s' from dataset '%s'", eval_key, name)
     if not dry_run:
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_evaluations(name, dry_run=False):
@@ -797,11 +837,11 @@ def delete_evaluations(name, dry_run=False):
             perform them
     """
     conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
 
-    match_d = {"name": name}
-    dataset_dict = conn.datasets.find_one(match_d)
+    dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found", name)
+        _logger.warning("Dataset '%s' not found", name)
         return
 
     eval_keys = []
@@ -814,14 +854,27 @@ def delete_evaluations(name, dry_run=False):
             result_ids.append(result_id)
 
     if result_ids:
-        logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
-    logger.info("Deleting evaluations %s from dataset '%s'", eval_keys, name)
+    _logger.info("Deleting evaluations %s from dataset '%s'", eval_keys, name)
     if not dry_run:
         dataset_dict["evaluations"] = {}
-        conn.datasets.replace_one(match_d, dataset_dict)
+        conn.datasets.replace_one({"name": name}, dataset_dict)
+
+
+def _get_logger(dry_run=False):
+    if dry_run:
+        return _DryRunLoggerAdapter(logger, {})
+
+    return logger
+
+
+class _DryRunLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        msg = "(dry run) " + msg
+        return msg, kwargs
 
 
 def _get_result_ids(dataset_dict):

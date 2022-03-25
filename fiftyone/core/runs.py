@@ -1,7 +1,7 @@
 """
 Dataset runs framework.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -154,6 +154,15 @@ class Run(Configurable):
         raise NotImplementedError(
             "subclass must implement _results_cache_field()"
         )
+
+    def ensure_requirements(self):
+        """Ensures that any necessary packages to execute this run are
+        installed.
+
+        Runs should respect ``fiftyone.config.requirement_error_level`` when
+        handling errors.
+        """
+        pass
 
     def get_fields(self, samples, key):
         """Gets the fields that were involved in the given run.

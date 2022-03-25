@@ -1,7 +1,7 @@
 """
 FiftyOne Tornado server.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -48,6 +48,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.colorscales import ColorscalesHandler
 from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
+import fiftyone.server.metadata as fosm
 import fiftyone.server.utils as fosu
 
 
@@ -270,19 +271,31 @@ class PageHandler(tornado.web.RequestHandler):
             samples = samples[:page_length]
             more = page + 1
 
-        results = [{"sample": s} for s in samples]
-        metadata = {}
-
-        for r in results:
-            filepath = r["sample"]["filepath"]
-            if filepath not in metadata:
-                metadata[filepath] = fosu.read_metadata(
-                    filepath, r["sample"].get("metadata", None)
-                )
-
-            r.update(metadata[filepath])
+        results = await _generate_results(samples, view.media_type)
 
         self.write({"results": results, "more": more})
+
+
+async def _generate_results(samples, media_type):
+    metadata_map = {s["filepath"]: s.get("metadata", None) for s in samples}
+
+    filepaths = list(metadata_map.keys())
+    metadatas = await asyncio.gather(
+        *[
+            fosm.get_metadata(f, media_type, metadata=metadata_map[f])
+            for f in filepaths
+        ]
+    )
+    metadata_map = {f: m for f, m in zip(filepaths, metadatas)}
+
+    results = []
+    for sample in samples:
+        filepath = sample["filepath"]
+        sample_result = {"sample": sample}
+        sample_result.update(metadata_map[filepath])
+        results.append(sample_result)
+
+    return results
 
 
 class TeamsHandler(RequestHandler):

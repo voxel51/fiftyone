@@ -2,22 +2,21 @@
 """
 Installs the ``fiftyone-desktop`` package.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import glob
 import os
 import shutil
-from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
 import os
 import shutil
 
 
-VERSION = "0.18.0"
+VERSION = "0.19.4"
 
 
 def get_version():

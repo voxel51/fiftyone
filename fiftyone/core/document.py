@@ -1,7 +1,7 @@
 """
 Base classes for objects that are backed by database documents.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -105,6 +105,13 @@ class _Document(object):
     def dataset(self):
         """The dataset to which this document belongs, or ``None`` if it has
         not been added to a dataset.
+        """
+        return self._dataset
+
+    @property
+    def _collection(self):
+        """The :class:`fiftyone.core.collections.SampleCollection` from which
+        this document was taken, or ``None`` if it is not in a dataset.
         """
         return self._dataset
 
@@ -626,6 +633,10 @@ class DocumentView(_Document):
             select_fields=select_fields,
             exclude_fields=self._excluded_fields,
         )
+
+    @property
+    def _collection(self):
+        return self._view
 
     @property
     def field_names(self):

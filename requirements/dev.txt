@@ -1,10 +1,9 @@
 -r common.txt
 -r docs.txt
+-r extras.txt
 
-ipython==7.8.0
-shapely==1.7.1
+ipython==7.16.3
 pre-commit==2.0.1
-pydicom==2.2.0
 pylint==2.3.1
 pytest==5.4.3
 twine>=3

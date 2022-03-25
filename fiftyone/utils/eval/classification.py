@@ -1,7 +1,7 @@
 """
 Classification evaluation.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -96,6 +96,8 @@ def evaluate_classifications(
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
+    eval_method.ensure_requirements()
+
     eval_method.register_run(samples, eval_key)
 
     results = eval_method.evaluate_samples(
@@ -689,17 +691,23 @@ class BinaryClassificationResults(ClassificationResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        precision, recall, _ = skm.precision_recall_curve(
+        precision, recall, thresholds = skm.precision_recall_curve(
             self.ytrue,
             self.scores,
             pos_label=self._pos_label,
             sample_weight=self.weights,
         )
+        thresholds = np.concatenate([thresholds, [max(1, thresholds[-1])]])
         avg_precision = self.average_precision(average=average)
         label = "AP = %.2f" % avg_precision
 
         return fop.plot_pr_curve(
-            precision, recall, label=label, backend=backend, **kwargs
+            precision,
+            recall,
+            thresholds=thresholds,
+            label=label,
+            backend=backend,
+            **kwargs,
         )
 
     def plot_roc_curve(self, backend="plotly", **kwargs):
@@ -722,16 +730,22 @@ class BinaryClassificationResults(ClassificationResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        fpr, tpr, _ = skm.roc_curve(
+        fpr, tpr, thresholds = skm.roc_curve(
             self.ytrue,
             self.scores,
             pos_label=self._pos_label,
             sample_weight=self.weights,
         )
+        thresholds[0] = max(1, thresholds[1])
         roc_auc = skm.auc(fpr, tpr)
 
         return fop.plot_roc_curve(
-            fpr, tpr, roc_auc=roc_auc, backend=backend, **kwargs
+            fpr,
+            tpr,
+            thresholds=thresholds,
+            roc_auc=roc_auc,
+            backend=backend,
+            **kwargs,
         )
 
     def _parse_classes(self, classes):

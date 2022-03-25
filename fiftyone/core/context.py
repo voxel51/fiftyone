@@ -1,12 +1,13 @@
 """
 Context utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 _COLAB = "COLAB"
+_DATABRICKS = "DATABRICKS"
 _IPYTHON = "IPYTHON"
 _NONE = "NONE"
 
@@ -41,6 +42,15 @@ def is_colab_context():
     return _get_context() == _COLAB
 
 
+def is_databricks_context():
+    """Determines whether this process is running in Databricks.
+
+    Returns:
+        True/False
+    """
+    return _get_context() == _DATABRICKS
+
+
 def _get_context():
     """Determine the most specific context that we're in.
 
@@ -48,8 +58,9 @@ def _get_context():
         one of
 
         -   ``_COLAB``: we're in Colab with an IPython notebook context
-        -   ``_IPYTHON``: we're not in Colab, but we are in an IPython notebook
-            context (e.g., from running `jupyter notebook` at the command line)
+        -   ``_DATABRICKS``: we're in Databricks with an IPython notebook context
+        -   ``_IPYTHON``: we're in an IPython notebook context
+            (e.g., from running `jupyter notebook` at the command line)
         -   ``_NONE``: we're in a non-notebook context, e.g., a Python script
             or a Python REPL
     """
@@ -68,6 +79,21 @@ def _get_context():
         if IPython.get_ipython() is not None:
             # We'll assume that we're in a Colab notebook context.
             _context = _COLAB
+            return _context
+
+    # In Databricks, the `dbutils` module is available and required for the proxy,
+    # but the shell returned by `IPython.get_ipython` does not return a kernel
+    # via the `get_trait` method.
+    try:
+        # Location: /databricks/python_shell/dbruntime
+        from dbruntime.dbutils import DBUtils  # noqa: F401
+        import IPython
+    except ImportError:
+        pass
+    else:
+        if IPython.get_ipython() is not None:
+            # We'll assume that we're in a Databricks notebook context.
+            _context = _DATABRICKS
             return _context
 
     # In an IPython command line shell or Jupyter notebook, we can directly
