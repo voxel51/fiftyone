@@ -18,6 +18,7 @@ import unittest
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
 
@@ -944,6 +945,62 @@ class CVATTests(unittest.TestCase):
                 dataset.values("frames.test_field.detections.id", unwind=True)
             ),
         )
+
+
+class CVATCloudTests(unittest.TestCase):
+    """
+    These tests require the associated cloud storage to be attached to CVAT
+    beforehand and relevant manifest files to exist in the root of each bucket::
+
+        https://openvinotoolkit.github.io/cvat/docs/manual/basics/attach-cloud-storage/#prepare-manifest-file
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.s3_root_dir = "s3://voxel51-test/quickstart"
+        self.gs_root_dir = "gs://voxel51-test/quickstart"
+
+        # Spin up default local MinIO server and load in quickstart data
+        self.minio_root_dir = "http://127.0.0.1:9000/voxel51-test/quickstart"
+
+        super().__init__(*args, **kwargs)
+
+    def test_s3(self):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+        fos.upload_media(
+            dataset,
+            self.s3_root_dir,
+            update_filepaths=True,
+            overwrite=False,
+        )
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+            cloud_manifest="s3://voxel51-test/manifest.jsonl",
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+
+        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
+            "sample_id"
+        ]
+        self.assertEqual(sample_id, dataset.first().id)
+        api.close()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("ground_truth.detections.id", unwind=True),
+        )
+
 
 
 if __name__ == "__main__":
