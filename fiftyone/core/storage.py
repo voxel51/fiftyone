@@ -1670,10 +1670,11 @@ def upload_media(
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
-    inpaths, outpaths = zip(*paths_map.items())
-    copy_files(
-        inpaths, outpaths, skip_failures=skip_failures, progress=progress
-    )
+    if paths_map:
+        inpaths, outpaths = zip(*paths_map.items())
+        copy_files(
+            inpaths, outpaths, skip_failures=skip_failures, progress=progress
+        )
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)
