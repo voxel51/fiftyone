@@ -1014,13 +1014,19 @@ class CVATCloudTests(unittest.TestCase):
 
     def test_s3(self):
         self._test_cloud(self.s3_root_dir, self.s3_manifest)
+        self._test_cloud(self.s3_root_dir, True)
+        self._test_cloud(self.s3_root_dir, False)
 
     def test_gs(self):
         self._test_cloud(self.gs_root_dir, self.gs_manifest)
+        self._test_cloud(self.gs_root_dir, True)
+        self._test_cloud(self.gs_root_dir, False)
 
     def test_minio(self):
         if self.minio_root_dir:
             self._test_cloud(self.minio_root_dir, self.minio_manifest)
+            self._test_cloud(self.minio_root_dir, True)
+            self._test_cloud(self.minio_root_dir, False)
 
 
 if __name__ == "__main__":
