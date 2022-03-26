@@ -5,6 +5,8 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from fiftyone import ViewField as F
+import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.validation as fov
 
@@ -341,3 +343,96 @@ def classification_to_detections(sample_collection, in_field, out_field):
             image[out_field] = fol.Detections(detections=[detection])
 
         sample.save()
+
+
+def filter_keypoints(
+    sample_collection, field, confidence_expr=None, labels=None
+):
+    """Returns a view that filters the individual
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` in the specified
+    keypoints field.
+
+    Use :meth:`filter_labels <fiftyone.core.collections.SampleCollection.filter_labels`
+    if you simply want to filter entire :class:`fiftyone.core.labels.Keypoint`
+    objects in a field.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        field: the name of the :class:`fiftyone.core.labels.Keypoint` or
+            :class:`fiftyone.core.labels.Keypoints` field
+        confidence_expr (None): a boolean
+            :class:`fiftyone.core.expressions.ViewExpression` to apply to each
+            keypoint confidence to decide whether to keep the point. This
+            expression must use either ``F()`` or ``F("confidence")`` to refer
+            to the confidence value under test
+        labels (None): an optional iterable of specific keypoint labels to keep
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    _, path = sample_collection._get_label_field_path(field, "points")
+
+    view = sample_collection.view()
+
+    if confidence_expr is not None:
+        expr = _replace_view_field(confidence_expr, "confidence", "")
+
+        view = view.set_field(
+            path,
+            F.zip(F("points"), F("confidences")).map(
+                (F()[1].apply(expr)).if_else(
+                    F()[0], [float("nan"), float("nan")],
+                )
+            ),
+        )
+
+    if labels is not None:
+        skeleton = sample_collection.get_skeleton(field)
+        if skeleton is None:
+            raise ValueError(
+                "No keypoint skeleton found for field '%s'" % field
+            )
+
+        if skeleton.labels is None:
+            raise ValueError(
+                "Keypoint skeleton for field '%s' has no labels" % field
+            )
+
+        labels = set(labels)
+        inds = [
+            idx for idx, label in enumerate(skeleton.labels) if label in labels
+        ]
+        view = view.set_field(
+            path,
+            F.enumerate(F("points")).map(
+                F()[0]
+                .is_in(inds)
+                .if_else(F()[1], [float("nan"), float("nan")],)
+            ),
+        )
+
+    return view
+
+
+def _replace_view_field(val, old, new):
+    if isinstance(val, foe.ViewField):
+        if val._expr == old:
+            val._expr = new
+
+        return val
+
+    if isinstance(val, foe.ViewExpression):
+        val._expr = _replace_view_field(val._expr, old, new)
+        return val
+
+    if isinstance(val, dict):
+        return {
+            _replace_view_field(k, old, new): _replace_view_field(v, old, new)
+            for k, v in val.items()
+        }
+
+    if isinstance(val, list):
+        return [_replace_view_field(v, old, new) for v in val]
+
+    return val
