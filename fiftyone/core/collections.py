@@ -2298,6 +2298,41 @@ class SampleCollection(object):
         return self._add_view_stage(stage)
 
     @view_stage
+    def concat(self, samples):
+        """Concatenates the contents of the given :class:`SampleCollection` to
+        this collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Concatenate two views into the same dataset
+            #
+
+            view1 = dataset.match(F("uniqueness") < 0.2)
+            view2 = dataset.match(F("uniqueness") > 0.7)
+
+            view = view1.concat(view2)
+
+            print(view1)
+            print(view2)
+            print(view)
+
+        Args:
+            samples: a :class:`SampleCollection` whose contents to append to
+                this collection
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Concat(samples))
+
+    @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the collection.
 

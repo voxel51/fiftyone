@@ -130,6 +130,7 @@ from .core.plots import (
 )
 from .core.sample import Sample
 from .core.stages import (
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,

@@ -32,7 +32,8 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
-foc = fou.lazy_import("fiftyone.core.clips")
+focl = fou.lazy_import("fiftyone.core.clips")
+foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
 fov = fou.lazy_import("fiftyone.core.video")
@@ -270,6 +271,83 @@ class ViewStageError(Exception):
     """
 
     pass
+
+
+class Concat(ViewStage):
+    """Concatenates the contents of the given
+    :class:`fiftyone.core.collections.SampleCollection` to this collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Concatenate two views into the same dataset
+        #
+
+        view1 = dataset.match(F("uniqueness") < 0.2)
+        view2 = dataset.match(F("uniqueness") > 0.7)
+
+        stage = fo.Concat(view2)
+        view = view1.add_stage(stage)
+
+        print(view1)
+        print(view2)
+        print(view)
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection` whose
+            contents to append to this collection
+    """
+
+    def __init__(self, samples):
+        self._samples = samples
+        self._validate_params()
+
+    @property
+    def samples(self):
+        """The :class:`fiftyone.core.collections.SampleCollection` whose
+        contents to append to this collection.
+        """
+        return self._samples
+
+    def to_mongo(self, _):
+        d = self._serialize_samples()
+        return [
+            {
+                "$unionWith": {
+                    "coll": d["collection"],
+                    "pipeline": d["pipeline"],
+                }
+            }
+        ]
+
+    def _serialize_samples(self):
+        if isinstance(self._samples, dict):
+            return self._samples
+
+        return {
+            "collection": self._samples._dataset._sample_collection_name,
+            "pipeline": self._samples._pipeline(detach_frames=True),
+        }
+
+    def _kwargs(self):
+        return [["samples", self._serialize_samples()]]
+
+    def _validate_params(self):
+        if not isinstance(self._samples, (foc.SampleCollection, dict)):
+            raise ValueError(
+                "`samples` must be a SampleCollection or a serialized "
+                "representation of one, but found %s" % self._samples
+            )
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "samples", "type": "json", "placeholder": ""}]
 
 
 class Exclude(ViewStage):
@@ -5823,7 +5901,7 @@ class ToClips(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            clips_dataset = foc.make_clips_dataset(
+            clips_dataset = focl.make_clips_dataset(
                 sample_collection, self._field_or_expr, **kwargs
             )
 
@@ -5832,7 +5910,7 @@ class ToClips(ViewStage):
         else:
             clips_dataset = fod.load_dataset(name)
 
-        return foc.ClipsView(sample_collection, self, clips_dataset)
+        return focl.ClipsView(sample_collection, self, clips_dataset)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewExpression):
@@ -6019,15 +6097,13 @@ class ToFrames(ViewStage):
 
 
 def _parse_sample_ids(arg):
-    from fiftyone.core.collections import SampleCollection
-
     if etau.is_str(arg):
         return [arg], False
 
     if isinstance(arg, (fos.Sample, fos.SampleView)):
         return [arg.id], False
 
-    if isinstance(arg, SampleCollection):
+    if isinstance(arg, foc.SampleCollection):
         return arg.values("id"), False
 
     arg = list(arg)
@@ -6045,15 +6121,13 @@ def _parse_sample_ids(arg):
 
 
 def _parse_frame_ids(arg):
-    from fiftyone.core.collections import SampleCollection
-
     if etau.is_str(arg):
         return [arg]
 
     if isinstance(arg, (fofr.Frame, fofr.FrameView)):
         return [arg.id]
 
-    if isinstance(arg, SampleCollection):
+    if isinstance(arg, foc.SampleCollection):
         return arg.values("frames.id", unwind=True)
 
     arg = list(arg)
@@ -6246,6 +6320,7 @@ _repr.maxother = 30
 
 # Simple registry for the server to grab available view stages
 _STAGES = [
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
