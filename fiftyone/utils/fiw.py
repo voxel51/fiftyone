@@ -38,10 +38,6 @@ class FIWDatasetImporter(foud.BatchDatasetImporter):
         """Imports samples and labels stored on disk following the format of
         the Families in the Wild dataset.
 
-        See
-        `this page <https://github.com/visionjo/pykinship#db-contents-and-structure>`_
-        for format details.
-
         Args:
             dataset: a :class:`fiftyone.core.dataset.Dataset`
             tags (None): an optional list of tags to attach to each sample
