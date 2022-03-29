@@ -136,6 +136,10 @@ function parse(array: Uint8Array): NumpyResult {
       .replace(/,\]/, "]")
   );
 
+  if (header.fortran_order) {
+    throw new Error(`Fortran order arrays are not supported"`);
+  }
+
   const ArrayType = DATA_TYPES[header.descr];
 
   if (!ArrayType) {
