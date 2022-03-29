@@ -319,6 +319,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 

@@ -124,12 +124,20 @@ class DatasetView(foc.SampleCollection):
         return self.__dataset
 
     @property
+    def _is_generated(self):
+        return self._dataset._is_generated
+
+    @property
     def _is_patches(self):
         return self._dataset._is_patches
 
     @property
     def _is_frames(self):
         return self._dataset._is_frames
+
+    @property
+    def _is_clips(self):
+        return self._dataset._is_clips
 
     @property
     def _sample_cls(self):
@@ -794,11 +802,9 @@ class DatasetView(foc.SampleCollection):
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
-    def _serialize(self, include_uuids=True):
-        return [
-            stage._serialize(include_uuid=include_uuids)
-            for stage in self._all_stages
-        ]
+    def _serialize(self, include_uuids=True, all_stages=True):
+        stages = self._all_stages if all_stages else self._stages
+        return [s._serialize(include_uuid=include_uuids) for s in stages]
 
     @staticmethod
     def _build(dataset, stage_dicts):

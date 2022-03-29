@@ -36,7 +36,8 @@ focl = fou.lazy_import("fiftyone.core.clips")
 foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
-fov = fou.lazy_import("fiftyone.core.video")
+fov = fou.lazy_import("fiftyone.core.view")
+fovi = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
@@ -286,7 +287,7 @@ class Concat(ViewStage):
         dataset = foz.load_zoo_dataset("quickstart")
 
         #
-        # Concatenate two views into the same dataset
+        # Concatenate two views
         #
 
         view1 = dataset.match(F("uniqueness") < 0.2)
@@ -299,55 +300,109 @@ class Concat(ViewStage):
         print(view2)
         print(view)
 
+        #
+        # Concatenate two patches views
+        #
+
+        gt_objects = dataset.to_patches("ground_truth")
+
+        patches1 = gt_objects[:50]
+        patches2 = gt_objects[-50:]
+
+        stage = fo.Concat(patches2)
+        patches = patches1.add_stage(stage)
+
+        print(patches1)
+        print(patches2)
+        print(patches)
+
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection` whose
             contents to append to this collection
     """
 
-    def __init__(self, samples):
+    def __init__(self, samples, _generated=None):
+        samples, generated, view = self._parse_params(samples, _generated)
+
         self._samples = samples
-        self._validate_params()
+        self._generated = generated
+        self._view = view
 
     @property
     def samples(self):
         """The :class:`fiftyone.core.collections.SampleCollection` whose
         contents to append to this collection.
         """
-        return self._samples
+        return self._view
 
     def to_mongo(self, _):
-        d = self._serialize_samples()
         return [
             {
                 "$unionWith": {
-                    "coll": d["collection"],
-                    "pipeline": d["pipeline"],
+                    "coll": self._view._dataset._sample_collection_name,
+                    "pipeline": self._view._pipeline(detach_frames=True),
                 }
             }
         ]
 
-    def _serialize_samples(self):
-        if isinstance(self._samples, dict):
-            return self._samples
-
-        return {
-            "collection": self._samples._dataset._sample_collection_name,
-            "pipeline": self._samples._pipeline(detach_frames=True),
-        }
+    def validate(self, sample_collection):
+        if sample_collection._dataset != self._view._dataset:
+            raise ValueError(
+                "Cannot concatenate samples from different datasets"
+            )
 
     def _kwargs(self):
-        return [["samples", self._serialize_samples()]]
-
-    def _validate_params(self):
-        if not isinstance(self._samples, (foc.SampleCollection, dict)):
-            raise ValueError(
-                "`samples` must be a SampleCollection or a serialized "
-                "representation of one, but found %s" % self._samples
-            )
+        return [["samples", self._samples], ["_generated", self._generated]]
 
     @classmethod
     def _params(cls):
-        return [{"name": "samples", "type": "json", "placeholder": ""}]
+        return [
+            {"name": "samples", "type": "json", "placeholder": ""},
+            {"name": "_generated", "type": "NoneType|json", "default": "None"},
+        ]
+
+    def _parse_params(self, samples, generated):
+        if not isinstance(samples, (foc.SampleCollection, dict)):
+            raise ValueError(
+                "`samples` must be a SampleCollection or a serialized "
+                "representation of one, but found %s" % samples
+            )
+
+        view = None
+
+        if isinstance(samples, foc.SampleCollection):
+            view = samples.view()
+            samples = None
+
+        if view is None and generated is not None:
+            try:
+                view = self._load_view(generated)
+            except:
+                # Generated view can't be loaded; must rebuild from `samples`
+                pass
+
+        if view is None:
+            view = self._load_view(samples)
+
+        if samples is None:
+            samples = {
+                "dataset": view._root_dataset.name,
+                "stages": view._serialize(include_uuids=False),
+            }
+
+        if generated is None and view._is_generated:
+            generated = {
+                "dataset": view._dataset.name,
+                "stages": view._serialize(
+                    include_uuids=False, all_stages=False
+                ),
+            }
+
+        return samples, generated, view
+
+    def _load_view(self, d):
+        dataset = fod.load_dataset(d["dataset"])
+        return fov.DatasetView._build(dataset, d["stages"])
 
 
 class Exclude(ViewStage):
@@ -6066,7 +6121,7 @@ class ToFrames(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            frames_dataset = fov.make_frames_dataset(
+            frames_dataset = fovi.make_frames_dataset(
                 sample_collection, **kwargs
             )
 
@@ -6075,7 +6130,7 @@ class ToFrames(ViewStage):
         else:
             frames_dataset = fod.load_dataset(name)
 
-        return fov.FramesView(sample_collection, self, frames_dataset)
+        return fovi.FramesView(sample_collection, self, frames_dataset)
 
     def _kwargs(self):
         return [
