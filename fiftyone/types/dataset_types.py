@@ -456,6 +456,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         return fouo.OpenImagesV6DatasetImporter
 
 
+class FIWDataset(Dataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Families in the Wild format <https://github.com/visionjo/pykinship#db-contents-and-structure>`_
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.fiw as fouf
+
+        return fouf.FIWDatasetImporter
+
+
 class OpenLABELImageDataset(ImageLabelsDataset):
     def get_dataset_importer_cls(self):
         import fiftyone.utils.openlabel as fouo

@@ -19,7 +19,7 @@ import fiftyone.utils.bdd as foub
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
-import fiftyone.utils.fiw as ffiw
+import fiftyone.utils.fiw as fouf
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kinetics as fouk
 import fiftyone.utils.kitti as foukt
@@ -115,7 +115,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -130,7 +130,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
     Dataset size
         223 GB
 
-    Source 
+    Source
         http://activity-net.org/index.html
 
     Args:
@@ -295,7 +295,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -310,7 +310,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
     Dataset size
         500 GB
 
-    Source 
+    Source
         http://activity-net.org/index.html
 
     Args:
@@ -1159,7 +1159,7 @@ class COCO2017Dataset(FiftyOneDataset):
         return os.path.join(root_dir, "raw")
 
 
-class FamiliesInTheWildDataset(FiftyOneDataset):
+class FIWDataset(FiftyOneDataset):
     """Families in the Wild is a public benchmark for recognizing families via
     facial images.
 
@@ -1188,8 +1188,9 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
     upper and lower triangles being inverted (i.e., given MID-1 is "parent of"
     MID-2, then MID-2 is the "child of" MID-1.
 
-    See https://github.com/visionjo/pykinship#db-contents-and-structure for
-    additional details and example annotations.
+    See
+    `this page <https://github.com/visionjo/pykinship#db-contents-and-structure>`_
+    for additional details and example annotations.
 
     For more information on the data (e.g., statistics, task evaluations,
     benchmarks, and more), see our recent journal:
@@ -1238,37 +1239,45 @@ class FamiliesInTheWildDataset(FiftyOneDataset):
         # so we remove the split from `dataset_dir` and download the whole
         # dataset (if necessary)
         #
+        # dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        # split_dir = os.path.join(dataset_dir, split)
+
+        # if not os.path.exists(split_dir):
+        #    scratch_dir = fouf.download_fiw_dataset(dataset_dir, cleanup=False)
+        #    str_tmp = Path(scratch_dir).name
+        #    for p in Path(scratch_dir).glob("*"):
+        #        try:
+        #            p.rename(str(p).replace(str_tmp, ""))
+        #        except:
+        #            pass
+
+        #    _ = fouf.prepare_dataset(None, dataset_dir, split)
+        #    print(f"{dataset_dir}\n{scratch_dir}")
+        #    # move contents to dataset_dir and remove temp folder
+        #    for file in Path(scratch_dir).glob("*"):
+        #        if not str(file).count(".zip"):
+        #            file.rename(Path(dataset_dir) / file.name)
+        #    etau.delete_dir(scratch_dir)
+
+        # logger.info("Parsing dataset metadata")
+        # print("{dataset_dir}\n{scratch_dir}")
+        # dataset_type = fot.ImageClassificationDirectoryTree()
+        # importer = foud.ImageClassificationDirectoryTreeImporter
+        # classes = sorted(
+        #    importer._get_classes(os.path.join(dataset_dir, "train"))
+        #    + importer._get_classes(os.path.join(dataset_dir, "val"))
+        #    + importer._get_classes(os.path.join(dataset_dir, "test"))
+        # )
+        # num_samples = importer._get_num_samples(split_dir)
+        # logger.info("Found %d samples", num_samples)
+
+        split = os.path.basename(dataset_dir)
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
-        split_dir = os.path.join(dataset_dir, split)
-
-        if not os.path.exists(split_dir):
-            scratch_dir = ffiw.download_fiw_dataset(dataset_dir, cleanup=False)
-            str_tmp = Path(scratch_dir).name
-            for p in Path(scratch_dir).glob("*"):
-                try:
-                    p.rename(str(p).replace(str_tmp, ""))
-                except:
-                    pass
-
-            _ = ffiw.prepare_dataset(None, dataset_dir, split)
-            print(f"{dataset_dir}\n{scratch_dir}")
-            # move contents to dataset_dir and remove temp folder
-            for file in Path(scratch_dir).glob("*"):
-                if not str(file).count(".zip"):
-                    file.rename(Path(dataset_dir) / file.name)
-            etau.delete_dir(scratch_dir)
-
-        logger.info("Parsing dataset metadata")
-        print("{dataset_dir}\n{scratch_dir}")
-        dataset_type = fot.ImageClassificationDirectoryTree()
-        importer = foud.ImageClassificationDirectoryTreeImporter
-        classes = sorted(
-            importer._get_classes(os.path.join(dataset_dir, "train"))
-            + importer._get_classes(os.path.join(dataset_dir, "val"))
-            + importer._get_classes(os.path.join(dataset_dir, "test"))
+        num_samples, classes = fouf.download_fiw_dataset(
+            dataset_dir, split, scratch_dir,
         )
-        num_samples = importer._get_num_samples(split_dir)
-        logger.info("Found %d samples", num_samples)
+
+        dataset_type = fot.FIWDataset()
 
         return dataset_type, num_samples, classes
 
@@ -1470,7 +1479,7 @@ class Kinetics400Dataset(FiftyOneDataset):
     -   Validation split: 19,906 videos
 
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
 
@@ -1501,7 +1510,7 @@ class Kinetics400Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1515,11 +1524,11 @@ class Kinetics400Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 370 GB 
-    -   Test split: 56 GB 
-    -   Validation split: 30 GB 
+    -   Train split: 370 GB
+    -   Test split: 56 GB
+    -   Validation split: 30 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1657,7 +1666,7 @@ class Kinetics600Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1671,11 +1680,11 @@ class Kinetics600Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 648 GB 
-    -   Test split: 88 GB 
-    -   Validation split: 43 GB 
+    -   Train split: 648 GB
+    -   Test split: 88 GB
+    -   Validation split: 43 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1770,31 +1779,31 @@ class Kinetics700Dataset(FiftyOneDataset):
     partial downloads of this dataset.
 
     Original split stats:
-    
+
     -   Train split: 529,046 videos
     -   Test split: 67,446 videos
     -   Validation split: 33,925 videos
 
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
         # Only the required videos will be downloaded (if necessary).
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "springboard diving" and "surfing water"
@@ -1807,25 +1816,25 @@ class Kinetics700Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700",
             split="validation",
             classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
 
-    -   Train split: 603 GB 
-    -   Test split: 59 GB 
-    -   Validation split: 48 GB 
+    -   Train split: 603 GB
+    -   Test split: 59 GB
+    -   Validation split: 48 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1964,7 +1973,7 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1978,11 +1987,11 @@ class Kinetics7002020Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 603 GB 
-    -   Test split: 59 GB 
-    -   Validation split: 48 GB 
+    -   Train split: 603 GB
+    -   Test split: 59 GB
+    -   Validation split: 48 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -2631,7 +2640,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
-    "fiw": FamiliesInTheWildDataset,
+    "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,
