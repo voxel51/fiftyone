@@ -1239,38 +1239,6 @@ class FIWDataset(FiftyOneDataset):
         # so we remove the split from `dataset_dir` and download the whole
         # dataset (if necessary)
         #
-        # dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
-        # split_dir = os.path.join(dataset_dir, split)
-
-        # if not os.path.exists(split_dir):
-        #    scratch_dir = fouf.download_fiw_dataset(dataset_dir, cleanup=False)
-        #    str_tmp = Path(scratch_dir).name
-        #    for p in Path(scratch_dir).glob("*"):
-        #        try:
-        #            p.rename(str(p).replace(str_tmp, ""))
-        #        except:
-        #            pass
-
-        #    _ = fouf.prepare_dataset(None, dataset_dir, split)
-        #    print(f"{dataset_dir}\n{scratch_dir}")
-        #    # move contents to dataset_dir and remove temp folder
-        #    for file in Path(scratch_dir).glob("*"):
-        #        if not str(file).count(".zip"):
-        #            file.rename(Path(dataset_dir) / file.name)
-        #    etau.delete_dir(scratch_dir)
-
-        # logger.info("Parsing dataset metadata")
-        # print("{dataset_dir}\n{scratch_dir}")
-        # dataset_type = fot.ImageClassificationDirectoryTree()
-        # importer = foud.ImageClassificationDirectoryTreeImporter
-        # classes = sorted(
-        #    importer._get_classes(os.path.join(dataset_dir, "train"))
-        #    + importer._get_classes(os.path.join(dataset_dir, "val"))
-        #    + importer._get_classes(os.path.join(dataset_dir, "test"))
-        # )
-        # num_samples = importer._get_num_samples(split_dir)
-        # logger.info("Found %d samples", num_samples)
-
         split = os.path.basename(dataset_dir)
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         num_samples, classes = fouf.download_fiw_dataset(
