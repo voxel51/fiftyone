@@ -76,7 +76,7 @@ def get_pairwise_labels(samples, label_type="kinships"):
 
     Returns:
         a list of triplets containing the identifier of person 1, identifier of
-            person 2, and their kinship or relationship
+        person 2, and their kinship or relationship
     """
     if label_type not in ("kinships", "relationships"):
         raise ValueError(
@@ -120,7 +120,7 @@ def get_identifier_filepaths_map(samples):
 
     Returns:
         a dict mapping 'family_id/member_id' identifiers to a list of filepaths
-            containing images of the corresponding person
+        containing images of the corresponding person
     """
     id_map = defaultdict(list)
     id_fp_list = list(zip(*samples.values([F("identifier"), F("filepath")])))
@@ -405,6 +405,7 @@ _RELATIONSHIP_MAP = {
     6: "grandparent",
     7: "great grandchild",
     8: "great grandparent",
+    9: "TBD",
 }
 
 _IMAGES_DOWNLOAD_LINK = "1rkrDGOjS0e_pptzRHZl5bRGq0yy5xQxQ"

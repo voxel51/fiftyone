@@ -1193,7 +1193,7 @@ class FIWDataset(FiftyOneDataset):
     for additional details and example annotations.
 
     For more information on the data (e.g., statistics, task evaluations,
-    benchmarks, and more), see our recent journal:
+    benchmarks, and more), see the recent journal:
     Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of
     Visual Kinship: A Decade in the Making." IEEE Transactions on Pattern
     Analysis and Machine Intelligence (PAMI), 2021.
