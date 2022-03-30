@@ -5,10 +5,12 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import dataclass
 import logging
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+from graphql import subscribe
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -22,41 +24,36 @@ logger = logging.getLogger(__name__)
 class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
-
     Args:
         datasets (None): the list of available datasets
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
+        filters (None): a dictionary of currently active field filters
+        settings (None): a dictionary of the current field settings, if any
+        connected (False): whether the session is connected to an App
         active_handle (None): the UUID of the currently active App. Only
             applicable in notebook contexts
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         refresh (False): a boolean toggle for forcing an App refresh
-        close (False): whether to close the App
     """
 
     def __init__(
         self,
-        datasets=None,
+        config=None,
         dataset=None,
-        view=None,
-        active_handle=None,
+        refresh=False,
         selected=None,
         selected_labels=None,
-        config=None,
-        refresh=False,
-        close=False,
+        view=None,
     ):
-        self.datasets = datasets or fod.list_datasets()
+        self.config = config or fo.app_config.copy()
         self.dataset = dataset
-        self.view = view
-        self.active_handle = active_handle
+        self.refresh = refresh
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.config = config or fo.app_config.copy()
-        self.refresh = refresh
-        self.close = close
+        self.view = view
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
@@ -80,9 +77,6 @@ class StateDescription(etas.Serializable):
                         _dataset["media_type"] = _tmp["media_type"]
                         _dataset["sample_fields"] = _tmp["sample_fields"]
                         _dataset["frame_fields"] = _tmp["frame_fields"]
-                        _dataset["app_sidebar_groups"] = _tmp.get(
-                            "app_sidebar_groups", None
-                        )
 
             d["dataset"] = _dataset
             d["view"] = _view
@@ -124,10 +118,6 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
-        active_handle = d.get("active_handle", None)
-        selected = d.get("selected", [])
-        selected_labels = d.get("selected_labels", [])
-
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
@@ -136,16 +126,11 @@ class StateDescription(etas.Serializable):
         if timezone:
             fo.config.timezone = timezone
 
-        close = d.get("close", False)
-        refresh = d.get("refresh", False)
-
         return cls(
-            dataset=dataset,
-            view=view,
-            active_handle=active_handle,
-            selected=selected,
-            selected_labels=selected_labels,
             config=config,
-            refresh=refresh,
-            close=close,
+            dataset=dataset,
+            refresh=d.get("refresh", False),
+            selected=d.get("selected", []),
+            selected_labels=d.get("selected_labels", []),
+            view=view,
         )

@@ -1,5 +1,5 @@
 """
-FiftyOne Server extended view.
+FiftyOne Server view
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -46,7 +46,7 @@ def get_view(
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity:
+    if filters or similarity or count_label_tags:
         view = get_extended_view(
             view,
             filters,
@@ -103,19 +103,13 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
+    if similarity:
+        view = view.sort_by_similarity(**similarity)
+
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
-
-    if similarity:
-        stage = fosg.ViewStage._from_dict(
-            {
-                "_cls": "fiftyone.core.stages.SortBySimilarity",
-                "kwargs": [[k, v] for k, v in similarity.items()],
-            }
-        )
-        view = view.add_stage(stage)
 
     return view
 
@@ -146,18 +140,6 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
-
-
-def get_view_field(fields_map, path):
-    """Returns the proper view field, even for special paths like "id"
-
-    Returns:
-        :class:`fiftyone.core.expressions.ViewField`
-    """
-    if path in fields_map:
-        return F(fields_map[path]).to_string()
-
-    return F(path)
 
 
 def _make_expression(field, path, args):
@@ -229,7 +211,10 @@ def _make_filter_stages(
                 if hide_result:
                     new_field = "__%s" % path.split(".")[0]
                     if frames:
-                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
+                        new_field = "%s%s" % (
+                            view._FRAMES_PREFIX,
+                            new_field,
+                        )
                 else:
                     new_field = None
                 stages.append(

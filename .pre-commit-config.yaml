@@ -7,7 +7,7 @@ repos:
         args: ["-l 79"]
         exclude: ^docs/theme/|\.rst$
   - repo: https://github.com/ambv/black
-    rev: 19.10b0
+    rev: 22.3.0
     hooks:
       - id: black
         language_version: python3

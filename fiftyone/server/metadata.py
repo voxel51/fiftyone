@@ -1,12 +1,11 @@
 """
-FiftyOne Server JIT metadata utilities.
+FiftyOne Server JIT metadata utilities
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
-from multiprocessing.sharedctypes import Value
 import shutil
 import struct
 
@@ -19,14 +18,13 @@ import eta.core.video as etav
 
 import fiftyone.core.media as fom
 
-
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, metadata=None):
-    """Gets the metadata for the given media file.
+async def get_metadata(filepath, media_type, metadata=None):
+    """Gets the metadata for the given local media file.
 
     Args:
         filepath: the path to the file
@@ -35,8 +33,12 @@ async def get_metadata(filepath, metadata=None):
     Returns:
         metadata dict
     """
-    is_video = fom.get_media_type(filepath) == fom.VIDEO
+    media_type = fom.get_media_type(filepath)
+    is_video = media_type == fom.VIDEO
 
+    d = {}
+
+    # If sufficient pre-existing metadata exists, use it
     if metadata:
         if is_video:
             width = metadata.get("frame_width", None)
@@ -44,23 +46,37 @@ async def get_metadata(filepath, metadata=None):
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                return {
-                    "width": width,
-                    "height": height,
-                    "frame_rate": frame_rate,
-                }
+                d["width"] = width
+                d["height"] = height
+                d["frame_rate"] = frame_rate
+                return d
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                return {"width": width, "height": height}
+                d["width"] = width
+                d["height"] = height
+                return d
 
-    return await read_metadata(filepath, is_video)
+    try:
+        # Retrieve media metadata from disk
+        metadata = await read_metadata(filepath, is_video)
+    except:
+        # Something went wrong (ie non-existent file), so we gracefully return
+        # some placeholder metadata so the App grid can be rendered
+        if is_video:
+            metadata = {"width": 512, "height": 512, "frame_rate": 30}
+        else:
+            metadata = {"width": 512, "height": 512}
+
+    d.update(metadata)
+
+    return d
 
 
 async def read_metadata(filepath, is_video):
-    """Calculates the metadata for the given media path.
+    """Calculates the metadata for the given local media path.
 
     Args:
         filepath: a filepath
@@ -80,6 +96,32 @@ async def read_metadata(filepath, is_video):
     async with aiofiles.open(filepath, "rb") as f:
         width, height = await get_image_dimensions(f)
         return {"width": width, "height": height}
+
+
+class Reader(object):
+    """Asynchronous file-like reader.
+
+    Args:
+        content: a :class:`aiohttp.StreamReader`
+    """
+
+    def __init__(self, content):
+        self._data = b""
+        self._content = content
+
+    async def read(self, bytes):
+        data = await self._content.read(bytes)
+        self._data += data
+        return data
+
+    async def seek(self, bytes):
+        delta = bytes - len(self._data)
+        if delta < 0:
+            data = self._data[delta:]
+            self._data = data[:delta]
+            self._content.unread_data(data)
+        else:
+            self._data += await self._content.read(delta)
 
 
 async def get_stream_info(path):
@@ -136,7 +178,8 @@ async def get_stream_info(path):
 
 
 async def get_image_dimensions(input):
-    """Gets the dimensions of an image from its asynchronous byte stream.
+    """Gets the dimensions of an image from its file-like asynchronous byte
+    stream.
 
     Args:
         input: file-like object with async read and seek methods
@@ -279,6 +322,6 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass
