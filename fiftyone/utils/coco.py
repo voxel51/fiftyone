@@ -656,7 +656,8 @@ class COCODetectionDatasetExporter(
             -   ``False``: do not export extra attributes
             -   a name or list of names of specific attributes to export
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
-            whether an object is a crowd (only used if present)
+            whether an object is a crowd (the value is automatically set to 0
+            if the attribute is not present)
         num_decimals (None): an optional number of decimal places at which to
             round bounding box pixel coordinates. By default, no rounding is
             done
@@ -1140,8 +1141,8 @@ class COCOObject(object):
                 -   ``True``: include all extra attributes found
                 -   ``False``: do not include extra attributes
                 -   a name or list of names of specific attributes to include
-            iscrowd ("iscrowd"): the name of the crowd attribute (used if
-                present)
+            iscrowd ("iscrowd"): the name of the crowd attribute (the value is
+                automatically set to 0 if the attribute is not present)
             num_decimals (None): an optional number of decimal places at which
                 to round bounding box pixel coordinates. By default, no
                 rounding is done
