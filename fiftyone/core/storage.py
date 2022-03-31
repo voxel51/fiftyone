@@ -1653,15 +1653,14 @@ def upload_media(
     """
     filepaths = sample_collection.values("filepath")
 
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=remote_dir, rel_dir=rel_dir, ignore_existing=True,
+    )
+
     paths_map = {}
     for filepath in filepaths:
         if filepath not in paths_map:
-            if rel_dir:
-                filename = os.path.relpath(filepath, rel_dir)
-            else:
-                filename = os.path.basename(filepath)
-
-            paths_map[filepath] = join(remote_dir, filename)
+            paths_map[filepath] = filename_maker.get_output_path(filepath)
 
     remote_paths = [paths_map[f] for f in filepaths]
 
