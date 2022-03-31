@@ -194,7 +194,11 @@ class ListField(mongoengine.fields.ListField, Field):
             for v in value:
                 self.field.validate(v, clean=False, expand=True)
         else:
-            super().validate(value)
+            try:
+                super().validate(value)
+            except Exception as e:
+                print(value)
+                raise e
 
 
 class HeatmapRangeField(ListField):
@@ -628,6 +632,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def __init__(self, document_type, **kwargs):
         super().__init__(document_type, **kwargs)
         self._parent = None
+
         self.fields = kwargs.get("fields", [])
         self._validation_schema = None
 
@@ -638,9 +643,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         )
 
     def validate(self, value, clean=True, expand=False):
-        if self._validation_schema is None:
-            self._validation_schema = self.get_field_schema()
-
+        self._validation_schema = self.get_field_schema()
         schema = self._validation_schema
         for name in value._fields_ordered:
             field = None
@@ -661,7 +664,10 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             elif isinstance(field, EmbeddedDocumentField):
                 field.validate(field_value, clean=False, expand=expand)
             else:
-                field.validate(field_value)
+                try:
+                    field.validate(field_value)
+                except Exception as e:
+                    raise e
 
         if isinstance(value, foo.DynamicEmbeddedDocument):
             value._set_parent(self)

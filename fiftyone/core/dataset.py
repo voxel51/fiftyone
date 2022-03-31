@@ -3347,7 +3347,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3860,7 +3863,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3896,7 +3904,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
         )
         return dataset
 
@@ -4447,7 +4458,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 else:
                     if value is not None or not field.null:
                         try:
-                            field.validate(value)
+                            if isinstance(field, fof.EmbeddedDocumentField):
+                                field.validate(value, expand=True)
+                            else:
+                                field.validate(value)
                         except moe.ValidationError as e:
                             raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
@@ -4636,7 +4650,8 @@ def _declare_fields(doc_cls, field_docs):
             setattr(doc_cls, field_name, field)
 
     for field_doc in field_docs or []:
-        doc_cls._declare_field(field_doc.to_field())
+        field = field_doc.to_field()
+        doc_cls._declare_field(field, field.name)
 
 
 def _make_sample_collection_name(patches=False, frames=False, clips=False):

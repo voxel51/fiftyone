@@ -181,13 +181,13 @@ def evaluate_detections(
         # note: fields are manually declared so they'll exist even when
         # `samples` is empty
         dataset = samples._dataset
-        dataset._add_sample_field_if_necessary(tp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fn_field, fof.IntField)
+        dataset.add_sample_field(tp_field, fof.IntField)
+        dataset.add_sample_field(fp_field, fof.IntField)
+        dataset.add_sample_field(fn_field, fof.IntField)
         if processing_frames:
-            dataset._add_frame_field_if_necessary(tp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fn_field, fof.IntField)
+            dataset.add_frame_field(tp_field, fof.IntField)
+            dataset.add_frame_field(fp_field, fof.IntField)
+            dataset.add_frame_field(fn_field, fof.IntField)
 
     matches = []
     logger.info("Evaluating detections...")

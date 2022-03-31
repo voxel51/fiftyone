@@ -363,11 +363,12 @@ class DatasetMixin(object):
         kwargs = get_implied_field_kwargs(value)
 
         # pylint: disable=no-member
-        if field_name in cls._fields:
-            validate_fields_match(field_name, kwargs, cls._fields[field_name])
-        else:
+        if field_name not in cls._fields:
             cls.add_field(field_name, **kwargs)
-            field = cls._fields[field_name]
+            schema = cls.get_field_schema()
+            for field_name in field_name.split("."):
+                field = schema.get(field_name, None)
+
             if isinstance(field, fof.EmbeddedDocumentField):
                 value._set_parent(field)
 
@@ -678,24 +679,28 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field, path=None):
-        if not path:
+    def _declare_field(cls, field, path):
+        if isinstance(path, str):
+            path = path.split(".")
+
+        if len(path) == 1:
             cls._fields[field.name] = field
             if field.name not in cls._fields_ordered:
                 cls._fields_ordered += (field.name,)
             setattr(cls, field.name, field)
-        else:
-            parent = getattr(cls, path[0])
-            for field_name in path[1:-1]:
-                if isinstance(parent, (fo.DictField, fo.ListField)):
-                    parent = parent.field
+            return
 
-                parent = parent.get_field_schema()[field_name]
-
+        parent = getattr(cls, path[0])
+        for field_name in path[1:-1]:
             if isinstance(parent, (fo.DictField, fo.ListField)):
                 parent = parent.field
 
-            parent.fields.append(field)
+            parent = parent.get_field_schema()[field_name]
+
+        if isinstance(parent, (fo.DictField, fo.ListField)):
+            parent = parent.field
+
+        parent.fields.append(field)
 
     @classmethod
     def _add_field_schema(
@@ -713,7 +718,7 @@ class DatasetMixin(object):
             )
 
         field = create_field(
-            field_name,
+            field_name.split(".")[-1],
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
@@ -721,7 +726,7 @@ class DatasetMixin(object):
             **kwargs,
         )
 
-        cls._declare_field(field)
+        cls._declare_field(field, field_name)
         dataset_doc = cls._dataset_doc()
         fields = dataset_doc[cls._fields_attr()]
         sample_field = SampleFieldDocument.from_field(field)

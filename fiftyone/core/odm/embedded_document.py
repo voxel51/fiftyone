@@ -62,7 +62,11 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         self.set_field(name, value, create=True)
 
     def set_field(self, name, value, create=False):
-        if hasattr(self, name) and not self.has_field(name):
+        if (
+            hasattr(self, name)
+            and not self.has_field(name)
+            and getattr(self, name) is not None
+        ):
             raise ValueError("Cannot use reserved keyword '%s'" % name)
 
         if not self.has_field(name) and value is not None:
@@ -128,7 +132,12 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         )
 
     def _add_field_schema(
-        self, name, ftype, embedded_doc_type=None, subfield=None, **kwargs,
+        self,
+        name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        **kwargs,
     ):
         if self.has_field(name):
             raise ValueError(
@@ -190,7 +199,8 @@ class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
 
 
 class DynamicEmbeddedDocument(
-    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
+    BaseEmbeddedDocument,
+    mongoengine.DynamicEmbeddedDocument,
 ):
     """Base class for dynamic documents that are embedded within other
     documents and therefore aren't stored in their own collection in the
