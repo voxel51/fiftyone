@@ -1173,7 +1173,7 @@ class FIWDataset(FiftyOneDataset):
     per family varies from 3-to-26, with the number of faces per subject
     ranging from 1 to >10.
 
-    Labels exist at different levels of the datastructures (i.e., list of
+    Labels exist at different levels of the data structures (i.e., list of
     family trees). Family-level labels contain a list of members, each assigned
     an member ID (MID) unique to that respective family (e.g., F0011.MID2,
     refers to member 2 of family 11). Besides, members have annotations

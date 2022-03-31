@@ -1475,52 +1475,6 @@ sample also contains a `face_id` field containing a unique integer for each
 face of a member, always starting at 0. This allows you to filter the `face_id`
 field to 0 in the App to show only a single image of each person.
 
-**Details**
-
--   Dataset name: ``fiw``
--   Dataset source: https://web.northeastern.edu/smilelab/fiw/
--   Dataset size: 173.00 MB
--   Tags: ``image, kinship, verification, classification, search-and-retrieval, facial-recognition``
--   Supported splits: ``test, val, train``
--   ZooDataset class:
-    :class:`FIWDataset <fiftyone.zoo.datasets.base.FIWDataset>`
-
-.. note::
-
-    The Families in the Wild utilities in FiftyOne also provide the
-    :func:`get_pairwise_labels() <fiftyone.utils.fiw.get_pairwise_labels>`
-    and
-    :func:`get_identifier_filepaths_map() <fiftyone.utils.fiw.get_identifier_filepaths_map>`
-    for your convenience.
-
-**Example usage**
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("fiw", split="test")
-
-        session = fo.launch_app(dataset)
-
-  .. group-tab:: CLI
-
-    .. code-block:: shell
-
-        fiftyone zoo datasets load fiw --split test
-
-        fiftyone app launch fiw-test
-
-.. image:: /images/dataset_zoo/fiw.png
-   :alt: fiw
-   :align: center
-
 For your reference, the relationship labels are stored in disk in a matrix that
 provides the relationship of each member with other members of the family as
 well as names and genders. The i-th rows represent the i-th family member's
@@ -1554,6 +1508,52 @@ benchmarks, and more), see the recent journal:
     Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of
     Visual Kinship: A Decade in the Making." IEEE Transactions on Pattern
     Analysis and Machine Intelligence (PAMI), 2021.
+
+**Details**
+
+-   Dataset name: ``fiw``
+-   Dataset source: https://web.northeastern.edu/smilelab/fiw/
+-   Dataset size: 173.00 MB
+-   Tags: ``image, kinship, verification, classification, search-and-retrieval, facial-recognition``
+-   Supported splits: ``test, val, train``
+-   ZooDataset class:
+    :class:`FIWDataset <fiftyone.zoo.datasets.base.FIWDataset>`
+
+.. note::
+
+    For your convenience, FiftyOne provides
+    :func:`get_pairwise_labels() <fiftyone.utils.fiw.get_pairwise_labels>`
+    and
+    :func:`get_identifier_filepaths_map() <fiftyone.utils.fiw.get_identifier_filepaths_map>`
+    utilities for FIW.
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fiw", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load fiw --split test
+
+        fiftyone app launch fiw-test
+
+.. image:: /images/dataset_zoo/fiw.png
+   :alt: fiw
+   :align: center
 
 .. _dataset-zoo-hmdb51:
 
