@@ -1182,18 +1182,16 @@ class COCOObject(object):
         if num_decimals is not None:
             bbox = [round(p, num_decimals) for p in bbox]
 
-        confidence = label.confidence
-
-        area = bbox[2] * bbox[3]
-
         if keypoint is not None:
             keypoints = _make_coco_keypoints(keypoint, frame_size)
         else:
             keypoints = None
 
-        _iscrowd = label.get_attribute_value(iscrowd, None)
-        if _iscrowd is not None:
-            _iscrowd = int(_iscrowd)
+        confidence = label.confidence
+
+        area = bbox[2] * bbox[3]
+
+        _iscrowd = int(label.get_attribute_value(iscrowd, None) or 0)
 
         attributes = _get_attributes(label, extra_attrs)
         attributes.pop(iscrowd, None)
@@ -1273,10 +1271,10 @@ def _parse_coco_detection_annotations(d, extra_attrs=True):
     info = d.get("info", None)
     licenses = d.get("licenses", None)
     categories = d.get("categories", None)
-    
+
     if info is None:
         info = {}
-        
+
     if licenses is not None:
         info["licenses"] = licenses
 
