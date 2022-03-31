@@ -8,7 +8,6 @@ FiftyOne Zoo Datasets provided natively by the library.
 import logging
 import os
 import shutil
-from pathlib import Path
 
 import eta.core.utils as etau
 import eta.core.web as etaw
@@ -1165,21 +1164,21 @@ class FIWDataset(FiftyOneDataset):
 
     The dataset contains over 26,642 images of 5,037 faces from collected from
     978 families. Each family is indexed under an unique Family ID (FID), which
-    range from F0001-F1018 (i.e., some families were merged or removed since its
-    first release in 2016.
+    range from F0001-F1018 (i.e., some families were merged or removed since
+    its first release in 2016.
 
     Faces were cropped from imagery using the five-point face detector MTCNN
     from a variety of photo types (i.e., mostly family photos, along with
     several profile pics of individuals (facial shots). The number of members
-    per family varies from 3-to-26, with the number of faces per subject ranging
-    from 1 to >10.
+    per family varies from 3-to-26, with the number of faces per subject
+    ranging from 1 to >10.
 
-    Labels exist at different levels of the datastructures (i.e., list of family
-    trees). Family-level labels contain a list of members, each assigned an
-    member ID (MID) unique to that respective family (e.g., F0011.MID2, refers
-    to member 2 of family 11). Besides, members have annotations specifying
-    gender and relationship to all other members in that respective family
-    (i.e., q relationship matrix were each row represents a member's
+    Labels exist at different levels of the datastructures (i.e., list of
+    family trees). Family-level labels contain a list of members, each assigned
+    an member ID (MID) unique to that respective family (e.g., F0011.MID2,
+    refers to member 2 of family 11). Besides, members have annotations
+    specifying gender and relationship to all other members in that respective
+    family (i.e., q relationship matrix were each row represents a member's
     relationship to all other members, with the ith row and the jth column set
     with an integer value (i.e., 0-not related, 1-child of, 2-sibling of,
     3-grandchild of, 4-parent of, 5-spouse (or ex-spouse), 6-grandparent of,
@@ -1193,10 +1192,11 @@ class FIWDataset(FiftyOneDataset):
     for additional details and example annotations.
 
     For more information on the data (e.g., statistics, task evaluations,
-    benchmarks, and more), see the recent journal:
-    Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling of
-    Visual Kinship: A Decade in the Making." IEEE Transactions on Pattern
-    Analysis and Machine Intelligence (PAMI), 2021.
+    benchmarks, and more), see the recent journal::
+
+        Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling
+        of Visual Kinship: A Decade in the Making." IEEE Transactions on
+        Pattern Analysis and Machine Intelligence (PAMI), 2021.
 
     Example usage::
 

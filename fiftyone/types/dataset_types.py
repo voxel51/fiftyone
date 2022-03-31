@@ -459,7 +459,7 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
 class FIWDataset(Dataset):
     """A labeled dataset consisting of images and their associated annotations
     saved in
-    `Families in the Wild format <https://github.com/visionjo/pykinship#db-contents-and-structure>`_
+    `Families in the Wild format <https://github.com/visionjo/pykinship#db-contents-and-structure>`_.
     """
 
     def get_dataset_importer_cls(self):

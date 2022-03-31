@@ -1416,7 +1416,7 @@ There are 60,000 training images and 10,000 test images.
 .. _dataset-zoo-fiw:
 
 Families in the Wild
--------------------------
+--------------------
 
 Families in the Wild is a public benchmark for recognizing families via facial
 images. The dataset contains over 26,642 images of 5,037 faces collected from
@@ -1430,28 +1430,30 @@ various phototypes (i.e., mostly family photos, along with several profile pics
 of individuals (facial shots). The number of members per family varies from
 3-to-26, with the number of faces per subject ranging from 1 to >10.
 
-Various levels and types of labels are associated with samples in this dataset. Family-level labels contain a list of members, each assigned a member
-ID (MID) unique to that respective family (e.g., F0011.MID2 refers to member 2
-of family 11). Each member has annotations specifying gender and
-relationship to all other members in that respective family.
+Various levels and types of labels are associated with samples in this dataset.
+Family-level labels contain a list of members, each assigned a member ID (MID)
+unique to that respective family (e.g., F0011.MID2 refers to member 2 of family
+11). Each member has annotations specifying gender and relationship to all
+other members in that respective family.
 
 The relationships in FIW are:
 
-=====  =====
-  ID    Type
-=====  =====
-    0  not related or self
-    1  child
-    2  sibling
-    3  grandchild
-    4  parent
-    5  spouse
-    6  grandparent
-    7  great grandchild
-    8  great grandparent
-    9  TBD
-=====  =====
+.. code-block:: text
 
+    =====  =====
+      ID    Type
+    =====  =====
+        0  not related or self
+        1  child
+        2  sibling
+        3  grandchild
+        4  parent
+        5  spouse
+        6  grandparent
+        7  great grandchild
+        8  great grandparent
+        9  TBD
+    =====  =====
 
 Within FiftyOne, each sample corresponds to a single face image and contains
 primitive labels of the Family ID, Member ID, etc. The relationship labels are
@@ -1491,7 +1493,6 @@ field to 0 in the App to show only a single image of each person.
     :func:`get_identifier_filepaths_map() <fiftyone.utils.fiw.get_identifier_filepaths_map>`
     for your convenience.
 
-
 **Example usage**
 
 .. tabs::
@@ -1520,33 +1521,30 @@ field to 0 in the App to show only a single image of each person.
    :alt: fiw
    :align: center
 
-For your reference, the relationship labels are stored in disk in a matrix that provides the
-relationship of each member with other members of the family as well as names
-and genders. The i-th rows represent the i-th family member's relationship to the j-th other members.
+For your reference, the relationship labels are stored in disk in a matrix that
+provides the relationship of each member with other members of the family as
+well as names and genders. The i-th rows represent the i-th family member's
+relationship to the j-th other members.
 
-For example:
+For example, `FID0001.csv` contains:
 
 .. code-block:: text
 
-            FID0001.csv
-
-                MID     1     2     3     Name    Gender
-                 1      0     4     5     name1     f
-                 2      1     0     1     name2     f
-                 3      5     4     0     name3     m
-
+    MID     1     2     3     Name    Gender
+     1      0     4     5     name1     f
+     2      1     0     1     name2     f
+     3      5     4     0     name3     m
 
 Here we have three family members, as listed under the MID column (far-left).
-Each MID reads across its row. We can see that MID1 is related to MID2 by 4->1
-(Parent->Child), which of course can be viewed as the inverse, i.e.,
-MID2->MID1 is 1->4. It can also be seen that MID1 and MID3 are spouses of one
-another, i.e., 5->5.
-
+Each MID reads across its row. We can see that MID1 is related to MID2 by
+4 -> 1 (Parent -> Child), which of course can be viewed as the inverse, i.e.,
+MID2 -> MID1 is 1 -> 4. It can also be seen that MID1 and MID3 are spouses of
+one another, i.e., 5 -> 5.
 
 .. note::
 
-        The spouse label will likely be removed in future version of this
-        dataset. It serves no value to the problem of kinship.
+    The spouse label will likely be removed in future version of this
+    dataset. It serves no value to the problem of kinship.
 
 For more information on the data (e.g., statistics, task evaluations,
 benchmarks, and more), see the recent journal:

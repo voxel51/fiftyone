@@ -2,7 +2,7 @@
 Utilities for working with the
 `Families in the Wild dataset <https://web.northeastern.edu/smilelab/fiw/>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -61,7 +61,7 @@ def get_pairwise_labels(samples, label_type="kinships"):
     """Gets a list of all pairs of people that are related and the label of
     their relation, either through the "kinships" or "relationships" field.
 
-    Ex::
+    Example::
 
         [
            ["F0009/MID2", "F0009/MID4", "sibling"],
@@ -72,16 +72,17 @@ def get_pairwise_labels(samples, label_type="kinships"):
         samples: a
             :class:`fiftyone.core.collections.SampleCollection`
         label_type ("kinships"): the type of label of which to return pairwise
-            listings options are ("kinships", "relationships")
+            listings options are ``("kinships", "relationships")``
 
     Returns:
         a list of triplets containing the identifier of person 1, identifier of
         person 2, and their kinship or relationship
     """
-    if label_type not in ("kinships", "relationships"):
+    supported_types = ("kinships", "relationships")
+    if label_type not in supported_types:
         raise ValueError(
-            "Argument 'label_type' accepts values ('kinships', "
-            "'relationships'), found %s" % label_type
+            "Invalid label_type=%s. The supported values are %s"
+            % (label_type, supported_types)
         )
 
     return samples.values(
@@ -100,10 +101,10 @@ def get_pairwise_labels(samples, label_type="kinships"):
 
 
 def get_identifier_filepaths_map(samples):
-    """Creates a mapping of `family_id/member_id` identifier to a list of
+    """Creates a mapping of ``family_id/member_id`` identifier to a list of
     filepaths for each person.
 
-    Ex::
+    Example::
 
         {
             "F0325/MID4": [
@@ -113,14 +114,13 @@ def get_identifier_filepaths_map(samples):
             ...
         }
 
-
     Args:
         samples: a
             :class:`fiftyone.core.collections.SampleCollection`
 
     Returns:
-        a dict mapping 'family_id/member_id' identifiers to a list of filepaths
-        containing images of the corresponding person
+        a dict mapping ``family_id/member_id`` identifiers to a list of
+        filepaths containing images of the corresponding person
     """
     id_map = defaultdict(list)
     id_fp_list = list(zip(*samples.values([F("identifier"), F("filepath")])))
