@@ -440,12 +440,14 @@ class SampleCollection(object):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-    def get_field(self, path):
+    def get_field(self, path, include_private=False):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
 
         Args:
             path: a field path
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
 
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
@@ -456,13 +458,15 @@ class SampleCollection(object):
             return None
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
             keys = keys[1:]
         else:
             schema = self.get_field_schema()
 
         field = None
-        _add_mapped_fields_as_private_fields(schema)
+        include_private and _add_mapped_fields_as_private_fields(schema)
 
         last = len(keys) - 1
         for idx, field_name in enumerate(keys):
@@ -475,7 +479,9 @@ class SampleCollection(object):
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
+                include_private and _add_mapped_fields_as_private_fields(
+                    schema
+                )
 
         return field
 
@@ -1286,7 +1292,6 @@ class SampleCollection(object):
         )
 
         if missing_frame_parent or missing_parent:
-            print(parent, "WTF", self.get_field(parent))
             raise ValueError(
                 "Cannot infer an appropriate type for new field "
                 "'%s' when setting embedded field '%s'" % (parent, field_name)
@@ -7921,8 +7926,12 @@ def _handle_id_fields(sample_collection, field_name):
         if root is not None:
             private_field = root + "." + private_field
 
-    public_type = sample_collection.get_field(public_field)
-    private_type = sample_collection.get_field(private_field)
+    public_type = sample_collection.get_field(
+        public_field, include_private=True
+    )
+    private_type = sample_collection.get_field(
+        private_field, include_private=True
+    )
 
     if isinstance(public_type, fof.ObjectIdField):
         id_to_str = not is_private

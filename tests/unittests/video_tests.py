@@ -2465,7 +2465,7 @@ class VideoTests(unittest.TestCase):
 
         sample = patches.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(

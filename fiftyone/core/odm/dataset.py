@@ -85,7 +85,7 @@ def create_field(
             if isinstance(value, Field):
                 continue
 
-            fields[idx] = create_field(name, **value)
+            fields[idx] = create_field(**value)
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:

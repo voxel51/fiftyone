@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 import math
 
 import unittest
+from fiftyone.core.expressions import ObjectId
 import numpy as np
 
 import fiftyone as fo
@@ -120,7 +121,13 @@ class DatasetViewTests(unittest.TestCase):
         sample_view.test_dets.detections[1].label = "MODIFIED"
         sample_view.save()
         # check that correct element is modified
+        print(next(dataset._sample_collection.find()))
+        dataset[sample_view.id]._doc.reload()
         detections = dataset[sample_view.id].test_dets.detections
+        print(
+            dataset[sample_view.id]._doc["test_dets"]["detections"][-1],
+            sample_view.test_dets.detections[1],
+        )
         self.assertEqual(detections[1].label, "friend")
         self.assertEqual(detections[-1].label, "MODIFIED")
 
@@ -924,7 +931,6 @@ class SetValuesTests(unittest.TestCase):
 
     def test_set_values_view(self):
         n = len(self.dataset)
-        return
 
         classification_values = [
             fo.Classification(label=str(i)) for i in range(n)

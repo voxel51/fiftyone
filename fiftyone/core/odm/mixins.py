@@ -120,7 +120,7 @@ def get_field_kwargs(field):
     Returns:
         a field specification dict
     """
-    kwargs = {"ftype": type(field)}
+    kwargs = {"ftype": type(field), "fields": []}
 
     if isinstance(field, (fof.ListField, fof.DictField)):
         field = field.field
@@ -128,9 +128,10 @@ def get_field_kwargs(field):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        kwargs["fields"] = [
-            get_field_kwargs(field) for field in getattr(field, "fields", [])
-        ]
+        for f in getattr(field, "fields", []):
+            fkwargs = get_field_kwargs(f)
+            fkwargs["name"] = f.name
+            kwargs["fields"].append(fkwargs)
 
     return kwargs
 
