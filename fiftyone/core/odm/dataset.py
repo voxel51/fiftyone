@@ -69,11 +69,6 @@ def create_field(
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
     """
-    if not issubclass(ftype, Field):
-        raise ValueError(
-            "Invalid field type %s; must be a subclass of %s" % (ftype, Field)
-        )
-
     if db_field is None:
         db_field = name
 
@@ -98,6 +93,7 @@ def create_field(
                         fields=fields or [],
                         parent=parent,
                     )
+
                 else:
                     subfield = subfield()
 
@@ -248,6 +244,47 @@ class SampleFieldDocument(EmbeddedDocument):
             )
 
         return True
+
+    def merge_doc(self, other):
+        if self.name != other.name or self.ftype != other.ftype:
+            raise TypeError("Cannot merge")
+
+        if issubclass(other.ftype, ListField):
+            if (
+                self.subfield
+                and other.subfield
+                and self.set_field != other.subfield
+            ):
+                raise TypeError("Cannot merge")
+
+            self.subfield = other.subfield or self.subfield
+
+        if (
+            ftype == EmbeddedDocumentField
+            or self.subfield == EmbeddedDocumentField
+        ):
+            if (
+                self.embedded_doc_type
+                and self.embedded_doc_type != other.embedded_doc_type
+            ):
+                raise TypeError("Cannot merge")
+
+            self.embedded_doc_type = (
+                other.embedded_doc_type or self.embedded_doc_type
+            )
+
+            others = {f.name: f for f in other.fields}
+
+            new = []
+            for i, field in enumerate(self.fields):
+                if field.name in others:
+                    self.fields[i] = field.merge_doc(other)
+                else:
+                    new.append(field)
+
+            self.fields = self.fields + new
+
+        return self
 
     @staticmethod
     def _get_attr_repr(field, attr_name):

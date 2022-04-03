@@ -16,6 +16,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -1197,6 +1198,7 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
+        print("EXPANDING", field_name)
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
@@ -1330,9 +1332,19 @@ class SampleCollection(object):
                 )
 
         if is_frame_field:
-            self._dataset._add_implied_frame_field(stripped_field_name, value)
+            fcn = lambda v: self._dataset._add_implied_frame_field(
+                stripped_field_name, v
+            )
         else:
-            self._dataset._add_implied_sample_field(field_name, value)
+            fcn = lambda v: self._dataset._add_implied_sample_field(
+                field_name, v
+            )
+
+        if isinstance(value, DynamicEmbeddedDocument):
+            for value in values:
+                fcn(value)
+        else:
+            fcn(value)
 
     def _set_sample_values(
         self,

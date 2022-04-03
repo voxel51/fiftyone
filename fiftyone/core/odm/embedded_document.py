@@ -24,16 +24,18 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     _parent = None
 
     def __init__(self, *args, **kwargs):
+        from .dataset import create_field
+        from .mixins import get_field_kwargs
+
+        self._fields = {}
+        for field_name, field in self.__class__._fields.items():
+            self._fields[field_name] = create_field(
+                field_name, **get_field_kwargs(field)
+            )
+
         super().__init__(*args, **kwargs)
 
         self._custom_fields = {}
-
-        # pylint: disable=no-member
-        for name, field in self._fields.items():
-            if isinstance(field, (DictField, ListField)):
-                field = field.field
-            if isinstance(field, EmbeddedDocumentField):
-                field.name = name
 
         for name in getattr(self, "_dynamic_fields", {}):
             value = self._data[name]
@@ -42,24 +44,32 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def has_field(self, name):
         # pylint: disable=no-member
-        if name in self._fields:
-            return True
-
-        if name in self._get_custom_fields():
-            return True
-
-        return False
+        return self.get_field_def(name) is not None
 
     def __setattr__(self, name, value):
-        if not name.startswith("_"):
-            custom_fields = self._get_custom_fields()
-            if name in custom_fields and value is not None:
-                custom_fields[name].validate(value)
+        if (
+            name != "_cls"
+            and name in self._fields_ordered
+            and value is not None
+        ):
+            self.get_field_def(name).validate(value)
 
         super().__setattr__(name, value)
 
     def __setitem__(self, name, value):
         self.set_field(name, value, create=True)
+
+    def get_field_def(self, name):
+        # pylint: disable=no-member
+        return self._fields.get(
+            name, self._get_custom_fields().get(name, None)
+        )
+
+    def get_field_schema(self):
+        # pylint: disable=no-member
+        schema = self._fields.copy()
+        schema.update(self._get_custom_fields())
+        return schema
 
     def set_field(self, name, value, create=False):
         if (

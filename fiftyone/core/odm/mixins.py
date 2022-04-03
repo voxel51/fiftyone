@@ -24,7 +24,7 @@ from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
 from .embedded_document import DynamicEmbeddedDocument
-from .utils import get_implied_field_kwargs
+from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -108,32 +108,6 @@ def validate_fields_match(
                     existing_field.field,
                 )
             )
-
-
-def get_field_kwargs(field):
-    """Constructs the field keyword arguments dictionary for the given
-    :class:`fiftyone.core.fields.Field` instance.
-
-    Args:
-        field: a :class:`fiftyone.core.fields.Field`
-
-    Returns:
-        a field specification dict
-    """
-    kwargs = {"ftype": type(field), "fields": []}
-
-    if isinstance(field, (fof.ListField, fof.DictField)):
-        field = field.field
-        kwargs["subfield"] = type(field)
-
-    if isinstance(field, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-        for f in getattr(field, "fields", []):
-            fkwargs = get_field_kwargs(f)
-            fkwargs["name"] = f.name
-            kwargs["fields"].append(fkwargs)
-
-    return kwargs
 
 
 class DatasetMixin(object):
@@ -301,7 +275,16 @@ class DatasetMixin(object):
                 continue
 
             if field_name in _schema:
-                validate_fields_match(field_name, field, _schema[field_name])
+                doc = SampleFieldDocument.from_field(
+                    _schema[field_name]
+                ).merge_doc(SampleFieldDocument.from_field(field))
+                setattr(cls, field_name, _schema[field_name])
+                cls._declare_field(field, field_name)
+                dataset_doc = cls._dataset_doc()
+                fields = dataset_doc[cls._fields_attr()]
+                sample_field = SampleFieldDocument.from_field(field)
+                fields.append(sample_field)
+                dataset_doc.save()
             else:
                 add_fields.append(field_name)
 
@@ -361,17 +344,13 @@ class DatasetMixin(object):
             field_name: the field name
             value: the field value
         """
-        kwargs = get_implied_field_kwargs(value)
+        field = create_field(field_name, **get_implied_field_kwargs(value))
 
-        # pylint: disable=no-member
-        if field_name not in cls._fields:
-            cls.add_field(field_name, **kwargs)
-            schema = cls.get_field_schema()
-            for field_name in field_name.split("."):
-                field = schema.get(field_name, None)
+        cls.merge_field_schema({field_name: field})
 
-            if isinstance(field, fof.EmbeddedDocumentField):
-                value._set_parent(field)
+        if isinstance(field, fof.EmbeddedDocumentField):
+            value._set_parent(field)
+            field._set_parent(cls)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):

@@ -10,6 +10,7 @@ import numbers
 
 from bson import ObjectId, SON
 from bson.binary import Binary
+from mongoengine.base.datastructures import BaseList
 import mongoengine.fields
 import numpy as np
 import pytz
@@ -194,11 +195,15 @@ class ListField(mongoengine.fields.ListField, Field):
             for v in value:
                 self.field.validate(v, clean=False, expand=True)
         else:
-            try:
-                super().validate(value)
-            except Exception as e:
-                print(value)
-                raise e
+            super().validate(value)
+
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            r = [self.field.to_python(v, detached=True) for v in value]
+            print("SFAFADFDFAF", r and type(r[0]))
+            return r
+
+        return super().to_python(value)
 
 
 class HeatmapRangeField(ListField):
@@ -266,6 +271,15 @@ class DictField(mongoengine.fields.DictField, Field):
 
         if value is not None and not isinstance(value, dict):
             self.error("Value must be a dict")
+
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            return {
+                k: v in self.field.to_python(v, detached=True)
+                for k, v in value.items()
+            }
+
+        return super().to_python(value)
 
 
 class IntDictField(DictField):
@@ -664,10 +678,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             elif isinstance(field, EmbeddedDocumentField):
                 field.validate(field_value, clean=False, expand=expand)
             else:
-                try:
-                    field.validate(field_value)
-                except Exception as e:
-                    raise e
+                field.validate(field_value)
 
         if isinstance(value, foo.DynamicEmbeddedDocument):
             value._set_parent(self)
@@ -717,7 +728,29 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return filtered_fields
 
-    def to_python(self, value):
+    def to_python(self, value, detached=False):
+        if detached:
+            value.pop("_cls", None)
+            _id = value.pop("_id", None)
+            for k, v in value.items():
+                if k in self.document_type._fields:
+                    if isinstance(
+                        self.document_type._fields[k],
+                        (EmbeddedDocumentField, ListField, DictField),
+                    ):
+                        value[k] = self.document_type._fields[k].to_python(
+                            v, detached=True
+                        )
+                    elif v is not None:
+
+                        value[k] = self.document_type._fields[k].to_python(v)
+
+            if _id:
+                value["id"] = _id
+            doc = self.document_type(**value)
+
+            return doc
+
         doc = super().to_python(value)
 
         if isinstance(doc, foo.DynamicEmbeddedDocument):
@@ -726,15 +759,21 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         return doc
 
     def _save_field(self, field, keys):
-        if keys[0] not in self.get_field_schema():
-            self.fields.append(field)
-            self._validation_schema = self.get_field_schema()
+        self.fields = [f for f in self.fields if f.name != keys[0]] + [field]
+        self._validation_schema = self.get_field_schema()
 
         if self._parent:
             self._parent._save_field(field, [self.name] + keys)
 
     def _set_parent(self, parent):
         self._parent = parent
+        if parent is not None:
+            for field in self.get_field_schema():
+                if isinstance(field, (ListField)):
+                    field = field.field
+
+                if isinstance(field, EmbeddedDocumentField):
+                    self._set_parent(parent)
 
 
 class EmbeddedDocumentListField(

@@ -15,7 +15,7 @@ try:
 except ImportError:
     from importlib_metadata import metadata  # Python < 3.8
 
-
+D = {"s": False}
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")

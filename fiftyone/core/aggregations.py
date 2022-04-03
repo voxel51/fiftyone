@@ -1624,21 +1624,22 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._field_type is not None:
-            fcn = self._field_type.to_python
+        if self._field is not None:
+            if isinstance(
+                self._field,
+                (fof.EmbeddedDocumentField, fof.ListField, fof.DictField),
+            ):
+                fcn = lambda v: self._field.to_python(v, detached=True)
+            else:
+                fcn = self._field.to_python
+
             level = 1 + self._num_list_fields
             return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection, big_field="values"):
-        (
-            path,
-            pipeline,
-            list_fields,
-            id_to_str,
-            field_type,
-        ) = _parse_field_and_expr(
+        (path, pipeline, list_fields, id_to_str, _) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
@@ -1647,7 +1648,7 @@ class Values(Aggregation):
         )
 
         self._big_field = big_field
-        self._field_type = field_type
+        self._field = sample_collection.get_field(path)
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(

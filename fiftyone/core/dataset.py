@@ -4643,8 +4643,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 def _declare_fields(doc_cls, field_docs):
     for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
-            doc = foo.SampleFieldDocument.from_field(field)
-            field = doc.to_field()
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
             field._set_parent(doc_cls)
             doc_cls._fields[field_name] = field
             setattr(doc_cls, field_name, field)
