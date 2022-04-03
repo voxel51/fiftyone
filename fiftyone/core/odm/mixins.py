@@ -281,9 +281,10 @@ class DatasetMixin(object):
                 setattr(cls, field_name, _schema[field_name])
                 cls._declare_field(field, field_name)
                 dataset_doc = cls._dataset_doc()
-                fields = dataset_doc[cls._fields_attr()]
-                sample_field = SampleFieldDocument.from_field(field)
-                fields.append(sample_field)
+                for i, f in enumerate(dataset_doc[cls._fields_attr()]):
+                    if f.name == doc.name:
+                        dataset_doc[cls._fields_attr()][i] = f
+
                 dataset_doc.save()
             else:
                 add_fields.append(field_name)
