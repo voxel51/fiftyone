@@ -246,23 +246,24 @@ class SampleFieldDocument(EmbeddedDocument):
         return True
 
     def merge_doc(self, other):
-        if self.name != other.name or self.ftype != other.ftype:
+        if self.name != other.name:
             raise TypeError("Cannot merge")
 
-        if issubclass(other.ftype, ListField):
+        if self.ftype != other.ftype:
+            raise TypeError("Cannot merge")
+
+        if other.ftype == etau.get_class_name(ListField):
             if (
                 self.subfield
                 and other.subfield
-                and self.set_field != other.subfield
+                and self.subfield != other.subfield
             ):
                 raise TypeError("Cannot merge")
 
             self.subfield = other.subfield or self.subfield
 
-        if (
-            ftype == EmbeddedDocumentField
-            or self.subfield == EmbeddedDocumentField
-        ):
+        embedded_doc = etau.get_class_name(EmbeddedDocumentField)
+        if other.ftype == embedded_doc or self.subfield == embedded_doc:
             if (
                 self.embedded_doc_type
                 and self.embedded_doc_type != other.embedded_doc_type
@@ -278,7 +279,7 @@ class SampleFieldDocument(EmbeddedDocument):
             new = []
             for i, field in enumerate(self.fields):
                 if field.name in others:
-                    self.fields[i] = field.merge_doc(other)
+                    self.fields[i] = field.merge_doc(others[field.name])
                 else:
                     new.append(field)
 
