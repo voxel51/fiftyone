@@ -1,7 +1,7 @@
 {
     "name": "@fiftyone/fiftyone",
     "productName": "FiftyOne",
-    "version": "0.19.3",
+    "version": "0.19.4",
     "license": "Apache-2.0",
     "private": true,
     "main": "index.js",
