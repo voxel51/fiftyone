@@ -214,7 +214,6 @@ def _resolve_ftype(one, two):
     elif one in keypoints and two in keypoints:
         return fof.KeypointsField
 
-    print(one, two)
     raise TypeError("Cannot merge")
 
 

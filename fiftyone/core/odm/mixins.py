@@ -277,7 +277,7 @@ class DatasetMixin(object):
 
             _schema = field.get_field_schema()
 
-        add_fields = []
+        new_docs = []
         for field_name, field in schema.items():
             if field_name == "id":
                 continue
@@ -289,33 +289,42 @@ class DatasetMixin(object):
                     _schema[field_name]
                 ).merge_doc(other)
                 field = doc.to_field()
-                setattr(cls, field_name, _schema[field_name])
-                cls._declare_field(field, field_name)
-                dataset_field_docs = cls._dataset_doc()[cls._fields_attr()]
-                docs = dataset_field_docs
-
-                for k in keys:
-                    for f in docs:
-                        if k == f.name:
-                            docs = f.fields
-                            break
-
-                for i, f in enumerate(docs):
-                    if f.name == doc.name:
-                        docs[i] = f
-
-                dataset_field_docs.save()
             else:
-                add_fields.append(field_name)
+                doc = SampleFieldDocument.from_field(field)
 
-        if not expand_schema and add_fields:
-            raise ValueError(
-                "%s fields %s do not exist" % (cls._doc_name(), add_fields)
+            new_docs.append(doc)
+            cls._declare_field(field, keys + [field_name])
+
+        dataset_field_docs = cls._dataset_doc()[cls._fields_attr()]
+        parent_docs = dataset_field_docs
+        docs = parent_docs
+
+        for k in keys:
+            for f in docs:
+                if k == f.name:
+                    docs = f.fields
+                    break
+
+        updated_docs = {doc.name: doc for doc in docs}
+        for doc in new_docs:
+            updated_docs[doc.name] = doc
+
+        if not keys:
+            cls._dataset_doc()[cls._fields_attr()] = list(
+                updated_docs.values()
             )
+        else:
+            docs = parent_docs
+            for k in keys:
+                for f in docs:
+                    if k == f.name:
+                        field = f
+                        docs = field.fields
+                        break
 
-        for field_name in add_fields:
-            field = schema[field_name]
-            cls._add_field_schema(field_name, **get_field_kwargs(field))
+            field.fields = list(updated_docs.values())
+
+        dataset_field_docs.save()
 
     @classmethod
     def add_field(
@@ -712,12 +721,6 @@ class DatasetMixin(object):
         subfield=None,
         **kwargs,
     ):
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            raise ValueError(
-                "%s field '%s' already exists" % (cls._doc_name(), field_name)
-            )
-
         field = create_field(
             field_name.split(".")[-1],
             ftype,
@@ -727,12 +730,7 @@ class DatasetMixin(object):
             **kwargs,
         )
 
-        cls._declare_field(field, field_name)
-        dataset_doc = cls._dataset_doc()
-        fields = dataset_doc[cls._fields_attr()]
-        sample_field = SampleFieldDocument.from_field(field)
-        fields.append(sample_field)
-        dataset_doc.save()
+        cls.merge_field_schema([], {field_name: field})
 
     @classmethod
     def _save_field(cls, field, path):
