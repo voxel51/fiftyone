@@ -1467,6 +1467,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
+            for name, field in self.get_field_schema().items():
+                if isinstance(field, fof.ListField):
+                    field = field.field
+
+                if not isinstance(field, fof.EmbeddedDocumentField):
+                    continue
+
+                if getattr(sample, name, None) is not None:
+                    sample[name]._set_parent(field)
+
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -4669,7 +4679,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 def _declare_fields(doc_cls, field_docs=None):
     for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
+            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
             field._set_parent(doc_cls)
             doc_cls._fields[field_name] = field
             setattr(doc_cls, field_name, field)
@@ -5102,11 +5112,11 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        schema, expand_schema=expand_schema
+        [], schema, expand_schema=expand_schema
     )
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            frame_schema, expand_schema=expand_schema
+            [], frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:

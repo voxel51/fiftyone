@@ -1634,12 +1634,19 @@ class Values(Aggregation):
                 fcn = self._field.to_python
 
             level = 1 + self._num_list_fields
+
             return _transform_values(values, fcn, level=level)
 
         return values
 
     def to_mongo(self, sample_collection, big_field="values"):
-        (path, pipeline, list_fields, id_to_str, _) = _parse_field_and_expr(
+        (
+            path,
+            pipeline,
+            list_fields,
+            id_to_str,
+            field,
+        ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
             expr=self._expr,
@@ -1648,7 +1655,7 @@ class Values(Aggregation):
         )
 
         self._big_field = big_field
-        self._field = sample_collection.get_field(path)
+        self._field = field
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(

@@ -254,7 +254,7 @@ class DatasetMixin(object):
         return d
 
     @classmethod
-    def merge_field_schema(cls, schema, expand_schema=True):
+    def merge_field_schema(cls, keys, schema, expand_schema=True):
         """Merges the field schema into this document.
 
         Args:
@@ -269,23 +269,42 @@ class DatasetMixin(object):
         """
         _schema = cls._fields
 
+        assert None not in keys
+        for k in keys:
+            field = _schema[k]
+            while isinstance(field, fof.ListField):
+                field = field.field
+
+            _schema = field.get_field_schema()
+
         add_fields = []
         for field_name, field in schema.items():
             if field_name == "id":
                 continue
 
             if field_name in _schema:
+                other = SampleFieldDocument.from_field(field)
+                other.name = field_name
                 doc = SampleFieldDocument.from_field(
                     _schema[field_name]
-                ).merge_doc(SampleFieldDocument.from_field(field))
+                ).merge_doc(other)
+                field = doc.to_field()
                 setattr(cls, field_name, _schema[field_name])
                 cls._declare_field(field, field_name)
-                dataset_doc = cls._dataset_doc()
-                for i, f in enumerate(dataset_doc[cls._fields_attr()]):
-                    if f.name == doc.name:
-                        dataset_doc[cls._fields_attr()][i] = f
+                dataset_field_docs = cls._dataset_doc()[cls._fields_attr()]
+                docs = dataset_field_docs
 
-                dataset_doc.save()
+                for k in keys:
+                    for f in docs:
+                        if k == f.name:
+                            docs = f.fields
+                            break
+
+                for i, f in enumerate(docs):
+                    if f.name == doc.name:
+                        docs[i] = f
+
+                dataset_field_docs.save()
             else:
                 add_fields.append(field_name)
 
@@ -345,9 +364,10 @@ class DatasetMixin(object):
             field_name: the field name
             value: the field value
         """
-        field = create_field(field_name, **get_implied_field_kwargs(value))
+        keys = field_name.split(".")
+        field = create_field(keys[-1], **get_implied_field_kwargs(value))
 
-        cls.merge_field_schema({field_name: field})
+        cls.merge_field_schema(keys[:-1], {field_name: field})
 
         if isinstance(field, fof.EmbeddedDocumentField):
             value._set_parent(field)
@@ -716,23 +736,9 @@ class DatasetMixin(object):
 
     @classmethod
     def _save_field(cls, field, path):
-        dataset_doc = cls._dataset_doc()
-        sample_field = SampleFieldDocument.from_field(field)
-        top_level_fields = dataset_doc[cls._fields_attr()]
-        if len(path) == 1:
-            top_level_fields.append(sample_field)
-        else:
-            for doc_field in top_level_fields:
-                if doc_field.name == path[0]:
-                    break
-
-            for key in path[1:-1]:
-                doc_field = doc_field.get_field_schema()[key]
-
-            doc_field.fields = list(doc_field.fields) + [sample_field]
-
-        dataset_doc.save()
-        cls._declare_field(field, path)
+        if None in path:
+            print(path, SampleFieldDocument.from_field(field))
+        cls.merge_field_schema(path[:-1], {path[-1]: field})
 
     @classmethod
     def _rename_field_schema(cls, field_name, new_field_name):

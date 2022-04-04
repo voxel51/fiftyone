@@ -183,9 +183,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             if isinstance(field, EmbeddedDocumentField):
                 set_field._set_parent(parent)
 
-            if field_name in custom_fields:
-                self._declare_field(field)
-
         self._custom_fields = {}
 
     def _get_custom_fields(self):

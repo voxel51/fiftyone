@@ -10,7 +10,6 @@ import numbers
 
 from bson import ObjectId, SON
 from bson.binary import Binary
-from mongoengine.base.datastructures import BaseList
 import mongoengine.fields
 import numpy as np
 import pytz
@@ -199,9 +198,9 @@ class ListField(mongoengine.fields.ListField, Field):
 
     def to_python(self, value, detached=False):
         if detached and isinstance(self.field, EmbeddedDocumentField):
-            r = [self.field.to_python(v, detached=True) for v in value]
-            print("SFAFADFDFAF", r and type(r[0]))
-            return r
+            if not isinstance(value, list):
+                print(self.name, value)
+            return [self.field.to_python(v, detached=True) for v in value]
 
         return super().to_python(value)
 
@@ -768,12 +767,13 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def _set_parent(self, parent):
         self._parent = parent
         if parent is not None:
-            for field in self.get_field_schema():
+            for field_name, field in self.get_field_schema().items():
                 if isinstance(field, (ListField)):
                     field = field.field
 
                 if isinstance(field, EmbeddedDocumentField):
-                    self._set_parent(parent)
+                    field._set_parent(self)
+                    field.name = field_name
 
 
 class EmbeddedDocumentListField(

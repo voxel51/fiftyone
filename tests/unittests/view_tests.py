@@ -924,7 +924,6 @@ class SetValuesTests(unittest.TestCase):
 
     def test_set_values_view(self):
         n = len(self.dataset)
-        return
 
         classification_values = [
             fo.Classification(label=str(i)) for i in range(n)
