@@ -87,13 +87,18 @@ def down(db, dataset_name):
 
 
 def _make_field_doc(name, ftype, subfield):
+    if ftype == "fiftyone.core.fields.ObjectIdField":
+        db_field = "_" + name
+    else:
+        db_field = name
+
     return {
         "_cls": "SampleFieldDocument",
         "name": name,
         "ftype": ftype,
         "subfield": subfield,
         "embedded_doc_type": None,
-        "db_field": name,
+        "db_field": db_field,
         "fields": [],
     }
 
@@ -182,6 +187,9 @@ def _parse_result(result):
     schema = defaultdict(set)
     for name_and_type in result[0]["schema"]:
         name, mongo_type = name_and_type.split(".", 1)
+        if name == "_cls":
+            continue
+
         if mongo_type == "objectId" and name.startswith("_"):
             name = name[1:]  # "_id" -> "id"
 
