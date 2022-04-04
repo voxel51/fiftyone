@@ -5,6 +5,7 @@ FiftyOne v0.16.0 revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 
 
 def up(db, dataset_name):
@@ -13,11 +14,10 @@ def up(db, dataset_name):
 
     media_type = dataset_dict.get("media_type", None)
 
-    embedded_doc_inds = []
-
-    for idx, field in enumerate(dataset_dict.get("sample_fields", [])):
+    for field in dataset_dict.get("sample_fields", []):
         name = field.get("name", None)
-        ftype = field.get("dtype", None)
+        ftype = field.get("ftype", None)
+        embedded_doc_type = field.get("embedded_doc_type", None)
 
         if name == "metadata":
             if media_type == "image":
@@ -32,14 +32,41 @@ def up(db, dataset_name):
 
             field["embedded_doc_type"] = embedded_doc_type
             field["fields"] = [_make_field_doc(n, t) for n, t in fields]
+        elif ftype == "fiftyone.core.fields.EmbeddedDocumentField":
+            try:
+                field["fields"] = _infer_fields(
+                    db[dataset_dict["sample_collection_name"]],
+                    name,
+                    embedded_doc_type,
+                )
+            except Exception as e:
+                print(
+                    "Failed to infer schema of embedded sample field '%s' "
+                    "of type '%s': %s" % (name, embedded_doc_type, e)
+                )
+                field["fields"] = []
         else:
             field["fields"] = []
 
-        if ftype == "fiftyone.core.fields.EmbeddedDocumentField":
-            embedded_doc_inds.append(idx)
-
     for field in dataset_dict.get("frame_fields", []):
-        field["fields"] = []
+        ftype = field.get("ftype", None)
+        embedded_doc_type = field.get("embedded_doc_type", None)
+
+        if ftype == "fiftyone.core.fields.EmbeddedDocumentField":
+            try:
+                field["fields"] = _infer_fields(
+                    db[dataset_dict["frame_collection_name"]],
+                    name,
+                    embedded_doc_type,
+                )
+            except Exception as e:
+                print(
+                    "Failed to infer schema of embedded frame field '%s' "
+                    "of type '%s': %s" % (name, embedded_doc_type, e)
+                )
+                field["fields"] = []
+        else:
+            field["fields"] = []
 
     dataset_dict["app_sidebar_groups"] = None
 
@@ -65,16 +92,92 @@ def down(db, dataset_name):
 
 
 def _make_field_doc(name, mongo_type):
+    ftype = _MONGO_TO_FIFTYONE_TYPES.get(
+        mongo_type, "fiftyone.core.fields.Field"
+    )
+
     return {
         "_cls": "SampleFieldDocument",
         "name": name,
-        "ftype": _MONGO_TO_FIFTYONE_TYPES[mongo_type],
+        "ftype": ftype,
         "subfield": None,
         "embedded_doc_type": None,
         "db_field": name,
         "fields": [],
     }
 
+
+def _infer_fields(coll, name, embedded_doc_type):
+    pipeline = _build_pipeline(name, embedded_doc_type)
+    result = coll.aggregate(pipeline, allowDiskUse=True)
+    schema = _parse_result(result)
+    return [_make_field_doc(n, t) for n, t in schema.items()]
+
+
+def _build_pipeline(name, embedded_doc_type):
+    pipeline = []
+    list_field = _LABEL_LIST_FIELDS.get(embedded_doc_type, None)
+
+    if list_field is None:
+        path = name
+        pipeline = [{"$project": {path: True}}]
+    else:
+        path = name + "." + list_field
+        pipeline = [{"$project": {path: True}}, {"$unwind": "$" + path}]
+
+    pipeline.extend(
+        [
+            {"$project": {"fields": {"$objectToArray": "$" + path}}},
+            {"$unwind": "$fields"},
+            {
+                "$group": {
+                    "_id": None,
+                    "schema": {
+                        "$addToSet": {
+                            "$concat": [
+                                "$fields.k",
+                                ".",
+                                {"$type": "$fields.v"},
+                            ]
+                        }
+                    },
+                }
+            },
+        ]
+    )
+
+    return pipeline
+
+
+def _parse_result(result):
+    raw_schema = defaultdict(set)
+    for name_and_type in result["schema"]:
+        name, mongo_type = name_and_type.split(".", 1)
+        if mongo_type == "objectId" and name.startswith("_"):
+            name = name[1:]  # "_id" -> "id"
+
+        raw_schema[name].add(mongo_type)
+
+    schema = {}
+    for name, types in raw_schema.items():
+        if len(types) > 1:
+            types = [t for t in types if t is not None]
+        else:
+            types = list(types)
+
+        if len(types) == 1 and types[0] is not None:
+            schema[name] = types[0]
+
+    return schema
+
+
+_LABEL_LIST_FIELDS = {
+    "fiftyone.core.labels.Classifications": "classifications",
+    "fiftyone.core.labels.Detections": "detections",
+    "fiftyone.core.labels.Keypoints": "keypoints",
+    "fiftyone.core.labels.Polylines": "polylines",
+    "fiftyone.core.labels.TemporalDetections": "detections",
+}
 
 _METADATA_FIELDS = [
     ("size_bytes", "int"),
