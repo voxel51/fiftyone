@@ -1353,7 +1353,7 @@ class Schema(Aggregation):
 
         self._doc_type = doc_type
 
-        path, pipeline, _, _ = _parse_field_and_expr(
+        path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection, field_name, expr=self._expr
         )
 
