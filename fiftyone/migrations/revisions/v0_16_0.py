@@ -174,8 +174,11 @@ def _build_pipeline(path, is_list_field=False):
 
 
 def _parse_result(result):
+    if not result:
+        return []
+
     schema = defaultdict(set)
-    for name_and_type in result["schema"]:
+    for name_and_type in result[0]["schema"]:
         name, mongo_type = name_and_type.split(".", 1)
         if mongo_type == "objectId" and name.startswith("_"):
             name = name[1:]  # "_id" -> "id"
