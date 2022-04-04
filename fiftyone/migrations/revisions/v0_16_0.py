@@ -192,7 +192,7 @@ def _parse_result(result):
     for name, types in schema.items():
         if len(types) == 1:
             ftype = _MONGO_TO_FIFTYONE_TYPES.get(
-                types[0], "fiftyone.core.fields.Field"
+                next(iter(types)), "fiftyone.core.fields.Field"
             )
             fields.append((name, ftype, None))
 
