@@ -80,7 +80,6 @@ obtain a desired subset of the samples.
     Tags:           []
     Sample fields:
         id:         fiftyone.core.fields.ObjectIdField
-        media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -196,7 +195,7 @@ schema and thus accessible on all other samples in the dataset.
         id:        fiftyone.core.fields.ObjectIdField
         filepath:  fiftyone.core.fields.StringField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         quality:   fiftyone.core.fields.FloatField
         keypoints: fiftyone.core.fields.ListField
         geo_json:  fiftyone.core.fields.DictField
