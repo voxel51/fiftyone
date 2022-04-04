@@ -11,6 +11,7 @@ import numbers
 import six
 
 from bson.objectid import ObjectId
+from mongoengine.fields import StringField
 import numpy as np
 
 import fiftyone.core.fields as fof
@@ -30,7 +31,7 @@ def get_field_kwargs(field):
     Returns:
         a field specification dict
     """
-    kwargs = {"ftype": type(field), "fields": []}
+    kwargs = {"ftype": type(field), "fields": [], "db_field": field.db_field}
 
     if isinstance(field, (fof.ListField, fof.DictField)):
         field = field.field
@@ -39,7 +40,10 @@ def get_field_kwargs(field):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         kwargs["embedded_doc_type"] = field.document_type
-        for f in getattr(field, "fields", []):
+        for f in getattr(field, "fields", []) + list(
+            field.document_type._fields.values()
+        ):
+
             fkwargs = get_field_kwargs(f)
             fkwargs["name"] = f.name
             kwargs["fields"].append(fkwargs)
@@ -117,10 +121,12 @@ def get_implied_field_kwargs(value):
                 data = defaultdict(list)
 
                 for v in value:
-                    for n in v.get_field_schema():
+                    for n, f in v.get_field_schema().items():
                         vv = getattr(v, n, None)
                         if vv is not None:
                             data[n].append(get_implied_field_kwargs(vv))
+
+                        data[n].append(get_field_kwargs(f))
 
                 kwargs["fields"] = [
                     dict(name=n, **_merge_field_kwargs(l))
@@ -174,30 +180,65 @@ def _get_list_value_type(value):
     return None
 
 
+numerics = (fof.FloatField, fof.IntField)
+strings = (fof.StringField, StringField)
+ids = (fof.StringField, StringField, fof.ObjectIdField)
+vectors = (fof.ListField, fof.VectorField)
+geo = (fof.GeoPointField, fof.ListField)
+poly = (fof.PolylinePointsField, fof.ListField)
+keypoints = (fof.KeypointsField, fof.ListField)
+frame = (fof.FrameSupportField, fof.ListField)
+
+
+def _resolve_ftype(one, two):
+    if not one:
+        return two
+    elif not two:
+        return one
+    elif one == two:
+        return one
+    elif one in numerics and two in numerics:
+        return fof.FloatField
+    elif one in strings and two in strings:
+        return fof.StringField
+    elif one in ids and two in ids:
+        return fof.ObjectIdField
+    elif one in vectors and two in vectors:
+        return fof.VectorField
+    elif one in geo and two in geo:
+        return fof.GeoPointField
+    elif one in poly and two in poly:
+        return fof.PolylinePointsField
+    elif one in frame and two in frame:
+        return fof.FrameSupportField
+    elif one in keypoints and two in keypoints:
+        return fof.KeypointsField
+
+    print(one, two)
+    raise TypeError("Cannot merge")
+
+
 def _merge_field_kwargs(fields_list):
-    kwargs = {}
+    kwargs = {"db_field": None}
     for field_kwargs in fields_list:
-        ftype = kwargs.get("ftype", field_kwargs["ftype"])
-        if ftype != field_kwargs["ftype"]:
-            raise TypeError("Cannot merge")
+        ftype = _resolve_ftype(
+            kwargs.get("ftype", field_kwargs["ftype"]), field_kwargs["ftype"]
+        )
         kwargs["ftype"] = ftype
+
+        if field_kwargs.get("db_field", None) is not None:
+            kwargs["db_field"] = field_kwargs["db_field"]
 
         if issubclass(ftype, fof.ListField):
             subfield = kwargs.get(
                 "subfield", field_kwargs.get("subfield", None)
             )
             proposed_subfield = field_kwargs.get("subfield", None)
-            if (
-                subfield
-                and proposed_subfield
-                and subfield != proposed_subfield
-            ):
-                raise TypeError("Cannot merge")
 
-            kwargs["subfield"] = subfield
+            kwargs["subfield"] = _resolve_ftype(subfield, proposed_subfield)
 
-            if subfield == fof.EmbeddedDocumentField:
-                ftype = subfield
+            if kwargs["subfield"] == fof.EmbeddedDocumentField:
+                ftype = kwargs["subfield"]
 
         if ftype == fof.EmbeddedDocumentField:
             document_type = kwargs.get(

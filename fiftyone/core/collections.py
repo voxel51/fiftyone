@@ -1198,7 +1198,6 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
-        print("EXPANDING", field_name)
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 

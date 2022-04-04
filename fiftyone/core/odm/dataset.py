@@ -9,6 +9,8 @@ import inspect
 
 import eta.core.utils as etau
 
+from mongoengine.fields import StringField as MongoStringField
+
 from fiftyone.core.fields import (
     Field,
     BooleanField,
@@ -18,6 +20,7 @@ from fiftyone.core.fields import (
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
     ListField,
+    ObjectIdField,
     StringField,
     TargetsField,
 )
@@ -77,7 +80,7 @@ def create_field(
 
     if fields is not None:
         for idx, value in enumerate(fields):
-            if isinstance(value, Field):
+            if isinstance(value, (Field, MongoStringField)):
                 continue
 
             fields[idx] = create_field(**value)
@@ -108,7 +111,9 @@ def create_field(
             kwargs["field"] = subfield
 
     if issubclass(ftype, EmbeddedDocumentField):
-        if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
+        if embedded_doc_type is None or not issubclass(
+            embedded_doc_type, BaseEmbeddedDocument
+        ):
             raise ValueError(
                 "Invalid embedded_doc_type %s; must be a subclass of %s"
                 % (embedded_doc_type, BaseEmbeddedDocument)
@@ -246,9 +251,6 @@ class SampleFieldDocument(EmbeddedDocument):
         return True
 
     def merge_doc(self, other):
-        if self.name != other.name:
-            raise TypeError("Cannot merge")
-
         if self.ftype != other.ftype:
             raise TypeError("Cannot merge")
 
@@ -261,6 +263,9 @@ class SampleFieldDocument(EmbeddedDocument):
                 raise TypeError("Cannot merge")
 
             self.subfield = other.subfield or self.subfield
+
+        if self.name == other.name and self.db_field is None:
+            self.db_field = other.db_field or self.db_field
 
         embedded_doc = etau.get_class_name(EmbeddedDocumentField)
         if other.ftype == embedded_doc or self.subfield == embedded_doc:
