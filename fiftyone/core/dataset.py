@@ -41,6 +41,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -350,7 +351,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (media_type, fom.MEDIA_TYPES)
             )
 
+        if media_type == self._doc.media_type:
+            return
+
         self._doc.media_type = media_type
+
+        idx = None
+        for i, field in enumerate(self._doc.sample_fields):
+            if field.name == "metadata":
+                idx = i
+
+        if idx is not None:
+            if media_type == fom.IMAGE:
+                doc_type = fome.ImageMetadata
+            elif media_type == fom.VIDEO:
+                doc_type = fome.VideoMetadata
+            else:
+                doc_type = fome.Metadata
+
+            field = foo.create_field(
+                "metadata",
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=doc_type,
+            )
+            field_doc = foo.SampleFieldDocument.from_field(field)
+            self._doc.sample_fields[idx] = field_doc
+            self._sample_doc_cls._declare_field(field, field.name)
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -4657,7 +4683,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _declare_fields(doc_cls, field_docs):
+def _declare_fields(doc_cls, field_docs=None):
     for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
             field = foo.create_field(field_name, **foo.get_field_kwargs(field))
@@ -4665,9 +4691,10 @@ def _declare_fields(doc_cls, field_docs):
             doc_cls._fields[field_name] = field
             setattr(doc_cls, field_name, field)
 
-    for field_doc in field_docs or []:
-        field = field_doc.to_field()
-        doc_cls._declare_field(field, field.name)
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field, field.name)
 
 
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
@@ -4698,13 +4725,13 @@ def _make_frame_collection_name(sample_collection_name):
 
 def _create_sample_document_cls(sample_collection_name, field_docs=None):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    _declare_fields(cls, field_docs)
+    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
 def _create_frame_document_cls(frame_collection_name, field_docs=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    _declare_fields(cls, field_docs)
+    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
