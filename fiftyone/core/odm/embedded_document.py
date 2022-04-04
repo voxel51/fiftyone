@@ -193,7 +193,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
 
     def _get_custom_fields(self):
         if not self._parent:
-            return self._custom_fields
+            return getattr(self, "_custom_fields", {})
 
         fields = getattr(self._parent, "fields", [])
         return {field.name: field for field in fields}

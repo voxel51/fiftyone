@@ -737,6 +737,7 @@ class DatasetMixin(object):
         subfield=None,
         **kwargs,
     ):
+
         field = create_field(
             field_name.split(".")[-1],
             ftype,
@@ -745,6 +746,10 @@ class DatasetMixin(object):
             parent=cls,
             **kwargs,
         )
+        if field_name in cls._fields and not isinstance(
+            field, fof.EmbeddedDocumentField
+        ):
+            raise ValueError("field already exists")
 
         cls.merge_field_schema(
             field_name.split(".")[:-1], {field_name.split(".")[-1]: field}
