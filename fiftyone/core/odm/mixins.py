@@ -23,7 +23,7 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
-from .embedded_document import DynamicEmbeddedDocument
+from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
 from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -269,7 +269,6 @@ class DatasetMixin(object):
         """
         _schema = cls._fields
 
-        assert None not in keys
         for k in keys:
             field = _schema[k]
             while isinstance(field, fof.ListField):
@@ -291,6 +290,8 @@ class DatasetMixin(object):
                 field = doc.to_field()
             else:
                 doc = SampleFieldDocument.from_field(field)
+                doc.name = field_name
+                field = doc.to_field()
 
             new_docs.append(doc)
             cls._declare_field(field, keys + [field_name])
@@ -306,8 +307,15 @@ class DatasetMixin(object):
                     break
 
         updated_docs = {doc.name: doc for doc in docs}
+        existing = set(updated_docs)
         for doc in new_docs:
             updated_docs[doc.name] = doc
+
+        if not expand_schema and not keys and len(updated_docs) > len(docs):
+            raise ValueError(
+                "%s fields %s do not exist"
+                % (cls._doc_name(), set(updated_docs) - existing)
+            )
 
         if not keys:
             cls._dataset_doc()[cls._fields_attr()] = list(
@@ -376,7 +384,7 @@ class DatasetMixin(object):
         keys = field_name.split(".")
         field = create_field(keys[-1], **get_implied_field_kwargs(value))
 
-        cls.merge_field_schema(keys[:-1], {field_name: field})
+        cls.merge_field_schema(keys[:-1], {keys[-1]: field})
 
         if isinstance(field, fof.EmbeddedDocumentField):
             value._set_parent(field)
@@ -698,19 +706,27 @@ class DatasetMixin(object):
             if field.name not in cls._fields_ordered:
                 cls._fields_ordered += (field.name,)
             setattr(cls, field.name, field)
+
+            while isinstance(field, (fo.DictField, fo.ListField)):
+                field = field.field
+
+            if isinstance(field, fof.EmbeddedDocumentField):
+                field._set_parent(cls)
             return
 
         parent = getattr(cls, path[0])
         for field_name in path[1:-1]:
-            if isinstance(parent, (fo.DictField, fo.ListField)):
+            while isinstance(parent, (fo.DictField, fo.ListField)):
                 parent = parent.field
 
             parent = parent.get_field_schema()[field_name]
 
-        if isinstance(parent, (fo.DictField, fo.ListField)):
+        while isinstance(parent, (fo.DictField, fo.ListField)):
             parent = parent.field
 
         parent.fields.append(field)
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field._set_parent(parent)
 
     @classmethod
     def _add_field_schema(
@@ -730,12 +746,12 @@ class DatasetMixin(object):
             **kwargs,
         )
 
-        cls.merge_field_schema([], {field_name: field})
+        cls.merge_field_schema(
+            field_name.split(".")[:-1], {field_name.split(".")[-1]: field}
+        )
 
     @classmethod
     def _save_field(cls, field, path):
-        if None in path:
-            print(path, SampleFieldDocument.from_field(field))
         cls.merge_field_schema(path[:-1], {path[-1]: field})
 
     @classmethod

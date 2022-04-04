@@ -73,7 +73,7 @@ def get_implied_field_kwargs(value):
                             get_implied_field_kwargs(value[name]),
                             get_field_kwargs(value.get_field_def(name)),
                         ]
-                    )
+                    ),
                 )
                 for name in value._fields_ordered
                 if getattr(value, name, None) is not None
@@ -214,7 +214,7 @@ def _resolve_ftype(one, two):
     elif one in keypoints and two in keypoints:
         return fof.KeypointsField
 
-    raise TypeError("Cannot merge")
+    raise TypeError(f"Cannot merge {one} and {two}")
 
 
 def _merge_field_kwargs(fields_list):

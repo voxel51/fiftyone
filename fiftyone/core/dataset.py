@@ -18,6 +18,10 @@ import string
 
 from bson import ObjectId
 from deprecated import deprecated
+from fiftyone.core.odm.embedded_document import (
+    BaseEmbeddedDocument,
+    EmbeddedDocument,
+)
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
@@ -1439,17 +1443,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
+            old_doc = sample._doc
             sample._set_backing_doc(doc, dataset=self)
-
             for name, field in self.get_field_schema().items():
-                if isinstance(field, fof.ListField):
+                while isinstance(field, fof.ListField):
                     field = field.field
 
                 if not isinstance(field, fof.EmbeddedDocumentField):
                     continue
 
-                if getattr(sample, name, None) is not None:
-                    sample[name]._set_parent(field)
+                doc._fields[name]._set_parent(self._sample_doc_cls)
+
+            for name, value in old_doc._data.items():
+                if isinstance(value, BaseEmbeddedDocument):
+                    value._set_parent(doc._fields[name])
 
             if self.media_type == fom.VIDEO:
                 sample.frames.save()

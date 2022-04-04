@@ -55,6 +55,13 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
             self.get_field_def(name).validate(value)
 
         super().__setattr__(name, value)
+        field = self.get_field_def(name)
+        while isinstance(field, (DictField, ListField)):
+            field = field.field
+
+        if isinstance(field, EmbeddedDocumentField):
+            _traverse_values2(field, value)
+            field._set_parent(self._parent)
 
     def __setitem__(self, name, value):
         self.set_field(name, value, create=True)
@@ -176,12 +183,11 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
         custom_fields = getattr(self, "_custom_fields", {})
 
         for field_name, field in {**self._fields, **custom_fields}.items():
-            set_field = field
-            if isinstance(field, (DictField, ListField)):
-                set_field = field.field
+            while isinstance(field, (ListField)):
+                field = field.field
 
             if isinstance(field, EmbeddedDocumentField):
-                set_field._set_parent(parent)
+                _traverse_values(parent, self.get_field(field_name))
 
         self._custom_fields = {}
 
@@ -222,3 +228,27 @@ class DynamicEmbeddedDocument(
         self._custom_fields = {}
         super().__init__(*args, **kwargs)
         self.validate()
+
+
+def _traverse_values(parent, v):
+    if v is None:
+        return
+
+    if isinstance(v, BaseEmbeddedDocument):
+        v._parent and v._parent._set_parent(parent)
+        return
+
+    for i in v:
+        _traverse_values(parent, i)
+
+
+def _traverse_values2(parent, v):
+    if v is None:
+        return
+
+    if isinstance(v, BaseEmbeddedDocument):
+        v._set_parent(parent)
+        return
+
+    for i in v:
+        _traverse_values2(parent, i)

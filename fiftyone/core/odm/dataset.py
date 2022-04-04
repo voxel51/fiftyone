@@ -271,6 +271,7 @@ class SampleFieldDocument(EmbeddedDocument):
         if other.ftype == embedded_doc or self.subfield == embedded_doc:
             if (
                 self.embedded_doc_type
+                and other.embedded_doc_type
                 and self.embedded_doc_type != other.embedded_doc_type
             ):
                 raise TypeError("Cannot merge")

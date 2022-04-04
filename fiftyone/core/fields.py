@@ -198,8 +198,6 @@ class ListField(mongoengine.fields.ListField, Field):
 
     def to_python(self, value, detached=False):
         if detached and isinstance(self.field, EmbeddedDocumentField):
-            if not isinstance(value, list):
-                print(self.name, value)
             return [self.field.to_python(v, detached=True) for v in value]
 
         return super().to_python(value)
@@ -678,9 +676,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 field.validate(field_value, clean=False, expand=expand)
             else:
                 field.validate(field_value)
-
-        if isinstance(value, foo.DynamicEmbeddedDocument):
-            value._set_parent(self)
 
         super().validate(value, clean)
 
