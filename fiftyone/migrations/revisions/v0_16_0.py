@@ -19,20 +19,19 @@ def up(db, dataset_name):
         ftype = field.get("ftype", None)
         embedded_doc_type = field.get("embedded_doc_type", None)
 
+        # Upgrade `metadata` field to `media_type`-aware subclass
         if name == "metadata":
             if media_type == "image":
                 embedded_doc_type = "fiftyone.core.metadata.ImageMetadata"
-                fields = _IMAGE_METADATA_FIELDS
             elif media_type == "video":
                 embedded_doc_type = "fiftyone.core.metadata.VideoMetadata"
-                fields = _VIDEO_METADATA_FIELDS
             else:
                 embedded_doc_type = "fiftyone.core.metadata.Metadata"
-                fields = _METADATA_FIELDS
 
             field["embedded_doc_type"] = embedded_doc_type
-            field["fields"] = [_make_field_doc(*f) for f in fields]
-        elif ftype == "fiftyone.core.fields.EmbeddedDocumentField":
+
+        # Populate embedded field schemas
+        if ftype == "fiftyone.core.fields.EmbeddedDocumentField":
             try:
                 coll = db[dataset_dict["sample_collection_name"]]
                 field["fields"] = _infer_fields(coll, name, embedded_doc_type)
@@ -50,6 +49,7 @@ def up(db, dataset_name):
         ftype = field.get("ftype", None)
         embedded_doc_type = field.get("embedded_doc_type", None)
 
+        # Populate embedded field schemas
         if ftype == "fiftyone.core.fields.EmbeddedDocumentField":
             try:
                 coll = db[dataset_dict["frame_collection_name"]]
@@ -84,23 +84,6 @@ def down(db, dataset_name):
     dataset_dict.pop("app_sidebar_groups", None)
 
     db.datasets.replace_one(match_d, dataset_dict)
-
-
-def _make_field_doc(name, ftype, subfield):
-    if ftype == "fiftyone.core.fields.ObjectIdField":
-        db_field = "_" + name
-    else:
-        db_field = name
-
-    return {
-        "_cls": "SampleFieldDocument",
-        "name": name,
-        "ftype": ftype,
-        "subfield": subfield,
-        "embedded_doc_type": None,
-        "db_field": db_field,
-        "fields": [],
-    }
 
 
 def _infer_fields(coll, name, embedded_doc_type):
@@ -146,6 +129,23 @@ def _merge_fields(fields, default_fields):
             merged_fields.append(f)
 
     return merged_fields
+
+
+def _make_field_doc(name, ftype, subfield):
+    if ftype == "fiftyone.core.fields.ObjectIdField":
+        db_field = "_" + name
+    else:
+        db_field = name
+
+    return {
+        "_cls": "SampleFieldDocument",
+        "name": name,
+        "ftype": ftype,
+        "subfield": subfield,
+        "embedded_doc_type": None,
+        "db_field": db_field,
+        "fields": [],
+    }
 
 
 def _build_pipeline(path, is_list_field=False):
@@ -197,10 +197,11 @@ def _parse_result(result):
             schema[name].add(mongo_type)
 
     fields = []
-    for name, types in schema.items():
-        if len(types) == 1:
+    for name, mongo_types in schema.items():
+        if len(mongo_types) == 1:
+            mongo_type = next(iter(mongo_types))
             ftype = _MONGO_TO_FIFTYONE_TYPES.get(
-                next(iter(types)), "fiftyone.core.fields.Field"
+                mongo_type, "fiftyone.core.fields.Field"
             )
             fields.append((name, ftype, None))
 
@@ -208,31 +209,28 @@ def _parse_result(result):
 
 
 # format: (name, ftype, subfield)
-_METADATA_FIELDS = [
-    ("size_bytes", "fiftyone.core.fields.IntField", None),
-    ("mime_type", "fiftyone.core.fields.StringField", None),
-]
-
-_IMAGE_METADATA_FIELDS = [
-    ("size_bytes", "fiftyone.core.fields.IntField", None),
-    ("mime_type", "fiftyone.core.fields.StringField", None),
-    ("width", "fiftyone.core.fields.IntField", None),
-    ("height", "fiftyone.core.fields.IntField", None),
-    ("num_channels", "fiftyone.core.fields.IntField", None),
-]
-
-_VIDEO_METADATA_FIELDS = [
-    ("size_bytes", "fiftyone.core.fields.IntField", None),
-    ("mime_type", "fiftyone.core.fields.StringField", None),
-    ("frame_width", "fiftyone.core.fields.IntField", None),
-    ("frame_height", "fiftyone.core.fields.IntField", None),
-    ("frame_rate", "fiftyone.core.fields.FloatField", None),
-    ("total_frame_count", "fiftyone.core.fields.IntField", None),
-    ("duration", "fiftyone.core.fields.FloatField", None),
-    ("encoding_str", "fiftyone.core.fields.StringField", None),
-]
-
 _DEFAULT_LABEL_FIELDS = {
+    "fiftyone.core.metadata.Metadata": [
+        ("size_bytes", "fiftyone.core.fields.IntField", None),
+        ("mime_type", "fiftyone.core.fields.StringField", None),
+    ],
+    "fiftyone.core.metadata.ImageMetadata": [
+        ("size_bytes", "fiftyone.core.fields.IntField", None),
+        ("mime_type", "fiftyone.core.fields.StringField", None),
+        ("width", "fiftyone.core.fields.IntField", None),
+        ("height", "fiftyone.core.fields.IntField", None),
+        ("num_channels", "fiftyone.core.fields.IntField", None),
+    ],
+    "fiftyone.core.metadata.VideoMetadata": [
+        ("size_bytes", "fiftyone.core.fields.IntField", None),
+        ("mime_type", "fiftyone.core.fields.StringField", None),
+        ("frame_width", "fiftyone.core.fields.IntField", None),
+        ("frame_height", "fiftyone.core.fields.IntField", None),
+        ("frame_rate", "fiftyone.core.fields.FloatField", None),
+        ("total_frame_count", "fiftyone.core.fields.IntField", None),
+        ("duration", "fiftyone.core.fields.FloatField", None),
+        ("encoding_str", "fiftyone.core.fields.StringField", None),
+    ],
     "fiftyone.core.labels.Regression": [
         ("id", "fiftyone.core.fields.ObjectIdField", None),
         (
