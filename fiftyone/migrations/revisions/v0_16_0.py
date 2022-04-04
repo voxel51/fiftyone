@@ -34,11 +34,8 @@ def up(db, dataset_name):
             field["fields"] = [_make_field_doc(n, t) for n, t in fields]
         elif ftype == "fiftyone.core.fields.EmbeddedDocumentField":
             try:
-                field["fields"] = _infer_fields(
-                    db[dataset_dict["sample_collection_name"]],
-                    name,
-                    embedded_doc_type,
-                )
+                coll = db[dataset_dict["sample_collection_name"]]
+                field["fields"] = _infer_fields(coll, name, embedded_doc_type)
             except Exception as e:
                 print(
                     "Failed to infer schema of embedded sample field '%s' "
@@ -49,16 +46,14 @@ def up(db, dataset_name):
             field["fields"] = []
 
     for field in dataset_dict.get("frame_fields", []):
+        name = field.get("name", None)
         ftype = field.get("ftype", None)
         embedded_doc_type = field.get("embedded_doc_type", None)
 
         if ftype == "fiftyone.core.fields.EmbeddedDocumentField":
             try:
-                field["fields"] = _infer_fields(
-                    db[dataset_dict["frame_collection_name"]],
-                    name,
-                    embedded_doc_type,
-                )
+                coll = db[dataset_dict["frame_collection_name"]]
+                field["fields"] = _infer_fields(coll, name, embedded_doc_type)
             except Exception as e:
                 print(
                     "Failed to infer schema of embedded frame field '%s' "
@@ -108,22 +103,45 @@ def _make_field_doc(name, mongo_type):
 
 
 def _infer_fields(coll, name, embedded_doc_type):
-    pipeline = _build_pipeline(name, embedded_doc_type)
+    fields = _do_infer_fields(coll, name)
+
+    list_field = _LABEL_LIST_FIELDS.get(embedded_doc_type, None)
+    has_attrs = embedded_doc_type in _HAS_ATTRIBUTES_DICT
+
+    for field in fields:
+        if (
+            list_field is not None
+            and field.get("name", None) == list_field
+            and field.get("ftype", None) == "fiftyone.core.fields.ListField"
+        ):
+            path = name + "." + list_field
+            field["subfield"] = "fiftyone.core.fields.EmbeddedDocumentField"
+            field["fields"] = _do_infer_fields(coll, path, is_list_field=True)
+
+        if (
+            has_attrs
+            and field.get("name", None) == "attributes"
+            and field.get("ftype", None) == "fiftyone.core.fields.DictField"
+        ):
+            path = name + "." + "attributes"
+            field["subfield"] = "fiftyone.core.fields.EmbeddedDocumentField"
+            field["fields"] = _do_infer_fields(coll, path)
+
+    return fields
+
+
+def _do_infer_fields(coll, path, is_list_field=False):
+    pipeline = _build_pipeline(path, is_list_field=is_list_field)
     result = coll.aggregate(pipeline, allowDiskUse=True)
     schema = _parse_result(result)
     return [_make_field_doc(n, t) for n, t in schema.items()]
 
 
-def _build_pipeline(name, embedded_doc_type):
-    pipeline = []
-    list_field = _LABEL_LIST_FIELDS.get(embedded_doc_type, None)
+def _build_pipeline(path, is_list_field=False):
+    pipeline = [{"$project": {path: True}}]
 
-    if list_field is None:
-        path = name
-        pipeline = [{"$project": {path: True}}]
-    else:
-        path = name + "." + list_field
-        pipeline = [{"$project": {path: True}}, {"$unwind": "$" + path}]
+    if is_list_field:
+        pipeline.append({"$unwind": "$" + path})
 
     pipeline.extend(
         [
@@ -171,14 +189,6 @@ def _parse_result(result):
     return schema
 
 
-_LABEL_LIST_FIELDS = {
-    "fiftyone.core.labels.Classifications": "classifications",
-    "fiftyone.core.labels.Detections": "detections",
-    "fiftyone.core.labels.Keypoints": "keypoints",
-    "fiftyone.core.labels.Polylines": "polylines",
-    "fiftyone.core.labels.TemporalDetections": "detections",
-}
-
 _METADATA_FIELDS = [
     ("size_bytes", "int"),
     ("mime_type", "string"),
@@ -214,3 +224,17 @@ _MONGO_TO_FIFTYONE_TYPES = {
     "object": "fiftyone.core.fields.DictField",
     "objectId": "fiftyone.core.fields.ObjectIdField",
 }
+
+_LABEL_LIST_FIELDS = {
+    "fiftyone.core.labels.Classifications": "classifications",
+    "fiftyone.core.labels.Detections": "detections",
+    "fiftyone.core.labels.Keypoints": "keypoints",
+    "fiftyone.core.labels.Polylines": "polylines",
+    "fiftyone.core.labels.TemporalDetections": "detections",
+}
+
+_HAS_ATTRIBUTES_DICT = (
+    "fiftyone.core.labels.Detections",
+    "fiftyone.core.labels.Keypoints",
+    "fiftyone.core.labels.Polylines",
+)
