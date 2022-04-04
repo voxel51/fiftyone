@@ -250,5 +250,8 @@ def _traverse_values2(parent, v):
         v._set_parent(parent)
         return
 
+    if isinstance(v, dict):
+        return
+
     for i in v:
         _traverse_values2(parent, i)
