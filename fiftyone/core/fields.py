@@ -8,7 +8,7 @@ Dataset sample fields.
 from datetime import date, datetime
 import numbers
 
-from bson import SON
+from bson import ObjectId, SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -16,8 +16,10 @@ import pytz
 
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
@@ -71,7 +73,17 @@ class IntField(mongoengine.fields.IntField, Field):
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return ObjectId(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return str(value)
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
@@ -177,6 +189,19 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
+    def validate(self, value):
+        if isinstance(self.field, EmbeddedDocumentField):
+            for v in value:
+                self.field.validate(v, clean=False, expand=True)
+        else:
+            super().validate(value)
+
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            return [self.field.to_python(v, detached=True) for v in value]
+
+        return super().to_python(value)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -184,7 +209,13 @@ class HeatmapRangeField(ListField):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=FloatField(), null=True, **kwargs)
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
+        if "field" not in kwargs:
+            kwargs["field"] = FloatField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -228,15 +259,24 @@ class DictField(mongoengine.fields.DictField, Field):
         return etau.get_class_name(self)
 
     def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Value must be a dict")
-
         if not all(map(lambda k: etau.is_str(k), value)):
             self.error("Dict fields must have string keys")
 
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+        if value is not None and not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            return {
+                k: v in self.field.to_python(v, detached=True)
+                for k, v in value.items()
+            }
+
+        return super().to_python(value)
 
 
 class IntDictField(DictField):
@@ -600,11 +640,135 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             stored in this field
     """
 
+    def __init__(self, document_type, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._parent = None
+
+        self.fields = kwargs.get("fields", [])
+        self._validation_schema = None
+
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def validate(self, value, clean=True, expand=False):
+        self._validation_schema = self.get_field_schema()
+        schema = self._validation_schema
+        for name in value._fields_ordered:
+            field = None
+            field_value = value.get_field(name)
+            if field_value is None:
+                continue
+
+            if name.startswith("_"):
+                continue
+
+            field = schema.get(name, None)
+            if field is None and expand:
+                field_kwargs = foo.get_implied_field_kwargs(field_value)
+                field = foo.create_field(name, **field_kwargs)
+                self._save_field(field, [name])
+            elif field is None:
+                self.error("field does not have field '%s' declared" % name)
+            elif isinstance(field, EmbeddedDocumentField):
+                field.validate(field_value, clean=False, expand=expand)
+            else:
+                field.validate(field_value)
+
+        super().validate(value, clean)
+
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the embedded
+        document field.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
+
+        Returns:
+             an ``OrderedDict`` mapping field names to field types
+        """
+        fields = {
+            name: field for name, field in self.document_type._fields.items()
+        }
+        fields.update({field.name: field for field in self.fields})
+
+        filtered_fields = {}
+
+        for name, field in fields.items():
+            if not include_private and name.startswith("_"):
+                continue
+
+            if ftype and not isinstance(field, ftype):
+                continue
+
+            if embedded_doc_type and (
+                not isinstance(field, EmbeddedDocumentField)
+                or embedded_doc_type != field.document_type
+            ):
+                continue
+
+            filtered_fields[name] = field
+
+        return filtered_fields
+
+    def to_python(self, value, detached=False):
+        if detached:
+            value.pop("_cls", None)
+            _id = value.pop("_id", None)
+            for k, v in value.items():
+                if k in self.document_type._fields:
+                    if isinstance(
+                        self.document_type._fields[k],
+                        (EmbeddedDocumentField, ListField, DictField),
+                    ):
+                        value[k] = self.document_type._fields[k].to_python(
+                            v, detached=True
+                        )
+                    elif v is not None:
+
+                        value[k] = self.document_type._fields[k].to_python(v)
+
+            if _id:
+                value["id"] = _id
+            doc = self.document_type(**value)
+
+            return doc
+
+        doc = super().to_python(value)
+
+        if isinstance(doc, foo.DynamicEmbeddedDocument):
+            doc._set_parent(self)
+
+        return doc
+
+    def _save_field(self, field, keys):
+        self.fields = [f for f in self.fields if f.name != keys[0]] + [field]
+        self._validation_schema = self.get_field_schema()
+
+        if self._parent:
+            self._parent._save_field(field, [self.name] + keys)
+
+    def _set_parent(self, parent):
+        self._parent = parent
+        if parent is not None:
+            for field_name, field in self.get_field_schema().items():
+                if isinstance(field, (ListField)):
+                    field = field.field
+
+                if isinstance(field, EmbeddedDocumentField):
+                    field._set_parent(self)
+                    field.name = field_name
 
 
 class EmbeddedDocumentListField(

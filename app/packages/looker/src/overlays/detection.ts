@@ -1,7 +1,9 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-import { INFO_COLOR, NONFINITES } from "../constants";
+import { NONFINITES } from "@fiftyone/utilities";
+
+import { INFO_COLOR } from "../constants";
 import { NumpyResult } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";

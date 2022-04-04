@@ -1,31 +1,60 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import {
+  RecoilState,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
+import { toCamelCase } from "@fiftyone/utilities";
+
+import * as aggregationAtoms from "../recoil/aggregations";
+import * as atoms from "../recoil/atoms";
+import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
+import { State } from "../recoil/types";
+import * as viewAtoms from "../recoil/view";
 import { ColorTheme } from "../shared/colors";
 import socket, { appContext, handleId, isColab } from "../shared/connection";
 import { packageMessage } from "./socket";
 import gaConfig from "../constants/ga";
+import { aggregationsTick } from "../recoil/aggregations";
+import { selectedSamples } from "../recoil/atoms";
+import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
+import { savingFilters } from "../components/Actions/ActionsRow";
+import { viewsAreEqual } from "./view";
+import { similaritySorting } from "../components/Actions/Similar";
+import { patching } from "../components/Actions/Patcher";
 
-export const useEventHandler = (target, eventType, handler) => {
+export const useRefresh = () => {
+  return useRecoilTransaction_UNSTABLE(({ get, set }) => () => {
+    socket.send(packageMessage("refresh", {}));
+    set(aggregationsTick, get(aggregationsTick) + 1);
+  });
+};
+
+export const useEventHandler = (
+  target,
+  eventType,
+  handler,
+  useCapture = false
+) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
-  useEffect(() => {
-    handlerRef.current = handler;
-  });
+  handlerRef.current = handler;
 
   useEffect(() => {
-    if (!target) {
-      return;
-    }
+    if (!target) return;
+
     const wrapper = (e) => handlerRef.current(e);
-    target.addEventListener(eventType, wrapper);
+    target && target.addEventListener(eventType, wrapper, useCapture);
+
     return () => {
-      target.removeEventListener(eventType, wrapper);
+      target && target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
 };
@@ -83,13 +112,16 @@ export const useKeydownHandler = (handler) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (ref, handler) => {
-  const handleClickOutside = (event) => {
-    if (ref.current && !ref.current.contains(event.target)) {
-      handler(event);
-    }
-  };
+  const handleOutsideClick = useCallback(
+    (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        handler(event);
+      }
+    },
+    [handler]
+  );
 
-  useEventHandler(document, "mousedown", handleClickOutside);
+  useEventHandler(document, "mousedown", handleOutsideClick, true);
 };
 
 export const useFollow = (leaderRef, followerRef, set) => {
@@ -306,4 +338,106 @@ export const useScreenshot = () => {
 
 export const useTheme = (): ColorTheme => {
   return useContext<ColorTheme>(ThemeContext);
+};
+
+export const useSelect = () => {
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (sampleId: string) => {
+      const selected = new Set(await snapshot.getPromise(selectedSamples));
+      selected.has(sampleId)
+        ? selected.delete(sampleId)
+        : selected.add(sampleId);
+      set(selectedSamples, selected);
+      socket.send(
+        packageMessage("set_selection", { _ids: Array.from(selected) })
+      );
+    },
+    []
+  );
+};
+
+export const useUnprocessedStateUpdate = () => {
+  const update = useStateUpdate();
+  return async (
+    data: { state: State.Description },
+    callback?: (
+      set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+    ) => void
+  ) => update(data ? (toCamelCase(data) as State.Description) : {});
+};
+
+export const useStateUpdate = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => async (
+      { state }: { state: State.Description },
+      callback?: (
+        set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
+      ) => void
+    ) => {
+      if (!state) {
+        callback && callback(set);
+        return;
+      }
+
+      const newSamples = new Set<string>(state.selected);
+      const counter = get(atoms.viewCounter);
+      const view = get(viewAtoms.view);
+      const current = get(atoms.stateDescription);
+
+      set(atoms.viewCounter, counter + 1);
+      set(atoms.loading, false);
+      set(atoms.selectedSamples, newSamples);
+
+      [true, false].forEach((i) =>
+        [true, false].forEach((j) =>
+          set(atoms.tagging({ modal: i, labels: j }), false)
+        )
+      );
+      set(patching, false);
+      set(similaritySorting, false);
+      set(savingFilters, false);
+      if (
+        !viewsAreEqual(view, state.view || []) ||
+        state?.dataset?.sampleCollectionName !==
+          current?.dataset?.sampleCollectionName
+      ) {
+        set(viewAtoms.view, state.view || []);
+        set(filterAtoms.filters, {});
+      }
+
+      if (state.dataset) {
+        state.dataset.brainMethods = Object.values(
+          state.dataset.brainMethods || {}
+        );
+        state.dataset.evaluations = Object.values(
+          state.dataset.evaluations || {}
+        );
+
+        state.dataset.annotationRuns = Object.values(
+          state.dataset.annotationRuns || {}
+        );
+        const groups = resolveGroups(state.dataset);
+        const current = get(sidebarGroupsDefinition(false));
+
+        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+          set(sidebarGroupsDefinition(false), groups);
+          set(
+            aggregationAtoms.aggregationsTick,
+            get(aggregationAtoms.aggregationsTick) + 1
+          );
+        }
+      }
+
+      const colorPool = get(atoms.colorPool);
+      if (
+        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+      ) {
+        set(atoms.colorPool, state.config.colorPool);
+      }
+      set(atoms.connected, true);
+      set(atoms.stateDescription, state);
+      callback && callback(set);
+    },
+    []
+  );
 };

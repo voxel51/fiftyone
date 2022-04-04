@@ -6,7 +6,7 @@ import { SELECTION_TEXT } from "../../constants";
 import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerError, lookerFullscreen } from "./looker.module.css";
+import { looker, lookerError } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
@@ -30,26 +30,15 @@ export class LookerElement<State extends BaseState> extends BaseElement<
           return {};
         });
       },
-      mouseenter: ({ update, dispatchEvent }) => {
-        dispatchEvent("mouseenter");
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
-            return { hovering: true };
-          }
-          return {
-            hovering: true,
-            showControls: true,
-          };
-        });
+      mouseenter: ({ update }) => {
+        update({ hovering: true });
       },
-      mouseleave: ({ update, dispatchEvent }) => {
-        dispatchEvent("mouseleave");
-        update({
-          hovering: false,
-          disableControls: false,
-          showControls: false,
-          showOptions: false,
-          panning: false,
+      mousemove: ({ update, dispatchEvent }) => {
+        update((state) => {
+          !state.options.showControls &&
+            dispatchEvent("options", { showControls: true });
+
+          return {};
         });
       },
     };
@@ -66,7 +55,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     hovering,
     error,
     config: { thumbnail },
-    options: { fullscreen, inSelectionMode },
+    options: { inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
@@ -74,13 +63,6 @@ export class LookerElement<State extends BaseState> extends BaseElement<
 
     if (error && !thumbnail) {
       this.element.classList.add(lookerError);
-    }
-
-    const fullscreenClass = this.element.classList.contains(lookerFullscreen);
-    if (fullscreen && !fullscreenClass) {
-      this.element.classList.add(lookerFullscreen);
-    } else if (!fullscreen && fullscreenClass) {
-      this.element.classList.remove(lookerFullscreen);
     }
 
     if (thumbnail && inSelectionMode !== this.selection) {

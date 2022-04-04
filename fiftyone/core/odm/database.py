@@ -126,7 +126,7 @@ def establish_db_conn(config):
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
 
-    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+    connect(config.database_name, **_connection_kwargs)
 
 
 def _connect():
@@ -134,7 +134,7 @@ def _connect():
     if _client is None:
         global _connection_kwargs
         _client = pymongo.MongoClient(**_connection_kwargs)
-        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+        connect(fo.config.database_name, **_connection_kwargs)
 
 
 def _async_connect():
@@ -153,14 +153,13 @@ def _validate_db_version(config, client):
 
         raise RuntimeError("Failed to validate `mongod` version") from e
 
-    min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-    if config.database_validation and not min_ver <= version < max_ver:
+    if config.database_validation and version < foc.MIN_MONGODB_VERSION:
         raise RuntimeError(
-            "Found `mongod` version %s, but only [%s, %s) are compatible. "
-            "You can suppress this exception by setting your "
+            "Found `mongod` version %s, but only %s and higher are "
+            "compatible. You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
-            "for more information" % (version, min_ver, max_ver)
+            "for more information" % (version, foc.MIN_MONGODB_VERSION)
         )
 
 
@@ -190,7 +189,6 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-
     if isinstance(collection, motor.motor_tornado.MotorCollection):
         if num_pipelines == 1 and not is_list:
             return collection.aggregate(pipelines[0], allowDiskUse=True)
@@ -249,7 +247,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[foc.DEFAULT_DATABASE]
+    db = _client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -260,7 +258,7 @@ def get_async_db_conn():
         a ``motor.motor_tornado.MotorDatabase``
     """
     _async_connect()
-    db = _async_client[foc.DEFAULT_DATABASE]
+    db = _async_client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -283,7 +281,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(foc.DEFAULT_DATABASE)
+    _client.drop_database(fo.config.database_name)
 
 
 def sync_database():
@@ -607,7 +605,9 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
         _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
         )
         return
 
@@ -764,7 +764,9 @@ def delete_brain_runs(name, dry_run=False):
             _delete_run_results(result_ids)
 
     _logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
+        name,
     )
     if not dry_run:
         dataset_dict["brain_methods"] = {}

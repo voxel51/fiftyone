@@ -19,5 +19,8 @@
     },
     "workspaces": [
         "packages/*"
-    ]
+    ],
+    "dependencies": {
+        "react-use": "^17.3.1"
+    }
 }

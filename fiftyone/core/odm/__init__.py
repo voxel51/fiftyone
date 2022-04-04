@@ -40,11 +40,9 @@ from .dataset import (
 )
 from .document import (
     Document,
-    DynamicDocument,
-    EmbeddedDocument,
-    DynamicEmbeddedDocument,
     SerializableDocument,
 )
+from .embedded_document import DynamicEmbeddedDocument
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
@@ -52,10 +50,10 @@ from .frame import (
 from .mixins import (
     get_default_fields,
     get_field_kwargs,
-    get_implied_field_kwargs,
     validate_fields_match,
 )
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
+from .utils import get_implied_field_kwargs

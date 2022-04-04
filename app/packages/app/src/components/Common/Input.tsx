@@ -82,7 +82,7 @@ const Input = React.memo(
           style={disabled ? { color: theme.fontDark } : {}}
           disabled={disabled}
           onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
-            onFocus();
+            onFocus && onFocus();
           }}
           onBlur={onBlur}
         />

@@ -6,30 +6,30 @@ import React, {
 } from "react";
 import {
   RecoilState,
-  RecoilValueReadOnly,
+  RecoilValue,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useRecoilValueLoadable,
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import { v4 as uuid } from "uuid";
 
+import socket from "../../shared/connection";
 import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as colorAtoms from "../../recoil/color";
+import { packageMessage } from "../../utils/socket";
+import { useTheme } from "../../utils/hooks";
+import { genSort } from "../../utils/generic";
+
+import { ItemAction } from "../Actions/ItemAction";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import Results, { ResultsContainer } from "../Common/Results";
-import { Button } from "../FieldsSidebar";
-import { PopoutSectionTitle } from "../utils";
-import { LIST_LIMIT } from "./StringFieldFilter.state";
-import { ItemAction } from "../Actions/ItemAction";
-import socket from "../../shared/connection";
-import { packageMessage } from "../../utils/socket";
-import { useTheme } from "../../utils/hooks";
-import { subCountValueAtom } from "./atoms";
-import { genSort } from "../../utils/generic";
-import { FRAME_SUPPORT_FIELD } from "../../utils/labels";
+import { Button, PopoutSectionTitle } from "../utils";
+
 import ExcludeOption from "./Exclude";
 
 const CategoricalFilterContainer = styled.div`
@@ -39,10 +39,10 @@ const CategoricalFilterContainer = styled.div`
   color: ${({ theme }) => theme.fontDark};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  position: relative;
 `;
 
 const NamedCategoricalFilterContainer = styled.div`
-  padding-bottom: 0.5rem;
   margin: 3px;
   font-weight: bold;
 `;
@@ -50,18 +50,17 @@ const NamedCategoricalFilterContainer = styled.div`
 const NamedCategoricalFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
+  text-overflow: ellipsis;
 `;
 
 const CHECKBOX_LIMIT = 20;
 
-type Value = string | number | null | boolean | [number, number];
-
-const nullSort = ({
+const nullSort = <T extends unknown>({
   count,
   asc,
 }: atoms.SortResults): ((
-  aa: [Value, number | null],
-  bb: [Value, number | null]
+  aa: [T, number | null],
+  bb: [T, number | null]
 ) => number) => {
   return (aa, bb): number => {
     let a = [...aa];
@@ -84,32 +83,28 @@ const nullSort = ({
   };
 };
 
-interface WrapperProps {
-  results: [Value, number][];
-  selectedValuesAtom?: RecoilState<Value[]>;
+interface WrapperProps<T> {
+  results: [T, number][];
+  selectedValuesAtom?: RecoilState<T[]>;
   excludeAtom?: RecoilState<boolean>;
-  name: string;
-  valueName: string;
   color: string;
   totalCount: number;
   modal: boolean;
   path: string;
-  disableItems?: boolean;
-  selectedCounts: MutableRefObject<Map<Value, number>>;
+  selectedCounts: MutableRefObject<Map<T, number>>;
 }
 
-const Wrapper = ({
+const Wrapper = <T extends unknown>({
   color,
   results,
   totalCount,
   selectedValuesAtom,
   excludeAtom,
-  valueName,
   modal,
   path,
-  disableItems,
   selectedCounts,
-}: WrapperProps) => {
+}: WrapperProps<T>) => {
+  const name = path.split(".").slice(-1)[0];
   const [selected, setSelected] = selectedValuesAtom
     ? useRecoilState(selectedValuesAtom)
     : [[], null];
@@ -117,20 +112,13 @@ const Wrapper = ({
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const sorting = useRecoilValue(atoms.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
-  let allValues: [Value, number][] = selected.map<[Value, number]>((value) => [
+  let allValues: [T, number][] = selected.map<[T, number]>((value) => [
     value,
     counts[String(value)] ?? 0,
   ]);
-  const disableCount =
-    modal &&
-    useRecoilValue(selectors.primitivesSubfieldMap("sample"))[path] ===
-      FRAME_SUPPORT_FIELD;
 
-  if (totalCount <= CHECKBOX_LIMIT || disableItems) {
-    allValues = [
-      ...allValues,
-      ...results.filter(([v]) => disableItems || !selectedSet.has(v)),
-    ];
+  if (results.length <= CHECKBOX_LIMIT) {
+    allValues = [...allValues, ...results.filter(([v]) => !selectedSet.has(v))];
   }
 
   if (totalCount === 0) {
@@ -157,20 +145,14 @@ const Wrapper = ({
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
-          disabled={(modal && allValues.length === 1) || disableItems}
+          disabled={totalCount === 1}
           name={value}
           count={
-            disableCount
-              ? null
-              : selectedCounts.current.has(value)
+            selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
           }
-          subCountAtom={subCountValueAtom({ path, modal, value })}
           setValue={(checked: boolean) => {
-            if (disableItems) {
-              return;
-            }
             if (checked) {
               selectedSet.add(value);
             } else {
@@ -178,14 +160,20 @@ const Wrapper = ({
             }
             setSelected([...selectedSet].sort());
           }}
+          subcountAtom={aggregationAtoms.count({
+            modal,
+            path,
+            extended: true,
+            value: value as string,
+          })}
         />
       ))}
-      {Boolean(selectedSet.size) && !disableItems && (
+      {Boolean(selectedSet.size) && (
         <>
           {totalCount > 3 && excludeAtom && (
             <ExcludeOption
               excludeAtom={excludeAtom}
-              valueName={valueName}
+              valueName={name}
               color={color}
             />
           )}
@@ -209,13 +197,13 @@ const Wrapper = ({
   );
 };
 
-const useOnSelect = (
-  selectedAtom: RecoilState<Value[]>,
-  selectedCounts: MutableRefObject<Map<Value, number>>,
+const useOnSelect = <T extends unknown>(
+  selectedAtom: RecoilState<T[]>,
+  selectedCounts: MutableRefObject<Map<T, number>>,
   callbacks
 ) => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (value: Value, number: number) => {
+    ({ snapshot, set }) => async (value: T, number: number) => {
       const selected = new Set(await snapshot.getPromise(selectedAtom));
       selectedCounts.current.set(value, number);
       selected.add(value);
@@ -225,18 +213,18 @@ const useOnSelect = (
   );
 };
 
-interface ResultsWrapperProps {
-  results: [Value, number][];
+interface ResultsWrapperProps<T> {
+  results: [T, number][];
   color: string;
   shown: boolean;
-  onSelect: (value: Value) => void;
+  onSelect: (value: T) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   subCount: number;
   active: string | null;
 }
 
-const ResultsWrapper = ({
+const ResultsWrapper = <T extends unknown>({
   results,
   color,
   shown,
@@ -245,52 +233,50 @@ const ResultsWrapper = ({
   onMouseLeave,
   subCount,
   active,
-}: ResultsWrapperProps) => {
+}: ResultsWrapperProps<T>) => {
   const theme = useTheme();
 
+  if (!shown) {
+    return null;
+  }
+
   return (
-    <>
-      {shown && results && (
-        <ResultsContainer
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-        >
-          {results && (
-            <Results
-              color={color}
-              active={active}
-              onSelect={onSelect}
-              results={results}
-              highlight={color}
-            />
-          )}
-          <PopoutSectionTitle />
-          <ItemAction
-            style={{
-              cursor: "default",
-              textAlign: "right",
-              color: theme.font,
-            }}
-          >
-            {results && subCount !== null && results.length > 0 && (
-              <>
-                {results.length !== subCount && <>{results.length} of</>}
-                {subCount.toLocaleString()} results
-              </>
-            )}
-            {results && results.length === 0 && <>No results</>}
-          </ItemAction>
-        </ResultsContainer>
+    <ResultsContainer onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+      {results && (
+        <Results<T>
+          color={color}
+          active={active}
+          onSelect={onSelect}
+          results={results}
+          highlight={color}
+        />
       )}
-    </>
+      <PopoutSectionTitle />
+      <ItemAction
+        style={{
+          cursor: "default",
+          textAlign: "right",
+          color: theme.font,
+        }}
+      >
+        {results && subCount !== null && results.length > 0 && (
+          <>
+            {results.length !== subCount && <>{results.length} of </>}
+            {subCount.toLocaleString()} result{results.length > 1 ? "s" : null}
+          </>
+        )}
+        {results && results.length === 0 && <>No results</>}
+        {!results && <>Loading...</>}
+      </ItemAction>
+    </ResultsContainer>
   );
 };
 
-const useSearch = () => {
+const useSearch = <T extends unknown>() => {
   const currentPromise = useRef<
     Promise<{
       count: number;
-      results: [string, number][];
+      results: [T, number][];
     }>
   >();
   return useRecoilCallback(
@@ -302,16 +288,14 @@ const useSearch = () => {
       setSearchResults,
       setSubCount,
       setActive,
-      noneCount,
     }: {
       modal: boolean;
       search: string;
       path: string;
-      selectedValuesAtom: RecoilState<Value[]>;
+      selectedValuesAtom: RecoilState<T[]>;
       setSearchResults: (value) => void;
       setSubCount: (value) => void;
       setActive: (value) => void;
-      noneCount: number;
     }) => {
       const id = uuid();
 
@@ -323,13 +307,17 @@ const useSearch = () => {
       const sorting = await snapshot.getPromise(atoms.sortFilterResults(modal));
       let sampleId = null;
       if (modal) {
-        sampleId = (await snapshot.getPromise(atoms.modal)).sampleId;
+        sampleId = (await snapshot.getPromise(atoms.modal)).sample._id;
       }
       const selected = await snapshot.getPromise(selectedValuesAtom);
 
+      const noneCount = await snapshot.getPromise(
+        aggregationAtoms.noneCount({ path, modal, extended: false })
+      );
+
       const promise = new Promise<{
         count: number;
-        results: [string, number][];
+        results: [T, number][];
       }>((resolve) => {
         const listener = wrap(({ count, results }) => {
           socket.removeEventListener("message", listener);
@@ -341,7 +329,6 @@ const useSearch = () => {
             path,
             search,
             selected,
-            limit: LIST_LIMIT,
             uuid: id,
             sample_id: sampleId,
             ...sorting,
@@ -349,190 +336,197 @@ const useSearch = () => {
         );
       });
       currentPromise.current = promise;
-      promise.then(({ count, results }) => {
-        clearTimeout(clear);
-        if (currentPromise.current !== promise) {
-          return;
-        }
-        if (noneCount > 0) {
-          results = [...results, [null, noneCount]];
-        }
-        results.length && setActive(results[0][0]);
-        setSearchResults(results);
-        setSubCount(count);
-      });
+
+      let { count, results } = await promise;
+
+      clearTimeout(clear);
+      if (currentPromise.current !== promise) {
+        return;
+      }
+      if (noneCount > 0 && "None".includes(search)) {
+        results = ([...results, [null, noneCount]] as [T, number][])
+          .sort(nullSort(sorting))
+          .slice(0, 25);
+        count++;
+      }
+      results.length && setActive(results[0][0]);
+      setSearchResults(results);
+      setSubCount(count);
     },
     []
   );
 };
 
-interface Props {
-  countsAtom: RecoilValueReadOnly<{
-    count: number;
-    results: [Value, number][];
-  }>;
-  selectedValuesAtom?: RecoilState<Value[]>;
+interface Props<T> {
+  selectedValuesAtom: RecoilState<T[]>;
   excludeAtom?: RecoilState<boolean>;
-  name?: string;
-  valueName: string;
-  color: string;
-  path: string;
+  countsAtom: RecoilValue<{
+    count: number;
+    results: [T, number][];
+  }>;
   modal: boolean;
-  disableItems?: boolean;
+  path: string;
+  named?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  title: string;
 }
 
-const CategoricalFilter = React.memo(
-  React.forwardRef(
-    (
-      {
-        name,
-        valueName,
-        color,
-        selectedValuesAtom,
-        excludeAtom,
-        countsAtom,
-        path,
+const CategoricalFilter = <T extends unknown>({
+  countsAtom,
+  selectedValuesAtom,
+  excludeAtom,
+  path,
+  modal,
+  named = true,
+  onFocus,
+  onBlur,
+  title,
+}: Props<T>) => {
+  const name = path.split(".").slice(-1)[0];
+  const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
+  const selected = useRecoilValue(selectedValuesAtom);
+  const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const [focused, setFocused] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const [search, setSearch] = useState("");
+  const [active, setActive] = useState(undefined);
+  const [subCount, setSubCount] = useState(null);
+  const [searchResults, setSearchResults] = useState<[T, number][]>(null);
+
+  const selectedCounts = useRef(new Map<T, number>());
+
+  const onSelect = useOnSelect(selectedValuesAtom, selectedCounts, [
+    () => setSearchResults(null),
+    () => setSearch(""),
+    () => setActive(undefined),
+  ]);
+
+  const runSearch = useSearch<T>();
+
+  useLayoutEffect(() => {
+    focused &&
+      runSearch({
         modal,
-        disableItems,
-      }: Props,
-      ref
-    ) => {
-      const selected = selectedValuesAtom
-        ? useRecoilValue(selectedValuesAtom)
-        : [null, null];
-      const { count, results } = useRecoilValue(countsAtom);
-      const [focused, setFocused] = useState(false);
-      const [hovering, setHovering] = useState(false);
-      const [search, setSearch] = useState("");
-      const [active, setActive] = useState(undefined);
-      const [subCount, setSubCount] = useState(null);
-      const [searchResults, setSearchResults] = useState<[string, number][]>(
-        null
-      );
+        path,
+        search,
+        selectedValuesAtom,
+        setSearchResults,
+        setSubCount,
+        setActive,
+      });
+  }, [focused, search, selected]);
+  const ref = useRef<HTMLElement>();
 
-      const selectedCounts = useRef(new Map<Value, number>());
+  const getCount = (results, search) => {
+    const index = results.map((r) => r[0]).indexOf(search);
+    return results[index][1];
+  };
 
-      const onSelect = useOnSelect(selectedValuesAtom, selectedCounts, [
-        () => setSearchResults(null),
-        () => setSearch(""),
-        () => setActive(undefined),
-      ]);
+  if (countsLoadable.state === "loading") return null;
 
-      const none = results.filter(([v, c]) => v === null);
-      const noneCount = none.length ? none[0][1] : 0;
-      const runSearch = useSearch();
+  const { count, results } = countsLoadable.contents;
 
-      useLayoutEffect(() => {
-        focused &&
-          runSearch({
-            modal,
-            path,
-            search,
-            selectedValuesAtom,
-            setSearchResults,
-            setSubCount,
-            setActive,
-            noneCount,
-          });
-      }, [focused, search, selected, noneCount]);
-
-      const getCount = (results, search) => {
-        const index = results.map((r) => r[0]).indexOf(search);
-        return results[index][1];
-      };
-
-      return (
-        <NamedCategoricalFilterContainer ref={ref}>
-          <NamedCategoricalFilterHeader>
-            {name && <>{name}</>}
-          </NamedCategoricalFilterHeader>
-          <CategoricalFilterContainer>
-            {count > CHECKBOX_LIMIT && !disableItems && (
-              <>
-                <Input
-                  key={"input"}
-                  color={color}
-                  setter={(v) => {
-                    setSearch(v);
-                    setActive(undefined);
-                  }}
-                  value={search}
-                  onKeyDown={(event) => {
-                    if (searchResults === null) {
-                      return;
-                    } else if (event.key === "ArrowDown") {
-                      if (active === undefined) {
-                        setActive(searchResults[0]);
-                      } else {
-                        const index = searchResults
-                          .map((r) => r[0])
-                          .indexOf(active);
-                        if (index < searchResults.length - 1) {
-                          setActive(searchResults[index + 1][0]);
-                        }
-                      }
-                    } else if (event.key === "ArrowUp") {
-                      const index = searchResults
-                        .map((r) => r[0])
-                        .indexOf(active);
-                      if (index > 0) {
-                        setActive(searchResults[index - 1][0]);
-                      }
-                    }
-                  }}
-                  onEnter={() => {
-                    if (active !== undefined) {
-                      onSelect(active, getCount(searchResults, active));
-                    }
-                    if (results && results.map(([v]) => v).includes(search)) {
-                      onSelect(search, getCount(searchResults, active));
-                    }
-                  }}
-                  placeholder={
-                    results === null ? "Loading..." : `+ filter by ${valueName}`
-                  }
-                  onFocus={() => {
-                    results.length && setActive(results[0][0]);
-                    setFocused(true);
-                  }}
-                  onBlur={() => !hovering && setFocused(false)}
-                />
-                <ResultsWrapper
-                  key={"results"}
-                  results={searchResults}
-                  color={color}
-                  shown={focused || hovering}
-                  onSelect={(value) => {
-                    onSelect(value, getCount(searchResults, value));
-                    setHovering(false);
-                    setFocused(false);
-                  }}
-                  active={active}
-                  subCount={subCount}
-                  onMouseEnter={() => setHovering(true)}
-                  onMouseLeave={() => setHovering(false)}
-                />
-              </>
-            )}
-
-            <Wrapper
-              path={path}
+  return (
+    <NamedCategoricalFilterContainer title={title} ref={ref}>
+      <NamedCategoricalFilterHeader>
+        {named && name && <>{name.replaceAll("_", " ")}</>}
+      </NamedCategoricalFilterHeader>
+      <CategoricalFilterContainer
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {results.length > CHECKBOX_LIMIT && (
+          <>
+            <Input
+              key={"input"}
               color={color}
-              name={name}
-              results={results}
-              selectedValuesAtom={selectedValuesAtom}
-              excludeAtom={excludeAtom}
-              valueName={valueName}
-              modal={modal}
-              totalCount={count}
-              disableItems={disableItems}
-              selectedCounts={selectedCounts}
+              setter={(v) => {
+                setSearch(v);
+                setActive(undefined);
+              }}
+              value={search}
+              onKeyDown={(event) => {
+                if (searchResults === null) {
+                  return;
+                } else if (event.key === "ArrowDown") {
+                  if (active === undefined) {
+                    setActive(searchResults[0]);
+                  } else {
+                    const index = searchResults
+                      .map((r) => r[0])
+                      .indexOf(active);
+                    if (index < searchResults.length - 1) {
+                      setActive(searchResults[index + 1][0]);
+                    }
+                  }
+                } else if (event.key === "ArrowUp") {
+                  const index = searchResults.map((r) => r[0]).indexOf(active);
+                  if (index > 0) {
+                    setActive(searchResults[index - 1][0]);
+                  }
+                }
+              }}
+              onEnter={() => {
+                if (active !== undefined) {
+                  onSelect(active, getCount(searchResults, active));
+                }
+                if (
+                  results &&
+                  results
+                    .map(([v]) => (v === null ? "None" : String(v)))
+                    .includes(search)
+                ) {
+                  onSelect(search, getCount(searchResults, active));
+                }
+              }}
+              placeholder={
+                results === null ? "Loading..." : `+ filter by ${name}`
+              }
+              onFocus={() => {
+                results.length && setActive(results[0][0]);
+                setFocused(true);
+                onFocus && onFocus();
+              }}
+              onBlur={() => {
+                if (!hovering) {
+                  setFocused(false);
+                  onBlur && onBlur();
+                }
+              }}
             />
-          </CategoricalFilterContainer>
-        </NamedCategoricalFilterContainer>
-      );
-    }
-  )
-);
+            {focused && (
+              <ResultsWrapper
+                key={"results"}
+                results={searchResults}
+                color={color}
+                shown={focused || hovering}
+                onSelect={(value) => {
+                  onSelect(value, getCount(searchResults, value));
+                  setHovering(false);
+                  setFocused(false);
+                }}
+                active={active}
+                subCount={subCount}
+                onMouseEnter={() => setHovering(true)}
+                onMouseLeave={() => setHovering(false)}
+              />
+            )}
+          </>
+        )}
+
+        <Wrapper
+          path={path}
+          color={color}
+          results={results}
+          selectedValuesAtom={selectedValuesAtom}
+          excludeAtom={excludeAtom}
+          modal={modal}
+          totalCount={count}
+          selectedCounts={selectedCounts}
+        />
+      </CategoricalFilterContainer>
+    </NamedCategoricalFilterContainer>
+  );
+};
 
 export default CategoricalFilter;

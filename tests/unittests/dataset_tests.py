@@ -424,7 +424,7 @@ class DatasetTests(unittest.TestCase):
 
         ref = sample13.ground_truth.detections[2]
         common = ref.copy()
-        common._id = ref._id
+        common.id = ref.id
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="image2.png")

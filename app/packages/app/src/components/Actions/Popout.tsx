@@ -1,7 +1,7 @@
 import React from "react";
-import { useSpring } from "react-spring";
-import { useWindowSize } from "../../utils/hooks";
+import { useSpring } from "@react-spring/web";
 
+import { useWindowSize } from "../../utils/hooks";
 import { PopoutDiv } from "../utils";
 
 const Popout = ({ modal, children, style = {}, bounds }) => {

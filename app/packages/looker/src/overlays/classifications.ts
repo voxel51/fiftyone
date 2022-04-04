@@ -2,14 +2,17 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
+
 import { getColor } from "../color";
+import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
-  MOMENT_CLASSIFICATIONS,
-  TEMPORAL_DETECTION,
-  INFO_COLOR,
-  REGRESSION,
-} from "../constants";
-import { BaseState, BoundingBox, Coordinates, VideoState } from "../state";
+  BaseState,
+  BoundingBox,
+  Coordinates,
+  NONFINITE,
+  VideoState,
+} from "../state";
 import {
   CONTAINS,
   isShown,
@@ -22,9 +25,12 @@ import { sizeBytes } from "./util";
 
 export interface Classification extends RegularLabel {}
 
-interface ClassificationLabel extends Classification {
-  _cls: "Classification" | "Regression";
+export interface Regression {
+  confidence?: number | NONFINITE;
+  value?: number | NONFINITE;
 }
+
+type ClassificationLabel = Classification & Regression;
 
 export type Labels<T> = [string, T[]][];
 
@@ -61,10 +67,10 @@ export class ClassificationsOverlay<
 
   getSelectData(state: Readonly<State>): SelectData {
     const {
-      label: { id },
+      label: { _id },
       field,
     } = this.getPointInfo(state);
-    return { id, field };
+    return { id: _id, field };
   }
 
   getMouseDistance(state: Readonly<State>): number {
@@ -88,7 +94,7 @@ export class ClassificationsOverlay<
     let result: PointInfo<Label>;
 
     for (const [field, label] of filtered) {
-      const box = this.labelBoundingBoxes[label.id];
+      const box = this.labelBoundingBoxes[label._id];
 
       if (box) {
         let [bx, by, bw, bh] = box;
@@ -131,7 +137,7 @@ export class ClassificationsOverlay<
       );
       top = result.top;
       if (result.box) {
-        newBoxes[label.id] = result.box;
+        newBoxes[label._id] = result.box;
       }
     });
 
@@ -210,7 +216,7 @@ export class ClassificationsOverlay<
   }
 
   isSelected(state: Readonly<State>, label: Label): boolean {
-    return state.options.selectedLabels.includes(label.id);
+    return state.options.selectedLabels.includes(label._id);
   }
 
   private strokeClassification(

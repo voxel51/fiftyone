@@ -1,5 +1,5 @@
 """
-FiftyOne server JSON utilies.
+FiftyOne Server JSON utilities.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,6 +10,7 @@ from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
 import math
+import numpy as np
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -33,9 +34,12 @@ def _handle_numpy_array(raw, _cls=None):
     if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
 
-    return fou.serialize_numpy_array(
-        fou.deserialize_numpy_array(raw), ascii=True
-    )
+    array = fou.deserialize_numpy_array(raw)
+
+    if np.isfortran(array):
+        array = np.ascontiguousarray(array)
+
+    return fou.serialize_numpy_array(array, ascii=True)
 
 
 def _handle_date(dt):
@@ -83,6 +87,8 @@ def convert(d):
             elif _is_invalid_number(i):
                 d[idx] = str(i)
 
+    return d
+
 
 class FiftyOneJSONEncoder(JSONEncoder):
     """JSON encoder for the FiftyOne server.
@@ -112,7 +118,6 @@ class FiftyOneJSONEncoder(JSONEncoder):
 
     @staticmethod
     def dumps(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
         kwargs["cls"] = FiftyOneJSONEncoder
         return json_util.dumps(
             json_util.loads(
@@ -123,5 +128,11 @@ class FiftyOneJSONEncoder(JSONEncoder):
 
     @staticmethod
     def loads(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
         return json_util.loads(*args, **kwargs)
+
+    @staticmethod
+    def process(*args, **kwargs):
+        kwargs["cls"] = FiftyOneJSONEncoder
+        return json_util.loads(
+            json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
+        )

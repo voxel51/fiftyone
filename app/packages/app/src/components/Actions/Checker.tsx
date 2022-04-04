@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 import { Checkbox } from "@material-ui/core";
 import numeral from "numeral";
 import styled from "styled-components";
