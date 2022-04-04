@@ -174,6 +174,8 @@ def _build_pipeline(path, is_list_field=False):
 
 
 def _parse_result(result):
+    result = list(result)
+
     if not result:
         return []
 
