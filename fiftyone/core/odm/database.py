@@ -14,12 +14,8 @@ import asyncio
 from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
-<<<<<<< HEAD
-import motor.motor_asyncio
-=======
 import mongoengine.errors as moe
-import motor
->>>>>>> rel-0.8.0
+import motor.motor_asyncio
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
