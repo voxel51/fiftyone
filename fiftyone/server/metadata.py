@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, media_type, metadata=None):
+async def get_metadata(filepath, metadata=None):
     """Gets the metadata for the given local or remote media file.
 
     Args:
