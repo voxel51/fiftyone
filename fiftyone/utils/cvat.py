@@ -4189,9 +4189,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             samples_batch = samples[offset : (offset + batch_size)]
 
             if cloud_manifest:
-                # IMPORTANT: CVAT organizes media within a task alphabetically by
-                # filename, so we must sort the samples by filename to ensure
-                # annotations are uploaded properly
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must sort the samples by filename to
+                # ensure annotations are uploaded properly
+                #
+                # When cloud manifests are not being used, upload_data() uses
+                # filename mangling to preserve the order of samples_batch in
+                # the CVAT task. However, when cloud manifests are being used,
+                # that approach is not viable, so we must sort by filename or
+                # else existing labels will not be uploaded correctly.
+                #
+                # Note that we don't always sort by media field because,
+                # whenever possible, we prefer to maintain the order of the
+                # users view, since they may have intentionally sorted it in a
+                # particular way that they want to preserve in CVAT.
                 samples_batch = self._sort_by_media_field(
                     samples_batch, media_field
                 )
