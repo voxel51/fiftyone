@@ -1,6 +1,18 @@
 import _ from "lodash";
 
-export const toCamelCase = (obj: object): object =>
+import { isElectron } from "./electron";
+
+export { isElectron } from "./electron";
+export { GraphQLError, NotFoundError, ServerError } from "./errors";
+export * from "./fetch";
+export * from "./theme";
+export * from "./Resource";
+
+interface O {
+  [key: string]: O | any;
+}
+
+export const toCamelCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
     const camelKey = _.isArray(target) ? key : _.camelCase(key);
 
@@ -9,7 +21,7 @@ export const toCamelCase = (obj: object): object =>
     ] = _.isObject(value) ? toCamelCase(value) : value;
   });
 
-export const toSnakeCase = (obj: object): object =>
+export const toSnakeCase = (obj: O): O =>
   _.transform(obj, (acc, value, key, target) => {
     const snakeKey = _.isArray(target) ? key : _.snakeCase(key);
 
@@ -69,10 +81,10 @@ export const removeKeys = <T>(
 
 interface BaseField {
   ftype: string;
-  dbField?: string;
+  dbField: string | null;
   name: string;
-  embeddedDocType?: string;
-  subfield?: string;
+  embeddedDocType: string | null;
+  subfield: string | null;
 }
 
 export interface StrictField extends BaseField {
@@ -85,6 +97,11 @@ export interface Field extends BaseField {
 
 export interface Schema {
   [key: string]: Field;
+}
+
+export interface Stage {
+  _cls: string;
+  kwargs: [string, object][];
 }
 
 export const meetsFieldType = (
@@ -291,21 +308,6 @@ export function withPath(
 
 export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
-export const isElectron = (() => {
-  let cache = undefined;
-
-  return (): boolean => {
-    if (cache === undefined) {
-      cache =
-        window.process &&
-        window.process.versions &&
-        Boolean(window.process.versions.electron);
-    }
-
-    return cache;
-  };
-})();
-
 export const useExternalLink = (href) => {
   let openExternal;
   if (isElectron()) {
@@ -427,4 +429,12 @@ export const formatDate = (timeStamp: number): string => {
   return new Intl.DateTimeFormat("en-ZA", options)
     .format(timeStamp)
     .replaceAll("/", "-");
+};
+
+type Mutable<T> = {
+  -readonly [K in keyof T]: Mutable<T[K]>;
+};
+
+export const clone = <T extends unknown>(data: T): Mutable<T> => {
+  return JSON.parse(JSON.stringify(data));
 };

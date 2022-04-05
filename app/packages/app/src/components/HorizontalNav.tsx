@@ -154,7 +154,10 @@ const HorizontalNav = ({ entries }: Props) => {
           />
         </NavButtons>
       </Nav>
-      {expanded && <Distributions key={activePlot} group={activePlot} />}
+      {expanded &&
+        entries.map((e) =>
+          e === activePlot ? <Distributions key={activePlot} group={e} /> : null
+        )}
     </Container>
   );
 };

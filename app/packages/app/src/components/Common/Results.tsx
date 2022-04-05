@@ -12,14 +12,11 @@ export const ResultsContainer = styled(animated.div)`
   border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
-  margin-top: 0;
   position: absolute;
   width: auto;
   z-index: 801;
   padding: 0 0.5rem;
-  width: calc(100% - 12px);
-  left: 6px;
-  margin-bottom: 1rem;
+  width: 100%;
 `;
 
 const ResultContainer = animated(NameAndCountContainer);

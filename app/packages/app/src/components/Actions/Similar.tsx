@@ -1,4 +1,9 @@
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
   atom,
   selectorFamily,
@@ -25,8 +30,7 @@ import { PopoutSectionTitle } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { store } from "../Flashlight.store";
-import { http } from "../../shared/connection";
-import { toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
 import { aggregationsTick } from "../../recoil/aggregations";
 import { filters } from "../../recoil/filters";
@@ -47,7 +51,7 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   const selectedLabelIds = await snapshot.getPromise(
     selectors.selectedLabelIds
   );
-  const selectedLabels = await snapshot.getPromise(selectors.selectedLabels);
+  const selectedLabels = await snapshot.getPromise(atoms.selectedLabels);
   const keys = await snapshot.getPromise(selectors.similarityKeys);
   const labels_field = keys.patches
     .filter(([k, v]) => k === brainKey)
@@ -78,42 +82,34 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
   return modal.sample._id;
 };
 
-const useSortBySimilarity = () => {
+const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
   return useRecoilCallback(
     ({ snapshot, set }) => async (
       parameters: State.SortBySimilarityParameters
     ) => {
-      try {
-        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
-        set(similaritySorting, true);
+      const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+      const view = await snapshot.getPromise(viewAtoms.view);
+      set(similaritySorting, true);
 
-        const response = await fetch(`${http}/sort`, {
-          method: "POST",
-          cache: "no-cache",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          mode: "cors",
-          body: JSON.stringify({
-            dataset: await snapshot.getPromise(selectors.datasetName),
-            view: await snapshot.getPromise(viewAtoms.view),
-            filters: await snapshot.getPromise(filters),
-            similarity: toSnakeCase({
-              ...parameters,
-              queryIds,
-            }),
+      try {
+        const data = await getFetchFunction()("POST", "/sort", {
+          dataset: await snapshot.getPromise(selectors.datasetName),
+          view,
+          filters: await snapshot.getPromise(filters),
+          similarity: toSnakeCase({
+            ...parameters,
+            queryIds,
           }),
         });
 
-        const data = await response.json();
-
-        await update(data, (set) => {
+        update(data, (set) => {
           set(similarityParameters, { ...parameters, queryIds });
           set(atoms.modal, null);
           set(similaritySorting, false);
           set(aggregationsTick, (cur) => cur + 1);
+          close();
         });
       } catch (error) {
         handleError(error);
@@ -143,7 +139,7 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
         return acc;
       }, []);
     } else if (modal) {
-      const selectedLabels = get(selectors.selectedLabels);
+      const selectedLabels = get(atoms.selectedLabels);
 
       if (Object.keys(selectedLabels).length) {
         const fields = new Set(
@@ -228,7 +224,7 @@ const SortBySimilarity = React.memo(
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 
     const choices = useRecoilValue(currentSimilarityKeys(modal));
-    const sortBySimilarity = useSortBySimilarity();
+    const sortBySimilarity = useSortBySimilarity(close);
     const type = useRecoilValue(sortType(modal));
     const theme = useTheme();
 
@@ -295,7 +291,6 @@ const SortBySimilarity = React.memo(
                   text={"Apply"}
                   title={`Sort by similarity to the selected ${type}`}
                   onClick={() => {
-                    close();
                     sortBySimilarity(state);
                   }}
                   style={{

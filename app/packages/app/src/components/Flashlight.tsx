@@ -22,6 +22,7 @@ import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  getFetchFunction,
   LIST_FIELD,
   toSnakeCase,
 } from "@fiftyone/utilities";
@@ -36,7 +37,6 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import { packageMessage } from "../utils/socket";
 import socket, { http } from "../shared/connection";
 import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
@@ -84,8 +84,6 @@ export const gridZoomRange = atom<[number, number]>({
 });
 
 let nextIndex = 0;
-
-const url = `${http}/page`;
 
 const Container = styled.div`
   width: 100%;
@@ -257,9 +255,6 @@ const useThumbnailClick = (
       }
 
       set(atoms.selectedSamples, selected);
-      socket.send(
-        packageMessage("set_selection", { _ids: Array.from(selected) })
-      );
     },
     []
   );
@@ -284,15 +279,6 @@ const pageParameters = selector<PageParameters>({
   },
 });
 
-const getPageParameters = selector<() => Promise<PageParameters>>({
-  key: "getPageParameters",
-  get: ({ getCallback }) => {
-    return getCallback(({ snapshot }) => async () => {
-      return await snapshot.getPromise(pageParameters);
-    });
-  },
-});
-
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
@@ -311,11 +297,13 @@ export default React.memo(() => {
   const filters = useRecoilValue(filterAtoms.filters);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(viewAtoms.view);
-  const refresh = useRecoilValue(selectors.refresh);
-  const getPageParams = useRecoilValue(getPageParameters);
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
   const onSelect = useSelect();
+  const params = useRecoilValue(pageParameters);
+  const paramsRef = useRef(params);
+
+  paramsRef.current = params;
   const setGridZoomRange = useSetRecoilState(gridZoomRange);
   const handleError = useErrorHandler();
   const gridZoomRef = useRef<number>();
@@ -324,6 +312,7 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
+  const dataset = useRecoilValue(selectors.datasetName);
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -334,15 +323,18 @@ export default React.memo(() => {
     dimensions,
     frameNumber,
     frameRate,
+    url,
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
     const config = {
-      src: getSampleSrc(sample.filepath, sample._id),
+      src: getSampleSrc(sample.filepath, sample._id, url),
       thumbnail: true,
       dimensions,
       sampleId: sample._id,
       frameRate,
+      dataset,
+      view,
       frameNumber: constructor === FrameLooker ? frameNumber : null,
       fieldSchema: {
         ...fieldSchema,
@@ -361,7 +353,9 @@ export default React.memo(() => {
       ...lookerOptions.contents,
       selected: selected.has(sample._id),
     });
-    looker.addEventListener("error", (event) => handleError(event.detail));
+    looker.addEventListener("error", (event: ErrorEvent) => {
+      handleError(event.error);
+    });
 
     return looker;
   };
@@ -410,7 +404,6 @@ export default React.memo(() => {
     stringifyObj(filters),
     datasetName,
     filterView(view),
-    refresh,
     cropToContent,
     tagging,
     useRecoilValue(pageParameters),
@@ -443,23 +436,19 @@ export default React.memo(() => {
           store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
         get: async (page) => {
-          const params = await getPageParams();
           try {
-            const { results, more } = await fetch(url, {
-              method: "POST",
-              cache: "no-cache",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              mode: "cors",
-              body: JSON.stringify({ ...params, page }),
-            }).then((response) => response.json());
+            const { results, more } = await getFetchFunction()(
+              "POST",
+              "/samples",
+              { ...paramsRef.current, page }
+            );
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,
                 dimensions: [result.width, result.height],
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
+                url: result.url,
               };
               store.samples.set(result.sample._id, data);
               store.indices.set(nextIndex, result.sample._id);
@@ -491,7 +480,7 @@ export default React.memo(() => {
               const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
 
-              return null;
+              return;
             }
 
             if (!soft) {
@@ -504,8 +493,6 @@ export default React.memo(() => {
               store.lookers.set(sampleId, looker);
               looker.attach(element, dimensions);
             }
-
-            return null;
           } catch (error) {
             handleError(error);
           }

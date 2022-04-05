@@ -505,6 +505,7 @@ export const PathGroupEntry = React.memo(
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = useDeleteGroup(modal, name);
     const empty = useRecoilValue(groupIsEmpty({ modal, group: name }));
+
     return (
       <GroupEntry
         title={name.toUpperCase()}

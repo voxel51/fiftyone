@@ -26,6 +26,7 @@ const ViewStageParameterDiv = animated(styled.div`
   border: 1px solid ${({ theme }) => theme.brand};
   display: flex;
   overflow: visible;
+  height: 100%;
 `);
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
@@ -194,7 +195,7 @@ const ObjectEditor = ({
         active && stageState.matches("focusedViewBar.yes")
           ? theme.brand
           : theme.fontDarkest,
-      height: state.matches("editing") ? 200 : 34,
+      height: state.matches("editing") ? 200 : 36,
       opacity: 1,
     });
   }, [
@@ -333,7 +334,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
       active && stageState.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    height: isObjectEditor && state.matches("editing") ? 200 : 34,
+    height: isObjectEditor && state.matches("editing") ? 200 : 36,
     borderWidth: isObjectEditor ? 0 : 1,
     borderRightWidth: 0,
     opacity: 1,

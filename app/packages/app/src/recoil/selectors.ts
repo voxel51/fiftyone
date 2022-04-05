@@ -1,26 +1,33 @@
+import { getFetchFunction } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
 
-import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
+import { handleId, isNotebook } from "../shared/connection";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => {
-    return Boolean(get(atoms.modal));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
+export const refresher = (() => {
+  let state = false;
+  return selector<boolean>({
+    key: "refresher",
+    get: () => {
+      state = !state;
 
-export const refresh = selector<boolean>({
-  key: "refresh",
-  get: ({ get }) => get(atoms.stateDescription)?.refresh,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+      return state;
+    },
+    cachePolicy_UNSTABLE: {
+      eviction: "most-recent",
+    },
+  });
+})();
+
+export const stateSubscription = selector<string>({
+  key: "stateSubscription",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return params.get("subscription") || uuid();
   },
 });
 
@@ -44,7 +51,7 @@ export const fiftyone = selector({
     let response = null;
     do {
       try {
-        response = await (await fetch(`${http}/fiftyone`)).json();
+        response = await getFetchFunction()("GET", "/fiftyone");
       } catch {}
       if (response) break;
       await new Promise((r) => setTimeout(r, 2000));
@@ -64,7 +71,7 @@ export const showTeamsButton = selector({
     const storedTeams = window.localStorage.getItem("fiftyone-teams");
     if (storedTeams) {
       window.localStorage.removeItem("fiftyone-teams");
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
+      getFetchFunction()("POST", "/teams?submitted=true");
     }
     if (
       teams.submitted ||
@@ -200,7 +207,7 @@ export const getTarget = selector({
 export const selectedLabelIds = selector<Set<string>>({
   key: "selectedLabelIds",
   get: ({ get }) => {
-    const labels = get(selectedLabels);
+    const labels = get(atoms.selectedLabels);
     return new Set(Object.keys(labels));
   },
   cachePolicy_UNSTABLE: {
@@ -291,35 +298,6 @@ export const pathHiddenLabelsMap = selector<{
     }
 
     set(atoms.hiddenLabels, newLabels);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const selectedLabels = selector<State.SelectedLabelMap>({
-  key: "selectedLabels",
-  get: ({ get }) => {
-    const labels: State.SelectedLabel[] =
-      get(atoms.stateDescription)?.selectedLabels || [];
-    return Object.fromEntries(labels.map((l) => [l.labelId, l]));
-  },
-  set: ({ get, set }, value) => {
-    const state = get(atoms.stateDescription);
-    const labels: State.SelectedLabel[] = Object.entries(value).map(
-      ([labelId, label]) => ({
-        ...label,
-        labelId,
-      })
-    );
-    const newState: State.Description = {
-      ...state,
-      selectedLabels: labels,
-    };
-    socket.send(
-      packageMessage("set_selected_labels", { selected_labels: labels })
-    );
-    set(atoms.stateDescription, newState);
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",

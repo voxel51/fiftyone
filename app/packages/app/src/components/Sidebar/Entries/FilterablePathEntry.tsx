@@ -90,6 +90,10 @@ const getFilterData = (
   named?: boolean;
   listField: boolean;
 }[] => {
+  if (!parent) {
+    return [];
+  }
+
   if (meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
     let ftype = parent.ftype;
     const listField = ftype === LIST_FIELD;
@@ -237,6 +241,13 @@ const FilterableEntry = React.memo(
         setExpanded(false);
       }
     }, [expandable.state, expandable.contents, expanded]);
+    const { backgroundColor } = useSpring({
+      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
+    });
+
+    if (!field) {
+      return null;
+    }
 
     return (
       <RegularEntry
@@ -286,9 +297,7 @@ const FilterableEntry = React.memo(
             </NameAndCountContainer>
           </>
         }
-        {...useSpring({
-          backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-        })}
+        backgroundColor={backgroundColor}
         onClick={!disabled ? () => setActive(!active) : null}
       >
         <Suspense fallback={null}>

@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
@@ -6,14 +6,15 @@ import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "./SampleModal";
 import * as selectors from "../recoil/selectors";
-import { useScreenshot, useGA } from "../utils/hooks";
+import { useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
 import * as schemaAtoms from "../recoil/schema";
+import { modal } from "../recoil/atoms";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
 const Container = styled.div`
-  height: calc(100% - 84px);
+  height: 100%;
   display: flex;
   flex-direction: column;
 `;
@@ -38,16 +39,17 @@ const useResetPaths = () => {
 };
 
 function Dataset() {
-  const isModalActive = useRecoilValue(selectors.isModalActive);
+  const isModalActive = Boolean(useRecoilValue(modal));
   const hasDataset = useRecoilValue(selectors.hasDataset);
 
   useGA();
-  useScreenshot();
   useResetPaths();
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);
-    document.getElementById("modal").classList.toggle("modalon", isModalActive);
+    document
+      .getElementById("modal")
+      ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
   const datasets = useRecoilValue(selectors.datasets);
 

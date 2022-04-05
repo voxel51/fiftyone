@@ -2,7 +2,11 @@ import React, { useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Controller } from "@react-spring/core";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback } from "recoil";
+import {
+  useRecoilValue,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+} from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
@@ -58,13 +62,11 @@ interface SelectEvent {
 }
 
 const useOnSelectLabel = () => {
-  return useRecoilCallback(
-    ({ snapshot, set }) => async ({
-      detail: { id, field, frameNumber },
-    }: SelectEvent) => {
-      const { sample } = await snapshot.getPromise(atoms.modal);
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+      const { sample } = get(atoms.modal);
       let labels = {
-        ...(await snapshot.getPromise(selectors.selectedLabels)),
+        ...get(atoms.selectedLabels),
       };
       if (labels[id]) {
         delete labels[id];
@@ -76,7 +78,7 @@ const useOnSelectLabel = () => {
         };
       }
 
-      set(selectors.selectedLabels, labels);
+      set(atoms.selectedLabels, labels);
     },
     []
   );

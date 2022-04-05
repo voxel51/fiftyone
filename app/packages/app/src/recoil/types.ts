@@ -40,37 +40,23 @@ export namespace State {
   export interface Run {
     key: string;
     version: string;
-    timestamp: { date: number };
+    timestamp: string;
     config: {};
-    viewStages: string[];
-    result: ID;
+    viewStages: readonly string[];
   }
 
   export interface BrainRun extends Run {
     config: {
-      cls: "fiftyone.brain.similarity.SimilarityConfig";
-      embeddingsField?: string;
+      embeddingsField: string | null;
       method: string;
-      patchesField?: string;
+      patchesField: string | null;
     };
   }
 
   export interface EvaluationRun extends Run {
     config: {
-      classwise: boolean;
-      cls: "fiftyone.utils.eval.coco.COCOEvaluationConfig";
-      computeMAp: boolean;
-      errorLevel: 0 | 1 | 2 | 3;
       gtField: string;
-      iou: number;
-      iouThreshs?: number;
-      iscrowd: string;
-      maxPreds?: number;
-      method: string;
       predField: string;
-      tolerance?: number;
-      useBoxes: boolean;
-      useMasks: boolean;
     };
   }
 
@@ -79,29 +65,21 @@ export namespace State {
   }
 
   export interface Dataset {
-    annotationRuns: AnnotationRun[];
+    id: string;
     brainMethods: BrainRun[];
-    classes: {
-      [key: string]: string;
-    };
     createdAt: DateTime;
-    defaultClasses: string[];
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
-    frameCollectionName: string;
     frameFields: StrictField[];
-    info: object;
     lastLoadedAt: DateTime;
     maskTargets: {
       [key: string]: Targets;
     };
     mediaType: "image" | "video";
     name: string;
-    sampleCollectionName: string;
     sampleFields: StrictField[];
     version: string;
     appSidebarGroups?: { name: string; paths: string[] }[];
-    _id: ID;
   }
 
   export interface Filter {}
@@ -150,9 +128,7 @@ export namespace State {
     close: boolean;
     config: Config;
     connected: boolean;
-    datasets: string[];
     dataset?: Dataset;
-    filters: Filters;
     refresh: boolean;
     selected: string[];
     selectedLabels: SelectedLabel[];

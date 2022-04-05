@@ -84,7 +84,6 @@ const fn = (
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
     const raise = dragging || groupRaised || key === lastTouched;
-
     let shown = true;
 
     if (entry.kind === EntryKind.PATH) {
@@ -431,7 +430,7 @@ const InteractiveSidebar = ({
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
   const [containerController] = useState(
-    () => new Controller({ maxHeight: 0 })
+    () => new Controller({ minHeight: 0 })
   );
 
   let group = null;
@@ -470,11 +469,11 @@ const InteractiveSidebar = ({
           scale: 1,
           shadow: 0,
           height: 0,
-          overflow: "hidden",
           config: {
             ...config.stiff,
             bounce: 0,
           },
+          overflow: "visible",
         }),
         entry,
         active: false,
@@ -546,7 +545,7 @@ const InteractiveSidebar = ({
       lastTouched.current
     );
 
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
     for (const key of order.current) {
       const item = items.current[key];
 
@@ -568,12 +567,12 @@ const InteractiveSidebar = ({
       }
 
       requestAnimationFrame(() => {
+        lastTouched.current = down.current;
         const newOrder = getNewOrder(lastDirection.current);
         order.current = newOrder;
 
         const newEntries = order.current.map((key) => items.current[key].entry);
 
-        lastTouched.current = down.current;
         down.current = null;
         start.current = null;
         lastDirection.current = null;
@@ -629,7 +628,7 @@ const InteractiveSidebar = ({
       down.current,
       realDelta
     );
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
 
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
@@ -647,15 +646,20 @@ const InteractiveSidebar = ({
     });
   });
 
-  const trigger = useCallback((event) => {
-    if (event.button !== 0) return;
+  const trigger = useCallback(
+    (event) => {
+      if (event.button !== 0) return;
 
-    down.current = event.currentTarget.dataset.key;
-    start.current = event.clientY;
-    last.current = start.current;
-    lastOrder.current = order.current;
-    maxScrollHeight.current = container.current.scrollHeight;
-  }, []);
+      down.current = event.currentTarget.dataset.key;
+      start.current = event.clientY;
+      last.current = start.current;
+      lastOrder.current = order.current;
+      maxScrollHeight.current = container.current.scrollHeight;
+      lastTouched.current = null;
+      placeItems();
+    },
+    [placeItems]
+  );
 
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
@@ -675,6 +679,7 @@ const InteractiveSidebar = ({
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
+        overflow: "visible",
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
@@ -706,18 +711,26 @@ const InteractiveSidebar = ({
               entry,
               items.current[key].controller
             );
+            const style = { cursor: disabled ? "unset" : cursor };
+            if (entry.kind === EntryKind.INPUT) {
+              style.zIndex = 0;
+            }
 
             return (
               <animated.div
                 data-key={key}
-                onMouseDown={disabled ? null : trigger}
+                onMouseDown={disabled ? undefined : trigger}
+                onMouseDownCapture={() => {
+                  lastTouched.current = undefined;
+                  placeItems();
+                }}
                 key={key}
                 style={{
                   ...springs,
                   boxShadow: shadow.to(
                     (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                   ),
-                  cursor: disabled ? "unset" : cursor,
+                  ...style,
                 }}
               >
                 <div
