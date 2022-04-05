@@ -7,6 +7,7 @@ ODM package declaration.
 """
 from .database import (
     aggregate,
+    get_db_config,
     establish_db_conn,
     get_db_client,
     get_db_conn,

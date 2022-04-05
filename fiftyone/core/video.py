@@ -102,7 +102,9 @@ class FramesView(fov.DatasetView):
     @property
     def _base_view(self):
         return self.__class__(
-            self._source_collection, self._frames_stage, self._frames_dataset,
+            self._source_collection,
+            self._frames_stage,
+            self._frames_dataset,
         )
 
     @property
@@ -205,6 +207,20 @@ class FramesView(fov.DatasetView):
         self._sync_source(update=False, delete=True)
 
         super().keep()
+
+    def keep_fields(self):
+        """Deletes any sample fields that have been excluded in this view from
+        the frames of the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_fields()
+
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -331,49 +347,66 @@ class FramesView(fov.DatasetView):
             self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
+        if fields is None:
+            fields = list(self.get_field_schema())
+
+        default_fields = set(
+            self._get_default_sample_fields(include_private=True)
+        )
+
+        def add(paths):
+            for path in paths:
+                if (
+                    self._source_collection.get_field(f"frames.{path}") is None
+                    and path not in default_fields
+                ):
+                    field_kwargs = foo.get_field_kwargs(self.get_field(path))
+                    self._source_collection._dataset.add_frame_field(
+                        path, **field_kwargs
+                    )
+                elif path != "metadata":
+                    field = self.get_field(path)
+                    if isinstance(field, fof.ListField):
+                        field = field.field
+                    if isinstance(field, fof.EmbeddedDocumentField):
+                        add(
+                            [
+                                f"{path}.{key}"
+                                for key in field.get_field_schema()
+                            ]
+                        )
+
+        add(fields)
+
+        def remove(paths):
+            for path in paths:
+                field = self.get_field(path)
+                if field is None:
+                    self._source_collection._dataset.delete_frame_field(path)
+                else:
+                    if isinstance(field, fof.ListField):
+                        field = field.field
+                    if isinstance(field, fof.EmbeddedDocumentField):
+                        remove(
+                            [
+                                f"{path}.{key}"
+                                for key in field.get_field_schema()
+                            ]
+                        )
+
+        delete and remove(
+            list(self._source_collection.get_frame_field_schema())
+        )
+
+    def _sync_source_keep_fields(self):
         schema = self.get_field_schema()
         src_schema = self._source_collection.get_frame_field_schema()
 
-        add_fields = []
-        delete_fields = []
-
-        if fields is not None:
-            # We're syncing specific fields; if they are not present in source
-            # collection, add them
-
-            for field_name in fields:
-                if field_name not in src_schema:
-                    add_fields.append(field_name)
-        else:
-            # We're syncing all fields; add any missing fields to source
-            # collection and, if requested, delete any source fields that
-            # aren't in this view
-
-            default_fields = set(
-                self._get_default_sample_fields(include_private=True)
-            )
-
-            for field_name in schema.keys():
-                if (
-                    field_name not in src_schema
-                    and field_name not in default_fields
-                ):
-                    add_fields.append(field_name)
-
-            if delete:
-                for field_name in src_schema.keys():
-                    if field_name not in schema:
-                        delete_fields.append(field_name)
-
-        for field_name in add_fields:
-            field_kwargs = foo.get_field_kwargs(schema[field_name])
-            self._source_collection._dataset.add_frame_field(
-                field_name, **field_kwargs
-            )
-
-        if delete:
-            for field_name in delete_fields:
-                self._source_collection._dataset.delete_frame_field(field_name)
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_frames_dataset(
@@ -511,7 +544,7 @@ def make_frames_dataset(
     )
 
     frame_schema = sample_collection.get_frame_field_schema()
-    dataset._sample_doc_cls.merge_field_schema(frame_schema)
+    dataset._sample_doc_cls.merge_field_schema([], frame_schema)
 
     dataset.create_index("sample_id")
 
@@ -879,7 +912,9 @@ def _parse_video_frames(
         count = total_frame_count if total_frame_count >= 0 else "???"
         if sample_frame_numbers is None:
             logger.info(
-                "Must sample all %s frames of '%s'", count, video_path,
+                "Must sample all %s frames of '%s'",
+                count,
+                video_path,
             )
         elif sample_frame_numbers != []:
             logger.info(

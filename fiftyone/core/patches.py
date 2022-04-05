@@ -16,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.odm.mixins import get_field_kwargs
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
@@ -196,7 +197,7 @@ class _PatchesView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         if must_sync:
-            self._sync_source_field(field, ids=ids)
+            self._sync_source_field(field_name, ids=ids)
 
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
@@ -246,6 +247,20 @@ class _PatchesView(fov.DatasetView):
 
         super().keep()
 
+    def keep_fields(self):
+        """Deletes all patch field(s) that have been excluded from this view
+        from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_fields()
+
+        super().keep_fields()
+
     def reload(self):
         """Reloads this view from the source collection in the database.
 
@@ -267,6 +282,32 @@ class _PatchesView(fov.DatasetView):
         self._patches_dataset = _view._patches_dataset
 
     def _sync_source_sample(self, sample):
+        def add(paths):
+            for path in paths:
+                root = path.split(".", 1)[0]
+                source_path = ".".join(
+                    [self._source_collection._get_label_field_path(root)[1]]
+                    + path.split(".")[1:]
+                )
+                if self._source_collection.get_field(source_path) is None:
+                    field_kwargs = get_field_kwargs(self.get_field(path))
+                    self._source_collection._dataset.add_sample_field(
+                        source_path, **field_kwargs
+                    )
+                else:
+                    field = self.get_field(path)
+                    if isinstance(field, fof.ListField):
+                        field = field.field
+                    if isinstance(field, fof.EmbeddedDocumentField):
+                        add(
+                            [
+                                f"{path}.{key}"
+                                for key in field.get_field_schema()
+                            ]
+                        )
+
+        add(self._label_fields)
+
         for field in self._label_fields:
             self._sync_source_sample_field(sample, field)
 
@@ -283,7 +324,19 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels(field, [sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
-        _, label_path = self._patches_dataset._get_label_field_path(field)
+        root = field.split(".", 1)[0]
+        source_path = (
+            self._source_collection._get_label_field_path(root)[1]
+            + "."
+            + field[len(self._get_label_field_path(root)[1]) + 1 :]
+        )
+        self._source_collection._dataset._sample_doc_cls._add_field_schema(
+            source_path, **get_field_kwargs(self.get_field(field))
+        )
+
+        _, label_path = self._patches_dataset._get_label_field_path(
+            field.split(".")[0]
+        )
 
         if ids is not None:
             view = self._patches_dataset.mongo(
@@ -296,7 +349,15 @@ class _PatchesView(fov.DatasetView):
             [foa.Values(self._id_field), foa.Values(label_path, _raw=True)]
         )
 
-        self._source_collection._set_labels(field, sample_ids, docs)
+        self._source_collection._set_labels(
+            field.split(".")[0], sample_ids, docs
+        )
+
+        if hasattr(self._source_collection, "_sync_source_field"):
+            self._source_collection._sync_source_field(field, ids=ids)
+
+        if hasattr(self._source_collection, "_sync_source"):
+            self._source_collection._sync_source([label_path], ids=ids)
 
     def _sync_source_root(self, fields, update=True, delete=False):
         for field in fields:
@@ -307,11 +368,10 @@ class _PatchesView(fov.DatasetView):
         label_path = label_id_path.rsplit(".", 1)[0]
 
         if update:
-            sample_ids, docs, label_ids = self._patches_dataset.aggregate(
+            sample_ids, docs = self._patches_dataset.aggregate(
                 [
                     foa.Values(self._id_field),
                     foa.Values(label_path, _raw=True),
-                    foa.Values(label_id_path, unwind=True),
                 ]
             )
 
@@ -320,12 +380,19 @@ class _PatchesView(fov.DatasetView):
         if delete:
             all_ids = self._patches_dataset.values(label_id_path, unwind=True)
             self_ids = self.values(label_id_path, unwind=True)
-            delete_ids = set(all_ids) - set(self_ids)
+            del_ids = set(all_ids) - set(self_ids)
 
-            if delete_ids:
+            if del_ids:
                 self._source_collection._delete_labels(
-                    ids=delete_ids, fields=field
+                    ids=del_ids, fields=field
                 )
+
+    def _sync_source_keep_fields(self):
+        src_schema = self.get_field_schema()
+
+        del_fields = set(self._label_fields) - set(src_schema.keys())
+        if del_fields:
+            self._source_collection.exclude_fields(del_fields).keep_fields()
 
 
 class PatchesView(_PatchesView):
@@ -504,7 +571,7 @@ def make_patches_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
+            [], {k: v for k, v in src_schema.items() if k in add_fields}
         )
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)

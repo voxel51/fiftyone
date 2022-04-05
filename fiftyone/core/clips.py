@@ -106,7 +106,9 @@ class ClipsView(fov.DatasetView):
     @property
     def _base_view(self):
         return self.__class__(
-            self._source_collection, self._clips_stage, self._clips_dataset,
+            self._source_collection,
+            self._clips_stage,
+            self._clips_dataset,
         )
 
     @property
@@ -152,15 +154,10 @@ class ClipsView(fov.DatasetView):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-        if self._classification_field:
-            clips_fields = ("support", self._classification_field)
-        else:
-            clips_fields = ("support",)
-
         if use_db_fields:
-            return fields + ("_sample_id",) + clips_fields
+            return fields + ("_sample_id", "support")
 
-        return fields + ("sample_id",) + clips_fields
+        return fields + ("sample_id", "support")
 
     def _get_default_indexes(self, frames=False):
         if frames:
@@ -219,6 +216,20 @@ class ClipsView(fov.DatasetView):
         self._sync_source(update=False, delete=True)
 
         super().keep()
+
+    def keep_fields(self):
+        """Deletes any frame fields that have been excluded in this view from
+        the frames of the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_fields()
+
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -303,6 +314,24 @@ class ClipsView(fov.DatasetView):
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
+
+    def _sync_source_keep_fields(self):
+        # If the source TemporalDetection field is excluded, delete it from
+        # this collection and the source collection
+        cls_field = self._classification_field
+        if cls_field and cls_field not in self.get_field_schema():
+            self._source_collection.exclude_fields(cls_field).keep_fields()
+
+        # Delete any excluded frame fields from this collection and the source
+        # collection
+        schema = self.get_frame_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_clips_dataset(
@@ -435,7 +464,7 @@ def make_clips_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         dataset._sample_doc_cls.merge_field_schema(
-            {k: v for k, v in src_schema.items() if k in add_fields}
+            [], {k: v for k, v in src_schema.items() if k in add_fields}
         )
 
     _make_pretty_summary(dataset)
@@ -515,7 +544,7 @@ def _write_support_clips(
         "filepath": True,
         "metadata": True,
         "tags": True,
-        "support": "$" + field,
+        "support": "$" + field.name,
     }
 
     if other_fields:
@@ -608,7 +637,10 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
 
     trajs = _get_trajectories(src_collection, field)
     src_collection.set_values(
-        _tmp_field, trajs, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        trajs,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -687,7 +719,10 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     _tmp_field = "_support"
 
     src_collection.set_values(
-        _tmp_field, clips, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        clips,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -732,7 +767,11 @@ def _get_trajectories(sample_collection, frame_field):
         raise ValueError(
             "Frame field '%s' has type %s, but trajectories can only be "
             "extracted for label list fields %s"
-            % (frame_field, label_type, fol._LABEL_LIST_FIELDS,)
+            % (
+                frame_field,
+                label_type,
+                fol._LABEL_LIST_FIELDS,
+            )
         )
 
     fn_expr = F("frames").map(F("frame_number"))

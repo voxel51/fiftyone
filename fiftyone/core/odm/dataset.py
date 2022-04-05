@@ -9,6 +9,8 @@ import inspect
 
 import eta.core.utils as etau
 
+from mongoengine.fields import StringField as MongoStringField
+
 from fiftyone.core.fields import (
     Field,
     BooleanField,
@@ -18,6 +20,7 @@ from fiftyone.core.fields import (
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
     ListField,
+    ObjectIdField,
     StringField,
     TargetsField,
 )
@@ -69,11 +72,6 @@ def create_field(
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
     """
-    if not issubclass(ftype, Field):
-        raise ValueError(
-            "Invalid field type %s; must be a subclass of %s" % (ftype, Field)
-        )
-
     if db_field is None:
         db_field = name
 
@@ -82,10 +80,10 @@ def create_field(
 
     if fields is not None:
         for idx, value in enumerate(fields):
-            if isinstance(value, Field):
+            if isinstance(value, (Field, MongoStringField)):
                 continue
 
-            fields[idx] = create_field(name, **value)
+            fields[idx] = create_field(**value)
 
     if issubclass(ftype, (ListField, DictField)):
         if subfield is not None:
@@ -98,6 +96,7 @@ def create_field(
                         fields=fields or [],
                         parent=parent,
                     )
+
                 else:
                     subfield = subfield()
 
@@ -112,7 +111,9 @@ def create_field(
             kwargs["field"] = subfield
 
     if issubclass(ftype, EmbeddedDocumentField):
-        if not issubclass(embedded_doc_type, BaseEmbeddedDocument):
+        if embedded_doc_type is None or not issubclass(
+            embedded_doc_type, BaseEmbeddedDocument
+        ):
             raise ValueError(
                 "Invalid embedded_doc_type %s; must be a subclass of %s"
                 % (embedded_doc_type, BaseEmbeddedDocument)
@@ -248,6 +249,49 @@ class SampleFieldDocument(EmbeddedDocument):
             )
 
         return True
+
+    def merge_doc(self, other):
+        if self.ftype != other.ftype:
+            raise TypeError("Cannot merge")
+
+        if other.ftype == etau.get_class_name(ListField):
+            if (
+                self.subfield
+                and other.subfield
+                and self.subfield != other.subfield
+            ):
+                raise TypeError("Cannot merge")
+
+            self.subfield = other.subfield or self.subfield
+
+        if self.name == other.name and self.db_field is None:
+            self.db_field = other.db_field or self.db_field
+
+        embedded_doc = etau.get_class_name(EmbeddedDocumentField)
+        if other.ftype == embedded_doc or self.subfield == embedded_doc:
+            if (
+                self.embedded_doc_type
+                and other.embedded_doc_type
+                and self.embedded_doc_type != other.embedded_doc_type
+            ):
+                raise TypeError("Cannot merge")
+
+            self.embedded_doc_type = (
+                other.embedded_doc_type or self.embedded_doc_type
+            )
+
+            others = {f.name: f for f in other.fields}
+
+            new = []
+            for i, field in enumerate(self.fields):
+                if field.name in others:
+                    self.fields[i] = field.merge_doc(others[field.name])
+                else:
+                    new.append(field)
+
+            self.fields = self.fields + new
+
+        return self
 
     @staticmethod
     def _get_attr_repr(field, attr_name):

@@ -40,7 +40,7 @@ You can explicitly create a view that contains an entire dataset via
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         uniqueness:   fiftyone.core.fields.FloatField
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
@@ -749,7 +749,7 @@ detection dataset:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
@@ -797,15 +797,16 @@ in the sense that:
     :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
     and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
     will be reflected on the source dataset
--   Any modifications to the |Label| elements in the patches view that you make
-    by iterating over the contents of the view or calling
+-   Any modifications to the patch labels that you make by iterating over the
+    contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` or
-    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>` on an object
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.PatchesView.keep_fields>` on a
     patches view (typically one that contains additional view stages that
-    filter or modify its contents) will sync any |Label| edits or deletions
-    with the source dataset
+    filter or modify its contents) will sync any edits or deletions to the
+    patch labels with the source dataset
 
 However, because object patches views only contain a subset of the contents of
 a |Sample| from the source dataset, there are some differences compared to
@@ -873,7 +874,7 @@ respectively.
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField
@@ -914,11 +915,12 @@ Evaluation patches views are just like any other
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
-    or :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>` on an
-    evaluation patches view (typically one that contains additional view stages
-    that filter or modify its contents) will sync any |Label| edits or
-    deletions with the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.EvaluationPatchesView.keep_fields>`
+    on an evaluation patches view (typically one that contains additional view
+    stages that filter or modify its contents) will sync any predicted or
+    ground truth |Label| edits or deletions with the source dataset
 
 However, because evaluation patches views only contain a subset of the contents
 of a |Sample| from the source dataset, there are some differences compared to
@@ -1023,7 +1025,7 @@ temporal segment by simply passing the name of the temporal detection field to
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
         events:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
@@ -1126,7 +1128,7 @@ that contains at least one person:
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -1210,11 +1212,12 @@ sense that:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` or
-    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>` on a clips view
-    (typically one that contains additional view stages that filter or modify
-    its contents) will sync any frame-level edits or deletions with the source
-    dataset
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
+    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.clips.ClipsView.keep_fields>` on a
+    clips view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any frame-level edits or deletions with
+    the source dataset
 
 However, because clip views represent only a subset of a |Sample| from the
 source dataset, there are some differences compared to non-clip views:
@@ -1279,7 +1282,7 @@ frame of the videos in a |Dataset| or |DatasetView|:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
@@ -1369,11 +1372,12 @@ Frame views are just like any other image collection view in the sense that:
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.video.FramesView.save>` or
-    :meth:`keep() <fiftyone.core.video.FramesView.keep>` on a frames view
-    (typically one that contains additional view stages that filter or modify
-    its contents) will sync any changes to the frames of the underlying video
-    dataset
+-   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
+    :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.video.FramesView.keep_fields>` on a
+    frames view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any changes to the frames of the
+    underlying video dataset
 
 The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not
@@ -1425,7 +1429,7 @@ sample per object patch in the frames of the dataset!
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_id:     fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -1960,6 +1964,26 @@ samples from the underlying dataset that do not appear in a view you created:
     print(len(dataset))
     # 94
 
+and you can use
+:meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
+to delete any sample/frame fields from the underlying dataset that you have
+excluded from a view you created:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the `predictions` field
+    view = dataset.exclude_fields("predictions")
+    view.keep_fields()
+
+    print(dataset)
+
+    # Delete all non-default fields
+    view = dataset.select_fields()
+    view.keep_fields()
+
+    print(dataset)
+
 Alternatively, you can use
 :meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new
 |Dataset| that contains only the contents of a |DatasetView|:
@@ -2092,15 +2116,16 @@ Let's say you have a dataset that looks like this:
 
 .. code-block:: bash
 
-    Name:           open-images-v4-test
-    Num samples:    1000
-    Persistent:     True
-    Tags:           []
+    Name:        open-images-v4-test
+    Media type:  image
+    Num samples: 1000
+    Persistent:  True
+    Tags:        []
     Sample fields:
         id:                       fiftyone.core.fields.ObjectIdField
         filepath:                 fiftyone.core.fields.StringField
         tags:                     fiftyone.core.fields.ListField(StringField)
-        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         open_images_id:           fiftyone.core.fields.StringField
         groundtruth_image_labels: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classifications)
         groundtruth_detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)

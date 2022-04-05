@@ -19,14 +19,13 @@ import numpy as np
 
 import eta.core.image as etai
 import eta.core.utils as etau
-import eta.core.web as etaw
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
-import fiftyone.core.storage as fost
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 
@@ -141,6 +140,10 @@ class LabelboxBackend(foua.AnnotationBackend):
     @property
     def supports_keyframes(self):
         return False
+
+    @property
+    def supports_video_sample_fields(self):
+        return False  # @todo resolve FiftyOne bug to allow this to be True
 
     def recommend_attr_tool(self, name, value):
         if isinstance(value, bool):
@@ -1443,7 +1446,7 @@ def import_from_labelbox(
     is_video = dataset.media_type == fomm.VIDEO
 
     # Load labels
-    d_list = fost.read_json(json_path)
+    d_list = fos.read_json(json_path)
 
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
@@ -1459,8 +1462,8 @@ def import_from_labelbox(
                 # pool?
                 image_url = d["Labeled Data"]
                 filepath = filename_maker.get_output_path(image_url)
-                etaw.download_file(image_url, path=filepath, quiet=True)
-                sample = fos.Sample(filepath=filepath)
+                fos.copy_file(image_url, filepath)
+                sample = Sample(filepath=filepath)
                 dataset.add_sample(sample)
             else:
                 logger.info(
@@ -1639,17 +1642,17 @@ def export_to_labelbox(
                     frames, frame_size, labelbox_id
                 )
 
-                video_labels_path = fost.join(
+                video_labels_path = fos.join(
                     video_labels_dir, labelbox_id + ".json"
                 )
-                fost.write_ndjson(video_annos, video_labels_path)
+                fos.write_ndjson(video_annos, video_labels_path)
 
                 video_anno = _make_video_anno(
                     video_labels_path, data_row_id=labelbox_id
                 )
                 annos.append(video_anno)
 
-    fost.write_ndjson(annos, ndjson_path)
+    fos.write_ndjson(annos, ndjson_path)
 
 
 def download_labels_from_labelbox(labelbox_project, outpath=None):
@@ -1666,10 +1669,10 @@ def download_labels_from_labelbox(labelbox_project, outpath=None):
     export_url = labelbox_project.export_labels()
 
     if outpath:
-        etaw.download_file(export_url, path=outpath)
+        fos.copy_file(export_url, outpath)
         return None
 
-    return fost.read_json(export_url)
+    return fos.read_json(export_url)
 
 
 def upload_media_to_labelbox(
@@ -1736,7 +1739,7 @@ def upload_labels_to_labelbox(
         return labelbox_project.upload_annotations(name, annos_or_ndjson_path)
 
     if etau.is_str(annos_or_ndjson_path):
-        annos = fost.read_ndjson(annos_or_ndjson_path)
+        annos = fos.read_ndjson(annos_or_ndjson_path)
     else:
         annos = annos_or_ndjson_path
 
@@ -1773,7 +1776,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
     if outpath is None:
         outpath = inpath
 
-    din_list = fost.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -1787,7 +1790,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
 
             # Convert frame labels
             if video_outdir is not None:
-                frames_outpath = fost.join(
+                frames_outpath = fos.join(
                     video_outdir, os.path.basename(frames_inpath)
                 )
             else:
@@ -1814,11 +1817,11 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
         _ingest_label(din, dout_map[uuid]["Label"])
 
     dout = list(dout_map.values())
-    fost.write_json(dout, outpath)
+    fos.write_json(dout, outpath)
 
 
 def _convert_labelbox_frames_export_to_import(inpath, outpath):
-    din_list = fost.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -1837,7 +1840,7 @@ def _convert_labelbox_frames_export_to_import(inpath, outpath):
         _ingest_label(din, dout_map[frame_number])
 
     dout = [dout_map[fn] for fn in sorted(dout_map.keys())]
-    fost.write_ndjson(dout, outpath)
+    fos.write_ndjson(dout, outpath)
 
 
 def _ingest_label(din, d_label):
@@ -2097,7 +2100,7 @@ def _make_mask(instance_uri, color):
 # https://labelbox.com/docs/exporting-data/export-format-detail#video
 def _parse_video_labels(video_label_d, frame_size):
     url_or_filepath = video_label_d["frames"]
-    label_d_list = fost.read_ndjson(url_or_filepath)
+    label_d_list = fos.read_ndjson(url_or_filepath)
 
     frames = {}
     for label_d in label_d_list:
@@ -2349,7 +2352,7 @@ def _parse_point(pd, frame_size):
 
 
 def _parse_mask(instance_uri):
-    img_bytes = etaw.download_file(instance_uri, quiet=True)
+    img_bytes = fos.read_file(instance_uri, "rb")
     return etai.decode(img_bytes)
 
 

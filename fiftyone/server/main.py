@@ -21,9 +21,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone as fo
 import fiftyone.constants as foc
 
-
 from fiftyone.server.app import app
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

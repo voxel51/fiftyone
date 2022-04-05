@@ -159,8 +159,8 @@ interactively explore specific cases of your model's performance.
 
 .. note::
 
-    See :ref:`this page <interactive-plots>` for more information about
-    interactive plots in FiftyOne.
+    See :ref:`this section <confusion-matrix-plots>` for more information about
+    interactive confusion matrices in FiftyOne.
 
 Continuing with our example, the code block below generates a confusion matrix
 for our evaluation results and :ref:`attaches it to the App <attaching-plots>`.
@@ -795,7 +795,7 @@ results of an evaluation on the
     Patch fields:
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.StringField
@@ -1054,7 +1054,7 @@ ground truth objects of different classes.
 
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <interactive-plots>`!
+    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-detections-open-images:
 
@@ -1287,7 +1287,7 @@ matched with ground truth objects of different classes.
 
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <interactive-plots>`!
+    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-detections-activitynet:
 
@@ -1554,7 +1554,7 @@ matched with ground truth segments of different classes.
 
     Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
     attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <interactive-plots>`!
+    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-segmentations:
 
@@ -1915,7 +1915,7 @@ You can also view frame-level evaluation results as
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField

@@ -217,7 +217,7 @@ class PatchesTests(unittest.TestCase):
 
         sample = view.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(view.count_values("ground_truth.hello")["world"], 1)
@@ -246,6 +246,19 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("ground_truth.detections.tags"), {}
         )
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["ground_truth"]
 
     @drop_datasets
     def test_to_evaluation_patches(self):
@@ -289,7 +302,9 @@ class PatchesTests(unittest.TestCase):
 
         dataset.add_sample(sample)
 
-        dataset.evaluate_detections("predictions", eval_key="eval")
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
 
         view = dataset.to_evaluation_patches("eval")
 
@@ -507,6 +522,29 @@ class PatchesTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("ground_truth.detections.tags"), {}
         )
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("predictions", view.get_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_field_schema())
+        self.assertNotIn("predictions", dataset.get_field_schema())
+
+        sample_view = view.first()
+
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        with self.assertRaises(KeyError):
+            sample_view["predictions"]
+
+        sample = dataset.first()
+
+        with self.assertRaises(KeyError):
+            sample["ground_truth"]
+
+        with self.assertRaises(KeyError):
+            sample["predictions"]
 
 
 if __name__ == "__main__":

@@ -123,6 +123,8 @@ def download_image_classification_dataset(
         num_workers (None): the number of processes to use to download images.
             By default, ``multiprocessing.cpu_count()`` is used
     """
+    fos.ensure_local(dataset_dir)
+
     labels, image_urls = zip(
         *[
             tuple(line.split(",", 1))
@@ -169,6 +171,8 @@ def download_images(image_urls, output_dir, num_workers=None):
     Returns:
         the list of downloaded image paths
     """
+    fos.ensure_local(output_dir)
+
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 

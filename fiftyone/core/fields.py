@@ -196,6 +196,12 @@ class ListField(mongoengine.fields.ListField, Field):
         else:
             super().validate(value)
 
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            return [self.field.to_python(v, detached=True) for v in value]
+
+        return super().to_python(value)
+
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -262,6 +268,15 @@ class DictField(mongoengine.fields.DictField, Field):
 
         if value is not None and not isinstance(value, dict):
             self.error("Value must be a dict")
+
+    def to_python(self, value, detached=False):
+        if detached and isinstance(self.field, EmbeddedDocumentField):
+            return {
+                k: v in self.field.to_python(v, detached=True)
+                for k, v in value.items()
+            }
+
+        return super().to_python(value)
 
 
 class IntDictField(DictField):
@@ -628,6 +643,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     def __init__(self, document_type, **kwargs):
         super().__init__(document_type, **kwargs)
         self._parent = None
+
         self.fields = kwargs.get("fields", [])
         self._validation_schema = None
 
@@ -638,9 +654,7 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         )
 
     def validate(self, value, clean=True, expand=False):
-        if self._validation_schema is None:
-            self._validation_schema = self.get_field_schema()
-
+        self._validation_schema = self.get_field_schema()
         schema = self._validation_schema
         for name in value._fields_ordered:
             field = None
@@ -662,9 +676,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
                 field.validate(field_value, clean=False, expand=expand)
             else:
                 field.validate(field_value)
-
-        if isinstance(value, foo.DynamicEmbeddedDocument):
-            value._set_parent(self)
 
         super().validate(value, clean)
 
@@ -711,7 +722,29 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
 
         return filtered_fields
 
-    def to_python(self, value):
+    def to_python(self, value, detached=False):
+        if detached:
+            value.pop("_cls", None)
+            _id = value.pop("_id", None)
+            for k, v in value.items():
+                if k in self.document_type._fields:
+                    if isinstance(
+                        self.document_type._fields[k],
+                        (EmbeddedDocumentField, ListField, DictField),
+                    ):
+                        value[k] = self.document_type._fields[k].to_python(
+                            v, detached=True
+                        )
+                    elif v is not None:
+
+                        value[k] = self.document_type._fields[k].to_python(v)
+
+            if _id:
+                value["id"] = _id
+            doc = self.document_type(**value)
+
+            return doc
+
         doc = super().to_python(value)
 
         if isinstance(doc, foo.DynamicEmbeddedDocument):
@@ -720,15 +753,22 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         return doc
 
     def _save_field(self, field, keys):
-        if keys[0] not in self.get_field_schema():
-            self.fields.append(field)
-            self._validation_schema = self.get_field_schema()
+        self.fields = [f for f in self.fields if f.name != keys[0]] + [field]
+        self._validation_schema = self.get_field_schema()
 
         if self._parent:
             self._parent._save_field(field, [self.name] + keys)
 
     def _set_parent(self, parent):
         self._parent = parent
+        if parent is not None:
+            for field_name, field in self.get_field_schema().items():
+                if isinstance(field, (ListField)):
+                    field = field.field
+
+                if isinstance(field, EmbeddedDocumentField):
+                    field._set_parent(self)
+                    field.name = field_name
 
 
 class EmbeddedDocumentListField(

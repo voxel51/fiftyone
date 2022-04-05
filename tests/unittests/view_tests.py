@@ -444,18 +444,21 @@ class ViewExpressionTests(unittest.TestCase):
                     tags=["train"],
                     my_int=5,
                     my_list=["a", "b"],
+                    my_int_list=list(range(8)),
                 ),
                 fo.Sample(
                     filepath="filepath2.jpg",
                     tags=["train"],
                     my_int=6,
                     my_list=["b", "c"],
+                    my_int_list=list(range(10)),
                 ),
                 fo.Sample(
                     filepath="filepath3.jpg",
                     tags=["test"],
                     my_int=7,
                     my_list=["c", "d"],
+                    my_int_list=list(range(10)),
                 ),
             ]
         )
@@ -474,7 +477,7 @@ class ViewExpressionTests(unittest.TestCase):
         view = dataset.match(F("my_int").is_in(my_ints))
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
-        # test __getitem__
+        # test __getitem__ integer index
         idx = 1
         value = "c"
         manual_ids = [
@@ -482,6 +485,37 @@ class ViewExpressionTests(unittest.TestCase):
         ]
         view = dataset.match(F("my_list")[idx] == value)
         self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __getitem__ expression index
+        manual_index = [
+            sample.my_int_list[sample.my_int] for sample in dataset
+        ]
+        index = dataset.values(F("my_int_list")[F("my_int")])
+        self.assertListEqual(index, manual_index)
+
+        # test __getitem__ slice to stop
+        manual_slices = [
+            sample.my_int_list[: sample.my_int] for sample in dataset
+        ]
+        slices = dataset.values(F("my_int_list")[: F("my_int")])
+        self.assertListEqual(slices, manual_slices)
+
+        # test __getitem__ slice from start
+        manual_slices = [
+            sample.my_int_list[sample.my_int :] for sample in dataset
+        ]
+        slices = dataset.values(F("my_int_list")[F("my_int") :])
+        self.assertListEqual(slices, manual_slices)
+
+        # test __getitem__ slice start to stop
+        manual_slices = [
+            sample.my_int_list[sample.my_int - 1 : sample.my_int]
+            for sample in dataset
+        ]
+        slices = dataset.values(
+            F("my_int_list")[F("my_int") - 1 : F("my_int")]
+        )
+        self.assertListEqual(slices, manual_slices)
 
     @drop_datasets
     def test_str(self):
@@ -968,7 +1002,8 @@ class SetValuesTests(unittest.TestCase):
 
         _dataset_labels = self.dataset.values("detections.detections.label")
         self.assertListEqual(
-            _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+            _dataset_labels,
+            [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
 
 
@@ -1082,6 +1117,37 @@ class ViewSaveTest(unittest.TestCase):
         self.assertIsNone(frame12.id)
         self.assertIsNotNone(frame22.id)
 
+    def test_view_keep_fields(self):
+        dataset = self.dataset
+
+        view = dataset.exclude_fields("classifications")
+        view.keep_fields()
+
+        self.assertNotIn("classifications", view.get_field_schema())
+        self.assertNotIn("classifications", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["classifications"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["classifications"]
+
+        view = dataset.select_fields()
+        view.keep_fields()
+
+        self.assertNotIn("int_field", view.get_field_schema())
+        self.assertNotIn("int_field", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["int_field"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["int_field"]
+
 
 class ViewStageTests(unittest.TestCase):
     @drop_datasets
@@ -1123,11 +1189,15 @@ class ViewStageTests(unittest.TestCase):
 
     def _setUp_detection(self):
         self.sample1["test_det"] = fo.Detection(
-            label="friend", confidence=0.9, bounding_box=[0, 0, 0.5, 0.5],
+            label="friend",
+            confidence=0.9,
+            bounding_box=[0, 0, 0.5, 0.5],
         )
         self.sample1.save()
         self.sample2["test_det"] = fo.Detection(
-            label="hex", confidence=0.8, bounding_box=[0.35, 0, 0.2, 0.25],
+            label="hex",
+            confidence=0.8,
+            bounding_box=[0.35, 0, 0.2, 0.25],
         )
         self.sample2.save()
 
@@ -1378,7 +1448,8 @@ class ViewStageTests(unittest.TestCase):
 
         self.assertEqual(num_detections, 4)
         self.assertListEqual(
-            view.distinct("frames.detections.detections.index"), [1, 2],
+            view.distinct("frames.detections.detections.index"),
+            [1, 2],
         )
         self.assertDictEqual(
             view.count_values("frames.detections.detections.type"),
@@ -1501,6 +1572,7 @@ class ViewStageTests(unittest.TestCase):
         view = self.dataset.set_field(
             "test_dets.detections.is_best_friend",
             (F("confidence") > 0.5) & (F("label") == "friend"),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1510,7 +1582,9 @@ class ViewStageTests(unittest.TestCase):
 
         # Set an embedded field
         view = self.dataset.set_field(
-            "test_dets.num_predictions", F("detections").length()
+            "test_dets.num_predictions",
+            F("detections").length(),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1595,10 +1669,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             ),
@@ -1609,7 +1687,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             ),
@@ -1658,10 +1738,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             )
@@ -1670,7 +1754,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             )
@@ -1681,7 +1767,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="big bro", confidence=0.4, tags=["bad"],
+                        label="big bro",
+                        confidence=0.4,
+                        tags=["bad"],
                     )
                 ]
             )

@@ -15,6 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.youtube as fouy
@@ -77,9 +78,11 @@ def download_activitynet_split(
         -   **did_download**: whether any content was downloaded (True) or if
             all necessary files were already downloaded (False)
     """
+    fos.ensure_local(dataset_dir)
     manager = ActivityNetDatasetManager.from_dataset_dir(dataset_dir, version)
 
     if source_dir:
+        fos.ensure_local(source_dir)
         manager.process_source(source_dir, copy_files)
 
     download_config = ActivityNetDownloadConfig(
@@ -221,8 +224,8 @@ class ActivityNetDatasetImporter(
         )
 
         process_uuids = True
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            labels = etas.read_json(self.labels_path)
+        if self.labels_path is not None and fos.isfile(self.labels_path):
+            labels = fos.read_json(self.labels_path)
             info = ActivityNetInfo(labels)
             sample_ids = self._video_paths_map.keys()
 

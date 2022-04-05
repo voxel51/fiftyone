@@ -171,6 +171,14 @@ def transform_videos(
             -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -vsync 0 -an \\
             $OUTPUT_PATH
 
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
@@ -659,9 +667,10 @@ def _transform_videos(
                         _frames = []
                         logger.warning(e)
 
-                for fn in _frames:
-                    frame_path = outpath % fn
-                    if os.path.isfile(frame_path):
+                _frame_paths = [outpath % fn for fn in _frames]
+                _exists = fos.run(fos.isfile, _frame_paths)
+                for fn, frame_path, e in zip(_frames, _frame_paths, _exists):
+                    if e:
                         sample.frames[fn]["filepath"] = frame_path
 
                 sample.save()
@@ -779,6 +788,17 @@ def _transform_video(
                     size=size,
                     fast=True,
                 )
+
+            did_transform = True
+        elif not etav.is_video_mime_type(inpath):
+            indir, patt = os.path.split(inpath)
+            with fos.LocalDir(indir, "r", quiet=True) as local_dir:
+                local_inpath = os.path.join(local_dir, patt)
+                with fos.LocalFile(outpath, "w") as local_outpath:
+                    with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
+                        ffmpeg.run(
+                            local_inpath, local_outpath, verbose=verbose
+                        )
 
             did_transform = True
         elif not etav.is_video_mime_type(outpath):

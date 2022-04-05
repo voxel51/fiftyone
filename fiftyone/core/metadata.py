@@ -260,7 +260,9 @@ def compute_metadata(
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite,
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
         )
 
     num_missing = len(sample_collection.exists("metadata", False))

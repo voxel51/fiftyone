@@ -5,17 +5,50 @@ Utilities for documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from datetime import date, datetime
 import numbers
 import six
 
 from bson.objectid import ObjectId
+from mongoengine.fields import StringField
 import numpy as np
 
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+
+def get_field_kwargs(field):
+    """Constructs the field keyword arguments dictionary for the given
+    :class:`fiftyone.core.fields.Field` instance.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+        custom (True): include custom fields
+
+    Returns:
+        a field specification dict
+    """
+    kwargs = {"ftype": type(field), "fields": [], "db_field": field.db_field}
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        field = field.field
+        if field is not None:
+            kwargs["subfield"] = type(field)
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+        for f in getattr(field, "fields", []) + list(
+            field.document_type._fields.values()
+        ):
+
+            fkwargs = get_field_kwargs(f)
+            fkwargs["name"] = f.name
+            kwargs["fields"].append(fkwargs)
+
+    return kwargs
 
 
 def get_implied_field_kwargs(value):
@@ -32,7 +65,20 @@ def get_implied_field_kwargs(value):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
-            "fields": get_embedded_document_fields(value),
+            "fields": [
+                dict(
+                    name=name,
+                    **_merge_field_kwargs(
+                        [
+                            get_implied_field_kwargs(value[name]),
+                            get_field_kwargs(value.get_field_def(name)),
+                        ]
+                    ),
+                )
+                for name in value._fields_ordered
+                if getattr(value, name, None) is not None
+                and not name.startswith("_")
+            ],
         }
 
     if isinstance(value, bool):
@@ -72,9 +118,20 @@ def get_implied_field_kwargs(value):
 
                 kwargs["embedded_doc_type"] = document_types.pop()
 
-                kwargs["fields"] = _merge_implied_fields(
-                    [get_implied_field_kwargs(v) for v in value]
-                )
+                data = defaultdict(list)
+
+                for v in value:
+                    for n, f in v.get_field_schema().items():
+                        vv = getattr(v, n, None)
+                        if vv is not None:
+                            data[n].append(get_implied_field_kwargs(vv))
+
+                        data[n].append(get_field_kwargs(f))
+
+                kwargs["fields"] = [
+                    dict(name=n, **_merge_field_kwargs(l))
+                    for n, l in data.items()
+                ]
 
         return kwargs
 
@@ -93,10 +150,6 @@ def get_implied_field_kwargs(value):
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value
     )
-
-
-def get_embedded_document_fields(value):
-    return [field for name, field in value._fields.items() if name != "_cls"]
 
 
 def _get_list_value_type(value):
@@ -127,33 +180,88 @@ def _get_list_value_type(value):
     return None
 
 
-def _merge_implied_fields(implied_fields):
-    fields = {}
-    for kwargs in implied_fields:
-        for field, field_kwargs in kwargs.get("fields", {}).items():
-            if field not in fields:
-                fields[field] = field_kwargs
-                continue
+numerics = (fof.FloatField, fof.IntField)
+strings = (fof.StringField, StringField)
+ids = (fof.StringField, StringField, fof.ObjectIdField)
+vectors = (fof.ListField, fof.VectorField)
+geo = (fof.GeoPointField, fof.ListField)
+poly = (fof.PolylinePointsField, fof.ListField)
+keypoints = (fof.KeypointsField, fof.ListField)
+frame = (fof.FrameSupportField, fof.ListField)
 
-            ftype = fields[field]
-            if ftype != field_kwargs["ftype"]:
+
+def _resolve_ftype(one, two):
+    if not one:
+        return two
+    elif not two:
+        return one
+    elif one == two:
+        return one
+    elif one in numerics and two in numerics:
+        return fof.FloatField
+    elif one in strings and two in strings:
+        return fof.StringField
+    elif one in ids and two in ids:
+        return fof.ObjectIdField
+    elif one in vectors and two in vectors:
+        return fof.VectorField
+    elif one in geo and two in geo:
+        return fof.GeoPointField
+    elif one in poly and two in poly:
+        return fof.PolylinePointsField
+    elif one in frame and two in frame:
+        return fof.FrameSupportField
+    elif one in keypoints and two in keypoints:
+        return fof.KeypointsField
+
+    raise TypeError(f"Cannot merge {one} and {two}")
+
+
+def _merge_field_kwargs(fields_list):
+    kwargs = {"db_field": None}
+    for field_kwargs in fields_list:
+        ftype = _resolve_ftype(
+            kwargs.get("ftype", field_kwargs["ftype"]), field_kwargs["ftype"]
+        )
+        kwargs["ftype"] = ftype
+
+        if field_kwargs.get("db_field", None) is not None:
+            kwargs["db_field"] = field_kwargs["db_field"]
+
+        if issubclass(ftype, fof.ListField):
+            subfield = kwargs.get(
+                "subfield", field_kwargs.get("subfield", None)
+            )
+            proposed_subfield = field_kwargs.get("subfield", None)
+
+            kwargs["subfield"] = _resolve_ftype(subfield, proposed_subfield)
+
+            if kwargs["subfield"] == fof.EmbeddedDocumentField:
+                ftype = kwargs["subfield"]
+
+        if ftype == fof.EmbeddedDocumentField:
+            document_type = kwargs.get(
+                "embedded_doc_type",
+                field_kwargs.get("embedded_doc_type", None),
+            )
+            if (
+                document_type
+                and document_type != field_kwargs["embedded_doc_type"]
+            ):
                 raise TypeError("Cannot merge")
 
-            if issubclass(ftype, fof.ListField):
-                subfield = fields["subfield"]
-                if subfield != field_kwargs["subfield"]:
-                    raise TypeError("Cannot merge")
+            kwargs["embedded_doc_type"] = document_type
+            data = {f["name"]: f for f in field_kwargs.get("fields", [])}
 
-                if subfield == fof.EmbeddedDocumentField:
-                    ftype = subfield
+            for f in kwargs.get("fields", []):
+                if f["name"] in data:
+                    data[f["name"]] = _merge_field_kwargs([data[f["name"]], f])
+                else:
+                    data[f["name"]] = f
 
-            if ftype == fof.EmbeddedDocumentField:
-                document_type = fields[field]["document_type"]
-                if document_type != field_kwargs["document_type"]:
-                    raise TypeError("Cannot merge")
+            kwargs["fields"] = []
+            for name, v in data.items():
+                v["name"] = name
+                kwargs["fields"].append(v)
 
-                fields[field]["fields"] = _merge_implied_fields(
-                    [fields[field]["fields"], field_kwargs["fields"]]
-                )
-
-    return [dict(name=name, **kwargs) for name, kwargs in field.items()]
+    return kwargs
