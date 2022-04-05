@@ -417,7 +417,7 @@ Database upgrades happen automatically in two steps:
 -   **Database**: when you import FiftyOne for the first time using a newer
     version of the Python package, the database's version is automatically
     updated to match your client version
--   **Datasets**: are lazily migrated to the current database version on a
+-   **Datasets** are lazily migrated to the current database version on a
     per-dataset basis whenever you load the dataset for the first time using a
     newer version of the FiftyOne package
 

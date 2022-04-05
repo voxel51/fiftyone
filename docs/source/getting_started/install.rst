@@ -267,7 +267,7 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.9.4  # for example
+    VERSION=0.14.4  # for example
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
