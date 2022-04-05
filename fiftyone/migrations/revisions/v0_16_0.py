@@ -122,7 +122,7 @@ def _do_infer_fields(coll, path, embedded_doc_type, is_list_field=False):
 
 def _merge_fields(fields, default_fields):
     merged_fields = default_fields.copy()
-    default_names = set(f[0] for f in fields)
+    default_names = set(f[0] for f in default_fields)
 
     for f in fields:
         if f[0] not in default_names:
@@ -193,11 +193,15 @@ def _parse_result(result):
         if mongo_type == "objectId" and name.startswith("_"):
             name = name[1:]  # "_id" -> "id"
 
-        if mongo_type is not None:
+        if mongo_type not in ("null", "missing", "undefined"):
             schema[name].add(mongo_type)
 
     fields = []
     for name, mongo_types in schema.items():
+        if len(mongo_types) > 1:
+            # Field contains multiple types, must use generic `Field`
+            mongo_types = [None]
+
         if len(mongo_types) == 1:
             mongo_type = next(iter(mongo_types))
             ftype = _MONGO_TO_FIFTYONE_TYPES.get(
