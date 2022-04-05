@@ -6287,16 +6287,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return tracks
 
     def _sort_by_media_field(self, samples, media_field):
-        filenames = [
-            os.path.basename(fp) for fp in samples.values(media_field)
-        ]
-        fn_field = "tmp_filenames_%s" % str(ObjectId())
-        samples.set_values(fn_field, filenames)
-        sorted_samples = samples.sort_by(fn_field)
-        sort_order = sorted_samples.values("id")
-        samples._dataset.delete_sample_field(fn_field)
+        filepaths, ids = samples.values([media_field, "id"])
+        filenames = [os.path.basename(f) for f in filepaths]
 
-        return samples.select(sort_order, ordered=True)
+        _, sorted_ids = zip(*sorted(zip(filenames, ids), key=lambda x: x[0]))
+        return samples.select(sorted_ids, ordered=True)
 
     def _parse_local_files(self, paths, data):
         files = {}
