@@ -6327,18 +6327,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _parse_cloud_files(self, paths, data, cloud_manifest):
         if not etau.is_str(cloud_manifest):
             # Use default manifest name and location at root of bucket
-            path = paths[0]
-            path_fs = fos.get_file_system(path)
-            if path_fs not in _CLOUD_PROVIDER_MAP:
-                raise ValueError(
-                    "Found an unsupported filepath `%s` when "
-                    "`cloud_manifest=True`, expected only AWS, GCS, or "
-                    "MINIO cloud files, all of which are in the same "
-                    "bucket." % path
-                )
-            prefix, _ = fos.split_prefix(path)
-            bucket_name = fos.get_bucket_name(path)
-            cloud_manifest = fos.join(prefix + bucket_name, "manifest.jsonl")
+            cloud_manifest = self._get_default_manifest_from_path(paths[0])
 
         data["storage"] = "cloud_storage"
         (
@@ -6357,8 +6346,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         data["server_files[%d]" % (idx + 1)] = manifest_filename
 
+    def _get_default_manifest_from_path(self, path):
+        path_fs = fos.get_file_system(path)
+        if path_fs not in _CLOUD_PROVIDER_MAP:
+            raise ValueError(
+                "Found an unsupported filepath `%s` when "
+                "`cloud_manifest=True`, expected only AWS, GCS, or "
+                "MINIO cloud files, all of which are in the same "
+                "bucket." % path
+            )
+        prefix, _ = fos.split_prefix(path)
+        bucket_name = fos.get_bucket_name(path)
+        cloud_manifest = fos.join(prefix + bucket_name, "manifest.jsonl")
+        return cloud_manifest
+
     def _parse_cloud_manifest(self, cloud_manifest):
-        cloud_manifest = fos.normalize_path(cloud_manifest)
         file_system = fos.get_file_system(cloud_manifest)
         if file_system not in _CLOUD_PROVIDER_MAP:
             raise ValueError(
