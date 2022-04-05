@@ -4080,59 +4080,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if chunk_size:
             data["chunk_size"] = chunk_size
 
-        files = {}
-        open_files = []
-
         if cloud_manifest:
-            if not etau.is_str(cloud_manifest):
-                # Use default manifest name and location at root of bucket
-                path = paths[0]
-                path_fs = fos.get_file_system(path)
-                if path_fs not in _CLOUD_PROVIDER_MAP:
-                    raise ValueError(
-                        "Found an unsupported filepath `%s` when "
-                        "`cloud_manifest=True`, expected only AWS, GCS, or "
-                        "MINIO cloud files, all of which are in the same "
-                        "bucket." % path
-                    )
-                prefix, _ = fos.split_prefix(path)
-                bucket_name = fos.get_bucket_name(path)
-                cloud_manifest = fos.join(
-                    prefix + bucket_name, "manifest.jsonl"
-                )
-
-            data["storage"] = "cloud_storage"
-            (
-                root_dir,
-                manifest_filename,
-                cloud_storage_id,
-            ) = self._parse_cloud_manifest(cloud_manifest)
-            self._verify_cloud_files(
-                root_dir, cloud_storage_id, manifest_filename, paths
-            )
-            data["cloud_storage_id"] = cloud_storage_id
-
-            for idx, path in enumerate(paths):
-                # Samples are pre-sorted if using to cloud storage
-                data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
-
-            data["server_files[%d]" % (idx + 1)] = manifest_filename
+            self._parse_cloud_files(paths, data, cloud_manifest)
+            files = {}
+            open_files = []
 
         else:
-            paths = focc.media_cache.get_local_paths(paths)
-
-            for idx, path in enumerate(paths):
-                if fom.get_media_type(path) == fom.VIDEO:
-                    filename = os.path.basename(path)
-                else:
-                    # IMPORTANT: CVAT organizes media within a task alphabetically
-                    # by filename, so we must give CVAT filenames whose
-                    # alphabetical order matches the order of `paths`
-                    filename = "%06d_%s" % (idx, os.path.basename(path))
-
-                open_file = open(path, "rb")
-                open_files.append(open_file)
-                files["client_files[%d]" % idx] = (filename, open_file)
+            files, open_files = self._parse_local_files(paths, data)
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
@@ -6343,6 +6297,59 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         samples._dataset.delete_sample_field(fn_field)
 
         return samples.select(sort_order, ordered=True)
+
+    def _parse_local_files(self, paths, data):
+        files = {}
+        open_files = []
+        paths = focc.media_cache.get_local_paths(paths)
+
+        for idx, path in enumerate(paths):
+            if fom.get_media_type(path) == fom.VIDEO:
+                filename = os.path.basename(path)
+            else:
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+
+            open_file = open(path, "rb")
+            open_files.append(open_file)
+            files["client_files[%d]" % idx] = (filename, open_file)
+
+        return files, open_files
+
+    def _parse_cloud_files(self, paths, data, cloud_manifest):
+        if not etau.is_str(cloud_manifest):
+            # Use default manifest name and location at root of bucket
+            path = paths[0]
+            path_fs = fos.get_file_system(path)
+            if path_fs not in _CLOUD_PROVIDER_MAP:
+                raise ValueError(
+                    "Found an unsupported filepath `%s` when "
+                    "`cloud_manifest=True`, expected only AWS, GCS, or "
+                    "MINIO cloud files, all of which are in the same "
+                    "bucket." % path
+                )
+            prefix, _ = fos.split_prefix(path)
+            bucket_name = fos.get_bucket_name(path)
+            cloud_manifest = fos.join(prefix + bucket_name, "manifest.jsonl")
+
+        data["storage"] = "cloud_storage"
+        (
+            root_dir,
+            manifest_filename,
+            cloud_storage_id,
+        ) = self._parse_cloud_manifest(cloud_manifest)
+        self._verify_cloud_files(
+            root_dir, cloud_storage_id, manifest_filename, paths
+        )
+        data["cloud_storage_id"] = cloud_storage_id
+
+        for idx, path in enumerate(paths):
+            # Samples are pre-sorted if using to cloud storage
+            data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
+
+        data["server_files[%d]" % (idx + 1)] = manifest_filename
 
     def _parse_cloud_manifest(self, cloud_manifest):
         cloud_manifest = fos.normalize_path(cloud_manifest)
