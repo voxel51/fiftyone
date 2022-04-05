@@ -1,11 +1,11 @@
 """
 Frame utilites.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import six
+import numbers
 
 
 def is_frame_number(value):
@@ -23,7 +23,7 @@ def is_frame_number(value):
         :class:`FrameError`: if ``value`` is an integer but is not strictly
             positive
     """
-    if isinstance(value, six.integer_types):
+    if isinstance(value, numbers.Integral):
         if value < 1:
             raise FrameError(
                 "Frame numbers must be integers; found %s" % type(value)
@@ -45,7 +45,7 @@ def validate_frame_number(value):
     Raises:
         :class:`FrameError`: if ``value`` is not a frame number
     """
-    if not isinstance(value, six.integer_types):
+    if not isinstance(value, numbers.Integral):
         raise FrameError(
             "Frame numbers must be integers; found %s" % type(value)
         )

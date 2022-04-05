@@ -1,7 +1,7 @@
 """
 Session plot manager.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,9 +9,15 @@ import datetime
 import itertools
 import logging
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
+import fiftyone.core.clips as foc
+from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.media as fom
 import fiftyone.core.patches as fop
+import fiftyone.core.video as fov
 
 from .base import ResponsivePlot, ViewPlot, InteractivePlot
 
@@ -224,11 +230,12 @@ class PlotManager(object):
                 name
         """
         if not isinstance(plot, ResponsivePlot):
-            # @todo add docs link to error message
             raise ValueError(
                 "Plots must be subclasses of %s; but found %s. You may be "
-                "working in an environment that does not support interactivity"
-                % (ResponsivePlot, type(plot))
+                "working in an environment that does not support "
+                "interactivity.\n\nSee "
+                "https://voxel51.com/docs/fiftyone/user_guide/plots.html#overview "
+                "for more information" % (ResponsivePlot, type(plot))
             )
 
         same_plots = [(n, p) for n, p in self._plots.items() if p is plot]
@@ -404,9 +411,8 @@ class PlotManager(object):
         if not self._ready_for_update(name):
             return
 
-        plot_view = plot.init_view
-        if plot_view is not None:
-            plot_view = plot_view.view()
+        if plot.init_view is not None:
+            plot_view = plot.init_view.view()
         else:
             plot_view = self._session.dataset.view()
 
@@ -418,31 +424,75 @@ class PlotManager(object):
             # Plot is in default state
             pass
         elif plot.link_type == "samples":
-            # Create a view that contains only the selected samples in the plot
-            plot_view = plot_view.select(ids)
+            # Update `plot_view` to only contain the right content
+            if isinstance(
+                plot_view, (fop.PatchesView, fov.FramesView, foc.ClipsView)
+            ):
+                # Create a view that only contains the selected samples
+                plot_view = plot_view.select_by("sample_id", ids)
+            else:
+                # Create a view that only contains the selected samples
+                plot_view = plot_view.select(ids)
 
+            # This plot is linked to samples, so we already know exactly which
+            # IDs to use
             sample_ids = ids
 
+            # If the session has plots linked to frames, retrieve the current
+            # frame IDs
             if self.has_frame_links:
-                frame_ids = plot_view.values("frames.id", unwind=True)
+                if isinstance(plot_view, fov.FramesView):
+                    frame_ids = plot_view.values("id")
+                elif plot_view.media_type == fom.VIDEO:
+                    frame_ids = plot_view.values("frames.id", unwind=True)
 
+            # If the session has plots linked to labels, retrieve the current
+            # label IDs
             if self.has_label_links:
                 labels = plot_view._get_selected_labels()
         elif plot.link_type == "frames":
-            # Create a view that contains only the selected frames in the plot
-            plot_view = plot_view.select_frames(ids)
+            # Update `plot_view` to only contain the right content
+            if isinstance(plot_view, fov.FramesView):
+                # Create a view that only contains the selected frames
+                plot_view = plot_view.select(ids)
+            elif plot.selection_mode == "select":
+                # Create a view that only contains the selected frames
+                plot_view = plot_view.select_frames(ids)
+            elif plot.selection_mode == "match":
+                # Create a view that only contains unfiltered samples with at
+                # least one selected frame
+                _ids = [ObjectId(_id) for _id in ids]
+                plot_view = plot_view.match(F("frames._id").contains(_ids))
+            elif plot.selection_mode == "frames":
+                # We shouldn't actually get here, since `plot_view` should have
+                # been a `FramesView`
+                _ids = [ObjectId(_id) for _id in ids]
+                plot_view = plot_view.match(F("frames._id").contains(_ids))
+            else:
+                raise ValueError(
+                    "Unsupported `selection_mode=%s`" % plot.selection_mode
+                )
 
+            # If the session has plots linked to samples, retrieve the current
+            # sample IDs
             if self.has_sample_links:
-                sample_ids = plot_view.values("id")
+                if isinstance(plot_view, fov.FramesView):
+                    sample_ids = plot_view.values("sample_id")
+                else:
+                    sample_ids = plot_view.values("id")
 
+            # This plot is linked to frames, so we already know exactly which
+            # IDs to use
             frame_ids = ids
 
+            # If the session has plots linked to labels, retrieve the current
+            # label IDs
             if self.has_label_links:
                 labels = plot_view._get_selected_labels()
         elif plot.link_type == "labels":
+            # Update `plot_view` to only contain the right content
             if plot.selection_mode == "select":
-                # Create a view that contains only the selected labels in the
-                # plot
+                # Create a view that only contains the selected labels
                 plot_view = plot_view.select_labels(
                     ids=ids, fields=plot.label_fields
                 )
@@ -453,10 +503,12 @@ class PlotManager(object):
                     ids=ids, fields=plot.label_fields
                 )
             elif plot.selection_mode == "patches":
-                # Create a patches view that contains only the selected patches
                 if isinstance(plot_view, fop.PatchesView):
+                    # Create a view that only contains the selected labels
                     plot_view = plot_view.select(ids)
                 else:
+                    # We shouldn't actually get here, since `plot_view` should
+                    # have been a `PatchesView`...
                     plot_view = plot_view.match_labels(
                         ids=ids, fields=plot.label_fields
                     )
@@ -469,12 +521,24 @@ class PlotManager(object):
             if field is not None and not etau.is_str(field):
                 field = None  # multiple fields; unclear which one to use
 
+            # If the session has plots linked to samples, retrieve the current
+            # sample IDs
             if self.has_sample_links:
-                sample_ids = plot_view.values("id")
+                if isinstance(plot_view, fov.FramesView):
+                    sample_ids = plot_view.values("sample_id")
+                else:
+                    sample_ids = plot_view.values("id")
 
+            # If the session has plots linked to frames, retrieve the current
+            # frame IDs
             if self.has_frame_links:
-                frame_ids = plot_view.values("frames.id", unwind=True)
+                if isinstance(plot_view, fov.FramesView):
+                    frame_ids = plot_view.values("id")
+                elif plot_view.media_type == fom.VIDEO:
+                    frame_ids = plot_view.values("frames.id", unwind=True)
 
+            # This plot is linked to labels, so we already know exactly which
+            # IDs to use
             labels = [{"field": field, "label_id": _id} for _id in ids]
         else:
             raise ValueError(
@@ -505,9 +569,18 @@ class PlotManager(object):
             # If samples are selected in the App, only record those
             # Otherwise, record all samples in the view
             if session.selected:
-                self._current_sample_ids = session.selected
+                _view = current_view.select(session.selected)
             else:
-                self._current_sample_ids = current_view.values("id")
+                _view = current_view
+
+            if isinstance(
+                _view, (fop.PatchesView, fov.FramesView, foc.ClipsView)
+            ):
+                sample_ids = _view.values("sample_id")
+            else:
+                sample_ids = _view.values("id")
+
+            self._current_sample_ids = sample_ids
 
         if self.has_frame_links:
             # If samples are selected in the App, only record their frame IDs
@@ -517,19 +590,30 @@ class PlotManager(object):
             else:
                 _view = current_view
 
-            self._current_frame_ids = _view.values("frames.id", unwind=True)
+            if isinstance(_view, fov.FramesView):
+                frame_ids = _view.values("id")
+            elif _view.media_type == fom.VIDEO:
+                frame_ids = _view.values("frames.id", unwind=True)
+            else:
+                frame_ids = None
+
+            self._current_frame_ids = frame_ids
 
         if self.has_label_links:
             # If labels are selected in the App, only record those
             # If samples are selected in the App, only record their labels
             # Otherwise, record all labels in the current view
             if session.selected_labels:
-                self._current_labels = session.selected_labels
-            elif session.selected:
-                selected_view = current_view.select(session.selected)
-                self._current_labels = selected_view._get_selected_labels()
+                labels = session.selected_labels
             else:
-                self._current_labels = current_view._get_selected_labels()
+                if session.selected:
+                    _view = current_view.select(session.selected)
+                else:
+                    _view = current_view
+
+                labels = _view._get_selected_labels()
+
+            self._current_labels = labels
 
     def _update_session(self, view):
         if not self._needs_update("session"):

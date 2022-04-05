@@ -7,6 +7,7 @@ on:
       - github-actions-*
     tags:
       - v*
+      - docker-build
   pull_request:
     types: [opened, synchronize]
     branches:
@@ -35,12 +36,8 @@ jobs:
           restore-keys: |
             npm-${{ hashFiles('app/package.json') }}
             npm-
-      - name: Install app dependencies
-        working-directory: app
-        run: yarn install
       - name: Build app
-        working-directory: app
-        run: yarn build
+        run: make app
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -48,9 +45,8 @@ jobs:
           if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
           fi
-      - name: Build dist
-        run: |
-          python setup.py bdist_wheel
+      - name: Build python
+        run: make python -o app
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
@@ -123,8 +119,8 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install -r requirements/extras.txt
-          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
+          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |
@@ -172,13 +168,14 @@ jobs:
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
       # these are somewhat slower/more bandwidth-intensive, so only run them if
       # github_actions_flags.py determined that they should be run
-      - name: Test quickstarts
-        if: ${{ steps.test_config.outputs.run_integration == 'true' }}
-        env:
-          FIFTYONE_EXIT: 1
-        run: |
-          fiftyone quickstart --remote
-          fiftyone quickstart --remote --video
+      # Skip: Google Drive unstable
+      # - name: Test quickstarts
+      #  if: ${{ steps.test_config.outputs.run_integration == 'true' }}
+      #  env:
+      #    FIFTYONE_EXIT: 1
+      #  run: |
+      #    fiftyone quickstart --remote
+      #    fiftyone quickstart --remote --video
 
   all-tests:
     needs: test
@@ -196,7 +193,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: dist
-          path: downloads
+          path: dist
       - name: Install dependencies
         run: |
           pip3 install twine
@@ -216,4 +213,24 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/*.whl
+          python3 -m twine upload dist/*
+
+  build-image:
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docker-build'
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: dist
+      - name: docker
+        run: make docker-export -o python
+      - name: Upload image
+        uses: actions/upload-artifact@v2
+        with:
+          name: docker-image
+          path: fiftyone.tar.gz

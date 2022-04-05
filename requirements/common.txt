@@ -5,11 +5,12 @@ Deprecated==1.2.11
 eventlet==0.31.0
 Flask==1.1.2
 httpx==0.7.7
-Jinja2==2.11.3
+Jinja2==3.0.3
 kaleido==0.2.1
 matplotlib==3.2.1
 mongoengine==0.20.0
 motor==2.3.0
+ndjson==0.3.1
 packaging==20.3
 pandas==1.1.5
 plotly==4.14.3

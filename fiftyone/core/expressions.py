@@ -1,7 +1,7 @@
 """
 Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -44,6 +44,42 @@ def to_mongo(expr, prefix=None):
         return [to_mongo(e, prefix=prefix) for e in expr]
 
     return expr
+
+
+def is_frames_expr(expr):
+    """Determines whether the given expression involves a ``"frames"`` field.
+
+    Args:
+        expr: a :class:`ViewExpression` or an already serialized
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+
+    Returns:
+        True/False
+    """
+    if isinstance(expr, ViewExpression):
+        expr = expr.to_mongo()
+
+    if etau.is_str(expr):
+        return (
+            expr == "$frames"
+            or expr.startswith("$frames.")
+            or expr.startswith("$frames[].")
+        )
+
+    if isinstance(expr, dict):
+        for k, v in expr.items():
+            if is_frames_expr(k):
+                return True
+
+            if is_frames_expr(v):
+                return True
+
+    if etau.is_container(expr):
+        for e in expr:
+            if is_frames_expr(e):
+                return True
+
+    return False
 
 
 class ViewExpression(object):
@@ -2182,6 +2218,13 @@ class ViewExpression(object):
                 "Unsupported slice '%s'; step is not supported" % s
             )
 
+        # @todo could optimize this slightly (~10% based on rough benchmarks)
+        # if the `if_else()` calls were replaced by explicit logic when
+        # start/stop are numbers, not expressions
+
+        # @todo slices like `x[-a:b]` where sign(a) != sign(b) are not
+        # currently working
+
         if s.start is not None:
             position = s.start
             if s.stop is None:
@@ -2190,26 +2233,24 @@ class ViewExpression(object):
                 return self.let_in(expr)
 
             n = s.stop - position
-            if n < 0:
-                return ViewExpression({"$literal": []})
 
-            if position < 0:
-                position += self.length()
-                expr = ViewExpression({"$slice": [self, position, n]})
-                return self.let_in(expr)
-
-            return ViewExpression({"$slice": [self, position, n]})
+            pos_start = ViewExpression({"$slice": [self, position, n]})
+            neg_start = ViewExpression(
+                {"$slice": [self, position + self.length(), n]}
+            )
+            expr = ViewExpression(n >= 0).if_else(
+                ViewExpression(position >= 0).if_else(pos_start, neg_start),
+                ViewExpression({"$literal": []}),
+            )
+            return self.let_in(expr)
 
         if s.stop is None:
             return self
 
-        if s.stop < 0:
-            n = self.length() + s.stop
-            expr = ViewExpression({"$slice": [self, n]})
-            return self.let_in(expr)
-
-        n = s.stop
-        return ViewExpression({"$slice": [self, n]})
+        pos_stop = ViewExpression({"$slice": [self, s.stop]})
+        neg_stop = ViewExpression({"$slice": [self, self.length() + s.stop]})
+        expr = ViewExpression(s.stop >= 0).if_else(pos_stop, neg_stop)
+        return self.let_in(expr)
 
     def __len__(self):
         # Annoyingly, Python enforces deep in its depths that __len__ must
@@ -4616,6 +4657,7 @@ def _do_to_mongo(val, prefix):
         return [_do_to_mongo(v, prefix) for v in val]
 
     if isinstance(val, (date, datetime)):
+        # The arg needs must be float (not int) to avoid errors near the epoch
         return {"$toDate": fou.datetime_to_timestamp(val)}
 
     if isinstance(val, timedelta):

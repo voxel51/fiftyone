@@ -1,7 +1,7 @@
 """
 Metadata stored in dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -32,8 +32,6 @@ class Metadata(DynamicEmbeddedDocument):
         size_bytes (None): the size of the media, in bytes
         mime_type (None): the MIME type of the media
     """
-
-    meta = {"allow_inheritance": True}
 
     size_bytes = fof.IntField()
     mime_type = fof.StringField()
@@ -211,14 +209,18 @@ class VideoMetadata(Metadata):
         )
 
 
-def compute_sample_metadata(sample, skip_failures=False):
+def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     """Populates the ``metadata`` field of the sample.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
+        overwrite (False): whether to overwrite existing metadata
         skip_failures (False): whether to gracefully continue without raising
             an error if metadata cannot be computed
     """
+    if not overwrite and sample.metadata is not None:
+        return
+
     sample.metadata = _compute_sample_metadata(
         sample.filepath, sample.media_type, skip_failures=skip_failures
     )
@@ -246,7 +248,7 @@ def compute_metadata(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(

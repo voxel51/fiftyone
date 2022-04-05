@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -256,6 +256,7 @@ class COCODetectionDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -517,9 +518,7 @@ class COCODetectionDatasetImporter(
         return {k: v for k, v in types.items() if k in self._label_types}
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             (
@@ -574,6 +573,7 @@ class COCODetectionDatasetImporter(
         self._classes = classes
         self._license_map = license_map
         self._supercategory_map = supercategory_map
+        self._image_paths_map = image_paths_map
         self._image_dicts_map = image_dicts_map
         self._annotations = annotations
         self._filenames = filenames
@@ -656,7 +656,8 @@ class COCODetectionDatasetExporter(
             -   ``False``: do not export extra attributes
             -   a name or list of names of specific attributes to export
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
-            whether an object is a crowd (only used if present)
+            whether an object is a crowd (the value is automatically set to 0
+            if the attribute is not present)
         num_decimals (None): an optional number of decimal places at which to
             round bounding box pixel coordinates. By default, no rounding is
             done
@@ -933,7 +934,7 @@ class COCOObject(object):
             a :class:`fiftyone.core.labels.Polyline`, or None if no
             segmentation data is available
         """
-        if self.segmentation is None:
+        if not self.segmentation:
             return None
 
         label, attributes = self._get_object_label_and_attributes(
@@ -1016,7 +1017,7 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        if load_segmentation and self.segmentation is not None:
+        if load_segmentation and self.segmentation:
             mask = _coco_segmentation_to_mask(
                 self.segmentation, self.bbox, frame_size
             )
@@ -1140,8 +1141,8 @@ class COCOObject(object):
                 -   ``True``: include all extra attributes found
                 -   ``False``: do not include extra attributes
                 -   a name or list of names of specific attributes to include
-            iscrowd ("iscrowd"): the name of the crowd attribute (used if
-                present)
+            iscrowd ("iscrowd"): the name of the crowd attribute (the value is
+                automatically set to 0 if the attribute is not present)
             num_decimals (None): an optional number of decimal places at which
                 to round bounding box pixel coordinates. By default, no
                 rounding is done
@@ -1182,18 +1183,16 @@ class COCOObject(object):
         if num_decimals is not None:
             bbox = [round(p, num_decimals) for p in bbox]
 
-        confidence = label.confidence
-
-        area = bbox[2] * bbox[3]
-
         if keypoint is not None:
             keypoints = _make_coco_keypoints(keypoint, frame_size)
         else:
             keypoints = None
 
-        _iscrowd = label.get_attribute_value(iscrowd, None)
-        if _iscrowd is not None:
-            _iscrowd = int(_iscrowd)
+        confidence = label.confidence
+
+        area = bbox[2] * bbox[3]
+
+        _iscrowd = int(label.get_attribute_value(iscrowd, None) or 0)
 
         attributes = _get_attributes(label, extra_attrs)
         attributes.pop(iscrowd, None)
@@ -1270,9 +1269,13 @@ def load_coco_detection_annotations(json_path, extra_attrs=True):
 
 def _parse_coco_detection_annotations(d, extra_attrs=True):
     # Load info
-    info = d.get("info", {})
+    info = d.get("info", None)
     licenses = d.get("licenses", None)
     categories = d.get("categories", None)
+
+    if info is None:
+        info = {}
+
     if licenses is not None:
         info["licenses"] = licenses
 
@@ -1823,7 +1826,7 @@ def _get_existing_ids(images_dir, images, image_ids):
 
 
 def _download_images(images_dir, image_ids, images, num_workers):
-    if num_workers is None or num_workers < 1:
+    if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
     tasks = []
@@ -1836,7 +1839,7 @@ def _download_images(images_dir, image_ids, images, num_workers):
     if not tasks:
         return
 
-    if num_workers == 1:
+    if num_workers <= 1:
         with fou.ProgressBar(iters_str="images") as pb:
             for task in pb(tasks):
                 _do_download(task)
@@ -2137,7 +2140,7 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
 def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
-    dobj = foue.to_detected_object(detection)
+    dobj = foue.to_detected_object(detection, extra_attrs=False)
 
     try:
         mask = etai.render_instance_image(

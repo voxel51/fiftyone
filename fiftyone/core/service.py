@@ -1,7 +1,7 @@
 """
 FiftyOne Services.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -286,6 +286,9 @@ class DatabaseService(MultiClientService):
             )
 
         if focx._get_context() == focx._COLAB:
+            return ["sudo"] + args
+
+        if focx._get_context() == focx._DATABRICKS:
             return ["sudo"] + args
 
         return args
