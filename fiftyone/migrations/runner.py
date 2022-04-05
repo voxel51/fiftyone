@@ -111,16 +111,24 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if not fo.config.database_admin:
         if use_client_version:
             raise EnvironmentError(
-                "Cannot connect to database v%s with client v%s when database_admin=%s. "
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-                "for more information"
-                % (head, destination, fo.config.database_admin)
+                "You are currently running FiftyOne Teams v%s with open "
+                "source compatibility fiftyone==%s and database_admin=%s, but "
+                "the database you are trying to connect to has open source "
+                "compatibility fiftyone==%s. Contact your system "
+                "administrator to learn what version of the Teams Python "
+                "client you should install"
+                % (
+                    foc.TEAMS_VERSION,
+                    foc.VERSION,
+                    fo.config.database_admin,
+                    head,
+                )
             )
         else:
             raise EnvironmentError(
-                "Cannot migrate database from v%s to v%s when database_admin=%s. "
-                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-                "for more information"
+                "Cannot migrate database from open source compatibility v%s "
+                "to v%s when database_admin=%s. Refer to the FiftyOne Teams "
+                "User Manual for more information"
                 % (head, destination, fo.config.database_admin)
             )
 
@@ -192,10 +200,10 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     # @todo fully disallow migrations for non-admins?
     if not fo.config.database_admin and destination != foc.VERSION:
         raise EnvironmentError(
-            "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
-            "be migrated to the current revision (v%s) when database_admin=%s."
-            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-            "for more information"
+            "Cannot migrate dataset '%s' from open source compatibility v%s "
+            "to v%s. Datasets can only be migrated to the current revision "
+            "(v%s) when database_admin=%s. Refer to the FiftyOne Teams User "
+            "Manual for more information"
             % (name, head, destination, foc.VERSION, fo.config.database_admin)
         )
 
