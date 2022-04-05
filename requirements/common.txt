@@ -5,6 +5,7 @@ Deprecated==1.2.11
 eventlet==0.31.0
 Flask==1.1.2
 httpx==0.7.7
+hypercorn==0.13.2
 Jinja2==3.0.3
 kaleido==0.2.1
 matplotlib==3.2.1
