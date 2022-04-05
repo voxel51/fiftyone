@@ -16,6 +16,7 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone as fo
 import fiftyone.core.cache as foc
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
