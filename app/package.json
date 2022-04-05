@@ -14,13 +14,10 @@
     },
     "devDependencies": {
         "patch-package": "^6.4.7",
-        "tsc-silent": "^1.2.1",
-        "typescript": "4.2.4"
+        "typescript": "4.2.4",
+        "typescript-plugin-css-modules": "^3.4.0"
     },
     "workspaces": [
         "packages/*"
-    ],
-    "dependencies": {
-        "react-use": "^17.3.1"
-    }
+    ]
 }
