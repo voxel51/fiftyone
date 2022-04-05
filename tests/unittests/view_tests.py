@@ -1002,7 +1002,8 @@ class SetValuesTests(unittest.TestCase):
 
         _dataset_labels = self.dataset.values("detections.detections.label")
         self.assertListEqual(
-            _dataset_labels, [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
+            _dataset_labels,
+            [[], ["0"], ["0", "ONE"], ["0", "ONE", "2"]],
         )
 
 
@@ -1188,11 +1189,15 @@ class ViewStageTests(unittest.TestCase):
 
     def _setUp_detection(self):
         self.sample1["test_det"] = fo.Detection(
-            label="friend", confidence=0.9, bounding_box=[0, 0, 0.5, 0.5],
+            label="friend",
+            confidence=0.9,
+            bounding_box=[0, 0, 0.5, 0.5],
         )
         self.sample1.save()
         self.sample2["test_det"] = fo.Detection(
-            label="hex", confidence=0.8, bounding_box=[0.35, 0, 0.2, 0.25],
+            label="hex",
+            confidence=0.8,
+            bounding_box=[0.35, 0, 0.2, 0.25],
         )
         self.sample2.save()
 
@@ -1443,7 +1448,8 @@ class ViewStageTests(unittest.TestCase):
 
         self.assertEqual(num_detections, 4)
         self.assertListEqual(
-            view.distinct("frames.detections.detections.index"), [1, 2],
+            view.distinct("frames.detections.detections.index"),
+            [1, 2],
         )
         self.assertDictEqual(
             view.count_values("frames.detections.detections.type"),
@@ -1566,6 +1572,7 @@ class ViewStageTests(unittest.TestCase):
         view = self.dataset.set_field(
             "test_dets.detections.is_best_friend",
             (F("confidence") > 0.5) & (F("label") == "friend"),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1575,7 +1582,9 @@ class ViewStageTests(unittest.TestCase):
 
         # Set an embedded field
         view = self.dataset.set_field(
-            "test_dets.num_predictions", F("detections").length()
+            "test_dets.num_predictions",
+            F("detections").length(),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1660,10 +1669,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             ),
@@ -1674,7 +1687,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             ),
@@ -1723,10 +1738,14 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="friend", confidence=0.9, tags=["good"],
+                        label="friend",
+                        confidence=0.9,
+                        tags=["good"],
                     ),
                     fo.Classification(
-                        label="big bro", confidence=0.6, tags=["bad"],
+                        label="big bro",
+                        confidence=0.6,
+                        tags=["bad"],
                     ),
                 ]
             )
@@ -1735,7 +1754,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="tricam", confidence=0.99, tags=["good"],
+                        label="tricam",
+                        confidence=0.99,
+                        tags=["good"],
                     )
                 ]
             )
@@ -1746,7 +1767,9 @@ class ViewStageTests(unittest.TestCase):
             test_clfs=fo.Classifications(
                 classifications=[
                     fo.Classification(
-                        label="big bro", confidence=0.4, tags=["bad"],
+                        label="big bro",
+                        confidence=0.4,
+                        tags=["bad"],
                     )
                 ]
             )

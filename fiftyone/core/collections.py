@@ -16,6 +16,7 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
+from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -440,12 +441,14 @@ class SampleCollection(object):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-    def get_field(self, path):
+    def get_field(self, path, include_private=False):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
 
         Args:
             path: a field path
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
 
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
@@ -456,13 +459,15 @@ class SampleCollection(object):
             return None
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
             keys = keys[1:]
         else:
             schema = self.get_field_schema()
 
         field = None
-        _add_mapped_fields_as_private_fields(schema)
+        include_private and _add_mapped_fields_as_private_fields(schema)
 
         last = len(keys) - 1
         for idx, field_name in enumerate(keys):
@@ -475,7 +480,9 @@ class SampleCollection(object):
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
+                include_private and _add_mapped_fields_as_private_fields(
+                    schema
+                )
 
         return field
 
@@ -1191,7 +1198,7 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
-        if expand_schema:
+        if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
         field_name, _, list_fields, _, id_to_str = self._parse_field_name(
@@ -1272,67 +1279,71 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(self, field_name, values):
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        root = field_name.split(".", 1)[0]
+        stripped_field_name, is_frame_field = self._handle_frame_field(
+            field_name
+        )
+        parent = ".".join(field_name.split(".")[:-1])
+        missing_frame_parent = (
+            is_frame_field
+            and parent != "frames"
+            and self.get_field(parent) is None
+        )
+        missing_parent = (
+            parent and self.get_field(parent) is None and not is_frame_field
+        )
 
-        if is_frame_field:
-            schema = self._dataset.get_frame_field_schema(include_private=True)
+        if missing_frame_parent or missing_parent:
+            raise ValueError(
+                "Cannot infer an appropriate type for new field "
+                "'%s' when setting embedded field '%s'" % (parent, field_name)
+            )
 
-            if root in schema:
-                return
+        level = 1
+        keys = stripped_field_name.split(".")[:-1]
+        if keys:
+            field = (
+                self.get_frame_field_schema()[keys[0]]
+                if is_frame_field
+                else self.get_field_schema()[keys[0]]
+            )
+            for key in keys[1:]:
+                field = field.get_field_schema()[key]
+                if field is None:
+                    break
 
-            if root != field_name:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new frame "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
-                )
+                if isinstance(field, fof.ListField):
+                    level += 1
+                    field = field.field
 
-            value = _get_non_none_value(itertools.chain.from_iterable(values))
+        value = _get_non_none_value(values, level)
 
-            if value is None:
-                if list(values):
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new frame "
-                        "field '%s' because all provided values are None"
-                        % field_name
-                    )
-                else:
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new frame "
-                        "field '%s' from empty values" % field_name
-                    )
-
-            self._dataset._add_implied_frame_field(field_name, value)
-        else:
-            schema = self._dataset.get_field_schema(include_private=True)
-
-            if root in schema:
-                return
-
-            if root != field_name:
+        if value is None:
+            if list(values):
                 raise ValueError(
                     "Cannot infer an appropriate type for new sample "
-                    "field '%s' when setting embedded field '%s'"
-                    % (root, field_name)
+                    "field '%s' because all provided values are None"
+                    % field_name
+                )
+            else:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample "
+                    "field '%s' from empty values" % field_name
                 )
 
-            value = _get_non_none_value(values)
+        if is_frame_field:
+            fcn = lambda v: self._dataset._add_implied_frame_field(
+                stripped_field_name, v
+            )
+        else:
+            fcn = lambda v: self._dataset._add_implied_sample_field(
+                field_name, v
+            )
 
-            if value is None:
-                if list(values):
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new sample "
-                        "field '%s' because all provided values are None"
-                        % field_name
-                    )
-                else:
-                    raise ValueError(
-                        "Cannot infer an appropriate type for new sample "
-                        "field '%s' from empty values" % field_name
-                    )
-
-            self._dataset._add_implied_sample_field(field_name, value)
+        if isinstance(value, DynamicEmbeddedDocument):
+            for value in values:
+                fcn(value)
+        else:
+            fcn(value)
 
     def _set_sample_values(
         self,
@@ -5955,7 +5966,11 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     def draw_labels(
-        self, output_dir, label_fields=None, overwrite=False, config=None,
+        self,
+        output_dir,
+        label_fields=None,
+        overwrite=False,
+        config=None,
     ):
         """Renders annotated versions of the media in the collection with the
         specified label data overlaid to the given directory.
@@ -7186,7 +7201,11 @@ class SampleCollection(object):
         allow_missing=False,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
+            self,
+            field_name,
+            auto_unwind,
+            omit_terminal_lists,
+            allow_missing,
         )
 
     def _has_field(self, field_path):
@@ -7918,8 +7937,12 @@ def _handle_id_fields(sample_collection, field_name):
         if root is not None:
             private_field = root + "." + private_field
 
-    public_type = sample_collection.get_field(public_field)
-    private_type = sample_collection.get_field(private_field)
+    public_type = sample_collection.get_field(
+        public_field, include_private=True
+    )
+    private_type = sample_collection.get_field(
+        private_field, include_private=True
+    )
 
     if isinstance(public_type, fof.ObjectIdField):
         id_to_str = not is_private
@@ -8042,9 +8065,15 @@ def _get_random_characters(n):
     )
 
 
-def _get_non_none_value(values):
+def _get_non_none_value(values, level=1):
     for value in values:
-        if value is not None:
+        if value is None:
+            continue
+        elif level > 1:
+            result = _get_non_none_value(value, level - 1)
+            if result is not None:
+                return result
+        else:
             return value
 
     return None

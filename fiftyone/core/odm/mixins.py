@@ -23,8 +23,8 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
-from .embedded_document import DynamicEmbeddedDocument
-from .utils import get_implied_field_kwargs
+from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
+from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -108,31 +108,6 @@ def validate_fields_match(
                     existing_field.field,
                 )
             )
-
-
-def get_field_kwargs(field):
-    """Constructs the field keyword arguments dictionary for the given
-    :class:`fiftyone.core.fields.Field` instance.
-
-    Args:
-        field: a :class:`fiftyone.core.fields.Field`
-
-    Returns:
-        a field specification dict
-    """
-    kwargs = {"ftype": type(field)}
-
-    if isinstance(field, (fof.ListField, fof.DictField)):
-        field = field.field
-        kwargs["subfield"] = type(field)
-
-    if isinstance(field, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-        kwargs["fields"] = [
-            get_field_kwargs(field) for field in getattr(field, "fields", [])
-        ]
-
-    return kwargs
 
 
 class DatasetMixin(object):
@@ -279,7 +254,7 @@ class DatasetMixin(object):
         return d
 
     @classmethod
-    def merge_field_schema(cls, schema, expand_schema=True):
+    def merge_field_schema(cls, keys, schema, expand_schema=True):
         """Merges the field schema into this document.
 
         Args:
@@ -294,24 +269,70 @@ class DatasetMixin(object):
         """
         _schema = cls._fields
 
-        add_fields = []
+        for k in keys:
+            field = _schema[k]
+            while isinstance(field, fof.ListField):
+                field = field.field
+
+            _schema = field.get_field_schema()
+
+        new_docs = []
         for field_name, field in schema.items():
             if field_name == "id":
                 continue
 
             if field_name in _schema:
-                validate_fields_match(field_name, field, _schema[field_name])
+                other = SampleFieldDocument.from_field(field)
+                other.name = field_name
+                doc = SampleFieldDocument.from_field(
+                    _schema[field_name]
+                ).merge_doc(other)
+                field = doc.to_field()
             else:
-                add_fields.append(field_name)
+                doc = SampleFieldDocument.from_field(field)
+                doc.name = field_name
+                field = doc.to_field()
 
-        if not expand_schema and add_fields:
+            new_docs.append(doc)
+            cls._declare_field(field, keys + [field_name])
+
+        dataset_field_docs = cls._dataset_doc()[cls._fields_attr()]
+        parent_docs = dataset_field_docs
+        docs = parent_docs
+
+        for k in keys:
+            for f in docs:
+                if k == f.name:
+                    docs = f.fields
+                    break
+
+        updated_docs = {doc.name: doc for doc in docs}
+        existing = set(updated_docs)
+        for doc in new_docs:
+            updated_docs[doc.name] = doc
+
+        if not expand_schema and not keys and len(updated_docs) > len(docs):
             raise ValueError(
-                "%s fields %s do not exist" % (cls._doc_name(), add_fields)
+                "%s fields %s do not exist"
+                % (cls._doc_name(), set(updated_docs) - existing)
             )
 
-        for field_name in add_fields:
-            field = schema[field_name]
-            cls._add_field_schema(field_name, **get_field_kwargs(field))
+        if not keys:
+            cls._dataset_doc()[cls._fields_attr()] = list(
+                updated_docs.values()
+            )
+        else:
+            docs = parent_docs
+            for k in keys:
+                for f in docs:
+                    if k == f.name:
+                        field = f
+                        docs = field.fields
+                        break
+
+            field.fields = list(updated_docs.values())
+
+        dataset_field_docs.save()
 
     @classmethod
     def add_field(
@@ -360,16 +381,14 @@ class DatasetMixin(object):
             field_name: the field name
             value: the field value
         """
-        kwargs = get_implied_field_kwargs(value)
+        keys = field_name.split(".")
+        field = create_field(keys[-1], **get_implied_field_kwargs(value))
 
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            validate_fields_match(field_name, kwargs, cls._fields[field_name])
-        else:
-            cls.add_field(field_name, **kwargs)
-            field = cls._fields[field_name]
-            if isinstance(field, fof.EmbeddedDocumentField):
-                value._set_parent(field)
+        cls.merge_field_schema(keys[:-1], {keys[-1]: field})
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            value._set_parent(field)
+            field._set_parent(cls)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -678,24 +697,36 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field, path=None):
-        if not path:
+    def _declare_field(cls, field, path):
+        if isinstance(path, str):
+            path = path.split(".")
+
+        if len(path) == 1:
             cls._fields[field.name] = field
             if field.name not in cls._fields_ordered:
                 cls._fields_ordered += (field.name,)
             setattr(cls, field.name, field)
-        else:
-            parent = getattr(cls, path[0])
-            for field_name in path[1:-1]:
-                if isinstance(parent, (fo.DictField, fo.ListField)):
-                    parent = parent.field
 
-                parent = parent.get_field_schema()[field_name]
+            while isinstance(field, (fo.DictField, fo.ListField)):
+                field = field.field
 
-            if isinstance(parent, (fo.DictField, fo.ListField)):
+            if isinstance(field, fof.EmbeddedDocumentField):
+                field._set_parent(cls)
+            return
+
+        parent = getattr(cls, path[0])
+        for field_name in path[1:-1]:
+            while isinstance(parent, (fo.DictField, fo.ListField)):
                 parent = parent.field
 
-            parent.fields.append(field)
+            parent = parent.get_field_schema()[field_name]
+
+        while isinstance(parent, (fo.DictField, fo.ListField)):
+            parent = parent.field
+
+        parent.fields.append(field)
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field._set_parent(parent)
 
     @classmethod
     def _add_field_schema(
@@ -706,47 +737,27 @@ class DatasetMixin(object):
         subfield=None,
         **kwargs,
     ):
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            raise ValueError(
-                "%s field '%s' already exists" % (cls._doc_name(), field_name)
-            )
 
         field = create_field(
-            field_name,
+            field_name.split(".")[-1],
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             parent=cls,
             **kwargs,
         )
+        if field_name in cls._fields and not isinstance(
+            field, fof.EmbeddedDocumentField
+        ):
+            raise ValueError("field already exists")
 
-        cls._declare_field(field)
-        dataset_doc = cls._dataset_doc()
-        fields = dataset_doc[cls._fields_attr()]
-        sample_field = SampleFieldDocument.from_field(field)
-        fields.append(sample_field)
-        dataset_doc.save()
+        cls.merge_field_schema(
+            field_name.split(".")[:-1], {field_name.split(".")[-1]: field}
+        )
 
     @classmethod
     def _save_field(cls, field, path):
-        dataset_doc = cls._dataset_doc()
-        sample_field = SampleFieldDocument.from_field(field)
-        top_level_fields = dataset_doc[cls._fields_attr()]
-        if len(path) == 1:
-            top_level_fields.append(sample_field)
-        else:
-            for doc_field in top_level_fields:
-                if doc_field.name == path[0]:
-                    break
-
-            for key in path[1:-1]:
-                doc_field = doc_field.get_field_schema()[key]
-
-            doc_field.fields = list(doc_field.fields) + [sample_field]
-
-        dataset_doc.save()
-        cls._declare_field(field, path)
+        cls.merge_field_schema(path[:-1], {path[-1]: field})
 
     @classmethod
     def _rename_field_schema(cls, field_name, new_field_name):

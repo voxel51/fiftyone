@@ -97,7 +97,8 @@ class EmbeddedDocumentTests(unittest.TestCase):
         sample["after"] = DynamicEmbeddedDocument(int=value)
         self.assertIsInstance(dataset.get_field("after.int"), fo.IntField)
         self.assertIsInstance(
-            dataset.get_field("after"), EmbeddedDocumentField,
+            dataset.get_field("after"),
+            EmbeddedDocumentField,
         )
         self.assertEqual(
             dataset.get_field("after").document_type, DynamicEmbeddedDocument
