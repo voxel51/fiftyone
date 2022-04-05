@@ -242,6 +242,13 @@ your current FiftyOne version.
   will be **automatically** performed on a per-dataset basis whenever you load
   a dataset for the first time in a newer version of FiftyOne.
 
+.. note::
+
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to upgrade your FiftyOne deployment.
+
 .. _downgrading-fiftyone:
 
 Downgrading FiftyOne
@@ -260,7 +267,7 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.9.4  # for example
+    VERSION=0.14.4  # for example
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
@@ -275,6 +282,13 @@ If you are reading this after encountering an error resulting from downgrading
 your ``fiftyone`` package without first running
 :ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
 reinstall the newer version of FiftyOne and then follow these instructions.
+
+.. note::
+
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to downgrade your FiftyOne deployment.
 
 .. note::
 
