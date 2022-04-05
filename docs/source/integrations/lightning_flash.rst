@@ -37,8 +37,8 @@ In order to use the Lightning Flash integration, you'll need to
 .. code-block:: shell
 
     # This integration currently requires these versions explicitly
-    pip install lightning-flash==0.4.0
-    pip install pytorch-lightning==1.3.6
+    pip install lightning-flash>=0.6.0
+    pip install pytorch-lightning
 
 Depending on the type of Flash tasks that you intend to use, you will also need
 to install some package extras:
@@ -89,26 +89,32 @@ method, which is implemented for each of the Flash tasks shown below.
 
             from itertools import chain
 
-            from flash import Trainer
-            from flash.core.classification import FiftyOneLabels
-            from flash.core.finetuning import FreezeUnfreeze
+            from flash.core.classification import FiftyOneLabelsOutput
             from flash.image import ImageClassificationData, ImageClassifier
+            from flash import Trainer
 
             import fiftyone as fo
+            import fiftyone.utils.splits as fous
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
 
-            dataset = foz.load_zoo_dataset(
-                "cifar10", split="test", max_samples=40, shuffle=True
-            )
+            dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=300)
+            dataset.untag_samples("test")
 
-            # Here we use views into one dataset, but you can also use a different dataset
-            # for each split
-            train_dataset = dataset[:20]
-            test_dataset = dataset[20:25]
-            val_dataset = dataset[25:30]
-            predict_dataset = dataset[30:40]
+            # Get list of labels in dataset
+            labels = dataset.distinct("ground_truth.label")
+
+            # Create splits from the dataset
+            splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
+            fous.random_split(dataset, splits)
+
+            # Here we use views into one dataset,
+            # but you can also use a different dataset for each split
+            train_dataset = dataset.match_tags("train")
+            test_dataset = dataset.match_tags("test")
+            val_dataset = dataset.match_tags("val")
+            predict_dataset = dataset.match_tags("pred")
 
             # 2 Create the Datamodule
             datamodule = ImageClassificationData.from_fiftyone(
@@ -124,39 +130,40 @@ method, which is implemented for each of the Flash tasks shown below.
             # 3 Build the model
             model = ImageClassifier(
                 backbone="resnet18",
-                num_classes=datamodule.num_classes,
-                serializer=FiftyOneLabels(),
+                labels=labels,
             )
 
             # 4 Create the trainer
-            trainer = Trainer(max_epochs=1, limit_train_batches=1, limit_val_batches=1)
+            trainer = Trainer(max_epochs=1, limit_val_batches=100)
 
             # 5 Finetune the model
-            trainer.finetune(
-                model,
-                datamodule=datamodule,
-                strategy=FreezeUnfreeze(unfreeze_epoch=1),
-            )
+            trainer.finetune(model, datamodule=datamodule)
 
             # 6 Save it!
-            trainer.save_checkpoint("image_classification_model.pt")
+            trainer.save_checkpoint("/tmp/image_classification_model.pt")
 
             # 7 Generate predictions
-
-            # For example purposes, we'll load a pretrained checkpoint
-            model = ImageClassifier.load_from_checkpoint(
-                "https://flash-weights.s3.amazonaws.com/image_classification_model.pt"
+            predictions = trainer.predict(
+                model,
+                datamodule=datamodule,
+                output=FiftyOneLabelsOutput(
+                    labels=labels
+                ),
             )
-            model.serializer = FiftyOneLabels()  # output FiftyOne format
-
-            predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
 
+            # Map filepaths to predictions
+            predictions = {p["filepath"]: p["predictions"] for p in predictions}
+
             # Add predictions to FiftyOne dataset
-            predict_dataset.set_values("flash_predictions", predictions)
+            predict_dataset.set_values(
+                "flash_predictions",
+                predictions,
+                key_field="filepath",
+            )
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(view=predict_dataset)
+            session = fo.launch_app(predict_dataset)
 
     .. tab:: Object detection
 
@@ -171,21 +178,28 @@ method, which is implemented for each of the Flash tasks shown below.
 
             from flash import Trainer
             from flash.image import ObjectDetectionData, ObjectDetector
-            from flash.image.detection.serialization import FiftyOneDetectionLabels
+            from flash.image.detection.output import FiftyOneDetectionLabelsOutput
 
             import fiftyone as fo
+            import fiftyone.utils.splits as fous
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
+            dataset = foz.load_zoo_dataset("quickstart")
 
-            dataset = foz.load_zoo_dataset("quickstart", max_samples=40, shuffle=True)
+            # Get list of labels in dataset
+            labels = dataset.distinct("ground_truth.detections.label")
 
-            # Here we use views into one dataset, but you can also use a different dataset
-            # for each split
-            train_dataset = dataset[:20]
-            test_dataset = dataset[20:25]
-            val_dataset = dataset[25:30]
-            predict_dataset = dataset[30:40]
+            # Create splits from the dataset
+            splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
+            fous.random_split(dataset, splits)
+
+            # Here we use views into one dataset,
+            # but you can also use a different dataset for each split
+            train_dataset = dataset.match_tags("train")
+            test_dataset = dataset.match_tags("test")
+            val_dataset = dataset.match_tags("val")
+            predict_dataset = dataset.match_tags("pred")
 
             # 2 Create the Datamodule
             datamodule = ObjectDetectionData.from_fiftyone(
@@ -200,36 +214,39 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # 3 Build the model
             model = ObjectDetector(
-                model="retinanet",
-                num_classes=datamodule.num_classes,
-                serializer=FiftyOneDetectionLabels(),
+                head="retinanet",
+                labels=labels,
             )
 
             # 4 Create the trainer
-            trainer = Trainer(max_epochs=1, limit_train_batches=1, limit_val_batches=1)
+            trainer = Trainer(max_epochs=1, limit_val_batches=1)
 
             # 5 Finetune the model
             trainer.finetune(model, datamodule=datamodule)
 
             # 6 Save it!
-            trainer.save_checkpoint("object_detection_model.pt")
+            trainer.save_checkpoint("/tmp/object_detection_model.pt")
 
             # 7 Generate predictions
-
-            # For example purposes, we'll load a pretrained checkpoint
-            model = ObjectDetector.load_from_checkpoint(
-                "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+            predictions = trainer.predict(
+                model,
+                datamodule=datamodule,
+                output=FiftyOneDetectionLabelsOutput(labels=labels),
             )
-            model.serializer = FiftyOneDetectionLabels()  # output FiftyOne format
-
-            predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
 
+            # Map filepaths to predictions
+            predictions = {p["filepath"]: p["predictions"] for p in predictions}
+
             # Add predictions to FiftyOne dataset
-            predict_dataset.set_values("flash_predictions", predictions)
+            predict_dataset.set_values(
+                "flash_predictions",
+                predictions,
+                key_field="filepath",
+            )
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(view=predict_dataset)
+            session = fo.launch_app(predict_dataset)
 
     .. tab:: Semantic segmentation
 
@@ -245,7 +262,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash import Trainer
             from flash.core.data.utils import download_data
             from flash.image import SemanticSegmentation, SemanticSegmentationData
-            from flash.image.segmentation.serialization import FiftyOneSegmentationLabels, SegmentationLabels
+            from flash.image.segmentation.output import FiftyOneSegmentationLabelsOutput
 
             import fiftyone as fo
             import fiftyone.zoo as foz
@@ -255,11 +272,11 @@ method, which is implemented for each of the Flash tasks shown below.
             # source: https://www.kaggle.com/kumaresanmanickavelu/lyft-udacity-challenge
             download_data(
                 "https://github.com/ongchinkiat/LyftPerceptionChallenge/releases/download/v0.1/carla-capture-20180513A.zip",
-                "data/"
+                "/tmp/carla_data/"
             )
 
             dataset = fo.Dataset.from_dir(
-                dataset_dir="data",
+                dataset_dir="/tmp/carla_data",
                 dataset_type=fo.types.ImageSegmentationDirectory,
                 data_path="CameraRGB",
                 labels_path="CameraSeg",
@@ -277,7 +294,7 @@ method, which is implemented for each of the Flash tasks shown below.
                 label_field="ground_truth",
                 batch_size=4,
                 num_workers=4,
-                image_size=(200,200),
+                transform_kwargs=dict(image_size=(200, 200)),
                 num_classes=21,
             )
 
@@ -285,7 +302,6 @@ method, which is implemented for each of the Flash tasks shown below.
             model = SemanticSegmentation(
                 backbone="resnet50",
                 num_classes=datamodule.num_classes,
-                serializer=SegmentationLabels(),
             )
 
             # 4 Create the trainer
@@ -295,21 +311,25 @@ method, which is implemented for each of the Flash tasks shown below.
             trainer.finetune(model, datamodule=datamodule, strategy="freeze")
 
             # 6 Save it!
-            trainer.save_checkpoint("semantic_segmentation_model.pt")
+            trainer.save_checkpoint("/tmp/semantic_segmentation_model.pt")
 
             # 7 Generate predictions
-
-            # For example purposes, we'll load a pretrained checkpoint
-            model = SemanticSegmentation.load_from_checkpoint(
-                "https://flash-weights.s3.amazonaws.com/semantic_segmentation_model.pt"
+            predictions = trainer.predict(
+                model,
+                datamodule=datamodule,
+                output=FiftyOneSegmentationLabelsOutput(return_filepath=False),
             )
-            model.serializer = FiftyOneSegmentationLabels()  # output FiftyOne format
-
-            predictions = trainer.predict(model, datamodule=datamodule)
             predictions = list(chain.from_iterable(predictions)) # flatten batches
 
+            # Map filepaths to predictions
+            predictions = {p["filepath"]: p["predictions"] for p in predictions}
+
             # Add predictions to FiftyOne dataset
-            dataset.set_values("flash_predictions", predictions)
+            predict_dataset.set_values(
+                "flash_predictions",
+                predictions,
+                key_field="filepath",
+            )
 
             # 8 Analyze predictions in the App
             session = fo.launch_app(dataset)
@@ -323,83 +343,85 @@ method, which is implemented for each of the Flash tasks shown below.
         .. code-block:: python
             :linenos:
 
-            from torch.utils.data.sampler import RandomSampler
+            from itertools import chain
 
-            import flash
-            from flash.core.classification import FiftyOneLabels
-            from flash.core.data.utils import download_data
+            from flash.core.classification import FiftyOneLabelsOutput
+            from flash import Trainer
             from flash.video import VideoClassificationData, VideoClassifier
 
             import fiftyone as fo
+            import fiftyone.utils.splits as fous
+            import fiftyone.zoo as foz
 
-            # 1 Download data
-            download_data("https://pl-flash-data.s3.amazonaws.com/kinetics.zip")
-
-            # 2 Load data into FiftyOne
-            # Here we use different datasets for each split, but you can also use views
-            # into the same dataset
-
-            train_dataset = fo.Dataset.from_dir(
-                "data/kinetics/train",
-                fo.types.VideoClassificationDirectoryTree,
-                label_field="ground_truth",
-                max_samples=5,
+            # 1 Load the data
+            dataset = foz.load_zoo_dataset(
+                "kinetics-700-2020",
+                split="validation",
+                max_samples=15,
+                shuffle=True,
             )
+            dataset.untag_samples("validation")
 
-            val_dataset = fo.Dataset.from_dir(
-                "data/kinetics/val",
-                fo.types.VideoClassificationDirectoryTree,
-                label_field="ground_truth",
-                max_samples=5,
-            )
+            # Replace spaces in class names with underscore
+            labels = dataset.distinct("ground_truth.label")
+            labels_map = {l: l.replace(" ", "_") for l in labels}
+            dataset = dataset.map_labels("ground_truth", labels_map).clone()
 
-            predict_dataset = fo.Dataset.from_dir(
-                "data/kinetics/predict",
-                fo.types.VideoDirectory,
-                max_samples=5,
-            )
+            # Get list of labels in dataset
+            labels = dataset.distinct("ground_truth.label")
 
-            # 3 Finetune a model
+            # Create splits from the dataset
+            splits = {"train": 0.7, "pred": 0.3}
+            fous.random_split(dataset, splits)
 
-            classifier = VideoClassifier.load_from_checkpoint(
-                "https://flash-weights.s3.amazonaws.com/video_classification.pt",
-                pretrained=False,
-            )
+            # Here we use views into one dataset,
+            # but you can also use a different dataset for each split
+            train_dataset = dataset.match_tags("train")
+            predict_dataset = dataset.match_tags("pred")
 
+            # 2 Create the Datamodule
             datamodule = VideoClassificationData.from_fiftyone(
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
+                train_dataset=dataset,
                 predict_dataset=predict_dataset,
                 label_field="ground_truth",
-                batch_size=8,
-                clip_sampler="uniform",
-                clip_duration=1,
-                video_sampler=RandomSampler,
-                decode_audio=False,
-                num_workers=8,
+                batch_size=2,
+                transform_kwargs=dict(image_size=(200,200)),
             )
 
-            trainer = flash.Trainer(max_epochs=1, fast_dev_run=1)
-            trainer.finetune(classifier, datamodule=datamodule)
-            trainer.save_checkpoint("video_classification.pt")
-
-            # 4 Predict from checkpoint
-
-            # For example purposes, we'll load a pretrained checkpoint
-            classifier = VideoClassifier.load_from_checkpoint(
-                "https://flash-weights.s3.amazonaws.com/video_classification.pt",
+            # 3 Build the model
+            model = VideoClassifier(
+                backbone="x3d_xs",
+                labels=datamodule.labels,
                 pretrained=False,
             )
-            classifier.serializer = FiftyOneLabels()
 
-            filepaths = predict_dataset.values("filepath")
-            predictions = classifier.predict(filepaths)
+            # 4 Create the trainer
+            trainer = Trainer(max_epochs=1, fast_dev_run=True)
+
+            # 5 Finetune the model
+            trainer.fit(model, datamodule=datamodule)
+            #trainer.finetune(model, datamodule=datamodule, strategy="freeze")
+
+            # 6 Save it!
+            trainer.save_checkpoint("/tmp/video_classification.pt")
+
+            # 7 Generate predictions
+            predictions = trainer.predict(
+                model,
+                datamodule=datamodule,
+                output=FiftyOneLabelsOutput(labels=datamodule.labels),
+            )
+            predictions = list(chain.from_iterable(predictions)) # flatten batches
+
+            # Map filepaths to predictions
+            predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
             # Add predictions to FiftyOne dataset
-            predict_dataset.set_values("predictions", predictions)
-
-            # 5 Visualize in FiftyOne App
-            session = fo.launch_app(predict_dataset)
+            predict_dataset.set_values(
+                "flash_predictions",
+                predictions,
+                key_field="filepath",
+            )
 
 .. _flash-model-predictions:
 
@@ -421,7 +443,7 @@ function, which natively accepts Flash models of any
 
 Behind the scenes, FiftyOne will construct the appropriate Flash
 :mod:`Trainer <flash:flash.core.trainer>` and FiftyOne-style
-:class:`Serializer <flash:flash.core.data.process.Serializer>` to perform the
+:class:`Output <flash:flash.core.data.io.output.Output>` to perform the
 inference and output the predictions as |Label| instances that are added to
 your dataset.
 
@@ -437,9 +459,13 @@ your dataset.
     dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
     # Load your Flash model
-    model = ObjectDetector.load_from_checkpoint(
-        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+    model = ObjectDetector(
+        labels=dataset.distinct("ground_truth.label")
     )
+
+    # model = ObjectDetector.load_from_checkpoint(
+    #     "/path/to/object_detection_model.pt"
+    # )
 
     # Predict!
     dataset.apply_model(model, label_field="flash_predictions")
@@ -463,11 +489,11 @@ If you've already loaded your datasets into Flash
 :class:`DataModules <flash:flash.core.data.data_module.DataModule>` without
 using FiftyOne, you can still easily use FiftyOne to analyze your model's
 predictions by swapping out your model's default
-:class:`Serializer <flash:flash.core.data.process.Serializer>` for the
-:ref:`FiftyOne-style serializer <flash:fiftyone_labels>` of the appropriate
+:class:`Output <flash:flash.core.data.io.output.Output>` for the
+:ref:`FiftyOne-style output <flash:fiftyone_labels>` of the appropriate
 type.
 
-Flash models with FiftyOne serializers will directly return predictions as
+Flash models with FiftyOne outputs will directly return predictions as
 |Label| objects that you can easily add to your FiftyOne datasets via
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.
 
@@ -481,25 +507,23 @@ Flash models with FiftyOne serializers will directly return predictions as
 
     from flash import Trainer
     from flash.image import ObjectDetectionData, ObjectDetector
-    from flash.image.detection.serialization import FiftyOneDetectionLabels
+    from flash.image.detection.output import FiftyOneDetectionLabelsOutput
 
     # Load your dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+    labels = dataset.distinct("ground_truth.detections.label")
 
     # Load your Flash model
-    model = ObjectDetector.load_from_checkpoint(
-        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
-    )
-    model.serializer = FiftyOneDetectionLabels()  # output FiftyOne format
+    model = ObjectDetector(labels=labels)
+    model.output = FiftyOneDetectionLabelsOutput(return_filepath=False, labels=labels)  # output FiftyOne format
 
-    # Option 1: predict with trainer (supports distributed inference)
+    # Predict with trainer (supports distributed inference)
     datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
     predictions = Trainer().predict(model, datamodule=datamodule)
     predictions = list(chain.from_iterable(predictions)) # flatten batches
 
-    # Option 2: predict with model
-    filepaths = dataset.values("filepath")
-    predictions = model.predict(filepaths)
+    # Predictions is a list of Label objects since ``return_filepath=False``
+    # Order corresponds to order of the ``predict_dataset``
 
     # Add predictions to dataset
     dataset.set_values("flash_predictions", predictions)
@@ -509,18 +533,20 @@ Flash models with FiftyOne serializers will directly return predictions as
 
 .. note::
 
-    FiftyOne serializers have an optional
-    :class:`return_filepath <flash:flash.core.classification.FiftyOneLabels>`
-    flag that supports returning dicts that contain both the |Label| objects
-    and the ``filepath`` of the associated media.
+    FiftyOne outputs have an optional
+    :class:`return_filepath=False <flash:flash.core.classification.FiftyOneLabelsOutput>`
+    flag that supports returning a list of |Label| objects corresponding to the
+    sample ordering of the ``predict_dataset`` rather than the default dicts
+    that contain both the |Label| objects and the ``filepath`` of the
+    associated media.
 
 Specifying class names
 ----------------------
 
 Generally, Flash model checkpoints will contain the class label strings for the
 model. However, if necessary, you can also explicitly pass the labels to most
-:class:`Serializer <flash:flash.core.data.process.Serializer>` instances,
-FiftyOne-style serializers included:
+:class:`Output <flash:flash.core.data.io.output.Output>` instances,
+FiftyOne-style outputs included:
 
 .. code-block:: python
     :linenos:
@@ -528,24 +554,31 @@ FiftyOne-style serializers included:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    from flash.image import ObjectDetector
-    from flash.image.detection.serialization import FiftyOneDetectionLabels
+    from flash import Trainer
+    from flash.image import ObjectDetector, ObjectDetectionData
+    from flash.image.detection.output import FiftyOneDetectionLabelsOutput
 
     # Load your dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
-    # Load your Flash model
-    model = ObjectDetector.load_from_checkpoint(
-        "https://flash-weights.s3.amazonaws.com/object_detection_model.pt"
+    datamodule = ObjectDetectionData.from_fiftyone(
+        predict_dataset=dataset
     )
 
-    # Configure serializer with class labels
-    labels = ["label_" + str(i) for i in range(100)] # example class labels
-    model.serializer = FiftyOneDetectionLabels(labels=labels)  # output FiftyOne format
+    # Load your Flash model
+    num_classes = 100
+    model = ObjectDetector(
+        head="retinanet",
+        num_classes=num_classes,
+    )
+
+    # Configure output with class labels
+    labels = ["label_" + str(i) for i in range(num_classes)] # example class labels
+    output = FiftyOneDetectionLabelsOutput(labels=labels, return_filepath=False)  # output FiftyOne format
 
     # Predict with model
-    filepaths = dataset.values("filepath")
-    predictions = model.predict(filepaths)
+    trainer = Trainer()
+    predictions = trainer.predict(model, datamodule=datamodule, output=output)
 
     # Add predictions to dataset
     dataset.set_values("flash_predictions", predictions)
@@ -576,7 +609,8 @@ Flash model's embeddings and execute powerful workflows like
     import numpy as np
 
     from flash.core.data.utils import download_data
-    from flash.image import ImageEmbedder
+    from flash.image import ImageClassificationData, ImageEmbedder
+    from flash import Trainer
 
     import fiftyone as fo
     import fiftyone.brain as fob
@@ -589,13 +623,27 @@ Flash model's embeddings and execute powerful workflows like
         "data/hymenoptera_data/test/",
         fo.types.ImageClassificationDirectoryTree,
     )
+    datamodule = ImageClassificationData.from_fiftyone(
+        predict_dataset=dataset,
+        label_field="ground_truth",
+        batch_size=4,
+        num_workers=4,
+    )
 
     # 3 Load model
-    embedder = ImageEmbedder(backbone="resnet101", embedding_dim=128)
+    embedder = ImageEmbedder(
+        backbone="vision_transformer",
+        training_strategy="barlow_twins",
+        head="barlow_twins_head",
+        pretraining_transform="barlow_twins_transform",
+        training_strategy_kwargs={"latent_embedding_dim": 128},
+        pretraining_transform_kwargs={"size_crops": [32]},
+    )
 
     # 4 Generate embeddings
-    filepaths = dataset.values("filepath")
-    embeddings = np.stack(embedder.predict(filepaths))
+    trainer = Trainer(max_epochs=1)
+    embeddings = trainer.predict(embedder, datamodule=datamodule)
+    embeddings = np.stack(embeddings)
 
     # 5 Visualize images
     session = fo.launch_app(dataset)

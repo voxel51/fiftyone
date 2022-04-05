@@ -11,15 +11,17 @@ import itertools
 
 import numpy as np
 
-import fiftyone.core.metadata as fom
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-fou.ensure_import("flash>=0.4")
+fou.ensure_import("flash>=0.6dev")
 import flash
 import flash.core.classification as fc
 import flash.image as fi
-import flash.image.detection.serialization as fds
-import flash.image.segmentation.serialization as fss
+import flash.image.detection.output as fdo
+import flash.image.segmentation.output as fso
+import flash.video as fv
 
 
 _SUPPORTED_MODELS = (
@@ -28,7 +30,7 @@ _SUPPORTED_MODELS = (
     fi.SemanticSegmentation,
 )
 
-_SUPPORTED_EMBEDDERS = (fi.ImageEmbedder,)
+_SUPPORTED_EMBEDDERS = fi.ImageEmbedder
 
 
 def apply_flash_model(
@@ -64,30 +66,173 @@ def apply_flash_model(
             for example, configure the number of GPUs to use and other
             distributed inference parameters
     """
-    serializer = _get_serializer(model, confidence_thresh, store_logits)
+    output = _get_output(model, confidence_thresh, store_logits)
 
-    # Running `Trainer().predict()` seems to cause `model.data_pipeline` to be
-    # garbage-collected after inference, so we restore it to its original value
-    data_pipeline = model.data_pipeline
+    data_kwargs = {
+        "num_workers": num_workers or 1,
+        "batch_size": batch_size or 1,
+    }
+    if batch_size is not None:
+        data_kwargs["batch_size"] = batch_size
 
-    with fou.SetAttributes(
-        model, data_pipeline=data_pipeline, serializer=serializer
-    ):
-        data_kwargs = dict(
-            preprocess=model.preprocess, num_workers=num_workers,
+    datamodule_cls = _MODEL_TO_DATAMODULE_MAP[type(model)]
+
+    datamodule = datamodule_cls.from_fiftyone(
+        predict_dataset=samples, **data_kwargs
+    )
+    predictions = flash.Trainer(**trainer_kwargs).predict(
+        model, datamodule=datamodule, output=output
+    )
+    predictions = list(itertools.chain.from_iterable(predictions))
+    predictions = {p["filepath"]: p["predictions"] for p in predictions}
+
+    samples.set_values(label_field, predictions, key_field="filepath")
+
+
+def train_flash_model(
+    train_samples,
+    label_field,
+    output_path,
+    batch_size=10,
+    max_epochs=100,
+    test_samples=None,
+    val_samples=None,
+    classes=None,
+    datamodule=None,
+    model=None,
+    datamodule_kwargs=None,
+    model_kwargs=None,
+    trainer_kwargs=None,
+    finetune_kwargs=None,
+):
+    """Automatically detect the type of PyTorch Lightning Flash task for the
+    given label field and train a model on the input sample collection.
+
+    Args:
+        train_samples: the :class:`fiftyone.core.collections.SampleCollection`
+            to use for training
+        label_field: the label field in the given ``train_samples`` containing
+            labels to use for training and to construct the corresponding
+            :class:`Lightning Flash model <flash:flash.core.model.Task>`
+        output_path: the path to which to save the trained model weights
+        batch_size (10): the number of samples to use per batch when training.
+            This can be overridden by the ``datamodule_kwargs``
+        max_epochs (100): the number of epochs for which to train. This can be
+            overridden by the ``trainer_kwargs``
+        classes (None): a list of classes on which to train. If not provided it
+            will be parsed from the ``default_classes`` of the
+            ``training_samples`` or by the existing labels in the
+            ``label_field``
+        test_samples (None): an optional
+            :class:`fiftyone.core.collections.samplecollection` to use for
+            testing
+        val_samples (None): an optional
+            :class:`fiftyone.core.collections.samplecollection` to use for
+            validation
+        datamodule (None): an optional
+            :class:`DataModule <flash:flash.core.data.data_module.DataModule>`
+            to use for training. If not provided, it will be created based on
+            the labels in the given ``label_field``
+        model (None): an optional
+            :class:`Task <flash:flash.core.model.Task>`
+            to use for training. If not provided, it will be created based on
+            the labels in the given ``label_field``
+        datamodule_kwargs (None): a dict of kwargs to pass into the
+            `DataModule.from_fiftyone()` method
+        model_kwargs (None): a dict of kwargs to pass into the constructor
+            of the :class:`Task <flash:flash.core.model.Task>` when it is
+            being constructed
+        trainer_kwargs (None): a dict of kwargs to pass into the
+            :mod:`Trainer <flash:flash.core.trainer>` when it is
+            being constructedk
+        finetune_kwargs (None): a dict of kwargs to pass into the
+            :meth:`trainer.finetune() <flash:flash.core.trainer.Trainer.finetune>`
+            method when called
+
+    Returns:
+        a trained :class:`Lightning Flash model <flash:flash.core.model.Task>`
+    """
+    classes = _parse_classes(classes, train_samples, label_field)
+
+    if datamodule_kwargs is None:
+        datamodule_kwargs = {}
+
+    if model_kwargs is None:
+        model_kwargs = {}
+
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
+
+    if finetune_kwargs is None:
+        finetune_kwargs = {}
+
+    if "batch_size" not in datamodule_kwargs:
+        datamodule_kwargs["batch_size"] = batch_size
+
+    if "max_epochs" not in trainer_kwargs:
+        trainer_kwargs["max_epochs"] = max_epochs
+
+    if datamodule is None or model is None:
+        (
+            datamodule_cls,
+            model_cls,
+            needs_background,
+        ) = _get_datamodule_and_model(train_samples, label_field)
+        if needs_background:
+            classes = ["BACKGROUND"] + classes
+
+    if "num_classes" not in model_kwargs:
+        model_kwargs["labels"] = classes
+
+    if datamodule is None:
+        datamodule = datamodule_cls.from_fiftyone(
+            train_dataset=train_samples,
+            test_dataset=test_samples,
+            val_dataset=val_samples,
+            label_field=label_field,
+            **datamodule_kwargs,
         )
-        if batch_size is not None:
-            data_kwargs["batch_size"] = batch_size
 
-        datamodule = fi.ImageClassificationData.from_fiftyone(
-            predict_dataset=samples, **data_kwargs
-        )
-        predictions = flash.Trainer(**trainer_kwargs).predict(
-            model, datamodule=datamodule
-        )
-        predictions = list(itertools.chain.from_iterable(predictions))
+    if model is None:
+        model = model_cls(**model_kwargs)
 
-        samples.set_values(label_field, predictions)
+    trainer = flash.Trainer(**trainer_kwargs)
+    trainer.finetune(model, datamodule, **finetune_kwargs)
+
+    trainer.save_checkpoint(output_path)
+
+    return model
+
+
+def _get_datamodule_and_model(samples, label_field):
+    schema = samples.get_field_schema()
+
+    is_video = samples.media_type == fom.VIDEO
+    if is_video:
+        label_type_map = _VIDEO_LABEL_TYPE_MAP
+        label_field, is_frame_field = samples._is_frame_field(label_field)
+        if is_frame_field:
+            schema = samples.get_frame_field_schema()
+
+    else:
+        label_type_map = _IMAGE_LABEL_TYPE_MAP
+
+    field = schema[label_field]
+    try:
+        label_type = field.document_type
+    except:
+        label_type = field
+
+    if label_type not in label_type_map:
+        raise ValueError(
+            "Field '%s' of type '%s' for '%s' media does not support flash training",
+            (label_field, samples.media_type, label_type),
+        )
+
+    datamodule_cls, model_cls = label_type_map[label_type]
+    needs_background = label_type == fol.Detections
+
+    return datamodule_cls, model_cls, needs_background
 
 
 def compute_flash_embeddings(
@@ -159,9 +304,11 @@ def compute_flash_embeddings(
         return np.stack(embeddings)
 
 
-def _get_serializer(model, confidence_thresh, store_logits):
+def _get_output(model, confidence_thresh, store_logits):
     if isinstance(model, fi.ImageClassifier):
-        prev_args = dict(inspect.getmembers(model.serializer))
+        prev_ars = {}
+        if model.output is not None:
+            prev_args = dict(inspect.getmembers(model.output))
 
         kwargs = {
             "multi_label": prev_args.get("multi_label", False),
@@ -174,15 +321,55 @@ def _get_serializer(model, confidence_thresh, store_logits):
         if confidence_thresh is not None:
             kwargs["threshold"] = confidence_thresh
 
-        return fc.FiftyOneLabels(**kwargs)
+        return fc.FiftyOneLabelsOutput(**kwargs)
 
     if isinstance(model, fi.ObjectDetector):
-        return fds.FiftyOneDetectionLabels(threshold=confidence_thresh)
+        return fdo.FiftyOneDetectionLabelsOutput(threshold=confidence_thresh)
 
     if isinstance(model, fi.SemanticSegmentation):
-        return fss.FiftyOneSegmentationLabels()
+        return fso.FiftyOneSegmentationLabelsOutput()
 
     raise ValueError(
         "Unsupported model type %s. Supported model types are %s"
         % (type(model), _SUPPORTED_MODELS)
     )
+
+
+_IMAGE_LABEL_TYPE_MAP = {
+    fol.Detections: (fi.ObjectDetectionData, fi.ObjectDetector),
+    fol.Classification: (fi.ImageClassificationData, fi.ImageClassifier),
+    fol.Classifications: (fi.ImageClassificationData, fi.ImageClassifier),
+    fol.Segmentation: (fi.SemanticSegmentationData, fi.SemanticSegmentation),
+}
+
+_MODEL_TO_DATAMODULE_MAP = {
+    fi.ObjectDetector: fi.ObjectDetectionData,
+    fi.ImageClassifier: fi.ImageClassificationData,
+    fi.SemanticSegmentation: fi.SemanticSegmentationData,
+    fv.VideoClassifier: fv.VideoClassificationData,
+}
+
+_VIDEO_LABEL_TYPE_MAP = {
+    fol.Classification: (fv.VideoClassificationData, fv.VideoClassifier),
+}
+
+
+def _parse_classes(classes, samples, label_field):
+    if classes is not None:
+        return classes
+
+    if samples.default_classes:
+        classes = samples.default_classes
+
+    if not classes:
+        classes = samples.classes.get(label_field, None)
+
+    if not classes:
+        classes = samples.distinct
+        label_path = samples._get_label_field_path(label_field, "label")[1]
+        classes = samples.distinct(label_path)
+
+    if not classes:
+        raise ValueError("No classes provided and classes could not be parsed")
+
+    return classes
