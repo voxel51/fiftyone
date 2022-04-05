@@ -934,6 +934,8 @@ class UniqueFilenameMaker(object):
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
+        ignore_existing (False): whether to take existing files into account
+            when generating unqiue filenames
     """
 
     def __init__(
@@ -942,11 +944,13 @@ class UniqueFilenameMaker(object):
         rel_dir=None,
         default_ext=None,
         ignore_exts=False,
+        ignore_existing=False,
     ):
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
+        self.ignore_existing = ignore_existing
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
@@ -962,7 +966,11 @@ class UniqueFilenameMaker(object):
             return
 
         fos.ensure_dir(self.output_dir)
-        filenames = fos.list_files(self.output_dir)
+
+        if not self.ignore_existing:
+            filenames = fos.list_files(self.output_dir)
+        else:
+            filenames = []
 
         self._idx = len(filenames)
         for filename in filenames:
