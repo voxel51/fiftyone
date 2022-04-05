@@ -109,7 +109,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
 
     if not fo.config.database_admin:
         raise EnvironmentError(
-            "Cannot migrate database from v%s to v%s when database_admin=%s. "
+            "Cannot connect to database v%s with client v%s when database_admin=%s. "
             "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
             "for more information"
             % (head, destination, fo.config.database_admin)
