@@ -4130,13 +4130,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     # alphabetical order matches the order of `paths`
                     filename = "%06d_%s" % (idx, os.path.basename(path))
 
-                if not os.path.isfile(path):
-                    raise FileNotFoundError(
-                        "Could not find file '%s'. If using cloud-backed "
-                        "media, ensure this file was downloaded correctly"
-                        % path
-                    )
-
                 open_file = open(path, "rb")
                 open_files.append(open_file)
                 files["client_files[%d]" % idx] = (filename, open_file)
