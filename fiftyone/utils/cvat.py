@@ -3044,13 +3044,13 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             for all objects in the annotation run
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
-            or when using `task_size` and generating multiple tasks
+            or when using ``task_size`` and generating multiple tasks
         cloud_manifest (False): whether to load data from an attached cloud
-            storage with a `manifest.jsonl` file at the root of the storage
+            storage with a ``manifest.jsonl`` file at the root of the storage
             bucket (True) or whether to download the cloud media locally and
             upload to it the CVAT server (False). This option also accepts the
             path to a manifest file in the bucket
-            (ex: `s3://bucket-name/manifest-name.jsonl`)
+            (ex: ``s3://bucket-name/manifest-name.jsonl``)
     """
 
     def __init__(
@@ -3916,7 +3916,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             schema (None): the label schema to use for the created task
             segment_size (None): maximum number of images to load into a job.
                 Not applicable to videos
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
             project_id (None): the ID of a project to which upload the task
@@ -4049,7 +4049,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_id: the task ID
             paths: a list of media paths to upload
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             use_cache (True): whether to use a cache when uploading data. Using
                 a cache reduces task creation time as data will be processed
@@ -4062,11 +4062,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
             cloud_manifest (False): whether to load data from an attached cloud
-                storage with a `manifest.jsonl` file at the root of the storage
+                storage with a ``manifest.jsonl`` file at the root of the storage
                 bucket (True) or whether to download the cloud media locally
                 and upload to it the CVAT server (False). This option also
                 accepts the path to a manifest file in the bucket
-                (ex: `s3://bucket-name/manifest-name.jsonl`)
+                (ex: ``s3://bucket-name/manifest-name.jsonl``)
 
         Returns:
             a list of the job IDs created for the task
@@ -4087,26 +4087,36 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if not etau.is_str(cloud_manifest):
                 # Use default manifest name and location at root of bucket
                 path = paths[0]
-                if focc.media_cache.is_local(path):
+                path_fs = fos.get_file_system(path)
+                if path_fs not in _CLOUD_PROVIDER_MAP:
                     raise ValueError(
-                        "Found a local filepath `%s` when "
-                        "`cloud_manifest=True`, expected only cloud files, "
-                        "all of which are in the same bucket." % path
+                        "Found an unsupported filepath `%s` when "
+                        "`cloud_manifest=True`, expected only AWS, GCS, or "
+                        "MINIO cloud files, all of which are in the same "
+                        "bucket." % path
                     )
                 prefix, _ = fos.split_prefix(path)
                 bucket_name = fos.get_bucket_name(path)
-                cloud_manifest = fos.join(prefix+bucket_name, "manifest.jsonl")
+                cloud_manifest = fos.join(
+                    prefix + bucket_name, "manifest.jsonl"
+                )
 
             data["storage"] = "cloud_storage"
-            root_dir, manifest_filename, cloud_storage_id = self._parse_cloud_manifest(cloud_manifest)
-            self._verify_cloud_files(root_dir, cloud_storage_id, manifest_filename, paths)
+            (
+                root_dir,
+                manifest_filename,
+                cloud_storage_id,
+            ) = self._parse_cloud_manifest(cloud_manifest)
+            self._verify_cloud_files(
+                root_dir, cloud_storage_id, manifest_filename, paths
+            )
             data["cloud_storage_id"] = cloud_storage_id
 
             for idx, path in enumerate(paths):
                 # Samples are pre-sorted if using to cloud storage
                 data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
 
-            data["server_files[%d]" % (idx+1)] = manifest_filename
+            data["server_files[%d]" % (idx + 1)] = manifest_filename
 
         else:
             paths = focc.media_cache.get_local_paths(paths)
@@ -4123,7 +4133,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if not os.path.isfile(path):
                     raise FileNotFoundError(
                         "Could not find file '%s'. If using cloud-backed "
-                        "media, ensure this file was downloaded correctly" % path
+                        "media, ensure this file was downloaded correctly"
+                        % path
                     )
 
                 open_file = open(path, "rb")
@@ -4234,7 +4245,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 # IMPORTANT: CVAT organizes media within a task alphabetically by
                 # filename, so we must sort the samples by filename to ensure
                 # annotations are uploaded properly
-                samples_batch = self._sort_by_media_field(samples_batch, media_field)
+                samples_batch = self._sort_by_media_field(
+                    samples_batch, media_field
+                )
 
             anno_tags = []
             anno_shapes = []
@@ -6327,9 +6340,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return tracks
 
     def _sort_by_media_field(self, samples, media_field):
-        filenames = [os.path.basename(fp) for fp in samples.values(media_field)]
-        fn_field = "tmp_filenames_%s"  % str(ObjectId())
-        samples.set_values(fn_field , filenames)
+        filenames = [
+            os.path.basename(fp) for fp in samples.values(media_field)
+        ]
+        fn_field = "tmp_filenames_%s" % str(ObjectId())
+        samples.set_values(fn_field, filenames)
         sorted_samples = samples.sort_by(fn_field)
         sort_order = sorted_samples.values("id")
         samples._dataset.delete_sample_field(fn_field)
@@ -6341,7 +6356,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         file_system = fos.get_file_system(cloud_manifest)
         if file_system not in _CLOUD_PROVIDER_MAP:
             raise ValueError(
-                "File system %s is not a valid CVAT cloud storage provider." % str(file_system)
+                "File system %s is not a valid CVAT cloud storage provider."
+                % str(file_system)
             )
         endpoint = None
         if file_system == fos.FileSystem.MINIO:
@@ -6353,22 +6369,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         root_dir = prefix + resource
         manifest_filename = _to_rel_url(cloud_manifest, root_dir)
 
-        cloud_storage_id = self._get_cloud_storage_id(provider_type, resource, manifest_filename, endpoint=endpoint)
+        cloud_storage_id = self._get_cloud_storage_id(
+            provider_type, resource, manifest_filename, endpoint=endpoint
+        )
         return root_dir, manifest_filename, cloud_storage_id
 
-    def _get_cloud_storage_id(self, provider_type, resource, manifest_filename, endpoint=None):
-        cloud_storages_search_url = self.cloud_storages_search_url(provider_type=provider_type, resource=resource)
+    def _get_cloud_storage_id(
+        self, provider_type, resource, manifest_filename, endpoint=None
+    ):
+        cloud_storages_search_url = self.cloud_storages_search_url(
+            provider_type=provider_type, resource=resource
+        )
         resp = self.get(cloud_storages_search_url).json()
         results = resp["results"]
         cloud_storage_id = None
 
         for result in results:
-            specific_attrs = self._parse_specific_attributes(result["specific_attributes"])
+            specific_attrs = self._parse_specific_attributes(
+                result["specific_attributes"]
+            )
             result_endpoint = specific_attrs.get("endpoint_url", None)
             if etau.is_str(result_endpoint):
                 result_endpoint = result_endpoint.rstrip("/") + "/"
 
-            if manifest_filename in result["manifests"] and endpoint == result_endpoint:
+            if (
+                manifest_filename in result["manifests"]
+                and endpoint == result_endpoint
+            ):
                 cloud_storage_id = result["id"]
 
         if cloud_storage_id is None:
@@ -6380,13 +6407,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return cloud_storage_id
 
-    def _verify_cloud_files(self, root_dir, cloud_storage_id, manifest_filename, paths):
+    def _verify_cloud_files(
+        self, root_dir, cloud_storage_id, manifest_filename, paths
+    ):
         file_systems = {fos.get_file_system(p) for p in paths}
         root_fs = fos.get_file_system(root_dir)
         if len(file_systems) > 1:
             raise ValueError(
                 "Attempting to use manifest from file system '%s' but found "
-                "samples from multiple file systems: %s" % (root_fs, file_systems)
+                "samples from multiple file systems: %s"
+                % (root_fs, file_systems)
             )
 
         paths_fs = list(file_systems)[0]
@@ -6396,18 +6426,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "system of samples '%s'" % (root_fs, paths_fs)
             )
 
-        content_url = self.cloud_storages_content_url(cloud_storage_id, manifest=manifest_filename)
+        content_url = self.cloud_storages_content_url(
+            cloud_storage_id, manifest=manifest_filename
+        )
         manifest_files = self.get(content_url).json()
         formatted_paths = set([_to_rel_url(p, root_dir) for p in paths])
         unspecified_paths = formatted_paths - set(manifest_files)
         if unspecified_paths:
             raise ValueError(
                 "Found %d files that are not specified in the given manifest "
-                "`%s` in cloud storage `%d`" % (len(unspecified_paths), manifest_filename, cloud_storage_id)
+                "`%s` in cloud storage `%d`"
+                % (len(unspecified_paths), manifest_filename, cloud_storage_id)
             )
 
     def _parse_specific_attributes(self, specific_attributes):
-        return {k:v for (k,v) in parse_qsl(specific_attributes)}
+        return {k: v for (k, v) in parse_qsl(specific_attributes)}
 
     def _validate(self, response, kwargs):
         try:
@@ -6805,18 +6838,20 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-class CloudProviders(object):
-    """Enumumeration of attached cloud storage providers"""
+class CVATCloudProviders(object):
+    """Enumeration of cloud storage providers supported by CVAT"""
 
     S3 = "AWS_S3_BUCKET"
     GCS = "GOOGLE_CLOUD_STORAGE"
     AZURE = "AZURE_CONTAINER"
 
+
 _CLOUD_PROVIDER_MAP = {
-    fos.FileSystem.S3: CloudProviders.S3,
-    fos.FileSystem.MINIO: CloudProviders.S3,
-    fos.FileSystem.GCS: CloudProviders.GCS,
+    fos.FileSystem.S3: CVATCloudProviders.S3,
+    fos.FileSystem.MINIO: CVATCloudProviders.S3,
+    fos.FileSystem.GCS: CVATCloudProviders.GCS,
 }
+
 
 def _is_supported_attribute_type(value):
     return (

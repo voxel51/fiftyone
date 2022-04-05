@@ -44,7 +44,7 @@ minio_alias_prefix = None
 minio_endpoint_prefix = None
 
 S3_PREFIX = "s3://"
-GS_PREFIX = "gs://"
+GCS_PREFIX = "gs://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 
@@ -136,7 +136,7 @@ def get_file_system(path):
     if path.startswith(S3_PREFIX):
         return FileSystem.S3
 
-    if path.startswith(GS_PREFIX):
+    if path.startswith(GCS_PREFIX):
         return FileSystem.GCS
 
     if path.startswith((HTTP_PREFIX, HTTPS_PREFIX)):
@@ -174,8 +174,8 @@ def split_prefix(path):
         prefix = minio_endpoint_prefix
     elif path.startswith(S3_PREFIX):
         prefix = S3_PREFIX
-    elif path.startswith(GS_PREFIX):
-        prefix = GS_PREFIX
+    elif path.startswith(GCS_PREFIX):
+        prefix = GCS_PREFIX
     elif path.startswith(HTTP_PREFIX):
         prefix = HTTP_PREFIX
     elif path.startswith(HTTPS_PREFIX):

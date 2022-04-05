@@ -955,6 +955,7 @@ class CVATCloudTests(unittest.TestCase):
         https://openvinotoolkit.github.io/cvat/docs/manual/basics/attach-cloud-storage/#prepare-manifest-file
 
     """
+
     def setUp(self):
         super().setUp()
         data_root = "voxel51-test/quickstart"
@@ -963,8 +964,8 @@ class CVATCloudTests(unittest.TestCase):
         self.s3_root_dir = fos.S3_PREFIX + data_root
         self.s3_manifest = fos.S3_PREFIX + manifest
 
-        self.gs_root_dir = fos.GS_PREFIX + data_root
-        self.gs_manifest = fos.GS_PREFIX + manifest
+        self.gs_root_dir = fos.GCS_PREFIX + data_root
+        self.gs_manifest = fos.GCS_PREFIX + manifest
 
         self.minio_root_dir = None
         self.minio_manifest = None
@@ -974,15 +975,11 @@ class CVATCloudTests(unittest.TestCase):
             self.minio_root_dir = fos.minio_endpoint_prefix + data_root
             self.minio_manifest = fos.minio_endpoint_prefix + manifest
 
-
     def _test_cloud(self, root_dir, cloud_manifest):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
 
         fos.upload_media(
-            dataset,
-            root_dir,
-            update_filepaths=True,
-            overwrite=False,
+            dataset, root_dir, update_filepaths=True, overwrite=False,
         )
 
         prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
