@@ -17,6 +17,9 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
+| `database_admin`              | `FIFTYONE_DATABASE_ADMIN`           | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
+|                               |                                     |                               | :ref:`this section <database-migrations>` for more information.                        |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -114,6 +117,7 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
             "database_validation": true,
@@ -153,6 +157,7 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_uri": null,
             "database_validation": true,
@@ -357,6 +362,13 @@ or you can set the following environment variable:
 
     export FIFTYONE_DATABASE_VALIDATION=false
 
+Controlling database migrations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working with a shared MongoDB database, you can use
+:ref:`database admin privileges <database-migrations>` to control which clients
+are allowed to migrate the shared database.
+
 Example custom database usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -385,6 +397,72 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
     dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
+
+.. _database-migrations:
+
+Database migrations
+-------------------
+
+New FiftyOne versions occasionally introduce data model changes that require
+database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
+:ref:`downgrade <downgrading-fiftyone>`.
+
+Upgrade migrations happen automatically in two steps:
+
+-   **Database**: when you import FiftyOne for the first time using a newer
+    version of the Python package, the database's version is automatically
+    updated to match your client version
+-   **Datasets**: are lazily migrated to the current database version on a
+    per-dataset basis whenever you load the dataset for the first time using a
+    newer version of the FiftyOne package
+
+Database downgrades must be manually performed. See
+:ref:`this page <downgrading-fiftyone>` for instructions.
+
+You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
+the current versions of your database and datasets:
+
+.. code-block:: shell
+
+    # View your client version
+    fiftyone --version
+
+    # View your database and dataset versions
+    fiftyone migrate --info
+
+Restricting migrations
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can use the `database_admin` config setting to control whether a client is
+allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
+which means that upgrades are automatically peformed when you connect to your
+database with newer Python client versions.
+
+If you set `database_admin` to `False`, your database will refuse all
+connections from FiftyOne clients whose version does not match the database's
+current version. You can enable this behavior by adding the following entry to
+your `~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+or by setting the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=false
+
+.. note::
+
+    A common pattern when working with
+    :ref:`custom/shared MongoDB databases <configuring-mongodb-connection>` is
+    to adopt a convention that all non-administrators set their
+    `database_admin` config setting to `False` to ensure that they cannot
+    trigger automatic database upgrades by connecting to the database with
+    newer Python client versions.
 
 .. _configuring-timezone:
 
