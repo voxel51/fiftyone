@@ -72,8 +72,6 @@ def apply_flash_model(
         "num_workers": num_workers or 1,
         "batch_size": batch_size or 1,
     }
-    if batch_size is not None:
-        data_kwargs["batch_size"] = batch_size
 
     datamodule_cls = _MODEL_TO_DATAMODULE_MAP[type(model)]
 
