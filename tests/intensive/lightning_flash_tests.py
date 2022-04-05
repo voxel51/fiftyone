@@ -36,11 +36,30 @@ class LightningFlashTests(unittest.TestCase):
         # Load your dataset
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
+        num_classes = len(dataset.distinct("ground_truth.detections.label"))
         # Load your Flash model
-        model = ObjectDetector(labels=dataset.distinct("ground_truth.label"))
+        cls_model = ImageClassifier(
+            backbone="resnet18", num_classes=num_classes
+        )
+
+        det_model = ObjectDetector(
+            head="efficientdet",
+            backbone="d0",
+            num_classes=num_classes,
+            image_size=512,
+        )
 
         # Predict!
-        dataset.apply_model(model, label_field="flash_predictions")
+        dataset.apply_model(
+            cls_model, label_field="flash_classifications",
+        )
+
+        transform_kwargs = {"image_size": 512}
+        dataset.apply_model(
+            det_model,
+            label_field="flash_detections",
+            transform_kwargs=transform_kwargs,
+        )
 
     def test_image_classifier(self):
         # 1 Load your FiftyOne dataset

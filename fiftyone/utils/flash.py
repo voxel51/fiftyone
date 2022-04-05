@@ -41,6 +41,7 @@ def apply_flash_model(
     store_logits=False,
     batch_size=None,
     num_workers=None,
+    transform_kwargs=None,
     **trainer_kwargs,
 ):
     """Applies the given
@@ -61,6 +62,8 @@ def apply_flash_model(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
+        transform_kwargs (None): an optional dict of transform kwargs to pass
+            into the created data module used by some models
         **trainer_kwargs: optional keyword arguments used to initialize the
             :mod:`Trainer <flash:flash.core.trainer>`. These can be used to,
             for example, configure the number of GPUs to use and other
@@ -72,6 +75,8 @@ def apply_flash_model(
         "num_workers": num_workers or 1,
         "batch_size": batch_size or 1,
     }
+    if transform_kwargs:
+        data_kwargs["transform_kwargs"] = transform_kwargs
 
     datamodule_cls = _MODEL_TO_DATAMODULE_MAP[type(model)]
 
@@ -304,9 +309,11 @@ def compute_flash_embeddings(
 
 def _get_output(model, confidence_thresh, store_logits):
     if isinstance(model, fi.ImageClassifier):
-        prev_ars = {}
-        if model.output is not None:
+        prev_args = {}
+        try:
             prev_args = dict(inspect.getmembers(model.output))
+        except AttributeError as e:
+            pass
 
         kwargs = {
             "multi_label": prev_args.get("multi_label", False),
