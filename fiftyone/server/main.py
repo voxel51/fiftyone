@@ -9,6 +9,7 @@ import argparse
 import concurrent.futures
 import os
 from fiftyone.server.filters import PinHandler
+from fiftyone.server.media import MediaHandler
 from fiftyone.server.set import DatasetHandler
 
 import asyncio
@@ -251,30 +252,6 @@ class FileHandler(tornado.web.StaticFileHandler):
             return "text/javascript"
 
         return super().get_content_type()
-
-
-class MediaHandler(FileHandler):
-    @classmethod
-    def get_absolute_path(cls, root, path):
-        if os.name != "nt":
-            path = os.path.join("/", path)
-
-        return path
-
-    def validate_absolute_path(self, root, absolute_path):
-        if os.path.isdir(absolute_path) and self.default_filename is not None:
-            if not self.request.path.endswith("/"):
-                self.redirect(self.request.path + "/", permanent=True)
-                return None
-
-            absolute_path = os.path.join(absolute_path, self.default_filename)
-        if not os.path.exists(absolute_path):
-            raise HTTPError(404)
-
-        if not os.path.isfile(absolute_path):
-            raise HTTPError(403, "%s is not a file", self.path)
-
-        return absolute_path
 
 
 class Application(tornado.web.Application):
