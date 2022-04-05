@@ -88,7 +88,8 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if _migrations_disabled():
         return
 
-    if destination is None:
+    use_client_version = destination is None
+    if use_client_version:
         destination = foc.VERSION
 
     config = foo.get_db_config()
@@ -106,6 +107,22 @@ def migrate_database_if_necessary(destination=None, verbose=False):
 
     if head == destination:
         return
+
+    if not fo.config.database_admin:
+        if use_client_version:
+            raise EnvironmentError(
+                "Cannot connect to database v%s with client v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
+        else:
+            raise EnvironmentError(
+                "Cannot migrate database from v%s to v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
 
     if _database_exists():
         runner = MigrationRunner(head=head, destination=destination)
@@ -171,6 +188,16 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
 
     if head == destination:
         return
+
+    # @todo fully disallow migrations for non-admins?
+    if not fo.config.database_admin and destination != foc.VERSION:
+        raise EnvironmentError(
+            "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
+            "be migrated to the current revision (v%s) when database_admin=%s."
+            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+            "for more information"
+            % (name, head, destination, foc.VERSION, fo.config.database_admin)
+        )
 
     runner = MigrationRunner(head=head, destination=destination)
     if runner.has_revisions:
@@ -267,8 +294,7 @@ class MigrationRunner(object):
 
     @property
     def admin_revisions(self):
-        """The list of admin revisions that will be run by :meth:`run_admin`.
-        """
+        """The list of admin revisions that will be run by :meth:`run_admin`."""
         return [r[0] for r in self._admin_revisions]
 
     def run(self, dataset_name, verbose=False):
