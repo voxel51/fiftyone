@@ -407,7 +407,7 @@ New FiftyOne versions occasionally introduce data model changes that require
 database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
 :ref:`downgrade <downgrading-fiftyone>`.
 
-Upgrade migrations happen automatically in two steps:
+Database upgrades happen automatically in two steps:
 
 -   **Database**: when you import FiftyOne for the first time using a newer
     version of the Python package, the database's version is automatically
@@ -438,9 +438,9 @@ allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
 which means that upgrades are automatically peformed when you connect to your
 database with newer Python client versions.
 
-If you set `database_admin` to `False`, your database will refuse all
-connections from FiftyOne clients whose version does not match the database's
-current version, and datasets will refuse migrations to versions other than the
+If you set `database_admin` to `False`, your database will refuse connections
+from your FiftyOne client if its version does not match the database's current
+version, and datasets will refuse migrations to versions other than the
 database's current version.
 
 You can restrict migrations by adding the following entry to your
