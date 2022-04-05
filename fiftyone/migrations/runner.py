@@ -88,7 +88,8 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if _migrations_disabled():
         return
 
-    if destination is None:
+    use_client_version = destination is None
+    if use_client_version:
         destination = foc.VERSION
 
     config = foo.get_db_config()
@@ -108,12 +109,20 @@ def migrate_database_if_necessary(destination=None, verbose=False):
         return
 
     if not fo.config.database_admin:
-        raise EnvironmentError(
-            "Cannot connect to database v%s with client v%s when database_admin=%s. "
-            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-            "for more information"
-            % (head, destination, fo.config.database_admin)
-        )
+        if use_client_version:
+            raise EnvironmentError(
+                "Cannot connect to database v%s with client v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
+        else:
+            raise EnvironmentError(
+                "Cannot migrate database from v%s to v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
 
     if _database_exists():
         runner = MigrationRunner(head=head, destination=destination)
