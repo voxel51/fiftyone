@@ -129,6 +129,8 @@ class Dataset(HasCollection):
     def modifier(doc: dict) -> dict:
 
         doc["id"] = doc.pop("_id")
+        doc["mask_targets"] = []
+        doc["default_mask_targets"] = []
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
@@ -175,7 +177,11 @@ class Query:
 
     dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
-        resolver=get_paginator_resolver(Dataset, "name", DATASET_FILTER_STAGE,)
+        resolver=get_paginator_resolver(
+            Dataset,
+            "name",
+            DATASET_FILTER_STAGE,
+        )
     )
 
     @gql.field

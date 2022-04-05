@@ -190,7 +190,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = useStateUpdate();
 
   useEffect(() => {
-    update({ state });
+    update(state);
   }, [state]);
 
   return <DatasetContainer />;

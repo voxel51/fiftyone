@@ -732,7 +732,7 @@ class Session(object):
         ).untag_labels(tag)
 
     @property
-    def selected_view(self) -> t.Optiona[fov.DatasetView]:
+    def selected_view(self) -> t.Optional[fov.DatasetView]:
         """A :class:`fiftyone.core.view.DatasetView` containing the currently
         selected content in the App.
 
@@ -865,7 +865,7 @@ class Session(object):
         """
         self._show(height)
 
-    def no_show(self) -> fou.SetAttribute:
+    def no_show(self):
         """Returns a context manager that temporarily prevents new App
         instances from being opened in the current notebook cell when methods
         are run that normally would show new App windows.

@@ -5,6 +5,6 @@ Session definitions for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .session import launch_app, Session
+from .session import close_app, launch_app, Session
 
-__all__ = ["launch_app", "Session"]
+__all__ = ["launch_app", "Session", "close_app"]
