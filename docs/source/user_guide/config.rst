@@ -440,8 +440,11 @@ database with newer Python client versions.
 
 If you set `database_admin` to `False`, your database will refuse all
 connections from FiftyOne clients whose version does not match the database's
-current version. You can enable this behavior by adding the following entry to
-your `~/.fiftyone/config.json` file:
+current version, and datasets will refuse migrations to versions other than the
+database's current version.
+
+You can restrict migrations by adding the following entry to your
+`~/.fiftyone/config.json` file:
 
 .. code-block:: json
 
