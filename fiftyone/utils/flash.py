@@ -200,24 +200,3 @@ _MODEL_TO_DATAMODULE_MAP = {
     fi.SemanticSegmentation: fi.SemanticSegmentationData,
     fv.VideoClassifier: fv.VideoClassificationData,
 }
-
-
-def _parse_classes(classes, samples, label_field):
-    if classes is not None:
-        return classes
-
-    if samples.default_classes:
-        classes = samples.default_classes
-
-    if not classes:
-        classes = samples.classes.get(label_field, None)
-
-    if not classes:
-        classes = samples.distinct
-        label_path = samples._get_label_field_path(label_field, "label")[1]
-        classes = samples.distinct(label_path)
-
-    if not classes:
-        raise ValueError("No classes provided and classes could not be parsed")
-
-    return classes
