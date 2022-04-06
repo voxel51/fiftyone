@@ -124,13 +124,22 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_object_detector(self):
         # 1 Load your FiftyOne dataset
-        dataset = foz.load_zoo_dataset(
-            "coco-2017",
-            split="validation",
-            max_samples=250,
-            classes=["person"],
-        ).clone()
-        dataset.untag_samples("validation")
+        download_data(
+            "https://github.com/zhiqwang/yolov5-rt-stack/releases/download/v0.3.0/coco128.zip",
+            "/tmp/coco128/",
+        )
+        dataset = fo.Dataset.from_dir(
+            data_path="/tmp/data/coco128/images/train2017",
+            labels_path="/tmp/data/coco128/annotations/instances_train2017.json",
+            dataset_type=fo.types.COCODetectionDataset,
+        )
+        # dataset = foz.load_zoo_dataset(
+        #    "coco-2017",
+        #    split="validation",
+        #    max_samples=100,
+        #    classes=["person"],
+        # ).clone()
+        # dataset.untag_samples("validation")
 
         # Get list of labels in dataset
         labels = dataset.distinct("ground_truth.detections.label")
@@ -147,16 +156,20 @@ class LightningFlashTests(unittest.TestCase):
 
         # 2 Create the Datamodule
         datamodule = ObjectDetectionData.from_fiftyone(
-            train_dataset=train_dataset,
-            test_dataset=test_dataset,
-            val_dataset=val_dataset,
-            predict_dataset=train_dataset,
+            train_dataset=dataset,
+            predict_dataset=dataset.take(5),
+            val_split=0.1,
             label_field="ground_truth",
             transform_kwargs={"image_size": 512},
             batch_size=4,
-            num_workers=4,
         )
-        print(datamodule.labels)
+        # datamodule = ObjectDetectionData.from_coco(
+        #    train_folder="/tmp/data/coco128/images/train2017/",
+        #    train_ann_file="/tmp/data/coco128/annotations/instances_train2017.json",
+        #    val_split=0.1,
+        #    transform_kwargs={"image_size": 512},
+        #    batch_size=4,
+        # )
 
         # 3 Build the model
         model = ObjectDetector(
@@ -187,7 +200,7 @@ class LightningFlashTests(unittest.TestCase):
         predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
         # Add predictions to FiftyOne dataset
-        train_dataset.set_values(
+        dataset.set_values(
             "flash_predictions", predictions, key_field="filepath",
         )
 
@@ -206,7 +219,6 @@ class LightningFlashTests(unittest.TestCase):
             data_path="CameraRGB",
             labels_path="CameraSeg",
             force_grayscale=True,
-            max_samples=40,
             shuffle=True,
         )
 
@@ -215,21 +227,24 @@ class LightningFlashTests(unittest.TestCase):
             train_dataset=dataset,
             test_dataset=dataset,
             val_dataset=dataset,
-            predict_dataset=dataset,
+            predict_dataset=dataset.take(5),
             label_field="ground_truth",
-            batch_size=4,
-            num_workers=4,
-            transform_kwargs=dict(image_size=(200, 200)),
+            transform_kwargs=dict(image_size=(256, 256)),
             num_classes=21,
+            batch_size=4,
         )
 
         # 3 Build the model
         model = SemanticSegmentation(
-            backbone="resnet50", num_classes=datamodule.num_classes,
+            backbone="mobilenetv3_large_100",
+            head="fpn",
+            num_classes=datamodule.num_classes,
         )
 
         # 4 Create the trainer
-        trainer = Trainer(max_epochs=1, fast_dev_run=1)
+        trainer = Trainer(
+            max_epochs=1, limit_train_batches=10, limit_val_batches=5
+        )
 
         # 5 Finetune the model
         trainer.finetune(model, datamodule=datamodule, strategy="freeze")
@@ -238,10 +253,13 @@ class LightningFlashTests(unittest.TestCase):
         trainer.save_checkpoint("/tmp/semantic_segmentation_model.pt")
 
         # 7 Generate predictions
+        datamodule = SemanticSegmentationData.from_fiftyone(
+            predict_dataset=dataset.take(5), batch_size=1,
+        )
         predictions = trainer.predict(
             model,
             datamodule=datamodule,
-            output=FiftyOneSegmentationLabelsOutput(return_filepath=False),
+            output=FiftyOneSegmentationLabelsOutput(),
         )
         predictions = list(chain.from_iterable(predictions))  # flatten batches
 
