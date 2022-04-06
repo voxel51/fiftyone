@@ -366,7 +366,9 @@ class LightningFlashTests(unittest.TestCase):
         # Load your dataset
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
-        datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
+        datamodule = ObjectDetectionData.from_fiftyone(
+            predict_dataset=dataset, batch_size=1
+        )
 
         # Load your Flash model
         num_classes = 100
@@ -377,7 +379,7 @@ class LightningFlashTests(unittest.TestCase):
             "label_" + str(i) for i in range(num_classes)
         ]  # example class labels
         output = FiftyOneDetectionLabelsOutput(
-            labels=labels, return_filepath=False
+            labels=labels
         )  # output FiftyOne format
 
         # Predict with model
@@ -386,17 +388,21 @@ class LightningFlashTests(unittest.TestCase):
             model, datamodule=datamodule, output=output
         )
 
+        predictions = list(chain.from_iterable(predictions))  # flatten batches
+
+        # Map filepaths to predictions
+        predictions = {p["filepath"]: p["predictions"] for p in predictions}
+
         # Add predictions to dataset
-        dataset.set_values("flash_predictions", predictions)
+        dataset.set_values(
+            "flash_predictions", predictions, key_field="filepath"
+        )
 
         print(dataset.distinct("flash_predictions.detections.label"))
         # ['label_57', 'label_60']
 
-        # Visualize in the App
-        session = fo.launch_app(dataset)
-
     def test_image_embedder(self):
-        # 1 Download data
+        ## 1 Download data
         download_data(
             "https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip",
             "/tmp/flash_tests/hymenoptera",
@@ -404,17 +410,16 @@ class LightningFlashTests(unittest.TestCase):
 
         # 2 Load data into FiftyOne
         dataset = fo.Dataset.from_dir(
-            "/tmp/flash_tests/data/hymenoptera_data/test/",
+            "/tmp/data/hymenoptera_data/test/",
             fo.types.ImageClassificationDirectoryTree,
         )
         datamodule = ImageClassificationData.from_fiftyone(
-            predict_dataset=dataset,
-            label_field="ground_truth",
-            batch_size=4,
-            num_workers=4,
+            predict_dataset=dataset, batch_size=1,
         )
 
         # 3 Load model
+        # embedder = ImageEmbedder(backbone="resnet", head=None,
+        #        pretraining_transform=None, training_strategy="default")
         embedder = ImageEmbedder(
             backbone="vision_transformer",
             training_strategy="barlow_twins",
@@ -425,16 +430,13 @@ class LightningFlashTests(unittest.TestCase):
         )
 
         # 4 Generate embeddings
-        # filepaths = dataset.values("filepath")
-        trainer = Trainer(max_epochs=1)
-        embeddings = trainer.predict(embedder, datamodule=datamodule)
-        # embeddings = np.stack(embedder.predict(filepaths))
+        trainer = Trainer()
+        embedding_batches = trainer.predict(embedder, datamodule=datamodule)
+        embeddings = np.stack(sum(embedding_batches, []))
 
-        # 5 Visualize images
-        session = fo.launch_app(dataset)
-
-        # 6 Visualize image embeddings
+        # 5 Visualize in FiftyOne App
         results = fob.compute_visualization(dataset, embeddings=embeddings)
+        session = fo.launch_app(dataset)
         plot = results.visualize(labels="ground_truth.label")
         plot.show()
 
