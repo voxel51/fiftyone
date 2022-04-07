@@ -448,28 +448,40 @@ your dataset.
 .. code-block:: python
     :linenos:
 
-    from flash.image import ObjectDetector
+    from flash.core.classification import FiftyOneLabelsOutput
+    from flash.image import ImageClassifier, ObjectDetector
 
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
+    num_classes = len(dataset.distinct("ground_truth.detections.label"))
 
     # Load your Flash model
-    model = ObjectDetector(
-        labels=dataset.distinct("ground_truth.label")
+    cls_model = ImageClassifier(
+        backbone="resnet18", num_classes=num_classes
     )
 
-    # model = ObjectDetector.load_from_checkpoint(
-    #     "/path/to/object_detection_model.pt"
-    # )
+    det_model = ObjectDetector(
+        head="efficientdet",
+        backbone="d0",
+        num_classes=num_classes,
+        image_size=512,
+    )
 
     # Predict!
-    dataset.apply_model(model, label_field="flash_predictions")
+    dataset.apply_model(
+        cls_model, label_field="flash_classifications",
+    )
 
-    # Visualize
-    session = fo.launch_app(dataset)
+    # Some models require transform kwargs that can be pass in
+    transform_kwargs = {"image_size": 512}
+    dataset.apply_model(
+        det_model,
+        label_field="flash_detections",
+        transform_kwargs=transform_kwargs,
+    )
 
 .. note::
 
@@ -500,25 +512,34 @@ Flash models with FiftyOne outputs will directly return predictions as
 
     from itertools import chain
 
+    from flash import Trainer
+    from flash.core.classification import FiftyOneLabelsOutput
+    from flash.image import ImageClassificationData, ImageClassifier
+
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    from flash import Trainer
-    from flash.image import ObjectDetectionData, ObjectDetector
-    from flash.image.detection.output import FiftyOneDetectionLabelsOutput
-
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
     labels = dataset.distinct("ground_truth.detections.label")
 
     # Load your Flash model
-    model = ObjectDetector(labels=labels)
-    model.output = FiftyOneDetectionLabelsOutput(return_filepath=False, labels=labels)  # output FiftyOne format
+    model = ImageClassifier(labels=labels)
 
-    # Predict with trainer (supports distributed inference)
-    datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
-    predictions = Trainer().predict(model, datamodule=datamodule)
-    predictions = list(chain.from_iterable(predictions)) # flatten batches
+    # Create prediction datamodule
+    datamodule = ImageClassificationData.from_fiftyone(
+        predict_dataset=dataset,
+        batch_size=1,
+    )
+
+    # Output FiftyOne format
+    output = FiftyOneLabelsOutput(
+        return_filepath=False, labels=labels
+    )
+    # Predict with trainer
+    predictions = Trainer().predict(model, datamodule=datamodule, output=output)
+
+    predictions = list(chain.from_iterable(predictions))  # flatten batches
 
     # Predictions is a list of Label objects since ``return_filepath=False``
     # Order corresponds to order of the ``predict_dataset``

@@ -34,7 +34,7 @@ import fiftyone.zoo as foz
 class LightningFlashTests(unittest.TestCase):
     def test_apply_model(self):
         # Load your dataset
-        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
 
         num_classes = len(dataset.distinct("ground_truth.detections.label"))
         # Load your Flash model
@@ -267,6 +267,9 @@ class LightningFlashTests(unittest.TestCase):
             "flash_predictions", predictions, key_field="filepath",
         )
 
+        # Test segmentation apply_model
+        predict_dataset.apply_model(model, "seg_apply_model")
+
     def test_video_classification(self):
         # 1 Load the data
         dataset = foz.load_zoo_dataset(
@@ -337,18 +340,28 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_manually_adding_predictions(self):
         # Load your dataset
-        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=5)
+            .select_fields("ground_truth")
+            .clone()
+        )
         labels = dataset.distinct("ground_truth.detections.label")
 
         # Load your Flash model
-        model = ObjectDetector(labels=labels)
-        model.output = FiftyOneDetectionLabelsOutput(
-            return_filepath=False, labels=labels
-        )  # output FiftyOne format
+        model = ImageClassifier(labels=labels)
 
-        # Predict with trainer (supports distributed inference)
-        datamodule = ObjectDetectionData.from_fiftyone(predict_dataset=dataset)
-        predictions = Trainer().predict(model, datamodule=datamodule)
+        # Create prediction datamodule
+        datamodule = ImageClassificationData.from_fiftyone(
+            predict_dataset=dataset, batch_size=1,
+        )
+
+        # Output FiftyOne format
+        output = FiftyOneLabelsOutput(return_filepath=False, labels=labels)
+        # Predict with trainer
+        predictions = Trainer().predict(
+            model, datamodule=datamodule, output=output
+        )
+
         predictions = list(chain.from_iterable(predictions))  # flatten batches
 
         # Predictions is a list of Label objects since ``return_filepath=False``
