@@ -203,7 +203,6 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_semantic_segmentation(self):
         # 1 Load your FiftyOne dataset
-
         # source: https://www.kaggle.com/kumaresanmanickavelu/lyft-udacity-challenge
         download_data(
             "https://github.com/ongchinkiat/LyftPerceptionChallenge/releases/download/v0.1/carla-capture-20180513A.zip",
@@ -219,12 +218,15 @@ class LightningFlashTests(unittest.TestCase):
             shuffle=True,
         )
 
+        # Just test and val on train dataset for this example
+        predict_dataset = dataset.take(5)
+
         # 2 Create the Datamodule
         datamodule = SemanticSegmentationData.from_fiftyone(
             train_dataset=dataset,
             test_dataset=dataset,
             val_dataset=dataset,
-            predict_dataset=dataset.take(5),
+            predict_dataset=predict_dataset,
             label_field="ground_truth",
             transform_kwargs=dict(image_size=(256, 256)),
             num_classes=21,
@@ -250,9 +252,6 @@ class LightningFlashTests(unittest.TestCase):
         trainer.save_checkpoint("/tmp/semantic_segmentation_model.pt")
 
         # 7 Generate predictions
-        datamodule = SemanticSegmentationData.from_fiftyone(
-            predict_dataset=dataset.take(5), batch_size=1,
-        )
         predictions = trainer.predict(
             model,
             datamodule=datamodule,
