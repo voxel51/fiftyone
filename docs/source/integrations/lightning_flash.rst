@@ -181,13 +181,15 @@ method, which is implemented for each of the Flash tasks shown below.
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
-            dataset = foz.load_zoo_dataset("quickstart")
-
-            # Get list of labels in dataset
-            labels = dataset.distinct("ground_truth.detections.label")
+            dataset = foz.load_zoo_dataset(
+               "coco-2017",
+               split="validation",
+               max_samples=100,
+               classes=["person"],
+            ).clone()
 
             # Create splits from the dataset
-            splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
+            splits = {"train": 0.7, "test": 0.1, "val": 0.1}
             fous.random_split(dataset, splits)
 
             # Here we use views into one dataset,
@@ -195,7 +197,10 @@ method, which is implemented for each of the Flash tasks shown below.
             train_dataset = dataset.match_tags("train")
             test_dataset = dataset.match_tags("test")
             val_dataset = dataset.match_tags("val")
-            predict_dataset = dataset.match_tags("pred")
+            predict_dataset = train_dataset.take(5)
+
+            # Remove background class, it gets added by datamodule
+            dataset.default_classes.pop(0)
 
             # 2 Create the Datamodule
             datamodule = ObjectDetectionData.from_fiftyone(
@@ -204,21 +209,23 @@ method, which is implemented for each of the Flash tasks shown below.
                 val_dataset=val_dataset,
                 predict_dataset=predict_dataset,
                 label_field="ground_truth",
+                transform_kwargs={"image_size": 512},
                 batch_size=4,
-                num_workers=4,
             )
 
             # 3 Build the model
             model = ObjectDetector(
-                head="retinanet",
-                labels=labels,
+                head="efficientdet",
+                backbone="d0",
+                num_classes=datamodule.num_classes,
+                image_size=512,
             )
 
             # 4 Create the trainer
-            trainer = Trainer(max_epochs=1, limit_val_batches=1)
+            trainer = Trainer(max_epochs=1, limit_train_batches=10)
 
             # 5 Finetune the model
-            trainer.finetune(model, datamodule=datamodule)
+            trainer.finetune(model, datamodule=datamodule, strategy="freeze")
 
             # 6 Save it!
             trainer.save_checkpoint("/tmp/object_detection_model.pt")
@@ -227,18 +234,16 @@ method, which is implemented for each of the Flash tasks shown below.
             predictions = trainer.predict(
                 model,
                 datamodule=datamodule,
-                output=FiftyOneDetectionLabelsOutput(labels=labels),
+                output=FiftyOneDetectionLabelsOutput(labels=datamodule.labels),
             )
-            predictions = list(chain.from_iterable(predictions)) # flatten batches
+            predictions = list(chain.from_iterable(predictions))  # flatten batches
 
             # Map filepaths to predictions
             predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
             # Add predictions to FiftyOne dataset
-            predict_dataset.set_values(
-                "flash_predictions",
-                predictions,
-                key_field="filepath",
+            dataset.set_values(
+                "flash_predictions", predictions, key_field="filepath",
             )
 
             # 8 Analyze predictions in the App

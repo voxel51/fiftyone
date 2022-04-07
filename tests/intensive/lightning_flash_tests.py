@@ -122,25 +122,12 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_object_detector(self):
         # 1 Load your FiftyOne dataset
-        download_data(
-            "https://github.com/zhiqwang/yolov5-rt-stack/releases/download/v0.3.0/coco128.zip",
-            "/tmp/coco128/",
-        )
-        dataset = fo.Dataset.from_dir(
-            data_path="/tmp/data/coco128/images/train2017",
-            labels_path="/tmp/data/coco128/annotations/instances_train2017.json",
-            dataset_type=fo.types.COCODetectionDataset,
-        )
-        # dataset = foz.load_zoo_dataset(
-        #    "coco-2017",
-        #    split="validation",
-        #    max_samples=100,
-        #    classes=["person"],
-        # ).clone()
-        # dataset.untag_samples("validation")
-
-        # Get list of labels in dataset
-        labels = dataset.distinct("ground_truth.detections.label")
+        dataset = foz.load_zoo_dataset(
+            "coco-2017",
+            split="validation",
+            max_samples=100,
+            classes=["person"],
+        ).clone()
 
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1}
@@ -151,22 +138,21 @@ class LightningFlashTests(unittest.TestCase):
         train_dataset = dataset.match_tags("train")
         test_dataset = dataset.match_tags("test")
         val_dataset = dataset.match_tags("val")
-        dataset = dataset.take(5)
+        predict_dataset = train_dataset.take(5)
+
+        # Remove background label, gets added by datamodule
+        dataset.default_classes.pop(0)
+
         # 2 Create the Datamodule
         datamodule = ObjectDetectionData.from_fiftyone(
-            train_dataset=dataset,
-            predict_dataset=dataset,
+            train_dataset=train_dataset,
+            test_dataset=test_dataset,
+            val_dataset=val_dataset,
+            predict_dataset=predict_dataset,
             label_field="ground_truth",
             transform_kwargs={"image_size": 512},
             batch_size=4,
         )
-        # datamodule = ObjectDetectionData.from_coco(
-        #    train_folder="/tmp/data/coco128/images/train2017/",
-        #    train_ann_file="/tmp/data/coco128/annotations/instances_train2017.json",
-        #    val_split=0.1,
-        #    transform_kwargs={"image_size": 512},
-        #    batch_size=4,
-        # )
 
         # 3 Build the model
         model = ObjectDetector(
@@ -177,7 +163,7 @@ class LightningFlashTests(unittest.TestCase):
         )
 
         # 4 Create the trainer
-        trainer = Trainer(max_epochs=10)
+        trainer = Trainer(max_epochs=1, limit_train_batches=10)
 
         # 5 Finetune the model
         trainer.finetune(model, datamodule=datamodule, strategy="freeze")
