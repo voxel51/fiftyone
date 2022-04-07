@@ -63,10 +63,9 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_image_classifier(self):
         # 1 Load your FiftyOne dataset
-
         dataset = foz.load_zoo_dataset(
             "cifar10", split="test", max_samples=300
-        )
+        ).clone()
         dataset.untag_samples("test")
 
         # Get list of labels in dataset
@@ -95,10 +94,12 @@ class LightningFlashTests(unittest.TestCase):
         )
 
         # 3 Build the model
-        model = ImageClassifier(backbone="resnet18", labels=labels,)
+        model = ImageClassifier(backbone="resnet18", labels=labels)
 
         # 4 Create the trainer
-        trainer = Trainer(max_epochs=1, limit_val_batches=100)
+        trainer = Trainer(
+            max_epochs=1, limit_train_batches=10, limit_val_batches=10,
+        )
 
         # 5 Finetune the model
         trainer.finetune(model, datamodule=datamodule)
@@ -153,12 +154,11 @@ class LightningFlashTests(unittest.TestCase):
         train_dataset = dataset.match_tags("train")
         test_dataset = dataset.match_tags("test")
         val_dataset = dataset.match_tags("val")
-
+        dataset = dataset.take(5)
         # 2 Create the Datamodule
         datamodule = ObjectDetectionData.from_fiftyone(
             train_dataset=dataset,
-            predict_dataset=dataset.take(5),
-            val_split=0.1,
+            predict_dataset=dataset,
             label_field="ground_truth",
             transform_kwargs={"image_size": 512},
             batch_size=4,
@@ -180,7 +180,7 @@ class LightningFlashTests(unittest.TestCase):
         )
 
         # 4 Create the trainer
-        trainer = Trainer(max_epochs=1, limit_val_batches=1)
+        trainer = Trainer(max_epochs=10)
 
         # 5 Finetune the model
         trainer.finetune(model, datamodule=datamodule, strategy="freeze")
