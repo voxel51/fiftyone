@@ -413,12 +413,12 @@ class LightningFlashTests(unittest.TestCase):
         ## 1 Download data
         download_data(
             "https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip",
-            "/tmp/flash_tests/hymenoptera",
+            "/tmp",
         )
 
         # 2 Load data into FiftyOne
         dataset = fo.Dataset.from_dir(
-            "/tmp/data/hymenoptera_data/test/",
+            "/tmp/hymenoptera_data/test/",
             fo.types.ImageClassificationDirectoryTree,
         )
         datamodule = ImageClassificationData.from_fiftyone(

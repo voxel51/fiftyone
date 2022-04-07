@@ -635,18 +635,19 @@ Flash model's embeddings and execute powerful workflows like
     import fiftyone.brain as fob
 
     # 1 Download data
-    download_data("https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip")
+    download_data(
+        "https://pl-flash-data.s3.amazonaws.com/hymenoptera_data.zip",
+        "/tmp",
+    )
 
     # 2 Load data into FiftyOne
     dataset = fo.Dataset.from_dir(
-        "data/hymenoptera_data/test/",
+        "/tmp/hymenoptera_data/test/",
         fo.types.ImageClassificationDirectoryTree,
     )
     datamodule = ImageClassificationData.from_fiftyone(
         predict_dataset=dataset,
-        label_field="ground_truth",
-        batch_size=4,
-        num_workers=4,
+        batch_size=1,
     )
 
     # 3 Load model
@@ -660,9 +661,9 @@ Flash model's embeddings and execute powerful workflows like
     )
 
     # 4 Generate embeddings
-    trainer = Trainer(max_epochs=1)
+    trainer = Trainer()
     embeddings = trainer.predict(embedder, datamodule=datamodule)
-    embeddings = np.stack(embeddings)
+    embeddings = np.stack(sum(embedding_batches, []))
 
     # 5 Visualize images
     session = fo.launch_app(dataset)
