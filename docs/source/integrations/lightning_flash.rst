@@ -503,12 +503,12 @@ Manually adding predictions
 If you've already loaded your datasets into Flash
 :class:`DataModules <flash:flash.core.data.data_module.DataModule>` without
 using FiftyOne, you can still easily use FiftyOne to analyze your model's
-predictions by swapping out your model's default
+predictions by providing the
 :class:`Output <flash:flash.core.data.io.output.Output>` for the
 :ref:`FiftyOne-style output <flash:fiftyone_labels>` of the appropriate
-type.
+type when generating predictions.
 
-Flash models with FiftyOne outputs will directly return predictions as
+Specifying FiftyOne outputs will result in predictions returned as
 |Label| objects that you can easily add to your FiftyOne datasets via
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.
 
