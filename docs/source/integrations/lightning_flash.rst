@@ -382,23 +382,22 @@ method, which is implemented for each of the Flash tasks shown below.
                 train_dataset=dataset,
                 predict_dataset=predict_dataset,
                 label_field="ground_truth",
-                batch_size=2,
-                transform_kwargs=dict(image_size=(200,200)),
+                batch_size=1,
+                clip_sampler="uniform",
+                clip_duration=1,
+                decode_audio=False,
             )
 
             # 3 Build the model
             model = VideoClassifier(
-                backbone="x3d_xs",
-                labels=datamodule.labels,
-                pretrained=False,
+                backbone="x3d_xs", labels=datamodule.labels, pretrained=False,
             )
 
             # 4 Create the trainer
-            trainer = Trainer(max_epochs=1, fast_dev_run=True)
+            trainer = Trainer(max_epochs=1, limit_train_batches=5)
 
             # 5 Finetune the model
-            trainer.fit(model, datamodule=datamodule)
-            #trainer.finetune(model, datamodule=datamodule, strategy="freeze")
+            trainer.finetune(model, datamodule=datamodule, strategy="freeze")
 
             # 6 Save it!
             trainer.save_checkpoint("/tmp/video_classification.pt")
@@ -409,17 +408,18 @@ method, which is implemented for each of the Flash tasks shown below.
                 datamodule=datamodule,
                 output=FiftyOneLabelsOutput(labels=datamodule.labels),
             )
-            predictions = list(chain.from_iterable(predictions)) # flatten batches
+            predictions = list(chain.from_iterable(predictions))  # flatten batches
 
             # Map filepaths to predictions
             predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values(
-                "flash_predictions",
-                predictions,
-                key_field="filepath",
+                "flash_predictions", predictions, key_field="filepath",
             )
+
+            # 8 Analyze predictions in the App
+            session = fo.launch_app(dataset)
 
 .. _flash-model-predictions:
 

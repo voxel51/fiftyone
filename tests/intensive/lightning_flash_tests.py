@@ -314,7 +314,6 @@ class LightningFlashTests(unittest.TestCase):
         trainer = Trainer(max_epochs=1, limit_train_batches=5)
 
         # 5 Finetune the model
-        # trainer.fit(model, datamodule=datamodule)
         trainer.finetune(model, datamodule=datamodule, strategy="freeze")
 
         # 6 Save it!
