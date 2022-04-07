@@ -98,12 +98,10 @@ method, which is implemented for each of the Flash tasks shown below.
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
-
-            dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=300)
+            dataset = foz.load_zoo_dataset(
+                "cifar10", split="test", max_samples=300
+            )
             dataset.untag_samples("test")
-
-            # Get list of labels in dataset
-            labels = dataset.distinct("ground_truth.label")
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
@@ -130,11 +128,13 @@ method, which is implemented for each of the Flash tasks shown below.
             # 3 Build the model
             model = ImageClassifier(
                 backbone="resnet18",
-                labels=labels,
-            )
+                labels=datamodule.labels,
+            ))
 
             # 4 Create the trainer
-            trainer = Trainer(max_epochs=1, limit_val_batches=100)
+            trainer = Trainer(
+                max_epochs=1, limit_train_batches=10, limit_val_batches=10,
+            )
 
             # 5 Finetune the model
             trainer.finetune(model, datamodule=datamodule)
@@ -146,20 +146,16 @@ method, which is implemented for each of the Flash tasks shown below.
             predictions = trainer.predict(
                 model,
                 datamodule=datamodule,
-                output=FiftyOneLabelsOutput(
-                    labels=labels
-                ),
+                output=FiftyOneLabelsOutput(labels=datamodule.labels),
             )
-            predictions = list(chain.from_iterable(predictions)) # flatten batches
+            predictions = list(chain.from_iterable(predictions))  # flatten batches
 
             # Map filepaths to predictions
             predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
             # Add predictions to FiftyOne dataset
             predict_dataset.set_values(
-                "flash_predictions",
-                predictions,
-                key_field="filepath",
+                "flash_predictions", predictions, key_field="filepath",
             )
 
             # 8 Analyze predictions in the App

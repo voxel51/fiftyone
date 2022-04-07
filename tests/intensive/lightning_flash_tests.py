@@ -68,9 +68,6 @@ class LightningFlashTests(unittest.TestCase):
         ).clone()
         dataset.untag_samples("test")
 
-        # Get list of labels in dataset
-        labels = dataset.distinct("ground_truth.label")
-
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
         fous.random_split(dataset, splits)
@@ -94,7 +91,7 @@ class LightningFlashTests(unittest.TestCase):
         )
 
         # 3 Build the model
-        model = ImageClassifier(backbone="resnet18", labels=labels)
+        model = ImageClassifier(backbone="resnet18", labels=datamodule.labels)
 
         # 4 Create the trainer
         trainer = Trainer(
@@ -111,7 +108,7 @@ class LightningFlashTests(unittest.TestCase):
         predictions = trainer.predict(
             model,
             datamodule=datamodule,
-            output=FiftyOneLabelsOutput(labels=labels),
+            output=FiftyOneLabelsOutput(labels=datamodule.labels),
         )
         predictions = list(chain.from_iterable(predictions))  # flatten batches
 
