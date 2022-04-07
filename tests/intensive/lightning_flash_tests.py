@@ -263,7 +263,7 @@ class LightningFlashTests(unittest.TestCase):
             split="validation",
             max_samples=15,
             shuffle=True,
-        )
+        ).clone()
         dataset.untag_samples("validation")
 
         # Replace spaces in class names with underscore
