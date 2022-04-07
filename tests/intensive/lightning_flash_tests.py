@@ -358,23 +358,21 @@ class LightningFlashTests(unittest.TestCase):
 
     def test_specifying_class_names(self):
         # Load your dataset
-        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
 
-        datamodule = ObjectDetectionData.from_fiftyone(
+        datamodule = ImageClassificationData.from_fiftyone(
             predict_dataset=dataset, batch_size=1
         )
 
         # Load your Flash model
         num_classes = 100
-        model = ObjectDetector(head="retinanet", num_classes=num_classes,)
+        model = ImageClassifier(backbone="resnet18", num_classes=num_classes)
 
         # Configure output with class labels
         labels = [
             "label_" + str(i) for i in range(num_classes)
         ]  # example class labels
-        output = FiftyOneDetectionLabelsOutput(
-            labels=labels
-        )  # output FiftyOne format
+        output = FiftyOneLabelsOutput(labels=labels)  # output FiftyOne format
 
         # Predict with model
         trainer = Trainer()
@@ -392,7 +390,7 @@ class LightningFlashTests(unittest.TestCase):
             "flash_predictions", predictions, key_field="filepath"
         )
 
-        print(dataset.distinct("flash_predictions.detections.label"))
+        print(dataset.distinct("flash_predictions.label"))
         # ['label_57', 'label_60']
 
     def test_image_embedder(self):
@@ -430,9 +428,11 @@ class LightningFlashTests(unittest.TestCase):
 
         # 5 Visualize in FiftyOne App
         results = fob.compute_visualization(dataset, embeddings=embeddings)
-        session = fo.launch_app(dataset)
         plot = results.visualize(labels="ground_truth.label")
         plot.show()
+
+        embeddings = dataset.compute_embeddings(embedder)
+        dataset.compute_embeddings(embedder, embeddings_field="embeddings")
 
 
 if __name__ == "__main__":

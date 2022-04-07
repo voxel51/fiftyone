@@ -135,30 +135,23 @@ def compute_flash_embeddings(
             % (type(model), _SUPPORTED_EMBEDDERS)
         )
 
-    # Running `Trainer().predict()` seems to cause `model.data_pipeline` to be
-    # garbage-collected after inference, so we restore it to its original value
-    data_pipeline = model.data_pipeline
+    data_kwargs = dict(preprocess=model.preprocess, num_workers=num_workers,)
+    if batch_size is not None:
+        data_kwargs["batch_size"] = batch_size
 
-    with fou.SetAttributes(model, data_pipeline=data_pipeline):
-        data_kwargs = dict(
-            preprocess=model.preprocess, num_workers=num_workers,
-        )
-        if batch_size is not None:
-            data_kwargs["batch_size"] = batch_size
+    datamodule = fi.ImageClassificationData.from_fiftyone(
+        predict_dataset=samples, **data_kwargs
+    )
+    embeddings = flash.Trainer(**trainer_kwargs).predict(
+        model, datamodule=datamodule
+    )
+    embeddings = np.stack(sum(embeddings, []))
 
-        datamodule = fi.ImageClassificationData.from_fiftyone(
-            predict_dataset=samples, **data_kwargs
-        )
-        embeddings = flash.Trainer(**trainer_kwargs).predict(
-            model, datamodule=datamodule
-        )
-        embeddings = list(itertools.chain.from_iterable(embeddings))
+    if embeddings_field is not None:
+        samples.set_values(embeddings_field, embeddings)
+        return
 
-        if embeddings_field is not None:
-            samples.set_values(embeddings_field, embeddings)
-            return
-
-        return np.stack(embeddings)
+    return embeddings
 
 
 def _get_output(model, confidence_thresh, store_logits):

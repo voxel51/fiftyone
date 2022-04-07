@@ -129,7 +129,7 @@ method, which is implemented for each of the Flash tasks shown below.
             model = ImageClassifier(
                 backbone="resnet18",
                 labels=datamodule.labels,
-            ))
+            )
 
             # 4 Create the trainer
             trainer = Trainer(
@@ -335,7 +335,7 @@ method, which is implemented for each of the Flash tasks shown below.
             )
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(dataset)
+            session = fo.launch_app(predict_dataset)
 
     .. tab:: Video classification
 
@@ -424,7 +424,7 @@ method, which is implemented for each of the Flash tasks shown below.
             )
 
             # 8 Analyze predictions in the App
-            session = fo.launch_app(dataset)
+            session = fo.launch_app(predict_dataset)
 
 .. _flash-model-predictions:
 
@@ -471,7 +471,7 @@ your dataset.
     det_model = ObjectDetector(
         head="efficientdet",
         backbone="d0",
-        num_classes=num_classes,
+        num_classes=91,
         image_size=512,
     )
 
@@ -579,35 +579,45 @@ FiftyOne-style outputs included:
     import fiftyone.zoo as foz
 
     from flash import Trainer
-    from flash.image import ObjectDetector, ObjectDetectionData
-    from flash.image.detection.output import FiftyOneDetectionLabelsOutput
+    from flash.image import ImageClassificationData, ImageClassifier
+    from flash.core.classification import FiftyOneLabelsOutput
 
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
 
-    datamodule = ObjectDetectionData.from_fiftyone(
-        predict_dataset=dataset
+    datamodule = ImageClassificationData.from_fiftyone(
+        predict_dataset=dataset, batch_size=1
     )
 
     # Load your Flash model
     num_classes = 100
-    model = ObjectDetector(
-        head="retinanet",
-        num_classes=num_classes,
-    )
+    model = ImageClassifier(backbone="resnet18", num_classes=num_classes)
 
     # Configure output with class labels
-    labels = ["label_" + str(i) for i in range(num_classes)] # example class labels
-    output = FiftyOneDetectionLabelsOutput(labels=labels, return_filepath=False)  # output FiftyOne format
+    labels = [
+        "label_" + str(i) for i in range(num_classes)
+    ]  # example class labels
+    output = FiftyOneLabelsOutput(
+        labels=labels
+    )  # output FiftyOne format
 
     # Predict with model
     trainer = Trainer()
-    predictions = trainer.predict(model, datamodule=datamodule, output=output)
+    predictions = trainer.predict(
+        model, datamodule=datamodule, output=output
+    )
+
+    predictions = list(chain.from_iterable(predictions))  # flatten batches
+
+    # Map filepaths to predictions
+    predictions = {p["filepath"]: p["predictions"] for p in predictions}
 
     # Add predictions to dataset
-    dataset.set_values("flash_predictions", predictions)
+    dataset.set_values(
+        "flash_predictions", predictions, key_field="filepath"
+    )
 
-    print(dataset.distinct("flash_predictions.detections.label"))
+    print(dataset.distinct("flash_predictions.label"))
     # ['label_57', 'label_60']
 
     # Visualize in the App
