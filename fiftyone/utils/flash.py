@@ -98,6 +98,7 @@ def compute_flash_embeddings(
     embeddings_field=None,
     batch_size=None,
     num_workers=None,
+    transform_kwargs=None,
     **trainer_kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -117,6 +118,8 @@ def compute_flash_embeddings(
         batch_size (None): an optional batch size to use. If not provided, a
             default batch size is used
         num_workers (None): the number of workers for the data loader to use
+        transform_kwargs (None): an optional dict of transform kwargs to pass
+            into the created data module used by some models
         **trainer_kwargs: optional keyword arguments used to initialize the
             :mod:`Trainer <flash:flash.core.trainer>`. These can be used to,
             for example, configure the number of GPUs to use and other
@@ -135,9 +138,12 @@ def compute_flash_embeddings(
             % (type(model), _SUPPORTED_EMBEDDERS)
         )
 
-    data_kwargs = dict(preprocess=model.preprocess, num_workers=num_workers,)
-    if batch_size is not None:
-        data_kwargs["batch_size"] = batch_size
+    data_kwargs = {
+        "num_workers": num_workers or 1,
+        "batch_size": batch_size or 1,
+    }
+    if transform_kwargs:
+        data_kwargs["transform_kwargs"] = transform_kwargs
 
     datamodule = fi.ImageClassificationData.from_fiftyone(
         predict_dataset=samples, **data_kwargs
