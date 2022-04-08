@@ -42,7 +42,7 @@ def apply_flash_model(
     batch_size=None,
     num_workers=None,
     transform_kwargs=None,
-    **trainer_kwargs,
+    trainer_kwargs=None,
 ):
     """Applies the given
     :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
@@ -64,12 +64,15 @@ def apply_flash_model(
         num_workers (None): the number of workers for the data loader to use
         transform_kwargs (None): an optional dict of transform kwargs to pass
             into the created data module used by some models
-        **trainer_kwargs: optional keyword arguments used to initialize the
+        trainer_kwargs (None): an optional dict of kwargs used to initialize the
             :mod:`Trainer <flash:flash.core.trainer>`. These can be used to,
             for example, configure the number of GPUs to use and other
             distributed inference parameters
     """
     output = _get_output(model, confidence_thresh, store_logits)
+
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
 
     data_kwargs = {
         "num_workers": num_workers or 1,
@@ -99,7 +102,7 @@ def compute_flash_embeddings(
     batch_size=None,
     num_workers=None,
     transform_kwargs=None,
-    **trainer_kwargs,
+    trainer_kwargs=None,
 ):
     """Computes embeddings for the samples in the collection using the given
     :class:`Lightning Flash model <flash:flash.core.model.Task>`.
@@ -120,7 +123,7 @@ def compute_flash_embeddings(
         num_workers (None): the number of workers for the data loader to use
         transform_kwargs (None): an optional dict of transform kwargs to pass
             into the created data module used by some models
-        **trainer_kwargs: optional keyword arguments used to initialize the
+        trainer_kwargs (None): an optional dict of kwargs used to initialize the
             :mod:`Trainer <flash:flash.core.trainer>`. These can be used to,
             for example, configure the number of GPUs to use and other
             distributed inference parameters
@@ -137,6 +140,9 @@ def compute_flash_embeddings(
             "Unsupported model type %s. Supported model types are %s"
             % (type(model), _SUPPORTED_EMBEDDERS)
         )
+
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
 
     data_kwargs = {
         "num_workers": num_workers or 1,

@@ -37,7 +37,7 @@ In order to use the Lightning Flash integration, you'll need to
 .. code-block:: shell
 
     # This integration currently requires these versions explicitly
-    pip install lightning-flash>=0.7.0
+    pip install lightning-flash>=0.7.0dev
     pip install pytorch-lightning
 
 Depending on the type of Flash tasks that you intend to use, you will also need
@@ -186,7 +186,7 @@ method, which is implemented for each of the Flash tasks shown below.
                split="validation",
                max_samples=100,
                classes=["person"],
-            ).clone()
+            )
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1}
@@ -460,7 +460,7 @@ your dataset.
     import fiftyone.zoo as foz
 
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
     num_classes = len(dataset.distinct("ground_truth.detections.label"))
 
     # Load your Flash model
@@ -491,11 +491,13 @@ your dataset.
 .. note::
 
     When performing inference with Flash models, you can pass additional
-    arguments like ``gpus=8`` to
+    ``trainer_kwargs`` in a dictionary like ``trainer_kwargs={"gpus": 8}`` to
     :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
     which are used to initialize the Flash
     :mod:`Trainer <flash:flash.core.trainer>` to configure distributed and/or
-    parallelized inference!
+    parallelized inference! See
+    :meth:`apply_flash_model() <fiftyone.utils.flash.apply_flash_model>`
+    for more details about supported keyword arguments.
 
 Manually adding predictions
 ---------------------------
@@ -525,7 +527,7 @@ Specifying FiftyOne outputs will result in predictions returned as
     import fiftyone.zoo as foz
 
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
     labels = dataset.distinct("ground_truth.detections.label")
 
     # Load your Flash model
@@ -583,7 +585,7 @@ FiftyOne-style outputs included:
     from flash.core.classification import FiftyOneLabelsOutput
 
     # Load your dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=5).clone()
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
     datamodule = ImageClassificationData.from_fiftyone(
         predict_dataset=dataset, batch_size=1

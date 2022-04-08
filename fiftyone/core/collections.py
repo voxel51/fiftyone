@@ -1526,7 +1526,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
-        **trainer_kwargs,
+        **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
         :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
@@ -1563,10 +1563,8 @@ class SampleCollection(object):
                 raising an error if predictions cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
-            **trainer_kwargs: optional keyword arguments used to initialize the
-                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
-                models. These can be used to, for example, configure the number
-                of GPUs to use and other distributed inference parameters
+            **kwargs: optional model-specific keyword arguments passed through
+                to the underlying inference implementation
         """
         fomo.apply_model(
             self,
@@ -1577,7 +1575,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
-            **trainer_kwargs,
+            **kwargs,
         )
 
     def compute_embeddings(
@@ -1587,7 +1585,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
-        **trainer_kwargs,
+        **kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
         given :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -1626,10 +1624,8 @@ class SampleCollection(object):
                 raising an error if embeddings cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
-            **trainer_kwargs: optional keyword arguments used to initialize the
-                :mod:`Trainer <flash:flash.core.trainer>` when using Flash
-                models. These can be used to, for example, configure the number
-                of GPUs to use and other distributed inference parameters
+            **kwargs: optional model-specific keyword arguments passed through
+                to the underlying inference implementation
 
         Returns:
             one of the following:
@@ -1657,7 +1653,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
-            **trainer_kwargs,
+            **kwargs,
         )
 
     def compute_patch_embeddings(
