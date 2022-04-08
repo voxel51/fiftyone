@@ -9,8 +9,6 @@ You must run these tests interactively as follows::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-
 import numpy as np
 import unittest
 from itertools import chain
