@@ -15,7 +15,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-fou.ensure_import("flash>=0.6dev")
+fou.ensure_import("flash>=0.7dev")
 import flash
 import flash.core.classification as fc
 import flash.image as fi
