@@ -3592,6 +3592,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._server_version = 1
             self._login(username, password)
 
+        self._add_referer()
+
+    def _add_referer(self):
+        if "Referer" not in self._session.headers:
+            self._session.headers["Referer"] = self.login_url
+
     def close(self):
         """Closes the API session."""
         self._session.close()
