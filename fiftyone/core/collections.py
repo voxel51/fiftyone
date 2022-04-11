@@ -16,7 +16,6 @@ import warnings
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import DynamicEmbeddedDocument
 from pymongo import InsertOne, UpdateOne
 
 import eta.core.serial as etas
@@ -34,7 +33,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.sample as fosa
 import fiftyone.core.utils as fou
 
@@ -427,20 +426,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def _get_default_sample_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        return fosa.get_default_sample_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
-    def _get_default_frame_fields(
-        self, include_private=False, use_db_fields=False
-    ):
-        return fofr.get_default_frame_fields(
-            include_private=include_private, use_db_fields=use_db_fields
-        )
-
     def get_field(self, path, include_private=False):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
@@ -458,12 +443,6 @@ class SampleCollection(object):
         if not keys:
             return None
 
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema(
-                include_private=include_private
-            )
-            keys = keys[1:]
-        else:
             schema = self.get_field_schema()
 
         field = None
@@ -493,12 +472,7 @@ class SampleCollection(object):
             return None
 
         resolved_keys = []
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
-            keys = keys[1:]
-            resolved_keys.append("frames")
-        else:
-            schema = self.get_field_schema()
+        schema = self.get_field_schema()
 
         _add_mapped_fields_as_private_fields(schema)
 
@@ -509,7 +483,7 @@ class SampleCollection(object):
                 return None
 
             resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, fof.ListField):
+            if idx != last and isinstance(field, fof.Lid):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
@@ -629,100 +603,30 @@ class SampleCollection(object):
         Raises:
             ValueError: if one or more of the fields do not exist
         """
-        fields, frame_fields = self._split_frame_fields(fields)
+        return all([self.get_field(field) is not None for field in fields])
 
-        if fields:
-            existing_fields = set(
-                self.get_field_schema(include_private=include_private).keys()
-            )
-            if self.media_type == fom.VIDEO:
-                existing_fields.add("frames")
-
-            for field in fields:
-                # We only validate that the root field exists
-                field_name = field.split(".", 1)[0]
-                if field_name not in existing_fields:
-                    raise ValueError("Field '%s' does not exist" % field_name)
-
-        if frame_fields:
-            existing_frame_fields = set(
-                self.get_frame_field_schema(
-                    include_private=include_private
-                ).keys()
-            )
-
-            for field in frame_fields:
-                # We only validate that the root field exists
-                field_name = field.split(".", 1)[0]
-                if field_name not in existing_frame_fields:
-                    raise ValueError(
-                        "Frame field '%s' does not exist" % field_name
-                    )
-
-    def validate_field_type(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
-    ):
+    def validate_field_type(self, field_name, type):
         """Validates that the collection has a field of the given type.
 
         Args:
             field_name: the field name
-            ftype: the expected field type. Must be a subclass of
+            type: the expected field type. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            schema = self.get_frame_field_schema()
-        else:
-            schema = self.get_field_schema()
-
-        if field_name not in schema:
-            ftype = "Frame field" if is_frame_field else "Field"
+        field = self.get_field(field_name)
+        if field is None:
             raise ValueError(
-                "%s '%s' does not exist on collection '%s'"
-                % (ftype, field_name, self.name)
+                f"Field '{field_name}' does not exist on collection '{self.name}'"
             )
 
-        field = schema[field_name]
-
-        if embedded_doc_type is not None:
-            if not isinstance(field, fof.EmbeddedDocumentField) or (
-                field.document_type is not embedded_doc_type
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(embedded_doc_type), field)
-                )
-        elif subfield is not None:
-            if not isinstance(field, (fof.ListField, fof.DictField)):
-                raise ValueError(
-                    "Field type %s must be an instance of %s when a subfield "
-                    "is provided" % (ftype, (fof.ListField, fof.DictField))
-                )
-
-            if not isinstance(field, ftype) or not isinstance(
-                field.field, subfield
-            ):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype(field=subfield()), field)
-                )
-        else:
-            if not isinstance(field, ftype):
-                raise ValueError(
-                    "Field '%s' must be an instance of %s; found %s"
-                    % (field_name, ftype, field)
-                )
+        if field != type:
+            raise ValueError(
+                "Field '{field_name}' of type '{field}' does not match '{type}'"
+            )
 
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
@@ -1258,25 +1162,15 @@ class SampleCollection(object):
         ):
             list_fields = sorted(set(list_fields + [field_name]))
 
-        if is_frame_field:
-            self._set_frame_values(
-                field_name,
-                values,
-                list_fields,
-                sample_ids=_sample_ids,
-                frame_ids=_frame_ids,
-                to_mongo=to_mongo,
-                skip_none=skip_none,
-            )
-        else:
-            self._set_sample_values(
-                field_name,
-                values,
-                list_fields,
-                sample_ids=_sample_ids,
-                to_mongo=to_mongo,
-                skip_none=skip_none,
-            )
+        self._set_values(
+            field_name,
+            values,
+            list_fields,
+            sample_ids=_sample_ids,
+            frame_ids=_frame_ids,
+            to_mongo=to_mongo,
+            skip_none=skip_none,
+        )
 
     def _expand_schema_from_values(self, field_name, values):
         stripped_field_name, is_frame_field = self._handle_frame_field(

@@ -18,11 +18,6 @@ import string
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import (
-    BaseEmbeddedDocument,
-    EmbeddedDocument,
-)
-import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
@@ -43,7 +38,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.migrations as fomi
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
@@ -4683,20 +4678,6 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _declare_fields(doc_cls, field_docs=None):
-    for field_name, field in doc_cls._fields.items():
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            field._set_parent(doc_cls)
-            doc_cls._fields[field_name] = field
-            setattr(doc_cls, field_name, field)
-
-    if field_docs is not None:
-        for field_doc in field_docs:
-            field = field_doc.to_field()
-            doc_cls._declare_field(field, field.name)
-
-
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4725,13 +4706,11 @@ def _make_frame_collection_name(sample_collection_name):
 
 def _create_sample_document_cls(sample_collection_name, field_docs=None):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
 def _create_frame_document_cls(frame_collection_name, field_docs=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 

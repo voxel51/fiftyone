@@ -15,7 +15,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
-from fiftyone.core.odm.document import MongoEngineBaseDocument
+from fiftyone.core.data import asdict, is_data
 import fiftyone.core.utils as fou
 
 
@@ -2029,8 +2029,8 @@ class ViewExpression(object):
             and not value_or_expr.is_frozen
         ):
             value = self.apply(value_or_expr)
-        elif isinstance(value_or_expr, MongoEngineBaseDocument):
-            value = value_or_expr.to_dict()
+        elif is_data(value_or_expr):
+            value = asdict(value_or_expr)
             value.pop("_id", None)
         else:
             value = value_or_expr
@@ -4416,7 +4416,8 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         expr = ViewExpression.zip(
-            ViewExpression.range(start, stop=start + array.length()), array,
+            ViewExpression.range(start, stop=start + array.length()),
+            array,
         )
         return array.let_in(expr)
 

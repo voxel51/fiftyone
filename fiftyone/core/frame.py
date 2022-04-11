@@ -12,7 +12,7 @@ from pymongo import ReplaceOne, UpdateOne, DeleteOne
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 

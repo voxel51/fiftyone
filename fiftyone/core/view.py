@@ -18,7 +18,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 

@@ -31,7 +31,7 @@ import fiftyone.constants as foc
 import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.state as fos
 import fiftyone.core.uid as fou
@@ -288,7 +288,11 @@ class Application(tornado.web.Application):
             (r"/dataset", DatasetHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
-            (r"/filepath/(.*)", MediaHandler, {"path": ""},),
+            (
+                r"/filepath/(.*)",
+                MediaHandler,
+                {"path": ""},
+            ),
             (r"/notebook", NotebookHandler),
             (r"/page", PageHandler),
             (r"/pin", PinHandler),

@@ -301,7 +301,7 @@ class DatabaseService(MultiClientService):
     def cleanup():
         """Deletes non-persistent datasets when the DB shuts down."""
         import fiftyone.core.dataset as fod
-        import fiftyone.core.odm.database as food
+        import fiftyone.core.data.database as food
         import fiftyone.service.util as fosu
 
         try:

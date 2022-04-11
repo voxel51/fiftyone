@@ -6,19 +6,26 @@ Labels stored in dataset samples.
 |
 """
 import itertools
+import typing as t
 import warnings
 
-from bson import ObjectId
+from bson import ObjectId, Binary
 import cv2
 import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
 
-from fiftyone.core.odm import DynamicEmbeddedDocument
-import fiftyone.core.fields as fof
+from fiftyone.core.data import field
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+from fiftyone.core.validators import (
+    dump_array,
+    heatmap_range_validator,
+    keypoints_validator,
+    load_array,
+    polyline_points_validator,
+)
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
@@ -34,7 +41,7 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
-class Label(DynamicEmbeddedDocument):
+class Label:
     """Base class for labels.
 
     Label instances represent a logical collection of data associated with a
@@ -50,8 +57,8 @@ class Label(DynamicEmbeddedDocument):
         # pylint: disable=no-member
         custom_fields = set(self._fields_ordered) - set(self._fields.keys())
 
-        for field in custom_fields:
-            yield field, self.get_attribute_value(field)
+        for f in custom_fields:
+            yield f, self.get_attribute_value(f)
 
     def has_attribute(self, name):
         """Determines whether the label has an attribute with the given name.
@@ -120,7 +127,7 @@ class Label(DynamicEmbeddedDocument):
 
 
 # @todo remove this in favor of dynamic-only attributes
-class Attribute(DynamicEmbeddedDocument):
+class Attribute:
     """Base class for attributes.
 
     Attribute instances represent an atomic piece of information, its
@@ -131,7 +138,7 @@ class Attribute(DynamicEmbeddedDocument):
         value (None): the attribute value
     """
 
-    value = fof.Field()
+    value: t.Any
 
 
 # @todo remove this in favor of dynamic-only attributes
@@ -142,8 +149,10 @@ class BooleanAttribute(Attribute):
         value (None): the attribute value
     """
 
-    value = fof.BooleanField()
+    value: bool
 
+
+Vector = t.Union[np.ndarray, bytes, list, tuple]
 
 # @todo remove this in favor of dynamic-only attributes
 class CategoricalAttribute(Attribute):
@@ -155,9 +164,9 @@ class CategoricalAttribute(Attribute):
         logits (None): logits associated with the attribute
     """
 
-    value = fof.StringField()
-    confidence = fof.FloatField()
-    logits = fof.VectorField()
+    value: str
+    confidence: float
+    logits: Vector = field(dump=dump_array, load=load_array)
 
 
 # @todo remove this in favor of dynamic-only attributes
@@ -168,7 +177,7 @@ class NumericAttribute(Attribute):
         value (None): the attribute value
     """
 
-    value = fof.FloatField()
+    value: float
 
 
 # @todo remove this in favor of dynamic-only attributes
@@ -181,7 +190,7 @@ class ListAttribute(Attribute):
         value (None): the attribute value
     """
 
-    value = fof.ListField()
+    value: t.List
 
 
 # @todo remove this in favor of dynamic-only attributes
@@ -190,7 +199,7 @@ class _HasAttributesDict(Label):
     that contains a dict of of :class:`Attribute` instances.
     """
 
-    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+    attributes: t.Dict[str, Attribute]
 
     def iter_attributes(self):
         """Returns an iterator over the custom attributes of the label.
@@ -314,18 +323,9 @@ class _HasID(Label):
     property, as well as a ``tags`` attribute.
     """
 
-    id = fof.ObjectIdField(
-        default=ObjectId, required=True, unique=True, db_field="_id"
-    )
-    tags = fof.ListField(fof.StringField())
-
-    @property
-    def _id(self):
-        return ObjectId(self.id)
-
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
+    _id: ObjectId
+    id: str = field(load=str, dump=ObjectId, link="_id")
+    tags: t.List[str]
 
 
 class _HasLabelList(object):
@@ -347,8 +347,8 @@ class Regression(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the regression
     """
 
-    value = fof.FloatField()
-    confidence = fof.FloatField()
+    value: float
+    confidence: float
 
 
 class Classification(_HasID, Label):
@@ -360,9 +360,9 @@ class Classification(_HasID, Label):
         logits (None): logits associated with the labels
     """
 
-    label = fof.StringField()
-    confidence = fof.FloatField()
-    logits = fof.VectorField()
+    label: str
+    confidence: float
+    logits: Vector = field(dump=dump_array, load=load_array)
 
 
 class Classifications(_HasLabelList, Label):
@@ -374,8 +374,8 @@ class Classifications(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "classifications"
 
-    classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
-    logits = fof.VectorField()
+    classifications: t.List[Classification]
+    logits: Vector = field(dump=dump_array, load=load_array)
 
 
 class Detection(_HasID, _HasAttributesDict, Label):
@@ -397,11 +397,11 @@ class Detection(_HasID, _HasAttributesDict, Label):
             instances
     """
 
-    label = fof.StringField()
-    bounding_box = fof.ListField(fof.FloatField())
-    mask = fof.ArrayField()
-    confidence = fof.FloatField()
-    index = fof.IntField()
+    label: str
+    bounding_box: t.Tuple[float, float, float, float]
+    mask: np.ndarray = field(dump=dump_array, load=load_array)
+    confidence: float
+    index: int
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -521,7 +521,7 @@ class Detections(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "detections"
 
-    detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
+    detections: t.List[Detection]
 
     def to_polylines(self, tolerance=2, filled=True):
         """Returns a :class:`Polylines` representation of this instance.
@@ -609,12 +609,14 @@ class Polyline(_HasID, _HasAttributesDict, Label):
             instances for the polyline
     """
 
-    label = fof.StringField()
-    points = fof.PolylinePointsField()
-    confidence = fof.FloatField()
-    index = fof.IntField()
-    closed = fof.BooleanField(default=False)
-    filled = fof.BooleanField(default=False)
+    label: str
+    points: t.List[t.Tuple[float, float]] = field(
+        validator=polyline_points_validator
+    )
+    confidence: float
+    index: int
+    closed: bool = False
+    filled: bool = False
 
     def to_detection(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detection` representation of this instance whose
@@ -775,7 +777,7 @@ class Polylines(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "polylines"
 
-    polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
+    polylines: t.List[Polyline]
 
     def to_detections(self, mask_size=None, frame_size=None):
         """Returns a :class:`Detections` representation of this instance whose
@@ -858,10 +860,12 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
             instances
     """
 
-    label = fof.StringField()
-    points = fof.KeypointsField()
-    confidence = fof.FloatField()
-    index = fof.IntField()
+    label: str
+    points: t.List[t.Tuple[float, float]] = field(
+        validator=keypoints_validator
+    )
+    confidence: float
+    index: int
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -892,7 +896,7 @@ class Keypoints(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "keypoints"
 
-    keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
+    keypoints: t.List[Keypoint]
 
 
 class Segmentation(_HasID, Label):
@@ -903,7 +907,7 @@ class Segmentation(_HasID, Label):
             labels
     """
 
-    mask = fof.ArrayField()
+    mask: np.ndarray = field(dump=dump_array, load=load_array)
 
     def to_detections(self, mask_targets=None, mask_types="stuff"):
         """Returns a :class:`Detections` representation of this instance with
@@ -983,8 +987,8 @@ class Heatmap(_HasID, Label):
             contains integer values
     """
 
-    map = fof.ArrayField()
-    range = fof.HeatmapRangeField()
+    map: np.ndarray = field(dump=dump_array, load=load_array)
+    range: t.Tuple[float, float] = field(validator=heatmap_range_validator)
 
 
 class TemporalDetection(_HasID, Label):

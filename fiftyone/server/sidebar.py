@@ -5,7 +5,7 @@ FiftyOne Server sidebar ordering.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.odm.dataset as food
+import fiftyone.core.data.dataset as food
 
 from fiftyone.server.utils import AsyncRequestHandler
 import fiftyone.server.view as fosv

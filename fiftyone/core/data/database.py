@@ -13,24 +13,22 @@ import os
 import asyncio
 from bson import json_util
 from bson.codec_options import CodecOptions
-from mongoengine import connect
-import mongoengine.errors as moe
+from dacite import from_dict
 import motor
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
+import strawberry as gql
 
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
-import fiftyone.core.fields as fof
+from fiftyone.core.data.types import DatabaseConfig
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
-
-from .document import Document
 
 
 logger = logging.getLogger(__name__)
@@ -42,28 +40,20 @@ _connection_kwargs = {}
 _db_service = None
 
 
-class DatabaseConfigDocument(Document):
-    """Backing document for the database config."""
-
-    meta = {"collection": "config"}
-
-    version = fof.StringField()
-
-
 def get_db_config():
     """Retrieves the database config.
 
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    conn = get_db_conn()
     try:
-        # pylint: disable=no-member
-        config = DatabaseConfigDocument.objects.get()
-    except moe.DoesNotExist:
-        config = DatabaseConfigDocument()
-        config.save()
+        data = conn.config.find_one({})
+    except:
+        conn.config.insert_one({"version": fo.__version__})
+        data = conn.config.find_one({})
 
-    return config
+    return from_dict(DatabaseConfig, data=data)
 
 
 def establish_db_conn(config):
@@ -127,15 +117,12 @@ def establish_db_conn(config):
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
 
-    connect(config.database_name, **_connection_kwargs)
-
 
 def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
         _client = pymongo.MongoClient(**_connection_kwargs)
-        connect(fo.config.database_name, **_connection_kwargs)
 
 
 def _async_connect():

@@ -27,7 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.odm.document import MongoEngineBaseDocument
+from fiftyone.core.data.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
@@ -266,8 +266,7 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raised when a problem with a :class:`ViewStage` is encountered.
-    """
+    """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
 
@@ -1914,7 +1913,8 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")), [],
+                F(path).filter(filter_expr).map(F("index")),
+                [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -2506,8 +2506,7 @@ class GroupBy(ViewStage):
 
     @property
     def sort_expr(self):
-        """An expression defining how the sort the groups in the output view.
-        """
+        """An expression defining how the sort the groups in the output view."""
         return self._sort_expr
 
     @property
@@ -2772,7 +2771,8 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]), None,
+            F().set_field(leaf, F(leaf)[:limit]),
+            None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 

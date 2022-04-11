@@ -28,7 +28,7 @@ import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.runs as fors
 from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
@@ -369,7 +369,9 @@ def _build_parse_sample_fcn(
         def parse_sample(sample):
             image_path, image_metadata = sample
             return Sample(
-                filepath=image_path, metadata=image_metadata, tags=tags,
+                filepath=image_path,
+                metadata=image_metadata,
+                tags=tags,
             )
 
     elif isinstance(dataset_importer, UnlabeledVideoDatasetImporter):
@@ -381,7 +383,9 @@ def _build_parse_sample_fcn(
         def parse_sample(sample):
             video_path, video_metadata = sample
             return Sample(
-                filepath=video_path, metadata=video_metadata, tags=tags,
+                filepath=video_path,
+                metadata=video_metadata,
+                tags=tags,
             )
 
     elif isinstance(dataset_importer, LabeledImageDatasetImporter):
@@ -396,7 +400,9 @@ def _build_parse_sample_fcn(
         def parse_sample(sample):
             image_path, image_metadata, label = sample
             sample = Sample(
-                filepath=image_path, metadata=image_metadata, tags=tags,
+                filepath=image_path,
+                metadata=image_metadata,
+                tags=tags,
             )
 
             if isinstance(label, dict):
@@ -434,7 +440,9 @@ def _build_parse_sample_fcn(
             video_path, video_metadata, label, frames = sample
 
             sample = Sample(
-                filepath=video_path, metadata=video_metadata, tags=tags,
+                filepath=video_path,
+                metadata=video_metadata,
+                tags=tags,
             )
 
             if isinstance(label, dict):
@@ -1898,7 +1906,9 @@ class FiftyOneImageClassificationDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -2346,7 +2356,9 @@ class FiftyOneImageDetectionDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -2523,7 +2535,9 @@ class FiftyOneTemporalDetectionDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -2711,7 +2725,9 @@ class ImageSegmentationDirectoryImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(

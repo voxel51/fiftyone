@@ -6,7 +6,7 @@ FiftyOne's public interface.
 |
 """
 import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 
 config = foc.load_config()
 annotation_config = foc.load_annotation_config()

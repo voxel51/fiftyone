@@ -19,7 +19,7 @@ from fiftyone.core.expressions import ViewField as F, _escape_regex_chars
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.state as fos
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
@@ -568,7 +568,10 @@ def _label_filter(field):
     ):
         path = field.name
         if issubclass(field.document_type, fol._HasLabelList):
-            path = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD,)
+            path = "%s.%s" % (
+                path,
+                field.document_type._LABEL_LIST_FIELD,
+            )
 
     return path
 

@@ -16,7 +16,6 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -25,7 +24,7 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-class Metadata(DynamicEmbeddedDocument):
+class Metadata:
     """Base class for storing metadata about generic samples.
 
     Args:
@@ -252,7 +251,9 @@ def compute_metadata(
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite,
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
         )
 
     num_missing = len(sample_collection.exists("metadata", False))

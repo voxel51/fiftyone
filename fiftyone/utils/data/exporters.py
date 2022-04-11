@@ -27,7 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.patches as foup

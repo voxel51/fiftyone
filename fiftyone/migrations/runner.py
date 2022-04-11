@@ -15,7 +15,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 
 
 logger = logging.getLogger(__name__)
@@ -267,8 +267,7 @@ class MigrationRunner(object):
 
     @property
     def admin_revisions(self):
-        """The list of admin revisions that will be run by :meth:`run_admin`.
-        """
+        """The list of admin revisions that will be run by :meth:`run_admin`."""
         return [r[0] for r in self._admin_revisions]
 
     def run(self, dataset_name, verbose=False):

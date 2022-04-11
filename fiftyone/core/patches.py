@@ -16,7 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.odm.mixins import get_field_kwargs
+from fiftyone.core.data.mixins import get_field_kwargs
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 

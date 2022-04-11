@@ -13,43 +13,13 @@ import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
 
-def get_default_sample_fields(include_private=False, use_db_fields=False):
-    """Returns the default fields present on all samples.
-
-    Args:
-        include_private (False): whether to include fields starting with ``_``
-        use_db_fields (False): whether to return database fields rather than
-            user-facing fields, when applicable
-
-    Returns:
-        a tuple of field names
-    """
-    return foo.get_default_fields(
-        foo.DatasetSampleDocument,
-        include_private=include_private,
-        use_db_fields=use_db_fields,
-    )
-
-
-class _SampleMixin(object):
-    def __getattr__(self, name):
-        if name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames
-
-        return super().__getattr__(name)
-
-    def __setattr__(self, name, value):
-        if name == "frames" and self.media_type == fomm.VIDEO:
-            self.set_field("frames", value)
-            return
-
-        self._secure_media(name, value)
-        super().__setattr__(name, value)
+class Sample:
+    filepath: str
 
     def __getitem__(self, field_name):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
@@ -79,13 +49,10 @@ class _SampleMixin(object):
     @property
     def media_type(self):
         """The media type of the sample."""
-        return self._media_type
+        return fomm.get_media_type(self.filepath)
 
     def get_field(self, field_name):
-        if field_name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames
-
-        return super().get_field(field_name)
+        return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=True):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -378,27 +345,6 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         **kwargs: additional fields to dynamically set on the sample
     """
 
-    _NO_DATASET_DOC_CLS = foo.NoDatasetSampleDocument
-
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        super().__init__(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
-        )
-
-        if self.media_type == fomm.VIDEO:
-            self._frames = fofr.Frames(self)
-        else:
-            self._frames = None
-
-    def __repr__(self):
-        kwargs = {}
-        if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames
-
-        return self._doc.fancy_repr(
-            class_name=self.__class__.__name__, **kwargs
-        )
-
     def _reload_backing_doc(self):
         if not self._in_db:
             return
@@ -560,23 +506,6 @@ class SampleView(_SampleMixin, DocumentView):
             self._frames = fofr.FramesView(self)
         else:
             self._frames = None
-
-    def __repr__(self):
-        if self._selected_fields is not None:
-            select_fields = ("id", "media_type") + tuple(self._selected_fields)
-        else:
-            select_fields = None
-
-        kwargs = {}
-        if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames
-
-        return self._doc.fancy_repr(
-            class_name=self.__class__.__name__,
-            select_fields=select_fields,
-            exclude_fields=self._excluded_fields,
-            **kwargs,
-        )
 
     def to_dict(self, include_frames=False):
         """Serializes the sample view to a JSON dictionary.

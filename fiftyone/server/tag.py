@@ -7,7 +7,7 @@ FiftyOne Server tagging.
 """
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.json_util import convert

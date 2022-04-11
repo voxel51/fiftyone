@@ -20,8 +20,8 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
-import fiftyone.core.odm as foo
-import fiftyone.core.odm.sample as foos
+import fiftyone.core.data as foo
+import fiftyone.core.data.sample as foos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
