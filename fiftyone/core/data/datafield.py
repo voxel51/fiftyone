@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field as f
+from dataclasses import dataclass
 import typing as t
 
 
@@ -20,8 +20,8 @@ FIELDS = "__fiftyone_fields__"
 
 @dataclass
 class Field(t.Generic[_T, _R]):
-    name: str = f(init=False)
-    type: t.Type[_T] = f(init=False)
+    name: t.Optional[str] = None
+    type: t.Optional[t.Type[_T]] = None
     default: t.Union[_T, MISSING_TYPE] = MISSING
     default_factory: t.Union[t.Callable[[], _T], MISSING_TYPE] = MISSING
     dump: t.Optional[t.Callable[[_T], _R]] = None

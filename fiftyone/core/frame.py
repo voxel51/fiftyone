@@ -10,31 +10,12 @@ import itertools
 from bson import ObjectId
 from pymongo import ReplaceOne, UpdateOne, DeleteOne
 
+import fiftyone.core.data as fod
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
-import fiftyone.core.data as foo
-from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
 fov = fou.lazy_import("fiftyone.core.view")
-
-
-def get_default_frame_fields(include_private=False, use_db_fields=False):
-    """Returns the default fields present on all frames.
-
-    Args:
-        include_private (False): whether to include fields starting with ``_``
-        use_db_fields (False): whether to return database fields rather than
-            user-facing fields, when applicable
-
-    Returns:
-        a tuple of field names
-    """
-    return foo.get_default_fields(
-        foo.DatasetFrameDocument,
-        include_private=include_private,
-        use_db_fields=use_db_fields,
-    )
 
 
 class Frames(object):
@@ -498,7 +479,7 @@ class Frames(object):
         ]
 
         try:
-            d = next(foo.aggregate(self._frame_collection, pipeline))
+            d = next(fod.aggregate(self._frame_collection, pipeline))
             return set(d["frame_numbers"])
         except StopIteration:
             return set()
@@ -510,7 +491,7 @@ class Frames(object):
         ]
 
         id_map = {}
-        for d in foo.aggregate(self._frame_collection, pipeline):
+        for d in fod.aggregate(self._frame_collection, pipeline):
             id_map[d["frame_number"]] = d["_id"]
 
         return id_map
@@ -582,7 +563,7 @@ class Frames(object):
             self._get_frames_match_stage(),
             {"$sort": {"frame_number": 1}},
         ]
-        return foo.aggregate(self._frame_collection, pipeline)
+        return fod.aggregate(self._frame_collection, pipeline)
 
     def _make_frame(self, d):
         doc = self._dataset._frame_dict_to_doc(d)
@@ -834,7 +815,7 @@ class FramesView(Frames):
         if not self._needs_frames:
             return super()._iter_frames_db()
 
-        return foo.aggregate(self._sample_collection, self._frames_pipeline)
+        return fod.aggregate(self._sample_collection, self._frames_pipeline)
 
     def _make_frame(self, d):
         doc = self._dataset._frame_dict_to_doc(d)
@@ -889,7 +870,7 @@ class FramesView(Frames):
         self._replacements.clear()
 
 
-class Frame(Document, metaclass=FrameSingleton):
+class Frame(Document):
     """A frame in a video :class:`fiftyone.core.sample.Sample`.
 
     Frames store all information associated with a particular frame of a video,
@@ -906,8 +887,6 @@ class Frame(Document, metaclass=FrameSingleton):
     Args:
         **kwargs: frame fields and values
     """
-
-    _NO_DATASET_DOC_CLS = foo.NoDatasetFrameDocument
 
     @property
     def sample_id(self):

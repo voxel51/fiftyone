@@ -26,9 +26,10 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfigError
-from fiftyone.core.data.types import DatabaseConfig
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
+
+from .types import DatabaseConfig
 
 
 logger = logging.getLogger(__name__)

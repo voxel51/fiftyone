@@ -32,7 +32,6 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -40,7 +39,7 @@ import fiftyone.core.metadata as fome
 import fiftyone.migrations as fomi
 import fiftyone.core.data as foo
 import fiftyone.core.sample as fos
-from fiftyone.core.singletons import DatasetSingleton
+from fiftyone.core.data import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 

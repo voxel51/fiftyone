@@ -16,7 +16,6 @@ from tabulate import tabulate
 import eta.core.utils as etau
 
 import fiftyone.core.evaluation as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.core.validation as fov

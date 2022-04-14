@@ -17,8 +17,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 

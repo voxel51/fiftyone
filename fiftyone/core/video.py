@@ -17,11 +17,9 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.data as foo
-import fiftyone.core.data.sample as foos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov

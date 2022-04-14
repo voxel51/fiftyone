@@ -1,2 +1,0 @@
-class FiftyOneDataError(TypeError):
-    pass

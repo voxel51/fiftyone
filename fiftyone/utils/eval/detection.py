@@ -11,7 +11,6 @@ import logging
 import numpy as np
 
 import fiftyone.core.evaluation as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov

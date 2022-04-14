@@ -16,7 +16,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import VALUE
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -1849,11 +1848,7 @@ def _parse_field_and_expr(
 
 
 def _to_safe_expr(expr, field_type):
-    if (
-        expr is None
-        and field_type is not None
-        and not isinstance(field_type, fof.FloatField)
-    ):
+    if expr is None and field_type is not None and not field.type == float:
         return None
 
     to_finite = (

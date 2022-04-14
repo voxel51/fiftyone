@@ -29,5 +29,5 @@ class List(t.List[_T]):
     def extend(self, __iterable: t.Iterable[_T]) -> None:
         super().extend(__iterable)
 
-    def insert(self, __index: t.SupportsIndex, __object: _T) -> None:
+    def insert(self, __index: int, __object: _T) -> None:
         super().insert(__index, __object)

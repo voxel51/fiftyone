@@ -16,7 +16,6 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
-import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -32,8 +31,8 @@ class Metadata:
         mime_type (None): the MIME type of the media
     """
 
-    size_bytes = fof.IntField()
-    mime_type = fof.StringField()
+    size_bytes: int
+    mime_type: str
 
     @classmethod
     def build_for(cls, path_or_url, mime_type=None):
@@ -83,9 +82,9 @@ class ImageMetadata(Metadata):
         num_channels (None): the number of channels in the image
     """
 
-    width = fof.IntField()
-    height = fof.IntField()
-    num_channels = fof.IntField()
+    width: int
+    height: int
+    num_channels: int
 
     @classmethod
     def build_for(cls, img_or_path_or_url, mime_type=None):
@@ -174,12 +173,12 @@ class VideoMetadata(Metadata):
         encoding_str (None): the encoding string for the video
     """
 
-    frame_width = fof.IntField()
-    frame_height = fof.IntField()
-    frame_rate = fof.FloatField()
-    total_frame_count = fof.IntField()
-    duration = fof.FloatField()
-    encoding_str = fof.StringField()
+    frame_width: int
+    frame_height: int
+    frame_rate: float
+    total_frame_count: int
+    duration: float
+    encoding_str: str
 
     @classmethod
     def build_for(cls, video_path_or_url, mime_type=None):

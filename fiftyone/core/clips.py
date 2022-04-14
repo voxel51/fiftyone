@@ -15,7 +15,6 @@ import eta.core.utils as etau
 import fiftyone.core.dataset as fod
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos

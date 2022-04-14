@@ -68,20 +68,15 @@ def polyline_points_validator(value: t.Any) -> None:
         )
 
 
-def load_geo(value: t.Dict) -> t.Tuple[float, float]:
-    if isinstance(value, dict):
-        return value["coordinates"]
-
-    return value
-
-
 class GeoType(Enum):
+
+    POINT = "Point"
     """A GeoJSON field storing a longitude and latitude coordinate point.
 
     The data is stored as ``[longitude, latitude]``.
     """
 
-    POINT = "Point"
+    LINE_STRING = "LineString"
     """A GeoJSON field storing a line of longitude and latitude coordinates.
 
     The data is stored as follow::
@@ -89,7 +84,7 @@ class GeoType(Enum):
         [[lon1, lat1], [lon2, lat2], ...]
     """
 
-    LINE_STRING = "LineString"
+    POLYGON = "Polygon"
     """A GeoJSON field storing a polygon of longitude and latitude coordinates.
 
     The data is stored as follows::
@@ -104,15 +99,15 @@ class GeoType(Enum):
     remaining entries describe holes.
     """
 
-    POLYGON = "Polygon"
+    MULTI_POINT = "MultiPoint"
     """A GeoJSON field storing a list of points.
 
     The data is stored as follows::
 
         [[lon1, lat1], [lon2, lat2], ...]
     """
-    MULTI_POINT = "MultiPoint"
 
+    MULTI_LINE_STRING = "MultiLineString"
     """A GeoJSON field storing a list of lines.
 
     The data is stored as follows::
@@ -124,7 +119,7 @@ class GeoType(Enum):
         ]
     """
 
-    MULTI_LINE_STRING = "MultiLineString"
+    MULTI_POLYGON = "MultiPolygon"
     """A GeoJSON field storing a list of polygons.
 
     The data is stored as follows::
@@ -143,14 +138,20 @@ class GeoType(Enum):
             ...
         ]
     """
-    MULTI_POLYGON = "MultiPolygon"
 
 
-def dump_geo(value: t.Tuple[float, float], type="Point") -> t.Dict:
+def dump_geo(value: t.Any, type: GeoType) -> t.Any:
     if isinstance(value, dict):
         return value
 
     return SON([("type", type), ("coordinates", value)])
+
+
+def load_geo(value: t.Any) -> t.Any:
+    if isinstance(value, dict):
+        return value["coordinates"]
+
+    return value
 
 
 def vector_validator(value: t.Any) -> None:

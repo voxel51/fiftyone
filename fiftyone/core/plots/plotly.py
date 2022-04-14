@@ -23,7 +23,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.context as foc
 import fiftyone.core.expressions as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.patches as fop

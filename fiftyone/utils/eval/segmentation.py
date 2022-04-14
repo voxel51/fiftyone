@@ -14,7 +14,6 @@ import sklearn.metrics as skm
 import eta.core.image as etai
 
 import fiftyone.core.evaluation as foe
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.validation as fov
 

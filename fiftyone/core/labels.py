@@ -9,21 +9,24 @@ import itertools
 import typing as t
 import warnings
 
-from bson import ObjectId, Binary
+from bson import ObjectId
 import cv2
 import numpy as np
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
 
-from fiftyone.core.data import field
+from fiftyone.core.data import Data, field
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 from fiftyone.core.validators import (
+    GeoType,
     dump_array,
+    dump_geo,
     heatmap_range_validator,
     keypoints_validator,
     load_array,
+    load_geo,
     polyline_points_validator,
 )
 
@@ -41,7 +44,7 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
-class Label:
+class Label(Data):
     """Base class for labels.
 
     Label instances represent a logical collection of data associated with a
@@ -1001,9 +1004,9 @@ class TemporalDetection(_HasID, Label):
         confidence (None): a confidence in ``[0, 1]`` for the detection
     """
 
-    label = fof.StringField()
-    support = fof.FrameSupportField()
-    confidence = fof.FloatField()
+    label: str
+    support: t.Tuple[int, int]
+    confidence: float
 
     @classmethod
     def from_timestamps(cls, timestamps, sample=None, metadata=None, **kwargs):
@@ -1080,7 +1083,7 @@ class TemporalDetections(_HasLabelList, Label):
 
     _LABEL_LIST_FIELD = "detections"
 
-    detections = fof.ListField(fof.EmbeddedDocumentField(TemporalDetection))
+    detections: t.List[TemporalDetection]
 
 
 class GeoLocation(_HasID, Label):
@@ -1104,9 +1107,18 @@ class GeoLocation(_HasID, Label):
             and any remaining entries describe holes
     """
 
-    point = fof.GeoPointField(auto_index=False)
-    line = fof.GeoLineStringField(auto_index=False)
-    polygon = fof.GeoPolygonField(auto_index=False)
+    point: t.Tuple[float, float] = field(
+        dump=lambda v: dump_geo(v, GeoType.POINT),
+        load=load_geo,
+    )
+    line: t.List[t.Tuple[float, float]] = field(
+        dump=lambda v: dump_geo(v, GeoType.LINE_STRING),
+        load=load_geo,
+    )
+    polygon: t.List[t.List[t.Tuple[float, float]]] = field(
+        dump=lambda v: dump_geo(v, GeoType.POLYGON),
+        load=load_geo,
+    )
 
     def to_geo_json(self):
         """Returns a GeoJSON ``geometry`` dict for this instance.
@@ -1142,9 +1154,18 @@ class GeoLocations(_HasID, Label):
         polygons (None): a list of polygons
     """
 
-    points = fof.GeoMultiPointField(auto_index=False)
-    lines = fof.GeoMultiLineStringField(auto_index=False)
-    polygons = fof.GeoMultiPolygonField(auto_index=False)
+    point: t.List[t.Tuple[float, float]] = field(
+        dump=lambda v: dump_geo(v, GeoType.MULTI_POINT),
+        load=load_geo,
+    )
+    line: t.List[t.List[t.Tuple[float, float]]] = field(
+        dump=lambda v: dump_geo(v, GeoType.MULTI_LINE_STRING),
+        load=load_geo,
+    )
+    polygon: t.List[t.List[t.List[t.Tuple[float, float]]]] = field(
+        dump=lambda v: dump_geo(v, GeoType.MULTI_POLYGON),
+        load=load_geo,
+    )
 
     def to_geo_json(self):
         """Returns a GeoJSON ``geometry`` dict for this instance.
