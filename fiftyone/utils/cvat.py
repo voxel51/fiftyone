@@ -759,7 +759,7 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            labels_path = fou.normpath(labels_path)
+            labels_path = fou.normpath(self.labels_path)
             labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(labels_path, p)
                 for p in etau.list_files(labels_path, recursive=True)
