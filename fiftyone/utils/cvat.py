@@ -2984,7 +2984,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
-        image_quality (75): an int in `[0, 100]` determining the image quality
+        image_quality (75): an int in ``[0, 100]`` determining the image quality
             to upload to CVAT
         use_cache (True): whether to use a cache when uploading data. Using a
             cache reduces task creation time as data will be processed
@@ -3011,7 +3011,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             for all objects in the annotation run
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
-            or when using `task_size` and generating multiple tasks
+            or when using ``task_size`` and generating multiple tasks
     """
 
     def __init__(
@@ -3592,6 +3592,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._server_version = 1
             self._login(username, password)
 
+        self._add_referer()
+
+    def _add_referer(self):
+        if "Referer" not in self._session.headers:
+            self._session.headers["Referer"] = self.login_url
+
     def close(self):
         """Closes the API session."""
         self._session.close()
@@ -3847,7 +3853,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             schema (None): the label schema to use for the created task
             segment_size (None): maximum number of images to load into a job.
                 Not applicable to videos
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
             project_id (None): the ID of a project to which upload the task
@@ -3979,7 +3985,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_id: the task ID
             paths: a list of media paths to upload
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             use_cache (True): whether to use a cache when uploading data. Using
                 a cache reduces task creation time as data will be processed
