@@ -345,9 +345,7 @@ def classification_to_detections(sample_collection, in_field, out_field):
         sample.save()
 
 
-def filter_keypoints(
-    sample_collection, field, confidence_expr=None, labels=None
-):
+def filter_keypoints(sample_collection, field, expr=None, labels=None):
     """Returns a view that filters the individual
     :attr:`points <fiftyone.core.labels.Keypoint.points>` in the specified
     keypoints field.
@@ -361,11 +359,11 @@ def filter_keypoints(
             :class:`fiftyone.core.collections.SampleCollection`
         field: the name of the :class:`fiftyone.core.labels.Keypoint` or
             :class:`fiftyone.core.labels.Keypoints` field
-        confidence_expr (None): a boolean
-            :class:`fiftyone.core.expressions.ViewExpression` to apply to each
-            keypoint confidence to decide whether to keep the point. This
-            expression must use either ``F()`` or ``F("confidence")`` to refer
-            to the confidence value under test
+        expr (None): a boolean
+            :class:`fiftyone.core.expressions.ViewExpression` like
+            ``F("confidence") > 0.5`` or ``F("occluded") == False`` to apply
+            elementwise to the specified field, which must be a list of same
+            length as :attr:`fiftyone.core.labels.Keypoint.points`
         labels (None): an optional iterable of specific keypoint labels to keep
 
     Returns:
@@ -375,15 +373,18 @@ def filter_keypoints(
 
     view = sample_collection.view()
 
-    if confidence_expr is not None:
-        expr = _replace_view_field(confidence_expr, "confidence", "")
+    if expr is not None:
+        field, expr = _extract_field(expr)
 
         view = view.set_field(
             path,
-            F.zip(F("points"), F("confidences")).map(
-                (F()[1].apply(expr)).if_else(
-                    F()[0], [float("nan"), float("nan")],
-                )
+            (F(field) != None).if_else(
+                F.zip(F("points"), F(field)).map(
+                    (F()[1].apply(expr)).if_else(
+                        F()[0], [float("nan"), float("nan")],
+                    )
+                ),
+                F("points"),
             ),
         )
 
@@ -408,31 +409,49 @@ def filter_keypoints(
             F.enumerate(F("points")).map(
                 F()[0]
                 .is_in(inds)
-                .if_else(F()[1], [float("nan"), float("nan")],)
+                .if_else(F()[1], [float("nan"), float("nan")])
             ),
         )
 
     return view
 
 
-def _replace_view_field(val, old, new):
-    if isinstance(val, foe.ViewField):
-        if val._expr == old:
-            val._expr = new
+def _extract_field(val):
+    field = None
 
-        return val
+    if isinstance(val, foe.ViewField) and not val.is_frozen:
+        field = val._expr
+        val._expr = ""
+        return field, val
 
     if isinstance(val, foe.ViewExpression):
-        val._expr = _replace_view_field(val._expr, old, new)
-        return val
+        field, val._expr = _extract_field(val._expr)
+        return field, val
 
     if isinstance(val, dict):
-        return {
-            _replace_view_field(k, old, new): _replace_view_field(v, old, new)
-            for k, v in val.items()
-        }
+        _val = {}
+        for k, v in val.items():
+            _field, _k = _extract_field(k)
+            if _field is not None:
+                field = _field
+
+            _field, _v = _extract_field(v)
+            if _field is not None:
+                field = _field
+
+            _val[_k] = _v
+
+        return field, _val
 
     if isinstance(val, list):
-        return [_replace_view_field(v, old, new) for v in val]
+        _val = []
+        for v in val:
+            _field, _v = _extract_field(v)
+            if _field is not None:
+                field = _field
 
-    return val
+            _val.append(_v)
+
+        return field, _val
+
+    return field, val
