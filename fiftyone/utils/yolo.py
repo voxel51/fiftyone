@@ -14,6 +14,7 @@ import yaml
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -310,7 +311,7 @@ class YOLOv4DatasetImporter(
                 if not os.path.isabs(path):
                     path = os.path.join(root_dir, path)
 
-                image_paths.append(path)
+                image_paths.append(fou.normpath(path))
         else:
             if self.images_path is not None:
                 logger.warning(
@@ -321,7 +322,7 @@ class YOLOv4DatasetImporter(
                 )
 
             image_paths = [
-                p
+                fou.normpath(p)
                 for p in etau.list_files(
                     self.data_path, abs_paths=True, recursive=True
                 )
@@ -337,6 +338,8 @@ class YOLOv4DatasetImporter(
             else:
                 # Labels are in same directory as images
                 labels_path = os.path.splitext(image_path)[0] + ".txt"
+
+            labels_path = fou.normpath(labels_path)
 
             if os.path.isfile(labels_path):
                 labels_paths_map[image_path] = labels_path
@@ -488,7 +491,7 @@ class YOLOv5DatasetImporter(
 
         if etau.is_str(data) and data.endswith(".txt"):
             txt_path = _parse_yolo_v5_data_path(data, self.yaml_path)
-            image_paths = _read_file_lines(txt_path)
+            image_paths = [fou.normpath(p) for p in _read_file_lines(txt_path)]
         else:
             if etau.is_str(data):
                 data_dirs = [data]
@@ -497,7 +500,9 @@ class YOLOv5DatasetImporter(
 
             image_paths = []
             for data_dir in data_dirs:
-                data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
+                data_dir = fou.normpath(
+                    _parse_yolo_v5_data_path(data_dir, self.yaml_path)
+                )
                 image_paths.extend(
                     etau.list_files(data_dir, abs_paths=True, recursive=True)
                 )

@@ -592,7 +592,7 @@ class CVATImageDatasetImporter(
             else:
                 key = i.name
 
-            cvat_images_map[key] = i
+            cvat_images_map[fou.normpath(key)] = i
 
         filenames = set(cvat_images_map.keys())
 
@@ -759,9 +759,10 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
+            labels_path = fou.normpath(labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: os.path.join(labels_path, p)
+                for p in etau.list_files(labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}

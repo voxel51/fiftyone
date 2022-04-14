@@ -453,7 +453,7 @@ class GeoJSONDatasetImporter(
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
                 if "filename" in properties:
-                    filename = properties.pop("filename")
+                    filename = fou.normpath(properties.pop("filename"))
                     if os.path.isabs(filename):
                         filepath = filename
                     else:
