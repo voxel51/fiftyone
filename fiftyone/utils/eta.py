@@ -739,7 +739,7 @@ def to_keypoints(keypoint, name=None, extra_attrs=True):
         label=keypoint.label,
         index=keypoint.index,
         points=keypoint.points,
-        confidences=keypoint.confidences,
+        confidence=keypoint.confidence,
         attrs=attrs,
         tags=keypoint.tags,
     )
@@ -760,7 +760,7 @@ def from_keypoint(keypoints):
     return fol.Keypoint(
         label=keypoints.label,
         points=keypoints.points,
-        confidences=keypoints.confidences,
+        confidence=keypoints.confidence,
         index=keypoints.index,
         tags=keypoints.tags,
         **attributes,

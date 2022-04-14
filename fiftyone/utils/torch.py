@@ -949,7 +949,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
                 fol.Keypoint(
                     label=self.classes[label],
                     points=points,
-                    confidences=kpt_scores.tolist(),
+                    confidence=kpt_scores.tolist(),
                 )
             )
 
