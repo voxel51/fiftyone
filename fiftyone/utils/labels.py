@@ -372,20 +372,11 @@ def filter_keypoints(sample_collection, field, expr=None, labels=None):
     _, path = sample_collection._get_label_field_path(field, "points")
 
     view = sample_collection.view()
+    empty_point = dict(fol.Point().to_dict())
 
     if expr is not None:
-        field, expr = _extract_field(expr)
-
         view = view.set_field(
-            path,
-            (F(field) != None).if_else(
-                F.zip(F("points"), F(field)).map(
-                    (F()[1].apply(expr)).if_else(
-                        F()[0], [float("nan"), float("nan")],
-                    )
-                ),
-                F("points"),
-            ),
+            path, F("points").map(expr.if_else(F(), empty_point))
         )
 
     if labels is not None:
@@ -407,51 +398,8 @@ def filter_keypoints(sample_collection, field, expr=None, labels=None):
         view = view.set_field(
             path,
             F.enumerate(F("points")).map(
-                F()[0]
-                .is_in(inds)
-                .if_else(F()[1], [float("nan"), float("nan")])
+                F()[0].is_in(inds).if_else(F()[1], empty_point)
             ),
         )
 
     return view
-
-
-def _extract_field(val):
-    field = None
-
-    if isinstance(val, foe.ViewField) and not val.is_frozen:
-        field = val._expr
-        val._expr = ""
-        return field, val
-
-    if isinstance(val, foe.ViewExpression):
-        field, val._expr = _extract_field(val._expr)
-        return field, val
-
-    if isinstance(val, dict):
-        _val = {}
-        for k, v in val.items():
-            _field, _k = _extract_field(k)
-            if _field is not None:
-                field = _field
-
-            _field, _v = _extract_field(v)
-            if _field is not None:
-                field = _field
-
-            _val[_k] = _v
-
-        return field, _val
-
-    if isinstance(val, list):
-        _val = []
-        for v in val:
-            _field, _v = _extract_field(v)
-            if _field is not None:
-                field = _field
-
-            _val.append(_v)
-
-        return field, _val
-
-    return field, val

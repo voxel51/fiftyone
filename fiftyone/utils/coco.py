@@ -975,10 +975,10 @@ class COCOObject(object):
 
         points = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
-            if v == 0:
-                points.append((float("nan"), float("nan")))
+            if v != 0:
+                points.append(fol.Point(x=x / width, y=y / height))
             else:
-                points.append((x / width, y / height))
+                points.append(fol.Point())
 
         return fol.Keypoint(label=label, points=points, **self.attributes)
 
@@ -2159,8 +2159,8 @@ def _make_coco_keypoints(keypoint, frame_size):
     # lie within the object's segmentation, but we'll be lazy for now
 
     keypoints = []
-    for x, y in keypoint.points:
-        keypoints.extend((int(x * width), int(y * height), 2))
+    for point in keypoint.points:
+        keypoints.extend((int(point.x * width), int(point.y * height), 2))
 
     return keypoints
 

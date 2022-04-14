@@ -2757,8 +2757,20 @@ class ViewExpression(object):
                     filepath="image.jpg",
                     keypoints=fo.Keypoints(
                         keypoints=[
-                            fo.Keypoint(points=[(0, 0), (1, 1)]),
-                            fo.Keypoint(points=[(0, 0), (1, 0), (1, 1), (0, 1)]),
+                            fo.Keypoint(
+                                points=[
+                                    fo.Point(x=0, y=0),
+                                    fo.Point(x=1, y=1),
+                                ]
+                            ),
+                            fo.Keypoint(
+                                points=[
+                                    fo.Point(x=0, y=0),
+                                    fo.Point(x=1, y=0),
+                                    fo.Point(x=1, y=1),
+                                    fo.Point(x=0, y=1),
+                                ]
+                            ),
                         ]
                     )
                 )

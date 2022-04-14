@@ -1166,7 +1166,7 @@ class OpenLABELObject(object):
 
         polylines = []
         for segmentation in self.segmentations:
-            rel_points = [
+            points = [
                 [(x / width, y / height) for x, y, in _pairwise(segmentation)]
             ]
 
@@ -1180,7 +1180,7 @@ class OpenLABELObject(object):
             polylines.append(
                 fol.Polyline(
                     label=label,
-                    points=rel_points,
+                    points=points,
                     filled=filled,
                     closed=closed,
                     **attributes,
@@ -1209,9 +1209,9 @@ class OpenLABELObject(object):
 
         keypoints = []
         for kps in self.keypoints:
-            rel_points = [(x / width, y / height) for x, y, in kps]
+            points = [fol.Point(x=x / width, y=y / height) for x, y, in kps]
             keypoints.append(
-                fol.Keypoint(label=label, points=rel_points, **attributes)
+                fol.Keypoint(label=label, points=points, **attributes)
             )
 
         return keypoints

@@ -845,21 +845,33 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
+class Point(Label):
+    """An individual point in a :class:`Keypoint` object.
+
+    Args:
+        x (None): the x coordinate in ``[0, 1]``
+        y (None): the y coordinate in ``[0, 1]``
+        confidence (None): a confidence in ``[0, 1]`` for the point
+    """
+
+    x = fof.FloatField()
+    y = fof.FloatField()
+    confidence = fof.FloatField()
+
+
 class Keypoint(_HasID, _HasAttributesDict, Label):
     """A list of keypoints in an image.
 
     Args:
         label (None): a label for the points
-        points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidence (None): a list of confidences in ``[0, 1]`` for each point
+        points (None): a list of :class:`Point` instances
         index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
 
     label = fof.StringField()
-    points = fof.KeypointsField()
-    confidence = fof.ListField(fof.FloatField(), null=True)
+    points = fof.ListField(fof.EmbeddedDocumentField(Point))
     index = fof.IntField()
 
     def to_shapely(self, frame_size=None):
@@ -873,7 +885,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
             a ``shapely.geometry.multipoint.MultiPoint``
         """
         # pylint: disable=not-an-iterable
-        points = self.points
+        points = [(p.x, p.y) for p in self.points]
 
         if frame_size is not None:
             w, h = frame_size

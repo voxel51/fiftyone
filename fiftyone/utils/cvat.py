@@ -1989,6 +1989,7 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
+        points = [fol.Point(x=x, y=y) for x, y in points]
         attributes = self._to_attributes()
         return fol.Keypoint(label=label, points=points, **attributes)
 
@@ -2008,7 +2009,8 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         label = keypoint.label
 
         frame_size = (metadata.width, metadata.height)
-        points = cls._to_abs_points(keypoint.points, frame_size)
+        points = [(p.x, p.y) for p in keypoint.points]
+        points = cls._to_abs_points(points, frame_size)
 
         occluded, attributes = cls._parse_attributes(keypoint)
 
@@ -2768,6 +2770,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
+        points = [fol.Point(x=x, y=y) for x, y in points]
         attributes = self._to_attributes()
         return fol.Keypoint(label=label, points=points, **attributes)
 
@@ -2786,10 +2789,14 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         """
         frame = frame_number - 1
         label = keypoint.label
-        points = cls._to_abs_points(keypoint.points, frame_size)
+
+        points = [(p.x, p.y) for p in keypoint.points]
+        points = cls._to_abs_points(points, frame_size)
+
         outside, occluded, keyframe, attributes = cls._parse_attributes(
             keypoint
         )
+
         return cls(
             frame,
             label,
@@ -6387,10 +6394,10 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Polyline`
         """
         points = self._to_pairs_of_points(self.points)
-        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
+        points = HasCVATPoints._to_rel_points(points, self.frame_size)
         label = fol.Polyline(
             label=self.label,
-            points=[rel_points],
+            points=[points],
             index=self.index,
             closed=closed,
             filled=filled,
@@ -6405,12 +6412,9 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Polylines`
         """
         points = self._to_pairs_of_points(self.points)
-        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
+        points = HasCVATPoints._to_rel_points(points, self.frame_size)
         polyline = fol.Polyline(
-            label=self.label,
-            points=[rel_points],
-            closed=closed,
-            filled=filled,
+            label=self.label, points=[points], closed=closed, filled=filled,
         )
         label = fol.Polylines(polylines=[polyline])
         self._set_attributes(label)
@@ -6423,10 +6427,9 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Keypoint`
         """
         points = self._to_pairs_of_points(self.points)
-        rel_points = HasCVATPoints._to_rel_points(points, self.frame_size)
-        label = fol.Keypoint(
-            label=self.label, points=rel_points, index=self.index
-        )
+        points = HasCVATPoints._to_rel_points(points, self.frame_size)
+        points = [fol.Point(x=x, y=y) for x, y in points]
+        label = fol.Keypoint(label=self.label, points=points, index=self.index)
         self._set_attributes(label)
         return label
 
