@@ -93,6 +93,7 @@ def _up_keypoint_op(path):
     points = root + ".points"
     confidence = root + ".confidence"
 
+    # @todo unset confidence field
     return {
         "$mergeObjects": [
             root,
