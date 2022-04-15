@@ -49,7 +49,28 @@ def test_keypoint_models():
 def test_embedding_models():
     all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
+    
 
+def test_clip():
+    # Load a small test dataset
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        shuffle=True,
+        max_samples=10,
+    )
+
+    model = foz.load_zoo_model("clip-vit-base32-torch")
+
+    dataset.apply_model(
+        model, label_field="clip", batch_size=4,
+    )
+    assert len(dataset.exists("clip")) == len(dataset)
+
+    embeddings = dataset.compute_embeddings(model)
+    print("Embeddings shape: %s" % embeddings.shape)
+    
 
 def test_logits_models():
     models = _get_models_with_tag("logits")

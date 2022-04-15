@@ -1673,6 +1673,51 @@
                 "torch"
             ],
             "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "clip-vit-base32-torch",
+            "base_filename": "CLIP-ViT-B-16.pt",
+            "version": null,
+            "description": "CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400B text-image pairs",
+            "source": "https://github.com/openai/CLIP",
+            "size_bytes": 17277937,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://openaipublic.azureedge.net/clip/models/40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.zoo.models.torch.TorchCLIPModel",
+                "config": {
+                    "entrypoint_fcn": "",
+                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "image_size": [224, 224],
+                    "image_mean": [0.485, 0.456, 0.406],
+                    "image_std": [0.229, 0.224, 0.225],
+                    "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
+                    "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
+                    "text_prompt": "A photo of",
+                    "context_length": 77
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "ftfy", "regex"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch"
+            ],
+            "date_added": "2022-04-12 17:49:51"
         }
     ]
 }
