@@ -68,7 +68,7 @@ def _migrate_keypoints(db, coll_name, fields, direction="up"):
 
 
 def _up_keypoint_op(path):
-    # @todo migrate other ListField attributes like `confidence`?
+    """
     return {
         "$mergeObjects": [
             "$" + path,
@@ -83,6 +83,61 @@ def _up_keypoint_op(path):
                             "y": {"$arrayElemAt": ["$$this", 1]},
                         },
                     }
+                }
+            },
+        ]
+    }
+    """
+
+    root = "$" + path
+    points = root + ".points"
+    confidence = root + ".confidence"
+
+    return {
+        "$mergeObjects": [
+            root,
+            {
+                "points": {
+                    "$cond": {
+                        "if": {"$gt": [confidence, None]},
+                        "then": {
+                            "$map": {
+                                "input": {
+                                    "$zip": {"inputs": [points, confidence]}
+                                },
+                                "as": "this",
+                                "in": {
+                                    "_cls": "Point",
+                                    "x": {
+                                        "$arrayElemAt": [
+                                            {"$arrayElemAt": ["$$this", 0]},
+                                            0,
+                                        ]
+                                    },
+                                    "y": {
+                                        "$arrayElemAt": [
+                                            {"$arrayElemAt": ["$$this", 0]},
+                                            1,
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "$arrayElemAt": ["$$this", 1]
+                                    },
+                                },
+                            },
+                        },
+                        "else": {
+                            "$map": {
+                                "input": points,
+                                "as": "this",
+                                "in": {
+                                    "_cls": "Keypoint",
+                                    "x": {"$arrayElemAt": ["$$this", 0]},
+                                    "y": {"$arrayElemAt": ["$$this", 1]},
+                                },
+                            },
+                        },
+                    },
                 }
             },
         ]
@@ -107,7 +162,7 @@ def _up_keypoints_op(path):
 
 
 def _down_keypoint_op(path):
-    # @todo migrate other attributes like `confidence` to ListFields?
+    """
     return {
         "$mergeObjects": [
             "$" + path,
@@ -119,6 +174,61 @@ def _down_keypoint_op(path):
                         "in": {["$$this.x", "$$this.y"]},
                     }
                 }
+            },
+        ]
+    }
+    """
+
+    root = "$" + path
+    points = root + ".points"
+
+    return {
+        "$mergeObjects": [
+            root,
+            {
+                "points": {
+                    "$map": {
+                        "input": points,
+                        "as": "this",
+                        "in": {["$$this.x", "$$this.y"]},
+                    },
+                },
+                "confidence": {
+                    "$cond": {
+                        "if": {
+                            "$gt": [
+                                {
+                                    "$size": {
+                                        "$ifNull": [
+                                            {
+                                                "$filter": {
+                                                    "input": points,
+                                                    "as": "this",
+                                                    "cond": {
+                                                        "$gt": [
+                                                            "$$this.confidence",
+                                                            None,
+                                                        ],
+                                                    },
+                                                },
+                                            },
+                                            [],
+                                        ],
+                                    },
+                                },
+                                0,
+                            ],
+                        },
+                        "then": {
+                            "$map": {
+                                "input": points,
+                                "as": "this",
+                                "in": {"$$this.confidence"},
+                            }
+                        },
+                        "else": None,
+                    },
+                },
             },
         ]
     }
