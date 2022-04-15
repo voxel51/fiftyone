@@ -78,7 +78,7 @@ def _up_keypoint_op(path):
                         "input": "$" + path + ".points",
                         "as": "this",
                         "in": {
-                            "_cls": "Keypoint",
+                            "_cls": "Point",
                             "x": {"$arrayElemAt": ["$$this", 0]},
                             "y": {"$arrayElemAt": ["$$this", 1]},
                         },
