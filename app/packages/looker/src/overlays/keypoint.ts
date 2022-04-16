@@ -4,7 +4,7 @@
 
 import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates, KeypointSkeleton } from "../state";
-import { distance } from "../util";
+import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
@@ -20,7 +20,7 @@ export default class KeypointOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if (this.getDistanceAndPoint(state)[0] <= state.pointRadius) {
+    if (this.getDistanceAndMaybePoint(state)[0] <= state.pointRadius) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -30,6 +30,18 @@ export default class KeypointOverlay<
     const color = this.getColor(state);
     const selected = this.isSelected(state);
     ctx.lineWidth = 0;
+
+    const skeleton = getSkeleton(this.field, state);
+    if (!skeleton) return;
+
+    for (let i = 0; i < skeleton.edges.length; i++) {
+      const path = skeleton.edges[i].map((index) => this.label.points[index]);
+      this.strokePath(ctx, state, path, color);
+
+      if (selected) {
+        this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
+      }
+    }
 
     for (let i = 0; i < this.label.points.length; i++) {
       const point = this.label.points[i];
@@ -52,31 +64,28 @@ export default class KeypointOverlay<
         ctx.fill();
       }
     }
-
-    const skeleton = getSkeleton(this.field, state);
-
-    if (!skeleton) return;
-
-    for (let i = 0; i < skeleton.edges.length; i++) {
-      const path = skeleton.edges[i].map((index) => this.label.points[index]);
-      this.strokePath(ctx, state, path, color, selected);
-
-      if (selected) {
-        this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
-      }
-    }
   }
 
   getMouseDistance(state: Readonly<State>): number {
-    return this.getDistanceAndPoint(state)[0];
+    return this.getDistanceAndMaybePoint(state)[0];
   }
 
   getPointInfo(state: Readonly<State>): PointInfo<KeypointLabel> {
+    const point = this.getDistanceAndMaybePoint(state)[1];
     return {
       color: this.getColor(state),
       field: this.field,
       label: this.label,
-      point: this.getDistanceAndPoint(state)[1],
+      point:
+        point !== null
+          ? {
+              coordinates: this.label.points[point],
+              attributes: Object.entries(this.label)
+                .filter(([_, v]) => Array.isArray(v))
+                .map(([k, v]) => [k, v[point]]),
+              index: point,
+            }
+          : null,
       type: "Keypoint",
     };
   }
@@ -85,20 +94,46 @@ export default class KeypointOverlay<
     return getKeypointPoints([this.label]);
   }
 
-  private getDistanceAndPoint(state: Readonly<State>) {
+  private getDistanceAndMaybePoint(
+    state: Readonly<State>
+  ): [number, number | null] {
     const distances = [];
     let {
-      canvasBBox: [_, __, w, h],
+      config: { dimensions },
       pointRadius,
-      relativeCoordinates: [x, y],
+      pixelCoordinates: [x, y],
     } = state;
     pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
-    for (const [px, py] of this.label.points) {
-      const d = distance(x * w, y * h, px * w, py * h);
+    for (let i = 0; i < this.label.points.length; i++) {
+      const point = this.label.points[i];
+      const d = distance(
+        x,
+        y,
+        ...(multiply(dimensions, point) as [number, number])
+      );
       if (d <= pointRadius * TOLERANCE) {
-        distances.push([0, [px, py]]);
+        distances.push([0, point]);
       } else {
-        distances.push([d, [px, py]]);
+        distances.push([d, point]);
+      }
+    }
+
+    const skeleton = getSkeleton(this.field, state);
+
+    if (skeleton) {
+      for (let i = 0; i < skeleton.edges.length; i++) {
+        const path = skeleton.edges[i].map((index) => this.label.points[index]);
+
+        for (let j = 1; j < path.length; j++) {
+          distances.push([
+            distanceFromLineSegment(
+              [x, y],
+              multiply(dimensions, path[j - 1]),
+              multiply(dimensions, path[j])
+            ),
+            null,
+          ]);
+        }
       }
     }
 

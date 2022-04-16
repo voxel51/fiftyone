@@ -262,6 +262,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         return (
           (inRange ||
             noConfidence ||
+            Array.isArray(s.confidence) ||
             (cNan && s.confidence === "nan") ||
             (cInf && s.confidence === "inf") ||
             (cNinf && s.confidence === "-inf")) &&
@@ -277,11 +278,12 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     }
     return filters;
   },
-  set: () => ({ get, set }, _) => {
+  set: () => ({ get, set, reset }, _) => {
     set(utils.activeModalFields, get(utils.activeFields));
     set(atoms.cropToContent(true), get(atoms.cropToContent(false)));
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
-    set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
+    reset(selectors.appConfigOption({ modal: true, key: "color_by_value" }));
+    reset(selectors.appConfigOption({ modal: true, key: "show_skeletons" }));
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
     set(atoms.alpha(true), get(atoms.alpha(false)));

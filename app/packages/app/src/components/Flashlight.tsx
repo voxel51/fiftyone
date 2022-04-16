@@ -95,6 +95,8 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
     };
   },
 });

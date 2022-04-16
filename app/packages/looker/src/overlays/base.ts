@@ -25,7 +25,11 @@ export interface PointInfo<Label extends BaseLabel> {
   color: string;
   field: string;
   label: Label;
-  point?: Coordinates;
+  point?: {
+    index: number;
+    attributes: [string, unknown][];
+    coordinates: Coordinates;
+  };
   target?: number;
   type: string;
 }

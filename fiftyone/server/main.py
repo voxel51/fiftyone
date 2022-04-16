@@ -61,7 +61,7 @@ _LIST_LIMIT = 200
 
 
 class RequestHandler(tornado.web.RequestHandler):
-    """"Base class for HTTP request handlers"""
+    """ "Base class for HTTP request handlers"""
 
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -717,7 +717,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag(
-        caller, changes, target_labels=False, active_labels=None,
+        caller,
+        changes,
+        target_labels=False,
+        active_labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -752,7 +755,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             label = []
             sample = []
         else:
-            (_, tag_aggs,) = fos.DatasetStatistics.get_label_aggregations(view)
+            (
+                _,
+                tag_aggs,
+            ) = fos.DatasetStatistics.get_label_aggregations(view)
             results = await view._async_aggregate(
                 [foa.Distinct("tags")] + tag_aggs,
             )
@@ -985,7 +991,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return [
             cls.send_statistics(
-                view, extended=False, filters=state.filters, only=only,
+                view,
+                extended=False,
+                filters=state.filters,
+                only=only,
             ),
             cls.send_statistics(
                 view, extended=True, filters=state.filters, only=only
@@ -1196,7 +1205,10 @@ def _label_filter(field):
     ):
         path = field.name
         if issubclass(field.document_type, fol._HasLabelList):
-            path = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD,)
+            path = "%s.%s" % (
+                path,
+                field.document_type._LABEL_LIST_FIELD,
+            )
 
     return path
 
@@ -1497,7 +1509,11 @@ class Application(tornado.web.Application):
             (r"/colorscales", ColorscalesHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
-            (r"/filepath/(.*)", MediaHandler, {"path": ""},),
+            (
+                r"/filepath/(.*)",
+                MediaHandler,
+                {"path": ""},
+            ),
             (r"/notebook", NotebookHandler),
             (r"/page", PageHandler),
             (r"/polling", PollingHandler),
