@@ -44,7 +44,7 @@ export default class KeypointOverlay<
 
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
-        const path = skeleton.edges[i].map((index) => this.label.points[index]);
+        const path = skeleton.edges[i].map((index) => points[index]);
         this.strokePath(ctx, state, path, color);
 
         if (selected) {
@@ -53,8 +53,12 @@ export default class KeypointOverlay<
       }
     }
 
-    for (let i = 0; i < this.label.points.length; i++) {
-      const point = this.label.points[i];
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      if (!point) {
+        continue;
+      }
+
       ctx.fillStyle = color;
       ctx.beginPath();
       const [x, y] = t(state, ...point);
@@ -160,9 +164,15 @@ export default class KeypointOverlay<
     ctx.lineWidth = state.strokeWidth;
     ctx.strokeStyle = color;
     ctx.setLineDash(dash ? [dash] : []);
-    ctx.moveTo(...t(state, path[0][0], path[0][1]));
-    for (const [x, y] of path.slice(1)) {
-      ctx.lineTo(...t(state, x, y));
+
+    for (let i = 1; i < path.length; i++) {
+      const start = path[i - 1];
+      const end = path[i];
+      if (!start || !end) {
+        continue;
+      }
+      ctx.moveTo(...t(state, ...start));
+      ctx.lineTo(...t(state, ...end));
     }
 
     ctx.stroke();

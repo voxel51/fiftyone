@@ -41,19 +41,27 @@ export const skeletonFilter = selectorFamily<
 >({
   key: "skeletonFilter",
   get: (modal) => ({ get }) => {
-    const labels = get(stringField.skeletonLabels(modal))[path];
-    const c = get(numericField.skeletonConfidence({ path, modal }));
+    const labels = get(stringField.skeletonLabels(modal));
+    const types = get(selectors.labelTypesMap);
+    const c = null;
 
     return (path: string, point: Point) => {
-      if (!labels[path] && !c) {
+      const lpath = `${path}${getPathExtension(types[path])}.points.label`;
+
+      if (!labels[lpath] && !c) {
         return true;
       }
+      const l = labels[lpath];
 
       const label =
-        !labels ||
-        (labels.exclude
-          ? !labels.values.includes(point.label)
-          : labels.values.includes(point.label));
+        !l ||
+        (l.exclude
+          ? !l.values.includes(point.label)
+          : l.values.includes(point.label));
+
+      if (!c) {
+        return label;
+      }
 
       const inRange = c.exclude
         ? c.range[0] - 0.005 > point.confidence ||
@@ -336,6 +344,10 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
     set(atoms.alpha(true), get(atoms.alpha(false)));
+    set(
+      stringField.skeletonLabels(true),
+      get(stringField.skeletonLabels(false))
+    );
   },
 });
 3;
