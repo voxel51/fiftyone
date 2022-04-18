@@ -190,7 +190,14 @@ const KeypointInfo = ({ detail }) => {
     <AttrBlock style={{ borderColor: detail.color }}>
       <AttrInfo label={detail.label} />
       {detail.point && (
-        <AttrInfo label={Object.fromEntries(detail.point.attributes)} />
+        <AttrInfo
+          label={Object.fromEntries(
+            detail.point.attributes.map(([k, v]) => [
+              `points[${detail.point.index}].${k}`,
+              v,
+            ])
+          )}
+        />
       )}
     </AttrBlock>
   );
@@ -355,6 +362,9 @@ const lookerOptions = selector({
       timeZone: get(selectors.timeZone),
       coloring: get(selectors.coloring(true)),
       alpha: get(atoms.alpha(true)),
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: true })
+      ),
       defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
       skeletons: get(atoms.stateDescription)?.dataset.skeletons,
     };

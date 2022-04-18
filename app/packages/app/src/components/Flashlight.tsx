@@ -95,6 +95,9 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: false })
+      ),
       defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
       skeletons: get(atoms.stateDescription)?.dataset.skeletons,
     };

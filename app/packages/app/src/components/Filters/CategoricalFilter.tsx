@@ -367,7 +367,7 @@ const useSearch = () => {
 };
 
 interface Props {
-  countsAtom: RecoilValueReadOnly<{
+  countsAtom?: RecoilValueReadOnly<{
     count: number;
     results: [Value, number][];
   }>;

@@ -32,14 +32,14 @@ export default class KeypointOverlay<
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
-    if (!skeleton) return;
+    if (skeleton && state.options.showSkeletons) {
+      for (let i = 0; i < skeleton.edges.length; i++) {
+        const path = skeleton.edges[i].map((index) => this.label.points[index]);
+        this.strokePath(ctx, state, path, color);
 
-    for (let i = 0; i < skeleton.edges.length; i++) {
-      const path = skeleton.edges[i].map((index) => this.label.points[index]);
-      this.strokePath(ctx, state, path, color);
-
-      if (selected) {
-        this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
+        if (selected) {
+          this.strokePath(ctx, state, path, INFO_COLOR, state.dashLength);
+        }
       }
     }
 
@@ -72,6 +72,7 @@ export default class KeypointOverlay<
 
   getPointInfo(state: Readonly<State>): PointInfo<KeypointLabel> {
     const point = this.getDistanceAndMaybePoint(state)[1];
+    const skeleton = getSkeleton(this.field, state);
     return {
       color: this.getColor(state),
       field: this.field,
@@ -81,8 +82,11 @@ export default class KeypointOverlay<
           ? {
               coordinates: this.label.points[point],
               attributes: Object.entries(this.label)
-                .filter(([_, v]) => Array.isArray(v))
-                .map(([k, v]) => [k, v[point]]),
+                .filter(([k, v]) => Array.isArray(v) && k !== "tags")
+                .map(([k, v]) => [k, v[point]])
+                .concat(
+                  skeleton ? [["label", skeleton.labels[point]]] : []
+                ) as [string, unknown][],
               index: point,
             }
           : null,
@@ -97,7 +101,7 @@ export default class KeypointOverlay<
   private getDistanceAndMaybePoint(
     state: Readonly<State>
   ): [number, number | null] {
-    const distances = [];
+    const distances: [number, number][] = [];
     let {
       config: { dimensions },
       pointRadius,
@@ -112,9 +116,9 @@ export default class KeypointOverlay<
         ...(multiply(dimensions, point) as [number, number])
       );
       if (d <= pointRadius * TOLERANCE) {
-        distances.push([0, point]);
+        distances.push([0, i]);
       } else {
-        distances.push([d, point]);
+        distances.push([d, i]);
       }
     }
 
@@ -174,7 +178,9 @@ const getSkeleton = (
 ): KeypointSkeleton | null => {
   const defaultSkeleton = state.options.defaultSkeleton;
 
-  const namedSkeleton = state.options.skeletons[name];
+  const namedSkeleton = state.options.skeletons
+    ? state.options.skeletons[name]
+    : null;
 
   return namedSkeleton || defaultSkeleton || null;
 };

@@ -405,6 +405,9 @@ export const mergeUpdates = <State extends BaseState>(
     if (n === null) {
       return n;
     }
+    if (o === null) {
+      return n;
+    }
     return mergeWith(merger, o, n);
   };
   return mergeWith(merger, state, updates);

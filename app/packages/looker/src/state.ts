@@ -102,6 +102,7 @@ interface BaseOptions {
   alpha: number;
   defaultSkeleton?: KeypointSkeleton;
   skeletons: { [key: string]: KeypointSkeleton };
+  showSkeletons: boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -291,6 +292,9 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   timeZone: "UTC",
   mimetype: "",
   alpha: 0.7,
+  defaultSkeleton: null,
+  skeletons: {},
+  showSkeletons: true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
