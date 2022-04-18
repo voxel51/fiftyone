@@ -52,25 +52,27 @@ def _migrate_keypoints(db, coll_name, fields, direction="up"):
     project = {}
     for name in keypoint_fields:
         if direction == "up":
-            project[name] = _handle_none(_up_keypoint_op(name))
+            project[name] = _up_keypoint_op(name)
         else:
-            project[name] = _handle_none(_down_keypoint_op(name))
+            project[name] = _down_keypoint_op(name)
 
     for name in keypoints_fields:
         if direction == "up":
-            project[name] = _handle_none(_up_keypoints_op(name))
+            project[name] = _up_keypoints_op(name)
         else:
-            project[name] = _handle_none(_down_keypoints_op(name))
+            project[name] = _down_keypoints_op(name)
+
+    project = {k: _handle_none(k, v) for k, v in project.items()}
 
     coll = db[coll_name]
     pipeline = [{"$project": project}, {"$merge": coll_name}]
     coll.aggregate(pipeline, allowDiskUse=True)
 
 
-def _handle_none(expr):
+def _handle_none(path, expr):
     return {
         "$cond": {
-            "if": {"$gt": ["$$CURRENT", None]},
+            "if": {"$gt": ["$" + path, None]},
             "then": expr,
             "else": None,
         }
