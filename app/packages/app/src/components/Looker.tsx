@@ -189,6 +189,9 @@ const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <AttrInfo label={detail.label} />
+      {detail.point && (
+        <AttrInfo label={Object.fromEntries(detail.point.attributes)} />
+      )}
     </AttrBlock>
   );
 };
@@ -352,6 +355,8 @@ const lookerOptions = selector({
       timeZone: get(selectors.timeZone),
       coloring: get(selectors.coloring(true)),
       alpha: get(atoms.alpha(true)),
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
     };
   },
 });

@@ -68,6 +68,11 @@ export interface ControlMap<State extends BaseState> {
   [key: string]: Control<State>;
 }
 
+export interface KeypointSkeleton {
+  labels: string[];
+  edges: number[][];
+}
+
 interface BaseOptions {
   activePaths: string[];
   filter: {
@@ -95,6 +100,8 @@ interface BaseOptions {
   timeZone: string;
   mimetype: string;
   alpha: number;
+  defaultSkeleton?: KeypointSkeleton;
+  skeletons: { [key: string]: KeypointSkeleton };
 }
 
 export type BoundingBox = [number, number, number, number];
