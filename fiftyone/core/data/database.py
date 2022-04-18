@@ -9,6 +9,7 @@ from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
 import os
+import typing as t
 
 import asyncio
 from bson import json_util
@@ -17,15 +18,15 @@ from dacite import from_dict
 import motor
 from packaging.version import Version
 import pymongo
+from pymongo.database import Database
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
 import pytz
-import strawberry as gql
 
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
-from fiftyone.core.config import FiftyOneConfigError
+from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
@@ -35,7 +36,7 @@ from .types import DatabaseConfig
 logger = logging.getLogger(__name__)
 
 
-_client = None
+_client: t.Optional[pymongo.MongoClient] = None
 _async_client = None
 _connection_kwargs = {}
 _db_service = None
@@ -57,7 +58,7 @@ def get_db_config():
     return from_dict(DatabaseConfig, data=data)
 
 
-def establish_db_conn(config):
+def establish_db_conn(config: FiftyOneConfig) -> None:
     """Establishes the database connection.
 
     If ``fiftyone.config.database_uri`` is defined, then we connect to that
@@ -119,21 +120,26 @@ def establish_db_conn(config):
     _validate_db_version(config, _client)
 
 
-def _connect():
+def _connect() -> pymongo.MongoClient:
     global _client
     if _client is None:
         global _connection_kwargs
-        _client = pymongo.MongoClient(**_connection_kwargs)
+        establish_db_conn(fo.config)
+
+    return _client
 
 
-def _async_connect():
+def _async_connect() -> None:
     global _async_client
     if _async_client is None:
+        _connect()
         global _connection_kwargs
         _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
 
 
-def _validate_db_version(config, client):
+def _validate_db_version(
+    config: FiftyOneConfig, client: pymongo.MongoClient
+) -> None:
     try:
         version = Version(client.server_info()["version"])
     except Exception as e:
@@ -219,7 +225,7 @@ async def _do_async_aggregate(collection, pipeline, session):
     return await cursor.to_list(1)
 
 
-def get_db_client():
+def get_db_client() -> pymongo.MongoClient:
     """Returns a database client.
 
     Returns:
@@ -229,15 +235,13 @@ def get_db_client():
     return _client
 
 
-def get_db_conn():
+def get_db_conn() -> Database:
     """Returns a connection to the database.
 
     Returns:
         a ``pymongo.database.Database``
     """
-    _connect()
-    db = _client[fo.config.database_name]
-    return _apply_options(db)
+    return _apply_options(_connect())
 
 
 def get_async_db_conn():
@@ -251,7 +255,7 @@ def get_async_db_conn():
     return _apply_options(db)
 
 
-def _apply_options(db):
+def _apply_options(db: Database) -> Database:
     timezone = fo.config.timezone
 
     if not timezone or timezone.lower() == "utc":

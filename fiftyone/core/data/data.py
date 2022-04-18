@@ -5,11 +5,13 @@ import typing as t
 from dataclasses import replace
 from datetime import date, datetime
 
+import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import six
 
-from .datafield import MISSING, Field, field, fields
-
+from .datafield import Field, field
+from .dict import Dict
+from .list import List
 
 __all__ = ["asdict", "is_data", "sample"]
 
@@ -38,7 +40,7 @@ def __dataclass_transform__(
 
 
 def _get_field(cls: t.Type, a_name: str, a_type: t.Type) -> Field:
-    default = getattr(cls, a_name, MISSING)
+    default = getattr(cls, a_name, None)
 
     field: Field
     if isinstance(default, Field):
@@ -88,7 +90,7 @@ class DataMetaclass(type):
             field_data[field.name] = field
 
             if isinstance(getattr(cls, field.name, None), Field):
-                if field.default is MISSING:
+                if field.default is None:
                     delattr(cls, field.name)
                 else:
                     setattr(cls, field.name, field.default)
@@ -109,14 +111,26 @@ class Data(metaclass=DataMetaclass):
     __fiftyone_schema__: t.ClassVar[t.Dict[str, Field]] = {}
 
     def __init__(self, **data: t.Dict[str, t.Any]) -> None:
-
         self.__fiftyone_schema__ = self.__fiftyone_schema__.copy()  # type: ignore
-        for name, value in data.items():
-            if value is None:
-                continue
-
+        for name in set(data).union(self.__fiftyone_fields__):
+            value = data.get(name, None)
             field = self.__fiftyone_ensure_field__(name, value)
-            if value is not None and field.validator:
+            if value is None:
+                if field.required and field.default_factory is None:
+                    raise FiftyOneDataError(
+                        f"required field '{name}' with no default or default factory must have a value"
+                    )
+
+                if field.default_factory is not None:
+                    value = field.default_factory()
+
+                if field.default is not None:
+                    value = field.default
+
+                if value is None:
+                    continue
+
+            if field.validator:
                 field.validator(value)
 
             if isinstance(value, Data):
@@ -128,12 +142,28 @@ class Data(metaclass=DataMetaclass):
         if has_post_init:
             getattr(self, _POST_INIT_NAME)()
 
+    def __copy__(
+        self: _D,
+        path: t.Optional[str] = None,
+        schema: t.Optional[t.Dict[str, Field]] = None,
+        fields: t.Union[t.Iterable[str], t.Dict[str, str], str, None] = None,
+        omit_fields: t.Union[t.List[str], t.Set[str], str, None] = None,
+    ) -> _D:
+        fields = _parse_fields(self, fields=fields, omit_fields=omit_fields)
+
+        return self.__class__.__fiftyone_construct__(
+            None,
+            path,
+            schema or _extract_schema(self),
+            asdict(self, dict_factory=dict, links=False),
+        )
+
     def __getattribute__(self, __name: str) -> t.Any:
         if _DUNDER_REGEX.fullmatch(__name):
             return super().__getattribute__(__name)
 
         field = self.__fiftyone_field__(__name)
-        if field is None:
+        if field is None and __name not in self.__dict__:
             return super().__getattribute__(__name)
 
         return self.__getitem__(__name, field)
@@ -142,15 +172,18 @@ class Data(metaclass=DataMetaclass):
         if field is None:
             field = self.__fiftyone_field__(__name)
 
-        if field is None:
-            raise KeyError(
-                f"'{self.__class__.__name__}' has no field '{__name}'"
-            )
-
-        if field.link:
+        if field and field.link:
             __value = self[field.link]
         else:
             __value = self.__dict__.get(__name, None)
+
+        if field is None:
+            if __value is not None:
+                field = self.__fiftyone_ensure_field__(__name, __value)
+            else:
+                raise KeyError(
+                    f"'{self.__class__.__name__}' has no field '{__name}'"
+                )
 
         __value = (
             __value
@@ -195,6 +228,12 @@ class Data(metaclass=DataMetaclass):
 
         self.__dict__[__name] = __value
 
+    def __fiftyone_child_path__(self, __name: str) -> str:
+        if self.__fiftyone_path__:
+            return ".".join([self.__fiftyone_path__, __name])
+
+        return __name
+
     def __fiftyone_ensure_field__(self, __name: str, __value: t.Any) -> Field:
         field = self.__fiftyone_field__(__name)
         if field:
@@ -214,19 +253,8 @@ class Data(metaclass=DataMetaclass):
         return self.__fiftyone_schema__.get(key, None)
 
     @property
-    def __fiftyone_fields__(self) -> t.Iterator[str]:
-        for name in self.__fiftyone_schema__:
-            if self.__fiftyone_path__:
-                name = name[len(self.__fiftyone_path__) + 1 :]
-
-            if name and "." not in name:
-                yield name
-
-    def __fiftyone_child_path__(self, __name: str) -> str:
-        if self.__fiftyone_path__:
-            return ".".join([self.__fiftyone_path__, __name])
-
-        return __name
+    def __fiftyone_fields__(self) -> t.Dict[str, Field]:
+        return {str(field.name): field for field in fields(self)}
 
     def __repr__(self) -> str:
         data = {}
@@ -251,6 +279,41 @@ class Data(metaclass=DataMetaclass):
         return instance
 
 
+def _parse_fields(
+    data: Data,
+    fields: t.Union[t.Iterable[str], t.Dict[str, str], str, None] = None,
+    omit_fields: t.Union[t.List[str], t.Set[str], str, None] = None,
+) -> t.Dict[str, str]:
+    if fields is None:
+        fields = {
+            f: f
+            for f in data.__fiftyone_fields__
+            if f != "_id" and not _is_link(data.__fiftyone_field__(f))
+        }
+    elif etau.is_str(fields):
+        fields = {fields: fields}  # type: ignore
+
+    if not isinstance(fields, dict):
+        fields = {f: f for f in fields}
+
+    if omit_fields is not None:
+        if etau.is_str(omit_fields):
+            omit_fields = {omit_fields}  # type: ignore
+        else:
+            omit_fields = set(omit_fields)
+
+        fields = {k: v for k, v in fields.items() if k not in omit_fields}
+
+    return fields
+
+
+def _is_link(field: t.Optional[Field]) -> bool:
+    if field is None:
+        return False
+
+    return field.link is not None
+
+
 def _is_data_instance(obj: t.Any) -> bool:
     return isinstance(obj, Data)
 
@@ -260,32 +323,87 @@ def is_data(obj: t.Any) -> bool:
     return issubclass(cls, Data)
 
 
-def asdict(obj: t.Any, *, dict_factory: t.Type = dict) -> dict:
-    if not _is_data_instance(obj):
-        raise TypeError("asdict() should be called on data instances")
-    return _asdict_inner(obj, dict_factory)
+def asdict_default_factory(items: t.List[t.Tuple[str, t.Any]]) -> t.Dict:
+    return {k: v for k, v in items if not k.startswith("_")}
 
 
-def _asdict_inner(obj: t.Any, dict_factory: t.Callable) -> t.Any:
+def _asdict_inner(
+    obj: t.Any,
+    dict_factory: t.Callable[[t.List[t.Tuple[str, t.Any]]], t.Dict],
+    links: bool,
+) -> t.Any:
     if _is_data_instance(obj):
         result = []
-        for f in fields(obj):
-            if not f.name:
+        for field in fields(obj):
+            if not field.name:
                 continue
-            value = _asdict_inner(getattr(obj, f.name), dict_factory)
-            result.append((f.name, value))
+
+            if field.name == "id":
+                continue
+
+            if not links and field.link:
+                continue
+
+            value = _asdict_inner(
+                getattr(obj, field.name), dict_factory, links
+            )
+            result.append((field.name, value))
+
         return dict_factory(result)
-    elif isinstance(obj, tuple) and hasattr(obj, "_fields"):
-        return type(obj)(*[_asdict_inner(v, dict_factory) for v in obj])
-    elif isinstance(obj, (list, tuple)):
-        return type(obj)(_asdict_inner(v, dict_factory) for v in obj)
-    elif isinstance(obj, dict):
-        return type(obj)(
-            (_asdict_inner(k, dict_factory), _asdict_inner(v, dict_factory))
+
+    if isinstance(obj, (list, tuple)):
+        list_cls = list if isinstance(obj, List) else type(obj)
+        return list_cls(_asdict_inner(v, dict_factory, links) for v in obj)
+
+    if isinstance(obj, dict):
+        dict_cls: t.Union[t.Type[t.Dict], t.Type[Dict]]
+        if isinstance(obj, Dict):
+            dict_cls = dict
+        else:
+            dict_cls = type(obj)
+        return dict_cls(
+            (
+                _asdict_inner(k, dict_factory, links),
+                _asdict_inner(v, dict_factory, links),
+            )
             for k, v in obj.items()
         )
-    else:
-        return copy.deepcopy(obj)
+
+    return copy.deepcopy(obj)
+
+
+def asdict(
+    data: Data,
+    *,
+    dict_factory: t.Callable[
+        [t.List[t.Tuple[str, t.Any]]], t.Dict
+    ] = asdict_default_factory,
+    links: bool = True,
+) -> t.Dict:
+    if not _is_data_instance(data):
+        raise FiftyOneDataError("asdict() must be called with a data instance")
+
+    return _asdict_inner(data, dict_factory, links)
+
+
+def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
+    if not is_data(data):
+        raise FiftyOneDataError(
+            "fields() must be called with a data instance or class"
+        )
+
+    l: t.List[Field] = []
+    for path in sorted(data.__fiftyone_schema__):
+        name = (
+            path[len(data.__fiftyone_path__) + 1 :]
+            if data.__fiftyone_path__
+            else path
+        )
+
+        if name and "." not in name:
+            l.append(data.__fiftyone_schema__[path])
+
+    return tuple(l)
 
 
 _PRIMITIVES = {bool, date, datetime, int, float, str}
@@ -311,18 +429,33 @@ def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
     raise ValueError("todo")
 
 
-def _inherit_data(parent: Data, name: str, data: Data) -> None:
-    _merge_schema(
-        parent.__fiftyone_schema__,
-        {".".join([name, k]): v for k, v in data.__fiftyone_schema__.items()},
-    )
+def _extract_schema(data: Data) -> t.Dict[str, Field]:
+    length = len(data.__fiftyone_path__) if data.__fiftyone_path__ else 0
+    schema = {}
+    for path, field in data.__fiftyone_schema__.items():
+        if length and len(path) < length:
+            continue
 
-    data_schema = data.__fiftyone_schema__
+        path = path[length + 1 if length else 0 :]
+        schema[path] = field
+
+    return schema
+
+
+def _inherit_data(parent: Data, name: str, data: Data) -> None:
     prefix = (
         ".".join([parent.__fiftyone_path__, name])
         if parent.__fiftyone_path__
         else name
     )
+
+    _merge_schema(
+        parent.__fiftyone_schema__,
+        {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
+    )
+
+    data_schema = data.__fiftyone_schema__
+
     data.__fiftyone_path__ = prefix  # type: ignore
     data.__fiftyone_schema__ = parent.__fiftyone_schema__  # type: ignore
 

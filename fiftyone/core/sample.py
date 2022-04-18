@@ -7,43 +7,23 @@ Dataset samples.
 """
 import os
 
-from fiftyone.core.data import Document
-import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
+import fiftyone.core.metadata as fom
+from fiftyone.core.data import Document, field
 
 
 class Sample(Document):
-    filepath: str
 
-    def __getitem__(self, field_name):
-        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
-            return self.frames[field_name]
-
-        return super().__getitem__(field_name)
-
-    def __setitem__(self, field_name, value):
-        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
-            self.frames[field_name] = value
-            return
-
-        self._secure_media(field_name, value)
-        super().__setitem__(field_name, value)
-
-    def __iter__(self):
-        if self.media_type == fomm.VIDEO:
-            return iter(self._frames)
-
-        raise ValueError("Image samples are not iterable")
+    filepath: str = field(required=True)
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         return os.path.basename(self.filepath)
 
     @property
-    def media_type(self):
+    def media_type(self) -> str:
         return fomm.get_media_type(self.filepath)
 
     def get_field(self, field_name):
@@ -187,16 +167,6 @@ class Sample(Document):
                 % (self.media_type, new_media_type)
             )
 
-
-class Sample(Sample, Document):
-    def _reload_backing_doc(self):
-        if not self._in_db:
-            return
-
-        self.__dict__ = self._dataset._sample_collection.find_one(
-            {"_id": self._id}
-        )
-
     def copy(self, fields=None, omit_fields=None):
         if self.media_type == fomm.VIDEO:
             (
@@ -243,14 +213,9 @@ class Sample(Sample, Document):
     def from_frame(cls, frame, filepath):
         return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
 
-    @classmethod
-    def from_doc(cls, doc, dataset=None):
-        sample = super().from_doc(doc, dataset=dataset)
 
-        if sample.media_type == fomm.VIDEO:
-            sample._frames = fofr.Frames(sample)
-
-        return sample
+class SampleView(Sample):
+    pass
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

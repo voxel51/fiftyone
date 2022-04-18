@@ -49,6 +49,3 @@ class Dict(t.Dict[_KT, t.Optional[_VT]]):
 
     def update(self, *args, **kwargs) -> None:  # type: ignore
         return super().update(*args, **kwargs)
-
-
-print(Dict.__annotations__)

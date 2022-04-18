@@ -5,7 +5,7 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .data import asdict, Data, is_data
+from .data import asdict, Data, fields, is_data
 
 from .database import (
     aggregate,
@@ -36,7 +36,6 @@ from .database import (
     bulk_write,
 )
 
-from .datafield import field, fields, Field, MISSING
-from .dataset import DatasetSingleton
-from .document import Document
-from .types import RunData
+from .datafield import field, Field
+from .document import Document, json_schemas, schema
+from .types import Dataset, RunData

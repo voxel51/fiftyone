@@ -9,12 +9,17 @@ import typing as t
 import weakref
 
 import eta.core.serial as etas
-import eta.core.utils as etau
+from bson import ObjectId
 
-from .data import Data, DataMetaclass
-from .datafield import Field
+from .data import Data, DataMetaclass, FiftyOneDataError, asdict, fields
+from .database import get_db_conn
+from .datafield import Field, field
+from .types import DocumentField as DocumentFieldDef
+from .types import Field as FieldDef
+from .types import JSONSchemaObjectProperty
 
-_KEYS_NAME = "__fiftyone_keys__"
+
+_D = t.TypeVar("_D", bound="Document")
 
 
 class DocumentMetaclass(DataMetaclass):
@@ -27,22 +32,14 @@ class DocumentMetaclass(DataMetaclass):
     ) -> None:
         super().__init__(__name, __bases, __dict, **kwds)
 
-        is_base = etau.get_class_name(cls) == f"{__name__}.Document"
+        cls.__fiftyone_instances__: t.MutableMapping[
+            t.Tuple[t.Union[str, int], ...], "Document"
+        ] = weakref.WeakValueDictionary()
 
-        if _KEYS_NAME not in cls.__dict__ and not is_base:
-            raise FiftyOneDocumentError(f"{_KEYS_NAME} tuple is not defined")
+    def __setitem__(cls: t.Type[_D], : _D) -> None:
+        cls.__fiftyone_instances__[instance.id] = instance
 
-        if not cls.__dict__[_KEYS_NAME] and not is_base:
-            raise FiftyOneDocumentError(f"{_KEYS_NAME} has no keys")
-
-        cls.__fiftyone_instances__ = weakref.WeakValueDictionary[
-            str, "Document"
-        ]()
-
-    def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.id] = obj
-
-    def _get_instance(cls, doc):
+    def __get_item__(cls, instance):
         try:
             return cls._instances[doc.collection_name][str(doc.id)]
         except KeyError:
@@ -102,23 +99,6 @@ class DocumentMetaclass(DataMetaclass):
             for sample in samples.values():
                 sample.reload(hard=hard)
 
-    def _sync_docs(cls, collection_name, sample_ids, hard=False):
-        if collection_name not in cls._instances:
-            return
-
-        samples = cls._instances[collection_name]
-
-        sample_ids = set(sample_ids)
-        reset_ids = set()
-        for sample in samples.values():
-            if sample.id in sample_ids:
-                sample.reload(hard=hard)
-            else:
-                reset_ids.add(sample.id)
-                sample._reset_backing_doc()
-
-        for sample_id in reset_ids:
-            samples.pop(sample_id, None)
 
     def _reset_docs(cls, collection_name, sample_ids=None):
         if collection_name not in cls._instances:
@@ -140,18 +120,15 @@ class FiftyOneDocumentError(TypeError):
     pass
 
 
-_D = t.TypeVar("_D", bound="Document")
-
-
 class Document(Data, metaclass=DocumentMetaclass):
 
-    __fiftyone_keys__: t.ClassVar[t.Tuple[str, ...]] = ()
+    __fiftyone_indexes__: t.ClassVar[t.Tuple[t.Any, ...]]
     __fiftyone_instances__: t.ClassVar[
-        weakref.WeakValueDictionary[str, "Document"]
-    ] = {}
+        t.MutableMapping[(t.Tuple[t.Union[str, int], ...]), "Document"]
+    ]
 
-    def __copy__(self):
-        return self.copy()
+    _id: ObjectId = field(default_factory=ObjectId, required=True)
+    id: str = field(link="_id", dump=ObjectId, load=str, required=True)
 
     def has_field(self, name: str) -> bool:
         return bool(self.__fiftyone_field__(name))
@@ -181,6 +158,9 @@ class Document(Data, metaclass=DocumentMetaclass):
         self, include_id: bool = False
     ) -> t.Iterator[t.Tuple[str, Field]]:
         for name in self.__fiftyone_fields__:
+            if name.startswith("_"):
+                continue
+
             if name == "id" and not include_id:
                 continue
 
@@ -189,7 +169,7 @@ class Document(Data, metaclass=DocumentMetaclass):
 
     def merge(
         self,
-        document,
+        document: "Document",
         fields=None,
         omit_fields=None,
         merge_lists=True,
@@ -243,58 +223,19 @@ class Document(Data, metaclass=DocumentMetaclass):
 
             self.set_field(dst_field, value, create=expand_schema)
 
-    def to_dict(self):
-        d = self._doc.to_dict(extended=True)
-        return {k: v for k, v in d.items() if not k.startswith("_")}
-
-    def to_mongo_dict(self, include_id=False):
-        d = self._doc.to_dict()
-        if not include_id:
-            d.pop("_id", None)
-
-        return d
+    def to_dict(self) -> t.Dict:
+        return asdict(self)
 
     def to_json(self, pretty_print=False):
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
-    def save(self):
-        if not self._in_db:
-            raise ValueError(
-                "Cannot save a document that has not been added to a dataset"
-            )
-
-        self._doc.save()
-
-    def _parse_fields(self, fields=None, omit_fields=None):
-        if fields is None:
-            fields = {f: f for f in self.field_names if f != "id"}
-        elif etau.is_str(fields):
-            fields = {fields: fields}
-
-        if not isinstance(fields, dict):
-            fields = {f: f for f in fields}
-
-        if omit_fields is not None:
-            if etau.is_str(omit_fields):
-                omit_fields = {omit_fields}
-            else:
-                omit_fields = set(omit_fields)
-
-            fields = {k: v for k, v in fields.items() if k not in omit_fields}
-
-        return fields
-
-    def copy(self, fields=None, omit_fields=None):
-        fields = self._parse_fields(fields=fields, omit_fields=omit_fields)
-        return self.__class__(
-            **{v: deepcopy(self[k]) for k, v in fields.items()}
-        )
+    def save(self) -> None:
+        save(self)
 
     def reload(self, hard=False):
         if hard:
             self._reload_backing_doc()
         else:
-            # We can only reload fields that are in our schema
             self._doc.reload(*list(self._doc))
 
     @classmethod
@@ -304,3 +245,53 @@ class Document(Data, metaclass=DocumentMetaclass):
     @classmethod
     def from_json(cls: t.Type[_D], path: str) -> _D:
         return cls.from_dict(etas.load_json(path))
+
+
+def reload(document: Document, hard: bool = False) -> None:
+    db = get_db_conn()
+    if not document.__fiftyone_collection__:
+        raise FiftyOneDataError(
+            "cannot save a document that has not been added to a dataset"
+        )
+
+    collection = db[document.__fiftyone_collection__]
+    document.__dict__ = collection.find_one({"_id": document._id})
+
+
+def save(document: Document) -> None:
+    db = get_db_conn()
+    if not document.__fiftyone_collection__:
+        raise FiftyOneDataError(
+            "cannot save a document that has not been added to a dataset"
+        )
+
+    collection = db[document.__fiftyone_collection__]
+    collection.replace_one(
+        asdict(document, dict_factory=dict, links=False), {"_id": document._id}
+    )
+
+
+def json_schemas(
+    data: t.Union[t.Type[Data], Data]
+) -> JSONSchemaObjectProperty:
+    for field in fields(data):
+        pass
+
+
+def schema(
+    data: t.Union[t.Type[Data], Data]
+) -> t.Tuple[t.Union[DocumentFieldDef, FieldDef], ...]:
+    l: t.List[t.Union[DocumentFieldDef, FieldDef]] = []
+    for path, field in data.__fiftyone_schema__.items():
+        if not field.type:
+            raise FiftyOneDataError(f"field {field.name} has no type")
+
+        d: t.Union[DocumentFieldDef, FieldDef]
+        if issubclass(field.type, Document):
+            d = DocumentFieldDef(path, str(field.type))
+        else:
+            d = FieldDef(path, str(field.type))
+
+        l.append(d)
+
+    return tuple(sorted(l, key=lambda d: d.path))

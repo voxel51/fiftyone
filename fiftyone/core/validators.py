@@ -6,6 +6,7 @@ Dataset sample fields.
 |
 """
 from enum import Enum
+from re import L
 import typing as t
 
 from bson import SON
@@ -13,8 +14,15 @@ from bson.binary import Binary
 import numpy as np
 
 import fiftyone.core.utils as fou
+from fiftyone.core.frame_utils import is_frame_number
 
 foo = fou.lazy_import("fiftyone.core.odm")
+
+
+def frame_number_validator(value: t.Any) -> None:
+    """An integer greater than 0."""
+    if not is_frame_number(value):
+        raise ValueError("a frame number must be an integer greater than 0")
 
 
 def heatmap_range_validator(value: t.Any) -> None:

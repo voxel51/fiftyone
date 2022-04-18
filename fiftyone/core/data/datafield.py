@@ -2,17 +2,8 @@ from dataclasses import dataclass
 import typing as t
 
 
-__all__ = ["field", "fields", "Field", "FIELDS", "MISSING"]
-
 _T = t.TypeVar("_T")
 _R = t.TypeVar("_R")
-
-
-class MISSING_TYPE:
-    pass
-
-
-MISSING = MISSING_TYPE()
 
 
 FIELDS = "__fiftyone_fields__"
@@ -22,21 +13,32 @@ FIELDS = "__fiftyone_fields__"
 class Field(t.Generic[_T, _R]):
     name: t.Optional[str] = None
     type: t.Optional[t.Type[_T]] = None
-    default: t.Union[_T, MISSING_TYPE] = MISSING
-    default_factory: t.Union[t.Callable[[], _T], MISSING_TYPE] = MISSING
+    default: t.Optional[_T] = None
+    default_factory: t.Optional[t.Callable[[], _T]] = None
     dump: t.Optional[t.Callable[[_T], _R]] = None
     load: t.Optional[t.Callable[[_R], _T]] = None
     link: t.Optional[str] = None
+    required: bool = False
     validator: t.Optional[t.Callable[[_T], None]] = None
 
+    def __post_init__(self) -> None:
+        if self.default is not None and self.default_factory is not None:
+            raise ValueError(
+                "default and default_factory cannot bot be specified"
+            )
+
+        if (self.dump and not self.load) or (self.load and not self.dump):
+            raise ValueError("both dump and load must specified or neither")
+
 
 @t.overload
 def field(
     *,
     default: _T,
-    dump: t.Optional[t.Callable[[_T], _R]] = ...,
-    load: t.Optional[t.Callable[[_R], _T]] = ...,
+    dump: t.Callable[[_T], _R],
+    load: t.Callable[[_R], _T],
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -47,6 +49,7 @@ def field(
     *,
     default: _T,
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -56,9 +59,10 @@ def field(
 def field(
     *,
     default_factory: t.Callable[[], _T],
-    dump: t.Optional[t.Callable[[_T], _R]] = ...,
-    load: t.Optional[t.Callable[[_R], _T]] = ...,
+    dump: t.Callable[[_T], _R],
+    load: t.Callable[[_R], _T],
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -69,6 +73,7 @@ def field(
     *,
     default_factory: t.Callable[[], _T],
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -77,9 +82,10 @@ def field(
 @t.overload
 def field(
     *,
-    dump: t.Optional[t.Callable[[_T], _R]] = ...,
-    load: t.Optional[t.Callable[[_R], _T]] = ...,
+    dump: t.Callable[[_T], _R],
+    load: t.Callable[[_R], _T],
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -89,6 +95,7 @@ def field(
 def field(
     *,
     link: t.Optional[str] = ...,
+    required: bool = ...,
     validator: t.Optional[t.Callable[[_T], None]] = ...,
 ) -> _T:
     ...
@@ -96,29 +103,20 @@ def field(
 
 def field(
     *,
-    default: t.Any = MISSING,
-    default_factory: t.Union[t.Callable[[], t.Any], MISSING_TYPE] = MISSING,
+    default: t.Any = None,
+    default_factory: t.Optional[t.Callable[[], t.Any]] = None,
     dump: t.Optional[t.Callable[[t.Any], t.Any]] = None,
     load: t.Optional[t.Callable[[t.Any], t.Any]] = None,
     link: str = None,
+    required: bool = False,
     validator: t.Optional[t.Callable[[t.Any], None]] = None,
 ) -> t.Any:
-    if default is None and default_factory is None:
-        raise ValueError("both dump and load must specified or neither")
     return Field(
         default=default,
         default_factory=default_factory,
         dump=dump,
         load=load,
-        validator=validator,
         link=link,
+        required=required,
+        validator=validator,
     )
-
-
-def fields(class_or_instance: t.Any) -> t.Tuple[Field, ...]:
-    try:
-        fields: t.Dict[str, Field] = getattr(class_or_instance, FIELDS)
-    except AttributeError:
-        raise TypeError("must be called with a fiftyone data type or instance")
-
-    return tuple(field for field in fields.values())
