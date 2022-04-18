@@ -68,27 +68,6 @@ def _migrate_keypoints(db, coll_name, fields, direction="up"):
 
 
 def _up_keypoint_op(path):
-    """
-    return {
-        "$mergeObjects": [
-            "$" + path,
-            {
-                "points": {
-                    "$map": {
-                        "input": "$" + path + ".points",
-                        "as": "this",
-                        "in": {
-                            "_cls": "Point",
-                            "x": {"$arrayElemAt": ["$$this", 0]},
-                            "y": {"$arrayElemAt": ["$$this", 1]},
-                        },
-                    }
-                }
-            },
-        ]
-    }
-    """
-
     root = "$" + path
     points = root + ".points"
     confidence = root + ".confidence"
@@ -170,23 +149,6 @@ def _up_keypoints_op(path):
 
 
 def _down_keypoint_op(path):
-    """
-    return {
-        "$mergeObjects": [
-            "$" + path,
-            {
-                "points": {
-                    "$map": {
-                        "input": "$" + path + ".points",
-                        "as": "this",
-                        "in": {["$$this.x", "$$this.y"]},
-                    }
-                }
-            },
-        ]
-    }
-    """
-
     root = "$" + path
     points = root + ".points"
 
@@ -198,7 +160,7 @@ def _down_keypoint_op(path):
                     "$map": {
                         "input": points,
                         "as": "this",
-                        "in": {["$$this.x", "$$this.y"]},
+                        "in": ["$$this.x", "$$this.y"],
                     },
                 },
                 "confidence": {
@@ -231,7 +193,7 @@ def _down_keypoint_op(path):
                             "$map": {
                                 "input": points,
                                 "as": "this",
-                                "in": {"$$this.confidence"},
+                                "in": "$$this.confidence",
                             }
                         },
                         "else": None,
