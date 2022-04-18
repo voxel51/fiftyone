@@ -95,6 +95,7 @@ interface WrapperProps {
   modal: boolean;
   path: string;
   disableItems?: boolean;
+  disableSearch?: boolean;
   selectedCounts: MutableRefObject<Map<Value, number>>;
 }
 
@@ -108,6 +109,7 @@ const Wrapper = ({
   modal,
   path,
   disableItems,
+  disableSearch,
   selectedCounts,
 }: WrapperProps) => {
   const [selected, setSelected] = selectedValuesAtom
@@ -119,14 +121,14 @@ const Wrapper = ({
   const counts = Object.fromEntries(results);
   let allValues: [Value, number][] = selected.map<[Value, number]>((value) => [
     value,
-    counts[String(value)] ?? 0,
+    disableSearch ? null : counts[String(value)] ?? 0,
   ]);
   const disableCount =
     modal &&
     useRecoilValue(selectors.primitivesSubfieldMap("sample"))[path] ===
       FRAME_SUPPORT_FIELD;
 
-  if (totalCount <= CHECKBOX_LIMIT || disableItems) {
+  if (totalCount <= CHECKBOX_LIMIT || disableItems || disableSearch) {
     allValues = [
       ...allValues,
       ...results.filter(([v]) => disableItems || !selectedSet.has(v)),
@@ -379,6 +381,7 @@ interface Props {
   path: string;
   modal: boolean;
   disableItems?: boolean;
+  disableSearch?: boolean;
 }
 
 const CategoricalFilter = React.memo(
@@ -394,6 +397,7 @@ const CategoricalFilter = React.memo(
         path,
         modal,
         disableItems,
+        disableSearch,
       }: Props,
       ref
     ) => {
@@ -447,7 +451,7 @@ const CategoricalFilter = React.memo(
             {name && <>{name}</>}
           </NamedCategoricalFilterHeader>
           <CategoricalFilterContainer>
-            {count > CHECKBOX_LIMIT && !disableItems && (
+            {count > CHECKBOX_LIMIT && !disableItems && !disableSearch && (
               <>
                 <Input
                   key={"input"}
@@ -526,6 +530,7 @@ const CategoricalFilter = React.memo(
               modal={modal}
               totalCount={count}
               disableItems={disableItems}
+              disableSearch={disableSearch}
               selectedCounts={selectedCounts}
             />
           </CategoricalFilterContainer>

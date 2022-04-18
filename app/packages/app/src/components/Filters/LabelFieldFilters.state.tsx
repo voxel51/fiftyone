@@ -8,6 +8,8 @@ import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "./atoms";
 import * as selectors from "../../recoil/selectors";
 import { LABEL_LIST, VALID_LIST_TYPES } from "../../utils/labels";
+import { KEYPOINT, KEYPOINTS } from "@fiftyone/looker/src/constants";
+import { NONFINITE } from "@fiftyone/looker/src/state";
 
 interface Label {
   confidence?: number;
@@ -26,6 +28,51 @@ export const getPathExtension = (type: string): string => {
   }
   return "";
 };
+
+interface Point {
+  points: [number | NONFINITE, number | NONFINITE];
+  label: string;
+  [key: string]: any;
+}
+
+export const skeletonFilter = selectorFamily<
+  (path: string, value: Point) => boolean,
+  boolean
+>({
+  key: "skeletonFilter",
+  get: (modal) => ({ get }) => {
+    const labels = get(stringField.skeletonLabels(modal))[path];
+    const c = get(numericField.skeletonConfidence({ path, modal }));
+
+    return (path: string, point: Point) => {
+      if (!labels[path] && !c) {
+        return true;
+      }
+
+      const label =
+        !labels ||
+        (labels.exclude
+          ? !labels.values.includes(point.label)
+          : labels.values.includes(point.label));
+
+      const inRange = c.exclude
+        ? c.range[0] - 0.005 > point.confidence ||
+          point.confidence > c.range[1] + 0.005
+        : c.range[0] - 0.005 <= point.confidence &&
+          point.confidence <= c.range[1] + 0.005;
+      const noConfidence = c.none && point.confidence === undefined;
+
+      return (
+        label &&
+        (inRange ||
+          noConfidence ||
+          (c.nan && point.confidence === "nan") ||
+          (c.inf && point.confidence === "inf") ||
+          (c.ninf && point.confidence === "-inf"))
+      );
+    };
+  },
+});
 
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
@@ -240,7 +287,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           ? cRange[0] - 0.005 > s.confidence || s.confidence > cRange[1] + 0.005
           : cRange[0] - 0.005 <= s.confidence &&
             s.confidence <= cRange[1] + 0.005;
-        const noConfidence = cNone && s.confidence === undefined;
+        const noConfidence =
+          (cNone && s.confidence === undefined) ||
+          [KEYPOINTS, KEYPOINT].includes(typeMap[field]);
         let label = s.label ? s.label : s.value;
         if (label === undefined) {
           label = null;

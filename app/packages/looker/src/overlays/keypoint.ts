@@ -32,6 +32,16 @@ export default class KeypointOverlay<
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
+
+    const points = this.label.points.map((p, i) => {
+      return state.options.pointFilter(
+        this.field,
+        Object.fromEntries(getAttributes(skeleton, this.label, i))
+      )
+        ? p
+        : null;
+    });
+
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
         const path = skeleton.edges[i].map((index) => this.label.points[index]);
@@ -81,12 +91,7 @@ export default class KeypointOverlay<
         point !== null
           ? {
               coordinates: this.label.points[point],
-              attributes: Object.entries(this.label)
-                .filter(([k, v]) => Array.isArray(v) && k !== "tags")
-                .map(([k, v]) => [k, v[point]])
-                .concat(
-                  skeleton ? [["label", skeleton.labels[point]]] : []
-                ) as [string, unknown][],
+              attributes: getAttributes(skeleton, this.label, point),
               index: point,
             }
           : null,
@@ -183,4 +188,18 @@ const getSkeleton = (
     : null;
 
   return namedSkeleton || defaultSkeleton || null;
+};
+
+const getAttributes = (
+  skeleton: KeypointSkeleton | null,
+  label: KeypointLabel,
+  index: number
+): [string, unknown][] => {
+  return Object.entries(label)
+    .filter(([k, v]) => Array.isArray(v) && k !== "tags")
+    .map(([k, v]) => [k, v[index]])
+    .concat(skeleton ? [["label", skeleton.labels[index]]] : []) as [
+    string,
+    unknown
+  ][];
 };

@@ -13,7 +13,10 @@ import { getMimeType } from "../utils/generic";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import {
+  labelFilters,
+  skeletonFilter,
+} from "./Filters/LabelFieldFilters.state";
 
 const TagBlock = styled.div`
   margin: 0;
@@ -367,6 +370,7 @@ const lookerOptions = selector({
       ),
       defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
       skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(true)),
     };
   },
 });

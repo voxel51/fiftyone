@@ -103,6 +103,7 @@ interface BaseOptions {
   defaultSkeleton?: KeypointSkeleton;
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
+  pointFilter: (path: string, point: Point) => boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -250,6 +251,12 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
+interface Point {
+  point: [number | NONFINITE, number | NONFINITE];
+  label: string;
+  [key: string]: any;
+}
+
 export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
@@ -295,6 +302,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   defaultSkeleton: null,
   skeletons: {},
   showSkeletons: true,
+  pointFilter: (path: string, point: Point) => true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

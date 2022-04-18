@@ -95,7 +95,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           {entry.labelType !== REGRESSION && (
             <CategoricalFilter
               color={entry.color}
-              name={"Labels"}
+              name={"label"}
               valueName={"label"}
               selectedValuesAtom={stringField.selectedValuesAtom({
                 modal,
@@ -111,7 +111,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               modal={modal}
               color={entry.color}
-              name={"Confidence"}
+              name={"confidence"}
               path={cPath}
               defaultRange={[0, 1]}
               fieldType={FLOAT_FIELD}
@@ -120,7 +120,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           {skeleton && [KEYPOINTS, KEYPOINT].includes(entry.labelType) && (
             <CategoricalFilter
               color={entry.color}
-              name={"Skeleton.labels"}
+              name={"skeleton.label"}
               valueName={"label"}
               selectedValuesAtom={stringField.selectedValuesAtom({
                 modal,
@@ -128,7 +128,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               })}
               countsAtom={countsAtom({ modal, path: kPath, filtered: false })}
               excludeAtom={stringField.excludeAtom({ modal, path: kPath })}
-              disableItems={true}
+              disableSearch={true}
               modal={modal}
               path={kPath}
             />
@@ -136,7 +136,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           {entry.labelType === REGRESSION && (
             <NamedRangeSlider
               color={entry.color}
-              name={"Value"}
+              name={"value"}
               path={vPath}
               modal={modal}
               fieldType={FLOAT_FIELD}
@@ -146,7 +146,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               modal={modal}
               color={entry.color}
-              name={"Support"}
+              name={"support"}
               path={sPath}
               fieldType={FRAME_SUPPORT_FIELD}
             />

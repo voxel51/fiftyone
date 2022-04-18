@@ -1,4 +1,6 @@
 import {
+  atom,
+  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -15,6 +17,20 @@ import { filterStage, FilterParams } from "./atoms";
 
 export const LIST_LIMIT = 200;
 
+interface StringFilter {
+  values: string[];
+  exclude: boolean;
+  _CLS: "str";
+}
+
+export const skeletonLabels = atomFamily<
+  { [key: string]: StringFilter },
+  boolean
+>({
+  key: "skeletonLabels",
+  default: {},
+});
+
 export const isStringField = selectorFamily<boolean, string>({
   key: "isStringField",
   get: (name) => ({ get }) => {
@@ -28,22 +44,24 @@ export const isStringField = selectorFamily<boolean, string>({
   },
 });
 
-interface StringFilter {
-  values: string[];
-  exclude: boolean;
-  _CLS: "str";
-}
-
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
   path: string
 ): StringFilter => {
+  let f;
+  if (path.endsWith(".points.label")) {
+    f = get(skeletonLabels(modal));
+    f = f[path] || {};
+  } else {
+    f = get(filterStage({ modal, path }));
+  }
+
   return {
     values: [],
     exclude: false,
     _CLS: "str",
-    ...get(filterStage({ modal, path })),
+    ...f,
   };
 };
 
@@ -58,17 +76,24 @@ const setFilter = (
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
-  const filter = {
+  let filter = {
     ...getFilter(get, modal, path),
     [key]: value,
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
   }
+
   if (meetsDefault(filter)) {
-    set(filterStage({ modal, path }), null);
+    filter = null;
+  }
+  if (path.endsWith(".points.label")) {
+    set(skeletonLabels(modal), {
+      ...get(skeletonLabels(modal)),
+      [path]: filter,
+    });
   } else {
-    set(filterStage({ modal, path }), filter);
+    set(filterStage({ modal, path }), null);
   }
 };
 
