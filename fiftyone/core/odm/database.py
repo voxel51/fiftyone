@@ -95,6 +95,7 @@ def establish_db_conn(config):
         _connection_kwargs["port"] = int(established_port)
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
+        _db_service = fos.ExternalDatabaseService()
     elif _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return

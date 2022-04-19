@@ -241,6 +241,32 @@ class MultiClientService(Service):
         self.child = None
 
 
+class ExternalDatabaseService(Service):
+    """Service that manages the external MongoDB database."""
+
+    service_name = "ext-db"
+    allow_headless = True
+
+    @property
+    def command(self):
+        return ["sleep", "14d"]
+
+    @staticmethod
+    def cleanup():
+        """Deletes non-persistent datasets when the DB shuts down."""
+        import fiftyone.core.dataset as fod
+        import fiftyone.core.odm.database as food
+
+        try:
+            if food.get_master_connection_count() == 1:
+                fod.delete_non_persistent_datasets()
+            food.sync_database()
+        except:
+            # something weird may have happened, like a downward DB migration
+            # - ok to wait until next time
+            pass
+
+
 class DatabaseService(MultiClientService):
     """Service that controls the underlying MongoDB database."""
 
@@ -317,8 +343,8 @@ class DatabaseService(MultiClientService):
             return
 
         try:
-
-            fod.delete_non_persistent_datasets()
+            if food.get_master_connection_count() == 1:
+                fod.delete_non_persistent_datasets()
             food.sync_database()
         except:
             # something weird may have happened, like a downward DB migration
