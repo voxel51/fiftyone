@@ -8,6 +8,7 @@ Label utilities.
 from fiftyone import ViewField as F
 import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol
+import fiftyone.core.stages as fos
 import fiftyone.core.validation as fov
 
 
@@ -345,7 +346,9 @@ def classification_to_detections(sample_collection, in_field, out_field):
         sample.save()
 
 
-def filter_keypoints(sample_collection, field, expr=None, labels=None):
+def filter_keypoints(
+    sample_collection, field, expr=None, labels=None, only_matches=True
+):
     """Returns a view that filters the individual
     :attr:`points <fiftyone.core.labels.Keypoint.points>` in the specified
     keypoints field.
@@ -365,21 +368,34 @@ def filter_keypoints(sample_collection, field, expr=None, labels=None):
             elementwise to the specified field, which must be a list of same
             length as :attr:`fiftyone.core.labels.Keypoint.points`
         labels (None): an optional iterable of specific keypoint labels to keep
+        only_matches (True): whether to only include keypoints/samples with at
+            least one point after filtering (True) or include all
+            keypoints/samples (False)
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    _, path = sample_collection._get_label_field_path(field, "points")
+    label_type, root_path = sample_collection._get_label_field_path(field)
+
+    supported_types = (fol.Keypoint, fol.Keypoints)
+    if label_type not in supported_types:
+        raise ValueError(
+            "Field '%s' has type %s; expected %s"
+            % (field, label_type, supported_types)
+        )
+
+    is_list_field = issubclass(label_type, fol.Keypoints)
+    _, points_path = sample_collection._get_label_field_path(field, "points")
 
     view = sample_collection.view()
 
     if expr is not None:
-        field, expr = _extract_field(expr)
+        expr_field, expr = _extract_field(expr)
 
         view = view.set_field(
-            path,
-            (F(field) != None).if_else(
-                F.zip(F("points"), F(field)).map(
+            points_path,
+            (F(expr_field) != None).if_else(
+                F.zip(F("points"), F(expr_field)).map(
                     (F()[1].apply(expr)).if_else(
                         F()[0], [float("nan"), float("nan")],
                     )
@@ -405,13 +421,35 @@ def filter_keypoints(sample_collection, field, expr=None, labels=None):
             idx for idx, label in enumerate(skeleton.labels) if label in labels
         ]
         view = view.set_field(
-            path,
+            points_path,
             F.enumerate(F("points")).map(
                 F()[0]
                 .is_in(inds)
                 .if_else(F()[1], [float("nan"), float("nan")])
             ),
         )
+
+    if only_matches:
+        # Remove Keypoint objects with no points after filtering
+        if is_list_field:
+            has_points = (
+                F("points").filter(F()[0] != float("nan")).length() > 0
+            )
+
+            view = view.set_field(root_path, F("keypoints").filter(has_points))
+        else:
+            has_points = (
+                F(field + ".points").filter(F()[0] != float("nan")).length()
+                > 0
+            )
+
+            view = view.set_field(
+                root_path, has_points.if_else(F(field), None)
+            )
+
+        # Remove samples with no Keypoint objects after filtering
+        match_expr = fos._get_label_field_only_matches_expr(view, field)
+        view = view.match(match_expr)
 
     return view
 
