@@ -1623,11 +1623,12 @@ class CVATImageTag(CVATImageAnno):
 
     Args:
         label: the tag string
+        attributes (None): a list of :class:`CVATAttribute` instances
     """
 
-    def __init__(self, label):
+    def __init__(self, label, attributes=None):
         self.label = label
-        CVATImageAnno.__init__(self)
+        CVATImageAnno.__init__(self, attributes=attributes)
 
     def to_classification(self):
         """Returns a :class:`fiftyone.core.labels.Classification`
@@ -1636,7 +1637,8 @@ class CVATImageTag(CVATImageAnno):
         Returns:
             a :class:`fiftyone.core.labels.Classification`
         """
-        return fol.Classification(label=self.label)
+        attributes = self._to_attributes()
+        return fol.Classification(label=self.label, **attributes)
 
     @classmethod
     def from_classification(cls, classification):
@@ -1650,7 +1652,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = classification.label
-        return cls(label)
+
+        _, attributes = cls._parse_attributes(classification)
+        return cls(label, attributes=attributes)
 
     @classmethod
     def from_tag_dict(cls, d):
@@ -1664,7 +1668,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = d["@label"]
-        return cls(label)
+
+        _, attributes = cls._parse_anno_dict(d)
+        return cls(label, attributes=attributes)
 
 
 class CVATImageBox(CVATImageAnno):
