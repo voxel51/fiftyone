@@ -9,6 +9,7 @@ from .database import (
     aggregate,
     get_db_config,
     establish_db_conn,
+    get_master_connection_count,
     get_db_client,
     get_db_conn,
     get_async_db_conn,
