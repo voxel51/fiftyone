@@ -41,7 +41,6 @@ class MLFlowModelRun(etas.Serializable):
         dataset_name=None,
         _pred_view_stages=None,
         _train_view_stages=None,
-        **kwargs,
     ):
         self.run_key = run_key
         self.tracking_uri = tracking_uri
@@ -57,9 +56,6 @@ class MLFlowModelRun(etas.Serializable):
         self.train_view_stages = self._parse_view_stages(
             _train_view_stages, train_view,
         )
-
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
 
     def _parse_view_stages(self, view_stages, samples):
         if view_stages:
@@ -105,8 +101,8 @@ class MLFlowModelRun(etas.Serializable):
 
 
 def add_model_run(
-    sample_collection,
     run_key,
+    sample_collection,
     tracking_uri,
     run_id,
     experiment_id,
@@ -167,18 +163,13 @@ def update_model_run(
 
 
 def add_flash_mlflogger(
-    sample_collection,
-    mlflow_key,
-    mlf_logger,
-    gt_field,
-    pred_field,
-    tracking_uri,
+    sample_collection, run_key, mlf_logger, gt_field, pred_field, tracking_uri,
 ):
     experiment_id = mlf_logger._experiment_id
     run_id = mlf_logger._run_id
     run = add_model_run(
         sample_collection,
-        mlflow_key,
+        run_key,
         tracking_uri,
         run_id,
         experiment_id,
@@ -189,7 +180,7 @@ def add_flash_mlflogger(
 
 def connect_to_mlflow(
     sample_collection,
-    mlflow_key,
+    run_key,
     experiment_id,
     run_id,
     gt_field,
@@ -199,7 +190,7 @@ def connect_to_mlflow(
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.start_run(run_id=run_id)
     _add_tags_to_run(sample_collection.name, gt_field, pred_field)
-    _add_nb_to_run(sample_collection, mlflow_key)
+    _add_nb_to_run(sample_collection, run_key)
 
 
 def launch_mlflow(sample_collection, run_key):
@@ -217,17 +208,52 @@ def _add_tags_to_run(name, gt_field, pred_field):
     mlflow.log_params(tags)
 
 
-def _add_nb_to_run(sample_collection, mlflow_key):
-    nb_path, html_path = _create_nb(sample_collection, mlflow_key)
+def _add_nb_to_run(sample_collection, run_key):
+    nb_path, html_path = _create_nb(sample_collection, run_key)
     mlflow.log_artifact(nb_path)
     mlflow.log_artifact(html_path)
 
+    fiftyone_link_path = _create_fo_connection_snippet(
+        sample_collection, run_key
+    )
+    mlflow.log_artifact(fiftyone_link_path)
+
     etau.delete_file(html_path)
     etau.delete_file(nb_path)
+    etau.delete_file(fiftyone_link_path)
 
 
-def _create_nb(sample_collection, mlflow_key):
-    run = get_model_run(sample_collection, mlflow_key)
+def _create_fo_connection_snippet(sample_collection, run_key):
+    content = """# Connect to FiftyOne:
+
+# Open up IPython on a machine connected to FiftyOne
+# and paste and run the following:
+
+import fiftyone as fo
+import fiftyone.utils.mlflow as foum
+
+dataset = fo.load_dataset("%s")
+
+run_key = "%s"
+run = foum.get_model_run(dataset, run_key)
+
+predict_view = run.predict_view
+
+session = fo.launch_app(predict_view)
+""" % (
+        sample_collection.name,
+        run_key,
+    )
+
+    fiftyone_link_path = "/tmp/connect_to_fiftyone.txt"
+    with open(fiftyone_link_path, "w") as f:
+        f.write(content)
+
+    return fiftyone_link_path
+
+
+def _create_nb(sample_collection, run_key):
+    run = get_model_run(sample_collection, run_key)
     run_id = run.run_id
     experiment_id = run.experiment_id
     gt_field = run.gt_field
@@ -300,8 +326,8 @@ session.freeze()
     ep = ExecutePreprocessor(timeout=600, kernel_name="mlf")
     ep.preprocess(nb, {"metadata": {"path": "/tmp"}})
 
-    nb_path = "/tmp/fiftyone.ipynb"
-    html_path = "/tmp/fiftyone.html"
+    nb_path = "/tmp/fiftyone_report.ipynb"
+    html_path = "/tmp/fiftyone_report.html"
 
     # Write ipython
     with open(nb_path, "w", encoding="utf-8") as f:
