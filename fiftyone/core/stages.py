@@ -15,7 +15,6 @@ import uuid
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
 import numpy as np
 
 import eta.core.utils as etau
@@ -23,7 +22,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
-import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -1966,181 +1964,297 @@ def _get_list_field_mongo_filter(filter_arg):
     return filter_arg
 
 
-class _FilterListField(FilterField):
-    def _get_new_field(self, sample_collection):
-        new_field, _ = sample_collection._handle_frame_field(self._new_field)
-        return new_field
+class FilterKeypoints(ViewStage):
+    """Filters the individual :attr:`fiftyone.core.labels.Keypoint.points`
+    elements in the specified keypoints field of each sample in the
+    collection.
 
-    @property
-    def _filter_field(self):
-        raise NotImplementedError("subclasses must implement `_filter_field`")
+    .. note::
 
-    def get_filtered_fields(self, sample_collection, frames=False):
-        list_path, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        Use :class:`FilterLabels` if you simply want to filter entire
+        :class:`fiftyone.core.labels.Keypoint` objects in a field.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(
+                                label="person",
+                                points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                                confidence=[0.7, 0.8, 0.95, 0.99],
+                            )
+                        ]
+                    )
+                ),
+                fo.Sample(filepath="/path/to/image2.png"),
+            ]
         )
 
-        if frames == is_frame_field:
-            return [list_path]
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+            edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+        )
 
-        return None
+        #
+        # Only include keypoints in the `predictions` field whose
+        # `confidence` is greater than 0.9
+        #
+
+        stage = fo.FilterKeypoints("predictions", filter=F("confidence") > 0.9)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include keypoints in the `predictions` field with less than
+        # four points
+        #
+
+        stage = fo.FilterKeypoints("predictions", labels=["left eye", "right eye"])
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the :class:`fiftyone.core.labels.Keypoint` or
+            :class:`fiftyone.core.labels.Keypoints` field to filter
+        filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
+            or `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean, like ``F("confidence") > 0.5`` or
+            ``F("occluded") == False``, to apply elementwise to the
+            specified field, which must be a list of same length as
+            :attr:`fiftyone.core.labels.Keypoint.points`
+        labels (None): an iterable of keypoint skeleton labels to keep
+        only_matches (True): whether to only include keypoints/samples with
+            at least one point after filtering (True) or include all
+            keypoints/samples (False)
+    """
+
+    def __init__(self, field, filter=None, labels=None, only_matches=True):
+        self._field = field
+        self._filter = filter
+        self._labels = labels
+        self._only_matches = only_matches
+        self._validate_params()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def labels(self):
+        """An iterable of keypoint skeleton labels to keep."""
+        return self._labels
+
+    @property
+    def only_matches(self):
+        """Whether to only include samples that match the filter."""
+        return self._only_matches
 
     def to_mongo(self, sample_collection):
-        filter_field, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        label_type, root_path = sample_collection._get_label_field_path(
+            self._field
         )
-        new_field = self._get_new_field(sample_collection)
 
-        if is_frame_field:
-            _make_pipeline = _get_filter_frames_list_field_pipeline
-        else:
-            _make_pipeline = _get_filter_list_field_pipeline
+        supported_types = (fol.Keypoint, fol.Keypoints)
+        if label_type not in supported_types:
+            raise ValueError(
+                "Field '%s' has type %s; expected %s"
+                % (self._field, label_type, supported_types)
+            )
 
-        return _make_pipeline(
-            filter_field,
-            new_field,
-            self._filter,
-            only_matches=self._only_matches,
+        is_list_field = issubclass(label_type, fol.Keypoints)
+        _, points_path = sample_collection._get_label_field_path(
+            self._field, "points"
         )
+
+        pipeline = []
+
+        if self._filter is not None:
+            expr_field, expr = _extract_field(self._filter)
+
+            filter_expr = (F(expr_field) != None).if_else(
+                F.zip(F("points"), F(expr_field)).map(
+                    (F()[1].apply(expr)).if_else(
+                        F()[0], [float("nan"), float("nan")],
+                    )
+                ),
+                F("points"),
+            )
+
+            # @todo prefix?
+            # pipeline.append({"set": {points_path: filter_expr.to_mongo()}})
+
+            _pipeline = sample_collection._make_set_field_pipeline(
+                points_path, filter_expr, embedded_root=True
+            )
+            pipeline.extend(_pipeline)
+
+        if self._labels is not None:
+            skeleton = sample_collection.get_skeleton(self._field)
+            if skeleton is None:
+                raise ValueError(
+                    "No keypoint skeleton found for field '%s'" % self._field
+                )
+
+            if skeleton.labels is None:
+                raise ValueError(
+                    "Keypoint skeleton for field '%s' has no labels"
+                    % self._field
+                )
+
+            labels = set(self._labels)
+            inds = [
+                idx
+                for idx, label in enumerate(skeleton.labels)
+                if label in labels
+            ]
+
+            labels_expr = F.enumerate(F("points")).map(
+                F()[0]
+                .is_in(inds)
+                .if_else(F()[1], [float("nan"), float("nan")])
+            )
+
+            # @todo prefix?
+            # pipeline.append({"set": {points_path: labels_expr.to_mongo()}})
+
+            _pipeline = sample_collection._make_set_field_pipeline(
+                points_path, labels_expr, embedded_root=True
+            )
+            pipeline.extend(_pipeline)
+
+        if self._only_matches:
+            # Remove Keypoint objects with no points after filtering
+            if is_list_field:
+                has_points = (
+                    F("points").filter(F()[0] != float("nan")).length() > 0
+                )
+                match_expr = F("keypoints").filter(has_points)
+            else:
+                has_points = (
+                    F(self._field + ".points")
+                    .filter(F()[0] != float("nan"))
+                    .length()
+                    > 0
+                )
+                match_expr = has_points.if_else(F(self._field), None)
+
+            # @todo prefix?
+            # pipeline.append({"set": {root_path: match_expr.to_mongo()}})
+
+            _pipeline = sample_collection._make_set_field_pipeline(
+                root_path, match_expr, embedded_root=True
+            )
+            pipeline.extend(_pipeline)
+
+            # Remove samples with no Keypoint objects after filtering
+            match_expr = _get_label_field_only_matches_expr(
+                sample_collection, self._field
+            )
+
+            pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
+
+        return pipeline
+
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["filter", self._get_mongo_filter()],
+            ["labels", self._labels],
+            ["only_matches", self._only_matches],
+        ]
+
+    def _validate_params(self):
+        if self._filter is not None and not isinstance(
+            self._filter, (foe.ViewExpression, dict, bool)
+        ):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str"},
+            {
+                "name": "filter",
+                "type": "NoneType|json",
+                "placeholder": "filter",
+                "default": "None",
+            },
+            {
+                "name": "labels",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "labels",
+                "default": "None",
+            },
+            {
+                "name": "only_matches",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
+            },
+        ]
 
     def _get_mongo_filter(self):
-        return _get_list_field_mongo_filter(self._filter)
+        if self._filter is None:
+            return None
 
-    def validate(self, sample_collection):
-        raise NotImplementedError("subclasses must implement `validate()`")
+        if not isinstance(self._filter, foe.ViewExpression):
+            return self._filter
 
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterClassifications(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
-    specified :class:`fiftyone.core.labels.Classifications` field of each
-    sample in a collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Classifications`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one classification after filtering (True) or include all samples
-            (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".classifications"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classifications,
-        )
+        return self._filter.to_mongo()
 
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterDetections(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
-    specified :class:`fiftyone.core.labels.Detections` field of each sample in
-    a collection.
+def _extract_field(val):
+    field = None
 
-    .. warning::
+    if isinstance(val, foe.ViewField) and not val.is_frozen:
+        field = val._expr
+        val._expr = ""
+        return field, val
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
+    if isinstance(val, foe.ViewExpression):
+        field, val._expr = _extract_field(val._expr)
+        return field, val
 
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Detections`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one detection after filtering (True) or include all samples (False)
-    """
+    if isinstance(val, dict):
+        _val = {}
+        for k, v in val.items():
+            _field, _k = _extract_field(k)
+            if _field is not None:
+                field = _field
 
-    @property
-    def _filter_field(self):
-        return self.field + ".detections"
+            _field, _v = _extract_field(v)
+            if _field is not None:
+                field = _field
 
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Detections,
-        )
+            _val[_k] = _v
 
+        return field, _val
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterPolylines(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
-    specified :class:`fiftyone.core.labels.Polylines` field of each sample in a
-    collection.
+    if isinstance(val, list):
+        _val = []
+        for v in val:
+            _field, _v = _extract_field(v)
+            if _field is not None:
+                field = _field
 
-    .. warning::
+            _val.append(_v)
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
+        return field, _val
 
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Polylines`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one polyline after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".polylines"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Polylines,
-        )
-
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterKeypoints(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
-    specified :class:`fiftyone.core.labels.Keypoints` field of each sample in a
-    collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Keypoints`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one keypoint after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".keypoints"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Keypoints,
-        )
+    return field, val
 
 
 class _GeoStage(ViewStage):
@@ -6254,9 +6368,6 @@ _STAGES = [
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     GeoNear,
     GeoWithin,
