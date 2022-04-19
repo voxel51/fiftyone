@@ -48,6 +48,7 @@ class DatabaseConfigDocument(Document):
     meta = {"collection": "config"}
 
     version = fof.StringField()
+    type = fof.StringField()
 
 
 def get_db_config():
@@ -128,6 +129,13 @@ def establish_db_conn(config):
     _validate_db_version(config, _client)
 
     connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+
+    config = get_db_config()
+    if foc.CLIENT_TYPE != config.type:
+        raise ConnectionError(
+            "Cannot connect to database type %s with a client of type %s"
+            % (config.type, foc.CLIENT_TYPE)
+        )
 
 
 def _connect():
