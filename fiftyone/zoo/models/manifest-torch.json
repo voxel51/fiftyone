@@ -1696,6 +1696,7 @@
                     "image_size": [224, 224],
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "visual",
                     "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
                     "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
                     "text_prompt": "A photo of",

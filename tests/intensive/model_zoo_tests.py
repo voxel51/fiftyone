@@ -69,7 +69,9 @@ def test_clip():
     assert len(dataset.exists("clip")) == len(dataset)
 
     embeddings = dataset.compute_embeddings(model)
-    print("Embeddings shape: %s" % embeddings.shape)
+    print(f"Embeddings shape: {embeddings.shape}")
+    assert embeddings.shape == (len(dataset), 512)
+    # TODO test with custom labels
     
 
 def test_logits_models():
