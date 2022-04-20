@@ -3155,7 +3155,10 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(
-                field, filter=filter, labels=labels, only_matches=only_matches,
+                field,
+                filter=filter,
+                labels=labels,
+                only_matches=only_matches,
             )
         )
 
@@ -7186,9 +7189,15 @@ class SampleCollection(object):
         auto_unwind=True,
         omit_terminal_lists=False,
         allow_missing=False,
+        new_field=None,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
+            self,
+            field_name,
+            auto_unwind,
+            omit_terminal_lists,
+            allow_missing,
+            new_field=new_field,
         )
 
     def _has_field(self, field_name):
@@ -7418,10 +7427,20 @@ class SampleCollection(object):
         return _unwind_values(values, level)
 
     def _make_set_field_pipeline(
-        self, field, expr, embedded_root=False, allow_missing=False
+        self,
+        field,
+        expr,
+        embedded_root=False,
+        allow_missing=False,
+        new_field=None,
     ):
         return _make_set_field_pipeline(
-            self, field, expr, embedded_root, allow_missing=allow_missing
+            self,
+            field,
+            expr,
+            embedded_root,
+            allow_missing=allow_missing,
+            new_field=new_field,
         )
 
 
@@ -7821,6 +7840,7 @@ def _parse_field_name(
     auto_unwind,
     omit_terminal_lists,
     allow_missing,
+    new_field=None,
 ):
     unwind_list_fields = []
     other_list_fields = []
@@ -7849,6 +7869,8 @@ def _parse_field_name(
 
         prefix = sample_collection._FRAMES_PREFIX
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
+        if new_field:
+            new_field = new_field[len(prefix) :]
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -7919,6 +7941,14 @@ def _parse_field_name(
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
+
+    def _replace(path):
+        return ".".join([new_field] + path.split(".")[1:])
+
+    if new_field:
+        field_name = _replace(field_name)
+        unwind_list_fields = [_replace(p) for p in unwind_list_fields]
+        other_list_fields = [_replace(p) for p in other_list_fields]
 
     return (
         field_name,
@@ -8043,7 +8073,12 @@ def _transform_values(values, fcn, level=1):
 
 
 def _make_set_field_pipeline(
-    sample_collection, field, expr, embedded_root, allow_missing=False
+    sample_collection,
+    field,
+    expr,
+    embedded_root,
+    allow_missing=False,
+    new_field=None,
 ):
     (
         path,
@@ -8056,6 +8091,7 @@ def _make_set_field_pipeline(
         auto_unwind=True,
         omit_terminal_lists=True,
         allow_missing=allow_missing,
+        new_field=new_field,
     )
 
     if is_frame_field and path != "frames":

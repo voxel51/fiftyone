@@ -264,8 +264,7 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raised when a problem with a :class:`ViewStage` is encountered.
-    """
+    """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
 
@@ -1914,7 +1913,8 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")), [],
+                F(path).filter(filter_expr).map(F("index")),
+                [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -2034,11 +2034,19 @@ class FilterKeypoints(ViewStage):
             keypoints/samples (False)
     """
 
-    def __init__(self, field, filter=None, labels=None, only_matches=True):
+    def __init__(
+        self,
+        field,
+        filter=None,
+        labels=None,
+        only_matches=True,
+        _new_field=None,
+    ):
         self._field = field
         self._filter = filter
         self._labels = labels
         self._only_matches = only_matches
+        self._new_field = _new_field or field
 
         self._filter_dict = None
         self._filter_field = None
@@ -2077,21 +2085,35 @@ class FilterKeypoints(ViewStage):
         _, points_path = sample_collection._get_label_field_path(
             self._field, "points"
         )
+        new_field = self._get_new_field(sample_collection)
 
         pipeline = []
+        if new_field != self._field:
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                self._new_field,
+                F(self._field),
+                allow_missing=True,
+                embedded_root=True,
+            )
+            pipeline.extend(_pipeline)
 
         if self._filter_expr is not None:
             filter_expr = (F(self._filter_field) != None).if_else(
                 F.zip(F("points"), F(self._filter_field)).map(
                     (F()[1].apply(self._filter_expr)).if_else(
-                        F()[0], [float("nan"), float("nan")],
+                        F()[0],
+                        [float("nan"), float("nan")],
                     )
                 ),
                 F("points"),
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
-                points_path, filter_expr, embedded_root=True
+                points_path,
+                filter_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
             )
             pipeline.extend(_pipeline)
 
@@ -2126,7 +2148,11 @@ class FilterKeypoints(ViewStage):
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
-                points_path, labels_expr, embedded_root=True
+                points_path,
+                labels_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
             )
             pipeline.extend(_pipeline)
 
@@ -2138,7 +2164,7 @@ class FilterKeypoints(ViewStage):
                 )
                 match_expr = F("keypoints").filter(has_points)
             else:
-                field, _ = sample_collection._handle_frame_field(self._field)
+                field, _ = sample_collection._handle_frame_field(new_field)
                 has_points = (
                     F(field + ".points")
                     .filter(F()[0] != float("nan"))
@@ -2148,18 +2174,31 @@ class FilterKeypoints(ViewStage):
                 match_expr = has_points.if_else(F(field), None)
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
-                root_path, match_expr, embedded_root=True
+                root_path,
+                match_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
             )
             pipeline.extend(_pipeline)
 
             # Remove samples with no Keypoint objects after filtering
             match_expr = _get_label_field_only_matches_expr(
-                sample_collection, self._field
+                sample_collection, self._field, new_field=self._new_field
             )
 
             pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
 
         return pipeline
+
+    def _get_new_field(self, sample_collection):
+        field, _ = sample_collection._handle_frame_field(self._field)
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+
+        if "." in field:
+            return ".".join([new_field, field.split(".")[-1]])
+
+        return new_field
 
     def _needs_frames(self, sample_collection):
         return sample_collection._is_frame_field(self._field)
@@ -2620,8 +2659,7 @@ class GroupBy(ViewStage):
 
     @property
     def sort_expr(self):
-        """An expression defining how the sort the groups in the output view.
-        """
+        """An expression defining how the sort the groups in the output view."""
         return self._sort_expr
 
     @property
@@ -2886,7 +2924,8 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]), None,
+            F().set_field(leaf, F(leaf)[:limit]),
+            None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
