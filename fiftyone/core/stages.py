@@ -2088,10 +2088,11 @@ class FilterKeypoints(ViewStage):
         new_field = self._get_new_field(sample_collection)
 
         pipeline = []
-        if new_field != self._field:
+        if self._new_field != self._field:
+            field, _ = sample_collection._handle_frame_field(self._field)
             _pipeline, _ = sample_collection._make_set_field_pipeline(
                 self._new_field,
-                F(self._field),
+                F(field),
                 allow_missing=True,
                 embedded_root=True,
             )

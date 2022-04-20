@@ -23,14 +23,6 @@ interface StringFilter {
   _CLS: "str";
 }
 
-export const skeletonLabels = atomFamily<
-  { [key: string]: StringFilter },
-  boolean
->({
-  key: "skeletonLabels",
-  default: {},
-});
-
 export const isStringField = selectorFamily<boolean, string>({
   key: "isStringField",
   get: (name) => ({ get }) => {
@@ -49,13 +41,7 @@ const getFilter = (
   modal: boolean,
   path: string
 ): StringFilter => {
-  let f;
-  if (path.endsWith(".points.label")) {
-    f = get(skeletonLabels(modal));
-    f = f[path] || {};
-  } else {
-    f = get(filterStage({ modal, path }));
-  }
+  const f = get(filterStage({ modal, path }));
 
   return {
     values: [],
@@ -87,14 +73,8 @@ const setFilter = (
   if (meetsDefault(filter)) {
     filter = null;
   }
-  if (path.endsWith(".points.label")) {
-    set(skeletonLabels(modal), {
-      ...get(skeletonLabels(modal)),
-      [path]: filter,
-    });
-  } else {
-    set(filterStage({ modal, path }), null);
-  }
+
+  set(filterStage({ modal, path }), filter);
 };
 
 export const selectedValuesAtom = selectorFamily<string[], FilterParams>({

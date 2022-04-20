@@ -41,23 +41,27 @@ export const skeletonFilter = selectorFamily<
 >({
   key: "skeletonFilter",
   get: (modal) => ({ get }) => {
-    const labels = get(stringField.skeletonLabels(modal));
+    const filters = get(
+      modal ? filterAtoms.modalFilterStages : filterAtoms.filterStages
+    );
     const types = get(selectors.labelTypesMap);
-    const c = null;
 
     return (path: string, point: Point) => {
       const lpath = `${path}${getPathExtension(types[path])}.points.label`;
+      const cpath = `${path}${getPathExtension(types[path])}.confidence`;
 
-      if (!labels[lpath] && !c) {
+      if (!filters[lpath] && !filters[cpath]) {
         return true;
       }
-      const l = labels[lpath];
+      const l = filters[lpath];
 
       const label =
         !l ||
         (l.exclude
           ? !l.values.includes(point.label)
           : l.values.includes(point.label));
+
+      const c = filters[cpath];
 
       if (!c) {
         return label;
@@ -344,10 +348,6 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
     set(atoms.alpha(true), get(atoms.alpha(false)));
-    set(
-      stringField.skeletonLabels(true),
-      get(stringField.skeletonLabels(false))
-    );
   },
 });
 3;
