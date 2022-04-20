@@ -347,7 +347,7 @@ def classification_to_detections(sample_collection, in_field, out_field):
 
 
 def filter_keypoints(
-    sample_collection, field, expr=None, labels=None, only_matches=True
+    sample_collection, field, filter=None, labels=None, only_matches=True
 ):
     """Returns a view that filters the individual
     :attr:`points <fiftyone.core.labels.Keypoint.points>` in the specified
@@ -362,7 +362,7 @@ def filter_keypoints(
             :class:`fiftyone.core.collections.SampleCollection`
         field: the name of the :class:`fiftyone.core.labels.Keypoint` or
             :class:`fiftyone.core.labels.Keypoints` field
-        expr (None): a boolean
+        filter (None): a boolean
             :class:`fiftyone.core.expressions.ViewExpression` like
             ``F("confidence") > 0.5`` or ``F("occluded") == False`` to apply
             elementwise to the specified field, which must be a list of same
@@ -384,13 +384,14 @@ def filter_keypoints(
             % (field, label_type, supported_types)
         )
 
+    is_frame_field = sample_collection._is_frame_field(field)
     is_list_field = issubclass(label_type, fol.Keypoints)
     _, points_path = sample_collection._get_label_field_path(field, "points")
 
     view = sample_collection.view()
 
-    if expr is not None:
-        expr_field, expr = _extract_field(expr)
+    if filter is not None:
+        expr_field, expr = _extract_field(filter)
 
         view = view.set_field(
             points_path,
