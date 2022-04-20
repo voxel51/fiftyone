@@ -57,7 +57,7 @@ const url = (() => {
   try {
     // @ts-ignore
     if (import.meta.env.DEV) {
-      origin = "http://localhost:5151";
+      origin = "http://localhost:5151/fiftyone";
     }
   } catch {}
   return `${http}/page?`;

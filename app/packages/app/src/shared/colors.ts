@@ -81,10 +81,10 @@ export type ColorTheme = {
 };
 
 export const darkTheme: ColorTheme = {
-  background: grey19,
-  backgroundDark: grey15,
+  background: white96,
+  backgroundDark: white85,
   backgroundDarker: grey11,
-  backgroundLight: grey24,
+  backgroundLight: white96,
   backgroundLightBorder: grey15,
   backgroundDarkBorder: grey11,
   backgroundTransparent: grey19a50,
@@ -106,7 +106,7 @@ export const darkTheme: ColorTheme = {
   brandMoreTransparent: orange49a10,
   brandFullyTransparent: orange49a0,
 
-  font: white100,
+  font: grey60,
   fontDark: grey68,
   fontDarkest: grey60,
 

@@ -60,7 +60,7 @@ const DatasetInput = styled(AuosizeInput)`
 `;
 
 const HeaderDiv = styled.div`
-  background-color: ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.white59};
   display: flex;
   flex-shrink: 0;
   justify-content: space-between;
@@ -673,7 +673,7 @@ const Header = ({ addNotification }) => {
       <LeftDiv>
         <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
           <LogoImg style={logoProps} src={Logo} />
-          <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
+          <FiftyOneDiv className="fix-me">MetaPix</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />
       </LeftDiv>
