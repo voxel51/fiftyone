@@ -264,13 +264,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
 
     def __init__(
         self,
-        name=None,
-        persistent=False,
-        overwrite=False,
-        _create=True,
-        _virtual=False,
-        **kwargs,
-    ):
+        name: str = None,
+        persistent: bool = False,
+        overwrite: bool = False,
+        _create: bool = True,
+        _virtual: bool = False,
+        **kwargs: t.Dict,
+    ) -> None:
         if name is None and _create:
             name = get_default_dataset_name()
 
@@ -291,7 +291,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
     def __len__(self) -> int:
         return self.count()
 
-    def __getitem__(self, id_filepath_slice):
+    def __getitem__(
+        self, id_filepath_slice: t.Union[int, slice, str]
+    ) -> t.Any:
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
@@ -326,10 +328,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def __delitem__(self, samples_or_ids):
+    def __delitem__(self, samples_or_ids: t.Union[int, slice, str]) -> None:
         self.delete_samples(samples_or_ids)
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> t.Any:
         #
         # The attributes necessary to determine a dataset's name and whether
         # it is deleted are always available. If a dataset is deleted, no other
@@ -342,26 +344,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             return super().__getattribute__(name)
 
         if getattr(self, "__fiftyone_deleted__", False):
-            raise ValueError("Dataset '%s' is deleted" % self.name)
+            raise ValueError(f"Dataset {self.name} is deleted")
 
         return super().__getattribute__(name)
 
     @property
-    def _dataset(self):
+    def _dataset(self) -> "Dataset":
         return self
 
     @property
-    def _root_dataset(self):
+    def _root_dataset(self) -> "Dataset":
         return self
 
     @property
-    def media_type(self):
+    def media_type(self) -> fodt.MediaType:
         """The media type of the dataset."""
         return self._doc.media_type
 
     @media_type.setter
-    def media_type(self, media_type):
-        if self:
+    def media_type(self, media_type: fodt.MediaType) -> None:
+        if len(self):
             raise ValueError("Cannot set media type of a non-empty dataset")
 
         if media_type not in fom.MEDIA_TYPES:
@@ -370,57 +372,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
                 % (media_type, fom.MEDIA_TYPES)
             )
 
-        if media_type == self._doc.media_type:
+        if media_type == self.__fiftyone_definition__.media_type:
             return
 
-        self._doc.media_type = media_type
+        self.__fiftyone_definition__.media_type = media_type
 
         idx = None
-        for i, field in enumerate(self._doc.sample_fields):
-            if field.name == "metadata":
+        for i, field in enumerate(self.__fiftyone_definition__.schema):
+            if field.path == "metadata":
                 idx = i
+
+        data_type: t.Type[fome.Metadata]
 
         if idx is not None:
             if media_type == fom.IMAGE:
-                doc_type = fome.ImageMetadata
+                data_type = fome.ImageMetadata
             elif media_type == fom.VIDEO:
-                doc_type = fome.VideoMetadata
+                data_type = fome.VideoMetadata
             else:
-                doc_type = fome.Metadata
+                data_type = fome.Metadata
 
-            field = foo.create_field(
-                "metadata",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=doc_type,
-            )
-            field_doc = foo.SampleFieldDocument.from_field(field)
-            self._doc.sample_fields[idx] = field_doc
-            self._sample_doc_cls._declare_field(field, field.name)
-
-        if media_type == fom.VIDEO:
-            # pylint: disable=no-member
-            self._doc.frame_fields = [
-                foo.SampleFieldDocument.from_field(field)
-                for field in self._frame_doc_cls._fields.values()
-            ]
-
-        self._doc.save()
+        self.__fiftyone_definition__.save()
 
     @property
-    def version(self):
+    def version(self) -> str:
         """The version of the ``fiftyone`` package for which the dataset is
         formatted.
         """
-        return self._doc.version
+        return self.__fiftyone_definition__.version
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The name of the dataset."""
-        return self._doc.name
+        return self.__fiftyone_definition__.name
 
     @name.setter
-    def name(self, name):
-        _name = self._doc.name
+    def name(self, name: str) -> None:
+        _name = self.__fiftyone_definition__.name
 
         if name == _name:
             return
@@ -429,41 +417,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             raise ValueError("A dataset with name '%s' already exists" % name)
 
         try:
-            self._doc.name = name
-            self._doc.save()
+            self.__fiftyone_definition__.name = name
+            self.__fiftyone_definition__.save()
         except:
-            self._doc.name = _name
+            self.__fiftyone_definition__.name = _name
             raise
 
     @property
-    def created_at(self):
+    def created_at(self) -> datetime:
         """The datetime that the dataset was created."""
-        return self._doc.created_at
+        return self.__fiftyone_definition__.created_at
 
     @property
-    def last_loaded_at(self):
+    def last_loaded_at(self) -> datetime:
         """The datetime that the dataset was last loaded."""
-        return self._doc.last_loaded_at
+        return self.__fiftyone_definition__.last_loaded_at
 
     @property
-    def persistent(self):
+    def persistent(self) -> bool:
         """Whether the dataset persists in the database after a session is
         terminated.
         """
-        return self._doc.persistent
+        return self.__fiftyone_definition__.persistent
 
     @persistent.setter
-    def persistent(self, value):
-        _value = self._doc.persistent
+    def persistent(self, value: bool) -> None:
+        _value = self.__fiftyone_definition__.persistent
         try:
-            self._doc.persistent = value
-            self._doc.save()
+            self.__fiftyone_definition__.persistent = value
+            self.__fiftyone_definition__.save()
         except:
-            self._doc.persistent = _value
+            self.__fiftyone_definition__.persistent = _value
             raise
 
     @property
-    def info(self):
+    def info(self) -> str:
         """A user-facing dictionary of information about the dataset.
 
         Examples::
@@ -479,15 +467,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             dataset.info["other_classes"] = ["bird", "plane"]
             dataset.save()  # must save after edits
         """
-        return self._doc.info
+        return etas.load_json(self.__fiftyone_definition__.info)["info"]
 
     @info.setter
-    def info(self, info):
-        self._doc.info = info
-        self._doc.save()
+    def info(self, info: t.Any) -> None:
+        self.__fiftyone_definition__.info = etas.json_to_str(
+            {"info": info}, pretty_print=False
+        )
+        self.__fiftyone_definition__.save()
 
     @property
-    def classes(self):
+    def classes(self) -> t.Dict:
         """A dict mapping field names to list of class label strings for the
         corresponding fields of the dataset.
 
@@ -507,11 +497,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             dataset.classes["ground_truth"].append("other")
             dataset.save()  # must save after edits
         """
-        return self._doc.classes
+        return etas.load_json(self.__fiftyone_definition__.classes)
 
     @classes.setter
     def classes(self, classes):
-        self._doc.classes = classes
+        self.__fiftyone_definition__.classes = etas.json_to_str(
+            classes, pretty_print=False
+        )
         self.save()
 
     @property
@@ -1417,9 +1409,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         if expand_schema:
             self._expand_schema(samples)
 
-        if validate:
-            self._validate_samples(samples)
-
         dicts = [self._make_dict(sample) for sample in samples]
 
         try:
@@ -1502,14 +1491,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
 
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
-
-    def _make_dict(self, sample, include_id=False):
-        d = sample.to_mongo_dict(include_id=include_id)
-
-        # We omit None here to allow samples with None-valued new fields to
-        # be added without raising nonexistent field errors. This is safe
-        # because None and missing are equivalent in our data model
-        return {k: v for k, v in d.items() if v is not None}
 
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:
@@ -4561,7 +4542,7 @@ def _create_dataset_definition(
 
 
 def _create_document_indexes(
-    field: fodt.DocumentField, document_cls: t.Type[fod.Document]
+    field: fodt.DocumentFieldDefinition, document_cls: t.Type[fod.Document]
 ) -> None:
 
     collection = fod.get_db_conn()[field.collection]

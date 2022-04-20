@@ -4,6 +4,7 @@ import re
 import typing as t
 from dataclasses import replace
 from datetime import date, datetime
+import numpy as np
 
 import eta.core.utils as etau
 import fiftyone.core.utils as fou
@@ -106,7 +107,7 @@ class DataMetaclass(type):
 
 class Data(metaclass=DataMetaclass):
 
-    __fiftyone_collection__: t.ClassVar[t.Optional[str]] = None
+    __fiftyone_collections__: t.ClassVar[t.Optional[t.Dict[str, str]]] = None
     __fiftyone_path__: t.ClassVar[t.Optional[str]] = None
     __fiftyone_schema__: t.ClassVar[t.Dict[str, Field]] = {}
 
@@ -197,7 +198,7 @@ class Data(metaclass=DataMetaclass):
             and isinstance(__value, dict)
         ):
             __value = field.type.__fiftyone_construct__(
-                self.__fiftyone_collection__,
+                self.__fiftyone_collections__,
                 (
                     ".".join([self.__fiftyone_path__, __name])
                     if self.__fiftyone_path__
@@ -266,14 +267,14 @@ class Data(metaclass=DataMetaclass):
     @classmethod
     def __fiftyone_construct__(
         cls: t.Type[_D],
-        __fiftyone_collection__: t.Optional[str],
+        __fiftyone_collections__: t.Optional[str],
         __fiftyone_path__: t.Optional[str],
         __fiftyone_schema__: t.Dict[str, Field],
         data: t.Dict[str, t.Any],
     ) -> _D:
         instance = cls()
         instance.__dict__ = data
-        instance.__fiftyone_collection__ = __fiftyone_collection__  # type: ignore
+        instance.__fiftyone_collections__ = __fiftyone_collections__  # type: ignore
         instance.__fiftyone_path__ = __fiftyone_path__  # type: ignore
         instance.__fiftyone_schema__ = __fiftyone_schema__  # type: ignore
         return instance
@@ -406,14 +407,14 @@ def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
     return tuple(l)
 
 
-_PRIMITIVES = {bool, date, datetime, int, float, str}
-_CONTAINERS: t.Set[t.Type] = {t.Dict, t.List, tuple}
+PRIMITIVES = {bool, bytes, date, datetime, int, float, np.ndarray, str}
+CONTAINERS: t.Set[t.Type] = {t.Dict, t.List, tuple}
 
 
 def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
     type_ = type(value)
 
-    if type_ in _PRIMITIVES or issubclass(type_, Data):
+    if type_ in PRIMITIVES or issubclass(type_, Data):
         return type_
 
     if isinstance(value, numbers.Number):
@@ -422,7 +423,7 @@ def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
     if isinstance(value, six.string_types):
         return str
 
-    for t in _CONTAINERS:
+    for t in CONTAINERS:
         if isinstance(value, t):
             return t
 
@@ -449,7 +450,7 @@ def _inherit_data(parent: Data, name: str, data: Data) -> None:
         else name
     )
 
-    _merge_schema(
+    merge_schema(
         parent.__fiftyone_schema__,
         {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
     )
@@ -463,7 +464,7 @@ def _inherit_data(parent: Data, name: str, data: Data) -> None:
         if field.type and issubclass(field.type, Data):
             items = _get_items(path, data)
             for item in items:
-                item.__fiftyone_collection__ = parent.__fiftyone_collection__  # type: ignore
+                item.__fiftyone_collections__ = parent.__fiftyone_collections__  # type: ignore
                 item.__fiftyone_path__ = ".".join([prefix, name])  # type: ignore
                 item.__fiftyone_schema__ = parent.__fiftyone_schema__  # type: ignore
 
@@ -482,7 +483,7 @@ def _get_items(path: str, data: Data) -> t.List[Data]:
     return _flatten([_get_items(rest, d) for d in v])
 
 
-def _merge_schema(
+def merge_schema(
     schema: t.Dict[str, Field], other: t.Dict[str, Field]
 ) -> None:
     paths = set(schema.keys()).union(set(other.keys()))

@@ -14,7 +14,7 @@ import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F
-import fiftyone.core.odm as foo
+import fiftyone.core.data as foo
 import fiftyone.core.sample as fos
 
 from decorators import drop_datasets

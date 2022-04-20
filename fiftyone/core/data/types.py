@@ -5,13 +5,13 @@ External data
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime
+from bson import ObjectId
+from dataclasses import asdict
+from datetime import datetime
 from enum import Enum
 import typing as t
 
 import strawberry as gql
-
-from fiftyone.core.expressions import ObjectId
 
 
 @gql.type
@@ -36,13 +36,40 @@ class RunData:
 
 
 @gql.type
-class Field:
-    path: str
-    type: str
+class DictDefinition:
+    key: t.Union[str, int]
+    value: t.Union[
+        "DictDefinition", "ListDefinition", "str", "TupleDefinition", None
+    ]
 
 
 @gql.type
-class DocumentField(Field):
+class ListDefinition:
+    type: t.Union[
+        "DictDefinition", "ListDefinition", "str", "TupleDefinition", None
+    ]
+
+
+@gql.type
+class TupleDefinition:
+    types: t.Union[
+        t.List[
+            t.Union[
+                "DictDefinition", "ListDefinition", "str", "TupleDefinition"
+            ]
+        ],
+        None,
+    ]
+
+
+@gql.type
+class FieldDefinition:
+    path: str
+    type: t.Union["DictDefinition", "ListDefinition", "str", "TupleDefinition"]
+
+
+@gql.type
+class DocumentFieldDefinition(FieldDefinition):
     collection: str = gql.field(default_factory=lambda: str(ObjectId()))
 
 
@@ -123,11 +150,13 @@ class SidebarGroup:
 class Dataset:
     id: gql.ID
     name: str
-    created_at: date
+    created_at: datetime
     last_loaded_at: datetime
     persistent: bool
     media_type: t.Optional[MediaType]
-    schema: t.List[t.Union[DocumentField, Field]]
+    field_definitions: t.List[
+        t.Union[DocumentFieldDefinition, FieldDefinition]
+    ]
     info: str
 
     classes: str
@@ -143,95 +172,8 @@ class Dataset:
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
 
+    def save(self) -> None:
+        from fiftyone.core.data import get_db_conn
 
-class Types(Enum):
-    DOUBLE = "double"
-    STRING = "string"
-    OBJECT = "object"
-    ARRAY = "array"
-    BINARY = "binData"
-    OBJECT_ID = "objectId"
-    BOOL = "bool"
-    DATE = "date"
-    INT = "int"
-    TIMESTAMP = "timestamp"
-    LONG = "long"
-    DECIMAL = "decimal"
-
-
-@gql.interface
-class JSONSchemaProperty:
-    description: t.Optional[str]
-    title: t.Optional[str]
-
-
-@gql.type
-class JSONSchemaIntProperty(JSONSchemaProperty):
-    maximum: t.Optional[int]
-    minimum: t.Optional[int]
-    multiple_of: t.Optional[int]
-
-
-@gql.type
-class JSONSchemaDoubleProperty(JSONSchemaProperty):
-    maximum: t.Optional[float]
-    minimum: t.Optional[float]
-    multiple_of: t.Optional[float]
-
-
-@gql.type
-class JSONSchemaLongProperty(JSONSchemaProperty):
-    maximum: t.Optional[int]
-    minimum: t.Optional[int]
-    multiple_of: t.Optional[int]
-
-
-@gql.type
-class JSONSchemaDecimalProperty(JSONSchemaProperty):
-    maximum: t.Optional[float]
-    minimum: t.Optional[float]
-    multiple_of: t.Optional[float]
-
-
-@gql.type
-class JSONSchemaStringProperty(JSONSchemaProperty):
-    bson_type: t.Literal[Types.STRING]
-    max_length: t.Optional[int]
-    min_length: t.Optional[int]
-    pattern: t.Optional[str]
-
-
-@gql.type
-class JSONSchemaEnumProperty(JSONSchemaProperty):
-    bson_type: t.Literal[Types.STRING]
-    enum: t.List[str]
-
-
-@gql.type
-class JSONSchemaObjectProperty(JSONSchemaProperty):
-    bson_type: t.Literal[Types.OBJECT]
-    max_properties: t.Optional[int]
-    min_properties: t.Optional[int]
-    properties: t.Dict[str, "JSONSchemaProperty"]
-    required: t.Optional[t.List[str]]
-    additional_properties: t.Literal[True] = True
-
-
-JSONSchemaProperties = t.Union[
-    JSONSchemaIntProperty,
-    JSONSchemaDoubleProperty,
-    JSONSchemaLongProperty,
-    JSONSchemaDecimalProperty,
-    JSONSchemaStringProperty,
-    JSONSchemaEnumProperty,
-    JSONSchemaObjectProperty,
-    "JSONSchemaArrayProperty",
-]
-
-
-@gql.type
-class JSONSchemaArrayProperty(JSONSchemaProperty):
-    items: t.Union[t.List[JSONSchemaProperties], JSONSchemaProperties]
-    maxItems: t.Optional[int]
-    minItems: t.Optional[int]
-    uniqueItems: t.Optional[bool]
+        db = get_db_conn()
+        db.datasets.replace_one({"_id": self.id}, asdict(self), upsert=True)

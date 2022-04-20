@@ -37,5 +37,5 @@ from .database import (
 )
 
 from .datafield import field, Field
-from .document import Document, json_schemas, schema
+from .document import Document
 from .types import Dataset, RunData

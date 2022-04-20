@@ -9,14 +9,32 @@ import typing as t
 import weakref
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 from bson import ObjectId
 
-from .data import Data, DataMetaclass, FiftyOneDataError, asdict, fields
+from .bson_schema import (
+    BSON_TYPE_MAP,
+    BSONSchemaArrayProperty,
+    BSONSchemaObjectProperty,
+    BSONSchemaProperties,
+)
+from .data import (
+    PRIMITIVES,
+    Data,
+    DataMetaclass,
+    FiftyOneDataError,
+    asdict,
+    fields,
+)
 from .database import get_db_conn
 from .datafield import Field, field
-from .types import DocumentField as DocumentFieldDef
-from .types import Field as FieldDef
-from .types import JSONSchemaObjectProperty
+from .types import (
+    DictDefinition,
+    DocumentFieldDefinition,
+    FieldDefinition,
+    ListDefinition,
+    TupleDefinition,
+)
 
 
 _D = t.TypeVar("_D", bound="Document")
@@ -36,92 +54,10 @@ class DocumentMetaclass(DataMetaclass):
             t.Tuple[t.Union[str, int], ...], "Document"
         ] = weakref.WeakValueDictionary()
 
-    def __setitem__(cls: t.Type[_D], : _D) -> None:
-        cls.__fiftyone_instances__[instance.id] = instance
-
-    def __get_item__(cls, instance):
-        try:
-            return cls._instances[doc.collection_name][str(doc.id)]
-        except KeyError:
-            return None
-
-    def _reload_instance(cls, obj):
-        # pylint: disable=no-value-for-parameter
-        cls._reload_doc(obj._doc.collection_name, obj.id)
-
-    def _rename_fields(cls, collection_name, field_names, new_field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for sample in cls._instances[collection_name].values():
-            data = sample._doc._data
-            for field_name, new_field_name in zip(
-                field_names, new_field_names
-            ):
-                data[new_field_name] = data.pop(field_name, None)
-
-    def _clear_fields(cls, collection_name, field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for sample in cls._instances[collection_name].values():
-            for field_name in field_names:
-                sample._doc._data[field_name] = None
-
-    def _purge_fields(cls, collection_name, field_names):
-        if collection_name not in cls._instances:
-            return
-
-        for sample in cls._instances[collection_name].values():
-            for field_name in field_names:
-                sample._doc._data.pop(field_name, None)
-
-    def _reload_doc(cls, collection_name, sample_id, hard=False):
-        if collection_name not in cls._instances:
-            return
-
-        sample = cls._instances[collection_name].get(sample_id, None)
-        if sample is not None:
-            sample.reload(hard=hard)
-
-    def _reload_docs(cls, collection_name, sample_ids=None, hard=False):
-        if collection_name not in cls._instances:
-            return
-
-        samples = cls._instances[collection_name]
-
-        if sample_ids is not None:
-            sample_ids = set(sample_ids)
-            for sample in samples.values():
-                if sample.id in sample_ids:
-                    sample.reload(hard=hard)
-        else:
-            for sample in samples.values():
-                sample.reload(hard=hard)
-
-
-    def _reset_docs(cls, collection_name, sample_ids=None):
-        if collection_name not in cls._instances:
-            return
-
-        if sample_ids is not None:
-            samples = cls._instances[collection_name]
-            for sample_id in sample_ids:
-                sample = samples.pop(sample_id, None)
-                if sample is not None:
-                    sample._reset_backing_doc()
-        else:
-            samples = cls._instances.pop(collection_name)
-            for sample in samples.values():
-                sample._reset_backing_doc()
-
-
-class FiftyOneDocumentError(TypeError):
-    pass
-
 
 class Document(Data, metaclass=DocumentMetaclass):
 
+    __fiftyone_keys__: t.ClassVar[t.Tuple[str, ...]] = ("id",)
     __fiftyone_indexes__: t.ClassVar[t.Tuple[t.Any, ...]]
     __fiftyone_instances__: t.ClassVar[
         t.MutableMapping[(t.Tuple[t.Union[str, int], ...]), "Document"]
@@ -226,13 +162,16 @@ class Document(Data, metaclass=DocumentMetaclass):
     def to_dict(self) -> t.Dict:
         return asdict(self)
 
-    def to_json(self, pretty_print=False):
+    def to_json(self, pretty_print: bool = False) -> str:
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
     def save(self) -> None:
         save(self)
 
-    def reload(self, hard=False):
+    def reload(self, hard: bool = False) -> None:
+
+        d = self._dataset._sample_collection.find_one({"_id": self._id})
+        self._doc = self._dataset._sample_dict_to_doc(d)
         if hard:
             self._reload_backing_doc()
         else:
@@ -247,51 +186,257 @@ class Document(Data, metaclass=DocumentMetaclass):
         return cls.from_dict(etas.load_json(path))
 
 
-def reload(document: Document, hard: bool = False) -> None:
+def reload(document: Document) -> None:
     db = get_db_conn()
-    if not document.__fiftyone_collection__:
+    if not document.__fiftyone_collections__:
         raise FiftyOneDataError(
             "cannot save a document that has not been added to a dataset"
         )
 
-    collection = db[document.__fiftyone_collection__]
-    document.__dict__ = collection.find_one({"_id": document._id})
+    collection = db[
+        document.__fiftyone_collections__[document.__fiftyone_path__ or ""]
+    ]
+    document.__dict__ = collection.find_one(
+        {key: document.__dict__[key] for key in document.__fiftyone_keys__}
+    )
 
 
 def save(document: Document) -> None:
     db = get_db_conn()
-    if not document.__fiftyone_collection__:
+    if not document.__fiftyone_collections__:
         raise FiftyOneDataError(
             "cannot save a document that has not been added to a dataset"
         )
 
-    collection = db[document.__fiftyone_collection__]
+    collection = db[
+        document.__fiftyone_collections__[document.__fiftyone_path__ or ""]
+    ]
     collection.replace_one(
         asdict(document, dict_factory=dict, links=False), {"_id": document._id}
     )
 
 
-def json_schemas(
-    data: t.Union[t.Type[Data], Data]
-) -> JSONSchemaObjectProperty:
-    for field in fields(data):
-        pass
+def _get_type_definition(
+    type: t.Type,
+) -> t.Union[DictDefinition, ListDefinition, TupleDefinition, str]:
+    if type == list or getattr(type, "__origin__", None) == list:
+        return ListDefinition(
+            type=_get_type_definition(getattr(type, "__args__", (None,))[0])
+        )
+
+    if type == dict or getattr(type, "__origin__", None) == dict:
+        (key, value) = getattr(type, "__args__", ("str", None))
+        if key not in (int, str):
+            raise FiftyOneDataError("invalid key type for dict field")
+
+        return DictDefinition(key=key, value=_get_type_definition(value))
+
+    if type == tuple or getattr(type, "__origin__", None) == tuple:
+        args = getattr(type, "__args__", None)
+        if not args or any(a not in PRIMITIVES for a in args):
+            raise FiftyOneDataError("invalid tuple type for field")
+
+        return TupleDefinition(types=[_get_type_definition(a) for a in args])
+
+    return etau.get_class_name(type)
 
 
-def schema(
-    data: t.Union[t.Type[Data], Data]
-) -> t.Tuple[t.Union[DocumentFieldDef, FieldDef], ...]:
-    l: t.List[t.Union[DocumentFieldDef, FieldDef]] = []
-    for path, field in data.__fiftyone_schema__.items():
+def _unwind_to_object_property(
+    property: t.Union[BSONSchemaObjectProperty, BSONSchemaArrayProperty],
+) -> BSONSchemaObjectProperty:
+    while (
+        not isinstance(property, BSONSchemaObjectProperty)
+        or property.additional_properties is not False
+    ):
+        if isinstance(property, BSONSchemaArrayProperty):
+            if not isinstance(property.items, BSONSchemaObjectProperty):
+                raise FiftyOneDataError("unwound to undefined bson property")
+
+            property = property.items
+            continue
+
+        if isinstance(property, BSONSchemaObjectProperty):
+            if not isinstance(
+                property.additional_properties, BSONSchemaObjectProperty
+            ):
+                raise FiftyOneDataError("todo")
+
+            property = property.additional_properties
+            continue
+
+        if not isinstance(
+            property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
+        ):
+            raise FiftyOneDataError("todo")
+
+
+def _type_definition_as_bson_property(
+    definition: t.Union[DictDefinition, ListDefinition, TupleDefinition, str]
+) -> BSONSchemaProperties:
+    property: BSONSchemaProperties
+
+    if isinstance(definition, DictDefinition):
+        property = BSONSchemaObjectProperty(additional_properties=True)
+
+        if definition.value:
+            property.additional_properties = _type_definition_as_bson_property(
+                definition.value
+            )
+        return property
+
+    if isinstance(definition, ListDefinition):
+        property = BSONSchemaArrayProperty()
+
+        if definition.type:
+            property.items = _type_definition_as_bson_property(definition.type)
+
+        return property
+
+    if isinstance(definition, TupleDefinition):
+        property = BSONSchemaArrayProperty()
+
+        if definition.types:
+            property.items = [
+                _type_definition_as_bson_property(a) for a in definition.types
+            ]
+
+        return property
+
+    cls = etau.get_class(definition)
+
+    if issubclass(cls, Data):
+        property = BSONSchemaObjectProperty()
+
+        for field in fields(cls):
+            if not field.name or not field.type:
+                raise FiftyOneDataError("todo")
+
+            property.properties[
+                field.name
+            ] = _type_definition_as_bson_property(
+                _get_type_definition(field.type)
+            )
+
+            property.required.append(field.name)
+
+        property.required = sorted(property.required)
+        return property
+
+    if cls in BSON_TYPE_MAP:
+        return BSON_TYPE_MAP[cls]()
+
+    raise FiftyOneDataError("todo")
+
+
+def _get_path_property(
+    path: str, bson_schema: BSONSchemaObjectProperty
+) -> BSONSchemaProperties:
+    names = path.split(".")
+    property: BSONSchemaProperties = bson_schema
+    for name in names[:-1]:
+        if not isinstance(property, BSONSchemaObjectProperty):
+            raise FiftyOneDataError("todo")
+
+        property = property.properties[name]
+        if isinstance(
+            property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
+        ):
+            property = _unwind_to_object_property(property)
+
+    return property
+
+
+def as_bson_schema(schema: t.Dict[str, Field]) -> BSONSchemaObjectProperty:
+    paths = sorted(schema)
+    bson_schema = BSONSchemaObjectProperty()
+    for path in paths:
+        names = path.split(".")
+        property = _get_path_property(".".join(names[:-1]), bson_schema)
+
+        field = schema[path]
+
+        if (
+            not isinstance(property, BSONSchemaObjectProperty)
+            or not field.type
+        ):
+            raise FiftyOneDataError("todo")
+
+        property.properties[names[-1]] = _type_definition_as_bson_property(
+            _get_type_definition(field.type)
+        )
+
+    return bson_schema
+
+
+def as_fields(
+    schema: t.Dict[str, Field]
+) -> t.List[t.Union[DocumentFieldDefinition, FieldDefinition]]:
+    fields: t.List[t.Union[DocumentFieldDefinition, FieldDefinition]] = []
+    for path, field in schema.items():
         if not field.type:
             raise FiftyOneDataError(f"field {field.name} has no type")
 
-        d: t.Union[DocumentFieldDef, FieldDef]
+        d: t.Union[DocumentFieldDefinition, FieldDefinition]
+        type = _get_type_definition(field.type)
         if issubclass(field.type, Document):
-            d = DocumentFieldDef(path, str(field.type))
+            d = DocumentFieldDefinition(path, type)
         else:
-            d = FieldDef(path, str(field.type))
+            d = FieldDefinition(path, type)
 
-        l.append(d)
+        fields.append(d)
 
-    return tuple(sorted(l, key=lambda d: d.path))
+    return sorted(fields, key=lambda d: d.path)
+
+
+def _make_type(
+    definition: t.Union[DictDefinition, ListDefinition, TupleDefinition, str]
+) -> t.Type:
+    if isinstance(definition, DictDefinition):
+        return t.Dict[
+            etau.get_class(definition.key),
+            _make_type(definition.value) if definition.value else t.Any,
+        ]
+
+    if isinstance(definition, ListDefinition):
+        return (
+            t.List[_make_type(definition.type)] if definition.type else t.List
+        )
+
+    if isinstance(definition, TupleDefinition):
+        return (
+            t.Tuple[tuple(_make_type(a) for a in definition.types)]
+            if definition.types
+            else t.Tuple
+        )
+
+    return etau.get_class(definition)
+
+
+def as_schema(
+    field_definitions: t.List[
+        t.Union[DocumentFieldDefinition, FieldDefinition]
+    ],
+    bson_schema: BSONSchemaObjectProperty,
+) -> t.Dict[str, Field]:
+    schema = {
+        definition.path: Field(
+            name=definition.path.split(".")[-1],
+            type=_make_type(definition.type),
+        )
+        for definition in field_definitions
+    }
+
+    for path in schema:
+        names = path.split(".")
+        name = names[-1]
+        field = schema[path]
+        parent = ".".join(names[:-1])
+        property = _get_path_property(parent, bson_schema)
+
+        if not isinstance(property, BSONSchemaObjectProperty):
+            raise FiftyOneDataError("adfa")
+
+        if name in property.required:
+            field.required = True
+
+    return schema

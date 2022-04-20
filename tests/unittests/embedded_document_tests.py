@@ -16,7 +16,7 @@ import eta.core.image as etai
 
 import fiftyone as fo
 from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
-from fiftyone.core.odm import DynamicEmbeddedDocument
+from fiftyone.core.data import DynamicEmbeddedDocument
 
 from decorators import drop_datasets
 

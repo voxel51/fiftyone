@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import typing as t
 
+from fiftyone.core.data.bson_schema import BSONSchemaProperties
+
 
 _T = t.TypeVar("_T")
 _R = t.TypeVar("_R")

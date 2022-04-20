@@ -10,7 +10,7 @@ import os
 import unittest
 
 import fiftyone as fo
-import fiftyone.core.odm.database as food
+import fiftyone.core.data.database as food
 
 
 class MultiprocessTest(unittest.TestCase):
