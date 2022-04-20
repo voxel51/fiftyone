@@ -223,9 +223,7 @@ parser.add_argument(
 parser.add_argument("--multi", action="store_true")
 
 args, command = parser.parse_known_args()
-if not command:
-    raise ValueError("No command given")
-if command[0].startswith("--"):
+if command and command[0].startswith("--"):
     raise ValueError("Unhandled service argument: %s" % command[0])
 service_class = Service.find_subclass_by_name(args.service_name)
 
@@ -254,15 +252,19 @@ if sys.platform.startswith("win"):
 
 # use psutil's wrapper around subprocess.Popen for convenience (e.g. it makes
 # finding the child's children significantly easier)
-child = psutil.Popen(
-    command,
-    stdin=subprocess.DEVNULL,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    **popen_kwargs,
-)
-child_stdout = ChildStreamMonitor(child.stdout)
-child_stderr = ChildStreamMonitor(child.stderr)
+child = None
+child_stdout = None
+child_stderr = None
+if command:
+    child = psutil.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        **popen_kwargs,
+    )
+    child_stdout = ChildStreamMonitor(child.stdout)
+    child_stderr = ChildStreamMonitor(child.stderr)
 
 
 def monitor_stdin():
@@ -292,6 +294,9 @@ def shutdown():
         sys.stderr.write("Error in %s.cleanup():\n" % service_class.__name__)
         traceback.print_exc(file=sys.stderr)
         sys.stderr.flush()
+
+    if not child:
+        return
 
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first

@@ -53,15 +53,7 @@ class ServiceExecutableNotFound(ServiceException):
 
 
 class Service(object):
-    """Interface for FiftyOne services.
-
-    All services must define a ``command`` property.
-
-    Services are run in an isolated Python subprocess (see ``service/main.py``)
-    to ensure that they are shut down when the main Python process exits. The
-    ``command`` and ``working_dir`` properties control the execution of the
-    service in the subprocess.
-    """
+    """Interface for FiftyOne services."""
 
     service_name = None
     working_dir = "."
@@ -85,10 +77,6 @@ class Service(object):
             self.stop()
 
     @property
-    def command(self):
-        raise NotImplementedError("%r must define `command`" % type(self))
-
-    @property
     def env(self):
         return {}
 
@@ -102,20 +90,22 @@ class Service(object):
 
         return ["--51-service", self.service_name]
 
-    def start(self):
-        """Starts the service."""
+    def _get_execution_command(self):
         service_main_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "service",
             "main.py",
         )
 
+        return [sys.executable, service_main_path] + self._service_args
+
+    def start(self):
+        """Starts the service."""
+
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows
         self.child = psutil.Popen(
-            [sys.executable, service_main_path]
-            + self._service_args
-            + self.command,
+            self._get_execution_command(),
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
             env={**os.environ, "FIFTYONE_DISABLE_SERVICES": "1", **self.env},
@@ -192,7 +182,24 @@ class Service(object):
         raise ValueError("Unrecognized %s subclass: %s" % (cls.__name__, name))
 
 
-class MultiClientService(Service):
+class ServiceWithCommand(Service):
+    """Interface for FiftyOne services running commands.
+
+    CommandServices are run in an isolated Python subprocess (see ``service/main.py``)
+    to ensure that they are shut down when the main Python process exits. The
+    ``command`` and ``working_dir`` properties control the execution of the
+    service in the subprocess.
+    """
+
+    @property
+    def command(self):
+        raise NotImplementedError("%r must define `command`" % type(self))
+
+    def _get_execution_command(self):
+        return super()._get_execution_command() + self.command
+
+
+class MultiClientService(ServiceWithCommand):
     """Base class for services that support multiple clients."""
 
     # set when attaching to an existing process
@@ -246,10 +253,6 @@ class ExternalDatabaseService(Service):
 
     service_name = "ext-db"
     allow_headless = True
-
-    @property
-    def command(self):
-        return ["sleep", "14d"]
 
     @staticmethod
     def cleanup():
@@ -367,7 +370,7 @@ class DatabaseService(MultiClientService):
         return mongod
 
 
-class ServerService(Service):
+class ServerService(ServiceWithCommand):
     """Service that controls the FiftyOne web server."""
 
     service_name = "server"
@@ -441,7 +444,7 @@ class ServerService(Service):
         return {"FIFTYONE_DO_NOT_TRACK": dnt}
 
 
-class AppService(Service):
+class AppService(ServiceWithCommand):
     """Service that controls the FiftyOne app."""
 
     service_name = "app"
