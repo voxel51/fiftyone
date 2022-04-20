@@ -2138,13 +2138,14 @@ class FilterKeypoints(ViewStage):
                 )
                 match_expr = F("keypoints").filter(has_points)
             else:
+                field, _ = sample_collection._handle_frame_field(self._field)
                 has_points = (
-                    F(self._field + ".points")
+                    F(field + ".points")
                     .filter(F()[0] != float("nan"))
                     .length()
                     > 0
                 )
-                match_expr = has_points.if_else(F(self._field), None)
+                match_expr = has_points.if_else(F(field), None)
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
                 root_path, match_expr, embedded_root=True

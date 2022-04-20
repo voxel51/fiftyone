@@ -1465,7 +1465,7 @@ class ViewStageTests(unittest.TestCase):
                         points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
                         confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
                     ),
-                    fo.Keypoint(label="empty"),
+                    fo.Keypoint(),
                 ]
             ),
         )
@@ -1574,6 +1574,144 @@ class ViewStageTests(unittest.TestCase):
 
         # view with no matches
         view = dataset.filter_keypoints("kps", labels=[])
+        self.assertEqual(len(view), 0)
+
+    def test_filter_keypoints_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(
+            kp=fo.Keypoint(
+                label="person",
+                points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+                confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+            ),
+            kps=fo.Keypoints(
+                keypoints=[
+                    fo.Keypoint(
+                        label="person",
+                        points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+                        confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                    ),
+                    fo.Keypoint(),
+                ]
+            ),
+        )
+        sample1.frames[2] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+            edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+        )
+
+        count_nans = lambda points: len([p for p in points if np.isnan(p[0])])
+
+        #
+        # Test `Keypoint` frame fields
+        #
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "frames.kp", filter=F("confidence") > 0.75
+        )
+        self.assertEqual(len(view), 1)
+
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kp"].points), 5)
+        self.assertEqual(count_nans(frame["kp"].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "frames.kp", filter=F("confidence") > 0.75, only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kp"].points), 5)
+        self.assertEqual(count_nans(frame["kp"].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints(
+            "frames.kp", filter=F("confidence") > 0.95
+        )
+        self.assertEqual(len(view), 0)
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "frames.kp", labels=["left eye", "right eye"]
+        )
+        self.assertEqual(len(view), 1)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kp"].points), 5)
+        self.assertEqual(count_nans(frame["kp"].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "frames.kp", labels=["left eye", "right eye"], only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kp"].points), 5)
+        self.assertEqual(count_nans(frame["kp"].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints("frames.kp", labels=[])
+        self.assertEqual(len(view), 0)
+
+        #
+        # Test `Keypoints` frame fields
+        #
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "frames.kps", filter=F("confidence") > 0.75
+        )
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("frames.kps.keypoints"), 1)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kps"].keypoints[0].points), 5)
+        self.assertEqual(count_nans(frame["kps"].keypoints[0].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "frames.kps", filter=F("confidence") > 0.75, only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.count("frames.kps.keypoints"), 2)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kps"].keypoints[0].points), 5)
+        self.assertEqual(count_nans(frame["kps"].keypoints[0].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints(
+            "frames.kps", filter=F("confidence") > 0.95
+        )
+        self.assertEqual(len(view), 0)
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "frames.kps", labels=["left eye", "right eye"]
+        )
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("frames.kps.keypoints"), 1)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kps"].keypoints[0].points), 5)
+        self.assertEqual(count_nans(frame["kps"].keypoints[0].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "frames.kps", labels=["left eye", "right eye"], only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.count("frames.kps.keypoints"), 2)
+        frame = view.first().frames.first()
+        self.assertEqual(len(frame["kps"].keypoints[0].points), 5)
+        self.assertEqual(count_nans(frame["kps"].keypoints[0].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints("frames.kps", labels=[])
         self.assertEqual(len(view), 0)
 
     def test_limit(self):
