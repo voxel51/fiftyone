@@ -559,8 +559,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def skeletons(self):
-        """A dict mapping field names to keypoint skeletons, each of which
-        defines the semantic labels and point connectivity for the
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
         :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
         field of the dataset.
 
@@ -594,10 +595,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def default_skeleton(self):
-        """A default keypoint skeleton defining the semantic labels and point
-        connectivity for all :class:`fiftyone.core.labels.Keypoint` fields of
-        this dataset that do not have customized skeletons defined in
-        :meth:`skeleton`.
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
 
         Examples::
 

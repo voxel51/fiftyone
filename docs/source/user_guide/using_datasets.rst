@@ -335,15 +335,23 @@ When you load datasets with |Keypoint| fields in the App that have
 corresponding skeletons, the skeletons will automatically be rendered and label
 strings will appear in the App's tooltip when you hover over the keypoints.
 
-.. note::
+Keypoint skeletons can be associated with |Keypoint| or |Keypoints| fields
+whose :attr:`points <fiftyone.core.labels.Keypoint.points>` attributes all
+contain a fixed number of semantically ordered points.
 
-    When using keypoint skeletons, each |Keypoint| instance's
-    :attr:`points <fiftyone.core.labels.Keypoint.points>` list must always
-    respect the indexing defined by the field's |KeypointSkeleton|.
+The :attr:`edges <fiftyone.core.odm.dataset.KeypointSkeleton.edges>` argument
+contains lists of integer indexes that define the connectivity of the points in
+the skeleton, and the optional
+:attr:`labels <fiftyone.core.odm.dataset.KeypointSkeleton.labels>` argument
+defines the label strings for each node in the skeleton.
 
-    If a particular keypoint is occluded or missing for an object, use
-    `[float("nan"), float("nan")]` in its
-    :attr:`points <fiftyone.core.labels.Keypoint.points>` list.
+For example, the skeleton below is defined by edges between the following
+nodes:
+
+.. code-block:: text
+
+    left hand <-> left shoulder <-> right shoulder <-> right hand
+    left eye <-> right eye <-> mouth
 
 .. code-block:: python
     :linenos:
@@ -369,11 +377,21 @@ strings will appear in the App's tooltip when you hover over the keypoints.
 
 .. note::
 
+    When using keypoint skeletons, each |Keypoint| instance's
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list must always
+    respect the indexing defined by the field's |KeypointSkeleton|.
+
+    If a particular keypoint is occluded or missing for an object, use
+    `[float("nan"), float("nan")]` in its
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list.
+
+.. note::
+
     You must call
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
     the dataset's
-    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
-    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
+    :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
     properties to save the changes to the database.
 
 Deleting a dataset
