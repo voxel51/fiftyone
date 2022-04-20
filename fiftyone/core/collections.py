@@ -3144,7 +3144,8 @@ class SampleCollection(object):
                 ``F("occluded") == False``, to apply elementwise to the
                 specified field, which must be a list of same length as
                 :attr:`fiftyone.core.labels.Keypoint.points`
-            labels (None): an iterable of keypoint skeleton labels to keep
+            labels (None): a label or iterable of keypoint skeleton labels to
+                keep
             only_matches (True): whether to only include keypoints/samples with
                 at least one point after filtering (True) or include all
                 keypoints/samples (False)

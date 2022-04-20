@@ -2028,7 +2028,7 @@ class FilterKeypoints(ViewStage):
             ``F("occluded") == False``, to apply elementwise to the
             specified field, which must be a list of same length as
             :attr:`fiftyone.core.labels.Keypoint.points`
-        labels (None): an iterable of keypoint skeleton labels to keep
+        labels (None): a label or iterable of keypoint skeleton labels to keep
         only_matches (True): whether to only include keypoints/samples with
             at least one point after filtering (True) or include all
             keypoints/samples (False)
@@ -2039,6 +2039,11 @@ class FilterKeypoints(ViewStage):
         self._filter = filter
         self._labels = labels
         self._only_matches = only_matches
+
+        self._filter_dict = None
+        self._filter_field = None
+        self._filter_expr = None
+
         self._validate_params()
 
     @property
@@ -2075,22 +2080,17 @@ class FilterKeypoints(ViewStage):
 
         pipeline = []
 
-        if self._filter is not None:
-            expr_field, expr = _extract_field(self._filter)
-
-            filter_expr = (F(expr_field) != None).if_else(
-                F.zip(F("points"), F(expr_field)).map(
-                    (F()[1].apply(expr)).if_else(
+        if self._filter_expr is not None:
+            filter_expr = (F(self._filter_field) != None).if_else(
+                F.zip(F("points"), F(self._filter_field)).map(
+                    (F()[1].apply(self._filter_expr)).if_else(
                         F()[0], [float("nan"), float("nan")],
                     )
                 ),
                 F("points"),
             )
 
-            # @todo prefix?
-            # pipeline.append({"set": {points_path: filter_expr.to_mongo()}})
-
-            _pipeline = sample_collection._make_set_field_pipeline(
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
                 points_path, filter_expr, embedded_root=True
             )
             pipeline.extend(_pipeline)
@@ -2108,7 +2108,11 @@ class FilterKeypoints(ViewStage):
                     % self._field
                 )
 
-            labels = set(self._labels)
+            if etau.is_str(self._labels):
+                labels = {self._labels}
+            else:
+                labels = set(self._labels)
+
             inds = [
                 idx
                 for idx, label in enumerate(skeleton.labels)
@@ -2121,10 +2125,7 @@ class FilterKeypoints(ViewStage):
                 .if_else(F()[1], [float("nan"), float("nan")])
             )
 
-            # @todo prefix?
-            # pipeline.append({"set": {points_path: labels_expr.to_mongo()}})
-
-            _pipeline = sample_collection._make_set_field_pipeline(
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
                 points_path, labels_expr, embedded_root=True
             )
             pipeline.extend(_pipeline)
@@ -2145,10 +2146,7 @@ class FilterKeypoints(ViewStage):
                 )
                 match_expr = has_points.if_else(F(self._field), None)
 
-            # @todo prefix?
-            # pipeline.append({"set": {root_path: match_expr.to_mongo()}})
-
-            _pipeline = sample_collection._make_set_field_pipeline(
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
                 root_path, match_expr, embedded_root=True
             )
             pipeline.extend(_pipeline)
@@ -2168,19 +2166,32 @@ class FilterKeypoints(ViewStage):
     def _kwargs(self):
         return [
             ["field", self._field],
-            ["filter", self._get_mongo_filter()],
+            ["filter", self._filter_dict],
             ["labels", self._labels],
             ["only_matches", self._only_matches],
         ]
 
     def _validate_params(self):
-        if self._filter is not None and not isinstance(
-            self._filter, (foe.ViewExpression, dict, bool)
-        ):
+        if self._filter is None:
+            return
+
+        if isinstance(self._filter, foe.ViewExpression):
+            # note: $$expr is used here because that's what
+            # `ViewExpression.apply()` uses
+            filter_dict = self._filter.to_mongo(prefix="$$expr")
+        elif not isinstance(self._filter, dict):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
                 "expression defining a filter; found '%s'" % self._filter
             )
+        else:
+            filter_dict = self._filter
+
+        filter_field, d = _extract_filter_field(filter_dict)
+
+        self._filter_dict = filter_dict
+        self._filter_field = filter_field
+        self._filter_expr = foe.ViewExpression(d)
 
     @classmethod
     def _params(cls):
@@ -2206,36 +2217,22 @@ class FilterKeypoints(ViewStage):
             },
         ]
 
-    def _get_mongo_filter(self):
-        if self._filter is None:
-            return None
 
-        if not isinstance(self._filter, foe.ViewExpression):
-            return self._filter
-
-        return self._filter.to_mongo()
-
-
-def _extract_field(val):
+def _extract_filter_field(val):
     field = None
 
-    if isinstance(val, foe.ViewField) and not val.is_frozen:
-        field = val._expr
-        val._expr = ""
-        return field, val
-
-    if isinstance(val, foe.ViewExpression):
-        field, val._expr = _extract_field(val._expr)
-        return field, val
+    # note: $$expr is used here because that's what `F.apply()` uses
+    if etau.is_str(val) and val.startswith("$$expr."):
+        val, field = val.split(".", 1)
 
     if isinstance(val, dict):
         _val = {}
         for k, v in val.items():
-            _field, _k = _extract_field(k)
+            _field, _k = _extract_filter_field(k)
             if _field is not None:
                 field = _field
 
-            _field, _v = _extract_field(v)
+            _field, _v = _extract_filter_field(v)
             if _field is not None:
                 field = _field
 
@@ -2246,7 +2243,7 @@ def _extract_field(val):
     if isinstance(val, list):
         _val = []
         for v in val:
-            _field, _v = _extract_field(v)
+            _field, _v = _extract_filter_field(v)
             if _field is not None:
                 field = _field
 
