@@ -3075,117 +3075,91 @@ class SampleCollection(object):
             )
         )
 
-    @deprecated(reason="Use filter_labels() instead")
     @view_stage
-    def filter_classifications(self, field, filter, only_matches=True):
-        """Filters the :class:`fiftyone.core.labels.Classification` elements in
-        the specified :class:`fiftyone.core.labels.Classifications` field of
-        each sample in the collection.
+    def filter_keypoints(
+        self, field, filter=None, labels=None, only_matches=True
+    ):
+        """Filters the individual :attr:`fiftyone.core.labels.Keypoint.points`
+        elements in the specified keypoints field of each sample in the
+        collection.
 
-        .. warning::
+        .. note::
 
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`filter_labels` instead.
+            Use :meth:`filter_labels` if you simply want to filter entire
+            :class:`fiftyone.core.labels.Keypoint` objects in a field.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Keypoints(
+                            keypoints=[
+                                fo.Keypoint(
+                                    label="person",
+                                    points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                                    confidence=[0.7, 0.8, 0.95, 0.99],
+                                )
+                            ]
+                        )
+                    ),
+                    fo.Sample(filepath="/path/to/image2.png"),
+                ]
+            )
+
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+                edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+            )
+
+            #
+            # Only include keypoints in the `predictions` field whose
+            # `confidence` is greater than 0.9
+            #
+
+            view = dataset.filter_keypoints(
+                "predictions", filter=F("confidence") > 0.9
+            )
+
+            #
+            # Only include keypoints in the `predictions` field with less than
+            # four points
+            #
+
+            view = dataset.filter_keypoints(
+                "predictions", labels=["left eye", "right eye"]
+            )
 
         Args:
-            field: the field to filter, which must be a
-                :class:`fiftyone.core.labels.Classifications`
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-            only_matches (True): whether to only include samples with at least
-                one classification after filtering (True) or include all
-                samples (False)
+            field: the :class:`fiftyone.core.labels.Keypoint` or
+                :class:`fiftyone.core.labels.Keypoints` field to filter
+            filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
+                or `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean, like ``F("confidence") > 0.5`` or
+                ``F("occluded") == False``, to apply elementwise to the
+                specified field, which must be a list of same length as
+                :attr:`fiftyone.core.labels.Keypoint.points`
+            labels (None): a label or iterable of keypoint skeleton labels to
+                keep
+            only_matches (True): whether to only include keypoints/samples with
+                at least one point after filtering (True) or include all
+                keypoints/samples (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.FilterClassifications(field, filter, only_matches=only_matches)
-        )
-
-    @deprecated(reason="Use filter_labels() instead")
-    @view_stage
-    def filter_detections(self, field, filter, only_matches=True):
-        """Filters the :class:`fiftyone.core.labels.Detection` elements in the
-        specified :class:`fiftyone.core.labels.Detections` field of each sample
-        in the collection.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Args:
-            field: the :class:`fiftyone.core.labels.Detections` field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-            only_matches (True): whether to only include samples with at least
-                one detection after filtering (True) or include all samples
-                (False)
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(
-            fos.FilterDetections(field, filter, only_matches=only_matches)
-        )
-
-    @deprecated(reason="Use filter_labels() instead")
-    @view_stage
-    def filter_polylines(self, field, filter, only_matches=True):
-        """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
-        specified :class:`fiftyone.core.labels.Polylines` field of each sample
-        in the collection.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Args:
-            field: the :class:`fiftyone.core.labels.Polylines` field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-            only_matches (True): whether to only include samples with at least
-                one polyline after filtering (True) or include all samples
-                (False)
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(
-            fos.FilterPolylines(field, filter, only_matches=only_matches)
-        )
-
-    @deprecated(reason="Use filter_labels() instead")
-    @view_stage
-    def filter_keypoints(self, field, filter, only_matches=True):
-        """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
-        specified :class:`fiftyone.core.labels.Keypoints` field of each sample
-        in the collection.
-
-        .. warning::
-
-            This method is deprecated and will be removed in a future release.
-            Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Args:
-            field: the :class:`fiftyone.core.labels.Keypoints` field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-            only_matches (True): whether to only include samples with at least
-                one keypoint after filtering (True) or include all samples
-                (False)
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(
-            fos.FilterKeypoints(field, filter, only_matches=only_matches)
+            fos.FilterKeypoints(
+                field,
+                filter=filter,
+                labels=labels,
+                only_matches=only_matches,
+            )
         )
 
     @view_stage
@@ -7215,9 +7189,15 @@ class SampleCollection(object):
         auto_unwind=True,
         omit_terminal_lists=False,
         allow_missing=False,
+        new_field=None,
     ):
         return _parse_field_name(
-            self, field_name, auto_unwind, omit_terminal_lists, allow_missing,
+            self,
+            field_name,
+            auto_unwind,
+            omit_terminal_lists,
+            allow_missing,
+            new_field=new_field,
         )
 
     def _has_field(self, field_name):
@@ -7447,10 +7427,20 @@ class SampleCollection(object):
         return _unwind_values(values, level)
 
     def _make_set_field_pipeline(
-        self, field, expr, embedded_root=False, allow_missing=False
+        self,
+        field,
+        expr,
+        embedded_root=False,
+        allow_missing=False,
+        new_field=None,
     ):
         return _make_set_field_pipeline(
-            self, field, expr, embedded_root, allow_missing=allow_missing
+            self,
+            field,
+            expr,
+            embedded_root,
+            allow_missing=allow_missing,
+            new_field=new_field,
         )
 
 
@@ -7850,6 +7840,7 @@ def _parse_field_name(
     auto_unwind,
     omit_terminal_lists,
     allow_missing,
+    new_field=None,
 ):
     unwind_list_fields = []
     other_list_fields = []
@@ -7878,6 +7869,8 @@ def _parse_field_name(
 
         prefix = sample_collection._FRAMES_PREFIX
         unwind_list_fields = [f[len(prefix) :] for f in unwind_list_fields]
+        if new_field:
+            new_field = new_field[len(prefix) :]
 
     # Validate root field, if requested
     if not allow_missing and not is_id_field:
@@ -7948,6 +7941,14 @@ def _parse_field_name(
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
+
+    def _replace(path):
+        return ".".join([new_field] + path.split(".")[1:])
+
+    if new_field:
+        field_name = _replace(field_name)
+        unwind_list_fields = [_replace(p) for p in unwind_list_fields]
+        other_list_fields = [_replace(p) for p in other_list_fields]
 
     return (
         field_name,
@@ -8072,7 +8073,12 @@ def _transform_values(values, fcn, level=1):
 
 
 def _make_set_field_pipeline(
-    sample_collection, field, expr, embedded_root, allow_missing=False
+    sample_collection,
+    field,
+    expr,
+    embedded_root,
+    allow_missing=False,
+    new_field=None,
 ):
     (
         path,
@@ -8085,6 +8091,7 @@ def _make_set_field_pipeline(
         auto_unwind=True,
         omit_terminal_lists=True,
         allow_missing=allow_missing,
+        new_field=new_field,
     )
 
     if is_frame_field and path != "frames":
