@@ -1084,8 +1084,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_classes = ["cat", "dog"]
-
         dataset.default_classes = default_classes
+
+        dataset.reload()
         self.assertListEqual(dataset.default_classes, default_classes)
 
         with self.assertRaises(Exception):
@@ -1098,6 +1099,8 @@ class DatasetTests(unittest.TestCase):
         classes = {"ground_truth": ["cat", "dog"]}
 
         dataset.classes = classes
+
+        dataset.reload()
         self.assertDictEqual(dataset.classes, classes)
 
         with self.assertRaises(Exception):
@@ -1119,8 +1122,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
-
         dataset.default_mask_targets = default_mask_targets
+
+        dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
@@ -1133,8 +1137,9 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
         mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
-
         dataset.mask_targets = mask_targets
+
+        dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
         with self.assertRaises(Exception):
@@ -1142,13 +1147,13 @@ class DatasetTests(unittest.TestCase):
             dataset.save()  # error
 
         dataset.mask_targets.pop("hi")
+        dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
         dataset.mask_targets.pop(1)
-
         dataset.save()  # success
 
         with self.assertRaises(Exception):
@@ -1166,6 +1171,78 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
     @drop_datasets
+    def test_skeletons(self):
+        dataset = fo.Dataset()
+
+        default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+        dataset.default_skeleton = default_skeleton
+
+        dataset.reload()
+        self.assertEqual(dataset.default_skeleton, default_skeleton)
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.labels = [1]
+            dataset.save()  # error
+
+        dataset.default_skeleton.labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.edges = "hello"
+            dataset.save()  # error
+
+        dataset.default_skeleton.edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.default_skeleton.labels = None
+        dataset.save()  # success
+
+        skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.skeletons = skeletons
+
+        dataset.reload()
+        self.assertDictEqual(dataset.skeletons, skeletons)
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["hi"] = "there"
+            dataset.save()  # error
+
+        dataset.skeletons.pop("hi")
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons[1] = fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+            dataset.save()  # error
+
+        dataset.skeletons.pop(1)
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].labels = [1]
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].edges = "hello"
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.skeletons["ground_truth"].labels = None
+        dataset.save()  # success
+
+    @drop_datasets
     def test_dataset_info_import_export(self):
         dataset = fo.Dataset()
 
@@ -1177,6 +1254,15 @@ class DatasetTests(unittest.TestCase):
         dataset.mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
         dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
+        dataset.skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+
         with etau.TempDir() as tmp_dir:
             json_path = os.path.join(tmp_dir, "dataset.json")
 
@@ -1186,13 +1272,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset2.info, dataset.info)
 
             self.assertDictEqual(dataset2.classes, dataset.classes)
-            self.assertListEqual(
-                dataset2.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset2.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset2.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset2.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset2.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset2.default_skeleton, dataset.default_skeleton
             )
 
         with etau.TempDir() as tmp_dir:
@@ -1206,13 +1295,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset3.info, dataset.info)
 
             self.assertDictEqual(dataset3.classes, dataset.classes)
-            self.assertListEqual(
-                dataset3.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset3.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset3.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset3.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset3.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset3.default_skeleton, dataset.default_skeleton
             )
 
 

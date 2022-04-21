@@ -58,6 +58,8 @@
 .. |CategoricalAttribute| replace:: :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>`
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
+.. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`
 

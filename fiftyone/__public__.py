@@ -112,6 +112,7 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
+from .core.odm import KeypointSkeleton
 from .core.plots import (
     plot_confusion_matrix,
     plot_pr_curve,
@@ -138,9 +139,6 @@ from .core.stages import (
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     Limit,
     LimitLabels,
