@@ -13,8 +13,8 @@ FIELDS = "__fiftyone_fields__"
 
 @dataclass
 class Field(t.Generic[_T, _R]):
-    name: t.Optional[str] = None
-    type: t.Optional[t.Type[_T]] = None
+    name: str = None  # type: ignore
+    type: t.Type[_T] = None  # type: ignore
     default: t.Optional[_T] = None
     default_factory: t.Optional[t.Callable[[], _T]] = None
     dump: t.Optional[t.Callable[[_T], _R]] = None

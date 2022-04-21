@@ -241,7 +241,7 @@ def get_db_conn() -> Database:
     Returns:
         a ``pymongo.database.Database``
     """
-    return _apply_options(_connect())
+    return _apply_options(_connect()[fo.config.database_name])
 
 
 def get_async_db_conn():

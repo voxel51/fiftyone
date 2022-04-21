@@ -2,7 +2,7 @@ import copy
 import numbers
 import re
 import typing as t
-from dataclasses import replace
+from dataclasses import dataclass, field as dataclassfield, replace
 from datetime import date, datetime
 import numpy as np
 
@@ -19,7 +19,7 @@ __all__ = ["asdict", "is_data", "sample"]
 _FIFTYONE_REGEX = re.compile("^__fiftyone_\w+__$")
 _DUNDER_REGEX = re.compile("^__\w+__$")
 
-_SCHEMA_NAME = "__fiftyone_schema__"
+_REF_NAME = "__fiftyone_ref__"
 
 _POST_INIT_NAME = "__post_init__"
 
@@ -73,12 +73,12 @@ class DataMetaclass(type):
         **kwds: t.Any,
     ) -> None:
         super().__init__(__name, __bases, __dict, **kwds)
-        field_data: t.Dict[str, Field] = {}
+        schema: t.Dict[str, Field] = {}
         for b in cls.__mro__[-1:0:-1]:
-            base_fields = getattr(b, _SCHEMA_NAME, None)
+            base_fields: "FiftyOneReference" = getattr(b, _REF_NAME, None)
             if base_fields:
-                for field in base_fields.values():
-                    field_data[field.name] = field
+                for field in base_fields.schema.values():
+                    schema[field.name] = field
 
         cls_annotations = cls.__dict__.get("__annotations__", {})
         cls_fields = [
@@ -88,7 +88,7 @@ class DataMetaclass(type):
         ]
 
         for field in cls_fields:
-            field_data[field.name] = field
+            schema[field.name] = field
 
             if isinstance(getattr(cls, field.name, None), Field):
                 if field.default is None:
@@ -96,37 +96,51 @@ class DataMetaclass(type):
                 else:
                     setattr(cls, field.name, field.default)
 
+        for field in cls_fields:
+            if field.link and field.required != schema[field.link].required:
+                raise FiftyOneDataError("required mismatch")
+
         for name, value in cls.__dict__.items():
             if isinstance(value, Field) and not name in cls_annotations:
                 raise FiftyOneDataError(
                     f"{name!r} is a field but has no type annotation"
                 )
 
-        cls.__fiftyone_schema__ = field_data
+        cls.__fiftyone_ref__ = FiftyOneReference(schema=schema)
+
+
+@dataclass
+class FiftyOneReference:
+    collections: t.Optional[t.Dict[str, str]] = None
+    schema: t.Dict[str, Field] = dataclassfield(default_factory=dict)
+
+    @property
+    def in_db(self) -> bool:
+        return self.collections is not None
 
 
 class Data(metaclass=DataMetaclass):
 
-    __fiftyone_collections__: t.ClassVar[t.Optional[t.Dict[str, str]]] = None
+    __fiftyone_ref__: t.ClassVar[FiftyOneReference] = FiftyOneReference()
     __fiftyone_path__: t.ClassVar[t.Optional[str]] = None
-    __fiftyone_schema__: t.ClassVar[t.Dict[str, Field]] = {}
 
     def __init__(self, **data: t.Dict[str, t.Any]) -> None:
-        self.__fiftyone_schema__ = self.__fiftyone_schema__.copy()  # type: ignore
+        self.__fiftyone_ref__ = replace(  # type: ignore
+            self.__fiftyone_ref__, schema=self.__fiftyone_ref__.schema.copy()
+        )
         for name in set(data).union(self.__fiftyone_fields__):
             value = data.get(name, None)
             field = self.__fiftyone_ensure_field__(name, value)
             if value is None:
-                if field.required and field.default_factory is None:
-                    raise FiftyOneDataError(
-                        f"required field '{name}' with no default or default factory must have a value"
-                    )
 
                 if field.default_factory is not None:
                     value = field.default_factory()
-
-                if field.default is not None:
+                elif field.default is not None:
                     value = field.default
+                elif field.required and not field.link:
+                    raise FiftyOneDataError(
+                        f"required field '{name}' with no default or default factory must have a value"
+                    )
 
                 if value is None:
                     continue
@@ -135,7 +149,9 @@ class Data(metaclass=DataMetaclass):
                 field.validator(value)
 
             if isinstance(value, Data):
-                _inherit_data(self, name, value)
+                inherit_data(
+                    self.__fiftyone_path__, self.__fiftyone_ref__, name, value
+                )
 
             self.__dict__[name] = value
 
@@ -145,17 +161,14 @@ class Data(metaclass=DataMetaclass):
 
     def __copy__(
         self: _D,
-        path: t.Optional[str] = None,
-        schema: t.Optional[t.Dict[str, Field]] = None,
         fields: t.Union[t.Iterable[str], t.Dict[str, str], str, None] = None,
         omit_fields: t.Union[t.List[str], t.Set[str], str, None] = None,
     ) -> _D:
         fields = _parse_fields(self, fields=fields, omit_fields=omit_fields)
 
         return self.__class__.__fiftyone_construct__(
+            FiftyOneReference(schema=_extract_schema(self)),
             None,
-            path,
-            schema or _extract_schema(self),
             asdict(self, dict_factory=dict, links=False),
         )
 
@@ -198,13 +211,12 @@ class Data(metaclass=DataMetaclass):
             and isinstance(__value, dict)
         ):
             __value = field.type.__fiftyone_construct__(
-                self.__fiftyone_collections__,
+                self.__fiftyone_ref__,
                 (
                     ".".join([self.__fiftyone_path__, __name])
                     if self.__fiftyone_path__
                     else __name
                 ),
-                self.__fiftyone_schema__,
                 __value,
             )
 
@@ -222,7 +234,9 @@ class Data(metaclass=DataMetaclass):
         field.validator and field.validator(__value)
 
         if isinstance(__value, Data):
-            _inherit_data(self, __name, __value)
+            inherit_data(
+                self.__fiftyone_path__, self.__fiftyone_ref__, __name, __value
+            )
             __value = asdict(__value)
         elif field.dump:
             __value = field.dump(__value)
@@ -246,12 +260,12 @@ class Data(metaclass=DataMetaclass):
             if self.__fiftyone_path__
             else __name
         )
-        self.__fiftyone_schema__[path] = field
+        self.__fiftyone_ref__.schema[path] = field
         return field
 
     def __fiftyone_field__(self, __name: str) -> t.Union[Field, None]:
         key = self.__fiftyone_child_path__(__name)
-        return self.__fiftyone_schema__.get(key, None)
+        return self.__fiftyone_ref__.schema.get(key, None)
 
     @property
     def __fiftyone_fields__(self) -> t.Dict[str, Field]:
@@ -267,16 +281,14 @@ class Data(metaclass=DataMetaclass):
     @classmethod
     def __fiftyone_construct__(
         cls: t.Type[_D],
-        __fiftyone_collections__: t.Optional[str],
+        __fiftyone_ref__: FiftyOneReference,
         __fiftyone_path__: t.Optional[str],
-        __fiftyone_schema__: t.Dict[str, Field],
         data: t.Dict[str, t.Any],
     ) -> _D:
         instance = cls()
         instance.__dict__ = data
-        instance.__fiftyone_collections__ = __fiftyone_collections__  # type: ignore
+        instance.__fiftyone_ref__ = __fiftyone_ref__  # type: ignore
         instance.__fiftyone_path__ = __fiftyone_path__  # type: ignore
-        instance.__fiftyone_schema__ = __fiftyone_schema__  # type: ignore
         return instance
 
 
@@ -394,7 +406,7 @@ def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
         )
 
     l: t.List[Field] = []
-    for path in sorted(data.__fiftyone_schema__):
+    for path in sorted(data.__fiftyone_ref__.schema):
         name = (
             path[len(data.__fiftyone_path__) + 1 :]
             if data.__fiftyone_path__
@@ -402,16 +414,16 @@ def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
         )
 
         if name and "." not in name:
-            l.append(data.__fiftyone_schema__[path])
+            l.append(data.__fiftyone_ref__.schema[path])
 
     return tuple(l)
 
 
 PRIMITIVES = {bool, bytes, date, datetime, int, float, np.ndarray, str}
-CONTAINERS: t.Set[t.Type] = {t.Dict, t.List, tuple}
+CONTAINERS: t.Set[t.Type] = {dict, list, tuple}
 
 
-def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
+def _infer_type(value: t.Any) -> t.Type:
     type_ = type(value)
 
     if type_ in PRIMITIVES or issubclass(type_, Data):
@@ -423,9 +435,43 @@ def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
     if isinstance(value, six.string_types):
         return str
 
-    for t in CONTAINERS:
-        if isinstance(value, t):
-            return t
+    if isinstance(value, dict):
+        key_types: t.Set[t.Type[t.Any]] = set(
+            _infer_type(v) for v in value.keys()
+        )
+
+        key_type = None
+        if len(key_types):
+            key_type = key_types.pop()
+
+            if key_types:
+                raise FiftyOneDataError("more than one key type")
+
+            if key_type not in {int, str}:
+                raise FiftyOneDataError("invalid key type")
+
+        value_types: t.Set[t.Type[t.Any]] = set(
+            _infer_type(v) for v in value.values()
+        )
+
+        value_type = None
+        if len(value_types) == 1:
+            value_type = value_types.pop()
+
+        if key_type and value_type:
+            return t.Dict.__getitem__((key_type, value_type))
+
+        return t.Dict
+
+    if isinstance(value, list):
+        item_types: t.Set[t.Type[t.Any]] = set(_infer_type(v) for v in value)
+        if len(item_types) == 1:
+            return t.List.__getitem__(item_types.pop())
+
+        return t.List
+
+    if isinstance(value, tuple):
+        return t.Tuple.__getitem__(tuple(_infer_type(v) for v in value))
 
     raise ValueError("todo")
 
@@ -433,7 +479,7 @@ def _infer_type(value: t.Any) -> t.Union[t.Type, None]:
 def _extract_schema(data: Data) -> t.Dict[str, Field]:
     length = len(data.__fiftyone_path__) if data.__fiftyone_path__ else 0
     schema = {}
-    for path, field in data.__fiftyone_schema__.items():
+    for path, field in data.__fiftyone_ref__.schema.items():
         if length and len(path) < length:
             continue
 
@@ -443,30 +489,27 @@ def _extract_schema(data: Data) -> t.Dict[str, Field]:
     return schema
 
 
-def _inherit_data(parent: Data, name: str, data: Data) -> None:
-    prefix = (
-        ".".join([parent.__fiftyone_path__, name])
-        if parent.__fiftyone_path__
-        else name
-    )
+def inherit_data(
+    path: str, ref: FiftyOneReference, name: str, data: Data
+) -> None:
+    prefix = ".".join([path, name]) if path else name
 
     merge_schema(
-        parent.__fiftyone_schema__,
+        ref.schema,
         {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
     )
 
-    data_schema = data.__fiftyone_schema__
+    data_schema = data.__fiftyone_ref__.schema
 
-    data.__fiftyone_path__ = prefix  # type: ignore
-    data.__fiftyone_schema__ = parent.__fiftyone_schema__  # type: ignore
+    data.__fiftyone_path__ = path  # type: ignore
+    data.__fiftyone_ref__ = ref  # type: ignore
 
     for path, field in data_schema.items():
         if field.type and issubclass(field.type, Data):
             items = _get_items(path, data)
             for item in items:
-                item.__fiftyone_collections__ = parent.__fiftyone_collections__  # type: ignore
                 item.__fiftyone_path__ = ".".join([prefix, name])  # type: ignore
-                item.__fiftyone_schema__ = parent.__fiftyone_schema__  # type: ignore
+                item.__fiftyone_ref__ = ref  # type: ignore
 
 
 def _get_items(path: str, data: Data) -> t.List[Data]:

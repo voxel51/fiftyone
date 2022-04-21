@@ -147,30 +147,33 @@ class SidebarGroup:
 
 
 @gql.type
-class Dataset:
-    id: gql.ID
+class DatasetDefinition:
     name: str
-    created_at: datetime
-    last_loaded_at: datetime
-    persistent: bool
-    media_type: t.Optional[MediaType]
+    id: gql.ID = gql.field(default_factory=ObjectId)
+
+    created_at: datetime = gql.field(default_factory=datetime.utcnow)
+    last_loaded_at: datetime = gql.field(default_factory=datetime.utcnow)
+
     field_definitions: t.List[
         t.Union[DocumentFieldDefinition, FieldDefinition]
-    ]
-    info: str
+    ] = gql.field(default_factory=list)
+    info: str = "{}"
+    media_type: t.Optional[MediaType] = None
+    persistent: bool = False
+    root: bool = True
 
-    classes: str
-    default_classes: t.List[str]
+    classes: str = ""
+    default_classes: t.List[str] = gql.field(default_factory=list)
 
-    mask_targets: t.List[NamedTargets]
-    default_mask_targets: t.Optional[t.List[Target]]
+    mask_targets: t.List[NamedTargets] = gql.field(default_factory=list)
+    default_mask_targets: t.Optional[t.List[Target]] = None
 
-    app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
-    version: str
+    app_sidebar_groups: t.Optional[t.List[SidebarGroup]] = None
+    version: str = ""
 
-    annotations_runs: t.List[Run]
-    brain_methods: t.List[BrainRun]
-    evaluations: t.List[EvaluationRun]
+    annotations_runs: t.List[Run] = gql.field(default_factory=list)
+    brain_methods: t.List[BrainRun] = gql.field(default_factory=list)
+    evaluations: t.List[EvaluationRun] = gql.field(default_factory=list)
 
     def save(self) -> None:
         from fiftyone.core.data import get_db_conn

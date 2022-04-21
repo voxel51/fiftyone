@@ -188,13 +188,13 @@ class Document(Data, metaclass=DocumentMetaclass):
 
 def reload(document: Document) -> None:
     db = get_db_conn()
-    if not document.__fiftyone_collections__:
+    if not document.__fiftyone_ref__.collections:
         raise FiftyOneDataError(
             "cannot save a document that has not been added to a dataset"
         )
 
     collection = db[
-        document.__fiftyone_collections__[document.__fiftyone_path__ or ""]
+        document.__fiftyone_ref__.collections[document.__fiftyone_path__ or ""]
     ]
     document.__dict__ = collection.find_one(
         {key: document.__dict__[key] for key in document.__fiftyone_keys__}
@@ -203,13 +203,13 @@ def reload(document: Document) -> None:
 
 def save(document: Document) -> None:
     db = get_db_conn()
-    if not document.__fiftyone_collections__:
+    if not document.__fiftyone_ref__.collections:
         raise FiftyOneDataError(
             "cannot save a document that has not been added to a dataset"
         )
 
     collection = db[
-        document.__fiftyone_collections__[document.__fiftyone_path__ or ""]
+        document.__fiftyone_ref__.collections[document.__fiftyone_path__ or ""]
     ]
     collection.replace_one(
         asdict(document, dict_factory=dict, links=False), {"_id": document._id}
@@ -368,7 +368,7 @@ def as_bson_schema(schema: t.Dict[str, Field]) -> BSONSchemaObjectProperty:
     return bson_schema
 
 
-def as_fields(
+def as_field_definitions(
     schema: t.Dict[str, Field]
 ) -> t.List[t.Union[DocumentFieldDefinition, FieldDefinition]]:
     fields: t.List[t.Union[DocumentFieldDefinition, FieldDefinition]] = []

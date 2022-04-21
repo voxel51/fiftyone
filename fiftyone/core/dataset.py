@@ -17,17 +17,16 @@ import typing as t
 import weakref
 from collections import defaultdict
 from copy import deepcopy
+from dataclasses import asdict
 from datetime import datetime
-from attr import asdict
 
+import eta.core.serial as etas
+import eta.core.utils as etau
 from bson import ObjectId
 from dacite import from_dict
 from deprecated import deprecated
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import BulkWriteError, CursorNotFound
-
-import eta.core.serial as etas
-import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as focn
@@ -55,7 +54,17 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
-def list_datasets(info=False):
+@t.overload
+def list_datasets(info: t.Literal[True] = ...) -> t.List[dict]:
+    ...
+
+
+@t.overload
+def list_datasets(info: t.Literal[False] = ...) -> t.List[str]:
+    ...
+
+
+def list_datasets(info: t.Any = False) -> t.Any:
     """Lists the available FiftyOne datasets.
 
     Args:
@@ -71,7 +80,7 @@ def list_datasets(info=False):
     return _list_datasets()
 
 
-def dataset_exists(name):
+def dataset_exists(name: str) -> bool:
     """Checks if the dataset exists.
 
     Args:
@@ -80,11 +89,11 @@ def dataset_exists(name):
     Returns:
         True/False
     """
-    conn = fod.get_db_conn()
-    return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
+    db = fod.get_db_conn()
+    return bool(db.datasets.find_one({"name": name}, {"_id": 1}))
 
 
-def load_dataset(name):
+def load_dataset(name: str) -> "Dataset":
     """Loads the FiftyOne dataset with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
@@ -104,7 +113,7 @@ def load_dataset(name):
     return Dataset(name, _create=False)
 
 
-def get_default_dataset_name():
+def get_default_dataset_name() -> str:
     """Returns a default dataset name based on the current time.
 
     Returns:
@@ -118,7 +127,7 @@ def get_default_dataset_name():
     return name
 
 
-def make_unique_dataset_name(root):
+def make_unique_dataset_name(root: str) -> str:
     """Makes a unique dataset name with the given root name.
 
     Args:
@@ -139,7 +148,7 @@ def make_unique_dataset_name(root):
     return name
 
 
-def get_default_dataset_dir(name):
+def get_default_dataset_dir(name: str) -> str:
     """Returns the default dataset directory for the dataset with the given
     name.
 
@@ -152,7 +161,7 @@ def get_default_dataset_dir(name):
     return os.path.join(fo.config.default_dataset_dir, name)
 
 
-def delete_dataset(name, verbose=False):
+def delete_dataset(name: str, verbose: bool = False) -> None:
     """Deletes the FiftyOne dataset with the given name.
 
     Args:
@@ -165,7 +174,7 @@ def delete_dataset(name, verbose=False):
         logger.info("Dataset '%s' deleted", name)
 
 
-def delete_datasets(glob_patt, verbose=False):
+def delete_datasets(glob_patt: str, verbose: bool = False) -> None:
     """Deletes all FiftyOne datasets whose names match the given glob pattern.
 
     Args:
@@ -177,7 +186,7 @@ def delete_datasets(glob_patt, verbose=False):
         delete_dataset(name, verbose=verbose)
 
 
-def delete_non_persistent_datasets(verbose=False):
+def delete_non_persistent_datasets(verbose: bool = False) -> None:
     """Deletes all non-persistent datasets.
 
     Args:
@@ -208,12 +217,24 @@ class DatasetMetaclass(type):
 
     __fiftyone_instances__: t.MutableMapping[str, "Dataset"]
 
-    def __new__(metacls, *args, **kwargs):
-        cls = super().__new__(metacls, *args, **kwargs)
+    def __new__(
+        self: t.Type["DatasetMetaclass"],
+        __name: str,
+        __bases: t.Tuple[type, ...],
+        __namespace: t.Dict[str, t.Any],
+        **kwargs: t.Dict,
+    ) -> "DatasetMetaclass":
+        cls = super().__new__(self, __name, __bases, __namespace, **kwargs)
         cls.__fiftyone_instances__ = weakref.WeakValueDictionary()
         return cls
 
-    def __call__(cls, name: str = None, _create: bool = True, *args, **kwargs):
+    def __call__(
+        cls,
+        name: str = None,
+        _create: bool = True,
+        *args: t.Tuple,
+        **kwargs: t.Dict,
+    ) -> "Dataset":
         if (
             _create
             or name not in cls.__fiftyone_instances__
@@ -258,7 +279,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             name
     """
 
-    __fiftyone_definition__: fod.Dataset
+    __fiftyone_definition__: fodt.DatasetDefinition
     __fiftyone_caches__: DatasetCaches
     __fiftyone_deleted__: bool
 
@@ -273,6 +294,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
     ) -> None:
         if name is None and _create:
             name = get_default_dataset_name()
+
+        if name is None:
+            raise ValueError("No dataset name provided")
 
         if overwrite and dataset_exists(name):
             delete_dataset(name)
@@ -659,7 +683,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         """
         stats = {}
 
-        conn = foo.get_db_conn()
+        conn = fod.get_db_conn()
 
         cs = conn.command("collstats", self._sample_collection_name)
         samples_bytes = cs["storageSize"] if compressed else cs["size"]
@@ -1400,19 +1424,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema, validate):
-        samples = [s.copy() if s._in_db else s for s in samples]
+    def _add_samples_batch(
+        self,
+        samples: t.Iterable[fod.Document],
+        expand_schema: bool,
+        validate: bool,
+    ):
+        samples = [
+            sample.copy() if sample.__fiftyone_ref__.in_db else sample
+            for sample in samples
+        ]
 
         if self.media_type is None and samples:
             self.media_type = samples[0].media_type
 
-        if expand_schema:
-            self._expand_schema(samples)
+        [fod.inherit_data(sample)]
 
         dicts = [self._make_dict(sample) for sample in samples]
 
         try:
-            # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
@@ -2282,7 +2312,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self._sample_collection.drop()
+        definition = self.__fiftyone_definition__
         fos.Sample._reset_docs(self._sample_collection_name)
 
         # Clips datasets directly inherit frames from source dataset
@@ -2290,7 +2320,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        _delete_dataset_doc(self._doc)
+        for run_doc in dataset_doc.annotation_runs.values():
+            if run_doc.results is not None:
+                run_doc.results.delete()
+
+        for run_doc in dataset_doc.brain_methods.values():
+            if run_doc.results is not None:
+                run_doc.results.delete()
+
+        for run_doc in dataset_doc.evaluations.values():
+            if run_doc.results is not None:
+                run_doc.results.delete()
 
         self._deleted = True
 
@@ -4452,13 +4492,7 @@ def _list_datasets(include_private=False):
     if include_private:
         return sorted(conn.datasets.distinct("name"))
 
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return sorted(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    return sorted(conn.datasets.find({"root": True}).distinct("name"))
 
 
 def _list_dataset_info():
@@ -4499,7 +4533,7 @@ def _create_dataset_definition(
     root_document_cls: t.Type[fod.Document] = fos.Sample,
     media_type: t.Optional[fodt.MediaType] = None,
     persistent: bool = False,
-) -> fodt.Dataset:
+) -> fodt.DatasetDefinition:
     if dataset_exists(name):
         raise ValueError(
             (
@@ -4509,36 +4543,44 @@ def _create_dataset_definition(
             % name
         )
 
-    schema = fod.schema(root_document_cls)
+    field_definitions = fod.as_field_definitions(
+        root_document_cls.__fiftyone_ref__.schema
+    )
 
-    for field_def in schema:
-        field = root_document_cls.__fiftyone_schema__[field_def.path]
-        type_ = field.type
+    collections = {}
 
-        while hasattr(type_, "__origin__"):
-            args = getattr(type_, "__args__")
-            if args and args[-1]:
-                type_ = args[-1]
+    for field_definition in field_definitions:
+        while not isinstance(field_definition, fodt.DocumentFieldDefinition):
+            if isinstance(field_definition, fodt.DictDefinition):
+                field_definition = field_definition.value
+
+            elif isinstance(field_definition, fodt.ListDefinition):
+                field_definition = field_definition.type
             else:
                 break
 
-        if issubclass(type_, fod.Document):
-            _create_document_indexes(field_def, type_)
+        if not isinstance(field_definition, fodt.DocumentFieldDefinition):
+            continue
+
+        cls = etau.get_class(field_definition.type)
+        collections[field_definition.path] = field_definition.collection
+        _create_document_indexes(field_definition, cls)
 
     now = datetime.utcnow()
-    definition = fod.Dataset(
+    definition = fodt.DatasetDefinition(
         name=name,
-        version=focn.VERSION,
         created_at=now,
+        field_definitions=field_definitions,
         last_loaded_at=now,
         media_type=media_type,
         persistent=persistent,
-        schema=list(schema),
+        root=True,
+        version=focn.VERSION,
     )
     db = fod.get_db_conn()
     db.datasets.insert_one(asdict(definition))
 
-    return
+    return definition
 
 
 def _create_document_indexes(
@@ -4556,33 +4598,12 @@ def _load_dataset_definition(name, virtual=False):
         fomi.migrate_dataset_if_necessary(name)
 
     db = fod.get_db_conn()
-    definition = from_dict(fod.Dataset, db.datasets.find_one({}))
+    definition = from_dict(fod.DatasetDefinition, db.datasets.find_one({}))
 
     if not virtual:
         definition.last_loaded_at = datetime.utcnow()
 
     return definition
-
-
-def _delete_dataset_doc(dataset_doc):
-    #
-    # Must manually cleanup run results, which are stored using GridFS
-    # https://docs.mongoengine.org/guide/gridfs.html#deletion
-    #
-
-    for run_doc in dataset_doc.annotation_runs.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
-
-    for run_doc in dataset_doc.brain_methods.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
-
-    for run_doc in dataset_doc.evaluations.values():
-        if run_doc.results is not None:
-            run_doc.results.delete()
-
-    dataset_doc.delete()
 
 
 def _clone_dataset_or_view(dataset_or_view, name):
@@ -4603,7 +4624,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     #
 
     now = datetime.utcnow()
-    definition = fod.Dataset(
+    definition = fod.DatasetDefinition(
         name=name,
         created_at=now,
         last_loaded_at=now,
@@ -4612,7 +4633,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     )
 
     # Create indexes
-    _create_indexes(sample_collection_name, frame_collection_name)
+    _create_document_indexes()
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
