@@ -25,7 +25,10 @@ import {
   zoomAspectRatio,
 } from "@fiftyone/looker";
 import { activeFields } from "./Filters/utils";
-import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import {
+  labelFilters,
+  skeletonFilter,
+} from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
@@ -95,8 +98,12 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: false })
+      ),
       defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
       skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });

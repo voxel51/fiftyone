@@ -21,7 +21,7 @@ import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 import { Coloring, createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
-import { appConfigOption } from "./other";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -743,6 +743,16 @@ export const targets = selector({
       defaults,
       fields: labelTargets,
     };
+  },
+});
+
+export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
+  key: "skeleton",
+  get: (field) => ({ get }) => {
+    const dataset = get(atoms.stateDescription).dataset || {};
+    const skeletons = dataset.skeletons || {};
+
+    return skeletons[field] || dataset.default_skeleton || null;
   },
 });
 

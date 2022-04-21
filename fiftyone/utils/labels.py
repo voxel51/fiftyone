@@ -5,8 +5,6 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone import ViewField as F
-import fiftyone.core.expressions as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.validation as fov
 
@@ -343,63 +341,3 @@ def classification_to_detections(sample_collection, in_field, out_field):
             image[out_field] = fol.Detections(detections=[detection])
 
         sample.save()
-
-
-def filter_keypoints(sample_collection, field, expr=None, labels=None):
-    """Returns a view that filters the individual
-    :attr:`points <fiftyone.core.labels.Keypoint.points>` in the specified
-    keypoints field.
-
-    Use :meth:`filter_labels <fiftyone.core.collections.SampleCollection.filter_labels`
-    if you simply want to filter entire :class:`fiftyone.core.labels.Keypoint`
-    objects in a field.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        field: the name of the :class:`fiftyone.core.labels.Keypoint` or
-            :class:`fiftyone.core.labels.Keypoints` field
-        expr (None): a boolean
-            :class:`fiftyone.core.expressions.ViewExpression` like
-            ``F("confidence") > 0.5`` or ``F("occluded") == False`` to apply
-            elementwise to the specified field, which must be a list of same
-            length as :attr:`fiftyone.core.labels.Keypoint.points`
-        labels (None): an optional iterable of specific keypoint labels to keep
-
-    Returns:
-        a :class:`fiftyone.core.view.DatasetView`
-    """
-    _, path = sample_collection._get_label_field_path(field, "points")
-
-    view = sample_collection.view()
-    empty_point = dict(fol.Point().to_dict())
-
-    if expr is not None:
-        view = view.set_field(
-            path, F("points").map(expr.if_else(F(), empty_point))
-        )
-
-    if labels is not None:
-        skeleton = sample_collection.get_skeleton(field)
-        if skeleton is None:
-            raise ValueError(
-                "No keypoint skeleton found for field '%s'" % field
-            )
-
-        if skeleton.labels is None:
-            raise ValueError(
-                "Keypoint skeleton for field '%s' has no labels" % field
-            )
-
-        labels = set(labels)
-        inds = [
-            idx for idx, label in enumerate(skeleton.labels) if label in labels
-        ]
-        view = view.set_field(
-            path,
-            F.enumerate(F("points")).map(
-                F()[0].is_in(inds).if_else(F()[1], empty_point)
-            ),
-        )
-
-    return view
