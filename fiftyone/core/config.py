@@ -76,11 +76,23 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_VALIDATION",
             default=True,
         )
+        self.database_admin = self.parse_bool(
+            d,
+            "database_admin",
+            env_var="FIFTYONE_DATABASE_ADMIN",
+            default=True,
+        )
         self.database_dir = self.parse_path(
             d,
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
+        )
+        self.database_name = self.parse_string(
+            d,
+            "database_name",
+            env_var="FIFTYONE_DATABASE_NAME",
+            default="fiftyone",
         )
         self.dataset_zoo_dir = self.parse_path(
             d,
@@ -92,10 +104,7 @@ class FiftyOneConfig(EnvConfig):
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
         self.module_path = self.parse_string_array(
-            d,
-            "module_path",
-            env_var="FIFTYONE_MODULE_PATH",
-            default=None,
+            d, "module_path", env_var="FIFTYONE_MODULE_PATH", default=None,
         )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
@@ -158,10 +167,7 @@ class FiftyOneConfig(EnvConfig):
             default=None,
         )
         self.desktop_app = self.parse_bool(
-            d,
-            "desktop_app",
-            env_var="FIFTYONE_DESKTOP_APP",
-            default=False,
+            d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
         )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
@@ -171,10 +177,7 @@ class FiftyOneConfig(EnvConfig):
             default=True,
         )
         self.do_not_track = self.parse_bool(
-            d,
-            "do_not_track",
-            env_var="FIFTYONE_DO_NOT_TRACK",
-            default=False,
+            d, "do_not_track", env_var="FIFTYONE_DO_NOT_TRACK", default=False,
         )
         self.requirement_error_level = self.parse_int(
             d,
@@ -302,16 +305,10 @@ class AppConfig(EnvConfig):
             default=True,
         )
         self.show_index = self.parse_bool(
-            d,
-            "show_index",
-            env_var="FIFTYONE_APP_SHOW_INDEX",
-            default=True,
+            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
         )
         self.show_label = self.parse_bool(
-            d,
-            "show_label",
-            env_var="FIFTYONE_APP_SHOW_LABEL",
-            default=True,
+            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
         )
         self.show_skeletons = self.parse_bool(
             d,

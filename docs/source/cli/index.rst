@@ -718,6 +718,9 @@ FiftyOne migrations
 
 Tools for migrating the FiftyOne database.
 
+See :ref:`this page <database-migrations>` for more information about migrating
+FiftyOne deployments.
+
 .. code-block:: text
 
     fiftyone migrate [-h] [-i] [-a] [-v VERSION]
