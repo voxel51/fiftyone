@@ -2093,6 +2093,8 @@ class FilterKeypoints(ViewStage):
         )
         new_field = self._get_new_field(sample_collection)
 
+        empty_point = dict(fol.Point(x=float("nan"), y=float("nan")).to_dict())
+
         pipeline = []
 
         if self._new_field != self._field:
@@ -2107,7 +2109,7 @@ class FilterKeypoints(ViewStage):
 
         if self._filter_expr is not None:
             filter_expr = F("points").map(
-                self._filter_expr.if_else(F(), dict(fol.Point().to_dict()))
+                self._filter_expr.if_else(F(), empty_point)
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2144,7 +2146,7 @@ class FilterKeypoints(ViewStage):
             ]
 
             labels_expr = F.enumerate(F("points")).map(
-                F()[0].is_in(inds).if_else(F()[1], dict(fol.Point().to_dict()))
+                F()[0].is_in(inds).if_else(F()[1], empty_point)
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2160,14 +2162,14 @@ class FilterKeypoints(ViewStage):
             # Remove Keypoint objects with no points after filtering
             if is_list_field:
                 has_points = (
-                    F("points").filter(F()[0] != float("nan")).length() > 0
+                    F("points").filter(F("x") != float("nan")).length() > 0
                 )
                 match_expr = F("keypoints").filter(has_points)
             else:
                 field, _ = sample_collection._handle_frame_field(new_field)
                 has_points = (
                     F(field + ".points")
-                    .filter(F()[0] != float("nan"))
+                    .filter(F("x") != float("nan"))
                     .length()
                     > 0
                 )
