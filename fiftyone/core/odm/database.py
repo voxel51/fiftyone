@@ -156,8 +156,14 @@ def establish_db_conn(config):
 
             raise error
 
-    _client = pymongo.MongoClient(**_connection_kwargs)
+    _client = pymongo.MongoClient(
+        **_connection_kwargs, appname=foc.DATABASE_APPNAME
+    )
     _validate_db_version(config, _client)
+
+    conn_count = _get_master_connection_count()
+    if conn_count <= 1:
+        _delete_non_persistent_datasets(config, _client)
 
     connect(config.database_name, **_connection_kwargs)
 
@@ -173,7 +179,9 @@ def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
-        _client = pymongo.MongoClient(**_connection_kwargs)
+        _client = pymongo.MongoClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
         connect(fo.config.database_name, **_connection_kwargs)
 
 
@@ -181,7 +189,50 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _async_client = motor.motor_tornado.MotorClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
+
+
+def _delete_non_persistent_datasets(config, client):
+    db = client[config.database_name]
+
+    ids, coll_names = [], []
+    for doc in db.datasets.find(
+        {"persistent": False},
+        {
+            "_id": 1,
+            "sample_collection_name": 1,
+            "frame_collection_name": 1,
+        },
+    ):
+        ids.append(doc["_id"])
+        coll_names.append(doc["sample_collection_name"])
+        coll_names.append(doc["frame_collection_name"])
+
+    db.datasets.delete_many({"_id": {"$in": ids}})
+
+    for name in coll_names:
+        db.drop_collection(name)
+
+
+def _get_master_connection_count():
+    return len(
+        list(
+            _client.admin.aggregate(
+                [
+                    {"$currentOp": {"allUsers": True}},
+                    {"$project": {"appName": 1, "command": 1}},
+                    {
+                        "$match": {
+                            "appName": foc.DATABASE_APPNAME,
+                            "command.ismaster": 1,
+                        }
+                    },
+                ]
+            )
+        )
+    )
 
 
 def _validate_db_version(config, client):
@@ -657,7 +708,9 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
         _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
         )
         return
 
@@ -814,7 +867,9 @@ def delete_brain_runs(name, dry_run=False):
             _delete_run_results(result_ids)
 
     _logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
+        name,
     )
     if not dry_run:
         dataset_dict["brain_methods"] = {}
