@@ -5,8 +5,12 @@ FiftyOne v0.15.1 admin revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import json
 import os
+
+
+logger = logging.getLogger(__name__)
 
 
 def up(db):
@@ -40,10 +44,7 @@ def _get_database_name():
 
     config = _load_config()
 
-    try:
-        return config["database_name"]
-    except:
-        return "fiftyone"
+    return config.get("database_name", "fiftyone")
 
 
 def _load_config():
@@ -54,7 +55,14 @@ def _load_config():
             os.path.expanduser("~"), ".fiftyone", "config.json"
         )
 
-    try:
-        return json.load(config_path)
-    except:
-        return {}
+    config = {}
+
+    if os.path.isfile(config_path):
+        try:
+            config = json.load(config_path)
+        except Exception as e:
+            logger.warning(
+                "Failed to read config from '%s': %s", config_path, str(e)
+            )
+
+    return config

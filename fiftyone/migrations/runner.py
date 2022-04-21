@@ -145,7 +145,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = get_dataset_revision(name)
 
     if head is None:
-        head = "0.0"  # < 0.6.2
+        head = "0.0"
 
     if destination is None:
         destination = foc.VERSION
@@ -174,13 +174,13 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         destination = foc.VERSION
 
     head = get_dataset_revision(name)
+
     if head is None:
-        head = "0.0"  # < 0.6.2
+        head = "0.0"
 
     if head == destination:
         return
 
-    # @todo fully disallow migrations for non-admins?
     if not fo.config.database_admin and destination != foc.VERSION:
         raise EnvironmentError(
             "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
