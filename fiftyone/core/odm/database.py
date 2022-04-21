@@ -342,6 +342,16 @@ def list_collections():
     return list(conn.list_collection_names())
 
 
+def drop_collection(collection_name):
+    """Drops specified collection from the database.
+
+    Args:
+        collection_name: the collection name
+    """
+    conn = get_db_conn()
+    conn.drop_collection(collection_name)
+
+
 def drop_orphan_collections(dry_run=False):
     """Drops all orphan collections from the database.
 
