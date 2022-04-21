@@ -732,14 +732,16 @@ def to_keypoints(keypoint, name=None, extra_attrs=True):
     Returns:
         an ``eta.core.keypoints.Keypoints``
     """
+    points = [(p.x, p.y) for p in keypoint.points]
+    confidence = [p.confidence for p in keypoint.points]
     attrs = _to_eta_attributes(keypoint, extra_attrs=extra_attrs)
 
     return etak.Keypoints(
         name=name,
         label=keypoint.label,
         index=keypoint.index,
-        points=keypoint.points,
-        confidence=keypoint.confidence,
+        points=points,
+        confidence=confidence,
         attrs=attrs,
         tags=keypoint.tags,
     )
@@ -755,12 +757,17 @@ def from_keypoint(keypoints):
     Returns:
         a :class:`fiftyone.core.labels.Keypoint`
     """
+    points = [fol.Point(x=x, y=y) for x, y in keypoints.points]
+
+    if keypoints.confidence is not None:
+        for point, confidence in zip(points, keypoints.confidence):
+            point.confidence = confidence
+
     attributes = _from_eta_attributes(keypoints.attrs)
 
     return fol.Keypoint(
         label=keypoints.label,
-        points=keypoints.points,
-        confidence=keypoints.confidence,
+        points=points,
         index=keypoints.index,
         tags=keypoints.tags,
         **attributes,

@@ -806,7 +806,7 @@ def _to_points(label, frame_size):
         attributes = _get_attributes(keypoint)
         for point in keypoint.points:
             anno = _make_base_anno("point", keypoint.label)
-            anno.update(_make_point(point, frame_size))
+            anno.update(_make_point((point.x, point.y), frame_size))
             if attributes:
                 anno["attributes"] = attributes
 
@@ -1072,10 +1072,12 @@ def _parse_objects(anno_dict, frame_size):
                 )
             )
         elif type_ == "point":
-            # Polyline
-            point = _parse_point(anno, frame_size)
+            # Keypoint
+            x, y = _parse_point(anno, frame_size)
             keypoints.append(
-                fol.Keypoint(label=label, points=[point], **attributes)
+                fol.Keypoint(
+                    label=label, points=[fol.Point(x=x, y=y)], **attributes
+                )
             )
         else:
             msg = "Ignoring unsupported label type '%s'" % type_

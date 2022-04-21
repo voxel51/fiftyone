@@ -3020,14 +3020,23 @@ class SampleCollection(object):
                         filepath="/path/to/image1.png",
                         predictions=fo.Keypoint(
                             label="house",
-                            points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                            points=[
+                                fo.Point(x=0.1, y=0.1),
+                                fo.Point(x=0.1, y=0.9),
+                                fo.Point(x=0.9, y=0.9),
+                                fo.Point(x=0.9, y=0.1),
+                            ],
                         ),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
                         predictions=fo.Keypoint(
                             label="window",
-                            points=[(0.4, 0.4), (0.5, 0.5), (0.6, 0.6)],
+                            points=[
+                                fo.Point(x=0.4, y=0.4),
+                                fo.Point(x=0.5, y=0.5),
+                                fo.Point(x=0.6, y=0.6),
+                            ],
                         ),
                     ),
                     fo.Sample(

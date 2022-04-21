@@ -1586,14 +1586,22 @@ class FilterLabels(ViewStage):
                     filepath="/path/to/image1.png",
                     predictions=fo.Keypoint(
                         label="house",
-                        points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                        points=[
+                            fo.Point(x=0.1, y=0.1),
+                            fo.Point(x=0.1, y=0.9),
+                            fo.Point(x=0.9, y=0.9),
+                            fo.Point(x=0.9, y=0.1),
                     ),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
                     predictions=fo.Keypoint(
                         label="window",
-                        points=[(0.4, 0.4), (0.5, 0.5), (0.6, 0.6)],
+                        points=[
+                            fo.Point(x=0.4, y=0.4),
+                            fo.Point(x=0.5, y=0.5),
+                            fo.Point(x=0.6, y=0.6),
+                        ],
                     ),
                 ),
                 fo.Sample(
@@ -2048,7 +2056,6 @@ class FilterKeypoints(ViewStage):
         self._new_field = _new_field or field
 
         self._filter_dict = None
-        self._filter_field = None
         self._filter_expr = None
 
         self._validate_params()
@@ -2086,6 +2093,8 @@ class FilterKeypoints(ViewStage):
         )
         new_field = self._get_new_field(sample_collection)
 
+        empty_point = dict(fol.Point(x=float("nan"), y=float("nan")).to_dict())
+
         pipeline = []
 
         if self._new_field != self._field:
@@ -2099,13 +2108,8 @@ class FilterKeypoints(ViewStage):
             pipeline.extend(_pipeline)
 
         if self._filter_expr is not None:
-            filter_expr = (F(self._filter_field) != None).if_else(
-                F.zip(F("points"), F(self._filter_field)).map(
-                    (F()[1].apply(self._filter_expr)).if_else(
-                        F()[0], [float("nan"), float("nan")],
-                    )
-                ),
-                F("points"),
+            filter_expr = F("points").map(
+                self._filter_expr.if_else(F(), empty_point)
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2142,9 +2146,7 @@ class FilterKeypoints(ViewStage):
             ]
 
             labels_expr = F.enumerate(F("points")).map(
-                F()[0]
-                .is_in(inds)
-                .if_else(F()[1], [float("nan"), float("nan")])
+                F()[0].is_in(inds).if_else(F()[1], empty_point)
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2160,14 +2162,14 @@ class FilterKeypoints(ViewStage):
             # Remove Keypoint objects with no points after filtering
             if is_list_field:
                 has_points = (
-                    F("points").filter(F()[0] != float("nan")).length() > 0
+                    F("points").filter(F("x") != float("nan")).length() > 0
                 )
                 match_expr = F("keypoints").filter(has_points)
             else:
                 field, _ = sample_collection._handle_frame_field(new_field)
                 has_points = (
                     F(field + ".points")
-                    .filter(F()[0] != float("nan"))
+                    .filter(F("x") != float("nan"))
                     .length()
                     > 0
                 )
@@ -2216,9 +2218,9 @@ class FilterKeypoints(ViewStage):
             return
 
         if isinstance(self._filter, foe.ViewExpression):
-            # note: $$expr is used here because that's what
-            # `ViewExpression.apply()` uses
-            filter_dict = self._filter.to_mongo(prefix="$$expr")
+            # note: $$this is used here because that's what
+            # `ViewExpression.map()` uses
+            filter_dict = self._filter.to_mongo(prefix="$$this")
         elif not isinstance(self._filter, dict):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
@@ -2227,11 +2229,8 @@ class FilterKeypoints(ViewStage):
         else:
             filter_dict = self._filter
 
-        filter_field, d = _extract_filter_field(filter_dict)
-
         self._filter_dict = filter_dict
-        self._filter_field = filter_field
-        self._filter_expr = foe.ViewExpression(d)
+        self._filter_expr = foe.ViewExpression(filter_dict)
 
     @classmethod
     def _params(cls):
@@ -2256,42 +2255,6 @@ class FilterKeypoints(ViewStage):
                 "placeholder": "only matches (default=True)",
             },
         ]
-
-
-def _extract_filter_field(val):
-    field = None
-
-    # note: $$expr is used here because that's what `F.apply()` uses
-    if etau.is_str(val) and val.startswith("$$expr."):
-        val, field = val.split(".", 1)
-
-    if isinstance(val, dict):
-        _val = {}
-        for k, v in val.items():
-            _field, _k = _extract_filter_field(k)
-            if _field is not None:
-                field = _field
-
-            _field, _v = _extract_filter_field(v)
-            if _field is not None:
-                field = _field
-
-            _val[_k] = _v
-
-        return field, _val
-
-    if isinstance(val, list):
-        _val = []
-        for v in val:
-            _field, _v = _extract_filter_field(v)
-            if _field is not None:
-                field = _field
-
-            _val.append(_v)
-
-        return field, _val
-
-    return field, val
 
 
 class _GeoStage(ViewStage):

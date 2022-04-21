@@ -1455,15 +1455,25 @@ class ViewStageTests(unittest.TestCase):
             filepath="image1.jpg",
             kp=fo.Keypoint(
                 label="person",
-                points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
-                confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                points=[
+                    fo.Point(x=0, y=0, confidence=0.5),
+                    fo.Point(x=0, y=0, confidence=0.6),
+                    fo.Point(x=0, y=0, confidence=0.7),
+                    fo.Point(x=0, y=0, confidence=0.8),
+                    fo.Point(x=0, y=0, confidence=0.9),
+                ],
             ),
             kps=fo.Keypoints(
                 keypoints=[
                     fo.Keypoint(
                         label="person",
-                        points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
-                        confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                        points=[
+                            fo.Point(x=0, y=0, confidence=0.5),
+                            fo.Point(x=0, y=0, confidence=0.6),
+                            fo.Point(x=0, y=0, confidence=0.7),
+                            fo.Point(x=0, y=0, confidence=0.8),
+                            fo.Point(x=0, y=0, confidence=0.9),
+                        ],
                     ),
                     fo.Keypoint(),
                 ]
@@ -1480,7 +1490,7 @@ class ViewStageTests(unittest.TestCase):
             edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
         )
 
-        count_nans = lambda points: len([p for p in points if np.isnan(p[0])])
+        count_nans = lambda points: len([p for p in points if np.isnan(p.x)])
 
         #
         # Test `Keypoint` sample fields
@@ -1581,15 +1591,25 @@ class ViewStageTests(unittest.TestCase):
         sample1.frames[1] = fo.Frame(
             kp=fo.Keypoint(
                 label="person",
-                points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
-                confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                points=[
+                    fo.Point(x=0, y=0, confidence=0.5),
+                    fo.Point(x=0, y=0, confidence=0.6),
+                    fo.Point(x=0, y=0, confidence=0.7),
+                    fo.Point(x=0, y=0, confidence=0.8),
+                    fo.Point(x=0, y=0, confidence=0.9),
+                ],
             ),
             kps=fo.Keypoints(
                 keypoints=[
                     fo.Keypoint(
                         label="person",
-                        points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
-                        confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                        points=[
+                            fo.Point(x=0, y=0, confidence=0.5),
+                            fo.Point(x=0, y=0, confidence=0.6),
+                            fo.Point(x=0, y=0, confidence=0.7),
+                            fo.Point(x=0, y=0, confidence=0.8),
+                            fo.Point(x=0, y=0, confidence=0.9),
+                        ],
                     ),
                     fo.Keypoint(),
                 ]
@@ -1607,7 +1627,7 @@ class ViewStageTests(unittest.TestCase):
             edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
         )
 
-        count_nans = lambda points: len([p for p in points if np.isnan(p[0])])
+        count_nans = lambda points: len([p for p in points if np.isnan(p.x)])
 
         #
         # Test `Keypoint` frame fields

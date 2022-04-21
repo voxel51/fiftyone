@@ -931,11 +931,13 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             ]
 
             points = []
-            for p in kpts:
+            for p, c in zip(kpts, kpt_scores.tolist()):
                 if p[2] > 0:
-                    points.append((p[0] / width, p[1] / height))
+                    x = p[0] / width
+                    y = p[1] / height
+                    points.append(fol.Point(x=x, y=y, confidence=c))
                 else:
-                    points.append((float("nan"), float("nan")))
+                    points.append(fol.Point())
 
             _detections.append(
                 fol.Detection(
@@ -946,11 +948,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
             )
 
             _keypoints.append(
-                fol.Keypoint(
-                    label=self.classes[label],
-                    points=points,
-                    confidence=kpt_scores.tolist(),
-                )
+                fol.Keypoint(label=self.classes[label], points=points)
             )
 
         return {

@@ -274,27 +274,6 @@ class IntDictField(DictField):
                 self.field.validate(_value)
 
 
-class KeypointsField(ListField):
-    """A list of ``(x, y)`` coordinate pairs.
-
-    If this field is not set, its default value is ``[]``.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(field=None, **kwargs)
-
-    def __str__(self):
-        return etau.get_class_name(self)
-
-    def validate(self, value):
-        # Only validate value[0], for efficiency
-        if not isinstance(value, (list, tuple)) or (
-            value
-            and (not isinstance(value[0], (list, tuple)) or len(value[0]) != 2)
-        ):
-            self.error("Keypoints fields must contain a list of (x, y) pairs")
-
-
 class PolylinePointsField(ListField):
     """A list of lists of ``(x, y)`` coordinate pairs.
 

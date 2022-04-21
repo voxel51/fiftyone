@@ -2019,7 +2019,7 @@ def _to_points(label, frame_size, data_row_id):
         classifications = _get_nested_classifications(keypoint)
         for point in keypoint.points:
             anno = _make_base_anno(keypoint.label, data_row_id=data_row_id)
-            anno["point"] = _make_point(point, frame_size)
+            anno["point"] = _make_point((point.x, point.y), frame_size)
             if classifications:
                 anno["classifications"] = classifications
 
@@ -2265,8 +2265,10 @@ def _parse_objects(od_list, frame_size, class_attr=None):
 
         elif "point" in od:
             # Keypoint
-            point = _parse_point(od["point"], frame_size)
-            keypoint = fol.Keypoint(label=label, points=[point], **attributes)
+            x, y = _parse_point(od["point"], frame_size)
+            keypoint = fol.Keypoint(
+                label=label, points=[fol.Point(x=x, y=y)], **attributes
+            )
             if label_field is None:
                 keypoints.append(keypoint)
             else:
