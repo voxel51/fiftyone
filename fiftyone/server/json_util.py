@@ -10,6 +10,7 @@ from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
 import math
+import numpy as np
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -33,9 +34,12 @@ def _handle_numpy_array(raw, _cls=None):
     if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
 
-    return fou.serialize_numpy_array(
-        fou.deserialize_numpy_array(raw), ascii=True
-    )
+    array = fou.deserialize_numpy_array(raw)
+
+    if np.isfortran(array):
+        array = np.ascontiguousarray(array)
+
+    return fou.serialize_numpy_array(array, ascii=True)
 
 
 def _handle_date(dt):

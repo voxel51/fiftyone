@@ -76,11 +76,23 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_VALIDATION",
             default=True,
         )
+        self.database_admin = self.parse_bool(
+            d,
+            "database_admin",
+            env_var="FIFTYONE_DATABASE_ADMIN",
+            default=True,
+        )
         self.database_dir = self.parse_path(
             d,
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
+        )
+        self.database_name = self.parse_string(
+            d,
+            "database_name",
+            env_var="FIFTYONE_DATABASE_NAME",
+            default="fiftyone",
         )
         self.dataset_zoo_dir = self.parse_path(
             d,
@@ -253,6 +265,12 @@ class AppConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.color_by_value = self.parse_bool(
+            d,
+            "color_by_value",
+            env_var="FIFTYONE_APP_COLOR_BY_VALUE",
+            default=False,
+        )
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
@@ -291,6 +309,12 @@ class AppConfig(EnvConfig):
         )
         self.show_label = self.parse_bool(
             d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
+        )
+        self.show_skeletons = self.parse_bool(
+            d,
+            "show_skeletons",
+            env_var="FIFTYONE_APP_SHOW_SKELETONS",
+            default=True,
         )
         self.show_tooltip = self.parse_bool(
             d,

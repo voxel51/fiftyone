@@ -18,6 +18,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import * as stringField from "./StringFieldFilter.state";
 import { countsAtom } from "./atoms";
+import { KEYPOINT, KEYPOINTS } from "@fiftyone/looker/src/constants";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -79,10 +80,12 @@ type Props = {
 const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const [ref, props] = useExpand(expanded);
   const path = `${entry.path}${getPathExtension(entry.labelType)}`;
+  const skeleton = useRecoilValue(selectors.skeleton(entry.path));
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
   const sPath = `${path}.support`;
   const vPath = `${path}.value`;
+  const kPath = `${path}.points.label`;
 
   return (
     <animated.div style={{ ...props }}>
@@ -92,7 +95,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
           {entry.labelType !== REGRESSION && (
             <CategoricalFilter
               color={entry.color}
-              name={"Labels"}
+              name={"label"}
               valueName={"label"}
               selectedValuesAtom={stringField.selectedValuesAtom({
                 modal,
@@ -108,16 +111,32 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               modal={modal}
               color={entry.color}
-              name={"Confidence"}
+              name={"confidence"}
               path={cPath}
               defaultRange={[0, 1]}
               fieldType={FLOAT_FIELD}
             />
           )}
+          {skeleton && [KEYPOINTS, KEYPOINT].includes(entry.labelType) && (
+            <CategoricalFilter
+              color={entry.color}
+              name={"skeleton.label"}
+              valueName={"label"}
+              selectedValuesAtom={stringField.selectedValuesAtom({
+                modal,
+                path: kPath,
+              })}
+              countsAtom={countsAtom({ modal, path: kPath, filtered: false })}
+              excludeAtom={stringField.excludeAtom({ modal, path: kPath })}
+              disableSearch={true}
+              modal={modal}
+              path={kPath}
+            />
+          )}
           {entry.labelType === REGRESSION && (
             <NamedRangeSlider
               color={entry.color}
-              name={"Value"}
+              name={"value"}
               path={vPath}
               modal={modal}
               fieldType={FLOAT_FIELD}
@@ -127,7 +146,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             <NamedRangeSlider
               modal={modal}
               color={entry.color}
-              name={"Support"}
+              name={"support"}
               path={sPath}
               fieldType={FRAME_SUPPORT_FIELD}
             />

@@ -48,6 +48,7 @@ class DatabaseConfigDocument(Document):
     meta = {"collection": "config"}
 
     version = fof.StringField()
+    type = fof.StringField()
 
 
 def get_db_config():
@@ -56,11 +57,42 @@ def get_db_config():
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    save = False
+
     try:
         # pylint: disable=no-member
         config = DatabaseConfigDocument.objects.get()
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
+        save = True
+
+    if config.version is None:
+        #
+        # The database version was added to this config in v0.15.0, so if no
+        # version is available, assume the database is at the preceeding
+        # release. It's okay if the database's version is actually older,
+        # because there are no significant admin migrations prior to v0.14.4.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to run migrations...
+        #
+        config.version = "0.14.4"
+        save = True
+
+    if config.type is None:
+        #
+        # If the database has no type, then assume the type of the client that
+        # is currently connecting to it.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to decide if a client is
+        # allowed to connect to the database at all (a precursor to running a
+        # migration)...
+        #
+        config.type = foc.CLIENT_TYPE
+        save = True
+
+    if save:
         config.save()
 
     return config
@@ -127,7 +159,14 @@ def establish_db_conn(config):
     _client = pymongo.MongoClient(**_connection_kwargs)
     _validate_db_version(config, _client)
 
-    connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+    connect(config.database_name, **_connection_kwargs)
+
+    config = get_db_config()
+    if foc.CLIENT_TYPE != config.type:
+        raise ConnectionError(
+            "Cannot connect to database type '%s' with client type '%s'"
+            % (config.type, foc.CLIENT_TYPE)
+        )
 
 
 def _connect():
@@ -135,7 +174,7 @@ def _connect():
     if _client is None:
         global _connection_kwargs
         _client = pymongo.MongoClient(**_connection_kwargs)
-        connect(foc.DEFAULT_DATABASE, **_connection_kwargs)
+        connect(fo.config.database_name, **_connection_kwargs)
 
 
 def _async_connect():
@@ -250,7 +289,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[foc.DEFAULT_DATABASE]
+    db = _client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -261,7 +300,7 @@ def get_async_db_conn():
         a ``motor.motor_tornado.MotorDatabase``
     """
     _async_connect()
-    db = _async_client[foc.DEFAULT_DATABASE]
+    db = _async_client[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -284,7 +323,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(foc.DEFAULT_DATABASE)
+    _client.drop_database(fo.config.database_name)
 
 
 def sync_database():
@@ -301,6 +340,16 @@ def list_collections():
     """
     conn = get_db_conn()
     return list(conn.list_collection_names())
+
+
+def drop_collection(collection_name):
+    """Drops specified collection from the database.
+
+    Args:
+        collection_name: the collection name
+    """
+    conn = get_db_conn()
+    conn.drop_collection(collection_name)
 
 
 def drop_orphan_collections(dry_run=False):
