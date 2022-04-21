@@ -36,6 +36,7 @@ from .database import (
 from .dataset import (
     create_field,
     SampleFieldDocument,
+    KeypointSkeleton,
     DatasetDocument,
 )
 from .document import (

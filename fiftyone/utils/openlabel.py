@@ -206,22 +206,22 @@ class OpenLABELImageDatasetImporter(
         image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
-        info = {}
-        potential_file_ids = []
+
+        file_ids = []
         annotations = OpenLABELAnnotations(fom.IMAGE)
 
         if self.labels_path is not None:
+            labels_path = fou.normpath(self.labels_path)
+
             base_dir = None
-            if os.path.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
-                base_dir = self.labels_path
+            if os.path.isfile(labels_path):
+                label_paths = [labels_path]
+            elif os.path.isdir(labels_path):
+                base_dir = labels_path
             elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and os.path.isdir(
-                _remove_ext(self.labels_path)
-            ):
-                base_dir = _remove_ext(self.labels_path)
+                labels_path
+            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -230,16 +230,14 @@ class OpenLABELImageDatasetImporter(
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
-                potential_file_ids.extend(
-                    annotations.parse_labels(base_dir, label_path)
-                )
+                file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        self._annotations = annotations
-        self._info = info
-        self._file_ids = _validate_file_ids(
-            potential_file_ids, image_paths_map
-        )
+        file_ids = _validate_file_ids(file_ids, image_paths_map)
+
+        self._info = {}
         self._image_paths_map = image_paths_map
+        self._annotations = annotations
+        self._file_ids = file_ids
 
     def get_dataset_info(self):
         return self._info
@@ -421,22 +419,22 @@ class OpenLABELVideoDatasetImporter(
         video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
-        info = {}
-        potential_file_ids = []
+
+        file_ids = []
         annotations = OpenLABELAnnotations(fom.VIDEO)
 
         if self.labels_path is not None:
+            labels_path = fou.normpath(self.labels_path)
+
             base_dir = None
-            if os.path.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
-                base_dir = self.labels_path
+            if os.path.isfile(labels_path):
+                label_paths = [labels_path]
+            elif os.path.isdir(labels_path):
+                base_dir = labels_path
             elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and os.path.isdir(
-                _remove_ext(self.labels_path)
-            ):
-                base_dir = _remove_ext(self.labels_path)
+                labels_path
+            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -445,16 +443,14 @@ class OpenLABELVideoDatasetImporter(
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
-                potential_file_ids.extend(
-                    annotations.parse_labels(base_dir, label_path)
-                )
+                file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        self._annotations = annotations
-        self._info = info
-        self._file_ids = _validate_file_ids(
-            potential_file_ids, video_paths_map
-        )
+        file_ids = _validate_file_ids(file_ids, video_paths_map)
+
+        self._info = {}
         self._video_paths_map = video_paths_map
+        self._annotations = annotations
+        self._file_ids = file_ids
 
     def get_dataset_info(self):
         return self._info

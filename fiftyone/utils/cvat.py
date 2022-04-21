@@ -592,7 +592,7 @@ class CVATImageDatasetImporter(
             else:
                 key = i.name
 
-            cvat_images_map[key] = i
+            cvat_images_map[fou.normpath(key)] = i
 
         filenames = set(cvat_images_map.keys())
 
@@ -759,9 +759,10 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
+            labels_path = fou.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: os.path.join(labels_path, p)
+                for p in etau.list_files(labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}
@@ -1623,11 +1624,12 @@ class CVATImageTag(CVATImageAnno):
 
     Args:
         label: the tag string
+        attributes (None): a list of :class:`CVATAttribute` instances
     """
 
-    def __init__(self, label):
+    def __init__(self, label, attributes=None):
         self.label = label
-        CVATImageAnno.__init__(self)
+        CVATImageAnno.__init__(self, attributes=attributes)
 
     def to_classification(self):
         """Returns a :class:`fiftyone.core.labels.Classification`
@@ -1636,7 +1638,8 @@ class CVATImageTag(CVATImageAnno):
         Returns:
             a :class:`fiftyone.core.labels.Classification`
         """
-        return fol.Classification(label=self.label)
+        attributes = self._to_attributes()
+        return fol.Classification(label=self.label, **attributes)
 
     @classmethod
     def from_classification(cls, classification):
@@ -1650,7 +1653,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = classification.label
-        return cls(label)
+
+        _, attributes = cls._parse_attributes(classification)
+        return cls(label, attributes=attributes)
 
     @classmethod
     def from_tag_dict(cls, d):
@@ -1664,7 +1669,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = d["@label"]
-        return cls(label)
+
+        _, attributes = cls._parse_anno_dict(d)
+        return cls(label, attributes=attributes)
 
 
 class CVATImageBox(CVATImageAnno):
