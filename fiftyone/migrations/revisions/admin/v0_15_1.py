@@ -19,7 +19,10 @@ def up(db):
 
     try:
         d = db["config"].find_one({})
-        d["type"] = "fiftyone"
+
+        if "type" not in d:
+            d["type"] = "fiftyone"
+
         db["config"].replace_one(d)
     except:
         d = {"version": "0.15.1", "type": "fiftyone"}
@@ -32,7 +35,9 @@ def down(db):
 
     try:
         d = db["config"].find_one({})
+
         d.pop("type", None)
+
         db["config"].replace_one(d)
     except:
         pass
