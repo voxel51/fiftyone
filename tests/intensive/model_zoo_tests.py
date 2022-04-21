@@ -51,29 +51,6 @@ def test_embedding_models():
     _apply_embedding_models(all_models)
     
 
-def test_clip():
-    # Load a small test dataset
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        shuffle=True,
-        max_samples=10,
-    )
-
-    model = foz.load_zoo_model("clip-vit-base32-torch")
-
-    dataset.apply_model(
-        model, label_field="clip", batch_size=4,
-    )
-    assert len(dataset.exists("clip")) == len(dataset)
-
-    embeddings = dataset.compute_embeddings(model)
-    print(f"Embeddings shape: {embeddings.shape}")
-    assert embeddings.shape == (len(dataset), 512)
-    # TODO test with custom labels
-    
-
 def test_logits_models():
     models = _get_models_with_tag("logits")
     _apply_models_with_logits(models, store_logits=True)
@@ -101,6 +78,11 @@ def test_confidence_thresh():
 def test_batch_size():
     all_models = foz.list_zoo_models()
     _apply_models(all_models, batch_size=5)
+
+
+def test_zero_shot_labels():
+    models = _get_models_with_tag("zero_shot")
+    _apply_zero_shot_models(models)
 
 
 def _get_models_with_tag(tag):
@@ -206,6 +188,30 @@ def _apply_embedding_models(model_names):
 
         embeddings = dataset.compute_embeddings(model)
         print("Embeddings shape: %s" % embeddings.shape)
+
+
+def _apply_zero_shot_models(model_names):
+    # Load a small test dataset
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        shuffle=True,
+        max_samples=10,
+    )
+    custom_labels = ["vehicle", "person", "plant", "city", "animal", "nature"]
+
+    for idx, model_name in enumerate(model_names, 1):
+        print(
+            "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
+        )
+
+        model = foz.load_zoo_model(model_name, class_labels=custom_labels)
+
+        dataset.apply_model(model, label_field="zero_shot", batch_size=4)
+
+        assert len(dataset.exists("zero_shot")) == len(dataset)
+        assert set(dataset.distinct("zero_shot.label")) == set(custom_labels)
 
 
 def _apply_person_keypoint_models(model_names):

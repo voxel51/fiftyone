@@ -1678,9 +1678,9 @@
             "base_name": "clip-vit-base32-torch",
             "base_filename": "CLIP-ViT-B-16.pt",
             "version": null,
-            "description": "CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400B text-image pairs",
+            "description": "CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/openai/CLIP",
-            "size_bytes": 17277937,
+            "size_bytes": 353976522,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1716,7 +1716,8 @@
                 "classification",
                 "logits",
                 "embeddings",
-                "torch"
+                "torch",
+                "zero-shot"
             ],
             "date_added": "2022-04-12 17:49:51"
         }

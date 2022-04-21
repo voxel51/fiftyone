@@ -107,6 +107,7 @@ class TorchCLIPModelConfig(
         self._tokenizer_base_url = self.parse_string(d, "tokenizer_base_url")
         self.text_prompt = self.parse_string(d, "text_prompt")
         self.context_length = self.parse_int(d, "context_length")
+        self.class_labels = self.parse_array(d, "class_labels", [])
 
     def download_tokenizer_if_necessary(self):
         if not self._tokenizer_path.exists():
@@ -124,6 +125,13 @@ class TorchCLIPModel(fout.TorchImageModel):
     def _download_model(self, config):
         config.download_model_if_necessary()
         config.download_tokenizer_if_necessary()
+
+    def _get_class_labels(self, config):
+        if config.class_labels:
+            return config.class_labels
+        else:
+            # same as parent class
+            return super()._get_class_labels(config)
 
     def _load_network(self, config):
         with open(config.model_path, 'rb') as f:
