@@ -20,7 +20,8 @@ export default class KeypointOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if (this.getDistanceAndMaybePoint(state)[0] <= state.pointRadius) {
+    const result = this.getDistanceAndMaybePoint(state);
+    if (result && result[0] <= state.pointRadius) {
       return CONTAINS.BORDER;
     }
     return CONTAINS.NONE;
@@ -81,7 +82,11 @@ export default class KeypointOverlay<
   }
 
   getMouseDistance(state: Readonly<State>): number {
-    return this.getDistanceAndMaybePoint(state)[0];
+    const result = this.getDistanceAndMaybePoint(state);
+
+    if (result) return result[0];
+
+    return Infinity;
   }
 
   getPointInfo(state: Readonly<State>): PointInfo<KeypointLabel> {
@@ -109,7 +114,7 @@ export default class KeypointOverlay<
 
   private getDistanceAndMaybePoint(
     state: Readonly<State>
-  ): [number, number | null] {
+  ): [number, number | null] | null {
     const distances: [number, number][] = [];
     let {
       config: { dimensions },
@@ -117,8 +122,24 @@ export default class KeypointOverlay<
       pixelCoordinates: [x, y],
     } = state;
     pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
-    for (let i = 0; i < this.label.points.length; i++) {
-      const point = this.label.points[i];
+
+    const skeleton = getSkeleton(this.field, state);
+
+    const points = this.label.points.map((p, i) => {
+      return state.options.pointFilter(
+        this.field,
+        Object.fromEntries(getAttributes(skeleton, this.label, i))
+      )
+        ? p
+        : null;
+    });
+
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+
+      if (!point) {
+        continue;
+      }
       const d = distance(
         x,
         y,
@@ -131,13 +152,14 @@ export default class KeypointOverlay<
       }
     }
 
-    const skeleton = getSkeleton(this.field, state);
-
-    if (skeleton) {
+    if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
-        const path = skeleton.edges[i].map((index) => this.label.points[index]);
+        const path = skeleton.edges[i].map((index) => points[index]);
 
         for (let j = 1; j < path.length; j++) {
+          if (!path[j] || !path[j - 1]) {
+            continue;
+          }
           distances.push([
             distanceFromLineSegment(
               [x, y],
@@ -148,6 +170,10 @@ export default class KeypointOverlay<
           ]);
         }
       }
+    }
+
+    if (!distances.length) {
+      return null;
     }
 
     return distances.sort((a, b) => a[0] - b[0])[0];

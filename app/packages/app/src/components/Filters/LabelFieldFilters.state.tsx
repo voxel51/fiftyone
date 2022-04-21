@@ -50,6 +50,10 @@ export const skeletonFilter = selectorFamily<
       const lpath = `${path}${getPathExtension(types[path])}.points.label`;
       const cpath = `${path}${getPathExtension(types[path])}.confidence`;
 
+      if (point.points.some((c) => c === "nan")) {
+        return false;
+      }
+
       if (!filters[lpath] && !filters[cpath]) {
         return true;
       }

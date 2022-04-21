@@ -142,10 +142,18 @@ def _make_filter_stages(
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            keypoints = (
-                issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
-                and full_path != f"{path}.label"
+            keypoints = issubclass(
+                field.document_type, (fol.Keypoint, fol.Keypoints)
             )
+
+            if issubclass(field.document_type, fol.Keypoint):
+                if full_path == f"{path}.label":
+                    keypoints = False
+
+            if issubclass(field.document_type, fol.Keypoints):
+                if full_path == f"{path}.keypoints.label":
+                    keypoints = False
+
             expr = (
                 _make_keypoint_kwargs(path, args, view)
                 if keypoints
