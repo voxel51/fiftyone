@@ -1913,8 +1913,7 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")),
-                [],
+                F(path).filter(filter_expr).map(F("index")), [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -2088,6 +2087,7 @@ class FilterKeypoints(ViewStage):
         new_field = self._get_new_field(sample_collection)
 
         pipeline = []
+
         if self._new_field != self._field:
             field, _ = sample_collection._handle_frame_field(self._field)
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2102,8 +2102,7 @@ class FilterKeypoints(ViewStage):
             filter_expr = (F(self._filter_field) != None).if_else(
                 F.zip(F("points"), F(self._filter_field)).map(
                     (F()[1].apply(self._filter_expr)).if_else(
-                        F()[0],
-                        [float("nan"), float("nan")],
+                        F()[0], [float("nan"), float("nan")],
                     )
                 ),
                 F("points"),
@@ -2925,8 +2924,7 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]),
-            None,
+            F().set_field(leaf, F(leaf)[:limit]), None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
