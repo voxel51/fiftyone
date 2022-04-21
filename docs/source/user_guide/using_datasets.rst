@@ -317,7 +317,7 @@ Storing keypoint skeletons
 
 All |Dataset| instances have
 :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
-:meth:`default_skeletons <fiftyone.core.dataset.Dataset.default_skeletons>`
+:meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
 properties that you can use to store keypoint skeletons for |Keypoint| field(s)
 of a dataset.
 
@@ -1786,17 +1786,15 @@ Keypoints
 The |Keypoints| class represents a collection of keypoint groups in an image.
 The keypoint groups are stored in the
 :attr:`keypoints <fiftyone.core.labels.Keypoints.keypoints>` attribute of the
-|Keypoints| object.
-
-Each element of this list is a |Keypoint| object whose
+|Keypoints| object. Each element of this list is a |Keypoint| object whose
 :attr:`points <fiftyone.core.labels.Keypoint.points>` attribute contains a
 list of ``(x, y)`` coordinates defining a group of semantically related
 keypoints in the image.
 
 For example, if you are working with a person model that outputs 18 keypoints
-(`left eye`, `right eye`, etc) per person, then each |Keypoint| instance
-would represent one person, and a |Keypoints| instance would represent the list
-of people in the image.
+(`left eye`, `right eye`, `nose`, etc.) per person, then each |Keypoint|
+instance would represent one person, and a |Keypoints| instance would represent
+the list of people in the image.
 
 .. note::
 
@@ -1862,10 +1860,10 @@ attributes and rendered as such in the App:
 
     keypoint = fo.Keypoint(
         label="rectangle",
+        kind="square",  # custom object attribute
         points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
         confidence=[0.6, 0.7, 0.8, 0.9],
         occluded=[False, False, True, False],  # custom per-point attributes
-        kind="square",  # custom attributes
     )
 
     print(keypoint)
@@ -1880,8 +1878,8 @@ attributes and rendered as such in the App:
         'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
         'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
         'index': None,
-        'occluded': BaseList([False, False, True, False]),
         'kind': 'square',
+        'occluded': BaseList([False, False, True, False]),
     }>
 
 .. note::
