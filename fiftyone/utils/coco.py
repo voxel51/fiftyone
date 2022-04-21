@@ -545,11 +545,13 @@ class COCODetectionDatasetImporter(
                 max_samples=self.max_samples,
             )
 
-            filenames = [images[_id]["file_name"] for _id in image_ids]
+            filenames = [
+                fou.normpath(images[_id]["file_name"]) for _id in image_ids
+            ]
 
             _image_ids = set(image_ids)
             image_dicts_map = {
-                i["file_name"]: i
+                fou.normpath(i["file_name"]): i
                 for _id, i in images.items()
                 if _id in _image_ids
             }
