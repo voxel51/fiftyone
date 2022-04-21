@@ -14,19 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def up(db):
-    database_name = _get_database_name()
-    db = db[database_name]
-
-    try:
-        d = db["config"].find_one({})
-
-        if "type" not in d:
-            d["type"] = "fiftyone"
-
-        db["config"].replace_one(d)
-    except:
-        d = {"version": "0.15.1", "type": "fiftyone"}
-        db["config"].insert_one(d)
+    pass
 
 
 def down(db):
@@ -38,7 +26,7 @@ def down(db):
 
         d.pop("type", None)
 
-        db["config"].replace_one(d)
+        db["config"].replace_one({"_id": d["_id"]}, d)
     except:
         pass
 
@@ -64,7 +52,8 @@ def _load_config():
 
     if os.path.isfile(config_path):
         try:
-            config = json.load(config_path)
+            with open(config_path, "r") as f:
+                config = json.load(f)
         except Exception as e:
             logger.warning(
                 "Failed to read config from '%s': %s", config_path, str(e)
