@@ -261,7 +261,7 @@ class ExternalDatabaseService(Service):
         import fiftyone.core.odm.database as food
 
         try:
-            if food.get_master_connection_count() == 1:
+            if food.get_master_connection_count() <= 1:
                 fod.delete_non_persistent_datasets()
             food.sync_database()
         except:
@@ -346,7 +346,7 @@ class DatabaseService(MultiClientService):
             return
 
         try:
-            if food.get_master_connection_count() == 1:
+            if food.get_master_connection_count() <= 1:
                 fod.delete_non_persistent_datasets()
             food.sync_database()
         except:

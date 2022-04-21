@@ -155,7 +155,7 @@ def _async_connect():
 
 
 def get_master_connection_count():
-    """Counts the number of master connections to database from fiftyone app.
+    """Counts the number of master connections to database from fiftyone.
 
     Returns:
         -   Integer count of master connections
