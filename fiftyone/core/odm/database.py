@@ -57,11 +57,42 @@ def get_db_config():
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    save = False
+
     try:
         # pylint: disable=no-member
         config = DatabaseConfigDocument.objects.get()
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
+        save = True
+
+    if config.version is None:
+        #
+        # The database version was added to this config in v0.15.0, so if no
+        # version is available, assume the database is at the preceeding
+        # release. It's okay if the database's version is actually older,
+        # because there are no significant admin migrations prior to v0.14.4.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to run migrations...
+        #
+        config.version = "0.14.4"
+        save = True
+
+    if config.type is None:
+        #
+        # If the database has no type, then assume the type of the client that
+        # is currently connecting to it.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to decide if a client is
+        # allowed to connect to the database at all (a precursor to running a
+        # migration)...
+        #
+        config.type = foc.CLIENT_TYPE
+        save = True
+
+    if save:
         config.save()
 
     return config
@@ -133,7 +164,7 @@ def establish_db_conn(config):
     config = get_db_config()
     if foc.CLIENT_TYPE != config.type:
         raise ConnectionError(
-            "Cannot connect to database type %s with a client of type %s"
+            "Cannot connect to database type '%s' with client type '%s'"
             % (config.type, foc.CLIENT_TYPE)
         )
 

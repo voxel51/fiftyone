@@ -95,15 +95,6 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     config = foo.get_db_config()
 
     head = config.version
-    if head is None:
-        #
-        # The database version was moved in v0.15.0, so if no version is
-        # available, assume the database is at the preceeding release.
-        #
-        # It's okay if the database's version is actually older, because there
-        # are no significant admin migrations prior to v0.14.4
-        #
-        head = "0.14.4"
 
     if head == destination:
         return

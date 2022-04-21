@@ -18,7 +18,7 @@ def up(db):
         d["type"] = "fiftyone"
         db["config"].replace_one(d)
     except:
-        d = {"version": "0.15.3", "type": "fiftyone"}
+        d = {"version": "0.15.1", "type": "fiftyone"}
         db["config"].insert_one(d)
 
 
