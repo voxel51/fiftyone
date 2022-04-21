@@ -1921,8 +1921,7 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")),
-                [],
+                F(path).filter(filter_expr).map(F("index")), [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -2057,7 +2056,6 @@ class FilterKeypoints(ViewStage):
         self._new_field = _new_field or field
 
         self._filter_dict = None
-        self._filter_field = None
         self._filter_expr = None
 
         self._validate_params()
@@ -2096,6 +2094,7 @@ class FilterKeypoints(ViewStage):
         new_field = self._get_new_field(sample_collection)
 
         pipeline = []
+
         if self._new_field != self._field:
             field, _ = sample_collection._handle_frame_field(self._field)
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2107,14 +2106,8 @@ class FilterKeypoints(ViewStage):
             pipeline.extend(_pipeline)
 
         if self._filter_expr is not None:
-            filter_expr = (F(self._filter_field) != None).if_else(
-                F.zip(F("points"), F(self._filter_field)).map(
-                    (F()[1].apply(self._filter_expr)).if_else(
-                        F()[0],
-                        [float("nan"), float("nan")],
-                    )
-                ),
-                F("points"),
+            filter_expr = F("points").map(
+                self._filter_expr.if_else(F(), dict(fol.Point().to_dict()))
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2151,9 +2144,7 @@ class FilterKeypoints(ViewStage):
             ]
 
             labels_expr = F.enumerate(F("points")).map(
-                F()[0]
-                .is_in(inds)
-                .if_else(F()[1], [float("nan"), float("nan")])
+                F()[0].is_in(inds).if_else(F()[1], dict(fol.Point().to_dict()))
             )
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
@@ -2225,9 +2216,9 @@ class FilterKeypoints(ViewStage):
             return
 
         if isinstance(self._filter, foe.ViewExpression):
-            # note: $$expr is used here because that's what
-            # `ViewExpression.apply()` uses
-            filter_dict = self._filter.to_mongo(prefix="$$expr")
+            # note: $$this is used here because that's what
+            # `ViewExpression.map()` uses
+            filter_dict = self._filter.to_mongo(prefix="$$this")
         elif not isinstance(self._filter, dict):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB aggregation "
@@ -2236,11 +2227,8 @@ class FilterKeypoints(ViewStage):
         else:
             filter_dict = self._filter
 
-        filter_field, d = _extract_filter_field(filter_dict)
-
         self._filter_dict = filter_dict
-        self._filter_field = filter_field
-        self._filter_expr = foe.ViewExpression(d)
+        self._filter_expr = foe.ViewExpression(filter_dict)
 
     @classmethod
     def _params(cls):
@@ -2265,42 +2253,6 @@ class FilterKeypoints(ViewStage):
                 "placeholder": "only matches (default=True)",
             },
         ]
-
-
-def _extract_filter_field(val):
-    field = None
-
-    # note: $$expr is used here because that's what `F.apply()` uses
-    if etau.is_str(val) and val.startswith("$$expr."):
-        val, field = val.split(".", 1)
-
-    if isinstance(val, dict):
-        _val = {}
-        for k, v in val.items():
-            _field, _k = _extract_filter_field(k)
-            if _field is not None:
-                field = _field
-
-            _field, _v = _extract_filter_field(v)
-            if _field is not None:
-                field = _field
-
-            _val[_k] = _v
-
-        return field, _val
-
-    if isinstance(val, list):
-        _val = []
-        for v in val:
-            _field, _v = _extract_filter_field(v)
-            if _field is not None:
-                field = _field
-
-            _val.append(_v)
-
-        return field, _val
-
-    return field, val
 
 
 class _GeoStage(ViewStage):
@@ -2933,8 +2885,7 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]),
-            None,
+            F().set_field(leaf, F(leaf)[:limit]), None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
