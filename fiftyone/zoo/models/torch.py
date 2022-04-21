@@ -120,14 +120,18 @@ class TorchCLIPModelConfig(
 
 
 class TorchCLIPModel(fout.TorchImageModel):
-    # TODO add bicubic interpolation to manifest
-    # TODO add center crop after resize
+    """Torch implementation of the CLIP model.
+
+    By default VOC labels are used for zero-shot prediction.
+    To use custom labels, set `class_labels=[list,of,labels]` in the model
+    """
     def _download_model(self, config):
         config.download_model_if_necessary()
         config.download_tokenizer_if_necessary()
 
     def _get_class_labels(self, config):
         if config.class_labels:
+            # use custom labels
             return config.class_labels
         else:
             # same as parent class
@@ -144,6 +148,11 @@ class TorchCLIPModel(fout.TorchImageModel):
         return model
 
     def _prepare_text(self):
+        """Convert class labels to tensors for text encoding.
+
+        Returns:
+            torch.Tensor: encoded text
+        """
         from pkg_resources import packaging
         # init vars and prepare text
         class_labels = self._output_processor.class_labels
@@ -167,6 +176,13 @@ class TorchCLIPModel(fout.TorchImageModel):
         return result
 
     def _get_text_features(self):
+        """Get class labels embeddings.
+
+        Run only once for all class labels. If embeddings exists, use them.
+
+        Returns:
+            torch.Tensor: class labels embeddings
+        """
         if not hasattr(self, "_text_features") or self._text_features is None:
             tokens = self._prepare_text()
             with torch.no_grad():
@@ -174,6 +190,15 @@ class TorchCLIPModel(fout.TorchImageModel):
         return self._text_features
 
     def _get_class_logits(self, text_features, image_features):
+        """Get dot-product similarities text and image features.
+
+        Args:
+            text_features: CLIP text encoding output
+            image_features: CLIP image encoding output
+
+        Returns:
+            torch.Tensor: a tuple of image logits and text logits
+        """
         # source: https://github.com/openai/CLIP/blob/main/README.md
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
         text_features = text_features / text_features.norm(dim=1, keepdim=True)
