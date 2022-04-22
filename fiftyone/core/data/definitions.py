@@ -16,7 +16,17 @@ import strawberry as gql
 
 from .exceptions import FiftyOneDataError
 
-PRIMITIVES = {bool, bytes, date, datetime, int, float, np.ndarray, str}
+PRIMITIVES = {
+    bool,
+    bytes,
+    date,
+    datetime,
+    int,
+    float,
+    np.ndarray,
+    ObjectId,
+    str,
+}
 CONTAINERS: t.Set[t.Type] = {dict, list, tuple}
 
 gql.scalar(

@@ -16,6 +16,7 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.data as fod
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -23,7 +24,7 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-class Metadata:
+class Metadata(fod.Data):
     """Base class for storing metadata about generic samples.
 
     Args:

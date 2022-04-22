@@ -5,7 +5,7 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .data import Data, asdict, fields, is_data
+from .data import Data, asdict, fields, inherit_data, is_data
 from .datafield import Field, field
 from .definitions import RunDefinition
 from .document import Document

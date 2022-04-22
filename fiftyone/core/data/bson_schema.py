@@ -224,6 +224,9 @@ def as_bson_schemas(
     }
 
     for path in paths:
+        if not path:
+            continue
+
         names = path.split(".")
         property = _get_path_property(".".join(names[:-1]), bson_schemas)
 
@@ -293,7 +296,8 @@ def _type_definition_as_bson_property(
                 get_type_definition(field.type)
             )
 
-            property.required.append(field.name)
+            if field.required:
+                property.required.append(field.name)
 
         property.required = sorted(property.required)
         return property
@@ -301,6 +305,7 @@ def _type_definition_as_bson_property(
     if cls in BSON_TYPE_MAP:
         return BSON_TYPE_MAP[cls]()
 
+    print(cls)
     raise FiftyOneDataError("todo")
 
 

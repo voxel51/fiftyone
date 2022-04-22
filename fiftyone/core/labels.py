@@ -155,8 +155,6 @@ class BooleanAttribute(Attribute):
     value: bool
 
 
-Vector = t.Union[np.ndarray, bytes, list, tuple]
-
 # @todo remove this in favor of dynamic-only attributes
 class CategoricalAttribute(Attribute):
     """A categorical attribute.
@@ -169,7 +167,7 @@ class CategoricalAttribute(Attribute):
 
     value: str
     confidence: float
-    logits: Vector = field(dump=dump_array, load=load_array)
+    logits: np.ndarray = field(dump=dump_array, load=load_array)
 
 
 # @todo remove this in favor of dynamic-only attributes
@@ -365,7 +363,7 @@ class Classification(_HasID, Label):
 
     label: str
     confidence: float
-    logits: Vector = field(dump=dump_array, load=load_array)
+    logits: np.ndarray = field(dump=dump_array, load=load_array)
 
 
 class Classifications(_HasLabelList, Label):
@@ -378,7 +376,7 @@ class Classifications(_HasLabelList, Label):
     _LABEL_LIST_FIELD = "classifications"
 
     classifications: t.List[Classification]
-    logits: Vector = field(dump=dump_array, load=load_array)
+    logits: np.ndarray = field(dump=dump_array, load=load_array)
 
 
 class Detection(_HasID, _HasAttributesDict, Label):

@@ -183,7 +183,7 @@ class Sample(Document):
                 fields=fields, omit_fields=omit_fields
             )
 
-        sample = super().copy(fields=fields, omit_fields=omit_fields)
+        sample = super().__copy__(fields=fields, omit_fields=omit_fields)
 
         if self.media_type == fomm.VIDEO:
             sample.frames.update(

@@ -34,6 +34,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.data as fod
 from fiftyone.core.data import reference
 from fiftyone.core.data.definitions import MediaType
+from fiftyone.core.database import get_db_conn
 import fiftyone.core.evaluation as foe
 import fiftyone.core.expressions as foex
 import fiftyone.core.frame as fofr
@@ -381,7 +382,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         self,
     ) -> t.Union[t.Literal["image"], t.Literal["video"], None]:
         """The media type of the dataset."""
-        return self._doc.media_type
+
+        media_type = self.__fiftyone_ref__.definition.media_type
+        return str(media_type) if media_type is not None else None
 
     @media_type.setter
     def media_type(
@@ -400,21 +403,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             return
 
         self.__fiftyone_ref__.definition.media_type = MediaType(media_type)
-
-        idx = None
-        for i, field in enumerate(self.__fiftyone_definition__.schema):
-            if field.path == "metadata":
-                idx = i
-
         data_type: t.Type[fome.Metadata]
 
-        if idx is not None:
-            if media_type == fom.IMAGE:
-                data_type = fome.ImageMetadata
-            elif media_type == fom.VIDEO:
-                data_type = fome.VideoMetadata
-            else:
-                data_type = fome.Metadata
+        if media_type == fom.IMAGE:
+            data_type = fome.ImageMetadata
+        elif media_type == fom.VIDEO:
+            data_type = fome.VideoMetadata
+        else:
+            data_type = fome.Metadata
+
+        self.__fiftyone_ref__.schema["metadata"].type = data_type
 
         self.__fiftyone_ref__.commit()
 
@@ -1437,35 +1435,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         if self.media_type is None and samples:
             self.media_type = samples[0].media_type
 
-        [fod.inherit_data(sample)]
+        for sample in samples:
+            fod.inherit_data(None, self.__fiftyone_ref__, "", sample)
 
-        dicts = [self._make_dict(sample) for sample in samples]
+        dicts = [
+            fod.asdict(sample, dict_factory=dict, links=False)
+            for sample in samples
+        ]
 
         try:
-            self._sample_collection.insert_many(dicts)
+            db = get_db_conn()
+            db[self.__fiftyone_ref__.collections[""]].insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
-
-        for sample, d in zip(samples, dicts):
-            doc = self._sample_dict_to_doc(d)
-            old_doc = sample._doc
-            sample._set_backing_doc(doc, dataset=self)
-            for name, field in self.get_field_schema().items():
-                while isinstance(field, fof.ListField):
-                    field = field.field
-
-                if not isinstance(field, fof.EmbeddedDocumentField):
-                    continue
-
-                doc._fields[name]._set_parent(self._sample_doc_cls)
-
-            for name, value in old_doc._data.items():
-                if isinstance(value, BaseEmbeddedDocument):
-                    value._set_parent(doc._fields[name])
-
-            if self.media_type == fom.VIDEO:
-                sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
 

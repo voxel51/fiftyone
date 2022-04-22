@@ -1,16 +1,27 @@
 import copy
+from inspect import isclass
 import numbers
 import re
 import typing as t
 from dataclasses import replace
+
 import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import six
+from bson import ObjectId
 
-from .exceptions import FiftyOneDataError
-from .containers import Dict, is_dict, is_list, List
+from .containers import (
+    Dict,
+    List,
+    is_container,
+    is_any_base_container,
+    is_dict,
+    is_list,
+    unwrap,
+)
 from .datafield import Field, field
 from .definitions import PRIMITIVES
+from .exceptions import FiftyOneDataError
 from .reference import FiftyOneReference
 
 __all__ = ["asdict", "is_data", "sample"]
@@ -39,8 +50,20 @@ def __dataclass_transform__(
     return lambda a: a
 
 
-def _get_field(cls: t.Type, a_name: str, a_type: t.Type) -> Field:
-    default = getattr(cls, a_name, None)
+def _return_type(method: t.Optional[t.Callable]) -> t.Optional[t.Type]:
+    return (
+        None
+        if not method
+        else getattr(method, "__annotations", {}).get("return", None)
+    )
+
+
+def _get_field(cls: t.Type, name: str, type_: t.Type) -> Field:
+
+    default = getattr(cls, name, None)
+
+    if is_container(type_, t.ClassVar):
+        type_ = type_.__args__[0]
 
     field: Field
     if isinstance(default, Field):
@@ -48,8 +71,20 @@ def _get_field(cls: t.Type, a_name: str, a_type: t.Type) -> Field:
     else:
         field = Field(default=default)
 
-    field.name = a_name
-    field.type = a_type
+    field.name = name
+    field.type = type_
+
+    if (
+        type_ not in PRIMITIVES
+        and not is_any_base_container(type_)
+        and not issubclass(type_, Data)
+        and _return_type(field.dump) != type_
+    ):
+        raise FiftyOneDataError(
+            f"invalid field type {type_}, only {dict}, {list}, {tuple}, "
+            f"{'.'.join(map(lambda v: str(v), PRIMITIVES))}, and {Data} types"
+            " are allowed"
+        )  # todo: consider dump extensions
 
     if isinstance(field.default, (list, dict, set)):
         raise FiftyOneDataError(
@@ -112,10 +147,15 @@ class Data(metaclass=DataMetaclass):
 
     __fiftyone_ref__: t.ClassVar[FiftyOneReference] = FiftyOneReference()
     __fiftyone_path__: t.ClassVar[t.Optional[str]] = None
+    __fiftyone_constructing__: t.ClassVar[bool] = False
 
     def __init__(self, **data: t.Dict[str, t.Any]) -> None:
+        if self.__fiftyone_constructing__:
+            return
+
         self.__fiftyone_ref__ = replace(  # type: ignore
-            self.__fiftyone_ref__, schema=self.__fiftyone_ref__.schema.copy()
+            self.__fiftyone_ref__,
+            schema=self.__fiftyone_ref__.schema.copy(),
         )
         for name in set(data).union(self.__fiftyone_fields__):
             value = data.get(name, None)
@@ -139,7 +179,13 @@ class Data(metaclass=DataMetaclass):
         return self.__class__.__fiftyone_construct__(
             FiftyOneReference(schema=_extract_schema(self)),
             None,
-            asdict(self, dict_factory=dict, links=False),
+            asdict(
+                self,
+                dict_factory=lambda d: dict(
+                    (k, ObjectId()) if k == "_id" else (k, v) for k, v in d
+                ),
+                links=False,
+            ),
         )
 
     def __delattr__(self, __name: str) -> None:
@@ -192,11 +238,22 @@ class Data(metaclass=DataMetaclass):
             else __name
         )
 
+        if is_dict(field.type):
+            if not isinstance(__value, Dict):
+                __value = Dict.__fiftyone_construct__(
+                    self.__fiftyone_ref__,
+                    path,
+                    __value,
+                )
+                self.__dict__[__name] = __value
+
+            return __value
+
         if is_list(field.type):
             if not isinstance(__value, List):
                 __value = List.__fiftyone_construct__(
-                    path,
                     self.__fiftyone_ref__,
+                    path,
                     __value,
                 )
                 self.__dict__[__name] = __value
@@ -278,23 +335,40 @@ class Data(metaclass=DataMetaclass):
                 __value = field.default
             elif field.required and not field.link:
                 raise FiftyOneDataError(
-                    f"required field '{__name}' with no default or default factory must have a value"
+                    f"required field '{path}' with no default or default factory must have a value"
                 )
 
         if __value is None:
             return field, __value
 
         if is_list(field.type):
-            if not isinstance(__value, list):
-                raise FiftyOneDataError("expected list")
+            if isinstance(__value, list):
+                l: List[t.Any] = List.__fiftyone_construct__(
+                    self.__fiftyone_ref__, path, []
+                )
+                for item in __value:
+                    l.append(item)
+            else:
+                raise FiftyOneDataError(
+                    f"invalid value {__value} for path '{path}', expected {field.type}"
+                )
 
-            items: List[t.Any] = List.__fiftyone_construct__(
-                path, self.__fiftyone_ref__, []
-            )
-            for item in __value:
-                items.append(item)
+        elif is_dict(field.type):
+            if isinstance(__value, dict):
+                d: Dict[t.Any, t.Any] = Dict.__fiftyone_construct__(
+                    self.__fiftyone_ref__, path, {}
+                )
+                for key, value in __value.items():
+                    d[key] = value
+            else:
+                raise FiftyOneDataError(
+                    f"invalid value {__value} for path '{path}', expected {field.type}"
+                )
+
         elif not isinstance(__value, field.type):
-            raise FiftyOneDataError("invalid value")
+            raise FiftyOneDataError(
+                f"invalid value {__value} for path '{path}', expected {field.type}"
+            )
 
         if field.validator:
             field.validator(__value)
@@ -332,10 +406,17 @@ class Data(metaclass=DataMetaclass):
         __fiftyone_path__: t.Optional[str],
         data: t.Dict[str, t.Any],
     ) -> _D:
+        cls.__fiftyone_constructing__ = True
         instance = cls()
         instance.__dict__ = data
         instance.__fiftyone_ref__ = __fiftyone_ref__  # type: ignore
         instance.__fiftyone_path__ = __fiftyone_path__  # type: ignore
+
+        has_post_init = hasattr(instance, _POST_INIT_NAME)
+        if has_post_init:
+            getattr(instance, _POST_INIT_NAME)()
+
+        cls.__fiftyone_constructing__ = False
         return instance
 
 
@@ -395,11 +476,6 @@ def _asdict_inner(
     if _is_data_instance(obj):
         result = []
         for field in fields(obj):
-            if not field.name:
-                continue
-
-            if field.name == "id":
-                continue
 
             if not links and field.link:
                 continue
@@ -407,6 +483,10 @@ def _asdict_inner(
             value = _asdict_inner(
                 getattr(obj, field.name), dict_factory, links
             )
+
+            if value is None:
+                continue
+
             result.append((field.name, value))
 
         return dict_factory(result)
@@ -544,11 +624,12 @@ def inherit_data(
 
     data_schema = data.__fiftyone_ref__.schema
 
-    data.__fiftyone_path__ = path  # type: ignore
+    data.__fiftyone_path__ = prefix  # type: ignore
     data.__fiftyone_ref__ = ref  # type: ignore
 
     for path, field in data_schema.items():
-        if field.type and issubclass(field.type, Data):
+        type = unwrap(field.type, -1)
+        if type and isclass(type) and issubclass(type, Data):
             items = _get_items(path, data)
             for item in items:
                 item.__fiftyone_path__ = ".".join([prefix, name])  # type: ignore

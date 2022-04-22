@@ -14,6 +14,7 @@ from bson import ObjectId
 from fiftyone.core.database import get_db_conn
 
 from .data import (
+    __dataclass_transform__,
     Data,
     DataMetaclass,
     FiftyOneDataError,
@@ -25,6 +26,9 @@ from .datafield import Field, field
 _D = t.TypeVar("_D", bound="Document")
 
 
+@__dataclass_transform__(
+    kw_only_default=True, field_descriptors=(field, Field)
+)
 class DocumentMetaclass(DataMetaclass):
     def __init__(
         cls,
@@ -48,7 +52,7 @@ class Document(Data, metaclass=DocumentMetaclass):
         t.MutableMapping[(t.Tuple[t.Union[str, int], ...]), "Document"]
     ]
 
-    _id: ObjectId = field(default_factory=ObjectId, required=True)
+    _id: t.ClassVar[ObjectId] = field(default_factory=ObjectId, required=True)
     id: str = field(link="_id", dump=ObjectId, load=str, required=True)
 
     def has_field(self, name: str) -> bool:

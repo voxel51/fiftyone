@@ -24,16 +24,14 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
+import fiftyone.core.database as fodb
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
-import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
-import fiftyone.core.data as foo
-import fiftyone.core.sample as fosa
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -6822,7 +6820,10 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Run all aggregations
-        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
+        _results = fodb.aggregate(
+            fodb.get_db_conn()[self._dataset.__fiftyone_ref__.collections[""]],
+            pipelines,
+        )
 
         # Parse batch results
         if batch_aggs:
@@ -6871,8 +6872,8 @@ class SampleCollection(object):
 
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
-            collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
+            collection = fodb.get_async_db_conn()[coll_name]
+            _results = await fodb.aggregate(collection, pipelines)
 
             # Parse facet-able results
             for idx, aggregation in facet_aggs.items():

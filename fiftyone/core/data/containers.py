@@ -37,7 +37,7 @@ class Dict(t.Dict[_KT, t.Optional[_VT]]):
     def update(
         self,
         __m: SupportsKeysAndGetItem[_KT, t.Optional[_VT]],
-        **kwargs: t.Optional[_VT]
+        **kwargs: t.Optional[_VT],
     ) -> None:
         ...
 
@@ -45,7 +45,7 @@ class Dict(t.Dict[_KT, t.Optional[_VT]]):
     def update(
         self,
         __m: t.Iterable[t.Tuple[_KT, t.Optional[_VT]]],
-        **kwargs: t.Optional[_VT]
+        **kwargs: t.Optional[_VT],
     ) -> None:
         ...
 
@@ -67,8 +67,8 @@ class Dict(t.Dict[_KT, t.Optional[_VT]]):
     @classmethod
     def __fiftyone_construct__(
         cls,
-        __fiftyone_path__: str,
         __fiftyone_ref__: FiftyOneReference,
+        __fiftyone_path__: str,
         items: t.MutableMapping[_KT, _VT],
     ) -> "Dict[_KT, _VT]":
         dict = cls(items)
@@ -117,8 +117,8 @@ class List(t.List[_T]):
     @classmethod
     def __fiftyone_construct__(
         cls,
-        __fiftyone_path__: str,
         __fiftyone_ref__: FiftyOneReference,
+        __fiftyone_path__: str,
         items: t.Iterable[_T],
     ) -> "List[_T]":
         list = cls(items)
@@ -127,21 +127,35 @@ class List(t.List[_T]):
         return list
 
 
+def is_any_base_container(type: t.Type) -> bool:
+    return any(map(lambda c: is_container(type, c), (dict, list, tuple)))
+
+
+def is_container(
+    type: t.Type, check: t.Union[t.Type[dict], t.Type[list], t.Type[tuple]]
+) -> bool:
+    return type == check or getattr(type, "__origin__", None) == check
+
+
 def is_dict(type: t.Type) -> bool:
-    return type == list or getattr(type, "__origin__", None) == list
+    return is_container(type, dict)
 
 
 def is_list(type: t.Type) -> bool:
-    return type == list or getattr(type, "__origin__", None) == list
+    return is_container(type, list)
 
 
-def _unwrap(type: t.Type[t.Any], level: int, i: int = -1) -> t.Type[t.Any]:
+def is_tuple(type: t.Type) -> bool:
+    return is_container(type, tuple)
+
+
+def unwrap(type: t.Type[t.Any], level: int, i: int = -1) -> t.Type[t.Any]:
     item_type = getattr(type, "__args__", (None,))[i]
     if item_type is None or isinstance(item_type, t.TypeVar):
         return t.Any
 
-    if level > 0:
-        return _unwrap(item_type, level - 1)
+    if level > 0 or level < 0:
+        return unwrap(item_type, level - 1)
 
     return item_type
 
@@ -149,37 +163,45 @@ def _unwrap(type: t.Type[t.Any], level: int, i: int = -1) -> t.Type[t.Any]:
 def _validate(
     path: str, ref: FiftyOneReference, level: int, __value: _T
 ) -> _T:
-    if __value is None:
-        raise FiftyOneDataError("invalid")
-
-    type = _unwrap(
+    type = unwrap(
         ref.schema[path].type,
         level,
     )
 
+    if __value is None:
+        raise FiftyOneDataError(
+            f"invalid item value {__value} for path '{path}', expected {type}"
+        )
+
     if is_list(type):
-        if not isinstance(__value, list):
-            raise FiftyOneDataError("expected list")
+        if isinstance(__value, list):
+            l: List[t.Any] = List.__fiftyone_construct__(ref, path, [])
+            l.__fiftyone_level__ = level + 1
+            for item in __value:
+                l.append(item)
 
-        l: List[t.Any] = List.__fiftyone_construct__(path, ref, [])
-        l.__fiftyone_level__ = level + 1
-        for item in __value:
-            l.append(item)
-
-        __value = items  # type: ignore
+            __value = items  # type: ignore
+        else:
+            raise FiftyOneDataError(
+                f"invalid item value {__value} for path '{path}', expected {type}"
+            )
 
     elif is_dict(type):
-        if not isinstance(__value, dict):
-            raise FiftyOneDataError("expected dict")
+        if isinstance(__value, dict):
+            d: Dict[t.Any, t.Any] = Dict.__fiftyone_construct__(ref, path, {})
+            d.__fiftyone_level__ = level + 1
+            for key, value in __value.items():
+                d[key] = value
 
-        d: Dict[t.Any, t.Any] = Dict.__fiftyone_construct__(path, ref, [])
-        d.__fiftyone_level__ = level + 1
-        for key, value in __value.items():
-            d[key] = value
-
-        __value = d  # type: ignore
+            __value = d  # type: ignore
+        else:
+            raise FiftyOneDataError(
+                f"invalid item value {__value} for path '{path}', expected {type}"
+            )
 
     elif not isinstance(__value, type):
-        raise FiftyOneDataError("invalid value")
+        raise FiftyOneDataError(
+            f"invalid item value {__value} for path '{path}', expected {type}"
+        )
 
     return __value
