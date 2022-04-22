@@ -219,10 +219,8 @@ def _delete_non_persistent_datasets_if_necessary():
         )
         return
 
-    if num_connections > 1:
-        return
-
-    fod.delete_non_persistent_datasets()
+    if num_connections <= 1:
+        fod.delete_non_persistent_datasets()
 
 
 def _validate_db_version(config, client):
