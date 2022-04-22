@@ -197,23 +197,21 @@ def _async_connect():
 def _delete_non_persistent_datasets(config, client):
     db = client[config.database_name]
 
-    ids, coll_names = [], []
+    has_datasets = False
     for doc in db.datasets.find(
         {"persistent": False},
         {
-            "_id": 1,
+            "_id": 0,
             "sample_collection_name": 1,
             "frame_collection_name": 1,
         },
     ):
-        ids.append(doc["_id"])
-        coll_names.append(doc["sample_collection_name"])
-        coll_names.append(doc["frame_collection_name"])
+        has_datasets = True
+        db.drop_collection(doc["sample_collection_name"])
+        db.drop_collection(doc["frame_collection_name"])
 
-    db.datasets.delete_many({"_id": {"$in": ids}})
-
-    for name in coll_names:
-        db.drop_collection(name)
+    if has_datasets:
+        db.datasets.delete_many({"persistent": False})
 
 
 def _get_master_connection_count():
