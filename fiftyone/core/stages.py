@@ -318,11 +318,10 @@ class Concat(ViewStage):
             contents to append to this collection
     """
 
-    def __init__(self, samples, _generated=None):
-        samples, generated, view = self._parse_params(samples, _generated)
+    def __init__(self, samples):
+        samples, view = self._parse_params(samples)
 
         self._samples = samples
-        self._generated = generated
         self._view = view
 
     @property
@@ -349,16 +348,13 @@ class Concat(ViewStage):
             )
 
     def _kwargs(self):
-        return [["samples", self._samples], ["_generated", self._generated]]
+        return [["samples", self._samples]]
 
     @classmethod
     def _params(cls):
-        return [
-            {"name": "samples", "type": "json", "placeholder": ""},
-            {"name": "_generated", "type": "NoneType|json", "default": "None"},
-        ]
+        return [{"name": "samples", "type": "json", "placeholder": ""}]
 
-    def _parse_params(self, samples, generated):
+    def _parse_params(self, samples):
         if not isinstance(samples, (foc.SampleCollection, dict)):
             raise ValueError(
                 "`samples` must be a SampleCollection or a serialized "
@@ -371,31 +367,19 @@ class Concat(ViewStage):
             view = samples.view()
             samples = None
 
-        if view is None and generated is not None:
-            try:
-                view = self._load_view(generated)
-            except:
-                # Generated view can't be loaded; must rebuild from `samples`
-                pass
-
         if view is None:
             view = self._load_view(samples)
 
         if samples is None:
-            samples = {
-                "dataset": view._root_dataset.name,
-                "stages": view._serialize(include_uuids=False),
-            }
+            samples = self._serialize_view(view)
 
-        if generated is None and view._is_generated:
-            generated = {
-                "dataset": view._dataset.name,
-                "stages": view._serialize(
-                    include_uuids=False, all_stages=False
-                ),
-            }
+        return samples, view
 
-        return samples, generated, view
+    def _serialize_view(self, view):
+        return {
+            "dataset": view._root_dataset.name,
+            "stages": view._serialize(include_uuids=False),
+        }
 
     def _load_view(self, d):
         dataset = fod.load_dataset(d["dataset"])
@@ -5820,6 +5804,11 @@ class ToPatches(ViewStage):
                 sample_collection, self._field, **kwargs
             )
 
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                patches_dataset.name = name
+
             state["name"] = patches_dataset.name
             self._state = state
         else:
@@ -5957,6 +5946,11 @@ class ToEvaluationPatches(ViewStage):
             eval_patches_dataset = fop.make_evaluation_patches_dataset(
                 sample_collection, self._eval_key, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                eval_patches_dataset.name = name
 
             state["name"] = eval_patches_dataset.name
             self._state = state
@@ -6109,6 +6103,11 @@ class ToClips(ViewStage):
             clips_dataset = focl.make_clips_dataset(
                 sample_collection, self._field_or_expr, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                clips_dataset.name = name
 
             state["name"] = clips_dataset.name
             self._state = state
@@ -6274,6 +6273,11 @@ class ToFrames(ViewStage):
             frames_dataset = fovi.make_frames_dataset(
                 sample_collection, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                frames_dataset.name = name
 
             state["name"] = frames_dataset.name
             self._state = state
