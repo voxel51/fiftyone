@@ -2,17 +2,17 @@ import copy
 import numbers
 import re
 import typing as t
-from dataclasses import dataclass, field as dataclassfield, replace
-from datetime import date, datetime
-import numpy as np
-
+from dataclasses import replace
 import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import six
 
+from .exceptions import FiftyOneDataError
 from .datafield import Field, field
+from .definitions import PRIMITIVES
 from .dict import Dict
 from .list import List
+from .reference import FiftyOneReference
 
 __all__ = ["asdict", "is_data", "sample"]
 
@@ -107,16 +107,6 @@ class DataMetaclass(type):
                 )
 
         cls.__fiftyone_ref__ = FiftyOneReference(schema=schema)
-
-
-@dataclass
-class FiftyOneReference:
-    collections: t.Optional[t.Dict[str, str]] = None
-    schema: t.Dict[str, Field] = dataclassfield(default_factory=dict)
-
-    @property
-    def in_db(self) -> bool:
-        return self.collections is not None
 
 
 class Data(metaclass=DataMetaclass):
@@ -419,10 +409,6 @@ def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
     return tuple(l)
 
 
-PRIMITIVES = {bool, bytes, date, datetime, int, float, np.ndarray, str}
-CONTAINERS: t.Set[t.Type] = {dict, list, tuple}
-
-
 def _infer_type(value: t.Any) -> t.Type:
     type_ = type(value)
 
@@ -546,7 +532,3 @@ def _flatten(items: t.List) -> t.List:
     if isinstance(items[0], list):
         return _flatten(items[0]) + _flatten(items[1:])
     return items[:1] + _flatten(items[1:])
-
-
-class FiftyOneDataError(TypeError):
-    pass

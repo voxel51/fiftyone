@@ -1,0 +1,2 @@
+class FiftyOneDataError(TypeError):
+    pass

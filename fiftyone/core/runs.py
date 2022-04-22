@@ -16,7 +16,7 @@ import eta.core.utils as etau
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
-from fiftyone.core.data import RunData
+from fiftyone.core.data import RunDefinition
 
 
 logger = logging.getLogger(__name__)
@@ -365,7 +365,7 @@ class Run(Configurable):
         run_docs = getattr(dataset_doc, cls._runs_field())
         view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
 
-        run_docs[key] = RunData(
+        run_docs[key] = RunDefinition(
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,

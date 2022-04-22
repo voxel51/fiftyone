@@ -17,25 +17,22 @@ import typing as t
 import weakref
 from collections import defaultdict
 from copy import deepcopy
-from dataclasses import asdict
 from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 from bson import ObjectId
-from dacite import from_dict
 from deprecated import deprecated
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
-import fiftyone.constants as focn
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.collections as foc
 import fiftyone.core.data as fod
-import fiftyone.core.data.types as fodt
+from fiftyone.core.data import reference
 import fiftyone.core.evaluation as foe
 import fiftyone.core.expressions as foex
 import fiftyone.core.frame as fofr
@@ -45,7 +42,6 @@ import fiftyone.core.metadata as fome
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import fiftyone.migrations as fomi
 
 fost = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -242,7 +238,7 @@ class DatasetMetaclass(type):
         ):
             instance = cls.__new__(cls)
             instance.__init__(name=name, _create=_create, *args, **kwargs)
-            name = instance.name  # `__init__` may have changed `name`
+            name: str = instance.name  # `__init__` may have changed `name`
             cls.__fiftyone_instances__[name] = instance
 
         return cls.__fiftyone_instances__[name]
@@ -279,7 +275,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             name
     """
 
-    __fiftyone_definition__: fodt.DatasetDefinition
+    __fiftyone_reference__: fod.FiftyOneReference
     __fiftyone_caches__: DatasetCaches
     __fiftyone_deleted__: bool
 
@@ -290,7 +286,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         overwrite: bool = False,
         _create: bool = True,
         _virtual: bool = False,
-        **kwargs: t.Dict,
     ) -> None:
         if name is None and _create:
             name = get_default_dataset_name()
@@ -302,14 +297,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             delete_dataset(name)
 
         if _create:
-            definition = _create_dataset_definition(
-                name, persistent=persistent, **kwargs
+            reference = fod.FiftyOneReference.create(
+                name, fos.Sample, persistent=persistent
             )
         else:
-            definition = _load_dataset_definition(name, virtual=_virtual)
+            reference = fod.FiftyOneReference.from_db(name, virtual=_virtual)
 
         self.__fiftyone_caches__ = DatasetCaches()
-        self.__fiftyone_definition__ = definition
+        self.__fiftyone_reference__ = reference
         self.__fiftyone_deleted__ = False
 
     def __len__(self) -> int:
@@ -381,12 +376,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         return self
 
     @property
-    def media_type(self) -> fodt.MediaType:
+    def media_type(
+        self,
+    ) -> t.Union[t.Literal["image"], t.Literal["video"], None]:
         """The media type of the dataset."""
         return self._doc.media_type
 
     @media_type.setter
-    def media_type(self, media_type: fodt.MediaType) -> None:
+    def media_type(
+        self, media_type: t.Union[t.Literal["image"], t.Literal["video"], None]
+    ) -> None:
         if len(self):
             raise ValueError("Cannot set media type of a non-empty dataset")
 
@@ -4526,137 +4525,6 @@ def _list_dataset_info():
         info.append(i)
 
     return info
-
-
-def _create_dataset_definition(
-    name: str,
-    root_document_cls: t.Type[fod.Document] = fos.Sample,
-    media_type: t.Optional[fodt.MediaType] = None,
-    persistent: bool = False,
-) -> fodt.DatasetDefinition:
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
-
-    field_definitions = fod.as_field_definitions(
-        root_document_cls.__fiftyone_ref__.schema
-    )
-
-    collections = {}
-
-    for field_definition in field_definitions:
-        while not isinstance(field_definition, fodt.DocumentFieldDefinition):
-            if isinstance(field_definition, fodt.DictDefinition):
-                field_definition = field_definition.value
-
-            elif isinstance(field_definition, fodt.ListDefinition):
-                field_definition = field_definition.type
-            else:
-                break
-
-        if not isinstance(field_definition, fodt.DocumentFieldDefinition):
-            continue
-
-        cls = etau.get_class(field_definition.type)
-        collections[field_definition.path] = field_definition.collection
-        _create_document_indexes(field_definition, cls)
-
-    now = datetime.utcnow()
-    definition = fodt.DatasetDefinition(
-        name=name,
-        created_at=now,
-        field_definitions=field_definitions,
-        last_loaded_at=now,
-        media_type=media_type,
-        persistent=persistent,
-        root=True,
-        version=focn.VERSION,
-    )
-    db = fod.get_db_conn()
-    db.datasets.insert_one(asdict(definition))
-
-    return definition
-
-
-def _create_document_indexes(
-    field: fodt.DocumentFieldDefinition, document_cls: t.Type[fod.Document]
-) -> None:
-
-    collection = fod.get_db_conn()[field.collection]
-
-    for index in document_cls.__fiftyone_indexes__:
-        collection.create_index(index)
-
-
-def _load_dataset_definition(name, virtual=False):
-    if not virtual:
-        fomi.migrate_dataset_if_necessary(name)
-
-    db = fod.get_db_conn()
-    definition = from_dict(fod.DatasetDefinition, db.datasets.find_one({}))
-
-    if not virtual:
-        definition.last_loaded_at = datetime.utcnow()
-
-    return definition
-
-
-def _clone_dataset_or_view(dataset_or_view, name):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
-
-    if isinstance(dataset_or_view, fov.DatasetView):
-        dataset = dataset_or_view._dataset
-        view = dataset_or_view
-    else:
-        dataset = dataset_or_view
-        view = None
-
-    dataset._reload()
-
-    #
-    # Clone dataset document
-    #
-
-    now = datetime.utcnow()
-    definition = fod.DatasetDefinition(
-        name=name,
-        created_at=now,
-        last_loaded_at=now,
-        persistent=False,
-        schema=fod.schema(dataset_or_view),
-    )
-
-    # Create indexes
-    _create_document_indexes()
-
-    # Clone samples
-    coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$out": sample_collection_name})
-    fod.aggregate(coll, pipeline)
-
-    # Clone frames
-    if dataset.media_type == fom.VIDEO:
-        coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$out": frame_collection_name})
-        fod.aggregate(coll, pipeline)
-
-    clone_dataset = load_dataset(name)
-
-    # Clone run results (full datasets only)
-    if view is None and (
-        dataset.has_annotation_runs
-        or dataset.has_brain_runs
-        or dataset.has_evaluations
-    ):
-        _clone_runs(clone_dataset, dataset._doc)
-
-    return clone_dataset
 
 
 def _get_samples_pipeline(sample_collection):

@@ -15,7 +15,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.core.data as foo
+import fiftyone.core.database as fod
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def get_database_revision():
     Returns:
         the database revision string
     """
-    config = foo.get_db_config()
+    config = fod.get_db_config()
     return config.version
 
 
@@ -48,7 +48,7 @@ def get_dataset_revision(name):
     Returns:
         the dataset revision string
     """
-    conn = foo.get_db_conn()
+    conn = fod.get_db_conn()
     dataset_doc = conn.datasets.find_one({"name": name})
     if dataset_doc is None:
         raise ValueError("Dataset '%s' not found" % name)
@@ -91,7 +91,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if destination is None:
         destination = foc.VERSION
 
-    config = foo.get_db_config()
+    config = fod.get_db_config()
 
     head = config.version
     if head is None:
@@ -178,7 +178,7 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         runner.run(name, verbose=verbose)
 
     if Version(destination) >= Version("0.6.2"):
-        conn = foo.get_db_conn()
+        conn = fod.get_db_conn()
         conn.datasets.update_one(
             {"name": name}, {"$set": {"version": destination}}
         )
@@ -277,7 +277,7 @@ class MigrationRunner(object):
             dataset_name: the name of the dataset to migrate
             verbose (False): whether to log incremental migrations that are run
         """
-        conn = foo.get_db_conn()
+        conn = fod.get_db_conn()
         for rev, module in self._revisions:
             if verbose:
                 logger.info("Running v%s %s migration", rev, self.direction)
@@ -291,7 +291,7 @@ class MigrationRunner(object):
         Args:
             verbose (False): whether to log incremental migrations that are run
         """
-        client = foo.get_db_client()
+        client = fod.get_db_client()
         for rev, module in self._admin_revisions:
             if verbose:
                 logger.info(
@@ -319,7 +319,7 @@ class DatabaseConfig(etas.Serializable):
 
 
 def _database_exists():
-    client = foo.get_db_client()
+    client = fod.get_db_client()
     return fo.config.database_name in client.list_database_names()
 
 

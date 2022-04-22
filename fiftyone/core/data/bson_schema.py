@@ -1,11 +1,29 @@
+from collections import defaultdict
+import typing as t
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from enum import Enum
-import typing as t
-from bson import ObjectId
+from dacite import from_dict
 
+from pymongo.client_session import ClientSession
+from pymongo.database import Database
+import eta.core.utils as etau
+from bson import ObjectId
+from h11 import Data
 from numpy import ndarray
+
+from .datafield import Field
+from .definitions import (
+    DictDefinition,
+    DocumentFieldDefinition,
+    FieldDefinition,
+    ListDefinition,
+    TupleDefinition,
+    get_type,
+    get_type_definition,
+)
+from .exceptions import FiftyOneDataError
 
 
 class BSONTypes(str, Enum):
@@ -146,3 +164,205 @@ BSON_TYPE_MAP = {
     ndarray: BSONSchemaBinaryProperty,
     str: BSONSchemaStringProperty,
 }
+
+
+def _get_path_property(
+    path: str, bson_schemas: t.Dict[str, BSONSchemaObjectProperty]
+) -> BSONSchemaProperties:
+    schema = sorted(filter(lambda s: path.startswith(s), bson_schemas))[-1]
+
+    names = path.split(".")[len(schema.split(".")) :]
+    property: BSONSchemaProperties = bson_schemas[schema]
+
+    for name in names[:-1]:
+        if not isinstance(property, BSONSchemaObjectProperty):
+            raise FiftyOneDataError("todo")
+
+        property = property.properties[name]
+        if isinstance(
+            property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
+        ):
+            property = _unwind_to_object_property(property)
+
+    return property
+
+
+def _unwind_to_object_property(
+    property: t.Union[BSONSchemaObjectProperty, BSONSchemaArrayProperty],
+) -> BSONSchemaObjectProperty:
+    while (
+        not isinstance(property, BSONSchemaObjectProperty)
+        or property.additional_properties is not False
+    ):
+        if isinstance(property, BSONSchemaArrayProperty):
+            if not isinstance(property.items, BSONSchemaObjectProperty):
+                raise FiftyOneDataError("unwound to undefined bson property")
+
+            property = property.items
+            continue
+
+        if isinstance(property, BSONSchemaObjectProperty):
+            if not isinstance(
+                property.additional_properties, BSONSchemaObjectProperty
+            ):
+                raise FiftyOneDataError("todo")
+
+            property = property.additional_properties
+            continue
+
+        if not isinstance(
+            property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
+        ):
+            raise FiftyOneDataError("todo")
+
+    return property
+
+
+def as_bson_schemas(
+    collections: t.List[str], schema: t.Dict[str, Field]
+) -> t.Dict[str, BSONSchemaObjectProperty]:
+    paths = sorted(schema)
+    bson_schemas: t.Dict[str, BSONSchemaObjectProperty] = {
+        path: BSONSchemaObjectProperty() for path in collections
+    }
+    for path in paths:
+        names = path.split(".")
+        property = _get_path_property(".".join(names[:-1]), bson_schemas)
+
+        field = schema[path]
+
+        if (
+            not isinstance(property, BSONSchemaObjectProperty)
+            or not field.type
+        ):
+            raise FiftyOneDataError("todo")
+
+        property.properties[names[-1]] = _type_definition_as_bson_property(
+            get_type_definition(field.type)
+        )
+
+    return bson_schemas
+
+
+def _type_definition_as_bson_property(
+    definition: t.Union[DictDefinition, ListDefinition, TupleDefinition, str]
+) -> BSONSchemaProperties:
+    property: BSONSchemaProperties
+
+    if isinstance(definition, DictDefinition):
+        property = BSONSchemaObjectProperty(additional_properties=True)
+
+        if definition.value:
+            property.additional_properties = _type_definition_as_bson_property(
+                definition.value
+            )
+        return property
+
+    if isinstance(definition, ListDefinition):
+        property = BSONSchemaArrayProperty()
+
+        if definition.type:
+            property.items = _type_definition_as_bson_property(definition.type)
+
+        return property
+
+    if isinstance(definition, TupleDefinition):
+        property = BSONSchemaArrayProperty()
+
+        if definition.types:
+            property.items = [
+                _type_definition_as_bson_property(a) for a in definition.types
+            ]
+
+        return property
+
+    cls = etau.get_class(definition)
+
+    if issubclass(cls, Data):
+        property = BSONSchemaObjectProperty()
+
+        from .data import fields
+
+        for field in fields(cls):
+            if not field.name or not field.type:
+                raise FiftyOneDataError("todo")
+
+            property.properties[
+                field.name
+            ] = _type_definition_as_bson_property(
+                get_type_definition(field.type)
+            )
+
+            property.required.append(field.name)
+
+        property.required = sorted(property.required)
+        return property
+
+    if cls in BSON_TYPE_MAP:
+        return BSON_TYPE_MAP[cls]()
+
+    raise FiftyOneDataError("todo")
+
+
+def as_schema(
+    field_definitions: t.List[
+        t.Union[DocumentFieldDefinition, FieldDefinition]
+    ],
+    bson_schemas: t.Dict[str, BSONSchemaObjectProperty],
+) -> t.Dict[str, Field]:
+    schema = {
+        definition.path: Field(
+            name=definition.path.split(".")[-1],
+            type=get_type(definition.type),
+        )
+        for definition in field_definitions
+    }
+
+    for path in schema:
+        names = path.split(".")
+        name = names[-1]
+        field = schema[path]
+        parent = ".".join(names[:-1])
+        property = _get_path_property(parent, bson_schemas)
+
+        if not isinstance(property, BSONSchemaObjectProperty):
+            raise FiftyOneDataError("adfa")
+
+        if name in property.required:
+            field.required = True
+
+    return schema
+
+
+def commit_bson_schema(
+    db: Database,
+    collection: str,
+    schema: BSONSchemaObjectProperty,
+    session: ClientSession,
+) -> None:
+    db.command(
+        {
+            "collMod": collection,
+            "validationLevel": "strict",
+            "validationAction": "error",
+            "validator": {"$jsonSchema": asdict(schema)},
+        }
+    )
+
+
+def load_bson_schemas(
+    db: Database, collections: t.Dict[str, str]
+) -> t.Dict[str, BSONSchemaObjectProperty]:
+    reverse = {v: k for k, v in collections.items()}
+    return {
+        reverse[result["name"]]: from_dict(
+            BSONSchemaObjectProperty,
+            result["options"]["validator"]["$jsonSchema"],
+        )
+        for result in db.command(
+            {
+                "listCollections": 1,
+                "filter": {"name": {"$in": collections.values()}},
+            }
+        )["cursor"]["firstBatch"]
+    }

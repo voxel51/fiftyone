@@ -5,22 +5,23 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import datetime
+import asyncio
 import logging
-from multiprocessing.pool import ThreadPool
 import os
 import typing as t
+from datetime import datetime
+from multiprocessing.pool import ThreadPool
 
-import asyncio
+import motor
+import pymongo
+import pytz
 from bson import json_util
 from bson.codec_options import CodecOptions
 from dacite import from_dict
-import motor
 from packaging.version import Version
-import pymongo
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
-import pytz
+import strawberry as gql
 
 import eta.core.utils as etau
 
@@ -29,9 +30,6 @@ import fiftyone.constants as foc
 from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
-
-from .types import DatabaseConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +40,18 @@ _connection_kwargs = {}
 _db_service = None
 
 
+@gql.type
+class DatabaseConfig:
+    """Backing document for the database config."""
+
+    version = str
+
+
 def get_db_config():
     """Retrieves the database config.
 
     Returns:
-        a :class:`DatabaseConfigDocument`
+        a :class:`fiftyone.core.data.types.DatabaseConfigDocument`
     """
     conn = get_db_conn()
     try:
