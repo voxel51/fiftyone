@@ -32,6 +32,8 @@ import fiftyone.core.utils as fou
 
 from .document import Document
 
+fod = fou.lazy_import("fiftyone.core.dataset")
+
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +158,9 @@ def establish_db_conn(config):
 
             raise error
 
-    _client = pymongo.MongoClient(**_connection_kwargs)
+    _client = pymongo.MongoClient(
+        **_connection_kwargs, appname=foc.DATABASE_APPNAME
+    )
     _validate_db_version(config, _client)
 
     connect(config.database_name, **_connection_kwargs)
@@ -168,12 +172,16 @@ def establish_db_conn(config):
             % (config.type, foc.CLIENT_TYPE)
         )
 
+    _delete_non_persistent_datasets_if_necessary()
+
 
 def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
-        _client = pymongo.MongoClient(**_connection_kwargs)
+        _client = pymongo.MongoClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
         connect(fo.config.database_name, **_connection_kwargs)
 
 
@@ -181,7 +189,38 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _async_client = motor.motor_tornado.MotorClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
+
+
+def _delete_non_persistent_datasets_if_necessary():
+    try:
+        num_connections = len(
+            list(
+                _client.admin.aggregate(
+                    [
+                        {"$currentOp": {"allUsers": True}},
+                        {"$project": {"appName": 1, "command": 1}},
+                        {
+                            "$match": {
+                                "appName": foc.DATABASE_APPNAME,
+                                "command.ismaster": 1,
+                            }
+                        },
+                    ]
+                )
+            )
+        )
+    except Exception as e:
+        logger.warning(
+            "Skipping automatic non-persistent dataset cleanup. This action "
+            "requires read access of the 'admin' database"
+        )
+        return
+
+    if num_connections <= 1:
+        fod.delete_non_persistent_datasets()
 
 
 def _validate_db_version(config, client):
