@@ -161,9 +161,7 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
-    conn_count = _get_master_connection_count()
-    if conn_count <= 1:
-        _delete_non_persistent_datasets(config, _client)
+    _autodelete_non_persistent_datasets(config, _client)
 
     connect(config.database_name, **_connection_kwargs)
 
@@ -194,9 +192,31 @@ def _async_connect():
         )
 
 
-def _delete_non_persistent_datasets(config, client):
-    db = client[config.database_name]
+def _autodelete_non_persistent_datasets(config, client):
+    try:
+        cursor = client.admin.aggregate(
+            [
+                {"$currentOp": {"allUsers": True}},
+                {"$project": {"appName": 1, "command": 1}},
+                {
+                    "$match": {
+                        "appName": foc.DATABASE_APPNAME,
+                        "command.ismaster": 1,
+                    }
+                },
+            ]        )
 
+    except Exception as e:
+        logger.warning(
+            'Skipping automatic non-persistent dataset cleanup. This action requires read access of the "admin" database.'
+        )
+        return
+
+    conn_count = len(list(cursor))
+    if conn_count is None or conn_count > 1:
+        return
+
+    db = client[config.database_name]
     has_datasets = False
     for doc in db.datasets.find({"persistent": False}):
         has_datasets = True
@@ -205,25 +225,6 @@ def _delete_non_persistent_datasets(config, client):
 
     if has_datasets:
         db.datasets.delete_many({"persistent": False})
-
-
-def _get_master_connection_count():
-    return len(
-        list(
-            _client.admin.aggregate(
-                [
-                    {"$currentOp": {"allUsers": True}},
-                    {"$project": {"appName": 1, "command": 1}},
-                    {
-                        "$match": {
-                            "appName": foc.DATABASE_APPNAME,
-                            "command.ismaster": 1,
-                        }
-                    },
-                ]
-            )
-        )
-    )
 
 
 def _validate_db_version(config, client):
