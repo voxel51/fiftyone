@@ -6,3 +6,4 @@ voxel51.com
 """
 from .datasets import *
 from .models import *
+from .notebooks import *
