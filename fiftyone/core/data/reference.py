@@ -4,7 +4,7 @@ import typing as t
 
 
 from bson import ObjectId
-from dacite import from_dict
+from dacite import Config, from_dict
 import eta.core.utils as etau
 from pymongo.client_session import ClientSession
 
@@ -62,7 +62,7 @@ class FiftyOneReference:
 
         with client.start_session() as session, session.start_transaction():
             latest = self.__class__.from_db(
-                self.definition.id, session=session, virtual=True
+                self.definition._id, session=session, virtual=True
             )
 
             original_schema = as_schema(
@@ -85,8 +85,22 @@ class FiftyOneReference:
             self.bson_schemas = bson_schemas
 
             db.datasets.replace_one(
-                {"_id": self.definition.id}, asdict(self.definition)
+                {"_id": self.definition._id},
+                asdict(self.definition),
             )
+
+    def delete(self) -> None:
+        if not self.definition or not self.collections:
+            raise FiftyOneDataError("reference has not dataset")
+
+        db = fod.get_db_conn()
+        for collection in self.collections.values():
+            db.drop_collection(collection)
+
+        db.datasets.delete_one({"_id": self.definition._id})
+        self.bson_schemas = None
+        self.collections = None
+        self.definition = None
 
     def clone(self) -> "FiftyOneReference":
         pass
@@ -109,9 +123,11 @@ class FiftyOneReference:
                 % name
             )
 
+        schema = {"": Field(name="", type=root_document_cls)}
+        schema.update(root_document_cls.__fiftyone_ref__.schema)
         with fod.get_db_client().start_session() as session, session.start_transaction():
             collections, field_definitions, bson_schemas = _set_collections(
-                root_document_cls.__fiftyone_ref__.schema, session
+                schema
             )
             schema = as_schema(field_definitions, bson_schemas)
 
@@ -130,7 +146,7 @@ class FiftyOneReference:
             fod.get_db_conn().datasets.insert_one(asdict(definition))
 
             return FiftyOneReference(
-                bson_schema=bson_schemas,
+                bson_schemas=bson_schemas,
                 collections=collections,
                 definition=definition,
                 schema=schema,
@@ -143,7 +159,7 @@ class FiftyOneReference:
         session: t.Optional[ClientSession] = None,
         virtual: bool = False,
     ) -> "FiftyOneReference":
-        if virtual and (session or isinstance(name_or_id, ObjectId)):
+        if not virtual and isinstance(name_or_id, ObjectId):
             raise FiftyOneDataError("invalid")
 
         if not virtual:
@@ -153,7 +169,8 @@ class FiftyOneReference:
         filter = {"name" if isinstance(name_or_id, str) else "_id": name_or_id}
         definition = from_dict(
             DatasetDefinition,
-            db.datasets.find_one(filter, session=session),
+            db.datasets.find_one(filter),
+            config=Config(check_types=False),
         )
 
         collections = {
@@ -182,10 +199,35 @@ class FiftyOneReference:
         return bool(db.datasets.find_one({"name": name}, {"_id": 1}))
 
 
+def _get_document_cls(
+    d: t.Union[DictDefinition, ListDefinition, TupleDefinition, str]
+) -> t.Any:
+    from .document import Document
+
+    check: t.Union[
+        DictDefinition, ListDefinition, TupleDefinition, str, None
+    ] = d
+
+    while not isinstance(check, (str, TupleDefinition)):
+        if isinstance(check, DictDefinition):
+            check = check.value
+
+        if isinstance(check, ListDefinition):
+            check = check.type
+
+        if not isinstance(check, str):
+            raise ValueError("")
+    if isinstance(check, str):
+        cls = etau.get_class(check)
+        if issubclass(cls, Document):
+            return cls
+
+    return None
+
+
 def as_field_definitions(
     schema: t.Dict[str, Field]
 ) -> t.List[t.Union[DocumentFieldDefinition, FieldDefinition]]:
-    from .document import Document
 
     fields: t.List[t.Union[DocumentFieldDefinition, FieldDefinition]] = []
     for path, field in schema.items():
@@ -193,11 +235,13 @@ def as_field_definitions(
             raise FiftyOneDataError(f"field {field.name} has no type")
 
         d: t.Union[DocumentFieldDefinition, FieldDefinition]
-        type = get_type_definition(field.type)
-        if issubclass(field.type, Document):
-            d = DocumentFieldDefinition(path, type)
+        type_definition = get_type_definition(field.type)
+        cls = _get_document_cls(type_definition)
+
+        if cls:
+            d = DocumentFieldDefinition(path, type_definition)
         else:
-            d = FieldDefinition(path, type)
+            d = FieldDefinition(path, type_definition)
 
         fields.append(d)
 
@@ -205,20 +249,19 @@ def as_field_definitions(
 
 
 def _set_collections(
-    schema: t.Dict[str, Field], session: ClientSession
+    schema: t.Dict[str, Field]
 ) -> t.Tuple[
     t.Dict[str, str],
     t.List[t.Union[DocumentFieldDefinition, FieldDefinition]],
     t.Dict[str, BSONSchemaObjectProperty],
 ]:
     field_definitions = as_field_definitions(schema)
-    bson_schemas = as_bson_schemas(schema)
-
-    documents = _get_document_definitions(
-        field_definitions, paths=bson_schemas
-    )
-    collections: t.Dict[str, str] = {}
-    collection_names = [d.collection for d in documents.values()]
+    documents = _get_document_definitions(field_definitions)
+    collections: t.Dict[str, str] = {
+        d.path: d.collection for d in documents.values()
+    }
+    collection_names = list(collections.values())
+    bson_schemas = as_bson_schemas(list(collections), schema)
 
     db = fod.get_db_conn()
     exists = {
@@ -228,24 +271,19 @@ def _set_collections(
                 "listCollections": 1,
                 "filter": {"name": {"$in": collection_names}},
             },
-            session=session,
         )["cursor"]["firstBatch"]
     }
 
     for path, field_definition in documents.items():
-        cls = etau.get_class(field_definition.type)
+        cls = _get_document_cls(field_definition.type)
 
         if field_definition.collection not in exists:
             db.create_collection(field_definition.collection)
         collection = fod.get_db_conn()[field_definition.collection]
-        collections[field_definition.path] = field_definition.collection
-
         for index in cls.__fiftyone_indexes__:
-            collection.create_index(index, session=session)
+            collection.create_index(index)
 
-        commit_bson_schema(
-            db, field_definition.collection, bson_schemas[path], session
-        )
+        commit_bson_schema(db, field_definition.collection, bson_schemas[path])
 
     return collections, field_definitions, bson_schemas
 
@@ -254,14 +292,11 @@ def _get_document_definitions(
     field_definitions: t.List[
         t.Union[DocumentFieldDefinition, FieldDefinition]
     ],
-    paths: t.Iterable[str] = None,
 ) -> t.Dict[str, DocumentFieldDefinition]:
     field_definitions_dict = {d.path: d for d in field_definitions}
     documents: t.Dict[str, DocumentFieldDefinition] = {}
-    if not paths:
-        paths = field_definitions_dict
 
-    for path in paths:
+    for path in field_definitions_dict:
         field_definition: t.Union[
             DocumentFieldDefinition,
             FieldDefinition,
@@ -281,7 +316,7 @@ def _get_document_definitions(
                 break
 
         if not isinstance(field_definition, DocumentFieldDefinition):
-            raise FiftyOneDataError("unexpected")
+            continue
 
         documents[path] = field_definition
 

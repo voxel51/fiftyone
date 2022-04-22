@@ -33,6 +33,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.collections as foc
 import fiftyone.core.data as fod
 from fiftyone.core.data import reference
+from fiftyone.core.data.definitions import MediaType
 import fiftyone.core.evaluation as foe
 import fiftyone.core.expressions as foex
 import fiftyone.core.frame as fofr
@@ -275,9 +276,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             name
     """
 
-    __fiftyone_reference__: fod.FiftyOneReference
     __fiftyone_caches__: DatasetCaches
-    __fiftyone_deleted__: bool
+    __fiftyone_name__: str
+    __fiftyone_ref__: fod.FiftyOneReference
 
     def __init__(
         self,
@@ -304,8 +305,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             reference = fod.FiftyOneReference.from_db(name, virtual=_virtual)
 
         self.__fiftyone_caches__ = DatasetCaches()
-        self.__fiftyone_reference__ = reference
-        self.__fiftyone_deleted__ = False
+        self.__fiftyone_name__ = name
+        self.__fiftyone_ref__ = reference
 
     def __len__(self) -> int:
         return self.count()
@@ -362,7 +363,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         ):
             return super().__getattribute__(name)
 
-        if getattr(self, "__fiftyone_deleted__", False):
+        if not self.__fiftyone_ref__.in_db:
             raise ValueError(f"Dataset {self.name} is deleted")
 
         return super().__getattribute__(name)
@@ -395,10 +396,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
                 % (media_type, fom.MEDIA_TYPES)
             )
 
-        if media_type == self.__fiftyone_definition__.media_type:
+        if media_type == str(self.__fiftyone_ref__.definition.media_type):
             return
 
-        self.__fiftyone_definition__.media_type = media_type
+        self.__fiftyone_ref__.definition.media_type = MediaType(media_type)
 
         idx = None
         for i, field in enumerate(self.__fiftyone_definition__.schema):
@@ -415,62 +416,61 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             else:
                 data_type = fome.Metadata
 
-        self.__fiftyone_definition__.save()
+        self.__fiftyone_ref__.commit()
 
     @property
     def version(self) -> str:
         """The version of the ``fiftyone`` package for which the dataset is
         formatted.
         """
-        return self.__fiftyone_definition__.version
+        return self.__fiftyone_ref__.definition.version
 
     @property
     def name(self) -> str:
         """The name of the dataset."""
-        return self.__fiftyone_definition__.name
+        return self.__fiftyone_name__
 
     @name.setter
     def name(self, name: str) -> None:
-        _name = self.__fiftyone_definition__.name
-
-        if name == _name:
+        if name == self.__fiftyone_name__:
             return
 
         if name in list_datasets():
             raise ValueError("A dataset with name '%s' already exists" % name)
 
         try:
-            self.__fiftyone_definition__.name = name
-            self.__fiftyone_definition__.save()
+            self.__fiftyone_ref__.name = name
+            self.__fiftyone_ref__.commit()
+            self.__fiftyone_name__ = name
         except:
-            self.__fiftyone_definition__.name = _name
+            self.__fiftyone_ref__.name = self.__fiftyone_name__
             raise
 
     @property
     def created_at(self) -> datetime:
         """The datetime that the dataset was created."""
-        return self.__fiftyone_definition__.created_at
+        return self.__fiftyone_ref__.created_at
 
     @property
     def last_loaded_at(self) -> datetime:
         """The datetime that the dataset was last loaded."""
-        return self.__fiftyone_definition__.last_loaded_at
+        return self.__fiftyone_ref__.last_loaded_at
 
     @property
     def persistent(self) -> bool:
         """Whether the dataset persists in the database after a session is
         terminated.
         """
-        return self.__fiftyone_definition__.persistent
+        return self.__fiftyone_ref__.persistent
 
     @persistent.setter
     def persistent(self, value: bool) -> None:
         _value = self.__fiftyone_definition__.persistent
         try:
-            self.__fiftyone_definition__.persistent = value
-            self.__fiftyone_definition__.save()
+            self.__fiftyone_ref__.persistent = value
+            self.__fiftyone_ref__.commit()
         except:
-            self.__fiftyone_definition__.persistent = _value
+            self.__fiftyone_ref__.persistent = _value
             raise
 
     @property
@@ -490,14 +490,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             dataset.info["other_classes"] = ["bird", "plane"]
             dataset.save()  # must save after edits
         """
-        return etas.load_json(self.__fiftyone_definition__.info)["info"]
+        return etas.load_json(self.__fiftyone_ref__.info)["info"]
 
     @info.setter
     def info(self, info: t.Any) -> None:
-        self.__fiftyone_definition__.info = etas.json_to_str(
+        self.__fiftyone_ref__.info = etas.json_to_str(
             {"info": info}, pretty_print=False
         )
-        self.__fiftyone_definition__.save()
+        self.__fiftyone_ref__.commit()
 
     @property
     def classes(self) -> t.Dict:
@@ -2311,25 +2311,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        definition = self.__fiftyone_definition__
-        fos.Sample._reset_docs(self._sample_collection_name)
-
-        # Clips datasets directly inherit frames from source dataset
-        if not self._is_clips:
-            self._frame_collection.drop()
-            fofr.Frame._reset_docs(self._frame_collection_name)
-
-        for run_doc in dataset_doc.annotation_runs.values():
-            if run_doc.results is not None:
-                run_doc.results.delete()
-
-        for run_doc in dataset_doc.brain_methods.values():
-            if run_doc.results is not None:
-                run_doc.results.delete()
-
-        for run_doc in dataset_doc.evaluations.values():
-            if run_doc.results is not None:
-                run_doc.results.delete()
+        self.__fiftyone_ref__.delete()
 
         self._deleted = True
 

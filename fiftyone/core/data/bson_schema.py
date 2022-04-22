@@ -1,4 +1,3 @@
-from collections import defaultdict
 import typing as t
 from abc import ABC
 from dataclasses import asdict, dataclass, field
@@ -6,11 +5,9 @@ from datetime import date, datetime
 from enum import Enum
 from dacite import from_dict
 
-from pymongo.client_session import ClientSession
 from pymongo.database import Database
 import eta.core.utils as etau
 from bson import ObjectId
-from h11 import Data
 from numpy import ndarray
 
 from .datafield import Field
@@ -52,32 +49,32 @@ class BSONSchemaArrayProperty(BSONSchemaProperty):
     items: t.Optional[
         t.Union[t.List["BSONSchemaProperties"], "BSONSchemaProperties"]
     ] = None
-    max_items: t.Optional[int] = None
-    min_items: t.Optional[int] = None
-    unique_items: t.Optional[bool] = None
+    maxItems: t.Optional[int] = None
+    minItems: t.Optional[int] = None
+    uniqueItems: t.Optional[bool] = None
 
 
 @dataclass
 class BSONSchemaBinaryProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.BINARY] = BSONTypes.BINARY
+    bsonType: t.Literal[BSONTypes.BINARY] = BSONTypes.BINARY
 
 
 @dataclass
 class BSONSchemaBoolProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.BOOL] = BSONTypes.BOOL
+    bsonType: t.Literal[BSONTypes.BOOL] = BSONTypes.BOOL
 
 
 @dataclass
 class BSONSchemaDateProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.DATE] = BSONTypes.DATE
+    bsonType: t.Literal[BSONTypes.DATE] = BSONTypes.DATE
 
 
 @dataclass
 class BSONSchemaDecimalProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.DECIMAL] = BSONTypes.DECIMAL
+    bsonType: t.Literal[BSONTypes.DECIMAL] = BSONTypes.DECIMAL
     maximum: t.Optional[float] = None
     minimum: t.Optional[float] = None
-    multiple_of: t.Optional[float] = None
+    multipleOf: t.Optional[float] = None
 
 
 @dataclass
@@ -85,59 +82,59 @@ class BSONSchemaDoubleProperty(BSONSchemaProperty):
     bson_type: t.Literal[BSONTypes.DOUBLE] = BSONTypes.DOUBLE
     maximum: t.Optional[float] = None
     minimum: t.Optional[float] = None
-    multiple_of: t.Optional[float] = None
+    multipleOf: t.Optional[float] = None
 
 
 @dataclass
 class BSONSchemaEnumProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
+    bsonType: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
     enum: t.List[str] = field(default_factory=list)
 
 
 @dataclass
 class BSONSchemaIntProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.INT] = BSONTypes.INT
+    bsonType: t.Literal[BSONTypes.INT] = BSONTypes.INT
     maximum: t.Optional[int] = None
     minimum: t.Optional[int] = None
-    multiple_of: t.Optional[int] = None
+    multipleOf: t.Optional[int] = None
 
 
 @dataclass
 class BSONSchemaLongProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.LONG] = BSONTypes.LONG
+    bsonType: t.Literal[BSONTypes.LONG] = BSONTypes.LONG
     maximum: t.Optional[int] = None
     minimum: t.Optional[int] = None
-    multiple_of: t.Optional[int] = None
+    multipleOf: t.Optional[int] = None
 
 
 @dataclass
 class BSONSchemaObjectProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.OBJECT] = BSONTypes.OBJECT
-    max_properties: t.Optional[int] = None
-    min_properties: t.Optional[int] = None
+    bsonType: t.Literal[BSONTypes.OBJECT] = BSONTypes.OBJECT
+    maxProperties: t.Optional[int] = None
+    minProperties: t.Optional[int] = None
     properties: t.Dict[str, "BSONSchemaProperties"] = field(
         default_factory=dict
     )
     required: t.List[str] = field(default_factory=list)
-    additional_properties: t.Union[bool, "BSONSchemaProperties"] = False
+    additionalProperties: t.Union[bool, "BSONSchemaProperties"] = False
 
 
 @dataclass
 class BSONSchemaObjectIdProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.OBJECT_ID] = BSONTypes.OBJECT_ID
+    bsonType: t.Literal[BSONTypes.OBJECT_ID] = BSONTypes.OBJECT_ID
 
 
 @dataclass
 class BSONSchemaStringProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
-    max_length: t.Optional[int] = None
-    min_length: t.Optional[int] = None
+    bsonType: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
+    maxLength: t.Optional[int] = None
+    minLength: t.Optional[int] = None
     pattern: t.Optional[str] = None
 
 
 @dataclass
 class BSONSchemaTimestampProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.TIMESTAMP] = BSONTypes.TIMESTAMP
+    bsonType: t.Literal[BSONTypes.TIMESTAMP] = BSONTypes.TIMESTAMP
 
 
 BSONSchemaProperties = t.Union[
@@ -192,7 +189,7 @@ def _unwind_to_object_property(
 ) -> BSONSchemaObjectProperty:
     while (
         not isinstance(property, BSONSchemaObjectProperty)
-        or property.additional_properties is not False
+        or property.additionalProperties is not False
     ):
         if isinstance(property, BSONSchemaArrayProperty):
             if not isinstance(property.items, BSONSchemaObjectProperty):
@@ -203,11 +200,11 @@ def _unwind_to_object_property(
 
         if isinstance(property, BSONSchemaObjectProperty):
             if not isinstance(
-                property.additional_properties, BSONSchemaObjectProperty
+                property.additionalProperties, BSONSchemaObjectProperty
             ):
                 raise FiftyOneDataError("todo")
 
-            property = property.additional_properties
+            property = property.additionalProperties
             continue
 
         if not isinstance(
@@ -225,6 +222,7 @@ def as_bson_schemas(
     bson_schemas: t.Dict[str, BSONSchemaObjectProperty] = {
         path: BSONSchemaObjectProperty() for path in collections
     }
+
     for path in paths:
         names = path.split(".")
         property = _get_path_property(".".join(names[:-1]), bson_schemas)
@@ -253,7 +251,7 @@ def _type_definition_as_bson_property(
         property = BSONSchemaObjectProperty(additional_properties=True)
 
         if definition.value:
-            property.additional_properties = _type_definition_as_bson_property(
+            property.additionalProperties = _type_definition_as_bson_property(
                 definition.value
             )
         return property
@@ -277,6 +275,8 @@ def _type_definition_as_bson_property(
         return property
 
     cls = etau.get_class(definition)
+
+    from .data import Data
 
     if issubclass(cls, Data):
         property = BSONSchemaObjectProperty()
@@ -338,14 +338,18 @@ def commit_bson_schema(
     db: Database,
     collection: str,
     schema: BSONSchemaObjectProperty,
-    session: ClientSession,
 ) -> None:
     db.command(
         {
             "collMod": collection,
             "validationLevel": "strict",
             "validationAction": "error",
-            "validator": {"$jsonSchema": asdict(schema)},
+            "validator": {
+                "$jsonSchema": asdict(
+                    schema,
+                    dict_factory=lambda d: dict(t for t in d if t[1]),
+                )
+            },
         }
     )
 
@@ -362,7 +366,7 @@ def load_bson_schemas(
         for result in db.command(
             {
                 "listCollections": 1,
-                "filter": {"name": {"$in": collections.values()}},
+                "filter": {"name": {"$in": list(collections.values())}},
             }
         )["cursor"]["firstBatch"]
     }

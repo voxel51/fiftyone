@@ -19,17 +19,11 @@ from .exceptions import FiftyOneDataError
 PRIMITIVES = {bool, bytes, date, datetime, int, float, np.ndarray, str}
 CONTAINERS: t.Set[t.Type] = {dict, list, tuple}
 
-
-@gql.type
-class RunDefinition:
-    """Description of a run on a dataset."""
-
-    key: str
-    version: str
-    timestamp: datetime
-    config: str
-    view_stage: t.List[str]
-    results: gql.ID
+gql.scalar(
+    gql.ID,
+    serialize=lambda v: str(v),
+    parse_value=lambda v: ObjectId(v),
+)
 
 
 @gql.type
@@ -71,7 +65,7 @@ class DocumentFieldDefinition(FieldDefinition):
 
 
 @gql.enum
-class MediaType(Enum):
+class MediaType(str, Enum):
     image = "image"
     video = "video"
 
@@ -104,10 +98,11 @@ class RunConfigDefinition:
 
 @gql.interface
 class RunDefinition:
-    key: str
-    version: str
-    timestamp: datetime
     config: RunConfigDefinition
+    key: str
+    results: gql.ID
+    timestamp: datetime
+    version: str
     view_stages: t.List[str]
 
 
@@ -146,7 +141,7 @@ class SidebarGroupDefinition:
 @gql.type
 class DatasetDefinition:
     name: str
-    id: gql.ID = gql.field(default_factory=ObjectId)
+    _id: gql.ID = gql.field(default_factory=lambda: ObjectId())
 
     created_at: datetime = gql.field(default_factory=datetime.utcnow)
     last_loaded_at: datetime = gql.field(default_factory=datetime.utcnow)
@@ -180,6 +175,9 @@ class DatasetDefinition:
 def get_type_definition(
     type: t.Type,
 ) -> t.Union[DictDefinition, ListDefinition, TupleDefinition, str]:
+    if type is None or isinstance(type, t.TypeVar):
+        return t.Any
+
     if type == list or getattr(type, "__origin__", None) == list:
         return ListDefinition(
             type=get_type_definition(getattr(type, "__args__", (None,))[0])

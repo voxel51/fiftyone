@@ -6,6 +6,7 @@ Dataset samples.
 |
 """
 import os
+import typing as t
 
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
@@ -16,7 +17,11 @@ from fiftyone.core.data import Document, field
 
 class Sample(Document):
 
+    __fiftyone_indexes__ = ("filepath",)
+
     filepath: str = field(required=True)
+    metadata: fom.Metadata
+    tags: t.List[str] = field(default_factory=list, required=True)
 
     @property
     def filename(self) -> str:

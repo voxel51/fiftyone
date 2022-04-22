@@ -8,10 +8,9 @@ import fiftyone.core.utils as fou
 import six
 
 from .exceptions import FiftyOneDataError
+from .containers import Dict, is_dict, is_list, List
 from .datafield import Field, field
 from .definitions import PRIMITIVES
-from .dict import Dict
-from .list import List
 from .reference import FiftyOneReference
 
 __all__ = ["asdict", "is_data", "sample"]
@@ -120,28 +119,9 @@ class Data(metaclass=DataMetaclass):
         )
         for name in set(data).union(self.__fiftyone_fields__):
             value = data.get(name, None)
-            field = self.__fiftyone_ensure_field__(name, value)
-            if value is None:
-
-                if field.default_factory is not None:
-                    value = field.default_factory()
-                elif field.default is not None:
-                    value = field.default
-                elif field.required and not field.link:
-                    raise FiftyOneDataError(
-                        f"required field '{name}' with no default or default factory must have a value"
-                    )
-
-                if value is None:
-                    continue
-
-            if field.validator:
-                field.validator(value)
-
-            if isinstance(value, Data):
-                inherit_data(
-                    self.__fiftyone_path__, self.__fiftyone_ref__, name, value
-                )
+            field, value = self.__fiftyone_validate__(name, value, True)
+            if field is None:
+                continue
 
             self.__dict__[name] = value
 
@@ -161,6 +141,16 @@ class Data(metaclass=DataMetaclass):
             None,
             asdict(self, dict_factory=dict, links=False),
         )
+
+    def __delattr__(self, __name: str) -> None:
+        field = self.__fiftyone_field__(__name)
+        if __name.startswith("__") or field is None:
+            return super().__delattr__(__name)
+
+        if field.required:
+            raise FiftyOneDataError("cannot delete required field")
+
+        self.__dict__.pop(__name, None)
 
     def __getattribute__(self, __name: str) -> t.Any:
         if _DUNDER_REGEX.fullmatch(__name):
@@ -183,17 +173,37 @@ class Data(metaclass=DataMetaclass):
 
         if field is None:
             if __value is not None:
-                field = self.__fiftyone_ensure_field__(__name, __value)
+                self.__fiftyone_ref__.commit()
+                field = self.__fiftyone_field__(__name)
             else:
                 raise KeyError(
                     f"'{self.__class__.__name__}' has no field '{__name}'"
                 )
 
-        __value = (
-            __value
-            if __value is None or not field.load
-            else field.load(__value)
+        if field is None:
+            raise FiftyOneDataError("err")
+
+        if __value is None:
+            return None
+
+        path = (
+            ".".join([self.__fiftyone_path__, __name])
+            if self.__fiftyone_path__
+            else __name
         )
+
+        if is_list(field.type):
+            if not isinstance(__value, List):
+                __value = List.__fiftyone_construct__(
+                    path,
+                    self.__fiftyone_ref__,
+                    __value,
+                )
+                self.__dict__[__name] = __value
+
+            return __value
+
+        __value = field.load(__value) if field.load else __value
 
         if (
             field.type
@@ -202,26 +212,28 @@ class Data(metaclass=DataMetaclass):
         ):
             __value = field.type.__fiftyone_construct__(
                 self.__fiftyone_ref__,
-                (
-                    ".".join([self.__fiftyone_path__, __name])
-                    if self.__fiftyone_path__
-                    else __name
-                ),
+                path,
                 __value,
             )
+            self.__dict__[__name] = __value
 
         return __value
 
     def __setattr__(self, __name: str, __value: t.Any) -> None:
-        field = self.__fiftyone_field__(__name)
-        if field is None:
+        if __name.startswith("__"):
             return super().__setattr__(__name, __value)
 
+        field, _ = self.__fiftyone_validate__(__name, __value, False)
+
+        if field is None:
+            raise ValueError("cannot set undefined field")
+
         if __value is None:
+            if field.required:
+                raise FiftyOneDataError("cannot delete required field")
+
             self.__dict__.pop(__name, None)
             return
-
-        field.validator and field.validator(__value)
 
         if isinstance(__value, Data):
             inherit_data(
@@ -239,23 +251,60 @@ class Data(metaclass=DataMetaclass):
 
         return __name
 
-    def __fiftyone_ensure_field__(self, __name: str, __value: t.Any) -> Field:
-        field = self.__fiftyone_field__(__name)
-        if field:
-            return field
+    def __fiftyone_field__(self, __name: str) -> t.Union[Field, None]:
+        key = self.__fiftyone_child_path__(__name)
+        return self.__fiftyone_ref__.schema.get(key, None)
 
-        field = Field(name=__name, type=_infer_type(__value))
+    def __fiftyone_validate__(
+        self, __name: str, __value: t.Any, __init: bool
+    ) -> t.Tuple[t.Optional[Field], t.Any]:
+        field = self.__fiftyone_field__(__name)
         path = (
             ".".join([self.__fiftyone_path__, __name])
             if self.__fiftyone_path__
             else __name
         )
-        self.__fiftyone_ref__.schema[path] = field
-        return field
+        if not field:
+            if __value is None:
+                return None, None
 
-    def __fiftyone_field__(self, __name: str) -> t.Union[Field, None]:
-        key = self.__fiftyone_child_path__(__name)
-        return self.__fiftyone_ref__.schema.get(key, None)
+            field = Field(name=__name, type=_infer_type(__value))
+            self.__fiftyone_ref__.schema[path] = field
+
+        if __init and __value is None:
+            if field.default_factory is not None:
+                __value = field.default_factory()
+            elif field.default is not None:
+                __value = field.default
+            elif field.required and not field.link:
+                raise FiftyOneDataError(
+                    f"required field '{__name}' with no default or default factory must have a value"
+                )
+
+        if __value is None:
+            return field, __value
+
+        if is_list(field.type):
+            if not isinstance(__value, list):
+                raise FiftyOneDataError("expected list")
+
+            items: List[t.Any] = List.__fiftyone_construct__(
+                path, self.__fiftyone_ref__, []
+            )
+            for item in __value:
+                items.append(item)
+        elif not isinstance(__value, field.type):
+            raise FiftyOneDataError("invalid value")
+
+        if field.validator:
+            field.validator(__value)
+
+        if isinstance(__value, Data):
+            inherit_data(
+                self.__fiftyone_path__, self.__fiftyone_ref__, __name, __value
+            )
+
+        return field, __value
 
     @property
     def __fiftyone_fields__(self) -> t.Dict[str, Field]:
@@ -264,6 +313,14 @@ class Data(metaclass=DataMetaclass):
     def __repr__(self) -> str:
         data = {}
         for name in self.__fiftyone_fields__:
+            if name.startswith("_"):
+                continue
+
+            value = self[name]
+
+            if value is None:
+                continue
+
             data[name] = self[name]
 
         return f"<{self.__class__.__name__}: {fou.pformat(data)}>"  # type: ignore
@@ -452,7 +509,7 @@ def _infer_type(value: t.Any) -> t.Type:
     if isinstance(value, list):
         item_types: t.Set[t.Type[t.Any]] = set(_infer_type(v) for v in value)
         if len(item_types) == 1:
-            return t.List.__getitem__(item_types.pop())
+            return t.List[item_types.pop()]
 
         return t.List
 
@@ -476,7 +533,7 @@ def _extract_schema(data: Data) -> t.Dict[str, Field]:
 
 
 def inherit_data(
-    path: str, ref: FiftyOneReference, name: str, data: Data
+    path: t.Optional[str], ref: FiftyOneReference, name: str, data: Data
 ) -> None:
     prefix = ".".join([path, name]) if path else name
 
