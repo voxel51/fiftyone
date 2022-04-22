@@ -80,6 +80,7 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
 )
 MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
 DATABASE_APPNAME = "fiftyone"
+
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
 
