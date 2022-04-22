@@ -130,7 +130,7 @@ class TorchCLIPModel(fout.TorchImageModel):
         config.download_tokenizer_if_necessary()
 
     def _get_class_labels(self, config):
-        if config.class_labels:
+        if hasattr(config, "class_labels") and config.class_labels:
             # use custom labels
             return config.class_labels
         else:

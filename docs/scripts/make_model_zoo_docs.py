@@ -115,8 +115,8 @@ _MODEL_TEMPLATE = """
 {% if 'zero-shot' in tags %}
     # Make zero-shot label predictions with custom class labels
     
-    custom_labels = ["person", "dog", "cat", "bird", "car", "tree", "chair"]
-    text_prompt = "A drawing of a large"
+    custom_labels = ["person", "dog", "cat", "bird", "car", "tree", "chair"]  # can be any list of strings 
+    text_prompt = "A photo of a"  # will be prepended to each class label
     
     model = foz.load_zoo_model("{{ name }}", class_labels=custom_labels, text_prompt=text_prompt)
     

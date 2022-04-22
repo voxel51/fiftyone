@@ -81,7 +81,7 @@ def test_batch_size():
 
 
 def test_zero_shot_labels():
-    models = _get_models_with_tag("zero_shot")
+    models = _get_models_with_tag("zero-shot")
     _apply_zero_shot_models(models)
 
 
@@ -199,7 +199,7 @@ def _apply_zero_shot_models(model_names):
         shuffle=True,
         max_samples=10,
     )
-    custom_labels = ["vehicle", "person", "plant", "city", "animal", "nature"]
+    custom_labels = dataset.distinct("ground_truth.detections.label")
 
     for idx, model_name in enumerate(model_names, 1):
         print(
@@ -208,10 +208,12 @@ def _apply_zero_shot_models(model_names):
 
         model = foz.load_zoo_model(model_name, class_labels=custom_labels)
 
-        dataset.apply_model(model, label_field="zero_shot", batch_size=4)
+        label_field = model_name.lower().replace("-", "_").replace(".", "_")
 
-        assert len(dataset.exists("zero_shot")) == len(dataset)
-        assert set(dataset.distinct("zero_shot.label")) == set(custom_labels)
+        dataset.apply_model(model, label_field=label_field, batch_size=4)
+
+        assert len(dataset.exists(label_field)) == len(dataset)
+        assert all([label in custom_labels for label in dataset.distinct(f"{label_field}.label")])
 
 
 def _apply_person_keypoint_models(model_names):
