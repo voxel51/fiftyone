@@ -4127,7 +4127,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # might get labels
             samples.ensure_frames()
 
-        with fo.ProgressBar(total=num_samples, iters_str="batches") as pb:
+        with fou.ProgressBar(
+            total=num_samples,
+            iters_str="samples",
+            start_msg="Uploading samples to CVAT..."
+        ) as pb:
 
             for idx, offset in enumerate(range(0, num_samples, batch_size)):
                 samples_batch = samples[offset : (offset + batch_size)]
