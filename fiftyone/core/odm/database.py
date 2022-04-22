@@ -198,14 +198,7 @@ def _delete_non_persistent_datasets(config, client):
     db = client[config.database_name]
 
     has_datasets = False
-    for doc in db.datasets.find(
-        {"persistent": False},
-        {
-            "_id": 0,
-            "sample_collection_name": 1,
-            "frame_collection_name": 1,
-        },
-    ):
+    for doc in db.datasets.find({"persistent": False}):
         has_datasets = True
         db.drop_collection(doc["sample_collection_name"])
         db.drop_collection(doc["frame_collection_name"])
