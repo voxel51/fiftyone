@@ -1,0 +1,9 @@
+{
+    "test": {
+        "kwargs": {
+            "view": "The FiftyOne DatasetView to load",
+            "field": "The field of the `view` to load"
+        },
+        "notebook_path": "test_nbzoo.ipynb"
+    }
+}
