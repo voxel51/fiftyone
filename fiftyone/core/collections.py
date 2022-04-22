@@ -102,6 +102,9 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
+    def __add__(self, samples):
+        return self.concat(samples)
+
     @property
     def _dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` that serves the samples
@@ -3216,10 +3219,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(
-                field,
-                filter=filter,
-                labels=labels,
-                only_matches=only_matches,
+                field, filter=filter, labels=labels, only_matches=only_matches,
             )
         )
 
