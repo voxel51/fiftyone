@@ -343,9 +343,16 @@ class Concat(ViewStage):
 
     def validate(self, sample_collection):
         if sample_collection._dataset != self._view._dataset:
-            raise ValueError(
-                "Cannot concatenate samples from different datasets"
-            )
+            if sample_collection._root_dataset == self._view._root_dataset:
+                raise ValueError(
+                    "When concatenating samples from generated views (e.g. "
+                    "patches or frames), all views must be derived from the "
+                    "same root generated view"
+                )
+            else:
+                raise ValueError(
+                    "Cannot concatenate samples from different datasets"
+                )
 
     def _kwargs(self):
         return [["samples", self._samples]]
