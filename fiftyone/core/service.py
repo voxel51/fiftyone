@@ -393,10 +393,7 @@ class AppService(Service):
 
         pre = foc.FIFTYONE_DESKTOP_APP_DIR
         for path in etau.list_files("./"):
-            if path.endswith(".exe"):
-                return [os.path.join(pre + path)]
-
-            if path.endswith(".AppImage"):
+            if path.endswith(".AppImage") or path.endswith(".exe"):
                 return [os.path.join(pre, path)]
 
         if os.path.isdir("./FiftyOne.app"):
