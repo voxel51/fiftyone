@@ -15,6 +15,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -166,9 +167,10 @@ class KITTIDetectionDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
+            labels_path = fou.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: os.path.join(labels_path, p)
+                for p in etau.list_files(labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}

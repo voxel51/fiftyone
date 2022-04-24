@@ -1,4 +1,9 @@
-import { selector, selectorFamily, SerializableParam } from "recoil";
+import {
+  atomFamily,
+  selector,
+  selectorFamily,
+  SerializableParam,
+} from "recoil";
 
 import * as atoms from "./atoms";
 import {
@@ -16,6 +21,7 @@ import { darkTheme } from "../shared/colors";
 import socket, { handleId, isNotebook, http } from "../shared/connection";
 import { Coloring, createColorGenerator, getRGB, RGB } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 export const isModalActive = selector<boolean>({
   key: "isModalActive",
@@ -33,6 +39,7 @@ export const deactivated = selector({
   key: "deactivated",
   get: ({ get }) => {
     const handle = handleId;
+
     const activeHandle = get(atoms.stateDescription)?.active_handle;
 
     const notebook = isNotebook;
@@ -652,10 +659,31 @@ export const appConfig = selector({
   },
 });
 
+export const appConfigDefault = selectorFamily<
+  boolean,
+  { key: string; modal: boolean }
+>({
+  key: "appConfigDefault",
+  get: ({ modal, key }) => ({ get }) => {
+    if (modal) {
+      return get(appConfigDefault({ modal: false, key }));
+    }
+
+    return get(appConfig)[key] || false;
+  },
+});
+export const appConfigOption = atomFamily<
+  boolean,
+  { key: string; modal: boolean }
+>({
+  key: "appConfigOptions",
+  default: appConfigDefault,
+});
+
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
-    const colorByLabel = get(atoms.colorByLabel(modal));
+    get(appConfigOption({ key: "color_by_value", modal }));
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));
@@ -673,7 +701,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
       seed,
       pool,
       scale: get(atoms.stateDescription).colorscale,
-      byLabel: get(atoms.colorByLabel(modal)),
+      byLabel: get(appConfigDefault({ key: "color_by_value", modal })),
       defaultMaskTargets: get(defaultTargets),
       maskTargets: get(targets).fields,
       targets: new Array(pool.length)
@@ -715,6 +743,16 @@ export const targets = selector({
       defaults,
       fields: labelTargets,
     };
+  },
+});
+
+export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
+  key: "skeleton",
+  get: (field) => ({ get }) => {
+    const dataset = get(atoms.stateDescription).dataset || {};
+    const skeletons = dataset.skeletons || {};
+
+    return skeletons[field] || dataset.default_skeleton || null;
   },
 });
 

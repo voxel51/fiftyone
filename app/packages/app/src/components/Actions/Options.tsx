@@ -45,27 +45,43 @@ export const RefreshButton = ({ modal }) => {
 };
 
 const ColorBy = ({ modal }) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(
-    atoms.colorByLabel(modal)
+  const [colorByValue, setColorByValue] = useRecoilState(
+    selectors.appConfigOption({ modal, key: "color_by_value" })
   );
 
   return (
     <>
       <PopoutSectionTitle>Color by</PopoutSectionTitle>
       <TabOption
-        active={colorByLabel ? "value" : "field"}
+        active={colorByValue ? "value" : "field"}
         options={[
           {
             text: "field",
             title: "Color by field",
-            onClick: () => colorByLabel && setColorByLabel(false),
+            onClick: () => colorByValue && setColorByValue(false),
           },
           {
             text: "value",
             title: "Color by value",
-            onClick: () => !colorByLabel && setColorByLabel(true),
+            onClick: () => !colorByValue && setColorByValue(true),
           },
         ]}
+      />
+    </>
+  );
+};
+
+const Skeletons = ({ modal }) => {
+  const [shown, setShown] = useRecoilState(
+    selectors.appConfigOption({ key: "show_skeletons", modal })
+  );
+
+  return (
+    <>
+      <Checkbox
+        name={"Show keypoint skeletons"}
+        value={shown}
+        setValue={(value) => setShown(value)}
       />
     </>
   );
@@ -168,6 +184,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
       <SortFilterResults modal={modal} />
+      <Skeletons modal={modal} />
       <Patches modal={modal} />
     </Popout>
   );

@@ -17,7 +17,9 @@ import inspect
 import io
 import itertools
 import logging
+import ntpath
 import os
+import posixpath
 import platform
 import signal
 import struct
@@ -289,6 +291,25 @@ def fill_patterns(string):
         a copy of string with any patterns replaced
     """
     return etau.fill_patterns(string, available_patterns())
+
+
+def normpath(path):
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if os.name == "nt":
+        return ntpath.normpath(path)
+
+    return posixpath.normpath(path.replace("\\", "/"))
 
 
 def normalize_path(path):

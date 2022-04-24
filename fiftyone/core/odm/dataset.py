@@ -17,6 +17,7 @@ from fiftyone.core.fields import (
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    IntField,
     ListField,
     StringField,
     TargetsField,
@@ -183,6 +184,48 @@ class SampleFieldDocument(EmbeddedDocument):
         return etau.get_class_name(attr) if attr else None
 
 
+class KeypointSkeleton(EmbeddedDocument):
+    """Description of a keypoint skeleton.
+
+    Keypoint skeletons can be associated with
+    :class:`fiftyone.core.labels.Keypoint` or
+    :class:`fiftyone.core.labels.Keypoints` fields whose
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` attributes all
+    contain a fixed number of semantically ordered points.
+
+    The ``edges`` argument contains lists of integer indexes that define the
+    connectivity of the points in the skeleton, and the optional ``labels``
+    argument defines the label strings for each node in the skeleton.
+
+    For example, the skeleton below is defined by edges between the following
+    nodes::
+
+        left hand <-> left shoulder <-> right shoulder <-> right hand
+        left eye <-> right eye <-> mouth
+
+    Example::
+
+        import fiftyone as fo
+
+        # A skeleton for an object made of 7 points
+        skeleton = fo.KeypointSkeleton(
+            labels=[
+                "left hand" "left shoulder", "right shoulder", "right hand",
+                "left eye", "right eye", "mouth",
+            ],
+            edges=[[0, 1, 2, 3], [4, 5, 6]],
+        )
+
+    Args:
+        labels (None): an optional list of label strings for each node
+        edges: a list of lists of integer indexes defining the connectivity
+            between nodes
+    """
+
+    labels = ListField(StringField(), null=True)
+    edges = ListField(ListField(IntField()))
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -201,6 +244,10 @@ class DatasetDocument(Document):
     default_classes = ClassesField()
     mask_targets = DictField(TargetsField())
     default_mask_targets = TargetsField()
+    skeletons = DictField(
+        EmbeddedDocumentField(document_type=KeypointSkeleton)
+    )
+    default_skeleton = EmbeddedDocumentField(document_type=KeypointSkeleton)
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )

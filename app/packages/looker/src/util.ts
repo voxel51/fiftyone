@@ -81,6 +81,13 @@ export function dot2d(ax: number, ay: number, bx: number, by: number): number {
 }
 
 /**
+ * Elementwise vector multiplication
+ */
+export function multiply<T extends number[]>(one: T, two: T): T {
+  return one.map((i, j) => i * two[j]) as T;
+}
+
+/**
  * Projects a point onto a line defined by two other points.
  */
 export function project2d(
@@ -396,6 +403,9 @@ export const mergeUpdates = <State extends BaseState>(
       return n === undefined ? o : n;
     }
     if (n === null) {
+      return n;
+    }
+    if (o === null) {
       return n;
     }
     return mergeWith(merger, o, n);

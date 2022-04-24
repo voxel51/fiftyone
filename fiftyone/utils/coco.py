@@ -545,11 +545,13 @@ class COCODetectionDatasetImporter(
                 max_samples=self.max_samples,
             )
 
-            filenames = [images[_id]["file_name"] for _id in image_ids]
+            filenames = [
+                fou.normpath(images[_id]["file_name"]) for _id in image_ids
+            ]
 
             _image_ids = set(image_ids)
             image_dicts_map = {
-                i["file_name"]: i
+                fou.normpath(i["file_name"]): i
                 for _id, i in images.items()
                 if _id in _image_ids
             }
@@ -656,7 +658,8 @@ class COCODetectionDatasetExporter(
             -   ``False``: do not export extra attributes
             -   a name or list of names of specific attributes to export
         iscrowd ("iscrowd"): the name of a detection attribute that indicates
-            whether an object is a crowd (only used if present)
+            whether an object is a crowd (the value is automatically set to 0
+            if the attribute is not present)
         num_decimals (None): an optional number of decimal places at which to
             round bounding box pixel coordinates. By default, no rounding is
             done
@@ -975,16 +978,11 @@ class COCOObject(object):
         points = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
-                continue
+                points.append((float("nan"), float("nan")))
+            else:
+                points.append((x / width, y / height))
 
-            points.append((x / width, y / height))
-
-        return fol.Keypoint(
-            label=label,
-            points=points,
-            confidence=self.score,
-            **self.attributes,
-        )
+        return fol.Keypoint(label=label, points=points, **self.attributes)
 
     def to_detection(
         self,
@@ -1140,8 +1138,8 @@ class COCOObject(object):
                 -   ``True``: include all extra attributes found
                 -   ``False``: do not include extra attributes
                 -   a name or list of names of specific attributes to include
-            iscrowd ("iscrowd"): the name of the crowd attribute (used if
-                present)
+            iscrowd ("iscrowd"): the name of the crowd attribute (the value is
+                automatically set to 0 if the attribute is not present)
             num_decimals (None): an optional number of decimal places at which
                 to round bounding box pixel coordinates. By default, no
                 rounding is done
@@ -1182,18 +1180,16 @@ class COCOObject(object):
         if num_decimals is not None:
             bbox = [round(p, num_decimals) for p in bbox]
 
-        confidence = label.confidence
-
-        area = bbox[2] * bbox[3]
-
         if keypoint is not None:
             keypoints = _make_coco_keypoints(keypoint, frame_size)
         else:
             keypoints = None
 
-        _iscrowd = label.get_attribute_value(iscrowd, None)
-        if _iscrowd is not None:
-            _iscrowd = int(_iscrowd)
+        confidence = label.confidence
+
+        area = bbox[2] * bbox[3]
+
+        _iscrowd = int(label.get_attribute_value(iscrowd, None) or 0)
 
         attributes = _get_attributes(label, extra_attrs)
         attributes.pop(iscrowd, None)
@@ -1273,10 +1269,10 @@ def _parse_coco_detection_annotations(d, extra_attrs=True):
     info = d.get("info", None)
     licenses = d.get("licenses", None)
     categories = d.get("categories", None)
-    
+
     if info is None:
         info = {}
-        
+
     if licenses is not None:
         info["licenses"] = licenses
 

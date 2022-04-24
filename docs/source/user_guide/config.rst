@@ -17,8 +17,14 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | Config field                  | Environment variable                | Default value                 | Description                                                                            |
 +===============================+=====================================+===============================+========================================================================================+
+| `database_admin`              | `FIFTYONE_DATABASE_ADMIN`           | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
+|                               |                                     |                               | :ref:`this section <database-migrations>` for more information.                        |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                     |                               | `database_uri` is not defined.                                                         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_name`               | `FIFTYONE_DATABASE_NAME`            | `fiftyone`                    | A name to use for FiftyOne's backing database in your MongoDB instance. The database   |
+|                               |                                     |                               | is automatically created if necessary.                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
 |                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
@@ -114,7 +120,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
@@ -153,7 +161,9 @@ and the CLI:
     .. code-block:: text
 
         {
+            "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
+            "database_name": "fiftyone",
             "database_uri": null,
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
@@ -357,6 +367,13 @@ or you can set the following environment variable:
 
     export FIFTYONE_DATABASE_VALIDATION=false
 
+Controlling database migrations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working with a shared MongoDB database, you can use
+:ref:`database admin privileges <database-migrations>` to control which clients
+are allowed to migrate the shared database.
+
 Example custom database usage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -385,6 +402,75 @@ Then, in another shell, configure the database URI and launch FiftyOne:
 
     dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
+
+.. _database-migrations:
+
+Database migrations
+-------------------
+
+New FiftyOne versions occasionally introduce data model changes that require
+database migrations when you :ref:`upgrade <upgrading-fiftyone>` or
+:ref:`downgrade <downgrading-fiftyone>`.
+
+Database upgrades happen automatically in two steps:
+
+-   **Database**: when you import FiftyOne for the first time using a newer
+    version of the Python package, the database's version is automatically
+    updated to match your client version
+-   **Datasets** are lazily migrated to the current database version on a
+    per-dataset basis whenever you load the dataset for the first time using a
+    newer version of the FiftyOne package
+
+Database downgrades must be manually performed. See
+:ref:`this page <downgrading-fiftyone>` for instructions.
+
+You can use the :ref:`fiftyone migrate <cli-fiftyone-migrate>` command to view
+the current versions of your database and datasets:
+
+.. code-block:: shell
+
+    # View your client version
+    fiftyone --version
+
+    # View your database and dataset versions
+    fiftyone migrate --info
+
+Restricting migrations
+~~~~~~~~~~~~~~~~~~~~~~
+
+You can use the `database_admin` config setting to control whether a client is
+allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
+which means that upgrades are automatically peformed when you connect to your
+database with newer Python client versions.
+
+If you set `database_admin` to `False`, your database will refuse connections
+from your FiftyOne client if its version does not match the database's current
+version, and datasets will refuse migrations to versions other than the
+database's current version.
+
+You can restrict migrations by adding the following entry to your
+`~/.fiftyone/config.json` file:
+
+.. code-block:: json
+
+    {
+        "database_admin": false
+    }
+
+or by setting the following environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATABASE_ADMIN=false
+
+.. note::
+
+    A common pattern when working with
+    :ref:`custom/shared MongoDB databases <configuring-mongodb-connection>` is
+    to adopt a convention that all non-administrators set their
+    `database_admin` config setting to `False` to ensure that they cannot
+    trigger automatic database upgrades by connecting to the database with
+    newer Python client versions.
 
 .. _configuring-timezone:
 
@@ -459,6 +545,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
+| `color_by_value`          | `FIFTYONE_APP_COLOR_BY_VALUE`          | `False`                     | Whether to color labels by their value (True) or their field name (False).               |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -478,6 +566,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
 |                           |                                        |                             | sample view.                                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_skeletons           | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                        |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -507,26 +597,32 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by_value": false,
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True
@@ -544,26 +640,32 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by_value": false,
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True

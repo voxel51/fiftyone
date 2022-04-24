@@ -1,4 +1,6 @@
 import {
+  atom,
+  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -15,6 +17,12 @@ import { filterStage, FilterParams } from "./atoms";
 
 export const LIST_LIMIT = 200;
 
+interface StringFilter {
+  values: string[];
+  exclude: boolean;
+  _CLS: "str";
+}
+
 export const isStringField = selectorFamily<boolean, string>({
   key: "isStringField",
   get: (name) => ({ get }) => {
@@ -28,22 +36,18 @@ export const isStringField = selectorFamily<boolean, string>({
   },
 });
 
-interface StringFilter {
-  values: string[];
-  exclude: boolean;
-  _CLS: "str";
-}
-
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
   path: string
 ): StringFilter => {
+  const f = get(filterStage({ modal, path }));
+
   return {
     values: [],
     exclude: false,
     _CLS: "str",
-    ...get(filterStage({ modal, path })),
+    ...f,
   };
 };
 
@@ -58,18 +62,19 @@ const setFilter = (
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
-  const filter = {
+  let filter = {
     ...getFilter(get, modal, path),
     [key]: value,
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
   }
+
   if (meetsDefault(filter)) {
-    set(filterStage({ modal, path }), null);
-  } else {
-    set(filterStage({ modal, path }), filter);
+    filter = null;
   }
+
+  set(filterStage({ modal, path }), filter);
 };
 
 export const selectedValuesAtom = selectorFamily<string[], FilterParams>({
