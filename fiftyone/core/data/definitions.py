@@ -53,14 +53,7 @@ class ListDefinition:
 
 @gql.type
 class TupleDefinition:
-    types: t.Union[
-        t.List[
-            t.Union[
-                "DictDefinition", "ListDefinition", "str", "TupleDefinition"
-            ]
-        ],
-        None,
-    ]
+    types: t.List[str]
 
 
 @gql.type

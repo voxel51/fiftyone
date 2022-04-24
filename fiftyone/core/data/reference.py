@@ -1,19 +1,16 @@
+import typing as t
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-import typing as t
 
-
+import eta.core.utils as etau
 from bson import ObjectId
 from dacite import Config, from_dict
-import eta.core.utils as etau
 from pymongo.client_session import ClientSession
 
 import fiftyone as fo
 import fiftyone.constants as focn
-
-import fiftyone.migrations as fomi
 import fiftyone.core.database as fod
-
+import fiftyone.migrations as fomi
 
 from .bson_schema import (
     BSONSchemaObjectProperty,
@@ -22,7 +19,6 @@ from .bson_schema import (
     commit_bson_schema,
     load_bson_schemas,
 )
-from .exceptions import FiftyOneDataError
 from .datafield import Field
 from .definitions import (
     DatasetDefinition,
@@ -34,6 +30,7 @@ from .definitions import (
     TupleDefinition,
     get_type_definition,
 )
+from .exceptions import FiftyOneDataError
 
 
 @dataclass
@@ -113,7 +110,6 @@ class FiftyOneReference:
         media_type: t.Optional[MediaType] = None,
         persistent: bool = False,
     ) -> "FiftyOneReference":
-
         if self.exists(name):
             raise ValueError(
                 (
@@ -174,8 +170,9 @@ class FiftyOneReference:
         )
 
         collections = {
-            p: d.collection
-            for p, d in _get_document_definitions(definition.fields).items()
+            d.path: d.collection
+            for d in definition.fields
+            if isinstance(d, DocumentFieldDefinition)
         }
         bson_schemas = load_bson_schemas(db, collections)
         schema = as_schema(definition.fields, bson_schemas)
@@ -199,46 +196,22 @@ class FiftyOneReference:
         return bool(db.datasets.find_one({"name": name}, {"_id": 1}))
 
 
-def _get_document_cls(
-    d: t.Union[DictDefinition, ListDefinition, TupleDefinition, str]
-) -> t.Any:
-    from .document import Document
-
-    check: t.Union[
-        DictDefinition, ListDefinition, TupleDefinition, str, None
-    ] = d
-
-    while not isinstance(check, (str, TupleDefinition)):
-        if isinstance(check, DictDefinition):
-            check = check.value
-
-        if isinstance(check, ListDefinition):
-            check = check.type
-
-        if not isinstance(check, str):
-            raise ValueError("")
-    if isinstance(check, str):
-        cls = etau.get_class(check)
-        if issubclass(cls, Document):
-            return cls
-
-    return None
-
-
 def as_field_definitions(
     schema: t.Dict[str, Field]
 ) -> t.List[t.Union[DocumentFieldDefinition, FieldDefinition]]:
+    from .document import Document
 
     fields: t.List[t.Union[DocumentFieldDefinition, FieldDefinition]] = []
+
     for path, field in schema.items():
         if not field.type:
             raise FiftyOneDataError(f"field {field.name} has no type")
 
         d: t.Union[DocumentFieldDefinition, FieldDefinition]
         type_definition = get_type_definition(field.type)
-        cls = _get_document_cls(type_definition)
+        cls = get_leaf_cls(type_definition)
 
-        if cls:
+        if issubclass(cls, Document):
             d = DocumentFieldDefinition(path, type_definition)
         else:
             d = FieldDefinition(path, type_definition)
@@ -256,9 +229,15 @@ def _set_collections(
     t.Dict[str, BSONSchemaObjectProperty],
 ]:
     field_definitions = as_field_definitions(schema)
-    documents = _get_document_definitions(field_definitions)
+    documents = {
+        d.path: get_leaf_cls(d.type)
+        for d in field_definitions
+        if isinstance(d, DocumentFieldDefinition)
+    }
     collections: t.Dict[str, str] = {
-        d.path: d.collection for d in documents.values()
+        d.path: d.collection
+        for d in field_definitions
+        if isinstance(d, DocumentFieldDefinition)
     }
     collection_names = list(collections.values())
     bson_schemas = as_bson_schemas(list(collections), schema)
@@ -274,50 +253,37 @@ def _set_collections(
         )["cursor"]["firstBatch"]
     }
 
-    for path, field_definition in documents.items():
-        cls = _get_document_cls(field_definition.type)
-
-        if field_definition.collection not in exists:
-            db.create_collection(field_definition.collection)
-        collection = fod.get_db_conn()[field_definition.collection]
+    for (path, cls), collection_name in zip(
+        documents.items(), collections.values()
+    ):
+        if collection_name not in exists:
+            db.create_collection(collection_name)
+        collection = fod.get_db_conn()[collection_name]
         for index in cls.__fiftyone_indexes__:
             collection.create_index(index)
 
-        commit_bson_schema(db, field_definition.collection, bson_schemas[path])
+        commit_bson_schema(db, collection_name, bson_schemas[path])
 
     return collections, field_definitions, bson_schemas
 
 
-def _get_document_definitions(
-    field_definitions: t.List[
-        t.Union[DocumentFieldDefinition, FieldDefinition]
-    ],
-) -> t.Dict[str, DocumentFieldDefinition]:
-    field_definitions_dict = {d.path: d for d in field_definitions}
-    documents: t.Dict[str, DocumentFieldDefinition] = {}
+def get_leaf_cls(
+    d: t.Union[DictDefinition, ListDefinition, TupleDefinition, str],
+) -> t.Union[t.Tuple[t.Type, ...], t.Type]:
+    current: t.Union[
+        DictDefinition, ListDefinition, TupleDefinition, str, None
+    ] = d
+    while not isinstance(current, (str, TupleDefinition)):
+        if isinstance(current, DictDefinition):
+            current = current.value
 
-    for path in field_definitions_dict:
-        field_definition: t.Union[
-            DocumentFieldDefinition,
-            FieldDefinition,
-            DictDefinition,
-            ListDefinition,
-            str,
-            TupleDefinition,
-            None,
-        ] = field_definitions_dict[path]
-        while not isinstance(field_definition, DocumentFieldDefinition):
-            if isinstance(field_definition, DictDefinition):
-                field_definition = field_definition.value
+        elif isinstance(current, ListDefinition):
+            current = current.type
 
-            elif isinstance(field_definition, ListDefinition):
-                field_definition = field_definition.type
-            else:
-                break
+    if current is None:
+        return None
 
-        if not isinstance(field_definition, DocumentFieldDefinition):
-            continue
+    if isinstance(current, str):
+        return etau.get_class(current)
 
-        documents[path] = field_definition
-
-    return documents
+    return tuple(etau.get_class(t) for t in current.types)

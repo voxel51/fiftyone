@@ -115,7 +115,7 @@ class BSONSchemaObjectProperty(BSONSchemaProperty):
     properties: t.Dict[str, "BSONSchemaProperties"] = field(
         default_factory=dict
     )
-    required: t.List[str] = field(default_factory=list)
+    required: t.Optional[t.List[str]] = None
     additionalProperties: t.Union[bool, "BSONSchemaProperties"] = False
 
 
@@ -167,11 +167,14 @@ def _get_path_property(
     path: str, bson_schemas: t.Dict[str, BSONSchemaObjectProperty]
 ) -> BSONSchemaProperties:
     schema = sorted(filter(lambda s: path.startswith(s), bson_schemas))[-1]
-
-    names = path.split(".")[len(schema.split(".")) :]
     property: BSONSchemaProperties = bson_schemas[schema]
 
-    for name in names[:-1]:
+    if path == schema:
+        return property
+
+    names = path.split(".")[len(schema.split(".")) if schema else 0 :]
+
+    for name in names:
         if not isinstance(property, BSONSchemaObjectProperty):
             raise FiftyOneDataError("todo")
 
@@ -180,6 +183,10 @@ def _get_path_property(
             property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
         ):
             property = _unwind_to_object_property(property)
+
+    if path:
+        print(len(names), names)
+        assert property != bson_schemas[""]
 
     return property
 
@@ -224,7 +231,7 @@ def as_bson_schemas(
     }
 
     for path in paths:
-        if not path:
+        if path in bson_schemas:
             continue
 
         names = path.split(".")
@@ -238,9 +245,18 @@ def as_bson_schemas(
         ):
             raise FiftyOneDataError("todo")
 
-        property.properties[names[-1]] = _type_definition_as_bson_property(
+        property.properties[field.name] = _type_definition_as_bson_property(
             get_type_definition(field.type)
         )
+
+        if field.required:
+            if property.required is None:
+                property.required = []
+
+            property.required.append(field.name)
+
+        if property.required:
+            property.required = sorted(property.required)
 
     return bson_schemas
 
@@ -282,30 +298,11 @@ def _type_definition_as_bson_property(
     from .data import Data
 
     if issubclass(cls, Data):
-        property = BSONSchemaObjectProperty()
-
-        from .data import fields
-
-        for field in fields(cls):
-            if not field.name or not field.type:
-                raise FiftyOneDataError("todo")
-
-            property.properties[
-                field.name
-            ] = _type_definition_as_bson_property(
-                get_type_definition(field.type)
-            )
-
-            if field.required:
-                property.required.append(field.name)
-
-        property.required = sorted(property.required)
-        return property
+        return BSONSchemaObjectProperty()
 
     if cls in BSON_TYPE_MAP:
         return BSON_TYPE_MAP[cls]()
 
-    print(cls)
     raise FiftyOneDataError("todo")
 
 
@@ -315,7 +312,7 @@ def as_schema(
     ],
     bson_schemas: t.Dict[str, BSONSchemaObjectProperty],
 ) -> t.Dict[str, Field]:
-    schema = {
+    schema: t.Dict[str, Field] = {
         definition.path: Field(
             name=definition.path.split(".")[-1],
             type=get_type(definition.type),
@@ -331,9 +328,10 @@ def as_schema(
         property = _get_path_property(parent, bson_schemas)
 
         if not isinstance(property, BSONSchemaObjectProperty):
-            raise FiftyOneDataError("adfa")
+            print(property)
+            raise FiftyOneDataError("unexpected")
 
-        if name in property.required:
+        if property.required and name in property.required:
             field.required = True
 
     return schema
@@ -352,7 +350,9 @@ def commit_bson_schema(
             "validator": {
                 "$jsonSchema": asdict(
                     schema,
-                    dict_factory=lambda d: dict(t for t in d if t[1]),
+                    dict_factory=lambda d: dict(
+                        t for t in d if t[1] is not None
+                    ),
                 )
             },
         }

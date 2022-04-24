@@ -6,6 +6,7 @@ import typing as t
 from dataclasses import replace
 
 import eta.core.utils as etau
+from torch import isin
 import fiftyone.core.utils as fou
 import six
 from bson import ObjectId
@@ -17,6 +18,7 @@ from .containers import (
     is_any_base_container,
     is_dict,
     is_list,
+    is_tuple,
     unwrap,
 )
 from .datafield import Field, field
@@ -100,18 +102,18 @@ def _get_field(cls: t.Type, name: str, type_: t.Type) -> Field:
 )
 class DataMetaclass(type):
     def __init__(
-        cls,
+        cls: t.Type["Data"],
         __name: str,
         __bases: t.Tuple[t.Type, ...],
         __dict: t.Dict[str, t.Any],
         **kwds: t.Any,
     ) -> None:
-        super().__init__(__name, __bases, __dict, **kwds)
+        super().__init__(__name, __bases, __dict, **kwds)  # type: ignore
         schema: t.Dict[str, Field] = {}
-        for b in cls.__mro__[-1:0:-1]:
-            base_fields: "FiftyOneReference" = getattr(b, _REF_NAME, None)
-            if base_fields:
-                for field in base_fields.schema.values():
+        for base in cls.__mro__[-1:0:-1]:
+            base_ref: "FiftyOneReference" = getattr(base, _REF_NAME, None)
+            if base_ref:
+                for field in base_ref.schema.values():
                     schema[field.name] = field
 
         cls_annotations = cls.__dict__.get("__annotations__", {})
@@ -129,6 +131,19 @@ class DataMetaclass(type):
                     delattr(cls, field.name)
                 else:
                     setattr(cls, field.name, field.default)
+
+            leaf_cls = get_leaf_cls(field.type)
+            if isinstance(leaf_cls, tuple):
+                continue
+
+            if issubclass(leaf_cls, Data):
+                merge_schema(
+                    schema,
+                    {
+                        ".".join([field.name, k]): v
+                        for k, v in _extract_schema(leaf_cls).items()
+                    },
+                )
 
         for field in cls_fields:
             if field.link and field.required != schema[field.link].required:
@@ -420,43 +435,22 @@ class Data(metaclass=DataMetaclass):
         return instance
 
 
-def _parse_fields(
+def asdict_default_factory(items: t.List[t.Tuple[str, t.Any]]) -> t.Dict:
+    return {k: v for k, v in items if not k.startswith("_")}
+
+
+def asdict(
     data: Data,
-    fields: t.Union[t.Iterable[str], t.Dict[str, str], str, None] = None,
-    omit_fields: t.Union[t.List[str], t.Set[str], str, None] = None,
-) -> t.Dict[str, str]:
-    if fields is None:
-        fields = {
-            f: f
-            for f in data.__fiftyone_fields__
-            if f != "_id" and not _is_link(data.__fiftyone_field__(f))
-        }
-    elif etau.is_str(fields):
-        fields = {fields: fields}  # type: ignore
+    *,
+    dict_factory: t.Callable[
+        [t.List[t.Tuple[str, t.Any]]], t.Dict
+    ] = asdict_default_factory,
+    links: bool = True,
+) -> t.Dict:
+    if not _is_data_instance(data):
+        raise FiftyOneDataError("asdict() must be called with a data instance")
 
-    if not isinstance(fields, dict):
-        fields = {f: f for f in fields}
-
-    if omit_fields is not None:
-        if etau.is_str(omit_fields):
-            omit_fields = {omit_fields}  # type: ignore
-        else:
-            omit_fields = set(omit_fields)
-
-        fields = {k: v for k, v in fields.items() if k not in omit_fields}
-
-    return fields
-
-
-def _is_link(field: t.Optional[Field]) -> bool:
-    if field is None:
-        return False
-
-    return field.link is not None
-
-
-def _is_data_instance(obj: t.Any) -> bool:
-    return isinstance(obj, Data)
+    return _asdict_inner(data, dict_factory, links)
 
 
 def is_data(obj: t.Any) -> bool:
@@ -464,8 +458,79 @@ def is_data(obj: t.Any) -> bool:
     return issubclass(cls, Data)
 
 
-def asdict_default_factory(items: t.List[t.Tuple[str, t.Any]]) -> t.Dict:
-    return {k: v for k, v in items if not k.startswith("_")}
+def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
+    if not is_data(data):
+        raise FiftyOneDataError(
+            "fields() must be called with a data instance or class"
+        )
+
+    l: t.List[Field] = []
+    for path in sorted(data.__fiftyone_ref__.schema):
+        name = (
+            path[len(data.__fiftyone_path__) + 1 :]
+            if data.__fiftyone_path__
+            else path
+        )
+
+        if name and "." not in name:
+            l.append(data.__fiftyone_ref__.schema[path])
+
+    return tuple(l)
+
+
+def get_leaf_cls(
+    d: t.Type,
+) -> t.Union[t.Tuple[t.Type, ...], t.Type]:
+    current: t.Type = d
+
+    while is_dict(current) or is_list(current):
+        current = current.__args__[-1]
+
+    if is_tuple(current):
+        return tuple(current.__args__)
+
+    return current
+
+
+def inherit_data(
+    path: t.Optional[str],
+    ref: FiftyOneReference,
+    name: str,
+    data: _D,
+) -> None:
+    prefix = ".".join([path, name]) if path else name
+
+    merge_schema(
+        ref.schema,
+        {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
+    )
+
+    data_schema = data.__fiftyone_ref__.schema
+
+    data.__fiftyone_path__ = prefix  # type: ignore
+    data.__fiftyone_ref__ = ref  # type: ignore
+
+    for path, field in data_schema.items():
+        type = unwrap(field.type, -1)
+        if type and isclass(type) and issubclass(type, Data):
+            items = _get_items(path, data)
+            for item in items:
+                item.__fiftyone_path__ = ".".join([prefix, name])  # type: ignore
+                item.__fiftyone_ref__ = ref  # type: ignore
+
+
+def merge_schema(
+    schema: t.Dict[str, Field], other: t.Dict[str, Field]
+) -> None:
+    paths = set(schema.keys()).union(set(other.keys()))
+    for path in paths:
+        if path in schema and path in other:
+            # todo _merge_field()?
+            assert schema[path].type == other[path].type
+            continue
+
+        if path not in schema:
+            schema[path] = replace(other[path])
 
 
 def _asdict_inner(
@@ -512,38 +577,39 @@ def _asdict_inner(
     return copy.deepcopy(obj)
 
 
-def asdict(
-    data: Data,
-    *,
-    dict_factory: t.Callable[
-        [t.List[t.Tuple[str, t.Any]]], t.Dict
-    ] = asdict_default_factory,
-    links: bool = True,
-) -> t.Dict:
-    if not _is_data_instance(data):
-        raise FiftyOneDataError("asdict() must be called with a data instance")
+def _extract_schema(data: t.Union[t.Type[Data], Data]) -> t.Dict[str, Field]:
+    length = len(data.__fiftyone_path__) if data.__fiftyone_path__ else 0
+    schema = {}
+    for path, field in data.__fiftyone_ref__.schema.items():
+        if length and len(path) < length:
+            continue
 
-    return _asdict_inner(data, dict_factory, links)
+        path = path[length + 1 if length else 0 :]
+        schema[path] = field
+
+    return schema
 
 
-def fields(data: t.Union[t.Type[Data], Data]) -> t.Tuple[Field, ...]:
-    if not is_data(data):
-        raise FiftyOneDataError(
-            "fields() must be called with a data instance or class"
-        )
+def _flatten(items: t.List) -> t.List:
+    if items == []:
+        return items
+    if isinstance(items[0], list):
+        return _flatten(items[0]) + _flatten(items[1:])
+    return items[:1] + _flatten(items[1:])
 
-    l: t.List[Field] = []
-    for path in sorted(data.__fiftyone_ref__.schema):
-        name = (
-            path[len(data.__fiftyone_path__) + 1 :]
-            if data.__fiftyone_path__
-            else path
-        )
 
-        if name and "." not in name:
-            l.append(data.__fiftyone_ref__.schema[path])
+def _get_items(path: str, data: Data) -> t.List[Data]:
+    if "." not in path:
+        v = data[path]
+        return v if isinstance(v, list) else [v]
 
-    return tuple(l)
+    root, rest = path.split(".", 1)
+    v = data[root]
+
+    if not isinstance(v, list):
+        v = [v]
+
+    return _flatten([_get_items(rest, d) for d in v])
 
 
 def _infer_type(value: t.Any) -> t.Type:
@@ -599,74 +665,40 @@ def _infer_type(value: t.Any) -> t.Type:
     raise ValueError("todo")
 
 
-def _extract_schema(data: Data) -> t.Dict[str, Field]:
-    length = len(data.__fiftyone_path__) if data.__fiftyone_path__ else 0
-    schema = {}
-    for path, field in data.__fiftyone_ref__.schema.items():
-        if length and len(path) < length:
-            continue
-
-        path = path[length + 1 if length else 0 :]
-        schema[path] = field
-
-    return schema
+def _is_data_instance(obj: t.Any) -> bool:
+    return isinstance(obj, Data)
 
 
-def inherit_data(
-    path: t.Optional[str], ref: FiftyOneReference, name: str, data: Data
-) -> None:
-    prefix = ".".join([path, name]) if path else name
+def _is_link(field: t.Optional[Field]) -> bool:
+    if field is None:
+        return False
 
-    merge_schema(
-        ref.schema,
-        {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
-    )
-
-    data_schema = data.__fiftyone_ref__.schema
-
-    data.__fiftyone_path__ = prefix  # type: ignore
-    data.__fiftyone_ref__ = ref  # type: ignore
-
-    for path, field in data_schema.items():
-        type = unwrap(field.type, -1)
-        if type and isclass(type) and issubclass(type, Data):
-            items = _get_items(path, data)
-            for item in items:
-                item.__fiftyone_path__ = ".".join([prefix, name])  # type: ignore
-                item.__fiftyone_ref__ = ref  # type: ignore
+    return field.link is not None
 
 
-def _get_items(path: str, data: Data) -> t.List[Data]:
-    if "." not in path:
-        v = data[path]
-        return v if isinstance(v, list) else [v]
+def _parse_fields(
+    data: Data,
+    fields: t.Union[t.Iterable[str], t.Dict[str, str], str, None] = None,
+    omit_fields: t.Union[t.List[str], t.Set[str], str, None] = None,
+) -> t.Dict[str, str]:
+    if fields is None:
+        fields = {
+            f: f
+            for f in data.__fiftyone_fields__
+            if f != "_id" and not _is_link(data.__fiftyone_field__(f))
+        }
+    elif etau.is_str(fields):
+        fields = {fields: fields}  # type: ignore
 
-    root, rest = path.split(".", 1)
-    v = data[root]
+    if not isinstance(fields, dict):
+        fields = {f: f for f in fields}
 
-    if not isinstance(v, list):
-        v = [v]
+    if omit_fields is not None:
+        if etau.is_str(omit_fields):
+            omit_fields = {omit_fields}  # type: ignore
+        else:
+            omit_fields = set(omit_fields)
 
-    return _flatten([_get_items(rest, d) for d in v])
+        fields = {k: v for k, v in fields.items() if k not in omit_fields}
 
-
-def merge_schema(
-    schema: t.Dict[str, Field], other: t.Dict[str, Field]
-) -> None:
-    paths = set(schema.keys()).union(set(other.keys()))
-    for path in paths:
-        if path in schema and path in other:
-            # todo _merge_field()?
-            assert schema[path].type == other[path].type
-            continue
-
-        if path not in schema:
-            schema[path] = replace(other[path])
-
-
-def _flatten(items: t.List) -> t.List:
-    if items == []:
-        return items
-    if isinstance(items[0], list):
-        return _flatten(items[0]) + _flatten(items[1:])
-    return items[:1] + _flatten(items[1:])
+    return fields

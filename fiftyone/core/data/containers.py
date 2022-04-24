@@ -1,9 +1,8 @@
 import typing as t
-from fiftyone.core.data.exceptions import FiftyOneDataError
 
-from fiftyone.core.data.reference import FiftyOneReference
+from .exceptions import FiftyOneDataError
+from .reference import FiftyOneReference
 
-from .datafield import Field
 
 _KT = t.TypeVar("_KT")
 _T = t.TypeVar("_T")

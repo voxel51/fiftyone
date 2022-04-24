@@ -1425,8 +1425,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         self,
         samples: t.Iterable[fod.Document],
         expand_schema: bool,
-        validate: bool,
-    ):
+    ) -> t.List[str]:
         samples = [
             sample.copy() if sample.__fiftyone_ref__.in_db else sample
             for sample in samples
