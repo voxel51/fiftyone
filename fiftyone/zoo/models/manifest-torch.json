@@ -1688,7 +1688,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchCLIPModel",
+                "type": "fiftyone.utils.clip.TorchCLIPModel",
                 "config": {
                     "entrypoint_fcn": "",
                     "labels_path": "{{eta-resources}}/voc-labels.txt",
