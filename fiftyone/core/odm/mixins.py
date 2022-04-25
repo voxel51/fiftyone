@@ -23,7 +23,6 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
-from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
 from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -120,10 +119,7 @@ class DatasetMixin(object):
 
     def __setattr__(self, name, value):
         if name in self._fields and value is not None:
-            if isinstance(self._fields[name], fof.EmbeddedDocumentField):
-                self._fields[name].validate(value, expand=True)
-            else:
-                self._fields[name].validate(value)
+            self._fields[name].validate(value)
 
         super().__setattr__(name, value)
 
@@ -170,9 +166,6 @@ class DatasetMixin(object):
                 % field_name
             )
 
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
@@ -181,17 +174,7 @@ class DatasetMixin(object):
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
         elif value is not None:
-            field = self._fields[field_name]
-            kwargs = (
-                {}
-                if not isinstance(field, fof.EmbeddedDocumentField)
-                else {"expand": create}
-            )
-            field.validate(value, **kwargs)
-
-        field = self._fields[field_name]
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field._set_parent(self.__class__)
+            self._fields[field_name].validate(value)
 
         super().__setattr__(field_name, value)
 
@@ -294,7 +277,7 @@ class DatasetMixin(object):
                 field = doc.to_field()
 
             new_docs.append(doc)
-            cls._declare_field(field, keys + [field_name])
+            cls._declare_field(field)
 
         dataset_field_docs = cls._dataset_doc()[cls._fields_attr()]
         parent_docs = dataset_field_docs
@@ -385,10 +368,6 @@ class DatasetMixin(object):
         field = create_field(keys[-1], **get_implied_field_kwargs(value))
 
         cls.merge_field_schema(keys[:-1], {keys[-1]: field})
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            value._set_parent(field)
-            field._set_parent(cls)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -697,36 +676,11 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
-    def _declare_field(cls, field, path):
-        if isinstance(path, str):
-            path = path.split(".")
-
-        if len(path) == 1:
-            cls._fields[field.name] = field
-            if field.name not in cls._fields_ordered:
-                cls._fields_ordered += (field.name,)
-            setattr(cls, field.name, field)
-
-            while isinstance(field, (fo.DictField, fo.ListField)):
-                field = field.field
-
-            if isinstance(field, fof.EmbeddedDocumentField):
-                field._set_parent(cls)
-            return
-
-        parent = getattr(cls, path[0])
-        for field_name in path[1:-1]:
-            while isinstance(parent, (fo.DictField, fo.ListField)):
-                parent = parent.field
-
-            parent = parent.get_field_schema()[field_name]
-
-        while isinstance(parent, (fo.DictField, fo.ListField)):
-            parent = parent.field
-
-        parent.fields.append(field)
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field._set_parent(parent)
+    def _declare_field(cls, field):
+        cls._fields[field.name] = field
+        if field.name not in cls._fields_ordered:
+            cls._fields_ordered += (field.name,)
+        setattr(cls, field.name, field)
 
     @classmethod
     def _add_field_schema(

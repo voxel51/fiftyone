@@ -376,7 +376,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
-            self._sample_doc_cls._declare_field(field, field.name)
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -1469,21 +1468,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
-            old_doc = sample._doc
             sample._set_backing_doc(doc, dataset=self)
-            for name, field in self.get_field_schema().items():
-                while isinstance(field, fof.ListField):
-                    field = field.field
-
-                if not isinstance(field, fof.EmbeddedDocumentField):
-                    continue
-
-                doc._fields[name]._set_parent(self._sample_doc_cls)
-
-            for name, value in old_doc._data.items():
-                if isinstance(value, BaseEmbeddedDocument):
-                    value._set_parent(doc._fields[name])
-
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -4501,10 +4486,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 else:
                     if value is not None or not field.null:
                         try:
-                            if isinstance(field, fof.EmbeddedDocumentField):
-                                field.validate(value, expand=True)
-                            else:
-                                field.validate(value)
+                            field.validate(value)
                         except moe.ValidationError as e:
                             raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
@@ -4683,20 +4665,6 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _declare_fields(doc_cls, field_docs=None):
-    for field_name, field in doc_cls._fields.items():
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-            field._set_parent(doc_cls)
-            doc_cls._fields[field_name] = field
-            setattr(doc_cls, field_name, field)
-
-    if field_docs is not None:
-        for field_doc in field_docs:
-            field = field_doc.to_field()
-            doc_cls._declare_field(field, field.name)
-
-
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4725,13 +4693,11 @@ def _make_frame_collection_name(sample_collection_name):
 
 def _create_sample_document_cls(sample_collection_name, field_docs=None):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
 def _create_frame_document_cls(frame_collection_name, field_docs=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 

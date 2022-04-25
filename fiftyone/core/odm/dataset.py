@@ -126,17 +126,6 @@ def create_field(
     field = ftype(**kwargs)
     field.name = name
 
-    if parent is not None and isinstance(field, EmbeddedDocumentField):
-        field._set_parent(parent)
-
-    if fields:
-        parent = field.field if subfield else field
-        for child in fields:
-            if not isinstance(child, EmbeddedDocumentField):
-                continue
-
-            child._set_parent(parent)
-
     return field
 
 
