@@ -102,6 +102,9 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
+    def __add__(self, samples):
+        return self.concat(samples)
+
     @property
     def _dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` that serves the samples
@@ -120,6 +123,13 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _root_dataset")
 
     @property
+    def _is_generated(self):
+        """Whether this collection's contents is generated from another
+        collection.
+        """
+        raise NotImplementedError("Subclass must implement _is_generated")
+
+    @property
     def _is_patches(self):
         """Whether this collection contains patches."""
         raise NotImplementedError("Subclass must implement _is_patches")
@@ -128,6 +138,11 @@ class SampleCollection(object):
     def _is_frames(self):
         """Whether this collection contains frames of a video dataset."""
         raise NotImplementedError("Subclass must implement _is_frames")
+
+    @property
+    def _is_clips(self):
+        """Whether this collection contains clips."""
+        raise NotImplementedError("Subclass must implement _is_clips")
 
     @property
     def _element_str(self):
@@ -2356,6 +2371,55 @@ class SampleCollection(object):
         return self._add_view_stage(stage)
 
     @view_stage
+    def concat(self, samples):
+        """Concatenates the contents of the given :class:`SampleCollection` to
+        this collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Concatenate two views
+            #
+
+            view1 = dataset.match(F("uniqueness") < 0.2)
+            view2 = dataset.match(F("uniqueness") > 0.7)
+
+            view = view1.concat(view2)
+
+            print(view1)
+            print(view2)
+            print(view)
+
+            #
+            # Concatenate two patches views
+            #
+
+            gt_objects = dataset.to_patches("ground_truth")
+
+            patches1 = gt_objects[:50]
+            patches2 = gt_objects[-50:]
+            patches = patches1.concat(patches2)
+
+            print(patches1)
+            print(patches2)
+            print(patches)
+
+        Args:
+            samples: a :class:`SampleCollection` whose contents to append to
+                this collection
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Concat(samples))
+
+    @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the collection.
 
@@ -3155,10 +3219,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(
-                field,
-                filter=filter,
-                labels=labels,
-                only_matches=only_matches,
+                field, filter=filter, labels=labels, only_matches=only_matches,
             )
         )
 
