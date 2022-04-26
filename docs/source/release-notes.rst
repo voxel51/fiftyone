@@ -53,6 +53,11 @@ Core
 - Fixed a `KeyError` bug when loading dataset with relative paths on Windows
   `#1675 <https://github.com/voxel51/fiftyone/pull/1675>`_
 
+Brain
+
+- Added `fiftyone-brain` wheels for Python 3.10
+- Added support for installing `fiftyone-brain` on Apple Silicon
+
 Annotation
 
 - Fixed a `CSRF Failed` error when connecting to some CVAT servers
@@ -60,8 +65,8 @@ Annotation
 
 Integrations
 
-- Updated the :ref:`PyTorch Lightning Flash integration <lightning-flash>` to
-  support Flash versions 0.7.0 or later
+- Updated the :ref:`Lightning Flash integration <lightning-flash>` to support
+  Flash versions 0.7.0 or later
   `#1671 <https://github.com/voxel51/fiftyone/pull/1671>`_
 
 Zoo
