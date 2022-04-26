@@ -410,8 +410,9 @@ class AppConfig(EnvConfig):
 
         if self.color_by not in {"field", "instance", "label"}:
             logger.warning(
-                f"Invalid `color_by` option '{self.color_by}'. Must be one "
-                "of 'field', 'instance' or 'label'. Defaulting to 'field'"
+                "Invalid `color_by` option '%s'. Must be one of 'field', "
+                "'instance' or 'label'. Defaulting to 'field'",
+                self.color_by
             )
             self.color_by = "field"
 
