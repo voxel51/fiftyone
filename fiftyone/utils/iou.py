@@ -257,6 +257,50 @@ def compute_max_ious(
             sample_collection.set_values(id_path2, label_ids2)
 
 
+def find_duplicates(sample_collection, label_field, iou_thresh=0.999):
+    """Returns the IDs of duplicate labels in the given field of the
+    collection, as defined by labels with an IoU greater than a chosen
+    threshold with another label in the field.
+
+    When duplicates are found, the ID of the *latter* label(s) in the field are
+    returned as duplicates.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: a label field of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+        iou_thresh (0.999): the IoU threshold to use to determine whether
+            labels are duplicates
+
+    Returns:
+        a list of label IDs
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, label_field, (fol.Detections, fol.Polylines)
+    )
+
+    _label_field, is_frame_field = sample_collection._handle_frame_field(
+        label_field
+    )
+
+    view = sample_collection.select_fields(label_field)
+
+    dup_ids = []
+
+    for sample in view.iter_samples(progress=True):
+        if is_frame_field:
+            for frame in sample.frames.values():
+                _dup_ids = _find_duplicates(frame, _label_field, iou_thresh)
+                dup_ids.extend(_dup_ids)
+        else:
+            _dup_ids = _find_duplicates(sample, _label_field, iou_thresh)
+            dup_ids.extend(_dup_ids)
+
+    return dup_ids
+
+
 def _compute_max_ious(doc, field1, field2, **kwargs):
     if field1 != field2:
         labels1 = _get_labels(doc, field1)
@@ -299,6 +343,19 @@ def _extract_max_ious(ious, labels1, labels2):
     ids2 = [labels1[i].id for i in inds2]
 
     return max1, max2, ids1, ids2
+
+
+def _find_duplicates(doc, field, iou_thresh):
+    labels = _get_labels(doc, field)
+
+    if labels is None:
+        return []
+
+    # When duplicates are found, delete the *latter* label in `labels`
+    ious = compute_ious(labels, labels)
+    i, j = np.nonzero(np.triu(ious, k=1) > iou_thresh)
+    dup_inds = np.unique(np.sort(np.stack((i, j))), axis=1)[1]
+    return [labels[i].id for i in dup_inds]
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
