@@ -8,6 +8,8 @@ import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "./atoms";
 import * as selectors from "../../recoil/selectors";
 import { LABEL_LIST, VALID_LIST_TYPES } from "../../utils/labels";
+import { KEYPOINT, KEYPOINTS } from "@fiftyone/looker/src/constants";
+import { NONFINITE } from "@fiftyone/looker/src/state";
 
 interface Label {
   confidence?: number;
@@ -26,6 +28,67 @@ export const getPathExtension = (type: string): string => {
   }
   return "";
 };
+
+interface Point {
+  points: [number | NONFINITE, number | NONFINITE];
+  label: string;
+  [key: string]: any;
+}
+
+export const skeletonFilter = selectorFamily<
+  (path: string, value: Point) => boolean,
+  boolean
+>({
+  key: "skeletonFilter",
+  get: (modal) => ({ get }) => {
+    const filters = get(
+      modal ? filterAtoms.modalFilterStages : filterAtoms.filterStages
+    );
+    const types = get(selectors.labelTypesMap);
+
+    return (path: string, point: Point) => {
+      const lpath = `${path}${getPathExtension(types[path])}.points.label`;
+      const cpath = `${path}${getPathExtension(types[path])}.confidence`;
+
+      if (point.points.some((c) => c === "nan")) {
+        return false;
+      }
+
+      if (!filters[lpath] && !filters[cpath]) {
+        return true;
+      }
+      const l = filters[lpath];
+
+      const label =
+        !l ||
+        (l.exclude
+          ? !l.values.includes(point.label)
+          : l.values.includes(point.label));
+
+      const c = filters[cpath];
+
+      if (!c) {
+        return label;
+      }
+
+      const inRange = c.exclude
+        ? c.range[0] - 0.005 > point.confidence ||
+          point.confidence > c.range[1] + 0.005
+        : c.range[0] - 0.005 <= point.confidence &&
+          point.confidence <= c.range[1] + 0.005;
+      const noConfidence = c.none && point.confidence === undefined;
+
+      return (
+        label &&
+        (inRange ||
+          noConfidence ||
+          (c.nan && point.confidence === "nan") ||
+          (c.inf && point.confidence === "inf") ||
+          (c.ninf && point.confidence === "-inf"))
+      );
+    };
+  },
+});
 
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
@@ -240,7 +303,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           ? cRange[0] - 0.005 > s.confidence || s.confidence > cRange[1] + 0.005
           : cRange[0] - 0.005 <= s.confidence &&
             s.confidence <= cRange[1] + 0.005;
-        const noConfidence = cNone && s.confidence === undefined;
+        const noConfidence =
+          (cNone && s.confidence === undefined) ||
+          [KEYPOINTS, KEYPOINT].includes(typeMap[field]);
         let label = s.label ? s.label : s.value;
         if (label === undefined) {
           label = null;
@@ -262,6 +327,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         return (
           (inRange ||
             noConfidence ||
+            Array.isArray(s.confidence) ||
             (cNan && s.confidence === "nan") ||
             (cInf && s.confidence === "inf") ||
             (cNinf && s.confidence === "-inf")) &&
@@ -277,11 +343,12 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     }
     return filters;
   },
-  set: () => ({ get, set }, _) => {
+  set: () => ({ get, set, reset }, _) => {
     set(utils.activeModalFields, get(utils.activeFields));
     set(atoms.cropToContent(true), get(atoms.cropToContent(false)));
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
-    set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
+    reset(selectors.appConfigOption({ modal: true, key: "color_by_value" }));
+    reset(selectors.appConfigOption({ modal: true, key: "show_skeletons" }));
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
     set(atoms.alpha(true), get(atoms.alpha(false)));

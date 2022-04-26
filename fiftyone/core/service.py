@@ -133,15 +133,6 @@ class Service(object):
         """Waits for the service to exit and returns its exit code."""
         return self.child.wait()
 
-    @staticmethod
-    def cleanup():
-        """Performs any necessary cleanup when the service exits.
-
-        This is called by the subprocess (cf. ``service/main.py``) and is not
-        intended to be called directly.
-        """
-        pass
-
     def _wait_for_child_port(self, port=None, timeout=60):
         """Waits for any child process of this service to bind to a TCP port.
 
@@ -177,19 +168,6 @@ class Service(object):
             raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
-
-    @classmethod
-    def find_subclass_by_name(cls, name):
-        for subclass in cls.__subclasses__():
-            if subclass.service_name == name:
-                return subclass
-
-            try:
-                return subclass.find_subclass_by_name(name)
-            except ValueError:
-                pass
-
-        raise ValueError("Unrecognized %s subclass: %s" % (cls.__name__, name))
 
 
 class MultiClientService(Service):
@@ -296,34 +274,6 @@ class DatabaseService(MultiClientService):
     @property
     def port(self):
         return self._wait_for_child_port()
-
-    @staticmethod
-    def cleanup():
-        """Deletes non-persistent datasets when the DB shuts down."""
-        import fiftyone.core.dataset as fod
-        import fiftyone.core.odm.database as food
-        import fiftyone.service.util as fosu
-
-        try:
-            port = next(
-                port
-                for child in psutil.Process().children()
-                for port in fosu.get_listening_tcp_ports(child)
-            )
-            food._connection_kwargs["port"] = port
-            food._connect()
-        except (StopIteration, psutil.Error):
-            # mongod may have exited - ok to wait until next time
-            return
-
-        try:
-
-            fod.delete_non_persistent_datasets()
-            food.sync_database()
-        except:
-            # something weird may have happened, like a downward DB migration
-            # - ok to wait until next time
-            pass
 
     @staticmethod
     def find_mongod():
@@ -464,10 +414,7 @@ class AppService(Service):
 
         pre = foc.FIFTYONE_DESKTOP_APP_DIR
         for path in etau.list_files("./"):
-            if path.endswith(".exe"):
-                return [os.path.join(pre + path)]
-
-            if path.endswith(".AppImage"):
+            if path.endswith(".AppImage") or path.endswith(".exe"):
                 return [os.path.join(pre, path)]
 
         if os.path.isdir("./FiftyOne.app"):

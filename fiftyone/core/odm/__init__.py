@@ -20,6 +20,7 @@ from .database import (
     delete_evaluations,
     delete_brain_run,
     delete_brain_runs,
+    drop_collection,
     drop_orphan_collections,
     drop_orphan_run_results,
     list_collections,
@@ -36,6 +37,7 @@ from .database import (
 from .dataset import (
     create_field,
     SampleFieldDocument,
+    KeypointSkeleton,
     DatasetDocument,
 )
 from .document import (
