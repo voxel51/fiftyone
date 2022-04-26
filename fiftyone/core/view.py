@@ -124,12 +124,20 @@ class DatasetView(foc.SampleCollection):
         return self.__dataset
 
     @property
+    def _is_generated(self):
+        return self._dataset._is_generated
+
+    @property
     def _is_patches(self):
         return self._dataset._is_patches
 
     @property
     def _is_frames(self):
         return self._dataset._is_frames
+
+    @property
+    def _is_clips(self):
+        return self._dataset._is_clips
 
     @property
     def _sample_cls(self):
