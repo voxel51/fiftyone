@@ -317,7 +317,9 @@ class DatasetTests(unittest.TestCase):
 
         sample11 = fo.Sample(filepath="image1.jpg", field=1)
         sample12 = fo.Sample(
-            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+            filepath="image2.jpg",
+            field=1,
+            gt=fo.Classification(label="cat"),
         )
 
         sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
@@ -414,7 +416,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample15 = fo.Sample(
-            filepath="image5.png", ground_truth=None, hello=None,
+            filepath="image5.png",
+            ground_truth=None,
+            hello=None,
         )
 
         dataset1 = fo.Dataset()
@@ -449,7 +453,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample24 = fo.Sample(
-            filepath="image4.png", ground_truth=None, hello=None,
+            filepath="image4.png",
+            ground_truth=None,
+            hello=None,
         )
 
         sample25 = fo.Sample(
@@ -559,7 +565,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "world", "world", "bar", None],
             )
             self.assertListEqual(
-                d4.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d4.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d4.values("ground_truth.detections.label"),
@@ -601,7 +608,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d5.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d5.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d5.values("ground_truth.detections.label"),
@@ -632,7 +640,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d6.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d6.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d6.values("ground_truth.detections.label"),
@@ -761,14 +770,16 @@ class DatasetTests(unittest.TestCase):
             self.assertNotIn("predictions2", d10_schema)
 
             self.assertListEqual(
-                d10.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d10.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d10.values("hello"),
                 [None, "world", "world", "world", None, None],
             )
             self.assertListEqual(
-                d10.values("hello2"), [None, None, "bar", None, "bar", None],
+                d10.values("hello2"),
+                [None, None, "bar", None, "bar", None],
             )
             self.assertListEqual(
                 d10.values("predictions1.detections.label"),
@@ -1084,8 +1095,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_classes = ["cat", "dog"]
-
         dataset.default_classes = default_classes
+
+        dataset.reload()
         self.assertListEqual(dataset.default_classes, default_classes)
 
         with self.assertRaises(Exception):
@@ -1098,6 +1110,8 @@ class DatasetTests(unittest.TestCase):
         classes = {"ground_truth": ["cat", "dog"]}
 
         dataset.classes = classes
+
+        dataset.reload()
         self.assertDictEqual(dataset.classes, classes)
 
         with self.assertRaises(Exception):
@@ -1119,8 +1133,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
-
         dataset.default_mask_targets = default_mask_targets
+
+        dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
@@ -1133,8 +1148,9 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
         mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
-
         dataset.mask_targets = mask_targets
+
+        dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
         with self.assertRaises(Exception):
@@ -1142,13 +1158,13 @@ class DatasetTests(unittest.TestCase):
             dataset.save()  # error
 
         dataset.mask_targets.pop("hi")
+        dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
         dataset.mask_targets.pop(1)
-
         dataset.save()  # success
 
         with self.assertRaises(Exception):
@@ -1166,6 +1182,78 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
     @drop_datasets
+    def test_skeletons(self):
+        dataset = fo.Dataset()
+
+        default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+        dataset.default_skeleton = default_skeleton
+
+        dataset.reload()
+        self.assertEqual(dataset.default_skeleton, default_skeleton)
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.labels = [1]
+            dataset.save()  # error
+
+        dataset.default_skeleton.labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.edges = "hello"
+            dataset.save()  # error
+
+        dataset.default_skeleton.edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.default_skeleton.labels = None
+        dataset.save()  # success
+
+        skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.skeletons = skeletons
+
+        dataset.reload()
+        self.assertDictEqual(dataset.skeletons, skeletons)
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["hi"] = "there"
+            dataset.save()  # error
+
+        dataset.skeletons.pop("hi")
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons[1] = fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+            dataset.save()  # error
+
+        dataset.skeletons.pop(1)
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].labels = [1]
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].edges = "hello"
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.skeletons["ground_truth"].labels = None
+        dataset.save()  # success
+
+    @drop_datasets
     def test_dataset_info_import_export(self):
         dataset = fo.Dataset()
 
@@ -1177,6 +1265,15 @@ class DatasetTests(unittest.TestCase):
         dataset.mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
         dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
+        dataset.skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+
         with etau.TempDir() as tmp_dir:
             json_path = os.path.join(tmp_dir, "dataset.json")
 
@@ -1186,13 +1283,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset2.info, dataset.info)
 
             self.assertDictEqual(dataset2.classes, dataset.classes)
-            self.assertListEqual(
-                dataset2.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset2.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset2.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset2.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset2.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset2.default_skeleton, dataset.default_skeleton
             )
 
         with etau.TempDir() as tmp_dir:
@@ -1206,13 +1306,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset3.info, dataset.info)
 
             self.assertDictEqual(dataset3.classes, dataset.classes)
-            self.assertListEqual(
-                dataset3.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset3.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset3.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset3.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset3.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset3.default_skeleton, dataset.default_skeleton
             )
 
 
@@ -1223,7 +1326,8 @@ class DatasetDeletionTests(unittest.TestCase):
 
     def _setUp_classification(self):
         sample1 = fo.Sample(
-            filepath="image1.png", ground_truth=fo.Classification(label="cat"),
+            filepath="image1.png",
+            ground_truth=fo.Classification(label="cat"),
         )
 
         sample2 = sample1.copy()
@@ -1256,9 +1360,13 @@ class DatasetDeletionTests(unittest.TestCase):
             filepath="image1.png",
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",
@@ -1284,9 +1392,13 @@ class DatasetDeletionTests(unittest.TestCase):
             frame_number=1,
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",

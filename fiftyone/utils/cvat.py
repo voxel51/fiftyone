@@ -500,7 +500,9 @@ class CVATImageDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -592,7 +594,7 @@ class CVATImageDatasetImporter(
             else:
                 key = i.name
 
-            cvat_images_map[key] = i
+            cvat_images_map[fou.normpath(key)] = i
 
         filenames = set(cvat_images_map.keys())
 
@@ -673,7 +675,9 @@ class CVATVideoDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -759,9 +763,10 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
+            labels_path = fou.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-                for p in etau.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: os.path.join(labels_path, p)
+                for p in etau.list_files(labels_path, recursive=True)
             }
         else:
             labels_paths_map = {}
@@ -1018,7 +1023,9 @@ class CVATVideoDatasetExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default="labels/",
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels/",
         )
 
         super().__init__(export_dir=export_dir)
@@ -1051,7 +1058,8 @@ class CVATVideoDatasetExporter(
     def setup(self):
         self._writer = CVATVideoAnnotationWriter()
         self._media_exporter = foud.ImageExporter(
-            self.export_media, export_path=self.data_path,
+            self.export_media,
+            export_path=self.data_path,
         )
         self._media_exporter.setup()
 
@@ -1623,11 +1631,12 @@ class CVATImageTag(CVATImageAnno):
 
     Args:
         label: the tag string
+        attributes (None): a list of :class:`CVATAttribute` instances
     """
 
-    def __init__(self, label):
+    def __init__(self, label, attributes=None):
         self.label = label
-        CVATImageAnno.__init__(self)
+        CVATImageAnno.__init__(self, attributes=attributes)
 
     def to_classification(self):
         """Returns a :class:`fiftyone.core.labels.Classification`
@@ -1636,7 +1645,8 @@ class CVATImageTag(CVATImageAnno):
         Returns:
             a :class:`fiftyone.core.labels.Classification`
         """
-        return fol.Classification(label=self.label)
+        attributes = self._to_attributes()
+        return fol.Classification(label=self.label, **attributes)
 
     @classmethod
     def from_classification(cls, classification):
@@ -1650,7 +1660,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = classification.label
-        return cls(label)
+
+        _, attributes = cls._parse_attributes(classification)
+        return cls(label, attributes=attributes)
 
     @classmethod
     def from_tag_dict(cls, d):
@@ -1664,7 +1676,9 @@ class CVATImageTag(CVATImageAnno):
             a :class:`CVATImageTag`
         """
         label = d["@label"]
-        return cls(label)
+
+        _, attributes = cls._parse_anno_dict(d)
+        return cls(label, attributes=attributes)
 
 
 class CVATImageBox(CVATImageAnno):
@@ -2984,7 +2998,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             task. Videos are always uploaded one per task
         segment_size (None): maximum number of images per job. Not applicable
             to videos
-        image_quality (75): an int in `[0, 100]` determining the image quality
+        image_quality (75): an int in ``[0, 100]`` determining the image quality
             to upload to CVAT
         use_cache (True): whether to use a cache when uploading data. Using a
             cache reduces task creation time as data will be processed
@@ -3011,7 +3025,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             for all objects in the annotation run
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
-            or when using `task_size` and generating multiple tasks
+            or when using ``task_size`` and generating multiple tasks
     """
 
     def __init__(
@@ -3511,7 +3525,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return "%s/annotations" % self.task_url(task_id)
 
     def task_annotation_formatted_url(
-        self, task_id, anno_filepath, anno_format="CVAT 1.1",
+        self,
+        task_id,
+        anno_filepath,
+        anno_format="CVAT 1.1",
     ):
         return "%s/annotations?format=%s&filename=%s" % (
             self.task_url(task_id),
@@ -3591,6 +3608,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             self._server_version = 1
             self._login(username, password)
+
+        self._add_referer()
+
+    def _add_referer(self):
+        if "Referer" not in self._session.headers:
+            self._session.headers["Referer"] = self.login_url
 
     def close(self):
         """Closes the API session."""
@@ -3690,7 +3713,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the user ID, or None if the user was not found
         """
         user_id = self._get_value_update_map(
-            username, self._user_id_map, "username", self.user_search_url,
+            username,
+            self._user_id_map,
+            "username",
+            self.user_search_url,
         )
 
         if username is not None and user_id is None:
@@ -3730,7 +3756,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             return project_name
 
         return self._get_value_from_search(
-            self.project_id_search_url, project_id, "id", "name",
+            self.project_id_search_url,
+            project_id,
+            "id",
+            "name",
         )
 
     def get_empty_projects(self, project_ids):
@@ -3794,7 +3823,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         return (
             self._get_value_from_search(
-                self.project_id_search_url, project_id, "id", "id",
+                self.project_id_search_url,
+                project_id,
+                "id",
+                "id",
             )
             is not None
         )
@@ -3847,7 +3879,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             schema (None): the label schema to use for the created task
             segment_size (None): maximum number of images to load into a job.
                 Not applicable to videos
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             task_assignee (None): the username to assign the created task(s)
             project_id (None): the ID of a project to which upload the task
@@ -3927,7 +3959,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         return (
             self._get_value_from_search(
-                self.task_id_search_url, task_id, "id", "id",
+                self.task_id_search_url,
+                task_id,
+                "id",
+                "id",
             )
             is not None
         )
@@ -3979,7 +4014,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Args:
             task_id: the task ID
             paths: a list of media paths to upload
-            image_quality (75): an int in `[0, 100]` determining the image
+            image_quality (75): an int in ``[0, 100]`` determining the image
                 quality to upload to CVAT
             use_cache (True): whether to use a cache when uploading data. Using
                 a cache reduces task creation time as data will be processed
@@ -4294,7 +4329,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
                 _cvat_classes = class_map.keys()
                 tags, shapes, tracks = self._filter_field_classes(
-                    all_tags, all_shapes, all_tracks, _cvat_classes,
+                    all_tags,
+                    all_shapes,
+                    all_tracks,
+                    _cvat_classes,
                 )
 
                 is_last_field = lf_ind == len(label_fields) - 1
@@ -4556,7 +4594,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_attrs[occluded_attr] = {}
 
             classes_and_attrs.append(
-                {"classes": [name], "attributes": label_attrs,}
+                {
+                    "classes": [name],
+                    "attributes": label_attrs,
+                }
             )
 
         label_field_classes = {}
@@ -6847,7 +6888,7 @@ def _get_interpolated_shapes(track_shapes):
             for i in range(1, len(points)):
                 dx = points[i]["x"] - points[i - 1]["x"]
                 dy = points[i]["y"] - points[i - 1]["y"]
-                length += np.sqrt(dx ** 2 + dy ** 2)
+                length += np.sqrt(dx**2 + dy**2)
             return length
 
         def curve_to_offset_vec(points, length):
@@ -6856,7 +6897,7 @@ def _get_interpolated_shapes(track_shapes):
             for i in range(1, len(points)):
                 dx = points[i]["x"] - points[i - 1]["x"]
                 dy = points[i]["y"] - points[i - 1]["y"]
-                accumulated_length += np.sqrt(dx ** 2 + dy ** 2)
+                accumulated_length += np.sqrt(dx**2 + dy**2)
                 offset_vector.append(accumulated_length / length)
 
             return offset_vector

@@ -114,7 +114,7 @@ const Wrapper = <T extends unknown>({
   const counts = Object.fromEntries(results);
   let allValues: [T, number][] = selected.map<[T, number]>((value) => [
     value,
-    counts[String(value)] ?? 0,
+    counts[String(value)],
   ]);
 
   if (results.length <= CHECKBOX_LIMIT) {
@@ -513,7 +513,6 @@ const CategoricalFilter = <T extends unknown>({
             )}
           </>
         )}
-
         <Wrapper
           path={path}
           color={color}

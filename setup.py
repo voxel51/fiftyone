@@ -63,7 +63,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.8,<0.9",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.6.3,<0.7",
+    "voxel51-eta>=0.6.6,<0.7",
 ]
 
 
@@ -100,7 +100,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19.4,<0.20"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.20.0,<0.21"]}
 
 
 with open("README.md", "r") as fh:

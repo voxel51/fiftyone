@@ -600,7 +600,7 @@ class FrameSupportField(ListField):
 class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
 
-    If this field is not set, its default value is ``{}``.
+    If this field is not set, its default value is ``[]``.
     """
 
     def __init__(self, **kwargs):

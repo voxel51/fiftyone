@@ -545,6 +545,12 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name, `label` value, or instance. Instance        |
+|                           |                                        |                             | coloring uses the `index` (e.g. a video trajectory index) attribute first and `id` if no |
+|                           |                                        |                             | `index` is found                                                                         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `color_keypoint_points`   | `FIFTYONE_APP_COLOR_KEYPOINT_POINTS`   | `True`                      | Whether to independently coloy keypoint points by their index                            |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -564,6 +570,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
 |                           |                                        |                             | sample view.                                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_skeletons           | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                        |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -593,26 +601,33 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True
@@ -630,26 +645,33 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True

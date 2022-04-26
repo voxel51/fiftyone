@@ -852,7 +852,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidence (None): a confidence in ``[0, 1]`` for the points
+        confidence (None): a list of confidences in ``[0, 1]`` for each point
         index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
@@ -860,7 +860,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
 
     label = fof.StringField()
     points = fof.KeypointsField()
-    confidence = fof.FloatField()
+    confidence = fof.ListField(fof.FloatField(), null=True)
     index = fof.IntField()
 
     def to_shapely(self, frame_size=None):

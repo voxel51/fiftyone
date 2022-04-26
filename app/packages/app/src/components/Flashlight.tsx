@@ -20,11 +20,6 @@ import { v4 as uuid } from "uuid";
 
 import Flashlight, { FlashlightOptions } from "@fiftyone/flashlight";
 import { FrameLooker, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import {
-  EMBEDDED_DOCUMENT_FIELD,
-  LIST_FIELD,
-  toSnakeCase,
-} from "@fiftyone/utilities";
 
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
@@ -44,6 +39,7 @@ import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 import { similarityParameters } from "./Actions/Similar";
+import { skeletonFilter } from "./Filters/LabelFieldFilters.state";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -117,12 +113,12 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
-      imageFilters: Object.fromEntries(
-        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
-          filter,
-          get(atoms.imageFilters({ modal: false, filter })),
-        ])
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: false })
       ),
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });

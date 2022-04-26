@@ -288,7 +288,7 @@ class Application(tornado.web.Application):
             (r"/dataset", DatasetHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/frames", FramesHandler),
-            (r"/filepath/(.*)", MediaHandler, {"path": ""},),
+            (r"/filepath/(.*)", MediaHandler, {"path": ""}),
             (r"/notebook", NotebookHandler),
             (r"/page", PageHandler),
             (r"/pin", PinHandler),

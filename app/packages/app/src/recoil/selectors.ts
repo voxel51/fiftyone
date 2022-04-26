@@ -145,7 +145,70 @@ export const timeZone = selector<string>({
 
 export const appConfig = selector<State.Config>({
   key: "appConfig",
-  get: ({ get }) => get(atoms.stateDescription)?.config,
+  get: ({ get }) => {
+    return get(atoms.stateDescription).config || {};
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const appConfigDefault = selectorFamily<
+  any,
+  { key: string; modal: boolean }
+>({
+  key: "appConfigDefault",
+  get: ({ modal, key }) => ({ get }) => {
+    if (modal) {
+      return get(appConfigDefault({ modal: false, key }));
+    }
+
+    return get(appConfig)[key];
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
+  {
+    key: "appConfigOptions",
+    default: appConfigDefault,
+  }
+);
+
+export const colorMap = selectorFamily<(val) => string, boolean>({
+  key: "colorMap",
+  get: (modal) => ({ get }) => {
+    get(appConfigOption({ key: "color_by_value", modal }));
+    let pool = get(atoms.colorPool);
+    pool = pool.length ? pool : [darkTheme.brand];
+    const seed = get(atoms.colorSeed(modal));
+
+    return createColorGenerator(pool, seed);
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const coloring = selectorFamily<Coloring, boolean>({
+  key: "coloring",
+  get: (modal) => ({ get }) => {
+    const pool = get(atoms.colorPool);
+    const seed = get(atoms.colorSeed(modal));
+    return {
+      seed,
+      pool,
+      scale: get(atoms.stateDescription).colorscale,
+      by: get(appConfigOption({ key: "color_by", modal })),
+      points: get(appConfigOption({ key: "color_keypoint_points", modal })),
+      defaultMaskTargets: get(defaultTargets),
+      maskTargets: get(targets).fields,
+      targets: new Array(pool.length)
+        .fill(0)
+        .map((_, i) => getColor(pool, seed, i)),
+    };
+  },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -178,6 +241,16 @@ export const targets = selector({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
+  key: "skeleton",
+  get: (field) => ({ get }) => {
+    const dataset = get(atoms.stateDescription).dataset || {};
+    const skeletons = dataset.skeletons || {};
+
+    return skeletons[field] || dataset.default_skeleton || null;
   },
 });
 
