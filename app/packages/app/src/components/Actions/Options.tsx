@@ -72,7 +72,7 @@ const Keypoints = ({ modal }) => {
     selectors.appConfigOption({ key: "show_skeletons", modal })
   );
   const [points, setPoints] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "color_points", modal })
+    selectors.appConfigOption({ key: "color_keypoint_points", modal })
   );
 
   return (

@@ -602,6 +602,7 @@ You can print your App config at any time via the Python library and the CLI:
 
         {
             "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
                 "#ee6600",
@@ -645,6 +646,7 @@ You can print your App config at any time via the Python library and the CLI:
 
         {
             "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
                 "#ee6600",

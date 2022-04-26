@@ -280,6 +280,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_BY",
             default="field",
         )
+        self.color_keypoint_points = self.parse_string(
+            d,
+            "color_keypoint_points",
+            env_var="FIFTYONE_APP_COLOR_KEYPOINT_POINTS",
+            default=True,
+        )
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
