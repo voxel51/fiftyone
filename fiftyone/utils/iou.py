@@ -209,7 +209,7 @@ def compute_max_ious(
             _label_ids2 = []
             for frame in sample.frames.values():
                 iou1, iou2, id1, id2 = _compute_max_ious(
-                    sample, _label_field, _other_field, **kwargs
+                    frame, _label_field, _other_field, **kwargs
                 )
                 _max_ious1.append(iou1)
                 _max_ious2.append(iou2)
@@ -359,13 +359,10 @@ def _find_duplicates(doc, field, iou_thresh):
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
-    num_pred = len(preds)
-    num_gt = len(gts)
-
     if iscrowd is not None:
         gt_crowds = [iscrowd(gt) for gt in gts]
     else:
-        gt_crowds = [False] * num_gt
+        gt_crowds = [False] * len(gts)
 
     if isinstance(preds[0], fol.Polyline):
         preds = _polylines_to_detections(preds)
