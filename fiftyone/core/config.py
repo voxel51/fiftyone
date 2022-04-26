@@ -281,12 +281,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_COLOR_BY",
             default="field",
         )
-        self.color_keypoint_points = self.parse_string(
-            d,
-            "color_keypoint_points",
-            env_var="FIFTYONE_APP_COLOR_KEYPOINT_POINTS",
-            default=True,
-        )
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
@@ -306,6 +300,12 @@ class AppConfig(EnvConfig):
             d,
             "loop_videos",
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
+        self.multicolor_keypoints = self.parse_bool(
+            d,
+            "multicolor_keypoints",
+            env_var="FIFTYONE_APP_MULTICOLOR_KEYPOINTS",
             default=False,
         )
         self.notebook_height = self.parse_int(
@@ -397,23 +397,11 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        color_by_value = self.parse_bool(
-            {},
-            "color_by_value",
-            env_var="FIFTYONE_APP_COLOR_BY_VALUE",
-            default=False,
-        )
-        if color_by_value:
-            logger.warning(
-                "App config option `coloy_by_value` has been removed. Use "
-                "`color_by` instead ('field', 'instance' or 'label')"
-            )
-
         if self.color_by not in {"field", "instance", "label"}:
             logger.warning(
                 "Invalid `color_by` option '%s'. Must be one of 'field', "
                 "'instance' or 'label'. Defaulting to 'field'",
-                self.color_by
+                self.color_by,
             )
             self.color_by = "field"
 

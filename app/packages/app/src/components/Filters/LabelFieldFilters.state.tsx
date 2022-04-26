@@ -352,11 +352,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       get(selectors.appConfigOption({ modal: false, key: "color_by" }))
     );
     set(
-      selectors.appConfigOption({ modal: true, key: "color_keypoint_points" }),
+      selectors.appConfigOption({ modal: true, key: "multicolor_points" }),
       get(
         selectors.appConfigOption({
           modal: false,
-          key: "color_keypoint_points",
+          key: "multicolor_points",
         })
       )
     );
