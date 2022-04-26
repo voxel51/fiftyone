@@ -72,13 +72,13 @@ const Keypoints = ({ modal }) => {
     selectors.appConfigOption({ key: "show_skeletons", modal })
   );
   const [points, setPoints] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "color_keypoint_points", modal })
+    selectors.appConfigOption({ key: "multicolor_keypoints", modal })
   );
 
   return (
     <>
       <Checkbox
-        name={"Color keypoint points"}
+        name={"Multicolor keypoints"}
         value={points}
         setValue={(value) => setPoints(value)}
       />
