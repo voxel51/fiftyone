@@ -1,5 +1,5 @@
 """
-Evaluation utilities.
+Intersection over union (IoU) utilities.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,20 +18,6 @@ import fiftyone.core.utils as fou
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
-
-
-def make_iscrowd_fcn(iscrowd_attr):
-    """Returns a boolean function that determines whether a
-    :class:`fiftyone.core.labels.Label` is a crowd by checking for an attribute
-    with the given name.
-
-    Args:
-        iscrowd_attr: the name of the crowd attribute
-
-    Returns:
-        a boolean function
-    """
-    return lambda label: bool(label.get_attribute_value(iscrowd_attr, False))
 
 
 def compute_ious(
@@ -82,11 +68,14 @@ def compute_ious(
     Returns:
         a ``num_preds x num_gts`` array of IoUs
     """
+    if preds is None or gts is None:
+        return None
+
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 
     if etau.is_str(iscrowd):
-        iscrowd = make_iscrowd_fcn(iscrowd)
+        iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
 
     if isinstance(preds[0], fol.Polyline):
         if use_boxes:
@@ -129,6 +118,9 @@ def compute_segment_ious(preds, gts):
     Returns:
         a ``num_preds x num_gts`` array of segment IoUs
     """
+    if preds is None or gts is None:
+        return None
+
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 

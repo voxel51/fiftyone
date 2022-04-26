@@ -17,7 +17,6 @@ import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
 from .base import BaseEvaluationResults
-from .utils import compute_ious
 
 
 logger = logging.getLogger(__name__)
