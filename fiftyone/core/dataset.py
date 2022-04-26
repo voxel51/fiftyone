@@ -4842,6 +4842,13 @@ def _load_dataset(name, virtual=False):
         sample_collection_name, dataset_doc.sample_fields
     )
 
+    default_sample_fields = fos.get_default_sample_fields(include_private=True)
+    for sample_field in dataset_doc.sample_fields:
+        if sample_field.name in default_sample_fields:
+            continue
+
+        sample_doc_cls._declare_field(sample_field)
+
     frame_collection_name = dataset_doc.frame_collection_name
 
     if not virtual:
@@ -4861,6 +4868,16 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _create_frame_document_cls(
             frame_collection_name, dataset_doc.frame_fields
         )
+
+        if dataset_doc.media_type == fom.VIDEO:
+            default_frame_fields = fofr.get_default_frame_fields(
+                include_private=True
+            )
+            for frame_field in dataset_doc.frame_fields:
+                if frame_field.name in default_frame_fields:
+                    continue
+
+                frame_doc_cls._declare_field(frame_field)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 

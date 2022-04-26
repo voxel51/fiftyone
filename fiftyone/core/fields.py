@@ -189,12 +189,6 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
-    def to_python(self, value, detached=False):
-        if detached and isinstance(self.field, EmbeddedDocumentField):
-            return [self.field.to_python(v, detached=True) for v in value]
-
-        return super().to_python(value)
-
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -261,15 +255,6 @@ class DictField(mongoengine.fields.DictField, Field):
 
         if value is not None and not isinstance(value, dict):
             self.error("Value must be a dict")
-
-    def to_python(self, value, detached=False):
-        if detached and isinstance(self.field, EmbeddedDocumentField):
-            return {
-                k: v in self.field.to_python(v, detached=True)
-                for k, v in value.items()
-            }
-
-        return super().to_python(value)
 
 
 class IntDictField(DictField):

@@ -7980,7 +7980,7 @@ def _parse_field_name(
     field_name = "".join(chunks)
 
     # Handle public (string) vs private (ObjectId) ID fields
-    field_name, field, id_to_str = _handle_id_fields(
+    field_name, is_id_field, id_to_str = _handle_id_fields(
         sample_collection, field_name
     )
 
@@ -8000,12 +8000,15 @@ def _parse_field_name(
     else:
         prefix = ""
 
-    if field is None and not allow_missing:
-        ftype = "Frame field" if is_frame_field else "Field"
-        raise ValueError(
-            "%s '%s' does not exist on collection '%s'"
-            % (ftype, field_name, sample_collection.name)
-        )
+    if not allow_missing and not is_id_field:
+        root_field_name = field_name.split(".", 1)[0]
+
+        if sample_collection.get_field(prefix + root_field_name) is None:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, root_field_name, sample_collection.name)
+            )
 
     # Detect list fields in schema
     path = None
@@ -8075,7 +8078,7 @@ def _parse_field_name(
 
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
-        return field_name, None, False
+        return field_name, False, False
 
     if "." not in field_name:
         root = None
@@ -8105,16 +8108,13 @@ def _handle_id_fields(sample_collection, field_name):
 
     if isinstance(public_type, fof.ObjectIdField):
         id_to_str = not is_private
-        return private_field, public_type, id_to_str
+        return private_field, True, id_to_str
 
     if isinstance(private_type, fof.ObjectIdField):
         id_to_str = not is_private
-        return private_field, private_type, id_to_str
+        return private_field, True, id_to_str
 
-    if is_private:
-        return field_name, private_type, False
-
-    return field_name, public_type, False
+    return field_name, False, False
 
 
 def _transform_values(values, fcn, level=1):
