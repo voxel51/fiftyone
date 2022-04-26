@@ -69,9 +69,6 @@ def compute_ious(
     Returns:
         a ``num_preds x num_gts`` array of IoUs
     """
-    if preds is None or gts is None:
-        return None
-
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 
@@ -119,9 +116,6 @@ def compute_segment_ious(preds, gts):
     Returns:
         a ``num_preds x num_gts`` array of segment IoUs
     """
-    if preds is None or gts is None:
-        return None
-
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 
@@ -306,17 +300,19 @@ def _compute_max_ious(doc, field1, field2, **kwargs):
         labels1 = _get_labels(doc, field1)
         labels2 = _get_labels(doc, field2)
 
-        if not labels1 or not labels2:
-            return None, None, None, None
-
         ious = compute_ious(labels1, labels2, **kwargs)
 
         return _extract_max_ious(ious, labels1, labels2)
 
     labels = _get_labels(doc, field1)
 
-    if labels is None or len(labels) < 2:
+    if labels is None:
         return None, None, None, None
+
+    n = len(labels)
+
+    if n < 2:
+        return [None] * n, [None] * n, [None] * n, [None] * n
 
     ious = compute_ious(labels, labels, **kwargs)
     np.fill_diagonal(ious, -1)  # exclude self
@@ -334,13 +330,26 @@ def _get_labels(doc, field):
 
 
 def _extract_max_ious(ious, labels1, labels2):
-    inds1 = ious.argmax(axis=1)
-    max1 = list(ious[range(len(labels1)), inds1])
-    ids1 = [labels2[i].id for i in inds1]
+    if labels1 is None and labels2 is None:
+        return None, None, None, None
 
-    inds2 = ious.argmax(axis=0)
-    max2 = list(ious[inds2, range(labels2)])
-    ids2 = [labels1[i].id for i in inds2]
+    m, n = ious.shape
+
+    if labels2:
+        inds1 = ious.argmax(axis=1)
+        max1 = list(ious[range(m), inds1])
+        ids1 = [labels2[i].id for i in inds1]
+    else:
+        max1 = [None] * m
+        ids1 = [None] * m
+
+    if labels1:
+        inds2 = ious.argmax(axis=0)
+        max2 = list(ious[inds2, range(n)])
+        ids2 = [labels1[i].id for i in inds2]
+    else:
+        max2 = [None] * n
+        ids2 = [None] * n
 
     return max1, max2, ids1, ids2
 
