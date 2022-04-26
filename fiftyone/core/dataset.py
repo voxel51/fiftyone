@@ -319,6 +319,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 
@@ -385,6 +389,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.name = _name
             raise
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
 
     @property
     def created_at(self):
@@ -2402,8 +2410,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        _delete_dataset_doc(self._doc)
+        # Update singleton
+        self._instances.pop(self._doc.name, None)
 
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(

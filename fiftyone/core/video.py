@@ -412,6 +412,7 @@ def make_frames_dataset(
     force_sample=False,
     skip_failures=True,
     verbose=False,
+    name=None,
 ):
     """Creates a dataset that contains one sample per frame in the video
     collection.
@@ -501,6 +502,7 @@ def make_frames_dataset(
             an error if a video cannot be sampled
         verbose (False): whether to log information about the frames that will
             be sampled, if any
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -524,7 +526,7 @@ def make_frames_dataset(
     # Create dataset with proper schema
     #
 
-    dataset = fod.Dataset(_frames=True)
+    dataset = fod.Dataset(name=name, _frames=True)
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
