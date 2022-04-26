@@ -4127,7 +4127,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # might get labels
             samples.ensure_frames()
 
-        logger.info("Uploading samples to CVAT....")
+        logger.info("Uploading samples to CVAT...")
 
         with fou.ProgressBar(
             total=num_samples,
