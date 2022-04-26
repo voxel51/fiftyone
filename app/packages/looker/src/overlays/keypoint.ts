@@ -2,6 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { getColor } from "../color";
 import { INFO_COLOR, TOLERANCE } from "../constants";
 import { BaseState, Coordinates, KeypointSkeleton } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
@@ -54,13 +55,21 @@ export default class KeypointOverlay<
       }
     }
 
+    const pointColor = state.options.coloring.points
+      ? (index: number) =>
+          getColor(
+            state.options.coloring.pool,
+            state.options.coloring.seed,
+            index
+          )
+      : (_: number) => color;
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
       if (!point) {
         continue;
       }
 
-      ctx.fillStyle = color;
+      ctx.fillStyle = pointColor(i);
       ctx.beginPath();
       const [x, y] = t(state, ...point);
       ctx.arc(
