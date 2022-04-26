@@ -30,7 +30,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-from .document import Document
+from .document import DynamicDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -44,7 +44,26 @@ _connection_kwargs = {}
 _db_service = None
 
 
-class DatabaseConfigDocument(Document):
+###############################################################################
+# IMPORTANT DATABASE CONFIG REQUIREMENTS
+###############################################################################
+#
+# All past and future versions of FiftyOne must be able to deduce the
+# database's current version and type from the `config` collection without an
+# error being raised so that migrations can be properly run and, if necsssary,
+# informative errors can be raised alerting the user that they must either
+# manually run a downward migration, etc.
+#
+# This is currently achieved as follows:
+#   - `DatabaseConfigDocument` is a dynamic document, so that any unknown
+#     future fields will not cause an error
+#   - All declared fields are optional and we strictly adhere to a convention
+#     that their type and meaning will never change
+#
+###############################################################################
+
+
+class DatabaseConfigDocument(DynamicDocument):
     """Backing document for the database config."""
 
     meta = {"collection": "config"}
