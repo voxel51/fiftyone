@@ -15,6 +15,7 @@ import eta.core.web as etaw
 import pandas as pd
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -293,11 +294,14 @@ def download_fiw_dataset(dataset_dir, split, scratch_dir=None, cleanup=False):
         cleanup (True): whether to cleanup the scratch directory after
             extraction
     """
+    fos.ensure_local(dataset_dir)
     etau.ensure_dir(dataset_dir)
 
     if scratch_dir is None:
         scratch_dir = os.path.join(dataset_dir, "scratch")
         etau.ensure_dir(scratch_dir)
+    else:
+        fos.ensure_local(scratch_dir)
 
     # Download dataset
     _download_images_if_necessary(dataset_dir, scratch_dir)
