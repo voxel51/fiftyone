@@ -44,23 +44,21 @@ _connection_kwargs = {}
 _db_service = None
 
 
-###############################################################################
+#
 # IMPORTANT DATABASE CONFIG REQUIREMENTS
-###############################################################################
 #
 # All past and future versions of FiftyOne must be able to deduce the
 # database's current version and type from the `config` collection without an
 # error being raised so that migrations can be properly run and, if necsssary,
-# informative errors can be raised alerting the user that they must either
-# manually run a downward migration, etc.
+# informative errors can be raised alerting the user that they are using the
+# wrong version or type of client.
 #
-# This is currently achieved as follows:
-#   - `DatabaseConfigDocument` is a dynamic document, so that any unknown
-#     future fields will not cause an error
-#   - All declared fields are optional and we strictly adhere to a convention
-#     that their type and meaning will never change
+# This is currently guaranteed because:
+#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
+#     are added will not cause an error
+#   - All declared fields are optional and we have promised ourselves that
+#     their type and meaning will never change
 #
-###############################################################################
 
 
 class DatabaseConfigDocument(DynamicDocument):
@@ -232,7 +230,7 @@ def delete_non_persistent_datasets_if_allowed():
                 )
             )
         )
-    except Exception as e:
+    except:
         logger.warning(
             "Skipping automatic non-persistent dataset cleanup. This action "
             "requires read access of the 'admin' database"
