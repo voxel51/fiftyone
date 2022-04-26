@@ -15,6 +15,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
@@ -147,6 +148,157 @@ def compute_segment_ious(preds, gts):
             ious[i, j] = iou
 
     return ious
+
+
+def compute_max_ious(
+    sample_collection,
+    label_field,
+    other_field=None,
+    iou_attr="max_iou",
+    id_attr=None,
+    **kwargs,
+):
+    """Populates an attribute on each label in the given spatial field(s) that
+    records the max IoU between the object and another object in the same
+    sample/frame.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        label_field: a label field of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+        other_field (None): another label field of type
+            :class:`fiftyone.core.labels.Detections` or
+            :class:`fiftyone.core.labels.Polylines`
+        iou_attr ("max_iou"): the label attribute in which to store the max IoU
+        id_attr (None): an optional attribute in which to store the label ID of
+            the maximum overlapping label
+        **kwargs: optional keyword arguments for :func:`compute_ious`
+    """
+    if other_field is None:
+        other_field = label_field
+
+    fov.validate_collection_label_fields(
+        sample_collection,
+        (label_field, other_field),
+        (fol.Detections, fol.Polylines),
+        same_type=True,
+    )
+
+    _label_field, is_frame_field = sample_collection._handle_frame_field(
+        label_field
+    )
+    _other_field, _ = sample_collection._handle_frame_field(other_field)
+
+    if other_field != label_field:
+        view = sample_collection.select_fields([label_field, other_field])
+    else:
+        view = sample_collection.select_fields(label_field)
+
+    max_ious1 = []
+    max_ious2 = []
+    label_ids1 = []
+    label_ids2 = []
+
+    for sample in view.iter_samples(progress=True):
+        if is_frame_field:
+            _max_ious1 = []
+            _max_ious2 = []
+            _label_ids1 = []
+            _label_ids2 = []
+            for frame in sample.frames.values():
+                iou1, iou2, id1, id2 = _compute_max_ious(
+                    sample, _label_field, _other_field, **kwargs
+                )
+                _max_ious1.append(iou1)
+                _max_ious2.append(iou2)
+                _label_ids1.append(id1)
+                _label_ids2.append(id2)
+
+            max_ious1.append(_max_ious1)
+            max_ious2.append(_max_ious2)
+            label_ids1.append(_label_ids1)
+            label_ids2.append(_label_ids2)
+        else:
+            iou1, iou2, id1, id2 = _compute_max_ious(
+                sample, _label_field, _other_field, **kwargs
+            )
+            max_ious1.append(iou1)
+            max_ious2.append(iou2)
+            label_ids1.append(id1)
+            label_ids2.append(id2)
+
+    _, iou_path1 = sample_collection._get_label_field_path(
+        label_field, iou_attr
+    )
+
+    sample_collection.set_values(iou_path1, max_ious1)
+
+    if id_attr is not None:
+        _, id_path1 = sample_collection._get_label_field_path(
+            label_field, id_attr
+        )
+
+        sample_collection.set_values(id_path1, label_ids1)
+
+    if other_field != label_field:
+        _, iou_path2 = sample_collection._get_label_field_path(
+            other_field, iou_attr
+        )
+
+        sample_collection.set_values(iou_path2, max_ious2)
+
+        if id_attr is not None:
+            _, id_path2 = sample_collection._get_label_field_path(
+                other_field, id_attr
+            )
+
+            sample_collection.set_values(id_path2, label_ids2)
+
+
+def _compute_max_ious(doc, field1, field2, **kwargs):
+    if field1 != field2:
+        labels1 = _get_labels(doc, field1)
+        labels2 = _get_labels(doc, field2)
+
+        if not labels1 or not labels2:
+            return None, None, None, None
+
+        ious = compute_ious(labels1, labels2, **kwargs)
+
+        return _extract_max_ious(ious, labels1, labels2)
+
+    labels = _get_labels(doc, field1)
+
+    if labels is None or len(labels) < 2:
+        return None, None, None, None
+
+    ious = compute_ious(labels, labels, **kwargs)
+    np.fill_diagonal(ious, -1)  # exclude self
+
+    return _extract_max_ious(ious, labels, labels)
+
+
+def _get_labels(doc, field):
+    labels = doc[field]
+
+    if labels is None:
+        return None
+
+    return labels[labels._LABEL_LIST_FIELD]
+
+
+def _extract_max_ious(ious, labels1, labels2):
+    inds1 = ious.argmax(axis=1)
+    max1 = list(ious[range(len(labels1)), inds1])
+    ids1 = [labels2[i].id for i in inds1]
+
+    inds2 = ious.argmax(axis=0)
+    max2 = list(ious[inds2, range(labels2)])
+    ids2 = [labels1[i].id for i in inds2]
+
+    return max1, max2, ids1, ids2
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
