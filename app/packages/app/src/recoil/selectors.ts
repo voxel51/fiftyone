@@ -660,7 +660,7 @@ export const appConfig = selector({
 });
 
 export const appConfigDefault = selectorFamily<
-  boolean,
+  any,
   { key: string; modal: boolean }
 >({
   key: "appConfigDefault",
@@ -669,16 +669,15 @@ export const appConfigDefault = selectorFamily<
       return get(appConfigDefault({ modal: false, key }));
     }
 
-    return get(appConfig)[key] || false;
+    return get(appConfig)[key];
   },
 });
-export const appConfigOption = atomFamily<
-  boolean,
-  { key: string; modal: boolean }
->({
-  key: "appConfigOptions",
-  default: appConfigDefault,
-});
+export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
+  {
+    key: "appConfigOptions",
+    default: appConfigDefault,
+  }
+);
 
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
@@ -701,7 +700,8 @@ export const coloring = selectorFamily<Coloring, boolean>({
       seed,
       pool,
       scale: get(atoms.stateDescription).colorscale,
-      byLabel: get(appConfigDefault({ key: "color_by_value", modal })),
+      by: get(appConfigOption({ key: "color_by", modal })),
+      points: get(appConfigOption({ key: "color_keypoint_points", modal })),
       defaultMaskTargets: get(defaultTargets),
       maskTargets: get(targets).fields,
       targets: new Array(pool.length)

@@ -23,16 +23,14 @@ import fiftyone.constants as _foc
 __version__ = _foc.TEAMS_VERSION
 
 from fiftyone.__public__ import *
-from fiftyone.core.cache import init_media_cache as _init_media_cache
-from fiftyone.core.odm import establish_db_conn as _establish_db_conn
-from fiftyone.core.storage import init_storage as _init_storage
-from fiftyone.core.uid import log_import_if_allowed as _log_import
-from fiftyone.migrations import migrate_database_if_necessary as _migrate
+import fiftyone.core.odm as _foo
+import fiftyone.core.storage as _fos
+import fiftyone.core.uid as _fou
+import fiftyone.migrations as _fom
 
-_establish_db_conn(config)
-_init_storage()
-_init_media_cache(media_cache_config)
+_fos.init_storage()
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
-    _migrate()
-    _log_import()
+    _foo.delete_non_persistent_datasets_if_allowed()
+    _fom.migrate_database_if_necessary()
+    _fou.log_import_if_allowed()

@@ -347,8 +347,23 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(utils.activeModalFields, get(utils.activeFields));
     set(atoms.cropToContent(true), get(atoms.cropToContent(false)));
     set(filterAtoms.modalFilterStages, get(filterAtoms.filterStages));
-    reset(selectors.appConfigOption({ modal: true, key: "color_by_value" }));
-    reset(selectors.appConfigOption({ modal: true, key: "show_skeletons" }));
+    set(
+      selectors.appConfigOption({ modal: true, key: "color_by" }),
+      get(selectors.appConfigOption({ modal: false, key: "color_by" }))
+    );
+    set(
+      selectors.appConfigOption({ modal: true, key: "color_keypoint_points" }),
+      get(
+        selectors.appConfigOption({
+          modal: false,
+          key: "color_keypoint_points",
+        })
+      )
+    );
+    set(
+      selectors.appConfigOption({ modal: true, key: "show_skeletons" }),
+      get(selectors.appConfigOption({ modal: false, key: "show_skeletons" }))
+    );
     set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     set(atoms.sortFilterResults(true), get(atoms.sortFilterResults(false)));
     set(atoms.alpha(true), get(atoms.alpha(false)));

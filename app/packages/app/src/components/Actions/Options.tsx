@@ -45,39 +45,43 @@ export const RefreshButton = ({ modal }) => {
 };
 
 const ColorBy = ({ modal }) => {
-  const [colorByValue, setColorByValue] = useRecoilState(
-    selectors.appConfigOption({ modal, key: "color_by_value" })
+  const [colorBy, setColorBy] = useRecoilState<string>(
+    selectors.appConfigOption({ modal, key: "color_by" })
   );
 
   return (
     <>
       <PopoutSectionTitle>Color by</PopoutSectionTitle>
+
       <TabOption
-        active={colorByValue ? "value" : "field"}
-        options={[
-          {
-            text: "field",
-            title: "Color by field",
-            onClick: () => colorByValue && setColorByValue(false),
-          },
-          {
-            text: "value",
-            title: "Color by value",
-            onClick: () => !colorByValue && setColorByValue(true),
-          },
-        ]}
+        active={colorBy}
+        options={["field", "instance", "label"].map((value) => {
+          return {
+            text: value,
+            title: `Color by ${value}`,
+            onClick: () => colorBy !== value && setColorBy(value),
+          };
+        })}
       />
     </>
   );
 };
 
-const Skeletons = ({ modal }) => {
-  const [shown, setShown] = useRecoilState(
+const Keypoints = ({ modal }) => {
+  const [shown, setShown] = useRecoilState<boolean>(
     selectors.appConfigOption({ key: "show_skeletons", modal })
+  );
+  const [points, setPoints] = useRecoilState<boolean>(
+    selectors.appConfigOption({ key: "color_keypoint_points", modal })
   );
 
   return (
     <>
+      <Checkbox
+        name={"Color keypoint points"}
+        value={points}
+        setValue={(value) => setPoints(value)}
+      />
       <Checkbox
         name={"Show keypoint skeletons"}
         value={shown}
@@ -184,7 +188,7 @@ const Options = ({ modal, bounds }: OptionsProps) => {
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
       <SortFilterResults modal={modal} />
-      <Skeletons modal={modal} />
+      <Keypoints modal={modal} />
       <Patches modal={modal} />
     </Popout>
   );

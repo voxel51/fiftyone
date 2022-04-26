@@ -545,7 +545,11 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
-| `color_by_value`          | `FIFTYONE_APP_COLOR_BY_VALUE`          | `False`                     | Whether to color labels by their value (True) or their field name (False).               |
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name, `label` value, or instance. Instance        |
+|                           |                                        |                             | coloring uses the `index` (e.g. a video trajectory index) attribute first and `id` if no |
+|                           |                                        |                             | `index` is found                                                                         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `color_keypoint_points`   | `FIFTYONE_APP_COLOR_KEYPOINT_POINTS`   | `True`                      | Whether to independently coloy keypoint points by their index                            |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
@@ -597,7 +601,8 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
-            "color_by_value": false,
+            "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
                 "#ee6600",
@@ -640,7 +645,8 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
-            "color_by_value": false,
+            "color_by": "field",
+            "color_keypoint_points": true,
             "color_pool": [
                 "#ee0000",
                 "#ee6600",

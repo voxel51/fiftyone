@@ -171,8 +171,6 @@ def establish_db_conn(config):
             % (config.type, foc.CLIENT_TYPE)
         )
 
-    _delete_non_persistent_datasets_if_necessary()
-
 
 def _connect():
     global _client
@@ -193,7 +191,10 @@ def _async_connect():
         )
 
 
-def _delete_non_persistent_datasets_if_necessary():
+def delete_non_persistent_datasets_if_allowed():
+    """Deletes all non-persistent datasets if and only if we are the only
+    client currently connected to the database.
+    """
     try:
         num_connections = len(
             list(
