@@ -546,7 +546,7 @@ The FiftyOne App can be configured in the ways described below:
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
 | `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or   |
-|                           |                                        |                             | instance (`"instance"`).                                                                 |
+|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
