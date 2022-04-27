@@ -448,8 +448,8 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
     useRecoilValue(filterAtoms.labelCounts({ key, modal })),
   ];
 
-  const colorByValue = useRecoilValue(
-    selectors.appConfigOption({ key: "color_by_value", modal })
+  const colorBy = useRecoilValue(
+    selectors.appConfigOption({ key: "color_by", modal })
   );
   const theme = useTheme();
 
@@ -476,7 +476,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           hideCheckbox: false,
           hasDropdown: FILTERABLE_TYPES.includes(types[path]),
           selected: activeLabels.includes(path),
-          color: colorByValue ? theme.brand : colorMap(path),
+          color: colorBy !== "field" ? theme.brand : colorMap(path),
           title: name,
           path: path,
           type: "labels",
@@ -556,8 +556,8 @@ const OthersCell = ({ modal }: OthersCellProps) => {
   const [activeScalars, setActiveScalars] = useRecoilState(
     fieldAtoms.activeScalars(modal)
   );
-  const colorByValue = useRecoilValue(
-    selectors.appConfigOption({ key: "color_by_value", modal })
+  const colorBy = useRecoilValue(
+    selectors.appConfigOption({ key: "color_by", modal })
   );
   const theme = useTheme();
   const dbFields = useRecoilValue(selectors.primitivesDbMap("sample"));
@@ -608,7 +608,7 @@ const OthersCell = ({ modal }: OthersCellProps) => {
             hideCheckbox: modal,
             hasDropdown: !modal || Array.isArray(value),
             selected: activeScalars.includes(name),
-            color: colorByValue ? theme.brand : colorMap(name),
+            color: colorBy !== "field" ? theme.brand : colorMap(name),
 
             title:
               modal &&

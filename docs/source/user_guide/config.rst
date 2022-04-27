@@ -545,7 +545,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
-| `color_by_value`          | `FIFTYONE_APP_COLOR_BY_VALUE`          | `False`                     | Whether to color labels by their value (True) or their field name (False).               |
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or   |
+|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
@@ -557,6 +558,8 @@ The FiftyOne App can be configured in the ways described below:
 |                           |                                        |                             | (thus fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                            |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -597,7 +600,7 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
-            "color_by_value": false,
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
                 "#ee6600",
@@ -616,6 +619,7 @@ You can print your App config at any time via the Python library and the CLI:
             "colorscale": "viridis",
             "grid_zoom": 5,
             "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
             "show_index": true,
@@ -640,7 +644,7 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
-            "color_by_value": false,
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
                 "#ee6600",
@@ -659,6 +663,7 @@ You can print your App config at any time via the Python library and the CLI:
             "colorscale": "viridis",
             "grid_zoom": 5,
             "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
             "show_index": true,
