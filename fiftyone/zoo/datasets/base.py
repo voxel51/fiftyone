@@ -15,9 +15,10 @@ import eta.core.web as etaw
 import fiftyone.types as fot
 import fiftyone.utils.activitynet as foua
 import fiftyone.utils.bdd as foub
-import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
+import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
+import fiftyone.utils.fiw as fouf
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.kinetics as fouk
 import fiftyone.utils.kitti as foukt
@@ -113,7 +114,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -128,7 +129,7 @@ class ActivityNet100Dataset(FiftyOneDataset):
     Dataset size
         223 GB
 
-    Source 
+    Source
         http://activity-net.org/index.html
 
     Args:
@@ -293,7 +294,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -308,7 +309,7 @@ class ActivityNet200Dataset(FiftyOneDataset):
     Dataset size
         500 GB
 
-    Source 
+    Source
         http://activity-net.org/index.html
 
     Args:
@@ -1157,6 +1158,155 @@ class COCO2017Dataset(FiftyOneDataset):
         return os.path.join(root_dir, "raw")
 
 
+class FIWDataset(FiftyOneDataset):
+    """Families in the Wild is a public benchmark for recognizing families via
+    facial images. The dataset contains over 26,642 images of 5,037 faces
+    collected from 978 families. A unique Family ID (FID) is assigned per
+    family, ranging from F0001-F1018 (i.e., some families were merged or
+    removed since its first release in 2016). The dataset is a continued work
+    in progress. Any contributions are both welcome and appreciated!
+
+    Faces were cropped from imagery using the five-point face detector MTCNN
+    from various phototypes (i.e., mostly family photos, along with several
+    profile pics of individuals (facial shots). The number of members per
+    family varies from 3-to-26, with the number of faces per subject ranging
+    from 1 to >10.
+
+    Various levels and types of labels are associated with samples in this
+    dataset.  Family-level labels contain a list of members, each assigned a
+    member ID (MID) unique to that respective family (e.g., F0011.MID2 refers
+    to member 2 of family 11). Each member has annotations specifying gender
+    and relationship to all other members in that respective family.
+
+    The relationships in FIW are:
+
+        =====  =====
+          ID    Type
+        =====  =====
+            0  not related or self
+            1  child
+            2  sibling
+            3  grandchild
+            4  parent
+            5  spouse
+            6  grandparent
+            7  great grandchild
+            8  great grandparent
+            9  TBD
+        =====  =====
+
+    Within FiftyOne, each sample corresponds to a single face image and
+    contains primitive labels of the Family ID, Member ID, etc. The
+    relationship labels are stored as
+    :ref:`multi-label Classifications <multilabel-classifications>`, where each
+    classification represents one relationship that the member has with another
+    member in the family. The number of relationships will differ from one
+    person to the next, but all faces of one person will have the same
+    relationship labels.
+
+    Additionally, the labels for the
+    `Kinship Verification task <https://competitions.codalab.org/competitions/21843>`_
+    are also loaded into this dataset through FiftyOne. These labels are stored
+    as classifications just like relationships, but the labels of kinship
+    differ from those defined above. For example, rather than Parent, the label
+    might be `fd` representing a Father-Daughter kinship or `md` for
+    Mother-Daughter.
+
+    In order to make it easier to browse the dataset in the FiftyOne App, each
+    sample also contains a `face_id` field containing a unique integer for each
+    face of a member, always starting at 0. This allows you to filter the
+    `face_id` field to 0 in the App to show only a single image of each person.
+
+    For your reference, the relationship labels are stored in disk in a matrix
+    that provides the relationship of each member with other members of the
+    family as well as names and genders. The i-th rows represent the i-th
+    family member's relationship to the j-th other members.
+
+    For example, `FID0001.csv` contains:
+
+        MID     1     2     3     Name    Gender
+         1      0     4     5     name1     f
+         2      1     0     1     name2     f
+         3      5     4     0     name3     m
+
+    Here we have three family members, as listed under the MID column
+    (far-left).  Each MID reads across its row. We can see that MID1 is related
+    to MID2 by 4 -> 1 (Parent -> Child), which of course can be viewed as the
+    inverse, i.e., MID2 -> MID1 is 1 -> 4. It can also be seen that MID1 and
+    MID3 are spouses of one another, i.e., 5 -> 5.
+
+    Note:
+
+        The spouse label will likely be removed in future version of this
+        dataset. It serves no value to the problem of kinship.
+
+    For more information on the data (e.g., statistics, task evaluations,
+    benchmarks, and more), see the recent journal:
+
+        Robinson, JP, M. Shao, and Y. Fu. "Survey on the Analysis and Modeling
+        of Visual Kinship: A Decade in the Making." IEEE Transactions on
+        Pattern Analysis and Machine Intelligence (PAMI), 2021.
+
+    Note:
+
+        For your convenience, FiftyOne provides
+        :func:`get_pairwise_labels() <fiftyone.utils.fiw.get_pairwise_labels>`
+        and
+        :func:`get_identifier_filepaths_map() <fiftyone.utils.fiw.get_identifier_filepaths_map>`
+        utilities for FIW.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fiw", split="test")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        173.00 MB
+
+    Source
+        https://web.northeastern.edu/smilelab/fiw
+    """
+
+    @property
+    def name(self):
+        return "fiw"
+
+    @property
+    def tags(self):
+        return (
+            "image",
+            "kinship",
+            "verification",
+            "classification",
+            "search-and-retrieval",
+            "facial-recognition",
+        )
+
+    @property
+    def supported_splits(self):
+        return "train", "val", "test"
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # FIW is distributed as a single download that contains all splits,
+        # so we remove the split from `dataset_dir` and download the whole
+        # dataset (if necessary)
+        #
+        split = os.path.basename(dataset_dir)
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        num_samples, classes = fouf.download_fiw_dataset(
+            dataset_dir, split, scratch_dir,
+        )
+
+        dataset_type = fot.FIWDataset()
+
+        return dataset_type, num_samples, classes
+
+
 class HMDB51Dataset(FiftyOneDataset):
     """HMDB51 is an action recognition dataset containing a total of 6,766
     clips distributed across 51 action classes.
@@ -1354,7 +1504,7 @@ class Kinetics400Dataset(FiftyOneDataset):
     -   Validation split: 19,906 videos
 
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
 
@@ -1385,7 +1535,7 @@ class Kinetics400Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1399,11 +1549,11 @@ class Kinetics400Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 370 GB 
-    -   Test split: 56 GB 
-    -   Validation split: 30 GB 
+    -   Train split: 370 GB
+    -   Test split: 56 GB
+    -   Validation split: 30 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1541,7 +1691,7 @@ class Kinetics600Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1555,11 +1705,11 @@ class Kinetics600Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 648 GB 
-    -   Test split: 88 GB 
-    -   Validation split: 43 GB 
+    -   Train split: 648 GB
+    -   Test split: 88 GB
+    -   Validation split: 43 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1654,31 +1804,31 @@ class Kinetics700Dataset(FiftyOneDataset):
     partial downloads of this dataset.
 
     Original split stats:
-    
+
     -   Train split: 529,046 videos
     -   Test split: 67,446 videos
     -   Validation split: 33,925 videos
 
     Example usage::
-       
+
         import fiftyone as fo
         import fiftyone.zoo as foz
-        
+
         #
         # Load 10 random samples from the validation split
         #
         # Only the required videos will be downloaded (if necessary).
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700",
             split="validation",
             max_samples=10,
             shuffle=True,
         )
-        
+
         session = fo.launch_app(dataset)
-        
+
         #
         # Load 10 samples from the validation split that
         # contain the actions "springboard diving" and "surfing water"
@@ -1691,25 +1841,25 @@ class Kinetics700Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
-        
+
         dataset = foz.load_zoo_dataset(
             "kinetics-700",
             split="validation",
             classes=["springboard diving", "surfing water"],
             max_samples=10,
         )
-        
+
         session.dataset = dataset
 
     Dataset size
 
-    -   Train split: 603 GB 
-    -   Test split: 59 GB 
-    -   Validation split: 48 GB 
+    -   Train split: 603 GB
+    -   Test split: 59 GB
+    -   Validation split: 48 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -1848,7 +1998,7 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         # Videos will only be downloaded if necessary
         #
         # Subsequent partial loads of the validation split will never require
-        # downloading any videos 
+        # downloading any videos
         #
 
         dataset = foz.load_zoo_dataset(
@@ -1862,11 +2012,11 @@ class Kinetics7002020Dataset(FiftyOneDataset):
 
     Dataset size
 
-    -   Train split: 603 GB 
-    -   Test split: 59 GB 
-    -   Validation split: 48 GB 
+    -   Train split: 603 GB
+    -   Test split: 59 GB
+    -   Validation split: 48 GB
 
-    Source 
+    Source
         https://deepmind.com/research/open-source/kinetics
 
     Args:
@@ -2515,6 +2665,7 @@ AVAILABLE_DATASETS = {
     "cityscapes": CityscapesDataset,
     "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
+    "fiw": FIWDataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
     "kinetics-400": Kinetics400Dataset,

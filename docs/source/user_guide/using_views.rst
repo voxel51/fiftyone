@@ -649,6 +649,113 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+.. _concatenating-views:
+
+Concatenating views
+___________________
+
+You can use
+:meth:`concat() <fiftyone.core.collections.SampleCollection.concat>` to
+concatenate views into the same dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    view1 = dataset.match(F("uniqueness") < 0.2)
+    view2 = dataset.match(F("uniqueness") > 0.7)
+
+    view = view1.concat(view2)
+
+    print(len(view) == len(view1) + len(view2))  # True
+
+or you can use the equivalent `+` syntax sugar:
+
+.. code-block:: python
+    :linenos:
+
+    view = view1 + view2
+
+    print(len(view) == len(view1) + len(view2))  # True
+
+Concatenating *generated views* such as :ref:`patches <object-patches-views>`
+and :ref:`frames <frame-views>` is also allowed:
+
+.. code-block:: python
+    :linenos:
+
+    gt_patches = dataset.to_patches("ground_truth")
+
+    patches1 = gt_patches[:10]
+    patches2 = gt_patches[-10:]
+
+    patches = patches1 + patches2
+
+    print(len(patches) == len(patches1) + len(patches2))  # True
+
+as long as each view is derived from the same root generated view:
+
+.. code-block:: python
+    :linenos:
+
+    patches1 = dataset[:10].to_patches("ground_truth")
+    patches2 = dataset[-10:].to_patches("ground_truth")
+
+    patches = patches1 + patches2  # ERROR: not allowed
+
+If you concatenate views that use
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+or
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+to manipulate the schema of individual views, the concatenated view will
+respect the schema of the *first view* in the chain:
+
+.. code-block:: python
+    :linenos:
+
+    view1 = dataset[:10].select_fields()
+    view2 = dataset[-10:]
+
+    view = view1 + view2
+
+    # Fields are omitted from `view2` to match schema of `view1`
+    print(view.last())
+
+.. code-block:: python
+    :linenos:
+
+    view1 = dataset[:10]
+    view2 = dataset[-10:].select_fields()
+
+    view = view1 + view2
+
+    # Missing fields from `view2` appear as `None` to match schema of `view1`
+    print(view.last())
+
+Note that :meth:`concat() <fiftyone.core.collections.SampleCollection.concat>`
+will not prevent you from creating concatenated views that contain multiple
+(possibly filtered) versions of the same |Sample|, which results in views that
+contains duplicate sample IDs:
+
+.. code-block:: python
+    :linenos:
+
+    sample_id = dataset.first().id
+    view = (dataset + dataset).shuffle()
+
+    selected_view = view.select(sample_id)
+    print(len(selected_view))  # two samples have the same ID
+
+.. warning::
+
+    The :ref:`FiftyOne App <fiftyone-app>` is not designed to display views
+    with duplicate sample IDs.
+
 .. _date-views:
 
 Date-based views

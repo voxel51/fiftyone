@@ -3,6 +3,78 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.15.1:
+
+FiftyOne 0.15.1
+---------------
+*Released April 26, 2022*
+
+App
+
+- Added support for rendering keypoint skeletons
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering per-point confidences and other custom per-point
+  attributes on |Keypoint| objects
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering Fortan-ordered arrays
+  `#1660 <https://github.com/voxel51/fiftyone/pull/1660>`_
+
+Core
+
+- Added support for
+  :ref:`storing keypoint skeletons <storing-keypoint-skeletons>` on datasets
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added a
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  stage that applies per-`point` filters to |Keypoint| objects
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering keypoints skeletons and missing keypoints to
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for per-point confidences and other custom per-point attributes
+  on |Keypoint| objects. See :ref:`this section <keypoints>` for details
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added a :meth:`concat() <fiftyone.core.collections.SampleCollection.concat>`
+  view stage that allows for concatenating one collection onto another
+  `#1662 <https://github.com/voxel51/fiftyone/pull/1662>`_
+- Non-persistent datasets are now automatically deleted when using a custom
+  `database_uri` `#1697 <https://github.com/voxel51/fiftyone/pull/1697>`_
+- Added a `database_admin` config setting that can control whether database
+  migrations are allowed. See :ref:`this page <database-migrations>` for
+  details `#1692 <https://github.com/voxel51/fiftyone/pull/1692>`_
+- Added a `database_name` config setting that allows for customizing the
+  MongoDB database name `#1692 <https://github.com/voxel51/fiftyone/pull/1692>`_
+- |Classification| attributes are now exported as tag attributes when exporting
+  in :ref:`CVATImageDataset format <CVATImageDataset-export>`
+  `#1686 <https://github.com/voxel51/fiftyone/pull/1686>`_
+- The `iscrowd` attribute is now always populated when exporting in
+  :ref:`COCO format <COCODetectionDataset-export>`
+  `#1664 <https://github.com/voxel51/fiftyone/pull/1664>`_
+- Fixed a `KeyError` bug when loading dataset with relative paths on Windows
+  `#1675 <https://github.com/voxel51/fiftyone/pull/1675>`_
+
+Brain
+
+- Added `fiftyone-brain` wheels for Python 3.10
+- Added support for installing `fiftyone-brain` on Apple Silicon
+
+Annotation
+
+- Fixed a `CSRF Failed` error when connecting to some CVAT servers
+  `#1668 <https://github.com/voxel51/fiftyone/pull/1668>`_
+
+Integrations
+
+- Updated the :ref:`Lightning Flash integration <lightning-flash>` to support
+  Flash versions 0.7.0 or later
+  `#1671 <https://github.com/voxel51/fiftyone/pull/1671>`_
+
+Zoo
+
+- Added the :ref:`Families in the Wild dataset <dataset-zoo-fiw>` to the
+  FiftyOne Dataset Zoo!
+  `#1663 <https://github.com/voxel51/fiftyone/pull/1663>`_
+
 .. _release-notes-v0.15.0:
 
 FiftyOne 0.15.0

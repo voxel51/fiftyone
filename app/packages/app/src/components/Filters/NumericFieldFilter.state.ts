@@ -27,6 +27,33 @@ import {
 } from "./atoms";
 import { Other } from "./NumericFieldFilter";
 
+type NumericFilter = {
+  range?: Range;
+  none: boolean;
+  nan: boolean;
+  ninf: boolean;
+  inf: boolean;
+  exclude: boolean;
+  _CLS: string;
+};
+
+export const skeletonConfidence = selectorFamily<
+  NumericFilter,
+  { path: string; modal: boolean } | null
+>({
+  key: "skeletonLabels",
+  get: ({ path, modal }) => ({ get }) => {
+    const filter = getFilter(get, modal, path, [0, 1]);
+    const bounds = get(boundsAtom({ path, defaultRange: [0, 1] }));
+
+    if (meetsDefault(filter, bounds)) {
+      return null;
+    }
+
+    return filter;
+  },
+});
+
 export const isDateTimeField = selectorFamily<boolean, string>({
   key: "isDateTimeField",
   get: (name) => ({ get }) => {
@@ -88,16 +115,6 @@ export const isIntField = selectorFamily<boolean, string>({
   },
 });
 
-type NumericFilter = {
-  range: Range;
-  none: boolean;
-  nan: boolean;
-  ninf: boolean;
-  inf: boolean;
-  exclude: boolean;
-  _CLS: string;
-};
-
 const getFilter = (
   get: GetRecoilValue,
   modal: boolean,
@@ -105,16 +122,15 @@ const getFilter = (
   defaultRange?: Range
 ): NumericFilter => {
   const bounds = get(boundsAtom({ path, defaultRange }));
+
   const result = {
     _CLS: "numeric",
-    ...{
-      range: bounds,
-      none: true,
-      nan: true,
-      inf: true,
-      ninf: true,
-      exclude: false,
-    },
+    range: bounds,
+    none: true,
+    nan: true,
+    inf: true,
+    ninf: true,
+    exclude: false,
     ...get(filterStage({ modal, path })),
   };
 

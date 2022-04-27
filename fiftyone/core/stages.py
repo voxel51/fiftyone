@@ -15,7 +15,6 @@ import uuid
 import warnings
 
 from bson import ObjectId
-from deprecated import deprecated
 import numpy as np
 
 import eta.core.utils as etau
@@ -23,7 +22,6 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
-import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -32,10 +30,12 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
 
-foc = fou.lazy_import("fiftyone.core.clips")
+focl = fou.lazy_import("fiftyone.core.clips")
+foc = fou.lazy_import("fiftyone.core.collections")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fop = fou.lazy_import("fiftyone.core.patches")
-fov = fou.lazy_import("fiftyone.core.video")
+fov = fou.lazy_import("fiftyone.core.view")
+fovi = fou.lazy_import("fiftyone.core.video")
 foug = fou.lazy_import("fiftyone.utils.geojson")
 
 
@@ -266,10 +266,131 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raised when a problem with a :class:`ViewStage` is encountered.
-    """
+    """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
+
+
+class Concat(ViewStage):
+    """Concatenates the contents of the given
+    :class:`fiftyone.core.collections.SampleCollection` to this collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Concatenate two views
+        #
+
+        view1 = dataset.match(F("uniqueness") < 0.2)
+        view2 = dataset.match(F("uniqueness") > 0.7)
+
+        stage = fo.Concat(view2)
+        view = view1.add_stage(stage)
+
+        print(view1)
+        print(view2)
+        print(view)
+
+        #
+        # Concatenate two patches views
+        #
+
+        gt_objects = dataset.to_patches("ground_truth")
+
+        patches1 = gt_objects[:50]
+        patches2 = gt_objects[-50:]
+
+        stage = fo.Concat(patches2)
+        patches = patches1.add_stage(stage)
+
+        print(patches1)
+        print(patches2)
+        print(patches)
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection` whose
+            contents to append to this collection
+    """
+
+    def __init__(self, samples):
+        samples, view = self._parse_params(samples)
+
+        self._samples = samples
+        self._view = view
+
+    @property
+    def samples(self):
+        """The :class:`fiftyone.core.collections.SampleCollection` whose
+        contents to append to this collection.
+        """
+        return self._view
+
+    def to_mongo(self, _):
+        return [
+            {
+                "$unionWith": {
+                    "coll": self._view._dataset._sample_collection_name,
+                    "pipeline": self._view._pipeline(detach_frames=True),
+                }
+            }
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection._dataset != self._view._dataset:
+            if sample_collection._root_dataset == self._view._root_dataset:
+                raise ValueError(
+                    "When concatenating samples from generated views (e.g. "
+                    "patches or frames), all views must be derived from the "
+                    "same root generated view"
+                )
+            else:
+                raise ValueError(
+                    "Cannot concatenate samples from different datasets"
+                )
+
+    def _kwargs(self):
+        return [["samples", self._samples]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "samples", "type": "json", "placeholder": ""}]
+
+    def _parse_params(self, samples):
+        if not isinstance(samples, (foc.SampleCollection, dict)):
+            raise ValueError(
+                "`samples` must be a SampleCollection or a serialized "
+                "representation of one, but found %s" % samples
+            )
+
+        view = None
+
+        if isinstance(samples, foc.SampleCollection):
+            view = samples.view()
+            samples = None
+
+        if view is None:
+            view = self._load_view(samples)
+
+        if samples is None:
+            samples = self._serialize_view(view)
+
+        return samples, view
+
+    def _serialize_view(self, view):
+        return {
+            "dataset": view._root_dataset.name,
+            "stages": view._serialize(include_uuids=False),
+        }
+
+    def _load_view(self, d):
+        dataset = fod.load_dataset(d["dataset"])
+        return fov.DatasetView._build(dataset, d["stages"])
 
 
 class Exclude(ViewStage):
@@ -1966,181 +2087,335 @@ def _get_list_field_mongo_filter(filter_arg):
     return filter_arg
 
 
-class _FilterListField(FilterField):
-    def _get_new_field(self, sample_collection):
-        new_field, _ = sample_collection._handle_frame_field(self._new_field)
-        return new_field
+class FilterKeypoints(ViewStage):
+    """Filters the individual :attr:`fiftyone.core.labels.Keypoint.points`
+    elements in the specified keypoints field of each sample in the
+    collection.
 
-    @property
-    def _filter_field(self):
-        raise NotImplementedError("subclasses must implement `_filter_field`")
+    .. note::
 
-    def get_filtered_fields(self, sample_collection, frames=False):
-        list_path, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        Use :class:`FilterLabels` if you simply want to filter entire
+        :class:`fiftyone.core.labels.Keypoint` objects in a field.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(
+                                label="person",
+                                points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                                confidence=[0.7, 0.8, 0.95, 0.99],
+                            )
+                        ]
+                    )
+                ),
+                fo.Sample(filepath="/path/to/image2.png"),
+            ]
         )
 
-        if frames == is_frame_field:
-            return [list_path]
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+            edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+        )
 
-        return None
+        #
+        # Only include keypoints in the `predictions` field whose
+        # `confidence` is greater than 0.9
+        #
+
+        stage = fo.FilterKeypoints("predictions", filter=F("confidence") > 0.9)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include keypoints in the `predictions` field with less than
+        # four points
+        #
+
+        stage = fo.FilterKeypoints("predictions", labels=["left eye", "right eye"])
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the :class:`fiftyone.core.labels.Keypoint` or
+            :class:`fiftyone.core.labels.Keypoints` field to filter
+        filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
+            or `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean, like ``F("confidence") > 0.5`` or
+            ``F("occluded") == False``, to apply elementwise to the
+            specified field, which must be a list of same length as
+            :attr:`fiftyone.core.labels.Keypoint.points`
+        labels (None): a label or iterable of keypoint skeleton labels to keep
+        only_matches (True): whether to only include keypoints/samples with
+            at least one point after filtering (True) or include all
+            keypoints/samples (False)
+    """
+
+    def __init__(
+        self,
+        field,
+        filter=None,
+        labels=None,
+        only_matches=True,
+        _new_field=None,
+    ):
+        self._field = field
+        self._filter = filter
+        self._labels = labels
+        self._only_matches = only_matches
+        self._new_field = _new_field or field
+
+        self._filter_dict = None
+        self._filter_field = None
+        self._filter_expr = None
+
+        self._validate_params()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def labels(self):
+        """An iterable of keypoint skeleton labels to keep."""
+        return self._labels
+
+    @property
+    def only_matches(self):
+        """Whether to only include samples that match the filter."""
+        return self._only_matches
 
     def to_mongo(self, sample_collection):
-        filter_field, is_frame_field = sample_collection._handle_frame_field(
-            self._filter_field
+        label_type, root_path = sample_collection._get_label_field_path(
+            self._field
+        )
+
+        supported_types = (fol.Keypoint, fol.Keypoints)
+        if label_type not in supported_types:
+            raise ValueError(
+                "Field '%s' has type %s; expected %s"
+                % (self._field, label_type, supported_types)
+            )
+
+        is_list_field = issubclass(label_type, fol.Keypoints)
+        _, points_path = sample_collection._get_label_field_path(
+            self._field, "points"
         )
         new_field = self._get_new_field(sample_collection)
 
-        if is_frame_field:
-            _make_pipeline = _get_filter_frames_list_field_pipeline
+        pipeline = []
+
+        if self._new_field != self._field:
+            field, _ = sample_collection._handle_frame_field(self._field)
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                self._new_field,
+                F(field),
+                allow_missing=True,
+                embedded_root=True,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._filter_expr is not None:
+            filter_expr = (F(self._filter_field) != None).if_else(
+                F.zip(F("points"), F(self._filter_field)).map(
+                    (F()[1].apply(self._filter_expr)).if_else(
+                        F()[0], [float("nan"), float("nan")],
+                    )
+                ),
+                F("points"),
+            )
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                points_path,
+                filter_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._labels is not None:
+            skeleton = sample_collection.get_skeleton(self._field)
+            if skeleton is None:
+                raise ValueError(
+                    "No keypoint skeleton found for field '%s'" % self._field
+                )
+
+            if skeleton.labels is None:
+                raise ValueError(
+                    "Keypoint skeleton for field '%s' has no labels"
+                    % self._field
+                )
+
+            if etau.is_str(self._labels):
+                labels = {self._labels}
+            else:
+                labels = set(self._labels)
+
+            inds = [
+                idx
+                for idx, label in enumerate(skeleton.labels)
+                if label in labels
+            ]
+
+            labels_expr = F.enumerate(F("points")).map(
+                F()[0]
+                .is_in(inds)
+                .if_else(F()[1], [float("nan"), float("nan")])
+            )
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                points_path,
+                labels_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+        if self._only_matches:
+            # Remove Keypoint objects with no points after filtering
+            if is_list_field:
+                has_points = (
+                    F("points").filter(F()[0] != float("nan")).length() > 0
+                )
+                match_expr = F("keypoints").filter(has_points)
+            else:
+                field, _ = sample_collection._handle_frame_field(new_field)
+                has_points = (
+                    F(field + ".points")
+                    .filter(F()[0] != float("nan"))
+                    .length()
+                    > 0
+                )
+                match_expr = has_points.if_else(F(field), None)
+
+            _pipeline, _ = sample_collection._make_set_field_pipeline(
+                root_path,
+                match_expr,
+                embedded_root=True,
+                allow_missing=True,
+                new_field=self._new_field,
+            )
+            pipeline.extend(_pipeline)
+
+            # Remove samples with no Keypoint objects after filtering
+            match_expr = _get_label_field_only_matches_expr(
+                sample_collection, self._field, new_field=self._new_field
+            )
+
+            pipeline.append({"$match": {"$expr": match_expr.to_mongo()}})
+
+        return pipeline
+
+    def _get_new_field(self, sample_collection):
+        field, _ = sample_collection._handle_frame_field(self._field)
+        new_field, _ = sample_collection._handle_frame_field(self._new_field)
+
+        if "." in field:
+            return ".".join([new_field, field.split(".")[-1]])
+
+        return new_field
+
+    def _needs_frames(self, sample_collection):
+        return sample_collection._is_frame_field(self._field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["filter", self._filter_dict],
+            ["labels", self._labels],
+            ["only_matches", self._only_matches],
+        ]
+
+    def _validate_params(self):
+        if self._filter is None:
+            return
+
+        if isinstance(self._filter, foe.ViewExpression):
+            # note: $$expr is used here because that's what
+            # `ViewExpression.apply()` uses
+            filter_dict = self._filter.to_mongo(prefix="$$expr")
+        elif not isinstance(self._filter, dict):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB aggregation "
+                "expression defining a filter; found '%s'" % self._filter
+            )
         else:
-            _make_pipeline = _get_filter_list_field_pipeline
+            filter_dict = self._filter
 
-        return _make_pipeline(
-            filter_field,
-            new_field,
-            self._filter,
-            only_matches=self._only_matches,
-        )
+        filter_field, d = _extract_filter_field(filter_dict)
 
-    def _get_mongo_filter(self):
-        return _get_list_field_mongo_filter(self._filter)
+        self._filter_dict = filter_dict
+        self._filter_field = filter_field
+        self._filter_expr = foe.ViewExpression(d)
 
-    def validate(self, sample_collection):
-        raise NotImplementedError("subclasses must implement `validate()`")
-
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterClassifications(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
-    specified :class:`fiftyone.core.labels.Classifications` field of each
-    sample in a collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Classifications`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one classification after filtering (True) or include all samples
-            (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".classifications"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Classifications,
-        )
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field|str"},
+            {
+                "name": "filter",
+                "type": "NoneType|json",
+                "placeholder": "filter",
+                "default": "None",
+            },
+            {
+                "name": "labels",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "labels",
+                "default": "None",
+            },
+            {
+                "name": "only_matches",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
+            },
+        ]
 
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterDetections(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
-    specified :class:`fiftyone.core.labels.Detections` field of each sample in
-    a collection.
+def _extract_filter_field(val):
+    field = None
 
-    .. warning::
+    # note: $$expr is used here because that's what `F.apply()` uses
+    if etau.is_str(val) and val.startswith("$$expr."):
+        val, field = val.split(".", 1)
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
+    if isinstance(val, dict):
+        _val = {}
+        for k, v in val.items():
+            _field, _k = _extract_filter_field(k)
+            if _field is not None:
+                field = _field
 
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Detections`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one detection after filtering (True) or include all samples (False)
-    """
+            _field, _v = _extract_filter_field(v)
+            if _field is not None:
+                field = _field
 
-    @property
-    def _filter_field(self):
-        return self.field + ".detections"
+            _val[_k] = _v
 
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Detections,
-        )
+        return field, _val
 
+    if isinstance(val, list):
+        _val = []
+        for v in val:
+            _field, _v = _extract_filter_field(v)
+            if _field is not None:
+                field = _field
 
-@deprecated(reason="Use FilterLabels instead")
-class FilterPolylines(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
-    specified :class:`fiftyone.core.labels.Polylines` field of each sample in a
-    collection.
+            _val.append(_v)
 
-    .. warning::
+        return field, _val
 
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Polylines`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one polyline after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".polylines"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Polylines,
-        )
-
-
-@deprecated(reason="Use FilterLabels instead")
-class FilterKeypoints(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
-    specified :class:`fiftyone.core.labels.Keypoints` field of each sample in a
-    collection.
-
-    .. warning::
-
-        This class is deprecated and will be removed in a future release.
-        Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Args:
-        field: the field to filter, which must be a
-            :class:`fiftyone.core.labels.Keypoints`
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-        only_matches (True): whether to only include samples with at least
-            one keypoint after filtering (True) or include all samples (False)
-    """
-
-    @property
-    def _filter_field(self):
-        return self.field + ".keypoints"
-
-    def validate(self, sample_collection):
-        sample_collection.validate_field_type(
-            self.field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Keypoints,
-        )
+    return field, val
 
 
 class _GeoStage(ViewStage):
@@ -2508,8 +2783,7 @@ class GroupBy(ViewStage):
 
     @property
     def sort_expr(self):
-        """An expression defining how the sort the groups in the output view.
-        """
+        """An expression defining how the sort the groups in the output view."""
         return self._sort_expr
 
     @property
@@ -5537,6 +5811,11 @@ class ToPatches(ViewStage):
                 sample_collection, self._field, **kwargs
             )
 
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                patches_dataset.name = name
+
             state["name"] = patches_dataset.name
             self._state = state
         else:
@@ -5674,6 +5953,11 @@ class ToEvaluationPatches(ViewStage):
             eval_patches_dataset = fop.make_evaluation_patches_dataset(
                 sample_collection, self._eval_key, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                eval_patches_dataset.name = name
 
             state["name"] = eval_patches_dataset.name
             self._state = state
@@ -5823,16 +6107,21 @@ class ToClips(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            clips_dataset = foc.make_clips_dataset(
+            clips_dataset = focl.make_clips_dataset(
                 sample_collection, self._field_or_expr, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                clips_dataset.name = name
 
             state["name"] = clips_dataset.name
             self._state = state
         else:
             clips_dataset = fod.load_dataset(name)
 
-        return foc.ClipsView(sample_collection, self, clips_dataset)
+        return focl.ClipsView(sample_collection, self, clips_dataset)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewExpression):
@@ -5988,16 +6277,21 @@ class ToFrames(ViewStage):
 
         if state != last_state or not fod.dataset_exists(name):
             kwargs = self._config or {}
-            frames_dataset = fov.make_frames_dataset(
+            frames_dataset = fovi.make_frames_dataset(
                 sample_collection, **kwargs
             )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                frames_dataset.name = name
 
             state["name"] = frames_dataset.name
             self._state = state
         else:
             frames_dataset = fod.load_dataset(name)
 
-        return fov.FramesView(sample_collection, self, frames_dataset)
+        return fovi.FramesView(sample_collection, self, frames_dataset)
 
     def _kwargs(self):
         return [
@@ -6019,15 +6313,13 @@ class ToFrames(ViewStage):
 
 
 def _parse_sample_ids(arg):
-    from fiftyone.core.collections import SampleCollection
-
     if etau.is_str(arg):
         return [arg], False
 
     if isinstance(arg, (fos.Sample, fos.SampleView)):
         return [arg.id], False
 
-    if isinstance(arg, SampleCollection):
+    if isinstance(arg, foc.SampleCollection):
         return arg.values("id"), False
 
     arg = list(arg)
@@ -6045,15 +6337,13 @@ def _parse_sample_ids(arg):
 
 
 def _parse_frame_ids(arg):
-    from fiftyone.core.collections import SampleCollection
-
     if etau.is_str(arg):
         return [arg]
 
     if isinstance(arg, (fofr.Frame, fofr.FrameView)):
         return [arg.id]
 
-    if isinstance(arg, SampleCollection):
+    if isinstance(arg, foc.SampleCollection):
         return arg.values("frames.id", unwind=True)
 
     arg = list(arg)
@@ -6246,6 +6536,7 @@ _repr.maxother = 30
 
 # Simple registry for the server to grab available view stages
 _STAGES = [
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
@@ -6254,9 +6545,6 @@ _STAGES = [
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     GeoNear,
     GeoWithin,

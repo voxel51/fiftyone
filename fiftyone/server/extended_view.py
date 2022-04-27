@@ -130,6 +130,7 @@ def _make_filter_stages(
             continue
 
         keys = path.split(".")
+        full_path = path
         frames = path.startswith(view._FRAMES_PREFIX)
         if frames:
             schema = frame_field_schema
@@ -141,22 +142,48 @@ def _make_filter_stages(
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F(keys[-1]), args, field)
+            keypoints = issubclass(
+                field.document_type, (fol.Keypoint, fol.Keypoints)
+            )
+
+            if issubclass(field.document_type, fol.Keypoint):
+                if full_path == f"{path}.label":
+                    keypoints = False
+
+            if issubclass(field.document_type, fol.Keypoints):
+                if full_path == f"{path}.keypoints.label":
+                    keypoints = False
+
+            expr = (
+                _make_keypoint_kwargs(path, args, view)
+                if keypoints
+                else _make_scalar_expression(F(keys[-1]), args, field)
+            )
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[0]
+                    new_field = "__%s" % path.split(".")[-1]
                     if frames:
-                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
+                        new_field = "%s%s" % (
+                            view._FRAMES_PREFIX,
+                            new_field,
+                        )
                 else:
                     new_field = None
-                stages.append(
-                    fosg.FilterLabels(
+
+                if keypoints:
+                    stage = fosg.FilterKeypoints(
+                        path,
+                        _new_field=new_field,
+                        **expr,
+                    )
+                else:
+                    stage = fosg.FilterLabels(
                         path,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,
                     )
-                )
+                stages.append(stage)
 
                 filtered_labels.add(path)
                 if new_field:
@@ -236,6 +263,30 @@ def _is_datetime(field):
 
 def _is_float(field):
     return isinstance(field, fof.FloatField)
+
+
+def _make_keypoint_kwargs(path, args, view):
+    cls = args["_CLS"]
+    if cls == _STR_FILTER:
+        name = path.split(".")[0]
+
+        ske = view._dataset.default_skeleton
+
+        if name in view._dataset.skeletons:
+            ske = view._dataset.skeletons[name]
+
+        values = args.get("values", [])
+        if args["exclude"]:
+            values = set(ske.labels).difference(values)
+
+        return {"labels": values}
+
+    if cls == _NUMERIC_FILTER:
+        f = F("confidence")
+        mn, mx = args["range"]
+        return {"filter": (f >= mn) & (f <= mx)}
+
+    raise ValueError("invalid keypoint args")
 
 
 def _make_scalar_expression(f, args, field):

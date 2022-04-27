@@ -5,7 +5,7 @@
             "base_filename": "alexnet-owt-4df8aa71.pth",
             "version": null,
             "description": "AlexNet model architecture from `One weird trick for parallelizing convolutional neural networks <https://arxiv.org/abs/1404.5997>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 244418560,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -50,7 +50,7 @@
             "base_filename": "deeplabv3_resnet101_coco-586e9e4e.pth",
             "version": null,
             "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-101 backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 244545539,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -63,8 +63,8 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet101",
                     "entrypoint_args": { "pretrained": true },
-                    "output_processor_cls": "fiftyone.utils.torch.SegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
@@ -87,7 +87,7 @@
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
             "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-50 backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 168312152,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -100,8 +100,8 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet50",
                     "entrypoint_args": { "pretrained": true },
-                    "output_processor_cls": "fiftyone.utils.torch.SegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
@@ -124,7 +124,7 @@
             "base_filename": "densenet121-a639ec97.pth",
             "version": null,
             "description": "Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 32342954,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -169,7 +169,7 @@
             "base_filename": "densenet161-8d451a50.pth",
             "version": null,
             "description": "Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 115730790,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -214,7 +214,7 @@
             "base_filename": "densenet169-b2777c0a.pth",
             "version": null,
             "description": "Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 57365526,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -259,7 +259,7 @@
             "base_filename": "densenet201-c1103571.pth",
             "version": null,
             "description": "Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 81131730,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -304,7 +304,7 @@
             "base_filename": "fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 FPN backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 167502836,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -339,7 +339,7 @@
             "base_filename": "fcn_resnet101_coco-7ecb50ca.pth",
             "version": null,
             "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-101 backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 217800805,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -352,8 +352,8 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet101",
                     "entrypoint_args": { "pretrained": true },
-                    "output_processor_cls": "fiftyone.utils.torch.SegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
@@ -376,7 +376,7 @@
             "base_filename": "fcn_resnet50_coco-1167a1af.pth",
             "version": null,
             "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-50 backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 141567418,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -389,8 +389,8 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet50",
                     "entrypoint_args": { "pretrained": true },
-                    "output_processor_cls": "fiftyone.utils.torch.SegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
                     "image_std": [0.229, 0.224, 0.225]
@@ -413,7 +413,7 @@
             "base_filename": "googlenet-1378be20.pth",
             "version": null,
             "description": "GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arxiv.org/abs/1409.4842>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 52147035,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -458,7 +458,7 @@
             "base_filename": "inception_v3_google-1a9a5a14.pth",
             "version": null,
             "description": "Inception v3 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 108857766,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -502,7 +502,7 @@
             "base_filename": "keypointrcnn_resnet50_fpn_coco-fc266e95.pth",
             "version": null,
             "description": "Keypoint R-CNN model from `Keypoint Density-based Region Proposal for Fine-Grained Object Detection and Classification using Regions with Convolutional Neural Network Features <https://arxiv.org/abs/1603.00502>`_ with ResNet-50 FPN backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 237034793,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -516,15 +516,34 @@
                     "entrypoint_fcn": "torchvision.models.detection.keypoint_rcnn.keypointrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.KeypointDetectorOutputProcessor",
-                    "output_processor_args": {
+                    "labels_string": "other,person",
+                    "confidence_thresh": 0.3,
+                    "skeleton": {
+                        "labels": [
+                            "nose",
+                            "left eye",
+                            "right eye",
+                            "left ear",
+                            "right ear",
+                            "left shoulder",
+                            "right shoulder",
+                            "left elbow",
+                            "right elbow",
+                            "left wrist",
+                            "right wrist",
+                            "left hip",
+                            "right hip",
+                            "left knee",
+                            "right knee",
+                            "left ankle",
+                            "right ankle"
+                        ],
                         "edges": [
                             [11, 5, 3, 1, 0, 2, 4, 6, 12],
                             [9, 7, 5, 6, 8, 10],
                             [15, 13, 11, 12, 14, 16]
                         ]
-                    },
-                    "labels_string": "other,person",
-                    "confidence_thresh": 0.3
+                    }
                 }
             },
             "requirements": {
@@ -544,7 +563,7 @@
             "base_filename": "maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth",
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 178090079,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -578,7 +597,7 @@
             "base_filename": "mnasnet0.5_top1_67.823-3ffadce67e.pth",
             "version": null,
             "description": "MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 9008489,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -623,7 +642,7 @@
             "base_filename": "mnasnet1.0_top1_73.512-f206786ef8.pth",
             "version": null,
             "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 1.0 trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 17736997,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -668,7 +687,7 @@
             "base_filename": "mobilenet_v2-b0353104.pth",
             "version": null,
             "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 14212972,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -713,7 +732,7 @@
             "base_filename": "resnet101-5d3b4d8f.pth",
             "version": null,
             "description": "ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 178728960,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -758,7 +777,7 @@
             "base_filename": "resnet152-b121ed2d.pth",
             "version": null,
             "description": "ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 241530880,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -803,7 +822,7 @@
             "base_filename": "resnet18-5c106cde.pth",
             "version": null,
             "description": "ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 46827520,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -848,7 +867,7 @@
             "base_filename": "resnet34-333f7ec4.pth",
             "version": null,
             "description": "ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 87306240,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -893,7 +912,7 @@
             "base_filename": "resnet50-19c8e357.pth",
             "version": null,
             "description": "ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 102502400,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -938,7 +957,7 @@
             "base_filename": "resnext101_32x8d-8ba56ff5.pth",
             "version": null,
             "description": "ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 356082095,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -983,7 +1002,7 @@
             "base_filename": "resnext50_32x4d-7cdf4587.pth",
             "version": null,
             "description": "ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 100441675,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1028,7 +1047,7 @@
             "base_filename": "retinanet_resnet50_fpn_coco-eeacb38b.pth",
             "version": null,
             "description": "RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/abs/1708.02002>`_ with ResNet-50 FPN backbone trained on COCO",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 136595076,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1063,7 +1082,7 @@
             "base_filename": "shufflenetv2_x0.5-f707e7126e.pth",
             "version": null,
             "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 0.5x output channels trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 5538128,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1108,7 +1127,7 @@
             "base_filename": "shufflenetv2_x1-5666bf0f80.pth",
             "version": null,
             "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 1.0x output channels trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 9218294,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1153,7 +1172,7 @@
             "base_filename": "squeezenet1_1-f364aa15.pth",
             "version": null,
             "description": "SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forresti/SqueezeNet/tree/master/SqueezeNet_v1.1>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 4966400,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1191,7 +1210,7 @@
             "base_filename": "squeezenet1_0-a815701f.pth",
             "version": null,
             "description": "SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size <https://arxiv.org/abs/1602.07360>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 5017600,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1229,7 +1248,7 @@
             "base_filename": "vgg11_bn-6002323d.pth",
             "version": null,
             "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 531503671,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1274,7 +1293,7 @@
             "base_filename": "vgg11-bbd30ac9.pth",
             "version": null,
             "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 531456000,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1319,7 +1338,7 @@
             "base_filename": "vgg13_bn-abd245e5.pth",
             "version": null,
             "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 532246301,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1364,7 +1383,7 @@
             "base_filename": "vgg13-c768596a.pth",
             "version": null,
             "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 532194478,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1409,7 +1428,7 @@
             "base_filename": "vgg16_bn-6c64b313.pth",
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 553507836,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1454,7 +1473,7 @@
             "base_filename": "vgg16-397923af.pth",
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 553433881,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1499,7 +1518,7 @@
             "base_filename": "vgg19_bn-c79401a0.pth",
             "version": null,
             "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 574769405,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1544,7 +1563,7 @@
             "base_filename": "vgg19-dcbb9e9d.pth",
             "version": null,
             "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 574673361,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1589,7 +1608,7 @@
             "base_filename": "wide_resnet101_2-32ee1156.pth",
             "version": null,
             "description": "Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 254695146,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1634,7 +1653,7 @@
             "base_filename": "wide_resnet50_2-95faca4d.pth",
             "version": null,
             "description": "Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
-            "source": "https://pytorch.org/docs/stable/torchvision/models.html",
+            "source": "https://pytorch.org/vision/main/models.html",
             "size_bytes": 138223492,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",

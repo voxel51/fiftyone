@@ -53,7 +53,7 @@ def apply_model(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
-    **trainer_kwargs,
+    **kwargs,
 ):
     """Applies the :class:`FiftyOne model <Model>` or
     :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
@@ -85,10 +85,8 @@ def apply_model(
         skip_failures (True): whether to gracefully continue without raising an
             error if predictions cannot be generated for a sample. Only
             applicable to :class:`Model` instances
-        **trainer_kwargs: optional keyword arguments used to initialize the
-            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
-            These can be used to, for example, configure the number of GPUs to
-            use and other distributed inference parameters
+        **kwargs: optional model-specific keyword arguments passed through
+            to the underlying inference implementation
     """
     if _is_flash_model(model):
         return fouf.apply_flash_model(
@@ -99,7 +97,7 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
-            **trainer_kwargs,
+            **kwargs,
         )
 
     if not isinstance(model, Model):
@@ -547,7 +545,7 @@ def compute_embeddings(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
-    **trainer_kwargs,
+    **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
     :class:`FiftyOne model <Model>` or
@@ -583,10 +581,8 @@ def compute_embeddings(
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample. Only
             applicable to :class:`Model` instances
-        **trainer_kwargs: optional keyword arguments used to initialize the
-            :mod:`Trainer <flash:flash.core.trainer>` when using Flash models.
-            These can be used to, for example, configure the number of GPUs to
-            use and other distributed inference parameters
+        **kwargs: optional model-specific keyword arguments passed through
+            to the underlying inference implementation
 
     Returns:
         one of the following:
@@ -613,7 +609,7 @@ def compute_embeddings(
             embeddings_field=embeddings_field,
             batch_size=batch_size,
             num_workers=num_workers,
-            **trainer_kwargs,
+            **kwargs,
         )
 
     if not isinstance(model, Model):
