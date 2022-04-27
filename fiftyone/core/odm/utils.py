@@ -68,14 +68,9 @@ def get_implied_field_kwargs(value):
             "fields": [
                 dict(
                     name=name,
-                    **_merge_field_kwargs(
-                        [
-                            get_implied_field_kwargs(value[name]),
-                            get_field_kwargs(value._fields[name]),
-                        ]
-                    ),
+                    **get_field_kwargs(value.__class__._fields[name]),
                 )
-                for name in value._fields_ordered
+                for name in value.__class__._fields
                 if getattr(value, name, None) is not None
                 and not name.startswith("_")
             ],

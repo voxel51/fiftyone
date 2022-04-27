@@ -1356,71 +1356,67 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(self, field_name, values):
-        stripped_field_name, is_frame_field = self._handle_frame_field(
-            field_name
-        )
-        parent = ".".join(field_name.split(".")[:-1])
-        missing_frame_parent = (
-            is_frame_field
-            and parent != "frames"
-            and self.get_field(parent) is None
-        )
-        missing_parent = (
-            parent and self.get_field(parent) is None and not is_frame_field
-        )
-
-        if missing_frame_parent or missing_parent:
-            raise ValueError(
-                "Cannot infer an appropriate type for new field "
-                "'%s' when setting embedded field '%s'" % (parent, field_name)
-            )
-
-        level = 1
-        keys = stripped_field_name.split(".")[:-1]
-        if keys:
-            field = (
-                self.get_frame_field_schema()[keys[0]]
-                if is_frame_field
-                else self.get_field_schema()[keys[0]]
-            )
-            for key in keys[1:]:
-                field = field.get_field_schema()[key]
-                if field is None:
-                    break
-
-                if isinstance(field, fof.ListField):
-                    level += 1
-                    field = field.field
-
-        value = _get_non_none_value(values, level)
-
-        if value is None:
-            if list(values):
-                raise ValueError(
-                    "Cannot infer an appropriate type for new sample "
-                    "field '%s' because all provided values are None"
-                    % field_name
-                )
-            else:
-                raise ValueError(
-                    "Cannot infer an appropriate type for new sample "
-                    "field '%s' from empty values" % field_name
-                )
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        root = field_name.split(".", 1)[0]
 
         if is_frame_field:
-            fcn = lambda v: self._dataset._add_implied_frame_field(
-                stripped_field_name, v
-            )
-        else:
-            fcn = lambda v: self._dataset._add_implied_sample_field(
-                field_name, v
-            )
+            schema = self._dataset.get_frame_field_schema(include_private=True)
 
-        if isinstance(value, DynamicEmbeddedDocument):
-            for value in values:
-                fcn(value)
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new frame "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(itertools.chain.from_iterable(values))
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new frame "
+                        "field '%s' from empty values" % field_name
+                    )
+
+            self._dataset._add_implied_frame_field(field_name, value)
         else:
-            fcn(value)
+            schema = self._dataset.get_field_schema(include_private=True)
+
+            if root in schema:
+                return
+
+            if root != field_name:
+                raise ValueError(
+                    "Cannot infer an appropriate type for new sample "
+                    "field '%s' when setting embedded field '%s'"
+                    % (root, field_name)
+                )
+
+            value = _get_non_none_value(values)
+
+            if value is None:
+                if list(values):
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' because all provided values are None"
+                        % field_name
+                    )
+                else:
+                    raise ValueError(
+                        "Cannot infer an appropriate type for new sample "
+                        "field '%s' from empty values" % field_name
+                    )
+
+            self._dataset._add_implied_sample_field(field_name, value)
 
     def _set_sample_values(
         self,
