@@ -30,7 +30,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-from .document import Document
+from .document import DynamicDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -44,7 +44,24 @@ _connection_kwargs = {}
 _db_service = None
 
 
-class DatabaseConfigDocument(Document):
+#
+# IMPORTANT DATABASE CONFIG REQUIREMENTS
+#
+# All past and future versions of FiftyOne must be able to deduce the
+# database's current version and type from the `config` collection without an
+# error being raised so that migrations can be properly run and, if necsssary,
+# informative errors can be raised alerting the user that they are using the
+# wrong version or type of client.
+#
+# This is currently guaranteed because:
+#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
+#     are added will not cause an error
+#   - All declared fields are optional and we have promised ourselves that
+#     their type and meaning will never change
+#
+
+
+class DatabaseConfigDocument(DynamicDocument):
     """Backing document for the database config."""
 
     meta = {"collection": "config"}
@@ -172,8 +189,6 @@ def establish_db_conn(config):
             % (config.type, foc.CLIENT_TYPE)
         )
 
-    _delete_non_persistent_datasets_if_necessary()
-
 
 def _connect():
     global _client
@@ -195,7 +210,10 @@ def _async_connect():
         )
 
 
-def _delete_non_persistent_datasets_if_necessary():
+def delete_non_persistent_datasets_if_allowed():
+    """Deletes all non-persistent datasets if and only if we are the only
+    client currently connected to the database.
+    """
     try:
         num_connections = len(
             list(
@@ -213,7 +231,7 @@ def _delete_non_persistent_datasets_if_necessary():
                 )
             )
         )
-    except Exception as e:
+    except:
         logger.warning(
             "Skipping automatic non-persistent dataset cleanup. This action "
             "requires read access of the 'admin' database"
