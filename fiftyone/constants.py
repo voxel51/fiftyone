@@ -16,6 +16,8 @@ except ImportError:
     from importlib_metadata import metadata  # Python < 3.8
 
 
+CLIENT_TYPE = "fiftyone-teams"
+
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
@@ -33,7 +35,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.15.0"  # open source compatibility version
+VERSION = "0.15.1"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -74,7 +76,6 @@ except ImportError:
     # development installation
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 
-DEFAULT_DATABASE = "fiftyone"
 DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var", "lib", "mongo")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
@@ -82,6 +83,7 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
 MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
+DATABASE_APPNAME = "fiftyone"
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")

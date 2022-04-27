@@ -1,3 +1,4 @@
+import { keys } from "@material-ui/core/styles/createBreakpoints";
 import { atom, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
@@ -470,6 +471,14 @@ export const countsAtom = selectorFamily<
     const none = get(
       filtered ? noneFilteredFieldCounts(modal) : noneFieldCounts(modal)
     )[path];
+
+    if (path.endsWith(".points.label")) {
+      const skeleton = get(selectors.skeleton(path.split(".")[0]));
+      return {
+        count: null,
+        results: skeleton ? skeleton.labels.map((l) => [l, null]) : [],
+      };
+    }
 
     const primitive = get(selectors.primitiveNames("sample"));
 

@@ -45,7 +45,11 @@
 {% for image in images %}
     <image id="{{ image.id }}" name="{{ image.name }}" width="{{ image.width }}" height="{{ image.height }}">
 {% for tag in image.tags %}
-        <tag label="{{ tag.label }}"></tag>
+        <tag label="{{ tag.label }}">
+{% for attr in tag.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </tag>
 {% endfor %}
 {% for box in image.boxes %}
         <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}"{% else %} occluded="0"{%endif %}>

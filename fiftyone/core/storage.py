@@ -43,6 +43,11 @@ client_lock = threading.Lock()
 minio_alias_prefix = None
 minio_endpoint_prefix = None
 
+S3_PREFIX = "s3://"
+GCS_PREFIX = "gs://"
+HTTP_PREFIX = "http://"
+HTTPS_PREFIX = "https://"
+
 
 def init_storage():
     """Initializes storage client use."""
@@ -128,13 +133,13 @@ def get_file_system(path):
     ):
         return FileSystem.MINIO
 
-    if path.startswith("s3://"):
+    if path.startswith(S3_PREFIX):
         return FileSystem.S3
 
-    if path.startswith("gs://"):
+    if path.startswith(GCS_PREFIX):
         return FileSystem.GCS
 
-    if path.startswith(("http://", "https://")):
+    if path.startswith((HTTP_PREFIX, HTTPS_PREFIX)):
         return FileSystem.HTTP
 
     return FileSystem.LOCAL
@@ -167,18 +172,46 @@ def split_prefix(path):
         minio_endpoint_prefix
     ):
         prefix = minio_endpoint_prefix
-    elif path.startswith("s3://"):
-        prefix = "s3://"
-    elif path.startswith("gs://"):
-        prefix = "gs://"
-    elif path.startswith("http://"):
-        prefix = "http://"
-    elif path.startswith("https://"):
-        prefix = "https://"
+    elif path.startswith(S3_PREFIX):
+        prefix = S3_PREFIX
+    elif path.startswith(GCS_PREFIX):
+        prefix = GCS_PREFIX
+    elif path.startswith(HTTP_PREFIX):
+        prefix = HTTP_PREFIX
+    elif path.startswith(HTTPS_PREFIX):
+        prefix = HTTPS_PREFIX
     else:
         prefix = ""
 
     return prefix, path[len(prefix) :]
+
+
+def get_bucket_name(path):
+    """Gets the bucket name from the given path.
+
+    The bucket name for local paths and http(s) paths is ``""``.
+
+    Example usages::
+
+        import fiftyone.core.storage as fos
+
+        fos.split_prefix("s3://bucket/object")  # 'bucket'
+        fos.split_prefix("gs://bucket/object")  # 'bucket'
+        fos.split_prefix("/path/to/file")       # ''
+        fos.split_prefix("a/file")              # ''
+
+    Args:
+        path: a path
+
+    Returns:
+        the bucket name string
+    """
+    fs = get_file_system(path)
+    if fs not in [FileSystem.S3, FileSystem.GCS, FileSystem.MINIO]:
+        return ""
+
+    path = split_prefix(path)[1]
+    return path.split(sep(path))[0]
 
 
 def is_local(path):
@@ -1621,7 +1654,7 @@ def upload_media(
     remote_dir,
     rel_dir=None,
     update_filepaths=False,
-    overwrite=True,
+    overwrite=False,
     skip_failures=False,
     progress=False,
 ):
@@ -1641,7 +1674,7 @@ def upload_media(
             filepath when constructing the corresponding remote path
         update_filepaths (False): whether to update the ``filepath`` of each
             sample in the collection to its remote path
-        overwrite (True): whether to overwrite (True) or skip (False) existing
+        overwrite (False): whether to overwrite (True) or skip (False) existing
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
@@ -1654,7 +1687,7 @@ def upload_media(
     filepaths = sample_collection.values("filepath")
 
     filename_maker = fou.UniqueFilenameMaker(
-        output_dir=remote_dir, rel_dir=rel_dir
+        output_dir=remote_dir, rel_dir=rel_dir, ignore_existing=True,
     )
 
     paths_map = {}
@@ -1670,10 +1703,11 @@ def upload_media(
         existing = set(client.list_files_in_folder(remote_dir, recursive=True))
         paths_map = {f: r for f, r in paths_map.items() if r not in existing}
 
-    inpaths, outpaths = zip(*paths_map.items())
-    copy_files(
-        inpaths, outpaths, skip_failures=skip_failures, progress=progress
-    )
+    if paths_map:
+        inpaths, outpaths = zip(*paths_map.items())
+        copy_files(
+            inpaths, outpaths, skip_failures=skip_failures, progress=progress
+        )
 
     if update_filepaths:
         sample_collection.set_values("filepath", remote_paths)

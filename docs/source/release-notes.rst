@@ -3,6 +3,78 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.15.1:
+
+FiftyOne 0.15.1
+---------------
+*Released April 26, 2022*
+
+App
+
+- Added support for rendering keypoint skeletons
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering per-point confidences and other custom per-point
+  attributes on |Keypoint| objects
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering Fortan-ordered arrays
+  `#1660 <https://github.com/voxel51/fiftyone/pull/1660>`_
+
+Core
+
+- Added support for
+  :ref:`storing keypoint skeletons <storing-keypoint-skeletons>` on datasets
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added a
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  stage that applies per-`point` filters to |Keypoint| objects
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for rendering keypoints skeletons and missing keypoints to
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added support for per-point confidences and other custom per-point attributes
+  on |Keypoint| objects. See :ref:`this section <keypoints>` for details
+  `#1601 <https://github.com/voxel51/fiftyone/pull/1601>`_
+- Added a :meth:`concat() <fiftyone.core.collections.SampleCollection.concat>`
+  view stage that allows for concatenating one collection onto another
+  `#1662 <https://github.com/voxel51/fiftyone/pull/1662>`_
+- Non-persistent datasets are now automatically deleted when using a custom
+  `database_uri` `#1697 <https://github.com/voxel51/fiftyone/pull/1697>`_
+- Added a `database_admin` config setting that can control whether database
+  migrations are allowed. See :ref:`this page <database-migrations>` for
+  details `#1692 <https://github.com/voxel51/fiftyone/pull/1692>`_
+- Added a `database_name` config setting that allows for customizing the
+  MongoDB database name `#1692 <https://github.com/voxel51/fiftyone/pull/1692>`_
+- |Classification| attributes are now exported as tag attributes when exporting
+  in :ref:`CVATImageDataset format <CVATImageDataset-export>`
+  `#1686 <https://github.com/voxel51/fiftyone/pull/1686>`_
+- The `iscrowd` attribute is now always populated when exporting in
+  :ref:`COCO format <COCODetectionDataset-export>`
+  `#1664 <https://github.com/voxel51/fiftyone/pull/1664>`_
+- Fixed a `KeyError` bug when loading dataset with relative paths on Windows
+  `#1675 <https://github.com/voxel51/fiftyone/pull/1675>`_
+
+Brain
+
+- Added `fiftyone-brain` wheels for Python 3.10
+- Added support for installing `fiftyone-brain` on Apple Silicon
+
+Annotation
+
+- Fixed a `CSRF Failed` error when connecting to some CVAT servers
+  `#1668 <https://github.com/voxel51/fiftyone/pull/1668>`_
+
+Integrations
+
+- Updated the :ref:`Lightning Flash integration <lightning-flash>` to support
+  Flash versions 0.7.0 or later
+  `#1671 <https://github.com/voxel51/fiftyone/pull/1671>`_
+
+Zoo
+
+- Added the :ref:`Families in the Wild dataset <dataset-zoo-fiw>` to the
+  FiftyOne Dataset Zoo!
+  `#1663 <https://github.com/voxel51/fiftyone/pull/1663>`_
+
 .. _release-notes-v0.15.0:
 
 FiftyOne 0.15.0
@@ -22,67 +94,62 @@ Core
 - Added a :meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
   method to |DatasetView| and its subclasses
   `#1616 <https://github.com/voxel51/fiftyone/pull/1616>`_
-- Added a :func:`fiftyone.core.plots.lines()` method that allows for plotting
-  lines whose scatter points can be interactively selected via the typical
+- Added a :func:`fiftyone.core.plots.base.lines()` method that allows for
+  plotting lines whose scatter points can be interactively selected via the
+  typical
   `interactive plotting workflows <https://voxel51.com/docs/fiftyone/user_guide/plots.html>`_
   `#1614 <https://github.com/voxel51/fiftyone/pull/1614>`_
-- Added an optional ``force_rgb=True`` syntax when importing/exporting/creating
+- Added an optional `force_rgb=True` syntax when importing/exporting/creating
   TF records using all relevant methods in :mod:`fiftyone.utils.tf`
   `#1612 <https://github.com/voxel51/fiftyone/pull/1612>`_
-- Added support for passing additional kwargs to the ``fiftyone convert`` CLI
+- Added support for passing additional kwargs to the `fiftyone convert` CLI
+  command
   `#1612 <https://github.com/voxel51/fiftyone/pull/1612>`_
 - Added support for annotating video-level labels when using
   :func:`draw_labeled_videos() <fiftyone.utils.annotations.draw_labeled_videos>`
   `#1619 <https://github.com/voxel51/fiftyone/pull/1619>`_
-- Added the ability to slice using a
-  :class:`ViewField <fiftyone.core.expression.ViewField>`
+- Added the ability to slice using a |ViewField|
   `#1630 <https://github.com/voxel51/fiftyone/pull/1630>`_
 - Fixed bug in :func:`from_images_dir() <fiftyone.utils.tf.from_images_dir>`
-  where attempting to load 4-channel images errored even if ``force_rgb`` was
-  ``True`` `#1632 <https://github.com/voxel51/fiftyone/pull/1632>`_
+  where attempting to load 4-channel images errored even if `force_rgb=True`
+  `#1632 <https://github.com/voxel51/fiftyone/pull/1632>`_
 - Fixed a bug that prevented frames from being attached to video collections
-  when aggregating expressions like the following that involve both
-  |Sample|-level and |Frame|-level fields
+  when aggregating expressions that involve both |Sample|-level and
+  |Frame|-level fields
   `#1644 <https://github.com/voxel51/fiftyone/pull/1644>`_
-- Added support for the
+- Added support for importing :ref:`image <OpenLABELImageDataset-import>` and
+  :ref:`video <OpenLABELVideoDataset-import>` datasets in
   `OpenLABEL format <https://www.asam.net/index.php?eID=dumpFile&t=f&f=3876&token=413e8c85031ae64cc35cf42d0768627514868b2f#_introduction>`_
-  via the
-  :class:`OpenLABELImageDataset <fiftyone.types.dataset_types.OpenLABELImageDataset>`
-  and
-  :class:`OpenLABELVideoDataset <fiftyone.types.dataset_types.OpenLABELVideoDataset>`
-  dataset types `#1609 <https://github.com/voxel51/fiftyone/pull/1609>`_
+  `#1609 <https://github.com/voxel51/fiftyone/pull/1609>`_
 
 Annotation
 
-- Added the ``issue_tracker`` argument to
-  :meth:`SampleCollection.annotate() <fiftyone.core.dataset.SampleCollection.annotate>`
-  to pass in one or more URL strings to attach to the created task(s) when
-  using the CVAT backend
+- Added support for CVATv2 servers when using the CVAT backend
+  `#1638 <https://github.com/voxel51/fiftyone/pull/1638>`_
+- Added an `issue_tracker` argument to
+  :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+  when using the CVAT backend
   `#1625 <https://github.com/voxel51/fiftyone/pull/1625>`_
-- Added a ``dest_field`` argument to
+- Added a `dest_field` argument to
   :func:`load_annotations() <fiftyone.utils.annotations.load_annotations>`
   which allows you to specify the name of the field to which to load annotations
   `#1642 <https://github.com/voxel51/fiftyone/pull/1642>`_
-- Fixed a bug where views using the
-  :class:`MapLabels <fiftyone.core.stages.MapLabels>` stage will result in
-  labels that were mapped not being uploaded to the annotation backend
-  `#1647 <https://github.com/voxel51/fiftyone/pull/1647>`_
 - Added a property to annotation backends that decides whether to allow
   annotation of video-level labels
   `#1655 <https://github.com/voxel51/fiftyone/pull/1655>`_
-- Added support for CVATv2 servers when using the CVAT backend
-  `#1638 <https://github.com/voxel51/fiftyone/pull/1638>`_
+- Fixed a bug where views that dynamically modify label strings would result in
+  labels not being uploaded to the annotation backend
+  `#1647 <https://github.com/voxel51/fiftyone/pull/1647>`_
 
 Docs
 
 - Added :ref:`documentation <custom-embedded-documents>` for defining custom
   |EmbeddedDocument| and |DynamicEmbeddedDocument| classes
   `#1617 <https://github.com/voxel51/fiftyone/pull/1617>`_
-- Added documentation about boolean view indexing to the
-  :ref:`Slicing <view-slicing>` guide
-  `#1617 <https://github.com/voxel51/fiftyone/pull/1617>`_
-- Added a :doc:`creating views recipe </recipes/creating_views>`
-  `#1641 <https://github.com/voxel51/fiftyone/pull/1641>`_
+- Added :ref:`documentation <view-slicing>` about boolean view indexing to the
+  user guide `#1617 <https://github.com/voxel51/fiftyone/pull/1617>`_
+- Added a :doc:`recipe </recipes/creating_views>` for creating views and view
+  expressions `#1641 <https://github.com/voxel51/fiftyone/pull/1641>`_
 
 .. _release-notes-v0.14.4:
 
