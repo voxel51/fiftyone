@@ -23,12 +23,12 @@ import fiftyone.constants as _foc
 __version__ = _foc.VERSION
 
 from fiftyone.__public__ import *
-from fiftyone.core.odm import establish_db_conn as _establish_db_conn
-from fiftyone.core.uid import log_import_if_allowed as _log_import
-from fiftyone.migrations import migrate_database_if_necessary as _migrate
 
-_establish_db_conn(config)
+import fiftyone.core.odm as _foo
+import fiftyone.core.uid as _fou
+import fiftyone.migrations as _fom
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
-    _migrate()
-    _log_import()
+    _foo.delete_non_persistent_datasets_if_allowed()
+    _fom.migrate_database_if_necessary()
+    _fou.log_import_if_allowed()

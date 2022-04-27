@@ -8,7 +8,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "field" | "instance" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -16,6 +16,7 @@ export interface Coloring {
   maskTargets: {
     [field: string]: MaskTargets;
   };
+  points: boolean;
   targets: string[];
 }
 
@@ -280,7 +281,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   coloring: {
-    byLabel: false,
+    by: "field",
+    points: true,
     pool: ["#000000"],
     scale: null,
     seed: 0,
