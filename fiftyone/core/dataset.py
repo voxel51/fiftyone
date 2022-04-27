@@ -4749,6 +4749,20 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
+            field._set_parent(doc_cls)
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field, field.name)
+
+
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
