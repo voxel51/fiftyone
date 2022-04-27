@@ -119,29 +119,7 @@ def compute_segment_ious(preds, gts):
     if not preds or not gts:
         return np.zeros((len(preds), len(gts)))
 
-    ious = np.zeros((len(preds), len(gts)))
-    for j, gt in enumerate(gts):
-        gst, get = gt.support
-        gt_len = get - gst
-
-        for i, pred in enumerate(preds):
-            pst, pet = pred.support
-            pred_len = pet - pst
-
-            if pred_len == 0 and gt_len == 0:
-                iou = float(pet == get)
-            else:
-                # Length of temporal intersection
-                inter = min(get, pet) - max(gst, pst)
-                if inter <= 0:
-                    continue
-
-                union = pred_len + gt_len - inter
-                iou = min(etan.safe_divide(inter, union), 1)
-
-            ious[i, j] = iou
-
-    return ious
+    return _compute_segment_ious(preds, gts)
 
 
 def compute_max_ious(
@@ -155,6 +133,12 @@ def compute_max_ious(
     """Populates an attribute on each label in the given spatial field(s) that
     records the max IoU between the object and another object in the same
     sample/frame.
+
+    If ``other_field`` is provided, IoUs are computed between objects in
+    ``label_field`` and ``other_field``.
+
+    If no ``other_field`` is provided, IoUs are computed between objects in
+    ``label_field`` alone, excluding the object itself.
 
     Args:
         sample_collection: a
@@ -251,12 +235,14 @@ def compute_max_ious(
             sample_collection.set_values(id_path2, label_ids2)
 
 
-def find_duplicates(sample_collection, label_field, iou_thresh=0.999):
-    """Returns the IDs of duplicate labels in the given field of the
-    collection, as defined by labels with an IoU greater than a chosen
-    threshold with another label in the field.
+def find_duplicates(
+    sample_collection, label_field, iou_thresh=0.999, **kwargs
+):
+    """Returns IDs of duplicate labels in the given field of the collection, as
+    defined by labels with an IoU greater than a chosen threshold with another
+    label in the field.
 
-    When duplicates are found, the ID of the *latter* label(s) in the field are
+    When duplicates are found, the ID of the last label(s) in the field are
     returned as duplicates.
 
     Args:
@@ -267,6 +253,7 @@ def find_duplicates(sample_collection, label_field, iou_thresh=0.999):
             :class:`fiftyone.core.labels.Polylines`
         iou_thresh (0.999): the IoU threshold to use to determine whether
             labels are duplicates
+        **kwargs: optional keyword arguments for :func:`compute_ious`
 
     Returns:
         a list of label IDs
@@ -286,10 +273,14 @@ def find_duplicates(sample_collection, label_field, iou_thresh=0.999):
     for sample in view.iter_samples(progress=True):
         if is_frame_field:
             for frame in sample.frames.values():
-                _dup_ids = _find_duplicates(frame, _label_field, iou_thresh)
+                _dup_ids = _find_duplicates(
+                    frame, _label_field, iou_thresh, **kwargs
+                )
                 dup_ids.extend(_dup_ids)
         else:
-            _dup_ids = _find_duplicates(sample, _label_field, iou_thresh)
+            _dup_ids = _find_duplicates(
+                sample, _label_field, iou_thresh, **kwargs
+            )
             dup_ids.extend(_dup_ids)
 
     return dup_ids
@@ -354,20 +345,22 @@ def _extract_max_ious(ious, labels1, labels2):
     return max1, max2, ids1, ids2
 
 
-def _find_duplicates(doc, field, iou_thresh):
+def _find_duplicates(doc, field, iou_thresh, **kwargs):
     labels = _get_labels(doc, field)
 
     if labels is None:
         return []
 
     # When duplicates are found, delete the *latter* label in `labels`
-    ious = compute_ious(labels, labels)
+    ious = compute_ious(labels, labels, **kwargs)
     i, j = np.nonzero(np.triu(ious, k=1) > iou_thresh)
     dup_inds = np.unique(np.sort(np.stack((i, j))), axis=1)[1]
     return [labels[i].id for i in dup_inds]
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
+    is_symmetric = preds is gts
+
     if iscrowd is not None:
         gt_crowds = [iscrowd(gt) for gt in gts]
     else:
@@ -375,38 +368,49 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
 
     if isinstance(preds[0], fol.Polyline):
         preds = _polylines_to_detections(preds)
-        gts = _polylines_to_detections(gts)
+
+        if is_symmetric:
+            gts = preds
+        else:
+            gts = _polylines_to_detections(gts)
 
     ious = np.zeros((len(preds), len(gts)))
+
     for j, (gt, gt_crowd) in enumerate(zip(gts, gt_crowds)):
         gx, gy, gw, gh = gt.bounding_box
         gt_area = gh * gw
 
         for i, pred in enumerate(preds):
-            if classwise and pred.label != gt.label:
+            if is_symmetric and i < j:
+                iou = ious[j, i]
+            elif i == j:
+                iou = 1
+            elif classwise and pred.label != gt.label:
                 continue
-
-            px, py, pw, ph = pred.bounding_box
-            pred_area = ph * pw
-
-            # Width of intersection
-            w = min(px + pw, gx + gw) - max(px, gx)
-            if w <= 0:
-                continue
-
-            # Height of intersection
-            h = min(py + ph, gy + gh) - max(py, gy)
-            if h <= 0:
-                continue
-
-            inter = h * w
-
-            if gt_crowd:
-                union = pred_area
             else:
-                union = pred_area + gt_area - inter
+                px, py, pw, ph = pred.bounding_box
+                pred_area = ph * pw
 
-            ious[i, j] = min(etan.safe_divide(inter, union), 1)
+                # Width of intersection
+                w = min(px + pw, gx + gw) - max(px, gx)
+                if w <= 0:
+                    continue
+
+                # Height of intersection
+                h = min(py + ph, gy + gh) - max(py, gy)
+                if h <= 0:
+                    continue
+
+                inter = h * w
+
+                if gt_crowd:
+                    union = pred_area
+                else:
+                    union = pred_area + gt_area - inter
+
+                iou = min(etan.safe_divide(inter, union), 1)
+
+            ious[i, j] = iou
 
     return ious
 
@@ -414,6 +418,8 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
 def _compute_polyline_ious(
     preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
 ):
+    is_symmetric = preds is gts
+
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
@@ -428,10 +434,16 @@ def _compute_polyline_ious(
         pred_labels = [pred.label for pred in preds]
         pred_areas = [pred_poly.area for pred_poly in pred_polys]
 
-        num_gt = len(gts)
-        gt_polys = _polylines_to_shapely(gts, error_level)
-        gt_labels = [gt.label for gt in gts]
-        gt_areas = [gt_poly.area for gt_poly in gt_polys]
+        if is_symmetric:
+            num_gt = num_pred
+            gt_polys = pred_polys
+            gt_labels = pred_labels
+            gt_areas = pred_areas
+        else:
+            num_gt = len(gts)
+            gt_polys = _polylines_to_shapely(gts, error_level)
+            gt_labels = [gt.label for gt in gts]
+            gt_areas = [gt_poly.area for gt_poly in gt_polys]
 
         if iscrowd is not None:
             gt_crowds = [iscrowd(gt) for gt in gts]
@@ -439,35 +451,42 @@ def _compute_polyline_ious(
             gt_crowds = [False] * num_gt
 
         ious = np.zeros((num_pred, num_gt))
+
         for j, (gt_poly, gt_label, gt_area, gt_crowd) in enumerate(
             zip(gt_polys, gt_labels, gt_areas, gt_crowds)
         ):
             for i, (pred_poly, pred_label, pred_area) in enumerate(
                 zip(pred_polys, pred_labels, pred_areas)
             ):
-                if classwise and pred_label != gt_label:
+                if is_symmetric and i < j:
+                    iou = ious[j, i]
+                elif i == j:
+                    iou = 1
+                elif classwise and pred_label != gt_label:
                     continue
-
-                try:
-                    inter = gt_poly.intersection(pred_poly).area
-                except Exception as e:
-                    inter = 0.0
-                    fou.handle_error(
-                        ValueError(
-                            "Failed to compute intersection of predicted "
-                            "object '%s' and ground truth object '%s'"
-                            % (preds[i].id, gts[j].id)
-                        ),
-                        error_level,
-                        base_error=e,
-                    )
-
-                if gt_crowd:
-                    union = pred_area
                 else:
-                    union = pred_area + gt_area - inter
+                    try:
+                        inter = gt_poly.intersection(pred_poly).area
+                    except Exception as e:
+                        inter = 0.0
+                        fou.handle_error(
+                            ValueError(
+                                "Failed to compute intersection of predicted "
+                                "object '%s' and ground truth object '%s'"
+                                % (preds[i].id, gts[j].id)
+                            ),
+                            error_level,
+                            base_error=e,
+                        )
 
-                ious[i, j] = min(etan.safe_divide(inter, union), 1)
+                    if gt_crowd:
+                        union = pred_area
+                    else:
+                        union = pred_area + gt_area - inter
+
+                    iou = min(etan.safe_divide(inter, union), 1)
+
+                ious[i, j] = iou
 
         return ious
 
@@ -475,6 +494,8 @@ def _compute_polyline_ious(
 def _compute_mask_ious(
     preds, gts, tolerance, error_level, iscrowd=None, classwise=False
 ):
+    is_symmetric = preds is gts
+
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
@@ -485,7 +506,11 @@ def _compute_mask_ious(
             )
 
         pred_polys = _masks_to_polylines(preds, tolerance, error_level)
-        gt_polys = _masks_to_polylines(gts, tolerance, error_level)
+
+        if is_symmetric:
+            gt_polys = pred_polys
+        else:
+            gt_polys = _masks_to_polylines(gts, tolerance, error_level)
 
     if iscrowd is not None:
         gt_crowds = [iscrowd(gt) for gt in gts]
@@ -499,6 +524,39 @@ def _compute_mask_ious(
         classwise=classwise,
         gt_crowds=gt_crowds,
     )
+
+
+def _compute_segment_ious(preds, gts):
+    is_symmetric = preds is gts
+
+    ious = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        gst, get = gt.support
+        gt_len = get - gst
+
+        for i, pred in enumerate(preds):
+            if is_symmetric and i < j:
+                iou = ious[j, i]
+            elif i == j:
+                iou = 1
+            else:
+                pst, pet = pred.support
+                pred_len = pet - pst
+
+                if pred_len == 0 and gt_len == 0:
+                    iou = float(pet == get)
+                else:
+                    # Length of temporal intersection
+                    inter = min(get, pet) - max(gst, pst)
+                    if inter <= 0:
+                        continue
+
+                    union = pred_len + gt_len - inter
+                    iou = min(etan.safe_divide(inter, union), 1)
+
+            ious[i, j] = iou
+
+    return ious
 
 
 def _polylines_to_detections(polylines):
