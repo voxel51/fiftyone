@@ -8,14 +8,14 @@ interface RouteBase<T extends OperationType | undefined = OperationType> {
   path?: string;
   exact?: boolean;
   component: Resource<Route<T>>;
-  routes?: RouteBase<T>[];
+  children?: RouteBase<T>[];
 }
 
 export interface RouteDefinition<
   T extends OperationType | undefined = OperationType
 > extends RouteBase<T> {
   query?: Resource<ConcreteRequest>;
-  routes?: RouteDefinition<T>[];
+  children?: RouteDefinition<T>[];
 }
 
 const components = createResourceGroup();
@@ -23,7 +23,7 @@ const components = createResourceGroup();
 export interface RouteOptions<T extends OperationType | undefined> {
   path: string;
   exact?: boolean;
-  routes?: RouteOptions<T>[];
+  children?: RouteOptions<T>[];
   component: { name: string; loader: () => Promise<Route<T>> };
   query?: T extends undefined
     ? undefined
@@ -35,14 +35,16 @@ export interface RouteOptions<T extends OperationType | undefined> {
 
 export const makeRouteDefinitions = <T extends OperationType | undefined>(
   environment: Environment,
-  routes: RouteOptions<T>[]
+  children: RouteOptions<T>[]
 ): RouteDefinition<T>[] => {
   const queries = createResourceGroup();
 
-  return routes.map(({ path, exact, routes, component, query }) => ({
+  return children.map(({ path, exact, children, component, query }) => ({
     path,
     exact,
-    routes: routes ? makeRouteDefinitions(environment, routes) : undefined,
+    children: children
+      ? makeRouteDefinitions(environment, children)
+      : undefined,
     component: components(component.name, component.loader),
     query: query ? queries(query.name, query.loader) : undefined,
   }));

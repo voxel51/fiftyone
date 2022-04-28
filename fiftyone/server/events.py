@@ -20,7 +20,7 @@ import fiftyone.core.state as fos
 
 @dataclass(frozen=True)
 class Listener:
-    queue: asyncio.Queue[EventType]
+    queue: asyncio.Queue
     subscription: str
 
 
@@ -101,7 +101,7 @@ async def add_event_listener(
 
             for _, listener in request_listeners:
                 try:
-                    result = listener.queue.get_nowait()
+                    result: EventType = listener.queue.get_nowait()
                 except asyncio.QueueEmpty:
                     continue
 

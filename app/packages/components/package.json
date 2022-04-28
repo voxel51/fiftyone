@@ -43,7 +43,6 @@
     "framer-motion": "^6.2.7",
     "react-input-autosize": "^3.0.0",
     "react-laag": "^2.0.3",
-    "react-router-config": "^5.1.1",
     "react-use": "^17.3.2"
   }
 }

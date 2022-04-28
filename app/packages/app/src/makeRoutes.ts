@@ -16,7 +16,7 @@ const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {
             (query) => query.default
           ),
       },
-      routes: [
+      children: [
         {
           path: "/",
           component: {

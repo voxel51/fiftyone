@@ -16,7 +16,7 @@ import React, { Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
-import { matchRoutes } from "react-router-config";
+import { matchPath, matchRoutes } from "react-router";
 import {
   atom,
   RecoilRoot,
@@ -57,13 +57,10 @@ const Network: React.FC<{
 };
 
 const getDatasetName = () => {
-  const result = matchRoutes<{ name: string }>(
-    [{ path: "/datasets/:name", isExact: true }],
-    window.location.pathname
-  )[0];
+  const result = matchPath("/datasets/:name", window.location.pathname);
 
   if (result) {
-    return result.match.params.name;
+    return result.params.name;
   }
 
   return null;
@@ -83,6 +80,7 @@ const App = withTheme(
     const handleError = useErrorHandler();
     const refreshApp = useRecoilRefresher_UNSTABLE(refresher);
     const { context, environment } = useRouter(makeRoutes, []);
+
     const contextRef = useRef(context);
     contextRef.current = context;
 

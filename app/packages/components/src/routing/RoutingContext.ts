@@ -1,7 +1,7 @@
 import React from "react";
 import { createBrowserHistory } from "history";
 import { Environment, loadQuery, PreloadedQuery } from "react-relay";
-import { matchRoutes, RouteConfig } from "react-router-config";
+import { matchPath, Router, RouteObject } from "react-router";
 import { OperationType, VariablesOf } from "relay-runtime";
 
 import { NotFoundError, Resource } from "@fiftyone/utilities";
@@ -56,6 +56,7 @@ export const createRouter = (
   const history = createBrowserHistory(options);
 
   const initialMatches = matchRoute(routes, history.location.pathname, errors);
+  console.log(initialMatches);
   const initialEntries = prepareMatches(environment, initialMatches);
 
   let currentEntry = {
@@ -66,7 +67,7 @@ export const createRouter = (
   let nextId = 0;
   const subscribers = new Map();
 
-  const cleanup = history.listen((location) => {
+  const cleanup = history.listen(({ location }) => {
     if (location.pathname === currentEntry.pathname) {
       return;
     }
@@ -87,7 +88,7 @@ export const createRouter = (
     },
     preload(pathname) {
       const matches = matchRoutes(
-        (routes as unknown) as RouteConfig[],
+        (routes as unknown) as RouteObject[],
         pathname
       );
       prepareMatches(environment, (matches as unknown) as Match[]);
@@ -105,17 +106,44 @@ export const createRouter = (
   return { cleanup, context };
 };
 
+function matchRoutes(routes: RouteDefinition[], pathname: string, branch = []) {
+  routes.some((route) => {
+    const match = route.path
+      ? matchPath(pathname, route)
+      : branch.length
+      ? branch[branch.length - 1].match // use parent match
+      : { path: "/", url: "/", params: {}, isExact: pathname === "/" };
+
+    if (match) {
+      branch.push({ route, match });
+
+      if (route.children) {
+        matchRoutes(route.children, pathname, branch);
+      }
+    }
+
+    return match;
+  });
+
+  return branch;
+}
+
 const matchRoute = <T extends OperationType | undefined = OperationType>(
   routes: RouteDefinition<T>[],
   pathname: string,
   errors: boolean
 ): Match<T>[] => {
-  const matchedRoutes = matchRoutes(
-    (routes as unknown) as RouteConfig[],
-    pathname
-  );
+  const matchedRoutes = matchRoutes(routes, pathname);
+  console.log(pathname, matchedRoutes, routes);
 
-  if (errors && matchedRoutes.every(({ match }) => !match.isExact)) {
+  console.log(
+    routes.map(({ exact, path }) => matchPath({ path, end: exact }, pathname))
+  );
+  if (
+    errors &&
+    matchedRoutes &&
+    matchedRoutes.every((match) => !match.isExact)
+  ) {
     throw new NotFoundError(pathname);
   }
 
@@ -123,38 +151,40 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
 };
 
 const prepareMatches = (environment: Environment, matches: Match[]) => {
-  return matches.map((match) => {
-    const { route, match: matchData } = match;
+  return matches
+    ? matches.map((match) => {
+        const { route, match: matchData } = match;
 
-    const query = route.query?.get();
-    const component = route.component.get();
-    if (component == null) {
-      route.component.load();
-    }
+        const query = route.query?.get();
+        const component = route.component.get();
+        if (component == null) {
+          route.component.load();
+        }
 
-    if (route.query && query == null) {
-      route.query.load();
-    }
+        if (route.query && query == null) {
+          route.query.load();
+        }
 
-    let prepared;
-    const routeQuery = route.query;
-    if (routeQuery !== undefined) {
-      prepared = new Resource(() =>
-        routeQuery.load().then((q) =>
-          loadQuery(environment, q, matchData.params || {}, {
-            fetchPolicy: "network-only",
-          })
-        )
-      );
-      prepared.load();
-    }
+        let prepared;
+        const routeQuery = route.query;
+        if (routeQuery !== undefined) {
+          prepared = new Resource(() =>
+            routeQuery.load().then((q) =>
+              loadQuery(environment, q, matchData.params || {}, {
+                fetchPolicy: "network-only",
+              })
+            )
+          );
+          prepared.load();
+        }
 
-    return {
-      component: route.component,
-      prepared,
-      routeData: matchData,
-    };
-  });
+        return {
+          component: route.component,
+          prepared,
+          routeData: matchData,
+        };
+      })
+    : [];
 };
 
 export const RouterContext = React.createContext(
