@@ -239,7 +239,7 @@ def find_duplicates(
     sample_collection, label_field, iou_thresh=0.999, method="simple", **kwargs
 ):
     """Returns IDs of duplicate labels in the given field of the collection, as
-    defined by labels with an IoU greater than a chosen threshold with another
+    defined as labels with an IoU greater than a chosen threshold with another
     label in the field.
 
     The following duplicate removal methods are supported:
