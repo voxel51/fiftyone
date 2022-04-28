@@ -391,7 +391,7 @@ def _find_duplicates_greedy(ious, iou_thresh):
             break
 
         # Remove most common value
-        k = np.bincount(np.concatenate((i, j))).argmax()
+        k = np.argmax(np.bincount(np.concatenate((i, j))))
         dup_inds.append(k)
         A[k, :] = False
         A[:, k] = False
