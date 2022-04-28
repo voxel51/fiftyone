@@ -310,6 +310,90 @@ require knowledge of the mask targets for a dataset or field(s).
     :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
     properties to save the changes to the database.
 
+.. _storing-keypoint-skeletons:
+
+Storing keypoint skeletons
+--------------------------
+
+All |Dataset| instances have
+:meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
+:meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
+properties that you can use to store keypoint skeletons for |Keypoint| field(s)
+of a dataset.
+
+The :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` property is a
+dictionary mapping field names to |KeypointSkeleton| instances, each of which
+defines the keypoint label strings and edge connectivity for the |Keypoint|
+instances in the specified field of the dataset.
+
+If all |Keypoint| fields in your dataset have the same semantics, you can store
+a single |KeypointSkeleton| in the
+:meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
+property of your dataset.
+
+When you load datasets with |Keypoint| fields in the App that have
+corresponding skeletons, the skeletons will automatically be rendered and label
+strings will appear in the App's tooltip when you hover over the keypoints.
+
+Keypoint skeletons can be associated with |Keypoint| or |Keypoints| fields
+whose :attr:`points <fiftyone.core.labels.Keypoint.points>` attributes all
+contain a fixed number of semantically ordered points.
+
+The :attr:`edges <fiftyone.core.odm.dataset.KeypointSkeleton.edges>` argument
+contains lists of integer indexes that define the connectivity of the points in
+the skeleton, and the optional
+:attr:`labels <fiftyone.core.odm.dataset.KeypointSkeleton.labels>` argument
+defines the label strings for each node in the skeleton.
+
+For example, the skeleton below is defined by edges between the following
+nodes:
+
+.. code-block:: text
+
+    left hand <-> left shoulder <-> right shoulder <-> right hand
+    left eye <-> right eye <-> mouth
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Set keypoint skeleton for the `ground_truth` field
+    dataset.skeletons = {
+        "ground_truth": fo.KeypointSkeleton(
+            labels=[
+                "left hand" "left shoulder", "right shoulder", "right hand",
+                "left eye", "right eye", "mouth",
+            ],
+            edges=[[0, 1, 2, 3], [4, 5, 6]],
+        )
+    }
+
+    # Edit an existing skeleton
+    dataset.skeletons["ground_truth"].labels[-1] = "lips"
+    dataset.save()  # must save after edits
+
+.. note::
+
+    When using keypoint skeletons, each |Keypoint| instance's
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list must always
+    respect the indexing defined by the field's |KeypointSkeleton|.
+
+    If a particular keypoint is occluded or missing for an object, use
+    `[float("nan"), float("nan")]` in its
+    :attr:`points <fiftyone.core.labels.Keypoint.points>` list.
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's
+    :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
+    :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
+    properties to save the changes to the database.
+
 Deleting a dataset
 ------------------
 
@@ -1700,20 +1784,28 @@ dynamically adding new fields to each |Polyline| instance:
 Keypoints
 ---------
 
-The |Keypoints| class represents a list of keypoints in an image. The keypoints
-are stored in the
+The |Keypoints| class represents a collection of keypoint groups in an image.
+The keypoint groups are stored in the
 :attr:`keypoints <fiftyone.core.labels.Keypoints.keypoints>` attribute of the
-|Keypoints| object.
-
-Each element of this list is a |Keypoint| object whose
+|Keypoints| object. Each element of this list is a |Keypoint| object whose
 :attr:`points <fiftyone.core.labels.Keypoint.points>` attribute contains a
-list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
-|Keypoint| object can have a string label, which is stored in its
-:attr:`label <fiftyone.core.labels.Keypoint.label>` attribute.
+list of ``(x, y)`` coordinates defining a group of semantically related
+keypoints in the image.
+
+For example, if you are working with a person model that outputs 18 keypoints
+(`left eye`, `right eye`, `nose`, etc.) per person, then each |Keypoint|
+instance would represent one person, and a |Keypoints| instance would represent
+the list of people in the image.
 
 .. note::
+
     FiftyOne stores keypoint coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
+
+Each |Keypoint| object can have a string label, which is stored in its
+:attr:`label <fiftyone.core.labels.Keypoint.label>` attribute, and it can
+optionally have a list of per-point confidences in `[0, 1]` in its
+:attr:`confidence <fiftyone.core.labels.Keypoint.confidence>` attribute:
 
 .. code-block:: python
     :linenos:
@@ -1726,7 +1818,8 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
         keypoints=[
             fo.Keypoint(
                 label="square",
-                points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]
+                points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+                confidence=[0.6, 0.7, 0.8, 0.9],
             )
         ]
     )
@@ -1748,6 +1841,7 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
                     'attributes': BaseDict({}),
                     'label': 'square',
                     'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                    'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
                     'index': None,
                 }>,
             ]),
@@ -1755,7 +1849,10 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
     }>
 
 Like all |Label| types, you can also add custom attributes to your keypoints by
-dynamically adding new fields to each |Keypoint| instance:
+dynamically adding new fields to each |Keypoint| instance. As a special case,
+if you add a custom list attribute to a |Keypoint| instance whose length
+matches the number of points, these values will be interpreted as per-point
+attributes and rendered as such in the App:
 
 .. code-block:: python
     :linenos:
@@ -1764,8 +1861,10 @@ dynamically adding new fields to each |Keypoint| instance:
 
     keypoint = fo.Keypoint(
         label="rectangle",
+        kind="square",  # custom object attribute
         points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
-        kind="square",  # custom attribute
+        confidence=[0.6, 0.7, 0.8, 0.9],
+        occluded=[False, False, True, False],  # custom per-point attributes
     )
 
     print(keypoint)
@@ -1778,15 +1877,19 @@ dynamically adding new fields to each |Keypoint| instance:
         'tags': BaseList([]),
         'label': 'rectangle',
         'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
-        'confidence': None,
+        'confidence': BaseList([0.6, 0.7, 0.8, 0.9]),
         'index': None,
         'kind': 'square',
+        'occluded': BaseList([False, False, True, False]),
     }>
 
 .. note::
 
-    Did you know? You can view custom attributes in the
-    :ref:`App tooltip <app-sample-view>` by hovering over the objects.
+    Did you know? You can
+    :ref:`store keypoint skeletons <storing-keypoint-skeletons>` for your
+    keypoint fields on your dataset. Then, when you view the dataset in the
+    App, label strings and edges will be drawn when you visualize these fields
+    in the App.
 
 .. _semantic-segmentation:
 

@@ -30,7 +30,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-from .document import Document
+from .document import DynamicDocument
+
+fod = fou.lazy_import("fiftyone.core.dataset")
 
 
 logger = logging.getLogger(__name__)
@@ -42,12 +44,30 @@ _connection_kwargs = {}
 _db_service = None
 
 
-class DatabaseConfigDocument(Document):
+#
+# IMPORTANT DATABASE CONFIG REQUIREMENTS
+#
+# All past and future versions of FiftyOne must be able to deduce the
+# database's current version and type from the `config` collection without an
+# error being raised so that migrations can be properly run and, if necsssary,
+# informative errors can be raised alerting the user that they are using the
+# wrong version or type of client.
+#
+# This is currently guaranteed because:
+#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
+#     are added will not cause an error
+#   - All declared fields are optional and we have promised ourselves that
+#     their type and meaning will never change
+#
+
+
+class DatabaseConfigDocument(DynamicDocument):
     """Backing document for the database config."""
 
     meta = {"collection": "config"}
 
     version = fof.StringField()
+    type = fof.StringField()
 
 
 def get_db_config():
@@ -56,11 +76,42 @@ def get_db_config():
     Returns:
         a :class:`DatabaseConfigDocument`
     """
+    save = False
+
     try:
         # pylint: disable=no-member
         config = DatabaseConfigDocument.objects.get()
     except moe.DoesNotExist:
         config = DatabaseConfigDocument()
+        save = True
+
+    if config.version is None:
+        #
+        # The database version was added to this config in v0.15.0, so if no
+        # version is available, assume the database is at the preceeding
+        # release. It's okay if the database's version is actually older,
+        # because there are no significant admin migrations prior to v0.14.4.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to run migrations...
+        #
+        config.version = "0.14.4"
+        save = True
+
+    if config.type is None:
+        #
+        # If the database has no type, then assume the type of the client that
+        # is currently connecting to it.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to decide if a client is
+        # allowed to connect to the database at all (a precursor to running a
+        # migration)...
+        #
+        config.type = foc.CLIENT_TYPE
+        save = True
+
+    if save:
         config.save()
 
     return config
@@ -124,17 +175,29 @@ def establish_db_conn(config):
 
             raise error
 
-    _client = pymongo.MongoClient(**_connection_kwargs)
+    _client = pymongo.MongoClient(
+        **_connection_kwargs, appname=foc.DATABASE_APPNAME
+    )
     _validate_db_version(config, _client)
 
     connect(config.database_name, **_connection_kwargs)
+
+    config = get_db_config()
+    if foc.CLIENT_TYPE != config.type:
+        raise ConnectionError(
+            "Cannot connect to database type '%s' with client type '%s'"
+            % (config.type, foc.CLIENT_TYPE)
+        )
 
 
 def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
-        _client = pymongo.MongoClient(**_connection_kwargs)
+
+        _client = pymongo.MongoClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
         connect(fo.config.database_name, **_connection_kwargs)
 
 
@@ -142,7 +205,41 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _async_client = motor.motor_tornado.MotorClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
+
+
+def delete_non_persistent_datasets_if_allowed():
+    """Deletes all non-persistent datasets if and only if we are the only
+    client currently connected to the database.
+    """
+    try:
+        num_connections = len(
+            list(
+                _client.admin.aggregate(
+                    [
+                        {"$currentOp": {"allUsers": True}},
+                        {"$project": {"appName": 1, "command": 1}},
+                        {
+                            "$match": {
+                                "appName": foc.DATABASE_APPNAME,
+                                "command.ismaster": 1,
+                            }
+                        },
+                    ]
+                )
+            )
+        )
+    except:
+        logger.warning(
+            "Skipping automatic non-persistent dataset cleanup. This action "
+            "requires read access of the 'admin' database"
+        )
+        return
+
+    if num_connections <= 1:
+        fod.delete_non_persistent_datasets()
 
 
 def _validate_db_version(config, client):
@@ -299,6 +396,16 @@ def list_collections():
     """
     conn = get_db_conn()
     return list(conn.list_collection_names())
+
+
+def drop_collection(collection_name):
+    """Drops specified collection from the database.
+
+    Args:
+        collection_name: the collection name
+    """
+    conn = get_db_conn()
+    conn.drop_collection(collection_name)
 
 
 def drop_orphan_collections(dry_run=False):

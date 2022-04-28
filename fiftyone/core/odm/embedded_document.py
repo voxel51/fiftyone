@@ -6,12 +6,11 @@ Base classes for documents that back dataset contents.
 |
 """
 import mongoengine
-from fiftyone.core.fields import DictField, EmbeddedDocumentField, ListField
 
 import fiftyone.core.utils as fou
 
 from .document import MongoEngineBaseDocument
-from .utils import get_implied_field_kwargs
+
 
 food = fou.lazy_import("fiftyone.core.odm.dataset")
 
@@ -20,183 +19,6 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
     """
-
-    _parent = None
-
-    def __init__(self, *args, **kwargs):
-        from .dataset import create_field
-        from .mixins import get_field_kwargs
-
-        self._fields = {}
-        for field_name, field in self.__class__._fields.items():
-            self._fields[field_name] = create_field(
-                field_name, **get_field_kwargs(field)
-            )
-
-        super().__init__(*args, **kwargs)
-
-        self._custom_fields = {}
-
-        for name in getattr(self, "_dynamic_fields", {}):
-            value = self._data[name]
-            if value is not None:
-                self.add_implied_field(name, value)
-
-    def has_field(self, name):
-        # pylint: disable=no-member
-        return self.get_field_def(name) is not None
-
-    def __setattr__(self, name, value):
-        if (
-            name != "_cls"
-            and name in self._fields_ordered
-            and value is not None
-        ):
-            self.get_field_def(name).validate(value)
-
-        super().__setattr__(name, value)
-        field = self.get_field_def(name)
-        while isinstance(field, (DictField, ListField)):
-            field = field.field
-
-        if isinstance(field, EmbeddedDocumentField):
-            _traverse_values2(field, value)
-            field._set_parent(self._parent)
-
-    def __setitem__(self, name, value):
-        self.set_field(name, value, create=True)
-
-    def get_field_def(self, name):
-        # pylint: disable=no-member
-        return self._fields.get(
-            name, self._get_custom_fields().get(name, None)
-        )
-
-    def get_field_schema(self):
-        # pylint: disable=no-member
-        schema = self._fields.copy()
-        schema.update(self._get_custom_fields())
-        return schema
-
-    def set_field(self, name, value, create=False):
-        if (
-            hasattr(self, name)
-            and not self.has_field(name)
-            and getattr(self, name) is not None
-        ):
-            raise ValueError("Cannot use reserved keyword '%s'" % name)
-
-        if not self.has_field(name) and value is not None:
-            if create:
-                self.add_implied_field(name, value)
-            else:
-                raise ValueError(
-                    "%s has no field '%s'" % (self.__class__, name)
-                )
-
-        setattr(self, name, value)
-
-    def add_implied_field(self, name, value):
-        """Adds the field to the document, inferring the field type from the
-        provided value.
-
-        Args:
-            name: the field name
-            value: the field value
-        """
-        if self.has_field(name):
-            raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, name)
-            )
-
-        self.add_field(name, **get_implied_field_kwargs(value))
-
-    def add_field(
-        self,
-        name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        fields=None,
-        **kwargs,
-    ):
-        """Adds a new field to the embedded document.
-
-        Args:
-            name: the field name
-            ftype: the field type to create. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Only applicable when ``ftype`` is
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the :class:`fiftyone.core.fields.Field` type of
-                the contained field. Only applicable when ``ftype`` is
-                :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
-            fields (None): the field definitions of the
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-                Only applicable when ``ftype`` is
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        """
-        self._add_field_schema(
-            name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            fields=fields,
-            **kwargs,
-        )
-
-    def _add_field_schema(
-        self,
-        name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        if self.has_field(name):
-            raise ValueError(
-                "%s field '%s' already exists" % (self.__class__, name)
-            )
-
-        field = food.create_field(
-            name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-        self._declare_field(field)
-
-    def _declare_field(self, field):
-        if self._parent is None:
-            self._custom_fields[field.name] = field
-        else:
-            self._parent._save_field(field, [field.name])
-
-    def _set_parent(self, parent):
-        self._parent = parent
-
-        # pylint: disable=no-member
-        custom_fields = getattr(self, "_custom_fields", {})
-
-        for field_name, field in {**self._fields, **custom_fields}.items():
-            while isinstance(field, (ListField)):
-                field = field.field
-
-            if isinstance(field, EmbeddedDocumentField):
-                _traverse_values(parent, self.get_field(field_name))
-
-        self._custom_fields = {}
-
-    def _get_custom_fields(self):
-        if not self._parent:
-            return getattr(self, "_custom_fields", {})
-
-        fields = getattr(self._parent, "fields", [])
-        return {field.name: field for field in fields}
 
 
 class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
@@ -228,30 +50,3 @@ class DynamicEmbeddedDocument(
         self._custom_fields = {}
         super().__init__(*args, **kwargs)
         self.validate()
-
-
-def _traverse_values(parent, v):
-    if v is None:
-        return
-
-    if isinstance(v, BaseEmbeddedDocument):
-        v._parent and v._parent._set_parent(parent)
-        return
-
-    for i in v:
-        _traverse_values(parent, i)
-
-
-def _traverse_values2(parent, v):
-    if v is None:
-        return
-
-    if isinstance(v, BaseEmbeddedDocument):
-        v._set_parent(parent)
-        return
-
-    if isinstance(v, dict):
-        return
-
-    for i in v:
-        _traverse_values2(parent, i)

@@ -21,7 +21,26 @@ export const handleId = new URLSearchParams(window.location.search).get(
 
 export const sessionId = uuid();
 
-export const http = "https://dev.fiftyone.ai:5151";
+const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
+const path = window.location.pathname.endsWith("/")
+  ? window.location.pathname.slice(0, -1)
+  : window.location.pathname;
+
+export const port = isElectron()
+  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
+  : parseInt(window.location.port);
+
+const address = isElectron()
+  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
+  : window.location.hostname;
+
+export const http = isElectron()
+  ? `http://${address}:${port}`
+  : window.location.protocol + "//" + host + path;
+
+export const ws = isElectron()
+  ? `ws://${address}:${port}/state`
+  : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${host}/state`;
 
 export const appContext = isElectron()
   ? "desktop"

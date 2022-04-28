@@ -9,7 +9,6 @@ import {
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
 } from "@fiftyone/utilities";
-import { ImageFilter } from "./state";
 
 export const BASE_ALPHA = 0.7;
 export const LINE_WIDTH = 3;

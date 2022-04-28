@@ -737,9 +737,9 @@ def to_keypoints(keypoint, name=None, extra_attrs=True):
     return etak.Keypoints(
         name=name,
         label=keypoint.label,
-        confidence=keypoint.confidence,
         index=keypoint.index,
         points=keypoint.points,
+        confidence=keypoint.confidence,
         attrs=attrs,
         tags=keypoint.tags,
     )

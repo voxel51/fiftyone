@@ -442,7 +442,10 @@ class DatasetsInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", nargs="?", metavar="NAME", help="the name of a dataset",
+            "name",
+            nargs="?",
+            metavar="NAME",
+            help="the name of a dataset",
         )
         parser.add_argument(
             "-s",
@@ -524,7 +527,9 @@ class DatasetsStatsCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-m",
@@ -575,7 +580,10 @@ class DatasetsCreateCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n", "--name", metavar="NAME", help="a name for the dataset",
+            "-n",
+            "--name",
+            metavar="NAME",
+            help="a name for the dataset",
         )
         parser.add_argument(
             "-d",
@@ -744,7 +752,9 @@ class DatasetsExportCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset to export",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset to export",
         )
         parser.add_argument(
             "-d",
@@ -824,7 +834,9 @@ class DatasetsDrawCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-d",
@@ -866,10 +878,14 @@ class DatasetsRenameCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
-            "new_name", metavar="NEW_NAME", help="a new name for the dataset",
+            "new_name",
+            metavar="NEW_NAME",
+            help="a new name for the dataset",
         )
 
     @staticmethod
@@ -1738,7 +1754,10 @@ class DatasetZooFindCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -1968,7 +1987,10 @@ class DatasetZooDeleteCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -2474,6 +2496,9 @@ class ModelZooDeleteCommand(Command):
 
 class MigrateCommand(Command):
     """Tools for migrating the FiftyOne database.
+
+    See :ref:`this page <database-migrations>` for more information about
+    migrating FiftyOne deployments.
 
     Examples::
 

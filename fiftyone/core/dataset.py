@@ -324,6 +324,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 
@@ -376,7 +380,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
-            self._sample_doc_cls._declare_field(field, field.name)
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -415,6 +418,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.name = _name
             raise
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
 
     @property
     def created_at(self):
@@ -585,6 +592,75 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
+        self.save()
+
+    @property
+    def skeletons(self):
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
+        :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
+        field of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set keypoint skeleton for the `ground_truth` field
+            dataset.skeletons = {
+                "ground_truth": fo.KeypointSkeleton(
+                    labels=[
+                        "left hand" "left shoulder", "right shoulder", "right hand",
+                        "left eye", "right eye", "mouth",
+                    ],
+                    edges=[[0, 1, 2, 3], [4, 5, 6]],
+                )
+            }
+
+            # Edit an existing skeleton
+            dataset.skeletons["ground_truth"].labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._doc.skeletons = skeletons
+        self.save()
+
+    @property
+    def default_skeleton(self):
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default keypoint skeleton
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=[
+                    "left hand" "left shoulder", "right shoulder", "right hand",
+                    "left eye", "right eye", "mouth",
+                ],
+                edges=[[0, 1, 2, 3], [4, 5, 6]],
+            )
+
+            # Edit the default skeleton
+            dataset.default_skeleton.labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._doc.default_skeleton = skeleton
         self.save()
 
     @property
@@ -1469,21 +1545,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
-            old_doc = sample._doc
             sample._set_backing_doc(doc, dataset=self)
-            for name, field in self.get_field_schema().items():
-                while isinstance(field, fof.ListField):
-                    field = field.field
-
-                if not isinstance(field, fof.EmbeddedDocumentField):
-                    continue
-
-                doc._fields[name]._set_parent(self._sample_doc_cls)
-
-            for name, value in old_doc._data.items():
-                if isinstance(value, BaseEmbeddedDocument):
-                    value._set_parent(doc._fields[name])
-
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -2378,8 +2440,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        _delete_dataset_doc(self._doc)
+        # Update singleton
+        self._instances.pop(self._doc.name, None)
 
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(
@@ -4169,6 +4233,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_mask_targets", {})
         )
 
+        dataset.skeletons = dataset._parse_skeletons(d.get("skeletons", {}))
+        dataset.default_skeleton = dataset._parse_default_skeleton(
+            d.get("default_skeleton", None)
+        )
+
         def parse_sample(sd):
             if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
@@ -4501,10 +4570,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 else:
                     if value is not None or not field.null:
                         try:
-                            if isinstance(field, fof.EmbeddedDocumentField):
-                                field.validate(value, expand=True)
-                            else:
-                                field.validate(value)
+                            field.validate(value)
                         except moe.ValidationError as e:
                             raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
@@ -4686,7 +4752,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 def _declare_fields(doc_cls, field_docs=None):
     for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
             field._set_parent(doc_cls)
             doc_cls._fields[field_name] = field
             setattr(doc_cls, field_name, field)
@@ -4725,13 +4791,11 @@ def _make_frame_collection_name(sample_collection_name):
 
 def _create_sample_document_cls(sample_collection_name, field_docs=None):
     cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
 def _create_frame_document_cls(frame_collection_name, field_docs=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    _declare_fields(cls, field_docs=field_docs)
     return cls
 
 
@@ -4792,6 +4856,13 @@ def _load_dataset(name, virtual=False):
         sample_collection_name, dataset_doc.sample_fields
     )
 
+    default_sample_fields = fos.get_default_sample_fields(include_private=True)
+    for sample_field in dataset_doc.sample_fields:
+        if sample_field.name in default_sample_fields:
+            continue
+
+        sample_doc_cls._declare_field(sample_field)
+
     frame_collection_name = dataset_doc.frame_collection_name
 
     if not virtual:
@@ -4811,6 +4882,16 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _create_frame_document_cls(
             frame_collection_name, dataset_doc.frame_fields
         )
+
+        if dataset_doc.media_type == fom.VIDEO:
+            default_frame_fields = fofr.get_default_frame_fields(
+                include_private=True
+            )
+            for frame_field in dataset_doc.frame_fields:
+                if frame_field.name in default_frame_fields:
+                    continue
+
+                frame_doc_cls._declare_field(frame_field)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -5119,11 +5200,12 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        [], schema, expand_schema=expand_schema
+        schema, expand_schema=expand_schema
     )
+
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            [], frame_schema, expand_schema=expand_schema
+            frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:
@@ -5138,22 +5220,30 @@ def _merge_dataset_doc(
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
+        curr_doc.skeletons.update(doc.skeletons)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
     else:
         _update_no_overwrite(curr_doc.info, doc.info)
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
+        _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets and not curr_doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton and not curr_doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
 
@@ -5321,13 +5411,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
         for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,

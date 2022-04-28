@@ -197,7 +197,7 @@ class _PatchesView(fov.DatasetView):
         super().set_values(field_name, *args, **kwargs)
 
         if must_sync:
-            self._sync_source_field(field_name, ids=ids)
+            self._sync_source_field(field, ids=ids)
 
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
@@ -282,32 +282,6 @@ class _PatchesView(fov.DatasetView):
         self._patches_dataset = _view._patches_dataset
 
     def _sync_source_sample(self, sample):
-        def add(paths):
-            for path in paths:
-                root = path.split(".", 1)[0]
-                source_path = ".".join(
-                    [self._source_collection._get_label_field_path(root)[1]]
-                    + path.split(".")[1:]
-                )
-                if self._source_collection.get_field(source_path) is None:
-                    field_kwargs = get_field_kwargs(self.get_field(path))
-                    self._source_collection._dataset.add_sample_field(
-                        source_path, **field_kwargs
-                    )
-                else:
-                    field = self.get_field(path)
-                    if isinstance(field, fof.ListField):
-                        field = field.field
-                    if isinstance(field, fof.EmbeddedDocumentField):
-                        add(
-                            [
-                                f"{path}.{key}"
-                                for key in field.get_field_schema()
-                            ]
-                        )
-
-        add(self._label_fields)
-
         for field in self._label_fields:
             self._sync_source_sample_field(sample, field)
 
@@ -324,19 +298,7 @@ class _PatchesView(fov.DatasetView):
         self._source_collection._set_labels(field, [sample_id], [doc])
 
     def _sync_source_field(self, field, ids=None):
-        root = field.split(".", 1)[0]
-        source_path = (
-            self._source_collection._get_label_field_path(root)[1]
-            + "."
-            + field[len(self._get_label_field_path(root)[1]) + 1 :]
-        )
-        self._source_collection._dataset._sample_doc_cls._add_field_schema(
-            source_path, **get_field_kwargs(self.get_field(field))
-        )
-
-        _, label_path = self._patches_dataset._get_label_field_path(
-            field.split(".")[0]
-        )
+        _, label_path = self._patches_dataset._get_label_field_path(field)
 
         if ids is not None:
             view = self._patches_dataset.mongo(
@@ -349,15 +311,7 @@ class _PatchesView(fov.DatasetView):
             [foa.Values(self._id_field), foa.Values(label_path, _raw=True)]
         )
 
-        self._source_collection._set_labels(
-            field.split(".")[0], sample_ids, docs
-        )
-
-        if hasattr(self._source_collection, "_sync_source_field"):
-            self._source_collection._sync_source_field(field, ids=ids)
-
-        if hasattr(self._source_collection, "_sync_source"):
-            self._source_collection._sync_source([label_path], ids=ids)
+        self._source_collection._set_labels(field, sample_ids, docs)
 
     def _sync_source_root(self, fields, update=True, delete=False):
         for field in fields:
@@ -493,7 +447,11 @@ class EvaluationPatchesView(_PatchesView):
 
 
 def make_patches_dataset(
-    sample_collection, field, other_fields=None, keep_label_lists=False
+    sample_collection,
+    field,
+    other_fields=None,
+    keep_label_lists=False,
+    name=None,
 ):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
@@ -520,6 +478,7 @@ def make_patches_dataset(
         keep_label_lists (False): whether to store the patches in label list
             fields of the same type as the input collection rather than using
             their single label variants
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -540,10 +499,11 @@ def make_patches_dataset(
     else:
         field_type = _get_single_label_field_type(sample_collection, field)
 
-    dataset = fod.Dataset(_patches=True)
+    dataset = fod.Dataset(name=name, _patches=True)
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )
+
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
@@ -571,7 +531,7 @@ def make_patches_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         dataset._sample_doc_cls.merge_field_schema(
-            [], {k: v for k, v in src_schema.items() if k in add_fields}
+            {k: v for k, v in src_schema.items() if k in add_fields}
         )
 
     _make_pretty_summary(dataset, is_frame_patches=is_frame_patches)
@@ -597,7 +557,7 @@ def _get_single_label_field_type(sample_collection, field):
 
 
 def make_evaluation_patches_dataset(
-    sample_collection, eval_key, other_fields=None
+    sample_collection, eval_key, other_fields=None, name=None
 ):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
@@ -644,6 +604,7 @@ def make_evaluation_patches_dataset(
             -   a field or list of fields to include
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -681,7 +642,7 @@ def make_evaluation_patches_dataset(
     gt_type = sample_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(_patches=True)
+    dataset = fod.Dataset(name=name, _patches=True)
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )

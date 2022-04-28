@@ -54,7 +54,12 @@ const setModal = async (
 ) => {
   const data = [
     [filterAtoms.modalFilters, filterAtoms.filters],
-    [atoms.colorByLabel(true), atoms.colorByLabel(false)],
+    ...["color_by", "multicolor_keypoints", "show_skeletons"].map((key) => {
+      return [
+        selectors.appConfigOption({ key, modal: true }),
+        selectors.appConfigOption({ key, modal: false }),
+      ];
+    }),
     [
       schemaAtoms.activeFields({ modal: true }),
       schemaAtoms.activeFields({ modal: false }),
@@ -115,12 +120,12 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
-      imageFilters: Object.fromEntries(
-        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
-          filter,
-          get(atoms.imageFilters({ modal: false, filter })),
-        ])
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: false })
       ),
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });

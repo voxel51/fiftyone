@@ -588,6 +588,21 @@ def parse_dataset_info(dataset, info, overwrite=True):
                 default_mask_targets
             )
 
+    skeletons = info.pop("skeletons", None)
+    if skeletons is not None:
+        skeletons = dataset._parse_skeletons(skeletons)
+        if overwrite:
+            dataset.skeletons.update(skeletons)
+        else:
+            _update_no_overwrite(dataset.skeletons, skeletons)
+
+    default_skeleton = info.pop("default_skeleton", None)
+    if default_skeleton is not None:
+        if overwrite or not dataset.default_skeleton:
+            dataset.default_skeleton = dataset._parse_default_skeleton(
+                default_skeleton
+            )
+
     if overwrite:
         dataset.info.update(info)
     else:
@@ -659,12 +674,12 @@ class ImportPathsMixin(object):
         manifest file into a UUID -> filepath map.
         """
         if ignore_exts:
-            to_uuid = lambda p: os.path.splitext(p)[0]
+            to_uuid = lambda p: fou.normpath(os.path.splitext(p)[0])
         else:
-            to_uuid = lambda p: p
+            to_uuid = lambda p: fou.normpath(p)
 
         if isinstance(data_path, dict):
-            return {to_uuid(k): v for k, v in data_path.items()}
+            return {to_uuid(k): fou.normpath(v) for k, v in data_path.items()}
 
         if not data_path:
             return {}
@@ -678,7 +693,7 @@ class ImportPathsMixin(object):
             data_map = etas.read_json(data_path)
             data_root = os.path.dirname(data_path)
             return {
-                to_uuid(k): os.path.join(data_root, v)
+                to_uuid(k): fou.normpath(os.path.join(data_root, v))
                 for k, v in data_map.items()
             }
 
@@ -686,7 +701,7 @@ class ImportPathsMixin(object):
             raise ValueError("Data directory '%s' does not exist" % data_path)
 
         return {
-            to_uuid(p): os.path.join(data_path, p)
+            to_uuid(p): fou.normpath(os.path.join(data_path, p))
             for p in etau.list_files(data_path, recursive=recursive)
         }
 
@@ -1968,6 +1983,7 @@ class FiftyOneImageClassificationDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
+            labels = {fou.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -2420,6 +2436,7 @@ class FiftyOneImageDetectionDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
+            labels = {fou.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -2602,6 +2619,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
+            labels = {fou.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -2782,9 +2800,10 @@ class ImageSegmentationDirectoryImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
+        labels_path = fou.normpath(self.labels_path)
         labels_paths_map = {
-            os.path.splitext(p)[0]: os.path.join(self.labels_path, p)
-            for p in etau.list_files(self.labels_path, recursive=True)
+            os.path.splitext(p)[0]: os.path.join(labels_path, p)
+            for p in etau.list_files(labels_path, recursive=True)
         }
 
         uuids = set(labels_paths_map.keys())
@@ -2927,8 +2946,12 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         label_paths = []
         for idx in inds:
             record = index[idx]
-            image_paths.append(os.path.join(self.dataset_dir, record.data))
-            label_paths.append(os.path.join(self.dataset_dir, record.labels))
+            image_paths.append(
+                fou.normpath(os.path.join(self.dataset_dir, record.data))
+            )
+            label_paths.append(
+                fou.normpath(os.path.join(self.dataset_dir, record.labels))
+            )
 
         samples = list(zip(image_paths, label_paths))
 
@@ -3066,8 +3089,12 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         label_paths = []
         for idx in inds:
             record = index[idx]
-            video_paths.append(os.path.join(self.dataset_dir, record.data))
-            label_paths.append(os.path.join(self.dataset_dir, record.labels))
+            video_paths.append(
+                fou.normpath(os.path.join(self.dataset_dir, record.data))
+            )
+            label_paths.append(
+                fou.normpath(os.path.join(self.dataset_dir, record.labels))
+            )
 
         samples = list(zip(video_paths, label_paths))
 

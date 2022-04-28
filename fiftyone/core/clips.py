@@ -341,6 +341,7 @@ def make_clips_dataset(
     tol=0,
     min_len=0,
     trajectories=False,
+    name=None,
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
@@ -404,6 +405,7 @@ def make_clips_dataset(
         trajectories (False): whether to create clips for each unique object
             trajectory defined by their ``(label, index)``. Only applicable
             when ``field_or_expr`` is a frame-level field
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -429,7 +431,9 @@ def make_clips_dataset(
     else:
         clips_type = "manual"
 
-    dataset = fod.Dataset(_clips=True, _src_collection=sample_collection)
+    dataset = fod.Dataset(
+        name=name, _clips=True, _src_collection=sample_collection
+    )
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )
@@ -464,7 +468,7 @@ def make_clips_dataset(
 
         add_fields = [f for f in other_fields if f not in curr_schema]
         dataset._sample_doc_cls.merge_field_schema(
-            [], {k: v for k, v in src_schema.items() if k in add_fields}
+            {k: v for k, v in src_schema.items() if k in add_fields}
         )
 
     _make_pretty_summary(dataset)

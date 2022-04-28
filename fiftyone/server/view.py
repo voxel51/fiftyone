@@ -209,7 +209,7 @@ def _make_filter_stages(
             expr = _make_scalar_expression(view_field, args, field)
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[0]
+                    new_field = "__%s" % path.split(".")[-1]
                     if frames:
                         new_field = "%s%s" % (
                             view._FRAMES_PREFIX,

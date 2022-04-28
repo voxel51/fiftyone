@@ -25,7 +25,11 @@ export interface PointInfo<Label extends BaseLabel> {
   color: string;
   field: string;
   label: Label;
-  point?: Coordinates;
+  point?: {
+    index: number;
+    attributes: [string, unknown][];
+    coordinates: Coordinates;
+  };
   target?: number;
   type: string;
 }
@@ -88,12 +92,20 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label._id);
   }
 
-  getColor({ options }: Readonly<State>): string {
-    if (!this.color) {
-      const key = options.coloring.byLabel ? this.label.label : this.field;
-      this.color = getColor(options.coloring.pool, options.coloring.seed, key);
+  getColor({ options: { coloring } }: Readonly<State>): string {
+    let key;
+
+    switch (coloring.by) {
+      case "field":
+        return getColor(coloring.pool, coloring.seed, this.field);
+      case "instance":
+        key = this.label.index !== undefined ? "index" : "id";
+        break;
+      default:
+        key = "label";
     }
-    return this.color;
+
+    return getColor(coloring.pool, coloring.seed, this.label[key]);
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;

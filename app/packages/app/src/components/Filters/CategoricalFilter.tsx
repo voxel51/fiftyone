@@ -365,7 +365,6 @@ const CategoricalFilter = ({
             toKey={({ value }) => String(value)}
           />
         )}
-
         <Wrapper
           path={path}
           color={color}

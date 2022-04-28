@@ -189,19 +189,6 @@ class ListField(mongoengine.fields.ListField, Field):
 
         return etau.get_class_name(self)
 
-    def validate(self, value):
-        if isinstance(self.field, EmbeddedDocumentField):
-            for v in value:
-                self.field.validate(v, clean=False, expand=True)
-        else:
-            super().validate(value)
-
-    def to_python(self, value, detached=False):
-        if detached and isinstance(self.field, EmbeddedDocumentField):
-            return [self.field.to_python(v, detached=True) for v in value]
-
-        return super().to_python(value)
-
 
 class HeatmapRangeField(ListField):
     """A ``[min, max]`` range of the values in a
@@ -268,15 +255,6 @@ class DictField(mongoengine.fields.DictField, Field):
 
         if value is not None and not isinstance(value, dict):
             self.error("Value must be a dict")
-
-    def to_python(self, value, detached=False):
-        if detached and isinstance(self.field, EmbeddedDocumentField):
-            return {
-                k: v in self.field.to_python(v, detached=True)
-                for k, v in value.items()
-            }
-
-        return super().to_python(value)
 
 
 class IntDictField(DictField):
@@ -607,7 +585,7 @@ class FrameSupportField(ListField):
 class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
 
-    If this field is not set, its default value is ``{}``.
+    If this field is not set, its default value is ``[]``.
     """
 
     def __init__(self, **kwargs):
@@ -653,32 +631,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             etau.get_class_name(self.document_type),
         )
 
-    def validate(self, value, clean=True, expand=False):
-        self._validation_schema = self.get_field_schema()
-        schema = self._validation_schema
-        for name in value._fields_ordered:
-            field = None
-            field_value = value.get_field(name)
-            if field_value is None:
-                continue
-
-            if name.startswith("_"):
-                continue
-
-            field = schema.get(name, None)
-            if field is None and expand:
-                field_kwargs = foo.get_implied_field_kwargs(field_value)
-                field = foo.create_field(name, **field_kwargs)
-                self._save_field(field, [name])
-            elif field is None:
-                self.error("field does not have field '%s' declared" % name)
-            elif isinstance(field, EmbeddedDocumentField):
-                field.validate(field_value, clean=False, expand=expand)
-            else:
-                field.validate(field_value)
-
-        super().validate(value, clean)
-
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -698,14 +650,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        fields = {
-            name: field for name, field in self.document_type._fields.items()
-        }
-        fields.update({field.name: field for field in self.fields})
+        fields = {}
 
-        filtered_fields = {}
-
-        for name, field in fields.items():
+        for name, field in self.document_type._fields.items():
             if not include_private and name.startswith("_"):
                 continue
 
@@ -718,57 +665,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             ):
                 continue
 
-            filtered_fields[name] = field
+            fields[name] = field
 
-        return filtered_fields
-
-    def to_python(self, value, detached=False):
-        if detached:
-            value.pop("_cls", None)
-            _id = value.pop("_id", None)
-            for k, v in value.items():
-                if k in self.document_type._fields:
-                    if isinstance(
-                        self.document_type._fields[k],
-                        (EmbeddedDocumentField, ListField, DictField),
-                    ):
-                        value[k] = self.document_type._fields[k].to_python(
-                            v, detached=True
-                        )
-                    elif v is not None:
-
-                        value[k] = self.document_type._fields[k].to_python(v)
-
-            if _id:
-                value["id"] = _id
-            doc = self.document_type(**value)
-
-            return doc
-
-        doc = super().to_python(value)
-
-        if isinstance(doc, foo.DynamicEmbeddedDocument):
-            doc._set_parent(self)
-
-        return doc
-
-    def _save_field(self, field, keys):
-        self.fields = [f for f in self.fields if f.name != keys[0]] + [field]
-        self._validation_schema = self.get_field_schema()
-
-        if self._parent:
-            self._parent._save_field(field, [self.name] + keys)
-
-    def _set_parent(self, parent):
-        self._parent = parent
-        if parent is not None:
-            for field_name, field in self.get_field_schema().items():
-                if isinstance(field, (ListField)):
-                    field = field.field
-
-                if isinstance(field, EmbeddedDocumentField):
-                    field._set_parent(self)
-                    field.name = field_name
+        return fields
 
 
 class EmbeddedDocumentListField(

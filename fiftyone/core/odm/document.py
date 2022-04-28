@@ -335,6 +335,21 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
 
+class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
+    """Base class for dynamic documents that are stored in a MongoDB
+    collection.
+    Dynamic documents can have arbitrary fields added to them.
+    The ID of a document is automatically populated when it is added to the
+    database, and the ID of a document is ``None`` if it has not been added to
+    the database.
+    Attributes:
+        id: the ID of the document, or ``None`` if it has not been added to the
+            database
+    """
+
+    meta = {"abstract": True}
+
+
 class Document(BaseDocument, mongoengine.Document):
     """Base class for documents that are stored in a MongoDB collection.
 
