@@ -39,7 +39,6 @@ import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 import { similarityParameters } from "./Actions/Similar";
-import { skeletonFilter } from "./Filters/LabelFieldFilters.state";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -50,7 +49,12 @@ const setModal = async (
 ) => {
   const data = [
     [filterAtoms.modalFilters, filterAtoms.filters],
-    [atoms.colorByLabel(true), atoms.colorByLabel(false)],
+    ...["color_by", "multicolor_keypoints", "show_skeletons"].map((key) => {
+      return [
+        selectors.appConfigOption({ key, modal: true }),
+        selectors.appConfigOption({ key, modal: false }),
+      ];
+    }),
     [
       schemaAtoms.activeFields({ modal: true }),
       schemaAtoms.activeFields({ modal: false }),

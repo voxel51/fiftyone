@@ -26,7 +26,6 @@ import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
 import { LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
-import { skeletonFilter } from "./Filters/LabelFieldFilters.state";
 
 const Header = styled.div`
   position: absolute;
