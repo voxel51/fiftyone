@@ -236,14 +236,22 @@ def compute_max_ious(
 
 
 def find_duplicates(
-    sample_collection, label_field, iou_thresh=0.999, **kwargs
+    sample_collection, label_field, iou_thresh=0.999, method="simple", **kwargs
 ):
     """Returns IDs of duplicate labels in the given field of the collection, as
     defined by labels with an IoU greater than a chosen threshold with another
     label in the field.
 
-    When duplicates are found, the ID of the last label(s) in the field are
-    returned as duplicates.
+    The following duplicate removal methods are supported:
+
+    -   ``method="simple"``: mark the latter label in every pair of labels
+        whose IoU exceeds the threshold. This may remove more labels than the
+        greedy method
+
+    -   ``method="greedy"``: apply a greedy method to mark the fewest number of
+        labels as duplicate such that no non-duplicate labels have IoU greater
+        than the specified threshold. This method is more computationally
+        expensive than the simple method
 
     Args:
         sample_collection: a
@@ -253,10 +261,12 @@ def find_duplicates(
             :class:`fiftyone.core.labels.Polylines`
         iou_thresh (0.999): the IoU threshold to use to determine whether
             labels are duplicates
+        method ("simple"): the duplicate removal method to use. The supported
+            values are ``("simple", "greedy")``
         **kwargs: optional keyword arguments for :func:`compute_ious`
 
     Returns:
-        a list of label IDs
+        a list of IDs of duplicate labels
     """
     fov.validate_collection_label_fields(
         sample_collection, label_field, (fol.Detections, fol.Polylines)
@@ -274,12 +284,12 @@ def find_duplicates(
         if is_frame_field:
             for frame in sample.frames.values():
                 _dup_ids = _find_duplicates(
-                    frame, _label_field, iou_thresh, **kwargs
+                    frame, _label_field, iou_thresh, method, **kwargs
                 )
                 dup_ids.extend(_dup_ids)
         else:
             _dup_ids = _find_duplicates(
-                sample, _label_field, iou_thresh, **kwargs
+                sample, _label_field, iou_thresh, method, **kwargs
             )
             dup_ids.extend(_dup_ids)
 
@@ -345,17 +355,48 @@ def _extract_max_ious(ious, labels1, labels2):
     return max1, max2, ids1, ids2
 
 
-def _find_duplicates(doc, field, iou_thresh, **kwargs):
+def _find_duplicates(doc, field, iou_thresh, method, **kwargs):
     labels = _get_labels(doc, field)
 
     if labels is None:
         return []
 
-    # When duplicates are found, delete the *latter* label in `labels`
     ious = compute_ious(labels, labels, **kwargs)
-    i, j = np.nonzero(np.triu(ious, k=1) > iou_thresh)
-    dup_inds = np.unique(np.sort(np.stack((i, j))), axis=1)[1]
+
+    if method == "simple":
+        dup_inds = _find_duplicates_simple(ious, iou_thresh)
+    elif method == "greedy":
+        dup_inds = _find_duplicates_greedy(ious, iou_thresh)
+    else:
+        raise ValueError("Unsupported method '%s'" % method)
+
     return [labels[i].id for i in dup_inds]
+
+
+def _find_duplicates_simple(ious, iou_thresh):
+    # Delete the *latter* index in *every* pair of duplicate pairs
+    A = np.triu(ious, k=1) > iou_thresh
+    _, j = np.nonzero(A)
+    return np.unique(j)
+
+
+def _find_duplicates_greedy(ious, iou_thresh):
+    # Choose the largest subset of indices s.t. no two are within `iou_thresh`
+    A = np.triu(ious, k=1) > iou_thresh
+
+    dup_inds = []
+    while True:
+        i, j = np.nonzero(A)
+        if j.size == 0:
+            break
+
+        # Remove most common value
+        k = np.bincount(np.concatenate((i, j))).argmax()
+        dup_inds.append(k)
+        A[k, :] = False
+        A[:, k] = False
+
+    return sorted(dup_inds)
 
 
 def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
@@ -383,7 +424,7 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
         for i, pred in enumerate(preds):
             if is_symmetric and i < j:
                 iou = ious[j, i]
-            elif i == j:
+            elif is_symmetric and i == j:
                 iou = 1
             elif classwise and pred.label != gt.label:
                 continue
@@ -460,7 +501,7 @@ def _compute_polyline_ious(
             ):
                 if is_symmetric and i < j:
                     iou = ious[j, i]
-                elif i == j:
+                elif is_symmetric and i == j:
                     iou = 1
                 elif classwise and pred_label != gt_label:
                     continue
@@ -537,7 +578,7 @@ def _compute_segment_ious(preds, gts):
         for i, pred in enumerate(preds):
             if is_symmetric and i < j:
                 iou = ious[j, i]
-            elif i == j:
+            elif is_symmetric and i == j:
                 iou = 1
             else:
                 pst, pet = pred.support
