@@ -1,33 +1,31 @@
-# FiftyOne Teams Relase Docker Images
+# FiftyOne Teams App Docker Images
 
 This document describes how to build and run a customizable Docker image with a
 FiftyOne Teams App release of your choice installed.
 
 ## Building an image
 
-You can build an image for latest Teams release as follows:
+You can build an image for latest Teams App release as follows:
 
 ```shell
 TOKEN=XXXXXXXXX
 
 docker build \
     --build-arg TOKEN=${TOKEN} \
-    -t voxel51/fiftyone-teams .
+    -t voxel51/fiftyone-teams-app .
 ```
 
 where `TOKEN` is your Teams install token.
 
 The default image uses Ubuntu 20.04 and Python 3.9, but you can customize these
-and install a specific Teams release via optional build arguments. Python must
-be >= 3.9:
+and install a specific Teams release via optional build arguments.
 
 ```shell
 docker build \
     --build-arg BASE_IMAGE=ubuntu:18.04 \
     --build-arg PYTHON_VERSION=3.9 \
     --build-arg TOKEN=${TOKEN} \
-    --build-arg TEAMS_VERSION=0.6.7 \
-    -t voxel51/fiftyone-teams:0.6.7 .
+    -t voxel51/fiftyone-teams-app .
 ```
 
 Refer to the `Dockerfile` itself for additional Python packages that you may
@@ -51,9 +49,11 @@ directory with the following organization:
 Therefore, to run a container, you should mount `/fiftyone` as a local volume
 via `--mount` or `-v`, as shown below.
 
-You'll also need to provide the `FIFTYONE_DATABASE_URI` environment variable to
-configure the URI of your centralized database, as well as the appropriate
-environment variable(s) to configure your cloud storage credentials.
+You'll also need to provide the `FIFTYONE_DATABASE_URI` and
+`FIFTYONE_TEAMS_ORGANIZATION` environment variables to configure the URI of
+your centralized database and your organization's authentication key, as well
+as the appropriate environment variable(s) to configure your cloud storage
+credentials.
 
 For example, a typical `docker run` command is:
 
@@ -65,7 +65,7 @@ docker run \
     -e FIFTYONE_TEAMS_ORGANIZATION=... \
     -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
     -v ${SHARED_DIR}:/fiftyone \
-    -p 5151:5151 -it voxel51/fiftyone-teams
+    -p 5151:5151 -it voxel51/fiftyone-teams-app
 ```
 
 which assumes that you have placed your AWS credentials at
