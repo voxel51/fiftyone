@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2dd7b75cf3595ee99ddf0643a8f1ebc9>>
+ * @generated SignedSource<<d09b24a21b1a5cb8b220659b9af3ef82>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,13 +13,11 @@ export type RootSetDatasetMutation$variables = {
   subscription: string;
   name?: string | null;
 };
-export type RootSetDatasetMutationVariables = RootSetDatasetMutation$variables;
 export type RootSetDatasetMutation$data = {
-  readonly setDataset: any | null;
+  readonly setDataset: boolean;
 };
-export type RootSetDatasetMutationResponse = RootSetDatasetMutation$data;
 export type RootSetDatasetMutation = {
-  variables: RootSetDatasetMutationVariables;
+  variables: RootSetDatasetMutation$variables;
   response: RootSetDatasetMutation$data;
 };
 

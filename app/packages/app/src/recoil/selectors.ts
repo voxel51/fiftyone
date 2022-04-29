@@ -6,8 +6,6 @@ import { Coloring } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
-import { handleId, isNotebook } from "../shared/connection";
-
 import * as atoms from "./atoms";
 import { State } from "./types";
 
@@ -26,44 +24,21 @@ export const refresher = (() => {
   });
 })();
 
+export const isNotebook = selector<boolean>({
+  key: "isNotebook",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return Boolean(params.get("notebook"));
+  },
+});
+
 export const stateSubscription = selector<string>({
   key: "stateSubscription",
   get: () => {
     const params = new URLSearchParams(window.location.search);
 
     return params.get("subscription") || uuid();
-  },
-});
-
-export const deactivated = selector({
-  key: "deactivated",
-  get: ({ get }) => {
-    const activeHandle = get(atoms.stateDescription)?.activeHandle;
-    if (isNotebook) {
-      return handleId !== activeHandle && typeof activeHandle === "string";
-    }
-    return false;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const fiftyone = selector({
-  key: "fiftyone",
-  get: async () => {
-    let response = null;
-    do {
-      try {
-        response = await getFetchFunction()("GET", "/fiftyone");
-      } catch {}
-      if (response) break;
-      await new Promise((r) => setTimeout(r, 2000));
-    } while (response === null);
-    return response;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 

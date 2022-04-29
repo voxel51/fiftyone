@@ -1,11 +1,12 @@
 import {
-  Loading,
+  matchPath,
   RouteRenderer,
   RoutingContext,
   RouterContext,
   useRouter,
   withErrorBoundary,
   withTheme,
+  Loading,
 } from "@fiftyone/components";
 import {
   darkTheme,
@@ -16,7 +17,6 @@ import React, { Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
-import { matchPath, matchRoutes } from "react-router";
 import {
   atom,
   RecoilRoot,
@@ -57,7 +57,10 @@ const Network: React.FC<{
 };
 
 const getDatasetName = () => {
-  const result = matchPath("/datasets/:name", window.location.pathname);
+  const result = matchPath("/datasets/:name", {
+    path: window.location.pathname,
+    exact: true,
+  });
 
   if (result) {
     return result.params.name;
@@ -91,7 +94,7 @@ const App = withTheme(
       getEventSource(
         "/events",
         {
-          onopen: async (response) => {
+          onopen: async () => {
             setReadyState(AppReadyState.OPEN);
           },
           onmessage: (msg) => {
@@ -143,15 +146,15 @@ const App = withTheme(
 
     useScreenshot();
 
-    return (
-      <>
-        {readyState < 2 ? (
-          <Network environment={environment} context={context} />
-        ) : (
-          <Setup />
-        )}
-      </>
-    );
+    switch (readyState) {
+      case AppReadyState.CONNECTING:
+        return <Loading />;
+      case AppReadyState.OPEN:
+        return <Network environment={environment} context={context} />;
+      default:
+        AppReadyState.CLOSED;
+        return <Setup />;
+    }
   }),
   atom({ key: "theme", default: darkTheme })
 );

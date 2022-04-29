@@ -5,22 +5,26 @@ FiftyOne Server queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 from datetime import date, datetime
 from enum import Enum
-import typing as t
+import os
 
-from bson import ObjectId
-from dacite import from_dict, Config
+import eta.core.serial as etas
 import strawberry as gql
+from bson import ObjectId
+from dacite import Config, from_dict
+
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.context as focx
+import fiftyone.core.uid as fou
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.mixins import HasCollection
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -175,6 +179,18 @@ class Query:
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d, config=Config(check_types=False))
 
+    @gql.field
+    def context(self) -> str:
+        return focx._get_context()
+
+    @gql.field
+    def dev(self) -> bool:
+        return foc.DEV_INSTALL or foc.RC_INSTALL
+
+    @gql.field
+    def do_not_track(self) -> bool:
+        return fo.config.do_not_track
+
     dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
         resolver=get_paginator_resolver(
@@ -183,6 +199,21 @@ class Query:
             DATASET_FILTER_STAGE,
         )
     )
+
+    @gql.field
+    def teams_submission(self) -> bool:
+        isfile = os.path.isfile(foc.TEAMS_PATH)
+        if isfile:
+            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
+        else:
+            submitted = False
+
+        return submitted
+
+    @gql.field
+    def uuid(self) -> str:
+        uid, _ = fou.get_user_id()
+        return uid
 
     @gql.field
     def version(self) -> str:

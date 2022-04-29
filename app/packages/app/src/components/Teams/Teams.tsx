@@ -9,6 +9,7 @@ import { Button } from "@fiftyone/components";
 import * as atoms from "../../recoil/atoms";
 
 import { form, header, text } from "./Teams.module.css";
+import { graphql, useMutation } from "react-relay";
 
 const Teams = () => {
   const [formState, setFormState] = useState({
@@ -25,6 +26,11 @@ const Teams = () => {
   const portalId = 4972700;
   const formId = "87aa5367-a8f1-4ed4-9e23-1fdf8448d807";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
+  const [commit] = useMutation(graphql`
+    mutation TeamsStoreTeamsSubmissionMutation {
+      storeTeamsSubmission
+    }
+  `);
 
   const setFormValue = (name) => (e) =>
     setFormState({
@@ -80,7 +86,7 @@ const Teams = () => {
       .then(() => {
         setSubmitText("Submitted. Thank you!");
         setTeams((cur) => ({ ...cur, submitted: true }));
-        getFetchFunction()("POST", "/teams?submitted=true", {});
+        commit();
         setTimeout(() => setOpen(false), 2000);
       })
       .catch((e) => {

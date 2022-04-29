@@ -14,7 +14,12 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone as fo
-from fiftyone.core.session.events import EventType, ListenPayload, StateUpdate
+from fiftyone.core.session.events import (
+    ConnectionOpened,
+    EventType,
+    ListenPayload,
+    StateUpdate,
+)
 import fiftyone.core.state as fos
 
 
@@ -51,7 +56,7 @@ async def dispatch_event(subscription: str, event: EventType) -> None:
 
 async def add_event_listener(
     request: Request, payload: ListenPayload
-) -> t.AsyncIterator[ServerSentEvent]:
+) -> t.AsyncIterator:
     """Add an event listenere to the server.
 
     Args:
@@ -92,6 +97,7 @@ async def add_event_listener(
         request_listeners.add((event_name, listener))
 
     try:
+        yield ServerSentEvent(event=ConnectionOpened.get_event_name(), data={})
         while True:
             disconnected = await request.is_disconnected()
             if disconnected:
@@ -106,7 +112,7 @@ async def add_event_listener(
                     continue
 
                 yield ServerSentEvent(
-                    event=result.__class__.__name__, data=asdict(result)
+                    event=result.get_event_name(), data=asdict(result)
                 )
 
             await asyncio.sleep(0.2)

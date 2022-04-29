@@ -349,7 +349,6 @@ export const counts = selectorFamily<
   key: "counts",
   get: ({ extended, modal, path }) => ({ get }) => {
     const data = get(aggregations({ modal, extended }));
-    console.log(path, data[path]);
     return data
       ? Object.fromEntries(
           (data[path] as CategoricalAggregations).CountValues[1]

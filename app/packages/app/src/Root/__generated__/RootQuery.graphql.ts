@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1dcec7933075f1c8ad3fd71de9920a99>>
+ * @generated SignedSource<<45fa98127c6b961657883917d8833517>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,13 +15,13 @@ export type RootQuery$variables = {
   count?: number | null;
   cursor?: string | null;
 };
-export type RootQueryVariables = RootQuery$variables;
 export type RootQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
+  readonly " $fragmentSpreads": FragmentRefs<
+    "RootNav_query" | "RootDatasets_query"
+  >;
 };
-export type RootQueryResponse = RootQuery$data;
 export type RootQuery = {
-  variables: RootQueryVariables;
+  variables: RootQuery$variables;
   response: RootQuery$data;
 };
 
@@ -68,6 +68,11 @@ const node: ConcreteRequest = (function () {
         {
           args: null,
           kind: "FragmentSpread",
+          name: "RootNav_query",
+        },
+        {
+          args: null,
+          kind: "FragmentSpread",
           name: "RootDatasets_query",
         },
       ],
@@ -80,6 +85,13 @@ const node: ConcreteRequest = (function () {
       kind: "Operation",
       name: "RootQuery",
       selections: [
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "teamsSubmission",
+          storageKey: null,
+        },
         {
           alias: null,
           args: v3 /*: any*/,
@@ -185,17 +197,17 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "bff2e1c76df0e64cbfe629627f25d526",
+      cacheID: "05550a8792658c840c13ee4f0c8615d9",
       id: null,
       metadata: {},
       name: "RootQuery",
       operationKind: "query",
       text:
-        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n',
+        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootNav_query\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
     },
   };
 })();
 
-(node as any).hash = "ff8eb0a959345ce8352680a0298a4aa7";
+(node as any).hash = "ce3f65b46a5157b40c4a38954fba1bd6";
 
 export default node;

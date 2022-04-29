@@ -1,13 +1,13 @@
 import React from "react";
 import { createBrowserHistory } from "history";
 import { Environment, loadQuery, PreloadedQuery } from "react-relay";
-import { matchPath, Router, RouteObject } from "react-router";
 import { OperationType, VariablesOf } from "relay-runtime";
 
 import { NotFoundError, Resource } from "@fiftyone/utilities";
 import { Route } from "..";
-import RouteDefinition from "./RouteDefinition";
+import RouteDefinition, { RouteBase } from "./RouteDefinition";
 import { getEnvironment } from "../use/useRouter";
+import { MatchPathResult, matchPath } from "./matchPath";
 
 export interface RouteData<
   T extends OperationType | undefined = OperationType
@@ -56,7 +56,6 @@ export const createRouter = (
   const history = createBrowserHistory(options);
 
   const initialMatches = matchRoute(routes, history.location.pathname, errors);
-  console.log(initialMatches);
   const initialEntries = prepareMatches(environment, initialMatches);
 
   let currentEntry = {
@@ -87,10 +86,7 @@ export const createRouter = (
       return currentEntry;
     },
     preload(pathname) {
-      const matches = matchRoutes(
-        (routes as unknown) as RouteObject[],
-        pathname
-      );
+      const matches = matchRoutes(routes, pathname);
       prepareMatches(environment, (matches as unknown) as Match[]);
     },
     subscribe(cb) {
@@ -106,12 +102,16 @@ export const createRouter = (
   return { cleanup, context };
 };
 
-function matchRoutes(routes: RouteDefinition[], pathname: string, branch = []) {
+export const matchRoutes = <T extends RouteBase<any>>(
+  routes: T[],
+  pathname: string,
+  branch: { route: T; match: MatchPathResult }[] = []
+) => {
   routes.some((route) => {
     const match = route.path
       ? matchPath(pathname, route)
       : branch.length
-      ? branch[branch.length - 1].match // use parent match
+      ? branch[branch.length - 1].match
       : { path: "/", url: "/", params: {}, isExact: pathname === "/" };
 
     if (match) {
@@ -126,7 +126,7 @@ function matchRoutes(routes: RouteDefinition[], pathname: string, branch = []) {
   });
 
   return branch;
-}
+};
 
 const matchRoute = <T extends OperationType | undefined = OperationType>(
   routes: RouteDefinition<T>[],
@@ -134,15 +134,11 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
   errors: boolean
 ): Match<T>[] => {
   const matchedRoutes = matchRoutes(routes, pathname);
-  console.log(pathname, matchedRoutes, routes);
 
-  console.log(
-    routes.map(({ exact, path }) => matchPath({ path, end: exact }, pathname))
-  );
   if (
     errors &&
     matchedRoutes &&
-    matchedRoutes.every((match) => !match.isExact)
+    matchedRoutes.every(({ match }) => !match.isExact)
   ) {
     throw new NotFoundError(pathname);
   }

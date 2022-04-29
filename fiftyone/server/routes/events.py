@@ -17,5 +17,6 @@ class Events(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> EventSourceResponse:
         return EventSourceResponse(
-            add_event_listener(request, ListenPayload.from_dict(data))
+            add_event_listener(request, ListenPayload.from_dict(data)),
+            ping=float("inf"),
         )

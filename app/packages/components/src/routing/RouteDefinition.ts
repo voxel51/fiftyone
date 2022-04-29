@@ -4,7 +4,9 @@ import { ConcreteRequest } from "relay-runtime";
 import { OperationType } from "relay-runtime";
 import { Route } from "..";
 
-interface RouteBase<T extends OperationType | undefined = OperationType> {
+export interface RouteBase<
+  T extends OperationType | undefined = OperationType
+> {
   path?: string;
   exact?: boolean;
   component: Resource<Route<T>>;
@@ -16,6 +18,7 @@ export interface RouteDefinition<
 > extends RouteBase<T> {
   query?: Resource<ConcreteRequest>;
   children?: RouteDefinition<T>[];
+  component: Resource<Route<T>>;
 }
 
 const components = createResourceGroup();

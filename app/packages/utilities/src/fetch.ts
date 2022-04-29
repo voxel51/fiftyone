@@ -131,7 +131,13 @@ export const getEventSource = (
       try {
         const response = await fetch(input, init);
         if (response.status >= 400) {
-          const err = await response.json();
+          let err;
+          try {
+            err = await response.json();
+          } catch {
+            throw new Error(`${response.status} ${response.url}`);
+          }
+
           throw new ServerError(((err as unknown) as { stack: string }).stack);
         }
 

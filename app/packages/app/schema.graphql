@@ -88,7 +88,8 @@ enum MediaType {
 }
 
 type Mutation {
-  setDataset(subscription: String!, name: String): Void
+  setDataset(subscription: String!, name: String): Boolean!
+  storeTeamsSubmission: Boolean!
 }
 
 type NamedTargets {
@@ -111,7 +112,12 @@ type Query {
   ): DatasetConnection!
   colorscale: [[Int!]!]
   config: AppConfig!
+  context: String!
+  dev: Boolean!
+  doNotTrack: Boolean!
   dataset(name: String!): Dataset
+  teamsSubmission: Boolean!
+  uuid: String!
   version: String!
 }
 
@@ -144,8 +150,3 @@ type Target {
   target: Int!
   value: String!
 }
-
-"""
-Represents NULL values
-"""
-scalar Void

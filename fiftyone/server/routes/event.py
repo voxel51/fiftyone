@@ -25,7 +25,6 @@ class EventData(t.TypedDict):
 class Event(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: EventData) -> t.Dict:
-        print(data["event"])
         await dispatch_event(
             data["subscription"],
             fose.Event.from_data(data["event"], data["data"]),

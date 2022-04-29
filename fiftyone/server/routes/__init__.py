@@ -22,7 +22,6 @@ from .sort import Sort
 from .stages import Stages
 from .tag import Tag
 from .tagging import Tagging
-from .teams import Teams
 from .values import Values
 
 
@@ -44,6 +43,5 @@ routes = [
     ("/stages", Stages),
     ("/tag", Tag),
     ("/tagging", Tagging),
-    ("/teams", Teams),
     ("/values", Values),
 ]

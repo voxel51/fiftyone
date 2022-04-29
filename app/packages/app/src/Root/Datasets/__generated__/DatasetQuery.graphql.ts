@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a9f203dd391c7a4bcc19a89225218011>>
+ * @generated SignedSource<<87c23dc96623e2ccf3cce909b563a96d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,6 @@ export type MediaType = "image" | "video" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
 };
-export type DatasetQueryVariables = DatasetQuery$variables;
 export type DatasetQuery$data = {
   readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
   readonly config: {
@@ -90,9 +89,8 @@ export type DatasetQuery$data = {
     readonly version: string;
   } | null;
 };
-export type DatasetQueryResponse = DatasetQuery$data;
 export type DatasetQuery = {
-  variables: DatasetQueryVariables;
+  variables: DatasetQuery$variables;
   response: DatasetQuery$data;
 };
 

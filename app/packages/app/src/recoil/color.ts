@@ -3,7 +3,7 @@ import { selectorFamily } from "recoil";
 import { Coloring, createColorGenerator } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
 
-import { darkTheme } from "../shared/colors";
+import { darkTheme } from "../colors";
 
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";

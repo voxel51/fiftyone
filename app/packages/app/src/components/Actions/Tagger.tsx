@@ -33,7 +33,6 @@ import {
   tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import { http } from "../../shared/connection";
 import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle } from "../utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
@@ -336,8 +335,6 @@ const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
 const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
-
-const url = `${http}/tag`;
 
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   const refreshers = [true, false]

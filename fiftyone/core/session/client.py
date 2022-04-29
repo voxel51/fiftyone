@@ -19,7 +19,7 @@ from uuid import uuid4
 
 import fiftyone.core.state as fos
 
-from fiftyone.core.json import FiftyOneJSONEncoder, stringify
+from fiftyone.core.json import stringify
 from fiftyone.core.session.events import Event, ListenPayload
 
 
@@ -89,7 +89,7 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception:
-                    self._conntected = False
+                    self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
                         "in 10 seconds\r\n"

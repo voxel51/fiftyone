@@ -5,7 +5,6 @@ import {
   useRecoilValue,
 } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
-import ReactGA from "react-ga";
 import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
@@ -17,9 +16,7 @@ import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
-import { ColorTheme } from "../shared/colors";
-import { appContext, handleId, isColab } from "../shared/connection";
-import gaConfig from "../ga";
+import { ColorTheme } from "../colors";
 import { selectedSamples } from "../recoil/atoms";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { savingFilters } from "../components/Actions/ActionsRow";
@@ -141,45 +138,6 @@ export const useWindowSize = () => {
   }, []);
 
   return windowSize;
-};
-
-export const useGA = () => {
-  const [gaInitialized, setGAInitialized] = useState(false);
-  const info = useRecoilValue(selectors.fiftyone);
-
-  useEffect(() => {
-    if (info.do_not_track) {
-      return;
-    }
-    const dev = info.dev_install;
-    const buildType = dev ? "dev" : "prod";
-
-    ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: dev,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-        clientId: info.user_id,
-      },
-    });
-    ReactGA.set({
-      userId: info.user_id,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: `TEAMS-${info.version}`,
-      [gaConfig.dimensions.context]: appContext,
-    });
-    setGAInitialized(true);
-    ReactGA.pageview(window.location.pathname + window.location.search);
-  }, []);
-  useHashChangeHandler(() => {
-    if (info.do_not_track) {
-      return;
-    }
-    if (gaInitialized) {
-      ReactGA.pageview(window.location.pathname + window.location.search);
-    }
-  });
 };
 
 export const useScreenshot = () => {

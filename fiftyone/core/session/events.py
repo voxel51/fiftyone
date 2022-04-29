@@ -20,13 +20,14 @@ import fiftyone.core.state as fos
 EventType = t.Union[
     "CaptureNotebookCell",
     "CloseSession",
+    "ConnectionOpened",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
     "RefreshApp",
     "StateUpdate",
 ]
 
-_camel_to_snake = pattern = re.compile(r"(?<!^)(?=[A-Z])")
+_camel_to_snake = re.compile(r"(?<!^)(?=[A-Z])")
 
 
 @dataclass
@@ -74,6 +75,12 @@ class CloseSession(Event):
 @dataclass
 class DeactivateNotebookCell(Event):
     """Deactivate notebook cell event"""
+
+
+@t.final
+@dataclass
+class ConnectionOpened(Event):
+    """Connection opened event"""
 
 
 @t.final

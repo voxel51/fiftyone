@@ -8,7 +8,9 @@ FiftyOne Server mutations
 import strawberry as gql
 import typing as t
 
-import fiftyone as fo
+import eta.core.serial as etas
+
+import fiftyone.constants as foc
 from fiftyone.core.session.events import StateUpdate
 
 from fiftyone.server.data import Info
@@ -21,18 +23,24 @@ class Mutation:
     @gql.mutation
     async def set_dataset(
         self, subscription: str, name: t.Optional[str], info: Info
-    ) -> None:
+    ) -> bool:
         state = get_state()
         dataset = await Dataset.resolver(name, info) if name else None
 
         if dataset == state.dataset:
-            return None
+            return False
 
         if name and dataset is None:
-            return None
+            return False
 
         state.dataset = dataset
         state.selected = []
         state.selected_labels = []
         state.view = None
         await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def store_teams_submission(self) -> bool:
+        etas.write_json({"submitted": True}, foc.TEAMS_PATH)
+        return True

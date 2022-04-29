@@ -7,7 +7,6 @@ import { Close, Help } from "@material-ui/icons";
 
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
-import { http } from "../../shared/connection";
 import { useOutsideClick } from "../../utils/hooks";
 import { ExternalLink } from "../../utils/generic";
 
@@ -78,12 +77,11 @@ const ViewBar = React.memo(() => {
   useEffect(() => {
     send({
       type: "UPDATE",
-      http,
       view,
       setView: (v) => setState({ view: v }),
       fieldNames: fieldPaths,
     });
-  }, [http, view]);
+  }, [view]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);

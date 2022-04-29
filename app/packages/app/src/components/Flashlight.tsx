@@ -37,7 +37,6 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import socket, { http } from "../shared/connection";
 import { useEventHandler, useSelect } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
@@ -388,7 +387,7 @@ export default React.memo(() => {
 
         if (!modal) {
           set(atoms.selectedSamples, new Set());
-          socket.send(packageMessage("set_selection", { _ids: [] }));
+          alert("todo");
         }
       },
       []
