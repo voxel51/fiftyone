@@ -46,8 +46,9 @@ import { isElectron } from "@fiftyone/utilities";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
-    ...RootNav_query
     ...RootDatasets_query
+    ...RootGA_query
+    ...RootNav_query
   }
 `;
 
@@ -104,11 +105,7 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
   );
 };
 
-export const useGA = ({
-  prepared,
-}: {
-  prepared: PreloadedQuery<RootQuery>;
-}) => {
+export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
   const [gaInitialized, setGAInitialized] = useState(false);
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
@@ -165,6 +162,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   prepared,
 }) => {
   const dataset = useRecoilValue(datasetName);
+  useGA(prepared);
   const useSearch = getUseSearch(prepared);
   const fns = useTo();
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);

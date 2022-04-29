@@ -211,7 +211,7 @@ class Query:
         return submitted
 
     @gql.field
-    def uuid(self) -> str:
+    def uid(self) -> str:
         uid, _ = fou.get_user_id()
         return uid
 

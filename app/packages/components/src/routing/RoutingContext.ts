@@ -55,19 +55,13 @@ export const createRouter = (
 ): Router<any> => {
   const history = createBrowserHistory(options);
 
-  const initialMatches = matchRoute(routes, history.location.pathname, errors);
-  const initialEntries = prepareMatches(environment, initialMatches);
-
-  let currentEntry = {
-    pathname: history.location.pathname,
-    entries: initialEntries,
-  };
+  let currentEntry: Entry;
 
   let nextId = 0;
   const subscribers = new Map();
 
   const cleanup = history.listen(({ location }) => {
-    if (location.pathname === currentEntry.pathname) {
+    if (!currentEntry || location.pathname === currentEntry.pathname) {
       return;
     }
     const matches = matchRoute(routes, location.pathname, errors);
@@ -83,6 +77,15 @@ export const createRouter = (
   const context: RoutingContext = {
     history,
     get() {
+      if (!currentEntry) {
+        currentEntry = {
+          pathname: history.location.pathname,
+          entries: prepareMatches(
+            environment,
+            matchRoute(routes, history.location.pathname, errors)
+          ),
+        };
+      }
       return currentEntry;
     },
     preload(pathname) {

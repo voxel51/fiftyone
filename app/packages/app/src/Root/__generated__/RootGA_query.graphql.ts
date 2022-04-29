@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<72c3a0dc7d2ffb2bbaf81c43908cbd27>>
+ * @generated SignedSource<<d45ccfd64a28d2b3de6f0a145530ad1f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,8 @@ export type RootGA_query$data = {
   readonly context: string;
   readonly dev: boolean;
   readonly doNotTrack: boolean;
+  readonly uid: string;
+  readonly version: string;
   readonly " $fragmentType": "RootGA_query";
 };
 export type RootGA_query$key = {
@@ -48,11 +50,25 @@ const node: ReaderFragment = {
       name: "doNotTrack",
       storageKey: null,
     },
+    {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "uid",
+      storageKey: null,
+    },
+    {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "version",
+      storageKey: null,
+    },
   ],
   type: "Query",
   abstractKey: null,
 };
 
-(node as any).hash = "1c077e1defed26f2efb4dc50794f436b";
+(node as any).hash = "40d5fec94e7227a5e638ff2fec41458e";
 
 export default node;

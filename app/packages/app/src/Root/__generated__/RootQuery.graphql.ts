@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<45fa98127c6b961657883917d8833517>>
+ * @generated SignedSource<<e6761d7ff415e46dd218d2c6bc692085>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,7 @@ export type RootQuery$variables = {
 };
 export type RootQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<
-    "RootNav_query" | "RootDatasets_query"
+    "RootDatasets_query" | "RootGA_query" | "RootNav_query"
   >;
 };
 export type RootQuery = {
@@ -68,12 +68,17 @@ const node: ConcreteRequest = (function () {
         {
           args: null,
           kind: "FragmentSpread",
-          name: "RootNav_query",
+          name: "RootDatasets_query",
         },
         {
           args: null,
           kind: "FragmentSpread",
-          name: "RootDatasets_query",
+          name: "RootGA_query",
+        },
+        {
+          args: null,
+          kind: "FragmentSpread",
+          name: "RootNav_query",
         },
       ],
       type: "Query",
@@ -85,13 +90,6 @@ const node: ConcreteRequest = (function () {
       kind: "Operation",
       name: "RootQuery",
       selections: [
-        {
-          alias: null,
-          args: null,
-          kind: "ScalarField",
-          name: "teamsSubmission",
-          storageKey: null,
-        },
         {
           alias: null,
           args: v3 /*: any*/,
@@ -194,20 +192,62 @@ const node: ConcreteRequest = (function () {
           kind: "LinkedHandle",
           name: "datasets",
         },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "context",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "dev",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "doNotTrack",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "uid",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "version",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "teamsSubmission",
+          storageKey: null,
+        },
       ],
     },
     params: {
-      cacheID: "05550a8792658c840c13ee4f0c8615d9",
+      cacheID: "2d8bc133a1f906f1c953a989c97b5982",
       id: null,
       metadata: {},
       name: "RootQuery",
       operationKind: "query",
       text:
-        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootNav_query\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
+        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
     },
   };
 })();
 
-(node as any).hash = "ce3f65b46a5157b40c4a38954fba1bd6";
+(node as any).hash = "58b33be2ff73c5d66f21b1505e4b7d64";
 
 export default node;

@@ -18,10 +18,6 @@ import string
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import (
-    BaseEmbeddedDocument,
-    EmbeddedDocument,
-)
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError

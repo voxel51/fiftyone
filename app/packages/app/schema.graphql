@@ -117,7 +117,7 @@ type Query {
   doNotTrack: Boolean!
   dataset(name: String!): Dataset
   teamsSubmission: Boolean!
-  uuid: String!
+  uid: String!
   version: String!
 }
 

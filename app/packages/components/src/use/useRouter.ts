@@ -17,6 +17,7 @@ import {
 import React, { useMemo, useRef, useState } from "react";
 
 import { RouteDefinition, createRouter, Router } from "../routing";
+import { GQLError } from "@fiftyone/utilities/src/errors";
 
 setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
@@ -34,7 +35,7 @@ async function fetchGraphQL(
   );
 
   if ("errors" in data && data.errors) {
-    throw new GraphQLError(data.errors);
+    throw new GraphQLError((data.errors as unknown) as GQLError[]);
   }
   return data;
 }
