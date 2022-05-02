@@ -299,7 +299,7 @@ class COCODetectionResults(DetectionResults):
             iou_thresh (None): an optional IoU threshold or list of IoU
                 thresholds for which to plot curves. If multiple thresholds are
                 provided, precision data is averaged across these thresholds.
-                By default, precition data is averaged over all IoU thresholds.
+                By default, precision data is averaged over all IoU thresholds.
                 Refer to :attr:`iou_threshs` to see the available thresholds
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``

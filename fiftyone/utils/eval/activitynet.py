@@ -363,7 +363,7 @@ class ActivityNetDetectionResults(DetectionResults):
             iou_thresh (None): an optional IoU threshold or list of IoU
                 thresholds for which to plot curves. If multiple thresholds are
                 provided, precision data is averaged across these thresholds.
-                By default, precition data is averaged over all IoU thresholds.
+                By default, precision data is averaged over all IoU thresholds.
                 Refer to :attr:`iou_threshs` to see the available thresholds
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
@@ -518,7 +518,12 @@ def _activitynet_evaluation_iou_sweep(gts, preds, config):
 
     matches_dict = {
         i: _compute_matches(
-            cats, pred_ious, i, eval_key="eval", id_key=k, iou_key=iou_key,
+            cats,
+            pred_ious,
+            i,
+            eval_key="eval",
+            id_key=k,
+            iou_key=iou_key,
         )
         for i, k in zip(iou_threshs, id_keys)
     }
@@ -527,7 +532,11 @@ def _activitynet_evaluation_iou_sweep(gts, preds, config):
 
 
 def _activitynet_evaluation_setup(
-    gts, preds, id_keys, iou_key, config,
+    gts,
+    preds,
+    id_keys,
+    iou_key,
+    config,
 ):
     classwise = config.classwise
 
@@ -636,7 +645,14 @@ def _compute_matches(cats, pred_ious, iou_thresh, eval_key, id_key, iou_key):
             elif pred.label == cat:
                 pred[eval_key] = "fp"
                 matches.append(
-                    (None, pred.label, None, pred.confidence, None, pred.id,)
+                    (
+                        None,
+                        pred.label,
+                        None,
+                        pred.confidence,
+                        None,
+                        pred.id,
+                    )
                 )
 
         # Leftover GTs are false negatives
