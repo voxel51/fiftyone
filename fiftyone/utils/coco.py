@@ -545,11 +545,13 @@ class COCODetectionDatasetImporter(
                 max_samples=self.max_samples,
             )
 
-            filenames = [images[_id]["file_name"] for _id in image_ids]
+            filenames = [
+                fou.normpath(images[_id]["file_name"]) for _id in image_ids
+            ]
 
             _image_ids = set(image_ids)
             image_dicts_map = {
-                i["file_name"]: i
+                fou.normpath(i["file_name"]): i
                 for _id, i in images.items()
                 if _id in _image_ids
             }
@@ -976,16 +978,11 @@ class COCOObject(object):
         points = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
-                continue
+                points.append((float("nan"), float("nan")))
+            else:
+                points.append((x / width, y / height))
 
-            points.append((x / width, y / height))
-
-        return fol.Keypoint(
-            label=label,
-            points=points,
-            confidence=self.score,
-            **self.attributes,
-        )
+        return fol.Keypoint(label=label, points=points, **self.attributes)
 
     def to_detection(
         self,

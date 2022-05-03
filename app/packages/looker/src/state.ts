@@ -8,7 +8,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "field" | "instance" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -16,6 +16,7 @@ export interface Coloring {
   maskTargets: {
     [field: string]: MaskTargets;
   };
+  points: boolean;
   targets: string[];
 }
 
@@ -68,6 +69,11 @@ export interface ControlMap<State extends BaseState> {
   [key: string]: Control<State>;
 }
 
+export interface KeypointSkeleton {
+  labels: string[];
+  edges: number[][];
+}
+
 interface BaseOptions {
   activePaths: string[];
   filter: {
@@ -95,6 +101,10 @@ interface BaseOptions {
   timeZone: string;
   mimetype: string;
   alpha: number;
+  defaultSkeleton?: KeypointSkeleton;
+  skeletons: { [key: string]: KeypointSkeleton };
+  showSkeletons: boolean;
+  pointFilter: (path: string, point: Point) => boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -242,6 +252,12 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
+interface Point {
+  point: [number | NONFINITE, number | NONFINITE];
+  label: string;
+  [key: string]: any;
+}
+
 export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
@@ -265,7 +281,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   coloring: {
-    byLabel: false,
+    by: "field",
+    points: true,
     pool: ["#000000"],
     scale: null,
     seed: 0,
@@ -284,6 +301,10 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   timeZone: "UTC",
   mimetype: "",
   alpha: 0.7,
+  defaultSkeleton: null,
+  skeletons: {},
+  showSkeletons: true,
+  pointFilter: (path: string, point: Point) => true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

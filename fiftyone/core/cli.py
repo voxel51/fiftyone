@@ -2475,6 +2475,9 @@ class ModelZooDeleteCommand(Command):
 class MigrateCommand(Command):
     """Tools for migrating the FiftyOne database.
 
+    See :ref:`this page <database-migrations>` for more information about
+    migrating FiftyOne deployments.
+
     Examples::
 
         # Print information about the current revisions of all datasets

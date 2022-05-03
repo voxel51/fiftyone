@@ -63,7 +63,7 @@ export const LABEL_TAGS_CLASSES = [
 export const LABEL_LISTS = {
   [CLASSIFICATIONS]: "classifications",
   [DETECTIONS]: "detections",
-  [KEYPOINTS]: "Keypoints",
+  [KEYPOINTS]: "keypoints",
   [POLYLINES]: "polylines",
   [TEMPORAL_DETECTIONS]: "detections",
 };
