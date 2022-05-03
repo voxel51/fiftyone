@@ -37,8 +37,7 @@ def compute_ious(
     Args:
         preds: a list of predicted :class:`fiftyone.core.labels.Detection` or
             :class:`fiftyone.core.labels.Polyline` instances
-        gt_field: a list of ground truth
-            :class:`fiftyone.core.labels.Detection` or
+        gts: a list of ground truth :class:`fiftyone.core.labels.Detection` or
             :class:`fiftyone.core.labels.Polyline` instances
         iscrowd (None): an optional name of a boolean attribute or boolean
             function to apply to each label that determines whether a ground
@@ -110,7 +109,7 @@ def compute_segment_ious(preds, gts):
     Args:
         preds: a list of predicted
             :class:`fiftyone.core.labels.TemporalDetection` instances
-        gt_field: a list of ground truth
+        gts: a list of ground truth
             :class:`fiftyone.core.labels.TemporalDetection` instances
 
     Returns:
