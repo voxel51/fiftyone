@@ -52,8 +52,8 @@ workflows.
     :tags: Basics,Dataset-Curation
 
 .. customcarditem::
-    :header: Removing duplicate labels from a dataset
-    :description: Check out some common workflows for finding and removing duplicate labels from your FiftyOne datasets.
+    :header: Removing duplicate objects from a dataset
+    :description: Check out some common workflows for finding and removing duplicate objects from your FiftyOne datasets.
     :link: remove_duplicate_annos.html
     :image: ../_static/images/recipes/remove_duplicate_annos.png
     :tags: Basics,Dataset-Curation
@@ -140,7 +140,7 @@ workflows.
 
    Creating views <creating_views.ipynb>
    Removing duplicate images <image_deduplication.ipynb>
-   Removing duplicate labels <remove_duplicate_annos.ipynb>
+   Removing duplicate objects <remove_duplicate_annos.ipynb>
    Adding classifier predictions <adding_classifications.ipynb>
    Adding object detections <adding_detections.ipynb>
    Draw labels on samples <draw_labels.ipynb>
