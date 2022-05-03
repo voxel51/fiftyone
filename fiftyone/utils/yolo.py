@@ -1066,14 +1066,19 @@ def _get_yolo_v5_labels_path(image_path):
     new = os.path.sep + "labels" + os.path.sep
 
     chunks = image_path.rsplit(old, 1)
-    if len(chunks) == 1:
+
+    if len(chunks) > 1:
+        labels_path = new.join(chunks)
+    elif image_path.startswith("images" + os.path.sep):
+        labels_path = "labels" + image_path[len("images") :]
+    else:
         raise ValueError(
             "Invalid image path '%s'. YOLOv5 image paths must contain '%s', "
             "which is replaced with '%s' to locate the corresponding labels"
             % (image_path, old, new)
         )
 
-    root, ext = os.path.splitext(new.join(chunks))
+    root, ext = os.path.splitext(labels_path)
 
     if ext:
         ext = ".txt"
