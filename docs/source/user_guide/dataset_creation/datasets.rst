@@ -2240,6 +2240,12 @@ the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
 to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`.
 
+.. note::
+
+    Any relative paths in `dataset.yaml` or per-split TXT files are interpreted
+    relative to the directory containing `dataset.yaml`, not your current
+    working directory.
+
 The TXT files in `labels/` are space-delimited files where each row corresponds
 to an object in the image of the same name, in one of the following formats:
 
