@@ -5,8 +5,8 @@ The home of the
 
 ## Installation
 
-The following installation steps are a part of the install script
-(`../install.bash`).
+The following installation steps are a part of the
+[install script](../install.bash).
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
 node version to `v16.4.2` using `nvm`:
