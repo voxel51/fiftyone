@@ -13,15 +13,12 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone.core.plots as fop
+import fiftyone.utils.iou as foui
 
 from .detection import (
     DetectionEvaluation,
     DetectionEvaluationConfig,
     DetectionResults,
-)
-from .utils import (
-    compute_ious,
-    make_iscrowd_fcn,
 )
 
 
@@ -299,7 +296,7 @@ class COCODetectionResults(DetectionResults):
             iou_thresh (None): an optional IoU threshold or list of IoU
                 thresholds for which to plot curves. If multiple thresholds are
                 provided, precision data is averaged across these thresholds.
-                By default, precition data is averaged over all IoU thresholds.
+                By default, precision data is averaged over all IoU thresholds.
                 Refer to :attr:`iou_threshs` to see the available thresholds
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
@@ -471,7 +468,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 def _coco_evaluation_setup(
     gts, preds, id_keys, iou_key, config, max_preds=None
 ):
-    iscrowd = make_iscrowd_fcn(config.iscrowd)
+    iscrowd = lambda l: bool(l.get_attribute_value(config.iscrowd, False))
     classwise = config.classwise
 
     iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
@@ -522,7 +519,7 @@ def _coco_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = compute_ious(preds, gts, **iou_kwargs)
+        ious = foui.compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
