@@ -492,7 +492,7 @@ class YOLOv5DatasetImporter(
         if etau.is_str(data) and data.endswith(".txt"):
             txt_path = _parse_yolo_v5_path(data, self.yaml_path)
             image_paths = [
-                _parse_yolo_v5_path(fou.normpath(p), self.yaml_path)
+                _parse_yolo_v5_path(fou.normpath(p), txt_path)
                 for p in _read_file_lines(txt_path)
             ]
         else:
