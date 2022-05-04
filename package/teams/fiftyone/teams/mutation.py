@@ -9,6 +9,7 @@ from dacite import Config, from_dict
 import motor.motor_asyncio as mtr
 from pymongo import ReturnDocument
 import strawberry as gql
+import typing as t
 
 from fiftyone.server.data import Info
 
@@ -19,9 +20,9 @@ from fiftyone.teams.query import User
 @gql.input
 class UserInput:
     email: str
-    family_name: str
-    given_name: str
-    sub: str
+    sub: t.Optional[str]
+    family_name: t.Optional[str] = None
+    given_name: t.Optional[str] = None
 
 
 @gql.type

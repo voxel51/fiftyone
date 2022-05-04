@@ -55,10 +55,14 @@ type DatasetEdge {
   cursor: String!
 }
 
-"""Date (isoformat)"""
+"""
+Date (isoformat)
+"""
 scalar Date
 
-"""Date with time (isoformat)"""
+"""
+Date with time (isoformat)
+"""
 scalar DateTime
 
 type EvaluationRun implements Run {
@@ -100,7 +104,11 @@ type PageInfo {
 }
 
 type Query {
-  datasets(search: String, first: Int = 10, after: String = null): DatasetConnection!
+  datasets(
+    search: String
+    first: Int = 10
+    after: String = null
+  ): DatasetConnection!
   teamsConfig: TeamsConfig!
   colorscale: [[Int!]!]
   config: AppConfig!
@@ -144,15 +152,19 @@ type TeamsConfig {
 
 type User {
   id: ID!
-  datasets(search: String, first: Int = 10, after: String = null): DatasetConnection!
+  datasets(
+    search: String
+    first: Int = 10
+    after: String = null
+  ): DatasetConnection!
   email: String!
-  familyName: String!
-  givenName: String!
+  familyName: String
+  givenName: String
 }
 
 input UserInput {
   email: String!
-  familyName: String!
-  givenName: String!
-  sub: String!
+  familyName: String
+  givenName: String
+  sub: String
 }

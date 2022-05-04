@@ -28,12 +28,14 @@ class User(fosm.HasCollection):
     id: gql.ID
     datasets: fosp.Connection[fosq.Dataset] = gql.field(
         resolver=fosp.get_paginator_resolver(
-            fosq.Dataset, "name", fosq.DATASET_FILTER_STAGE,
+            fosq.Dataset,
+            "name",
+            fosq.DATASET_FILTER_STAGE,
         )
     )
     email: str
-    family_name: str
-    given_name: str
+    family_name: t.Optional[str]
+    given_name: t.Optional[str]
 
     @staticmethod
     def get_collection_name():
@@ -69,7 +71,9 @@ class Query:
     )
     datasets: fosq.Connection[fosq.Dataset] = gql.field(
         resolver=fosq.get_paginator_resolver(
-            fosq.Dataset, "name", fosq.DATASET_FILTER_STAGE,
+            fosq.Dataset,
+            "name",
+            fosq.DATASET_FILTER_STAGE,
         ),
         permission_classes=[IsAuthenticated],
     )
