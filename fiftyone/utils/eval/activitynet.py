@@ -13,13 +13,13 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone.core.plots as fop
+import fiftyone.utils.iou as foui
 
 from .detection import (
     DetectionEvaluation,
     DetectionEvaluationConfig,
     DetectionResults,
 )
-from .utils import compute_segment_ious
 
 
 logger = logging.getLogger(__name__)
@@ -574,7 +574,7 @@ def _activitynet_evaluation_setup(
         segments["preds"] = preds
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = compute_segment_ious(preds, gts)
+        ious = foui.compute_segment_ious(preds, gts)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):

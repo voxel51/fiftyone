@@ -1445,9 +1445,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         sample_ids = []
@@ -1534,9 +1533,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         with fou.ProgressBar(total=num_samples) as pb:
