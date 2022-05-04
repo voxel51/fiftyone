@@ -1,51 +1,74 @@
-# FiftyOne - App
+# FiftyOne App
 
-<img src="https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png" alt="voxel51-logo.png" width="40%"/>
+The home of the
+[FiftyOne App](https://voxel51.com/docs/fiftyone/user_guide/app.html).
 
 ## Installation
 
-The following installation steps are a part of the
-[install script](../install.bash)
+The following installation steps are a part of the install script
+(`../install.bash`).
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
-node version to `v16.4.2` using `nvm`.
+node version to `v16.4.2` using `nvm`:
 
-```sh
+```shell
 nvm install v16.4.2
 nvm use v16.4.2
 ```
 
 Then install `yarn` globally in your node environment with `npm`:
 
-```
+```shell
 npm -g install yarn
 ```
 
-Install the app with `yarn` in this directory (`./fiftyone/app`):
+Install the app with `yarn` in this directory:
 
-```sh
+```shell
 yarn install
 ```
 
-# Starting development
+## Development
 
-```sh
+First, start the App client development server with hot reloading by running:
+
+```shell
 yarn dev
 ```
 
-This starts the App client development server with hot reloading.
+Next, we generally recommend starting the backend server manually so you have
+access to stack traces:
 
-You will need to create a `fiftyone.core.session.Session` to start the backend
-server. Or you can start the backend server directly in your python virtual
-environment:
-
-```sh
-# in ./fiftyone/server/
-python main.py
+```shell
+python fiftyone/server/main.py
 ```
 
-That's it!
+Either way, now simply launch the App like normal:
 
-## Copyright
+```py
+import fiftyone as fo
+import fiftyone.zoo as foz
 
-Copyright 2017-2022, Voxel51, Inc.<br> voxel51.com
+dataset = foz.load_zoo_dataset("quickstart")
+
+session = fo.launch_app(dataset)
+```
+
+## Style Guide
+
+All App code contributed to FiftyOne must follow our
+[style guide](../STYLE_GUIDE.md#app-style-guide).
+
+## Best practices
+
+This section will continue to evolve as we learn more about what works best.
+
+It should be noted that this App was began as this
+[boilerplate](https://github.com/electron-react-boilerplate/electron-react-boilerplate).
+
+Best practices:
+
+-   All React components should be function-based, not class-based
+-   We recommend writing fully typed TypeScript, although we are still
+    transitioning
+-   With the app dev environment installed, you can run `yarn storybook`
