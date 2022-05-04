@@ -1,5 +1,4 @@
 import {
-  matchPath,
   RouteRenderer,
   RoutingContext,
   RouterContext,
@@ -7,11 +6,13 @@ import {
   withErrorBoundary,
   withTheme,
   Loading,
+  EventsContext,
 } from "@fiftyone/components";
 import {
   darkTheme,
   getEventSource,
   setFetchFunction,
+  toCamelCase,
 } from "@fiftyone/utilities";
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -20,18 +21,21 @@ import { Environment, RelayEnvironmentProvider } from "react-relay";
 import {
   atom,
   RecoilRoot,
+  useRecoilCallback,
   useRecoilRefresher_UNSTABLE,
   useRecoilValue,
 } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useScreenshot, useUnprocessedStateUpdate } from "./utils/hooks";
+import { useScreenshot, useStateUpdate } from "./utils/hooks";
 
 import "./index.css";
 import { State } from "./recoil/types";
+import * as viewAtoms from "./recoil/view";
 import { refresher, stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
+import { getDatasetName } from "./utils/generic";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -47,26 +51,15 @@ const Network: React.FC<{
 }> = ({ environment, context }) => {
   return (
     <RelayEnvironmentProvider environment={environment}>
-      <RouterContext.Provider value={context}>
-        <Suspense fallback={null}>
-          <RouteRenderer router={context} />
-        </Suspense>
-      </RouterContext.Provider>
+      <EventsContext.Provider value={{ session: null }}>
+        <RouterContext.Provider value={context}>
+          <Suspense fallback={null}>
+            <RouteRenderer router={context} />
+          </Suspense>
+        </RouterContext.Provider>
+      </EventsContext.Provider>
     </RelayEnvironmentProvider>
   );
-};
-
-const getDatasetName = () => {
-  const result = matchPath("/datasets/:name", {
-    path: window.location.pathname,
-    exact: true,
-  });
-
-  if (result) {
-    return result.params.name;
-  }
-
-  return null;
 };
 
 enum Events {
@@ -75,14 +68,28 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const App = withTheme(
-  withErrorBoundary(() => {
+const App: React.FC = withTheme(
+  withErrorBoundary(({}) => {
     const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
-    const setState = useUnprocessedStateUpdate();
     const subscription = useRecoilValue(stateSubscription);
     const handleError = useErrorHandler();
     const refreshApp = useRecoilRefresher_UNSTABLE(refresher);
-    const { context, environment } = useRouter(makeRoutes, []);
+
+    const getView = useRecoilCallback(
+      ({ snapshot }) => () => {
+        return snapshot.getLoadable(viewAtoms.view).contents;
+      },
+      []
+    );
+
+    const { context, environment } = useRouter(
+      (environment: Environment) =>
+        makeRoutes(environment, {
+          view: getView,
+        }),
+      []
+    );
+    const setState = useStateUpdate();
 
     const contextRef = useRef(context);
     contextRef.current = context;
@@ -105,18 +112,21 @@ const App = withTheme(
                 refreshApp();
                 break;
               case Events.STATE_UPDATE: {
-                const state = JSON.parse(msg.data) as State.Description;
+                const data = JSON.parse(msg.data).state;
+                const state = {
+                  ...toCamelCase(data),
+                  view: data.view,
+                } as State.Description;
                 const current = getDatasetName();
+                current;
 
                 if (!state.dataset && current) {
                   contextRef.current.history.push("/");
-                } else if (state.dataset && state.dataset.name !== current) {
-                  contextRef.current.history.push(
-                    `/datasets/${state.dataset.name}`
-                  );
+                } else if (state.dataset && state.dataset !== current) {
+                  contextRef.current.history.push(`/datasets/${state.dataset}`);
                 }
 
-                setState(state);
+                setState({ state });
                 break;
               }
             }

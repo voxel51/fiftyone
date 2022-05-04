@@ -161,7 +161,6 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
 const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   prepared,
 }) => {
-  const dataset = useRecoilValue(datasetName);
   useGA(prepared);
   const useSearch = getUseSearch(prepared);
   const fns = useTo();
@@ -184,6 +183,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const subscription = useRecoilValue(stateSubscription);
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
   const refresh = useRecoilRefresher_UNSTABLE(refresher);
+  const dataset = useRecoilValue(datasetName);
 
   return (
     <>
@@ -197,7 +197,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           onSelect: (name) => {
             commit({
               variables: {
-                name: name,
+                name,
                 subscription,
               },
             });

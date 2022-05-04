@@ -1,13 +1,20 @@
-import { getFetchFunction } from "@fiftyone/utilities";
+import { darkTheme } from "@fiftyone/utilities";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { Coloring } from "@fiftyone/looker";
-import { getColor } from "@fiftyone/looker/src/color";
+import { createColorGenerator, getColor } from "@fiftyone/looker/src/color";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+
+export const datasetName = selector<string>({
+  key: "datasetName",
+  get: ({ get }) => {
+    return get(atoms.dataset)?.name;
+  },
+});
 
 export const refresher = (() => {
   let state = false;
@@ -42,62 +49,9 @@ export const stateSubscription = selector<string>({
   },
 });
 
-export const showTeamsButton = selector({
-  key: "showTeamsButton",
-  get: ({ get }) => {
-    const teams = get(fiftyone).teams;
-    const localTeams = get(atoms.teams);
-    const storedTeams = window.localStorage.getItem("fiftyone-teams");
-    if (storedTeams) {
-      window.localStorage.removeItem("fiftyone-teams");
-      getFetchFunction()("POST", "/teams?submitted=true");
-    }
-    if (
-      teams.submitted ||
-      localTeams.submitted ||
-      storedTeams === "submitted"
-    ) {
-      return "hidden";
-    }
-    if (teams.minimized || localTeams.minimized) {
-      return "minimized";
-    }
-    return "shown";
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const datasetName = selector({
-  key: "datasetName",
-  get: ({ get }) => get(atoms.stateDescription)?.dataset?.name,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const datasets = selector({
-  key: "datasets",
-  get: ({ get }) => {
-    return get(atoms.stateDescription)?.datasets ?? [];
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const hasDataset = selector({
-  key: "hasDataset",
-  get: ({ get }) => Boolean(get(datasetName)),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const mediaType = selector({
   key: "mediaType",
-  get: ({ get }) => get(atoms.stateDescription)?.dataset?.mediaType,
+  get: ({ get }) => get(atoms.dataset)?.mediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -113,7 +67,7 @@ export const isVideoDataset = selector({
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
-  get: ({ get }) => get(appConfig)?.gridZoom,
+  get: ({ get }) => get(atoms.appConfig)?.gridZoom,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -122,17 +76,7 @@ export const defaultGridZoom = selector<number>({
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
-    return get(appConfig)?.timezone || "UTC";
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const appConfig = selector<State.Config>({
-  key: "appConfig",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).config || {};
+    return get(atoms.appConfig)?.timezone || "UTC";
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -149,7 +93,7 @@ export const appConfigDefault = selectorFamily<
       return get(appConfigDefault({ modal: false, key }));
     }
 
-    return get(appConfig)[key];
+    return get(atoms.appConfig)[key];
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -162,49 +106,10 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   }
 );
 
-export const colorMap = selectorFamily<(val) => string, boolean>({
-  key: "colorMap",
-  get: (modal) => ({ get }) => {
-    get(appConfigOption({ key: "color_by_value", modal }));
-    let pool = get(atoms.colorPool);
-    pool = pool.length ? pool : [darkTheme.brand];
-    const seed = get(atoms.colorSeed(modal));
-
-    return createColorGenerator(pool, seed);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const coloring = selectorFamily<Coloring, boolean>({
-  key: "coloring",
-  get: (modal) => ({ get }) => {
-    const pool = get(atoms.colorPool);
-    const seed = get(atoms.colorSeed(modal));
-    return {
-      seed,
-      pool,
-      scale: get(atoms.stateDescription).colorscale,
-      by: get(appConfigOption({ key: "color_by", modal })),
-      points: get(appConfigOption({ key: "multicolor_keypoints", modal })),
-      defaultMaskTargets: get(defaultTargets),
-      maskTargets: get(targets).fields,
-      targets: new Array(pool.length)
-        .fill(0)
-        .map((_, i) => getColor(pool, seed, i)),
-    };
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets =
-      get(atoms.stateDescription).dataset?.defaultMaskTargets || {};
+    const targets = get(atoms.dataset).defaultMaskTargets || {};
     return Object.fromEntries(
       Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
     );
@@ -217,9 +122,8 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults =
-      get(atoms.stateDescription).dataset?.defaultMaskTargets || {};
-    const labelTargets = get(atoms.stateDescription).dataset?.maskTargets || {};
+    const defaults = get(atoms.dataset).defaultMaskTargets || {};
+    const labelTargets = get(atoms.dataset)?.maskTargets || {};
     return {
       defaults,
       fields: labelTargets,
@@ -233,10 +137,13 @@ export const targets = selector({
 export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
   key: "skeleton",
   get: (field) => ({ get }) => {
-    const dataset = get(atoms.stateDescription).dataset || {};
+    const dataset = get(atoms.dataset) || {
+      skeletons: null,
+      defaultSkeleton: null,
+    };
     const skeletons = dataset.skeletons || {};
 
-    return skeletons[field] || dataset.default_skeleton || null;
+    return skeletons[field] || dataset.defaultSkeleton;
   },
 });
 
@@ -384,7 +291,7 @@ export const similarityKeys = selector<{
 }>({
   key: "similarityKeys",
   get: ({ get }) => {
-    const methods = get(atoms.stateDescription).dataset.brainMethods;
+    const methods = get(atoms.dataset).brainMethods;
     return methods
       .filter(({ config: { method } }) => method === "similarity")
       .reduce(

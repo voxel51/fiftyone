@@ -1,19 +1,9 @@
 import React from "react";
-import {
-  Autorenew,
-  Check,
-  Close,
-  OpacityRounded,
-  Restore,
-} from "@material-ui/icons";
-import {
-  constSelector,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { Autorenew, Check } from "@material-ui/icons";
+import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
 
 import Checkbox from "../Common/Checkbox";
@@ -22,7 +12,7 @@ import { PopoutSectionTitle, TabOption } from "../utils";
 import { Button } from "../utils";
 import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
-import { useTheme } from "../../utils/hooks";
+import { useTheme } from "@fiftyone/components";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(

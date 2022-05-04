@@ -66,7 +66,7 @@ export const createRouter = (
     }
     const matches = matchRoute(routes, location.pathname, errors);
     const entries = prepareMatches(environment, matches);
-    const nextEntry = {
+    const nextEntry: Entry<any> = {
       pathname: location.pathname,
       entries,
     };
@@ -89,8 +89,9 @@ export const createRouter = (
       return currentEntry;
     },
     preload(pathname) {
-      const matches = matchRoutes(routes, pathname);
-      prepareMatches(environment, (matches as unknown) as Match[]);
+      if (currentEntry.pathname !== pathname) {
+        prepareMatches(environment, matchRoutes(routes, pathname));
+      }
     },
     subscribe(cb) {
       const id = nextId++;
@@ -105,17 +106,24 @@ export const createRouter = (
   return { cleanup, context };
 };
 
-export const matchRoutes = <T extends RouteBase<any>>(
-  routes: T[],
+export const matchRoutes = <
+  T extends OperationType | undefined = OperationType
+>(
+  routes: RouteBase<T>[],
   pathname: string,
-  branch: { route: T; match: MatchPathResult }[] = []
-) => {
+  branch: { route: RouteBase<T>; match: MatchPathResult<T> }[] = []
+): { route: RouteBase<T>; match: MatchPathResult<T> }[] => {
   routes.some((route) => {
     const match = route.path
       ? matchPath(pathname, route)
       : branch.length
       ? branch[branch.length - 1].match
-      : { path: "/", url: "/", params: {}, isExact: pathname === "/" };
+      : ({
+          path: "/",
+          url: "/",
+          params: {},
+          isExact: pathname === "/",
+        } as MatchPathResult<T>);
 
     if (match) {
       branch.push({ route, match });
@@ -146,10 +154,13 @@ const matchRoute = <T extends OperationType | undefined = OperationType>(
     throw new NotFoundError(pathname);
   }
 
-  return (matchedRoutes as unknown) as Match<T>[];
+  return matchedRoutes;
 };
 
-const prepareMatches = (environment: Environment, matches: Match[]) => {
+const prepareMatches = <T extends OperationType | undefined = OperationType>(
+  environment: Environment,
+  matches: Match<T>[]
+) => {
   return matches
     ? matches.map((match) => {
         const { route, match: matchData } = match;
@@ -164,22 +175,43 @@ const prepareMatches = (environment: Environment, matches: Match[]) => {
           route.query.load();
         }
 
-        let prepared;
         const routeQuery = route.query;
         if (routeQuery !== undefined) {
-          prepared = new Resource(() =>
-            routeQuery.load().then((q) =>
-              loadQuery(environment, q, matchData.params || {}, {
-                fetchPolicy: "network-only",
-              })
-            )
+          const prepared = new Resource(() =>
+            routeQuery.load().then((q) => {
+              return loadQuery(
+                environment,
+                q,
+                matchData.params
+                  ? Object.keys(matchData.params).reduce(
+                      (p: VariablesOf<any>, key) => {
+                        p[key] = matchData.params
+                          ? matchData.params[key]()
+                          : null;
+
+                        return p;
+                      },
+                      {}
+                    )
+                  : {},
+                {
+                  fetchPolicy: "network-only",
+                }
+              );
+            })
           );
+
           prepared.load();
+
+          return {
+            component: route.component,
+            prepared,
+            routeData: matchData,
+          };
         }
 
         return {
           component: route.component,
-          prepared,
           routeData: matchData,
         };
       })

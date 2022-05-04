@@ -159,7 +159,7 @@ const Selector = <T extends unknown>({
           const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
-              ref.current && ref.current.blur();
+              editing && setEditing(false);
               break;
             case "ArrowDown":
               active !== undefined &&

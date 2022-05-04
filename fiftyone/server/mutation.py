@@ -12,10 +12,12 @@ import eta.core.serial as etas
 
 import fiftyone.constants as foc
 from fiftyone.core.session.events import StateUpdate
+import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.query import Dataset
+from fiftyone.server.scalars import JSONArray
 
 
 @gql.type
@@ -25,7 +27,7 @@ class Mutation:
         self, subscription: str, name: t.Optional[str], info: Info
     ) -> bool:
         state = get_state()
-        dataset = await Dataset.resolver(name, info) if name else None
+        dataset = await Dataset.resolver(name, [], info) if name else None
 
         if dataset == state.dataset:
             return False
@@ -39,6 +41,18 @@ class Mutation:
         state.view = None
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
+
+    @gql.mutation
+    async def set_view(
+        self, subscription: str, session: t.Optional[str], view: JSONArray
+    ) -> JSONArray:
+        state = get_state()
+
+        state.selected = []
+        state.selected_labels = []
+        state.view = fov.DatasetView._build(state.dataset, view)
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return view
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:

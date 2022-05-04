@@ -91,7 +91,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "field" | "instance" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;

@@ -130,10 +130,10 @@ export const aggregations = selectorFamily<
       return get(aggregations({ extended: false, modal })) as AggregationsData;
     }
 
-    const dataset = get(selectors.datasetName);
+    const dataset = get(atoms.dataset)?.name;
 
     if (!dataset) {
-      return {};
+      return null;
     }
 
     get(aggregationsTick);

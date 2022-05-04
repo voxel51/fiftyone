@@ -15,17 +15,15 @@ import styled from "styled-components";
 import * as atoms from "../../recoil/atoms";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as colorAtoms from "../../recoil/color";
-import { useTheme } from "../../utils/hooks";
-import { genSort } from "../../utils/generic";
+import { genSort, getDatasetName } from "../../utils/generic";
 
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 
 import ExcludeOption from "./Exclude";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { datasetName } from "../../recoil/selectors";
 import { view } from "../../recoil/view";
-import { Selector } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { selectedValuesAtom } from "./stringState";
 
 const CategoricalFilterContainer = styled.div`
@@ -223,7 +221,7 @@ const categoricalSearchResults = selectorFamily<
     );
 
     const data = await getFetchFunction()("POST", "/values", {
-      dataset: get(datasetName),
+      dataset: getDatasetName(),
       view: get(view),
       path,
       search,

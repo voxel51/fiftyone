@@ -34,8 +34,6 @@ def route(func):
 
             return FiftyOneResponse(response)
         except Exception as e:
-            print(endpoint)
-            print("PAYLOAD", payload)
             return FiftyOneResponse(
                 {
                     "kind": "Server Error",

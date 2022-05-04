@@ -42,6 +42,7 @@ type Dataset {
   evaluations: [EvaluationRun!]!
   appSidebarGroups: [SidebarGroup!]
   version: String!
+  viewCls: String
 }
 
 type DatasetConnection {
@@ -82,6 +83,8 @@ type EvaluationRunConfig implements RunConfig {
   method: String!
 }
 
+scalar JSONArray
+
 enum MediaType {
   image
   video
@@ -89,6 +92,7 @@ enum MediaType {
 
 type Mutation {
   setDataset(subscription: String!, name: String): Boolean!
+  setView(subscription: String!, session: String, view: JSONArray!): JSONArray!
   storeTeamsSubmission: Boolean!
 }
 
@@ -115,7 +119,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!): Dataset
+  dataset(name: String!, view: JSONArray): Dataset
   teamsSubmission: Boolean!
   uid: String!
   version: String!

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "@react-spring/web";
 
-import { useTheme } from "../utils/hooks";
 import { scrollbarStyles } from "../components/utils";
 import { isElectron } from "@fiftyone/utilities";
 import {
@@ -11,6 +10,7 @@ import {
   Header,
   iconContainer,
   SlackLink,
+  useTheme,
 } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
 import { isNotebook } from "../recoil/selectors";

@@ -25,7 +25,6 @@ import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
 import * as viewAtoms from "../../../recoil/view";
-import { useTheme } from "../../../utils/hooks";
 
 import { PillButton } from "../../utils";
 
@@ -41,7 +40,8 @@ import {
 
 import { elementNames } from "../../../recoil/view";
 import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
-import { datasetName } from "../../../recoil/selectors";
+import { useTheme } from "@fiftyone/components";
+import { getDatasetName } from "../../../utils/generic";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
@@ -155,7 +155,6 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         paths,
       ]);
 
-      const dataset = await snapshot.getPromise(datasetName);
       const view = await snapshot.getPromise(viewAtoms.view);
       const shown = await snapshot.getPromise(
         groupShown({ modal, name: group })
@@ -165,7 +164,7 @@ export const useRenameGroup = (modal: boolean, group: string) => {
 
       set(groupShown({ name: newName, modal }), shown);
       set(sidebarGroupsDefinition(modal), newGroups);
-      !modal && persistGroups(dataset, view, newGroups);
+      !modal && persistGroups(getDatasetName(), view, newGroups);
     },
     []
   );

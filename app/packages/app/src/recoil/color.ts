@@ -18,8 +18,8 @@ export const coloring = selectorFamily<Coloring, boolean>({
     return {
       seed,
       pool,
-      scale: get(atoms.stateDescription).colorscale,
-      by: get(selectors.appConfigOption({ key: "color_by", modal: true })),
+      scale: get(atoms.colorscale),
+      by: get(selectors.appConfigOption({ key: "colorBy", modal: true })),
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(pool.length)
@@ -35,7 +35,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
-    get(selectors.appConfigOption({ key: "color_by", modal }));
+    get(selectors.appConfigOption({ key: "colorBy", modal }));
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));

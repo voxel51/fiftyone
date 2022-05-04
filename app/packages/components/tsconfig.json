@@ -18,7 +18,6 @@
 
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "allowJs": false,
 
     "plugins": [{ "name": "typescript-plugin-css-modules" }],

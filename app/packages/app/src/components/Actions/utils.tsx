@@ -7,10 +7,11 @@ import * as atoms from "../../recoil/atoms";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
-import { useTheme } from "../../utils/hooks";
-import { datasetName, hiddenLabelsArray } from "../../recoil/selectors";
+import { hiddenLabelsArray } from "../../recoil/selectors";
 import { view } from "../../recoil/view";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useTheme } from "@fiftyone/components";
+import { getDatasetName } from "../../utils/generic";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -97,11 +98,12 @@ export const tagStatistics = selectorFamily<
 
     let labels = [];
     if (modal) {
-      labels = toSnakeCase(get(atoms.stateDescription).selectedLabels);
+      alert("todo");
+      // labels = toSnakeCase(get(selectors.selectedLa));
     }
 
     const { count, tags } = await getFetchFunction()("POST", "/tagging", {
-      dataset: get(datasetName),
+      dataset: getDatasetName(),
       view: get(view),
       active_label_fields: activeLabels,
       sample_ids: selected.size

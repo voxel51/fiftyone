@@ -12,11 +12,10 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import { useEventHandler, useSetState } from "../../utils/hooks";
+import { useEventHandler } from "../../utils/hooks";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
-import { getFetchFunction } from "@fiftyone/utilities";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
@@ -31,7 +30,7 @@ const useClearSampleSelection = (close) => {
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(viewAtoms.elementNames);
   const clearSelection = useClearSampleSelection(close);
-  const setState = useSetState();
+  const setState = () => {};
   const addStage = (name: string) => {
     close();
 

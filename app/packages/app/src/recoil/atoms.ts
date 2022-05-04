@@ -1,6 +1,6 @@
 import { atom, atomFamily } from "recoil";
 
-import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 
@@ -95,8 +95,8 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom<State.Description | null>({
-  key: "stateDescription",
+export const dataset = atom<State.Dataset>({
+  key: "dataset",
   default: null,
 });
 
@@ -155,4 +155,14 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
+});
+
+export const appConfig = atom<State.Config>({
+  key: "appConfig",
+  default: null,
+});
+
+export const colorscale = atom<RGB[]>({
+  key: "colorscale",
+  default: null,
 });

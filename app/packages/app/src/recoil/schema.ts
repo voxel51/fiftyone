@@ -16,7 +16,6 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { sidebarGroupsDefinition } from "../components/Sidebar";
 
 const RESERVED_FIELDS = [
   "id",
@@ -61,6 +60,9 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
       ftype: LIST_FIELD,
       name: "frames",
       fields: dataset.frameFields.reduce(schemaReduce, {}),
+      dbField: null,
+      embeddedDocType: null,
+      subfield: "Frame",
     };
   }
 
@@ -106,15 +108,15 @@ export const fieldSchema = selectorFamily<
 >({
   key: "fieldSchema",
   get: ({ space, filtered }) => ({ get }) => {
-    const state = get(atoms.stateDescription);
+    const dataset = get(atoms.dataset);
 
-    if (!state.dataset) {
+    if (!dataset) {
       return {};
     }
 
     const fields = (space === State.SPACE.FRAME
-      ? state.dataset.frameFields
-      : state.dataset.sampleFields
+      ? dataset.frameFields
+      : dataset.sampleFields
     ).reduce(schemaReduce, {});
 
     filtered && fieldFilter(fields, get(viewAtoms.view), space);
@@ -170,6 +172,9 @@ export const fullSchema = selector<Schema>({
           ftype: LIST_FIELD,
           name: "frames",
           fields: frames,
+          embeddedDocType: null,
+          subfield: "Frame",
+          dbField: null,
         },
       } as Schema;
     }
@@ -373,7 +378,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
   get: ({ modal }) => ({ get }) => {
     return filterPaths(
       get(_activeFields({ modal })),
-      buildSchema(get(atoms.stateDescription).dataset)
+      buildSchema(get(atoms.dataset))
     );
   },
   set: ({ modal }) => ({ set }, value) => {

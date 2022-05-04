@@ -1,7 +1,7 @@
 import { Loading, Route } from "@fiftyone/components";
 import React from "react";
 
-const Home: Route = (props) => {
+const Home: Route = ({}) => {
   return <Loading>No dataset selected</Loading>;
 };
 

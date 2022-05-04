@@ -11,9 +11,9 @@ import { Slider as SliderUnstyled } from "@material-ui/core";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
 import * as selectors from "../../recoil/selectors";
-import { useTheme } from "../../utils/hooks";
 import { getFormatter, getStep } from "./utils";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
+import { useTheme } from "@fiftyone/components";
 
 const SliderContainer = styled.div`
   font-weight: bold;

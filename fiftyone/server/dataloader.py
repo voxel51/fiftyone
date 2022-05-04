@@ -57,7 +57,7 @@ def get_dataloader_resolver(
     cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
 ) -> t.Callable[
     [str, Info],
-    t.Coroutine[t.Any, t.Any, t.Awaitable[t.Optional[HasCollectionType]]],
+    t.Coroutine[t.Any, t.Any, t.Optional[HasCollectionType]],
 ]:
     dataloaders[cls] = DataLoaderConfig(key=key, filters=filters)
 

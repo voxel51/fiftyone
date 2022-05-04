@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useRecoilCallback } from "recoil";
 
-import { datasetName } from "../../../recoil/selectors";
 import { State } from "../../../recoil/types";
 import * as viewAtoms from "../../../recoil/view";
+import { getDatasetName } from "../../../utils/generic";
 
 import { persistGroups, sidebarGroupsDefinition } from "../recoil";
 import { validateGroupName } from "../utils";
@@ -24,10 +24,9 @@ const AddGroup = () => {
       }
       const newGroups: State.SidebarGroups = [...current, [newGroup, []]];
 
-      const dataset = await snapshot.getPromise(datasetName);
       const view = await snapshot.getPromise(viewAtoms.view);
       set(sidebarGroupsDefinition(false), newGroups);
-      persistGroups(dataset, view, newGroups);
+      persistGroups(getDatasetName(), view, newGroups);
     },
     []
   );

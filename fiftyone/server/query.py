@@ -6,11 +6,13 @@ FiftyOne Server queries
 |
 """
 import typing as t
+from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
 import os
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 import strawberry as gql
 from bson import ObjectId
 from dacite import Config, from_dict
@@ -19,12 +21,15 @@ from dacite import Config, from_dict
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
+import fiftyone.core.dataset as fod
 import fiftyone.core.uid as fou
+import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.mixins import HasCollection
 from fiftyone.server.paginator import Connection, get_paginator_resolver
+from fiftyone.server.scalars import JSONArray
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -124,6 +129,7 @@ class Dataset(HasCollection):
     evaluations: t.List[EvaluationRun]
     app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
     version: str
+    view_cls: t.Optional[str]
 
     @staticmethod
     def get_collection_name() -> str:
@@ -142,8 +148,31 @@ class Dataset(HasCollection):
         return doc
 
     @classmethod
-    async def resolver(cls, name: str, info: Info) -> t.Optional["Dataset"]:
-        return await dataset_dataloader(name, info)
+    async def resolver(
+        cls, name: str, view: t.Optional[JSONArray], info: Info
+    ) -> t.Optional["Dataset"]:
+        dataset = await dataset_dataloader(name, info)
+        if dataset is None:
+            return dataset
+
+        ds = fo.load_dataset(name)
+        view = fov.DatasetView._build(ds, view)
+
+        if view._dataset != ds:
+            d = view._dataset._serialize()
+            dataset.media_type = d["media_type"]
+            dataset.sample_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["sample_fields"])
+            ]
+            dataset.frame_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["frame_fields"])
+            ]
+
+            dataset.view_cls = etau.get_class_name(view)
+
+        return dataset
 
 
 dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
@@ -220,7 +249,9 @@ class Query:
         return foc.VERSION
 
 
-def _flatten_fields(path, fields):
+def _flatten_fields(
+    path: t.List[str], fields: t.List[t.Dict]
+) -> t.List[t.Dict]:
     result = []
     for field in fields:
         key = field.pop("name")
@@ -233,3 +264,27 @@ def _flatten_fields(path, fields):
             result = result + _flatten_fields(field_path, fields)
 
     return result
+
+
+async def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
+    view = fov.DatasetView._build(dataset, view)
+
+    doc = dataset._doc.to_dict()
+    Dataset.modifier(doc)
+    data = from_dict(Dataset, doc)
+
+    if view._dataset != dataset:
+        d = view._dataset._serialize()
+        data.media_type = d["media_type"]
+        data.sample_fields = [
+            from_dict(SampleField, s)
+            for s in _flatten_fields([], d["sample_fields"])
+        ]
+        data.frame_fields = [
+            from_dict(SampleField, s)
+            for s in _flatten_fields([], d["frame_fields"])
+        ]
+
+    data.view_cls = etau.get_class_name(view)
+
+    return asdict(data)

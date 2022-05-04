@@ -2,6 +2,7 @@ import React from "react";
 import mime from "mime";
 import styled from "styled-components";
 import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
+import { matchPath } from "@fiftyone/components";
 
 export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;
@@ -187,3 +188,17 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
     ];
   };
 })();
+
+export const getDatasetName = (): string => {
+  const result = matchPath("/datasets/:name", {
+    path: window.location.pathname,
+    exact: true,
+    defaultParams: {},
+  });
+
+  if (result) {
+    return result.params.name();
+  }
+
+  return null;
+};

@@ -24,7 +24,7 @@ import fiftyone.core.session.templates as fost
 class NotebookCell:
     address: str
     height: int
-    handle: IPython.display.DisplayHandle
+    handle: "IPython.display.DisplayHandle"
     port: int
     subscription: str
 

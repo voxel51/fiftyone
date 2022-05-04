@@ -1,18 +1,17 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
-import { useOutsideClick } from "../../utils/hooks";
+import { useOutsideClick, useSetView } from "../../utils/hooks";
 import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
-import { useSetState } from "../../utils/hooks";
 
 const ViewBarDiv = styled.div`
   position: relative;
@@ -45,7 +44,7 @@ const IconsContainer = styled.div`
   z-index: 904;
   height: 100%;
   border-radius: 3px;
-top 0;
+  top 0;
   height: 52px;
   right: 0;
   background-image: linear-gradient(
@@ -70,7 +69,7 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const view = useRecoilValue(viewAtoms.view);
-  const setState = useSetState();
+  const setView = useSetView();
 
   const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
 
@@ -78,7 +77,7 @@ const ViewBar = React.memo(() => {
     send({
       type: "UPDATE",
       view,
-      setView: (v) => setState({ view: v }),
+      setView,
       fieldNames: fieldPaths,
     });
   }, [view]);

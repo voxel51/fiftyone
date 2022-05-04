@@ -1,10 +1,10 @@
+import { useTheme } from "@fiftyone/components";
 import { LocalOffer } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
 import * as colorAtoms from "../../../recoil/color";
-import { useTheme } from "../../../utils/hooks";
 import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";

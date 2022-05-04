@@ -1,16 +1,9 @@
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchOrigin } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import {
-  selector,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { selector, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as atoms from "./atoms";
-import * as selectors from "./selectors";
-import { State } from "./types";
 import * as viewAtoms from "./view";
-import { useUnprocessedStateUpdate } from "../utils/hooks";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 

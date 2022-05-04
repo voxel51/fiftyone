@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useTransition } from "react";
 import { OperationType } from "relay-runtime";
-import { Entry, RouterContext, RoutingContext } from "./RoutingContext";
+import { Entry, RouterContext, RoutingContext } from "./RouterContext";
 
 export const goTo = (router: RoutingContext, path: string) => {
   router.history.push(path);

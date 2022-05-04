@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<87c23dc96623e2ccf3cce909b563a96d>>
+ * @generated SignedSource<<1a90c6e4fedd2d4bfcd5f2a4bce02d60>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest, Query } from "relay-runtime";
 export type MediaType = "image" | "video" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
+  view?: Array | null;
 };
 export type DatasetQuery$data = {
   readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
@@ -100,6 +101,11 @@ const node: ConcreteRequest = (function () {
         defaultValue: null,
         kind: "LocalArgument",
         name: "name",
+      },
+      {
+        defaultValue: null,
+        kind: "LocalArgument",
+        name: "view",
       },
     ],
     v1 = {
@@ -295,6 +301,11 @@ const node: ConcreteRequest = (function () {
             kind: "Variable",
             name: "name",
             variableName: "name",
+          },
+          {
+            kind: "Variable",
+            name: "view",
+            variableName: "view",
           },
         ],
         concreteType: "Dataset",
@@ -514,17 +525,17 @@ const node: ConcreteRequest = (function () {
       selections: v10 /*: any*/,
     },
     params: {
-      cacheID: "069b49709722e601f5fc72194c604451",
+      cacheID: "abf203da0ffdfd9623702057faa06a6f",
       id: null,
       metadata: {},
       name: "DatasetQuery",
       operationKind: "query",
       text:
-        "query DatasetQuery(\n  $name: String!\n) {\n  colorscale\n  config {\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    useFrameNumber\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n  }\n  dataset(name: $name) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    version\n  }\n}\n",
+        "query DatasetQuery(\n  $name: String!\n  $view: JSONArray\n) {\n  colorscale\n  config {\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    useFrameNumber\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n  }\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    version\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "ce6bbf20ed45e1eb87c994b63ef2a3b4";
+(node as any).hash = "d5e34cb53a6a722047bd761a4b16fdf0";
 
 export default node;

@@ -37,7 +37,7 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import { useEventHandler, useSelect } from "../utils/hooks";
+import { useEventHandler } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
@@ -122,9 +122,9 @@ const flashlightLookerOptions = selector({
       showSkeletons: get(
         selectors.appConfigOption({ key: "show_skeletons", modal: false })
       ),
-      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
-      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
-      pointFilter: get(skeletonFilter(false)),
+      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+      skeletons: get(atoms.dataset)?.skeletons,
+      pointFilter: get(filterAtoms.skeletonFilter(false)),
     };
   },
 });
@@ -303,7 +303,7 @@ export default React.memo(() => {
   const view = useRecoilValue(viewAtoms.view);
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
-  const onSelect = useSelect();
+  const onSelect = () => {};
   const params = useRecoilValue(pageParameters);
   const paramsRef = useRef(params);
 
@@ -316,7 +316,6 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
-  const dataset = useRecoilValue(selectors.datasetName);
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -337,7 +336,7 @@ export default React.memo(() => {
       dimensions,
       sampleId: sample._id,
       frameRate,
-      dataset,
+      dataset: datasetName,
       view,
       frameNumber: constructor === FrameLooker ? frameNumber : null,
       fieldSchema: {
@@ -387,7 +386,6 @@ export default React.memo(() => {
 
         if (!modal) {
           set(atoms.selectedSamples, new Set());
-          alert("todo");
         }
       },
       []

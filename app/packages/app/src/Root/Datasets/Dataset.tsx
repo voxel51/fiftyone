@@ -14,7 +14,7 @@ import {
 } from "./__generated__/DatasetQuery.graphql";
 import { refresher } from "../../recoil/selectors";
 import { useRecoilValue } from "recoil";
-import { getEnvironment } from "@fiftyone/components/src/use/useRouter";
+import * as atoms from "../../recoil/atoms";
 
 const toStrictField = (field: Field): StrictField => {
   return {
@@ -86,7 +86,7 @@ const transformDataset = (
 };
 
 const Query = graphql`
-  query DatasetQuery($name: String!) {
+  query DatasetQuery($name: String!, $view: JSONArray) {
     colorscale
     config {
       colorPool
@@ -102,7 +102,7 @@ const Query = graphql`
       timezone
     }
 
-    dataset(name: $name) {
+    dataset(name: $name, view: $view) {
       id
       name
       mediaType
@@ -167,33 +167,26 @@ const Query = graphql`
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const [ref, load] = useQueryLoader(Query, prepared);
+  const dataset = useRecoilValue(atoms.dataset);
   const data = usePreloadedQuery(Query, ref);
 
   if (!data.dataset) {
     throw new NotFoundError(window.location.pathname);
   }
 
-  const state: State.Description = {
-    view: [],
-    selected: [],
-    selectedLabels: [],
-    close: false,
-    refresh: false,
-    connected: true,
-    viewCls: null,
-    config: {
-      ...clone(data.config),
-    },
-    activeHandle: null,
-    colorscale: (clone(data.colorscale) || []) as RGB[],
-    dataset: transformDataset(data.dataset),
-  };
-
   const update = useStateUpdate();
 
   useEffect(() => {
-    update(state);
-  }, [state]);
+    update({
+      dataset: transformDataset(data.dataset),
+      state: {
+        config: {
+          ...clone(data.config),
+        },
+        colorscale: (clone(data.colorscale) || []) as RGB[],
+      },
+    });
+  }, [data]);
   const refresh = useRecoilValue(refresher);
   const refreshRef = useRef<boolean>(true);
 
@@ -208,6 +201,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
           }
         );
   }, [refresh]);
+
+  if (!dataset) {
+    return null;
+  }
 
   return <DatasetComponent />;
 };

@@ -1,11 +1,11 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   TransactionInterface_UNSTABLE,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
-import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
 import { getFetchFunction, sendEvent, toCamelCase } from "@fiftyone/utilities";
@@ -16,14 +16,15 @@ import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
-import { ColorTheme } from "../colors";
-import { selectedSamples } from "../recoil/atoms";
 import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { useErrorHandler } from "react-error-boundary";
+import { useSendEvent } from "@fiftyone/components";
+import { useMutation } from "react-relay";
+import { setView, setViewMutation } from "../mutations";
+import { getDatasetName } from "./generic";
 
 export const useEventHandler = (
   target,
@@ -261,62 +262,22 @@ export const useScreenshot = () => {
   };
 };
 
-export const useTheme = (): ColorTheme => {
-  return useContext<ColorTheme>(ThemeContext);
-};
-
-export const useSetState = () => {
-  const setState = useStateUpdate();
-  const subscription = useRecoilValue(selectors.stateSubscription);
-  const handleError = useErrorHandler();
-
-  return useCallback(
-    (
-      resolve: (t: TransactionInterface_UNSTABLE) => Partial<State.Description>
-    ) => {
-      setState((t) => {
-        const current = t.get(atoms.stateDescription) as State.Description;
-        const state = { ...current, ...resolve(t) };
-        getFetchFunction()("POST", "/event", {
-          event: "state_update",
-          data: { state },
-          subscription,
-        }).catch((error) => handleError(error));
-
-        return state;
-      });
-    },
-    []
-  );
-};
-
-export const useSelect = () => {
-  const setState = useSetState();
-
-  return useCallback((sampleId: string) => {
-    setState((t) => {
-      const selected = new Set(t.get(selectedSamples));
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
-
-      return {
-        selected: [...selected],
-      };
-    });
-  }, []);
-};
-
 export type StateResolver =
-  | State.Description
-  | ((t: TransactionInterface_UNSTABLE) => State.Description);
+  | { dataset?: State.Dataset; state?: Partial<State.Description> }
+  | ((
+      t: TransactionInterface_UNSTABLE
+    ) => { dataset?: State.Dataset; state?: Partial<State.Description> });
 
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
   return (resolve: StateResolver) => {
     update((t) => {
-      const state = resolve instanceof Function ? resolve(t) : resolve;
-      return { ...toCamelCase(state), view: state.view } as State.Description;
+      const { dataset, state } =
+        resolve instanceof Function ? resolve(t) : resolve;
+      return {
+        state: { ...toCamelCase(state), view: state.view } as State.Description,
+        dataset: toCamelCase(dataset) as State.Dataset,
+      };
     });
   };
 };
@@ -324,24 +285,52 @@ export const useUnprocessedStateUpdate = () => {
 export const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const state = resolve instanceof Function ? resolve(t) : resolve;
+      const { state, dataset } =
+        resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, set } = t;
 
-      const newSamples = new Set<string>(state.selected);
-      const counter = get(atoms.viewCounter);
-      const view = get(viewAtoms.view);
-      const current = get(atoms.stateDescription);
+      if (state) {
+        const view = get(viewAtoms.view);
 
-      if (state.dataset) {
-        state.dataset.brainMethods = Object.values(
-          state.dataset.brainMethods || {}
-        );
-        state.dataset.evaluations = Object.values(
-          state.dataset.evaluations || {}
+        if (
+          !viewsAreEqual(view, state.view || []) ||
+          state?.dataset !== getDatasetName()
+        ) {
+          set(viewAtoms.view, state.view || []);
+          set(filterAtoms.filters, {});
+        }
+
+        state.colorscale !== undefined &&
+          set(atoms.colorscale, state.colorscale);
+
+        state.config !== undefined && set(atoms.appConfig, state.config);
+        state.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
+
+        set(atoms.selectedSamples, new Set(state.selected));
+        set(
+          atoms.selectedLabels,
+          Object.fromEntries(
+            (state.selectedLabels || []).map(({ labelId, ...data }) => [
+              labelId,
+              data,
+            ])
+          )
         );
 
-        const groups = resolveGroups(state.dataset);
+        const colorPool = get(atoms.colorPool);
+        if (
+          JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+        ) {
+          set(atoms.colorPool, state.config.colorPool);
+        }
+      }
+
+      if (dataset) {
+        dataset.brainMethods = Object.values(dataset.brainMethods || {});
+        dataset.evaluations = Object.values(dataset.evaluations || {});
+
+        const groups = resolveGroups(dataset);
         const current = get(sidebarGroupsDefinition(false));
 
         if (JSON.stringify(groups) !== JSON.stringify(current)) {
@@ -351,11 +340,9 @@ export const useStateUpdate = () => {
             get(aggregationAtoms.aggregationsTick) + 1
           );
         }
-      }
 
-      set(atoms.viewCounter, counter + 1);
-      set(atoms.loading, false);
-      set(atoms.selectedSamples, newSamples);
+        set(atoms.dataset, dataset);
+      }
 
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>
@@ -365,22 +352,24 @@ export const useStateUpdate = () => {
       set(patching, false);
       set(similaritySorting, false);
       set(savingFilters, false);
-      if (
-        !viewsAreEqual(view, state.view || []) ||
-        state?.dataset?.id !== current?.dataset?.id
-      ) {
-        set(viewAtoms.view, state.view || []);
-        set(filterAtoms.filters, {});
-      }
-
-      const colorPool = get(atoms.colorPool);
-      if (
-        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
-      ) {
-        set(atoms.colorPool, state.config.colorPool);
-      }
-      set(atoms.stateDescription, state);
     },
     []
   );
+};
+
+export const useSetView = () => {
+  const send = useSendEvent();
+  const set = useSetRecoilState(viewAtoms.view);
+  const subscription = useRecoilValue(selectors.stateSubscription);
+  const [commit] = useMutation<setViewMutation>(setView);
+
+  return (view) =>
+    send((session) =>
+      commit({
+        variables: { subscription, session, view },
+        onCompleted: (response) => {
+          set(response.setView as State.Stage[]);
+        },
+      })
+    );
 };

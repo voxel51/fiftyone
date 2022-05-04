@@ -42,11 +42,10 @@ import * as selectors from "../../recoil/selectors";
 import {
   useEventHandler,
   useOutsideClick,
-  useTheme,
   useUnprocessedStateUpdate,
 } from "../../utils/hooks";
 import Similar, { similarityParameters } from "./Similar";
-import { useLayer } from "react-laag";
+import { useTheme } from "@fiftyone/components";
 
 const Loading = () => {
   const theme = useTheme();

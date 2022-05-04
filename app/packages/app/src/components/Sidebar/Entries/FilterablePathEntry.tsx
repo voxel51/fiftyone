@@ -42,7 +42,6 @@ import * as colorAtoms from "../../../recoil/color";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import * as selectors from "../../../recoil/selectors";
-import { useTheme } from "../../../utils/hooks";
 
 import {
   BooleanFieldFilter,
@@ -53,6 +52,7 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
+import { useTheme } from "@fiftyone/components";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",

@@ -11,7 +11,7 @@ import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useSelect, useTheme } from "../utils/hooks";
+import { useEventHandler } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import { pathFilter } from "./Filters";
@@ -26,6 +26,7 @@ import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
 import { Field, LIST_FIELD, Schema } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
+import { useTheme } from "@fiftyone/components";
 
 const Header = styled.div`
   position: absolute;
@@ -522,7 +523,7 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = useSelect();
+  const onSelect = () => {};
   const selected = useRecoilValue(atoms.selectedSamples);
 
   useEffect(() => {

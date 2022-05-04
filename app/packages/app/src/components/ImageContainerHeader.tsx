@@ -6,12 +6,12 @@ import { atom, useRecoilValue, useSetRecoilState } from "recoil";
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
-import { useTheme } from "./../utils/hooks";
 
 import { GridActionsRow } from "./Actions";
 import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
+import { useTheme } from "@fiftyone/components";
 
 export const gridZoom = atom<number>({
   key: "gridZoom",

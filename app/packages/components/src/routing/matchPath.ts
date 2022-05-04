@@ -1,4 +1,5 @@
 import { Key, pathToRegexp } from "path-to-regexp";
+import { OperationType, VariablesOf } from "relay-runtime";
 
 interface CompilePathOptions {
   end: boolean;
@@ -40,27 +41,38 @@ const compilePath = (
   return result;
 };
 
-interface MatchPathOptions {
+interface MatchPathOptions<T extends OperationType | undefined> {
   exact?: boolean;
   strict?: boolean;
   sensitive?: false;
   path?: string;
+  defaultParams: T extends OperationType
+    ? {
+        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
+      }
+    : {};
 }
 
-export interface MatchPathResult {
+export interface MatchPathResult<T extends OperationType | undefined> {
   path: string;
   url: string;
   isExact: boolean;
-  params: {
-    [key: string]: string;
-  };
+  params: T extends OperationType
+    ? { [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property] }
+    : {};
 }
 
-export const matchPath = (
+export const matchPath = <T extends OperationType | undefined>(
   pathname: string,
-  options: MatchPathOptions
-): MatchPathResult | null => {
-  const { path, exact = false, strict = false, sensitive = false } = options;
+  options: MatchPathOptions<T>
+): MatchPathResult<T> | null => {
+  const {
+    path,
+    exact = false,
+    strict = false,
+    sensitive = false,
+    defaultParams,
+  } = options;
 
   if (!path && path !== "") return null;
 
@@ -83,11 +95,22 @@ export const matchPath = (
     url: path === "/" && url === "" ? "/" : url,
     isExact,
     params: keys.reduce(
-      (memo: { [key: string]: string }, key: Key, index: number) => {
-        memo[key.name] = values[index];
+      (
+        memo: T extends OperationType
+          ? {
+              [Property in keyof VariablesOf<T>]: () => VariablesOf<
+                T
+              >[Property];
+            }
+          : {},
+        key: Key,
+        index: number
+      ) => {
+        // @ts-ignore
+        memo[key.name] = () => values[index];
         return memo;
       },
-      {}
+      { ...defaultParams }
     ),
   };
 };

@@ -20,7 +20,6 @@ import fiftyone.core.state as fos
 EventType = t.Union[
     "CaptureNotebookCell",
     "CloseSession",
-    "ConnectionOpened",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
     "RefreshApp",
@@ -79,12 +78,6 @@ class DeactivateNotebookCell(Event):
 
 @t.final
 @dataclass
-class ConnectionOpened(Event):
-    """Connection opened event"""
-
-
-@t.final
-@dataclass
 class ReactivateNotebookCell(Event):
     """Reactivate notebook cell event"""
 
@@ -121,3 +114,10 @@ class ListenPayload:
             d["initializer"] = fos.StateDescription.from_dict(d["initializer"])
 
         return from_dict(cls, d)
+
+
+def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
+    return dict(
+        (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
+        for k, v in data
+    )

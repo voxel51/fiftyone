@@ -14,8 +14,9 @@ from sse_starlette import ServerSentEvent
 from starlette.requests import Request
 
 import fiftyone as fo
+from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
-    ConnectionOpened,
+    dict_factory,
     EventType,
     ListenPayload,
     StateUpdate,
@@ -97,7 +98,14 @@ async def add_event_listener(
         request_listeners.add((event_name, listener))
 
     try:
-        yield ServerSentEvent(event=ConnectionOpened.get_event_name(), data={})
+        yield ServerSentEvent(
+            event=StateUpdate.get_event_name(),
+            data=FiftyOneJSONEncoder.dumps(
+                asdict(
+                    StateUpdate(state=get_state()), dict_factory=dict_factory
+                )
+            ),
+        )
         while True:
             disconnected = await request.is_disconnected()
             if disconnected:
@@ -112,7 +120,10 @@ async def add_event_listener(
                     continue
 
                 yield ServerSentEvent(
-                    event=result.get_event_name(), data=asdict(result)
+                    event=result.get_event_name(),
+                    data=FiftyOneJSONEncoder.dumps(
+                        asdict(result, dict_factory=dict_factory)
+                    ),
                 )
 
             await asyncio.sleep(0.2)
