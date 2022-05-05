@@ -1,7 +1,7 @@
 type AppConfig {
-  timezone: String
-  colorscale: String!
+  colorBy: ColorBy!
   colorPool: [String!]!
+  colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
   notebookHeight: Int!
@@ -9,6 +9,7 @@ type AppConfig {
   showIndex: Boolean!
   showLabel: Boolean!
   showTooltip: Boolean!
+  timezone: String
   useFrameNumber: Boolean!
 }
 
@@ -25,6 +26,12 @@ type BrainRunConfig implements RunConfig {
   embeddingsField: String
   method: String!
   patchesField: String
+}
+
+enum ColorBy {
+  field
+  instance
+  label
 }
 
 type Dataset {
@@ -91,7 +98,17 @@ enum MediaType {
 }
 
 type Mutation {
-  setDataset(subscription: String!, name: String): Boolean!
+  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
   setView(subscription: String!, session: String, view: JSONArray!): JSONArray!
   storeTeamsSubmission: Boolean!
 }
@@ -143,6 +160,13 @@ type SampleField {
   subfield: String
   embeddedDocType: String
   dbField: String
+}
+
+input SelectedLabel {
+  field: String!
+  frameNumber: Int
+  labelId: String!
+  sampleId: String!
 }
 
 type SidebarGroup {

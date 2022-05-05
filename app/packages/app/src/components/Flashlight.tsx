@@ -37,7 +37,11 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import { useEventHandler } from "../utils/hooks";
+import {
+  useEventHandler,
+  useSelectSample,
+  useSetSelected,
+} from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
@@ -53,7 +57,7 @@ const setModal = async (
 ) => {
   const data = [
     [filterAtoms.modalFilters, filterAtoms.filters],
-    ...["color_by", "multicolor_keypoints", "show_skeletons"].map((key) => {
+    ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
       return [
         selectors.appConfigOption({ key, modal: true }),
         selectors.appConfigOption({ key, modal: false }),
@@ -118,9 +122,8 @@ const flashlightLookerOptions = selector({
       inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
-      disabled: false,
       showSkeletons: get(
-        selectors.appConfigOption({ key: "show_skeletons", modal: false })
+        selectors.appConfigOption({ key: "showSkeletons", modal: false })
       ),
       defaultSkeleton: get(atoms.dataset).defaultSkeleton,
       skeletons: get(atoms.dataset)?.skeletons,
@@ -149,6 +152,7 @@ const useThumbnailClick = (
   flashlight: MutableRefObject<Flashlight<number>>
 ) => {
   const clearModal = useClearModal();
+  const setSelected = useSetSelected();
 
   return useRecoilCallback(
     ({ set, snapshot }) => async (
@@ -259,6 +263,7 @@ const useThumbnailClick = (
       }
 
       set(atoms.selectedSamples, selected);
+      setSelected([...selected]);
     },
     []
   );
@@ -303,7 +308,7 @@ export default React.memo(() => {
   const view = useRecoilValue(viewAtoms.view);
   const selected = useRecoilValue(atoms.selectedSamples);
   const onThumbnailClick = useThumbnailClick(flashlight);
-  const onSelect = () => {};
+  const onSelect = useSelectSample();
   const params = useRecoilValue(pageParameters);
   const paramsRef = useRef(params);
 

@@ -11,10 +11,17 @@ import {
 import {
   darkTheme,
   getEventSource,
+  getFetchFunction,
   setFetchFunction,
   toCamelCase,
 } from "@fiftyone/utilities";
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
@@ -28,7 +35,11 @@ import {
 
 import Setup from "./components/Setup";
 
-import { useScreenshot, useStateUpdate } from "./utils/hooks";
+import {
+  useScreenshot,
+  useSetDataset,
+  useUnprocessedStateUpdate,
+} from "./utils/hooks";
 
 import "./index.css";
 import { State } from "./recoil/types";
@@ -51,13 +62,11 @@ const Network: React.FC<{
 }> = ({ environment, context }) => {
   return (
     <RelayEnvironmentProvider environment={environment}>
-      <EventsContext.Provider value={{ session: null }}>
-        <RouterContext.Provider value={context}>
-          <Suspense fallback={null}>
-            <RouteRenderer router={context} />
-          </Suspense>
-        </RouterContext.Provider>
-      </EventsContext.Provider>
+      <RouterContext.Provider value={context}>
+        <Suspense fallback={null}>
+          <RouteRenderer router={context} />
+        </Suspense>
+      </RouterContext.Provider>
     </RelayEnvironmentProvider>
   );
 };
@@ -89,10 +98,11 @@ const App: React.FC = withTheme(
         }),
       []
     );
-    const setState = useStateUpdate();
+    const setState = useUnprocessedStateUpdate();
 
     const contextRef = useRef(context);
     contextRef.current = context;
+    const { session } = useContext(EventsContext);
 
     useEffect(() => {
       const controller = new AbortController();
@@ -118,11 +128,14 @@ const App: React.FC = withTheme(
                   view: data.view,
                 } as State.Description;
                 const current = getDatasetName();
-                current;
 
-                if (!state.dataset && current) {
-                  contextRef.current.history.push("/");
-                } else if (state.dataset && state.dataset !== current) {
+                if (current && current !== state.dataset) {
+                  session !== undefined &&
+                    getFetchFunction()("POST", "/dataset", {
+                      name: current,
+                      subscription,
+                    });
+                } else if (!current && state.dataset) {
                   contextRef.current.history.push(`/datasets/${state.dataset}`);
                 }
 
@@ -171,6 +184,8 @@ const App: React.FC = withTheme(
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <App />
+    <EventsContext.Provider value={{ session: null }}>
+      <App />
+    </EventsContext.Provider>
   </RecoilRoot>
 );

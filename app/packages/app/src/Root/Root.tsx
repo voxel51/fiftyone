@@ -40,8 +40,7 @@ import { RootQuery } from "./__generated__/RootQuery.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { RootSetDatasetMutation } from "./__generated__/RootSetDatasetMutation.graphql";
-import { useHashChangeHandler } from "../utils/hooks";
+import { useHashChangeHandler, useSetDataset } from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
 
 const rootQuery = graphql`
@@ -174,16 +173,10 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
     `,
     query as RootNav_query$key
   );
-
-  const [commit] = useMutation<RootSetDatasetMutation>(graphql`
-    mutation RootSetDatasetMutation($subscription: String!, $name: String) {
-      setDataset(subscription: $subscription, name: $name)
-    }
-  `);
-  const subscription = useRecoilValue(stateSubscription);
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
   const refresh = useRecoilRefresher_UNSTABLE(refresher);
   const dataset = useRecoilValue(datasetName);
+  const setDataset = useSetDataset();
 
   return (
     <>
@@ -195,12 +188,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         datasetSelectorProps={{
           component: DatasetLink,
           onSelect: (name) => {
-            commit({
-              variables: {
-                name,
-                subscription,
-              },
-            });
+            setDataset();
             fns.start(name);
             fns.to(name);
           },

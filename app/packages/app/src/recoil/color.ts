@@ -19,7 +19,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
       seed,
       pool,
       scale: get(atoms.colorscale),
-      by: get(selectors.appConfigOption({ key: "colorBy", modal: true })),
+      by: get(selectors.appConfigOption({ key: "colorBy", modal })),
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(pool.length)

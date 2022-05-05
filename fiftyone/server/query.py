@@ -178,11 +178,18 @@ class Dataset(HasCollection):
 dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
 
 
+@gql.enum
+class ColorBy(Enum):
+    field = "field"
+    instance = "instance"
+    label = "label"
+
+
 @gql.type
 class AppConfig:
-    timezone: t.Optional[str]
-    colorscale: str
+    color_by: ColorBy
     color_pool: t.List[str]
+    colorscale: str
     grid_zoom: int
     loop_videos: bool
     notebook_height: int
@@ -190,6 +197,7 @@ class AppConfig:
     show_index: bool
     show_label: bool
     show_tooltip: bool
+    timezone: t.Optional[str]
     use_frame_number: bool
 
 

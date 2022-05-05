@@ -47,7 +47,7 @@ export const RefreshButton = ({ modal }) => {
 
 const ColorBy = ({ modal }) => {
   const [colorBy, setColorBy] = useRecoilState<string>(
-    selectors.appConfigOption({ modal, key: "color_by" })
+    selectors.appConfigOption({ modal, key: "colorBy" })
   );
 
   return (
@@ -70,10 +70,10 @@ const ColorBy = ({ modal }) => {
 
 const Keypoints = ({ modal }) => {
   const [shown, setShown] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "show_skeletons", modal })
+    selectors.appConfigOption({ key: "showSkeletons", modal })
   );
   const [points, setPoints] = useRecoilState<boolean>(
-    selectors.appConfigOption({ key: "multicolor_keypoints", modal })
+    selectors.appConfigOption({ key: "multicolorKeypoints", modal })
   );
 
   return (

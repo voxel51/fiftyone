@@ -23,8 +23,18 @@ import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
 import { useSendEvent } from "@fiftyone/components";
 import { useMutation } from "react-relay";
-import { setView, setViewMutation } from "../mutations";
+import {
+  setDataset,
+  setDatasetMutation,
+  setSelected,
+  setSelectedLabels,
+  setSelectedLabelsMutation,
+  setSelectedMutation,
+  setView,
+  setViewMutation,
+} from "../mutations";
 import { getDatasetName } from "./generic";
+import { useErrorHandler } from "react-error-boundary";
 
 export const useEventHandler = (
   target,
@@ -276,7 +286,7 @@ export const useUnprocessedStateUpdate = () => {
         resolve instanceof Function ? resolve(t) : resolve;
       return {
         state: { ...toCamelCase(state), view: state.view } as State.Description,
-        dataset: toCamelCase(dataset) as State.Dataset,
+        dataset: dataset ? (toCamelCase(dataset) as State.Dataset) : null,
       };
     });
   };
@@ -357,19 +367,82 @@ export const useStateUpdate = () => {
   );
 };
 
+export const useSetDataset = () => {
+  const send = useSendEvent();
+  const [commit] = useMutation<setDatasetMutation>(setDataset);
+  const subscription = useRecoilValue(selectors.stateSubscription);
+  const onError = useErrorHandler();
+
+  return (name?: string) =>
+    send((session) =>
+      commit({
+        onError,
+        variables: { subscription, session, name },
+      })
+    );
+};
+
+export const useSetSelected = () => {
+  const send = useSendEvent();
+  const subscription = useRecoilValue(selectors.stateSubscription);
+  const [commit] = useMutation<setSelectedMutation>(setSelected);
+  const onError = useErrorHandler();
+
+  return (selected: string[]) =>
+    send((session) =>
+      commit({
+        onError,
+        variables: { subscription, session, selected },
+      })
+    );
+};
+
+export const useSetSelectedLabels = () => {
+  const send = useSendEvent();
+  const subscription = useRecoilValue(selectors.stateSubscription);
+  const [commit] = useMutation<setSelectedLabelsMutation>(setSelectedLabels);
+  const onError = useErrorHandler();
+
+  return (selectedLabels: State.SelectedLabel[]) =>
+    send((session) =>
+      commit({
+        onError,
+        variables: { subscription, session, selectedLabels },
+      })
+    );
+};
+
 export const useSetView = () => {
   const send = useSendEvent();
   const set = useSetRecoilState(viewAtoms.view);
   const subscription = useRecoilValue(selectors.stateSubscription);
   const [commit] = useMutation<setViewMutation>(setView);
+  const onError = useErrorHandler();
 
   return (view) =>
     send((session) =>
       commit({
         variables: { subscription, session, view },
+        onError,
         onCompleted: (response) => {
           set(response.setView as State.Stage[]);
         },
       })
     );
+};
+
+export const useSelectSample = () => {
+  const setSelected = useSetSelected();
+
+  return useRecoilTransaction_UNSTABLE(
+    ({ set, get }) => async (sampleId: string) => {
+      const selected = new Set(get(atoms.selectedSamples));
+      selected.has(sampleId)
+        ? selected.delete(sampleId)
+        : selected.add(sampleId);
+      set(atoms.selectedSamples, selected);
+      setSelected([...selected]);
+    },
+    []
+  );
 };

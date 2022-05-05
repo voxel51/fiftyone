@@ -4,7 +4,7 @@ import { EventsContext } from "../contexts";
 export default () => {
   const { session } = useContext(EventsContext);
 
-  return (send: (sessionId: string | null) => void) => {
+  return (send: (session: string | null) => void) => {
     if (session === undefined) {
       return;
     }

@@ -12,7 +12,7 @@ import {
   DatasetQuery,
   DatasetQuery$data,
 } from "./__generated__/DatasetQuery.graphql";
-import { refresher } from "../../recoil/selectors";
+import { datasetName, refresher } from "../../recoil/selectors";
 import { useRecoilValue } from "recoil";
 import * as atoms from "../../recoil/atoms";
 
@@ -87,21 +87,6 @@ const transformDataset = (
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: JSONArray) {
-    colorscale
-    config {
-      colorPool
-      colorscale
-      gridZoom
-      loopVideos
-      notebookHeight
-      useFrameNumber
-      showConfidence
-      showIndex
-      showLabel
-      showTooltip
-      timezone
-    }
-
     dataset(name: $name, view: $view) {
       id
       name
@@ -167,10 +152,10 @@ const Query = graphql`
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const [ref, load] = useQueryLoader(Query, prepared);
-  const dataset = useRecoilValue(atoms.dataset);
-  const data = usePreloadedQuery(Query, ref);
+  const { dataset } = usePreloadedQuery(Query, ref);
+  const name = useRecoilValue(datasetName);
 
-  if (!data.dataset) {
+  if (!dataset) {
     throw new NotFoundError(window.location.pathname);
   }
 
@@ -178,15 +163,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
 
   useEffect(() => {
     update({
-      dataset: transformDataset(data.dataset),
-      state: {
-        config: {
-          ...clone(data.config),
-        },
-        colorscale: (clone(data.colorscale) || []) as RGB[],
-      },
+      dataset: transformDataset(dataset),
     });
-  }, [data]);
+  }, [dataset]);
   const refresh = useRecoilValue(refresher);
   const refreshRef = useRef<boolean>(true);
 
@@ -194,7 +173,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     refreshRef.current
       ? (refreshRef.current = false)
       : load(
-          { name: data.dataset.name },
+          { name: dataset.name },
           {
             fetchPolicy: "network-only",
             networkCacheConfig: { force: true },
@@ -202,7 +181,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
         );
   }, [refresh]);
 
-  if (!dataset) {
+  if (!name) {
     return null;
   }
 

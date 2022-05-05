@@ -190,8 +190,8 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
 })();
 
 export const getDatasetName = (): string => {
-  const result = matchPath("/datasets/:name", {
-    path: window.location.pathname,
+  const result = matchPath(window.location.pathname, {
+    path: "/datasets/:name",
     exact: true,
     defaultParams: {},
   });

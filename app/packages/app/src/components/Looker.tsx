@@ -17,6 +17,7 @@ import { getMimeType } from "../utils/generic";
 import { pathFilter } from "./Filters";
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
+import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
@@ -24,7 +25,7 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
-import { Field, LIST_FIELD, Schema } from "@fiftyone/utilities";
+import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 
@@ -362,13 +363,27 @@ type EventCallback = (event: CustomEvent) => void;
 const lookerOptions = selector({
   key: "lookerOptions",
   get: ({ get }) => {
-    const showConfidence = get(selectors.appConfig).showConfidence;
-    const showIndex = get(selectors.appConfig).showIndex;
-    const showLabel = get(selectors.appConfig).showLabel;
-    const showTooltip = get(selectors.appConfig).showTooltip;
-    const useFrameNumber = get(selectors.appConfig).useFrameNumber;
+    const showConfidence = get(
+      selectors.appConfigOption({ modal: true, key: "showConfidence" })
+    );
+    const showIndex = get(
+      selectors.appConfigOption({ modal: true, key: "showIndex" })
+    );
+    const showLabel = get(
+      selectors.appConfigOption({ modal: true, key: "showLabel" })
+    );
+    const showTooltip = get(
+      selectors.appConfigOption({ modal: true, key: "showTooltip" })
+    );
+    const useFrameNumber = get(
+      selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
+    );
     const video = get(selectors.isVideoDataset)
-      ? { loop: get(selectors.appConfig).loopVideos }
+      ? {
+          loop: get(
+            selectors.appConfigOption({ modal: true, key: "loopVideos" })
+          ),
+        }
       : {};
     const zoom = get(viewAtoms.isPatchesView)
       ? get(atoms.cropToContent(true))
@@ -392,11 +407,11 @@ const lookerOptions = selector({
       coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
       showSkeletons: get(
-        selectors.appConfigOption({ key: "show_skeletons", modal: true })
+        selectors.appConfigOption({ key: "showSkeletons", modal: true })
       ),
-      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
-      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
-      pointFilter: get(skeletonFilter(true)),
+      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+      skeletons: get(atoms.dataset).skeletons,
+      pointFilter: get(filterAtoms.skeletonFilter(true)),
     };
   },
 });

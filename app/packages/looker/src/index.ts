@@ -413,6 +413,7 @@ export abstract class Looker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
+      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
@@ -431,6 +432,7 @@ export abstract class Looker<
     }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+      disabled: false,
     });
     element.appendChild(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
@@ -444,10 +446,17 @@ export abstract class Looker<
 
   detach(): void {
     this.resizeObserver.disconnect();
-    this.lookerElement.element.parentNode &&
+    if (this.lookerElement.element.parentNode) {
+      for (const eventType in this.rootEvents) {
+        this.lookerElement.element.parentElement.addEventListener(
+          eventType,
+          this.rootEvents[eventType]
+        );
+      }
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
       );
+    }
   }
 
   abstract updateOptions(options: Optional<State["options"]>): void;

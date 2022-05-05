@@ -20,11 +20,23 @@ from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import JSONArray
 
 
+@gql.input
+class SelectedLabel:
+    field: str
+    frame_number: t.Optional[int]
+    label_id: str
+    sample_id: str
+
+
 @gql.type
 class Mutation:
     @gql.mutation
     async def set_dataset(
-        self, subscription: str, name: t.Optional[str], info: Info
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        name: t.Optional[str],
+        info: Info,
     ) -> bool:
         state = get_state()
         dataset = await Dataset.resolver(name, [], info) if name else None
@@ -39,6 +51,32 @@ class Mutation:
         state.selected = []
         state.selected_labels = []
         state.view = None
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_selected(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        selected: t.List[str],
+    ) -> bool:
+        state = get_state()
+
+        state.selected = selected
+        await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_selected_labels(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        selected_labels: t.List[SelectedLabel],
+    ) -> bool:
+        state = get_state()
+
+        state.selected_labels = selected_labels
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
