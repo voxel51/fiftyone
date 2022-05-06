@@ -16,7 +16,7 @@ import os
 import random
 import string
 
-from bson import ObjectId
+from bson import json_util, ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
@@ -2183,6 +2183,67 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.save()
 
+    def list_views(self):
+        """Returns the names of saved views on this dataset.
+
+        Returns:
+            a list of saved view names
+        """
+        return sorted(self._doc.views.keys())
+
+    def save_view(self, name, view, overwrite=False):
+        """Saves the given view into this dataset under the given name so it
+        can be loaded later via :meth:`load_view`.
+
+        Args:
+            name: a name for the saved view
+            view: a :class:`fiftyone.core.view.DatasetView`
+            overwrite (False): whether to overwrite an existing saved view with
+                the same name
+        """
+        if view._root_dataset is not self:
+            raise ValueError("Cannot save view into a different dataset")
+
+        if not overwrite and name in self._doc.views:
+            raise ValueError("Saved view with name '%s' already exists" % name)
+
+        view_stages = [
+            json_util.dumps(s) for s in view._serialize(include_uuids=False)
+        ]
+
+        self._doc.views[name] = foo.ViewDocument(
+            dataset_id=self._doc.id, view_stages=view_stages
+        )
+        self._doc.save()
+
+    def load_view(self, name):
+        """Loads the saved view with the given name.
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        if name not in self._doc.views:
+            raise ValueError("Dataset has no saved view '%s'" % name)
+
+        view_doc = self._doc.views[name]
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        return fov.DatasetView._build(self, stage_dicts)
+
+    def delete_view(self, name):
+        """Deletes the saved view with the given name.
+
+        Args:
+            name: the name of a saved view
+        """
+        if name not in self._doc.views:
+            raise ValueError("Dataset has no saved view '%s'" % name)
+
+        self._doc.views.pop(name)
+        self._doc.save()
+
     def clone(self, name=None):
         """Creates a clone of the dataset containing deep copies of all samples
         and dataset-level information in this dataset.
@@ -3424,7 +3485,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3937,7 +4001,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3973,7 +4042,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
         )
         return dataset
 
