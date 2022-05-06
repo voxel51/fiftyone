@@ -365,7 +365,7 @@ class Run(Configurable):
         run_docs = getattr(dataset_doc, cls._runs_field())
         view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
 
-        run_docs[key] = RunDocument(
+        run_doc = RunDocument(
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
@@ -373,6 +373,9 @@ class Run(Configurable):
             view_stages=view_stages,
             results=None,
         )
+        run_doc.save()
+
+        run_docs[key] = run_doc
         dataset_doc.save()
 
     @classmethod

@@ -2207,13 +2207,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not overwrite and name in self._doc.views:
             raise ValueError("Saved view with name '%s' already exists" % name)
 
-        view_stages = [
-            json_util.dumps(s) for s in view._serialize(include_uuids=False)
-        ]
-
-        self._doc.views[name] = foo.ViewDocument(
-            dataset_id=self._doc.id, view_stages=view_stages
+        view_doc = foo.ViewDocument(
+            dataset_id=self._doc.id,
+            view_stages=[
+                json_util.dumps(s)
+                for s in view._serialize(include_uuids=False)
+            ],
         )
+        view_doc.save()
+
+        self._doc.views[name] = view_doc
         self._doc.save()
 
     def load_view(self, name):
