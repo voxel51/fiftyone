@@ -4908,22 +4908,30 @@ def _load_dataset(name, virtual=False):
 
 
 def _delete_dataset_doc(dataset_doc):
-    #
-    # Must manually cleanup run results, which are stored using GridFS
-    # https://docs.mongoengine.org/guide/gridfs.html#deletion
-    #
+    conn = foo.get_db_conn()
+
+    run_ids = []
 
     for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.brain_methods.values():
         if run_doc.results is not None:
             run_doc.results.delete()
 
+        run_doc.delete()
+
     for run_doc in dataset_doc.evaluations.values():
         if run_doc.results is not None:
             run_doc.results.delete()
+
+        run_doc.delete()
+
+    for view_doc in dataset_doc.views.values():
+        view_doc.delete()
 
     dataset_doc.delete()
 

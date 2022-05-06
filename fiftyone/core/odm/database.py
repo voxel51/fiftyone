@@ -458,7 +458,7 @@ def drop_orphan_run_results(dry_run=False):
     results_in_use = set()
     for name in list_datasets():
         dataset_dict = conn.datasets.find_one({"name": name})
-        results_in_use.update(_get_result_ids(dataset_dict))
+        results_in_use.update(_get_result_ids(dataset_dict=dataset_dict))
 
     all_run_results = set(conn.fs.files.distinct("_id", {}, {}))
 
@@ -676,12 +676,19 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    delete_results = _get_result_ids(dataset_dict)
+    delete_results = _get_result_ids(dataset_dict=dataset_dict)
 
     if delete_results:
         _logger.info("Deleting %d run result(s)", len(delete_results))
         if not dry_run:
             _delete_run_results(delete_results)
+
+    delete_runs = _get_run_ids(dataset_dict)
+
+    if delete_runs:
+        _logger.info("Deleting %d run docs(s)", len(delete_runs))
+        if not dry_run:
+            _delete_run_docs(delete_runs)
 
 
 def delete_annotation_run(name, anno_key, dry_run=False):
@@ -714,15 +721,19 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
         _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
         )
         return
 
-    run_doc = annotation_runs.pop(anno_key)
+    run_id = annotation_runs.pop(anno_key)
+
+    run_doc = conn.runs.find_one({"_id": run_id})
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        _logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting annotation result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
@@ -730,6 +741,7 @@ def delete_annotation_run(name, anno_key, dry_run=False):
         "Deleting annotation run '%s' from dataset '%s'", anno_key, name
     )
     if not dry_run:
+        conn.runs.delete_one({"_id": run_id})
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
@@ -758,17 +770,16 @@ def delete_annotation_runs(name, dry_run=False):
         _logger.warning("Dataset '%s' not found", name)
         return
 
-    anno_keys = []
-    result_ids = []
-    for anno_key, run_doc in dataset_dict.get("annotation_runs", {}).items():
-        anno_keys.append(anno_key)
+    anno_keys, run_ids = zip(dataset_dict.get("annotation_runs", {}).items())
 
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
+    if not anno_keys:
+        _logger.info("Dataset '%s' has no annotation runs", name)
+        return
+
+    result_ids = _get_result_ids(run_ids=run_ids)
 
     if result_ids:
-        _logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d annotation result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
@@ -776,6 +787,8 @@ def delete_annotation_runs(name, dry_run=False):
         "Deleting annotation runs %s from dataset '%s'", anno_keys, name
     )
     if not dry_run:
+        _delete_run_docs(run_ids)
+
         dataset_dict["annotation_runs"] = {}
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
@@ -816,11 +829,13 @@ def delete_brain_run(name, brain_key, dry_run=False):
         )
         return
 
-    run_doc = brain_methods.pop(brain_key)
+    run_id = brain_methods.pop(brain_key)
+
+    run_doc = conn.runs.find_one({"_id": run_id})
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        _logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting brain method result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
@@ -828,6 +843,7 @@ def delete_brain_run(name, brain_key, dry_run=False):
         "Deleting brain method run '%s' from dataset '%s'", brain_key, name
     )
     if not dry_run:
+        conn.runs.delete_one({"_id": run_id})
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
@@ -856,24 +872,27 @@ def delete_brain_runs(name, dry_run=False):
         _logger.warning("Dataset '%s' not found", name)
         return
 
-    brain_keys = []
-    result_ids = []
-    for brain_key, run_doc in dataset_dict.get("brain_methods", {}).items():
-        brain_keys.append(brain_key)
+    brain_keys, run_ids = zip(dataset_dict.get("brain_methods", {}).items())
 
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
+    if not brain_keys:
+        _logger.info("Dataset '%s' has no brain method runs", name)
+        return
+
+    result_ids = _get_result_ids(run_ids=run_ids)
 
     if result_ids:
-        _logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d brain method result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
     _logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
+        name,
     )
     if not dry_run:
+        _delete_run_docs(run_ids)
+
         dataset_dict["brain_methods"] = {}
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
@@ -912,16 +931,19 @@ def delete_evaluation(name, eval_key, dry_run=False):
         )
         return
 
-    run_doc = evaluations.pop(eval_key)
+    run_id = evaluations.pop(eval_key)
+
+    run_doc = conn.runs.find_one({"_id": run_id})
     result_id = run_doc.get("results", None)
 
     if result_id is not None:
-        _logger.info("Deleting run result '%s'", result_id)
+        _logger.info("Deleting evaluation result '%s'", result_id)
         if not dry_run:
             _delete_run_results([result_id])
 
     _logger.info("Deleting evaluation '%s' from dataset '%s'", eval_key, name)
     if not dry_run:
+        conn.runs.delete_one({"_id": run_id})
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
@@ -950,22 +972,25 @@ def delete_evaluations(name, dry_run=False):
         _logger.warning("Dataset '%s' not found", name)
         return
 
-    eval_keys = []
-    result_ids = []
-    for eval_key, run_doc in dataset_dict.get("evaluations", {}).items():
-        eval_keys.append(eval_key)
+    eval_keys, run_ids = zip(dataset_dict.get("evaluations", {}).items())
 
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
+    if not eval_keys:
+        _logger.info("Dataset '%s' has no evaluation runs", name)
+        return
+
+    result_ids = _get_result_ids(run_ids=run_ids)
 
     if result_ids:
-        _logger.info("Deleting %d run result(s)", len(result_ids))
+        _logger.info("Deleting %d evaluation result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(result_ids)
 
-    _logger.info("Deleting evaluations %s from dataset '%s'", eval_keys, name)
+    _logger.info(
+        "Deleting evaluation runs %s from dataset '%s'", eval_keys, name
+    )
     if not dry_run:
+        _delete_run_docs(run_ids)
+
         dataset_dict["evaluations"] = {}
         conn.datasets.replace_one({"name": name}, dataset_dict)
 
@@ -983,20 +1008,26 @@ class _DryRunLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
-def _get_result_ids(dataset_dict):
+def _get_run_ids(dataset_dict):
+    return (
+        list(dataset_dict.get("annotation_runs", {}).values())
+        + list(dataset_dict.get("brain_methods", {}).values())
+        + list(dataset_dict.get("evaluations", {}).values())
+    )
+
+
+def _get_result_ids(dataset_dict=None, run_ids=None):
+    if dataset_dict is not None:
+        run_ids = _get_run_ids(dataset_dict)
+
+    if not run_ids:
+        return []
+
+    conn = get_db_conn()
+
     result_ids = []
 
-    for run_doc in dataset_dict.get("annotation_runs", {}).values():
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
-
-    for run_doc in dataset_dict.get("brain_methods", {}).values():
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
-
-    for run_doc in dataset_dict.get("evaluations", {}).values():
+    for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
         result_id = run_doc.get("results", None)
         if result_id is not None:
             result_ids.append(result_id)
@@ -1004,9 +1035,14 @@ def _get_result_ids(dataset_dict):
     return result_ids
 
 
+def _delete_run_docs(run_ids):
+    conn = get_db_conn()
+
+    conn.runs.delete_many({"_id": {"$in": run_ids}})
+
+
 def _delete_run_results(result_ids):
     conn = get_db_conn()
 
-    # Delete from GridFS
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
