@@ -68,6 +68,7 @@ from .core.fields import (
     ListField,
     ObjectIdField,
     PolylinePointsField,
+    ReferenceField,
     StringField,
     TargetsField,
     VectorField,

@@ -626,6 +626,17 @@ class EmbeddedDocumentListField(
         )
 
 
+class ReferenceField(mongoengine.fields.ReferenceField, Field):
+    """A reference field.
+
+    Args:
+        document_type: the :class:`fiftyone.core.odm.Document` type stored in
+            this field
+    """
+
+    pass
+
+
 _ARRAY_FIELDS = (VectorField, ArrayField)
 
 # Fields whose values can be used without parsing when loaded from MongoDB
