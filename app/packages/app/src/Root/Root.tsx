@@ -31,9 +31,9 @@ import {
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
-import { datasetName, refresher, stateSubscription } from "../recoil/selectors";
+import { datasetName } from "../recoil/selectors";
 import ViewBar from "../components/ViewBar/ViewBar";
-import { appTeamsIsOpen } from "../recoil/atoms";
+import { appTeamsIsOpen, refresher, useRefresh } from "../recoil/atoms";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
@@ -60,7 +60,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-          @refetchable(queryName: "DatasetsPaginationQuery") {
+        @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -174,7 +174,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
     query as RootNav_query$key
   );
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
-  const refresh = useRecoilRefresher_UNSTABLE(refresher);
+  const refresh = useRefresh();
   const dataset = useRecoilValue(datasetName);
   const setDataset = useSetDataset();
 

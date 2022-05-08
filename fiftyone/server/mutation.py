@@ -5,11 +5,13 @@ FiftyOne Server mutations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dataclasses import asdict
 import strawberry as gql
 import typing as t
 
 import eta.core.serial as etas
 
+import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.view as fov
@@ -23,9 +25,15 @@ from fiftyone.server.scalars import JSONArray
 @gql.input
 class SelectedLabel:
     field: str
-    frame_number: t.Optional[int]
     label_id: str
     sample_id: str
+    frame_number: t.Optional[int] = None
+
+
+@gql.type
+class ViewResponse:
+    view: JSONArray
+    dataset: Dataset
 
 
 @gql.type
@@ -39,15 +47,7 @@ class Mutation:
         info: Info,
     ) -> bool:
         state = get_state()
-        dataset = await Dataset.resolver(name, [], info) if name else None
-
-        if dataset == state.dataset:
-            return False
-
-        if name and dataset is None:
-            return False
-
-        state.dataset = dataset
+        state.dataset = fo.load_dataset(name) if name is not None else None
         state.selected = []
         state.selected_labels = []
         state.view = None
@@ -76,21 +76,26 @@ class Mutation:
     ) -> bool:
         state = get_state()
 
-        state.selected_labels = selected_labels
+        state.selected_labels = [asdict(l) for l in selected_labels]
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
     @gql.mutation
     async def set_view(
-        self, subscription: str, session: t.Optional[str], view: JSONArray
-    ) -> JSONArray:
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view: JSONArray,
+        info: Info,
+    ) -> ViewResponse:
         state = get_state()
 
         state.selected = []
         state.selected_labels = []
         state.view = fov.DatasetView._build(state.dataset, view)
         await dispatch_event(subscription, StateUpdate(state=state))
-        return view
+        dataset = await Dataset.resolver(state.dataset.name, view, info)
+        return ViewResponse(view=state.view._serialize(), dataset=dataset)
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:

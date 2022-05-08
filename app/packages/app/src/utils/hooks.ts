@@ -3,7 +3,6 @@ import {
   TransactionInterface_UNSTABLE,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import html2canvas from "html2canvas";
@@ -35,6 +34,7 @@ import {
 } from "../mutations";
 import { getDatasetName } from "./generic";
 import { useErrorHandler } from "react-error-boundary";
+import { transformDataset } from "../Root/Datasets";
 
 export const useEventHandler = (
   target,
@@ -151,7 +151,9 @@ export const useWindowSize = () => {
   return windowSize;
 };
 
-export const useScreenshot = () => {
+export const useScreenshot = (
+  context: "ipython" | "colab" | "databricks" | undefined
+) => {
   const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
 
@@ -240,31 +242,34 @@ export const useScreenshot = () => {
   const capture = useCallback(() => {
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
-      if (isColab) {
+      if (context === "colab") {
         window.parent.postMessage(
           {
             src: imgData,
-            handleId: handleId,
+            subscription,
             width: canvas.width,
           },
           "*"
         );
       }
-      sendEvent("capture_notebook_cell", {
-        src: imgData,
-        width: canvas.width,
+
+      sendEvent({
+        event: "capture_notebook_cell",
         subscription,
+        data: { src: imgData, width: canvas.width, subscription },
       });
     });
   }, []);
 
   return () => {
+    if (!context) return;
+
     fitSVGs();
     let chain = Promise.resolve(null);
     if (isVideoDataset) {
       chain = chain.then(captureVideos);
     }
-    if (isColab) {
+    if (context === "colab") {
       chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
       chain.then(capture);
@@ -284,9 +289,12 @@ export const useUnprocessedStateUpdate = () => {
     update((t) => {
       const { dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
+
       return {
         state: { ...toCamelCase(state), view: state.view } as State.Description,
-        dataset: dataset ? (toCamelCase(dataset) as State.Dataset) : null,
+        dataset: dataset
+          ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
+          : null,
       };
     });
   };
@@ -300,7 +308,7 @@ export const useStateUpdate = () => {
 
       const { get, set } = t;
 
-      if (state) {
+      if (state?.view) {
         const view = get(viewAtoms.view);
 
         if (
@@ -310,14 +318,16 @@ export const useStateUpdate = () => {
           set(viewAtoms.view, state.view || []);
           set(filterAtoms.filters, {});
         }
+      }
 
-        state.colorscale !== undefined &&
-          set(atoms.colorscale, state.colorscale);
+      state?.colorscale !== undefined &&
+        set(atoms.colorscale, state.colorscale);
 
-        state.config !== undefined && set(atoms.appConfig, state.config);
-        state.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
+      state?.config !== undefined && set(atoms.appConfig, state.config);
+      state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
 
-        set(atoms.selectedSamples, new Set(state.selected));
+      state?.selected && set(atoms.selectedSamples, new Set(state.selected));
+      state?.selectedLabels &&
         set(
           atoms.selectedLabels,
           Object.fromEntries(
@@ -328,12 +338,12 @@ export const useStateUpdate = () => {
           )
         );
 
-        const colorPool = get(atoms.colorPool);
-        if (
-          JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
-        ) {
-          set(atoms.colorPool, state.config.colorPool);
-        }
+      const colorPool = get(atoms.colorPool);
+      if (
+        state?.config &&
+        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+      ) {
+        set(atoms.colorPool, state.config.colorPool);
       }
 
       if (dataset) {
@@ -414,7 +424,7 @@ export const useSetSelectedLabels = () => {
 
 export const useSetView = () => {
   const send = useSendEvent();
-  const set = useSetRecoilState(viewAtoms.view);
+  const updateState = useStateUpdate();
   const subscription = useRecoilValue(selectors.stateSubscription);
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
@@ -424,8 +434,13 @@ export const useSetView = () => {
       commit({
         variables: { subscription, session, view },
         onError,
-        onCompleted: (response) => {
-          set(response.setView as State.Stage[]);
+        onCompleted: ({ setView: { dataset, view } }) => {
+          updateState({
+            dataset: transformDataset(dataset),
+            state: {
+              view,
+            },
+          });
         },
       })
     );

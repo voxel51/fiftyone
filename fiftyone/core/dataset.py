@@ -355,7 +355,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         self._doc.media_type = media_type
+        self._set_metadata(media_type)
 
+    def _set_metadata(self, media_type):
         idx = None
         for i, field in enumerate(self._doc.sample_fields):
             if field.name == "metadata":
@@ -385,6 +387,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
 
         self._doc.save()
+        self.reload()
 
     @property
     def version(self):

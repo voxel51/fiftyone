@@ -18,5 +18,5 @@ class Events(HTTPEndpoint):
     async def post(self, request: Request, data: dict) -> EventSourceResponse:
         return EventSourceResponse(
             add_event_listener(request, ListenPayload.from_dict(data)),
-            ping=float("inf"),
+            ping=2,
         )

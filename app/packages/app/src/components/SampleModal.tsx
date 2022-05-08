@@ -23,6 +23,7 @@ import * as selectors from "../recoil/selectors";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
+import { useSetSelectedLabels } from "../utils/hooks";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -62,6 +63,7 @@ interface SelectEvent {
 }
 
 const useOnSelectLabel = () => {
+  const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
     ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
       const { sample } = get(atoms.modal);
@@ -79,6 +81,9 @@ const useOnSelectLabel = () => {
       }
 
       set(atoms.selectedLabels, labels);
+      send(
+        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
+      );
     },
     []
   );

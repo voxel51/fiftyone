@@ -30,7 +30,7 @@ const RESERVED_FIELDS = [
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
     ...field,
-    fields: field.fields.reduce(schemaReduce, {}),
+    fields: field.fields?.reduce(schemaReduce, {}),
   };
   return schema;
 };

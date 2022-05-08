@@ -414,6 +414,7 @@ export default React.memo(() => {
     cropToContent,
     tagging,
     useRecoilValue(pageParameters),
+    useRecoilValue(atoms.refresher),
   ]);
 
   useLayoutEffect(() => {

@@ -7,6 +7,7 @@ Context utilities.
 """
 import json
 import os
+import typing as t
 
 _COLAB = "COLAB"
 _DATABRICKS = "DATABRICKS"
@@ -14,7 +15,6 @@ _IPYTHON = "IPYTHON"
 _NONE = "NONE"
 
 _context = None
-_url = None
 
 
 def is_notebook_context():
@@ -89,8 +89,8 @@ def _get_context():
     # via the `get_trait` method.
     try:
         # Location: /databricks/python_shell/dbruntime
-        from dbruntime.dbutils import DBUtils  # noqa: F401
         import IPython
+        from dbruntime.dbutils import DBUtils  # noqa: F401
     except ImportError:
         pass
     else:
@@ -117,13 +117,9 @@ def _get_context():
     return _context
 
 
-def get_url(address: str, port: int, dataset: str = None) -> str:
-    global _url
-    if _url:
-        return f"{_url}/url" if dataset else _url
-
-    port = os.environ.get("FIFTYONE_APP_CLIENT_PORT", port)
-
+def get_url(
+    address: str, port: int, subscription: t.Optional[str] = None
+) -> str:
     context = _get_context()
     if context == _COLAB:
         # pylint: disable=no-name-in-module,import-error
@@ -146,7 +142,10 @@ def get_url(address: str, port: int, dataset: str = None) -> str:
     else:
         _url = f"http://{address}:{port}/"
 
-    return f"{_url}/url" if dataset else _url
+    if subscription:
+        return f"{_url}?context={_get_context().lower()}&subscription={subscription}"
+
+    return _url
 
 
 class ContextError(EnvironmentError):

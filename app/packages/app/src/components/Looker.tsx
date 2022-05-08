@@ -11,7 +11,7 @@ import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler } from "../utils/hooks";
+import { useEventHandler, useSelectSample } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
 import { pathFilter } from "./Filters";
@@ -538,7 +538,7 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = () => {};
+  const onSelect = useSelectSample();
   const selected = useRecoilValue(atoms.selectedSamples);
 
   useEffect(() => {

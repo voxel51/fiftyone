@@ -149,6 +149,6 @@ export const getEventSource = (
     openWhenHidden: true,
   });
 
-export const sendEvent = async (eventName: string, data: {}) => {
+export const sendEvent = async (data: {}) => {
   return await getFetchFunction()("POST", "/event", data);
 };

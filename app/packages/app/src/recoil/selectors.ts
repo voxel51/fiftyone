@@ -1,9 +1,6 @@
-import { darkTheme } from "@fiftyone/utilities";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import { Coloring } from "@fiftyone/looker";
-import { createColorGenerator, getColor } from "@fiftyone/looker/src/color";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
@@ -15,21 +12,6 @@ export const datasetName = selector<string>({
     return get(atoms.dataset)?.name;
   },
 });
-
-export const refresher = (() => {
-  let state = false;
-  return selector<boolean>({
-    key: "refresher",
-    get: () => {
-      state = !state;
-
-      return state;
-    },
-    cachePolicy_UNSTABLE: {
-      eviction: "most-recent",
-    },
-  });
-})();
 
 export const isNotebook = selector<boolean>({
   key: "isNotebook",

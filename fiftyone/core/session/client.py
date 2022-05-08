@@ -20,7 +20,12 @@ from uuid import uuid4
 import fiftyone.core.state as fos
 
 from fiftyone.core.json import stringify
-from fiftyone.core.session.events import Event, ListenPayload
+from fiftyone.core.session.events import (
+    Event,
+    EventType,
+    ListenPayload,
+    dict_factory,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +54,6 @@ class Client:
         """Runs the client subscription in a background thread
 
         Arg:
-            subscription: the subscription id
             state: the initial state description
         """
         if hasattr(self, "_thread"):
@@ -88,7 +92,7 @@ class Client:
                     _ping(f"{self.origin}/fiftyone")
                     self._connected = True
                     subscribe()
-                except Exception:
+                except Exception as e:
                     self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
@@ -104,7 +108,7 @@ class Client:
         """The origin of the server"""
         return f"http://{self.address}:{self.port}"
 
-    def send_event(self, event: Event) -> None:
+    def send_event(self, event: EventType) -> None:
         """Sends an event to the server
 
         Args:
@@ -141,7 +145,7 @@ class Client:
         """
         self._listeners[event_name].discard(listener)
 
-    def _dispatch_event(self, event: Event) -> None:
+    def _dispatch_event(self, event: EventType) -> None:
         for listener in self._listeners[event.get_event_name()]:
             listener(event)
 
@@ -151,7 +155,7 @@ class Client:
             headers={"Content-type": "application/json"},
             json={
                 "event": event.get_event_name(),
-                "data": stringify(asdict(event)),
+                "data": stringify(asdict(event, dict_factory=dict_factory)),
                 "subscription": self._subscription,
             },
         )

@@ -206,9 +206,7 @@ def update_state(auto_show: bool = False) -> t.Callable:
             session: "Session", *args: t.Tuple, **kwargs: dict
         ) -> t.Any:
             result = func(session, *args, **kwargs)
-            session._client.send_event(
-                StateUpdate(state=session._state.serialize())
-            )
+            session._client.send_event(StateUpdate(state=session._state))
             if auto_show and session.auto and focx.is_notebook_context():
                 return session.show()
 
@@ -887,7 +885,7 @@ class Session(object):
             subscription=uuid,
         )
 
-        fosn.display(self.dataset, self._notebook_cells[uuid])
+        fosn.display(self._notebook_cells[uuid])
         return uuid
 
     def no_show(self) -> fou.SetAttributes:
@@ -994,11 +992,9 @@ def _attach_listeners(session: "Session"):
         )
 
         def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
-            session._client.send_event(
-                StateUpdate(state=session._state.serialize())
-            )
+            session._client.send_event(DeactivateNotebookCell())
             fosn.display(
-                self.dataset, session._notebook_cells[event.subscription]
+                session._notebook_cells[event.subscription], reactivate=True
             )
 
         session._client.add_event_listener(

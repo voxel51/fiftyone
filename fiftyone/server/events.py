@@ -16,6 +16,7 @@ from starlette.requests import Request
 import fiftyone as fo
 from fiftyone.core.json import FiftyOneJSONEncoder
 from fiftyone.core.session.events import (
+    CloseSession,
     dict_factory,
     EventType,
     ListenPayload,
@@ -32,9 +33,12 @@ class Listener:
 
 _listeners: t.Dict[str, t.Set[Listener]] = defaultdict(set)
 _state: t.Optional[fos.StateDescription] = None
+_app_count = 0
 
 
-async def dispatch_event(subscription: str, event: EventType) -> None:
+async def dispatch_event(
+    subscription: t.Optional[str], event: EventType
+) -> None:
     """Dispatch an event to all listeners registed for the server process
 
     Args:
@@ -68,23 +72,22 @@ async def add_event_listener(
         A server sent event source
     """
     state = get_state()
-    if (
-        isinstance(payload.initializer, (str, type(None)))
-        and payload.initializer != state.dataset
-    ):
-        dataset = (
-            fo.load_dataset(payload.initializer)
-            if payload.initializer is not None
-            else None
-        )
-        state.selected = []
-        state.selected_labels = []
-        state.view = None
-        state.dataset = dataset or None
+    is_app = not isinstance(payload.initializer, fos.StateDescription)
+    if is_app:
+        global _app_count
+        _app_count += 1
 
-        await dispatch_event(payload.subscription, StateUpdate(state))
+    current = state.dataset.name if state.dataset is not None else None
+    if is_app and payload.initializer != current:
+        if payload.initializer is not None:
+            state.dataset = fo.load_dataset(payload.initializer)
+            state.selected = []
+            state.selected_labels = []
+            state.view = None
 
-    elif isinstance(payload.initializer, fos.StateDescription):
+            await dispatch_event(payload.subscription, StateUpdate(state))
+
+    elif not is_app:
         state = payload.initializer
         await dispatch_event(payload.subscription, StateUpdate(state))
 
@@ -98,19 +101,24 @@ async def add_event_listener(
         request_listeners.add((event_name, listener))
 
     try:
-        yield ServerSentEvent(
-            event=StateUpdate.get_event_name(),
-            data=FiftyOneJSONEncoder.dumps(
-                asdict(
-                    StateUpdate(state=get_state()), dict_factory=dict_factory
-                )
-            ),
-        )
+        if not isinstance(payload.initializer, fos.StateDescription):
+            yield ServerSentEvent(
+                event=StateUpdate.get_event_name(),
+                data=FiftyOneJSONEncoder.dumps(
+                    asdict(
+                        StateUpdate(state=state),
+                        dict_factory=dict_factory,
+                    )
+                ),
+            )
+
         while True:
             disconnected = await request.is_disconnected()
             if disconnected:
-                for event_name, listener in request_listeners:
-                    _listeners[event_name].remove(listener)
+                await _disconnect(
+                    is_app,
+                    request_listeners,
+                )
                 break
 
             for _, listener in request_listeners:
@@ -129,8 +137,7 @@ async def add_event_listener(
             await asyncio.sleep(0.2)
 
     except asyncio.CancelledError as e:
-        for event_name, listener in request_listeners:
-            _listeners[event_name].remove(listener)
+        await _disconnect(is_app, request_listeners)
         raise e
 
 
@@ -145,3 +152,17 @@ def get_state() -> fos.StateDescription:
         _state = fos.StateDescription()
 
     return _state
+
+
+async def _disconnect(
+    is_app: bool, listeners: t.Set[t.Tuple[str, Listener]]
+) -> None:
+    for event_name, listener in listeners:
+        _listeners[event_name].remove(listener)
+
+    if is_app:
+        global _app_count
+        _app_count -= 1
+
+        if not _app_count:
+            await dispatch_event(None, CloseSession())

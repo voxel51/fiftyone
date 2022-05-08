@@ -122,7 +122,7 @@ export const aggregations = selectorFamily<
   key: "aggregations",
   get: ({ modal, extended }) => async ({ get }) => {
     let filters = null;
-    get(selectors.refresher);
+    get(atoms.refresher);
 
     if (extended && get(filterAtoms.hasFilters(modal))) {
       filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
@@ -349,6 +349,7 @@ export const counts = selectorFamily<
   key: "counts",
   get: ({ extended, modal, path }) => ({ get }) => {
     const data = get(aggregations({ modal, extended }));
+
     return data
       ? Object.fromEntries(
           (data[path] as CategoricalAggregations).CountValues[1]

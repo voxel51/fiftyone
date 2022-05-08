@@ -433,6 +433,10 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
+  if (entries instanceof Error) {
+    throw entries;
+  }
+
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {

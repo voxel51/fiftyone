@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import os
 
 from jinja2 import Template
+from strawberry import subscription
 
 try:
     import IPython.display
@@ -42,25 +43,33 @@ def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
     )
 
 
-def display(dataset_name: str, cell: NotebookCell) -> None:
+def display(cell: NotebookCell, reactivate: bool = False) -> None:
     """Displays a running FiftyOne instance."""
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
     }
     fn = funcs[focx._get_context()]
-    fn(cell)
+    fn(cell, reactivate)
 
 
-def display_ipython(cell: NotebookCell) -> None:
-    port = os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port)
+def display_ipython(cell: NotebookCell, reactivate: bool = False) -> None:
     iframe = IPython.display.IFrame(
-        focx.get_url(cell.address, cell.port), height=cell.height, width="100%"
+        focx.get_url(
+            cell.address,
+            os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
+            subscription=cell.subscription,
+        ),
+        height=cell.height,
+        width="100%",
     )
-    cell.handle.display(iframe)
+    if reactivate:
+        cell.handle.update(iframe)
+    else:
+        cell.handle.display(iframe)
 
 
-def display_colab(cell: NotebookCell) -> None:
+def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime

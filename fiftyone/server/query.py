@@ -157,7 +157,6 @@ class Dataset(HasCollection):
 
         ds = fo.load_dataset(name)
         view = fov.DatasetView._build(ds, view)
-
         if view._dataset != ds:
             d = view._dataset._serialize()
             dataset.media_type = d["media_type"]
@@ -257,29 +256,10 @@ class Query:
         return foc.VERSION
 
 
-def _flatten_fields(
-    path: t.List[str], fields: t.List[t.Dict]
-) -> t.List[t.Dict]:
-    result = []
-    for field in fields:
-        key = field.pop("name")
-        field_path = path + [key]
-        field["path"] = ".".join(field_path)
-        result.append(field)
-
-        fields = field.pop("fields", None)
-        if fields:
-            result = result + _flatten_fields(field_path, fields)
-
-    return result
-
-
-async def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
-    view = fov.DatasetView._build(dataset, view)
-
+def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
     doc = dataset._doc.to_dict()
     Dataset.modifier(doc)
-    data = from_dict(Dataset, doc)
+    data = from_dict(Dataset, doc, config=Config(check_types=False))
 
     if view._dataset != dataset:
         d = view._dataset._serialize()
@@ -296,3 +276,20 @@ async def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
     data.view_cls = etau.get_class_name(view)
 
     return asdict(data)
+
+
+def _flatten_fields(
+    path: t.List[str], fields: t.List[t.Dict]
+) -> t.List[t.Dict]:
+    result = []
+    for field in fields:
+        key = field.pop("name")
+        field_path = path + [key]
+        field["path"] = ".".join(field_path)
+        result.append(field)
+
+        fields = field.pop("fields", None)
+        if fields:
+            result = result + _flatten_fields(field_path, fields)
+
+    return result

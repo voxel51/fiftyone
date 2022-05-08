@@ -1750,7 +1750,7 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
-    recoil: ^0.6.1
+    recoil: ^0.7.2
     relay-compiler: ^13.0.2
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
@@ -7190,9 +7190,9 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"recoil@npm:^0.6.1":
-  version: 0.6.1
-  resolution: "recoil@npm:0.6.1"
+"recoil@npm:^0.7.2":
+  version: 0.7.2
+  resolution: "recoil@npm:0.7.2"
   dependencies:
     hamt_plus: 1.0.2
   peerDependencies:
@@ -7202,7 +7202,7 @@ fsevents@~2.3.2:
       optional: true
     react-native:
       optional: true
-  checksum: 67c93c49d3ef7a104f1fcb28a635a341d36ab676b31b761c3e9dfe5667f43330a6b1b3dde2d1a82a148c6d300e12130c26ab83e20eaabff8e2565de15522bf18
+  checksum: fc7f8755b4f82794f407c8461598eec634c563b022a19e3e52565e44c4b92783cb305d78b893c5a7cfe8a3e7da8d8e01c19714b15599272c6b102b3897428b40
   languageName: node
   linkType: hard
 

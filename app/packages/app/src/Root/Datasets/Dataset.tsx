@@ -1,89 +1,14 @@
-import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
 import { Route } from "@fiftyone/components";
-import { RGB } from "@fiftyone/looker";
 import { NotFoundError } from "@fiftyone/utilities";
-import React, { useEffect, useRef } from "react";
-import { graphql, usePreloadedQuery, useQueryLoader } from "react-relay";
+import React, { useEffect } from "react";
+import { graphql, usePreloadedQuery } from "react-relay";
 
 import DatasetComponent from "../../components/Dataset";
-import { State } from "../../recoil/types";
 import { useStateUpdate } from "../../utils/hooks";
-import {
-  DatasetQuery,
-  DatasetQuery$data,
-} from "./__generated__/DatasetQuery.graphql";
-import { datasetName, refresher } from "../../recoil/selectors";
+import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
+import { datasetName } from "../../recoil/selectors";
 import { useRecoilValue } from "recoil";
-import * as atoms from "../../recoil/atoms";
-
-const toStrictField = (field: Field): StrictField => {
-  return {
-    ...field,
-    fields: Object.entries(field.fields).map(([_, f]) => toStrictField(f)),
-  };
-};
-
-const collapseFields = (
-  paths: NonNullable<DatasetQuery$data["dataset"]>["sampleFields"]
-): StrictField[] => {
-  const schema: Schema = {};
-  for (let i = 0; i < paths.length; i++) {
-    const field = paths[i];
-    const keys = field.path.split(".");
-    let ref = schema;
-    for (let j = 0; j < keys.length; j++) {
-      const key = keys[j];
-      ref[key] = ref[key] || { fields: {} };
-
-      if (j === keys.length - 1) {
-        ref[key] = {
-          ...field,
-          name: key,
-          fields: ref[key].fields,
-        };
-      } else {
-        ref = ref[key].fields;
-      }
-    }
-  }
-
-  return Object.entries(schema).map(([_, field]) => toStrictField(field));
-};
-
-const convertTargets = (
-  targets: NonNullable<DatasetQuery$data["dataset"]>["defaultMaskTargets"]
-) => {
-  return Object.fromEntries(
-    (targets || []).map<[number, string]>(({ target, value }) => [
-      target,
-      value,
-    ])
-  );
-};
-
-const transformDataset = (
-  dataset: NonNullable<DatasetQuery$data["dataset"]>
-): Readonly<State.Dataset> => {
-  const targets = Object.fromEntries(
-    (dataset?.maskTargets || []).map(({ name, targets }) => [
-      name,
-      convertTargets(targets),
-    ])
-  );
-
-  const copy = clone(dataset);
-
-  return {
-    ...copy,
-    defaultMaskTargets: convertTargets(dataset.defaultMaskTargets),
-    brainMethods: [...dataset.brainMethods],
-    evaluations: [...dataset.evaluations],
-    frameFields: collapseFields(dataset.frameFields),
-    sampleFields: collapseFields(dataset.sampleFields),
-    maskTargets: targets,
-    mediaType: dataset.mediaType === "image" ? "image" : "video",
-  };
-};
+import transformDataset from "./transformDataset";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: JSONArray) {
@@ -151,8 +76,7 @@ const Query = graphql`
 `;
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
-  const [ref, load] = useQueryLoader(Query, prepared);
-  const { dataset } = usePreloadedQuery(Query, ref);
+  const { dataset } = usePreloadedQuery(Query, prepared);
   const name = useRecoilValue(datasetName);
 
   if (!dataset) {
@@ -166,20 +90,6 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
       dataset: transformDataset(dataset),
     });
   }, [dataset]);
-  const refresh = useRecoilValue(refresher);
-  const refreshRef = useRef<boolean>(true);
-
-  useEffect(() => {
-    refreshRef.current
-      ? (refreshRef.current = false)
-      : load(
-          { name: dataset.name },
-          {
-            fetchPolicy: "network-only",
-            networkCacheConfig: { force: true },
-          }
-        );
-  }, [refresh]);
 
   if (!name) {
     return null;

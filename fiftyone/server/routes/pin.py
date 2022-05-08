@@ -5,6 +5,7 @@ FiftyOne Server /pin route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from dacite import from_dict
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
@@ -14,6 +15,7 @@ import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.query import Dataset, SampleField, serialize_dataset
 import fiftyone.server.events as fose
 import fiftyone.server.view as fosv
 
@@ -49,4 +51,7 @@ class Pin(HTTPEndpoint):
 
         await fose.dispatch_event(subscription, StateUpdate(state=state))
 
-        return {"state": state.serialize()}
+        return {
+            "state": state.serialize(),
+            "dataset": serialize_dataset(state.dataset, state.view),
+        }

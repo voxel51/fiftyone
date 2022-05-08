@@ -1,4 +1,4 @@
-import { atom, atomFamily } from "recoil";
+import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
@@ -20,6 +20,20 @@ interface ModalSample extends SampleData {
   index: number;
   getIndex: (index: number) => void;
 }
+
+export const refresher = atom<boolean>({
+  key: "refresher",
+  default: false,
+});
+
+export const useRefresh = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => () => {
+      set(refresher, !get(refresher));
+    },
+    []
+  );
+};
 
 export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",

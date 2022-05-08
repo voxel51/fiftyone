@@ -5,8 +5,6 @@ import styled from "styled-components";
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "./SampleModal";
-import * as selectors from "../recoil/selectors";
-import Loading from "../components/Loading";
 import * as schemaAtoms from "../recoil/schema";
 import { modal } from "../recoil/atoms";
 import { RouterContext } from "@fiftyone/components";

@@ -39,6 +39,8 @@ class Event:
 
     @staticmethod
     def from_data(event_name: str, data: t.Union[str, dict]) -> EventType:
+        if event_name == Ping.get_event_name():
+            return Ping()
 
         if isinstance(data, str):
             data = foj.FiftyOneJSONEncoder.loads(data)
@@ -96,6 +98,12 @@ class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
+
+
+@t.final
+@dataclass
+class Ping(Event):
+    """Ping (builtin) event"""
 
 
 @dataclass

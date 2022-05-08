@@ -11,17 +11,10 @@ import {
 import {
   darkTheme,
   getEventSource,
-  getFetchFunction,
   setFetchFunction,
   toCamelCase,
 } from "@fiftyone/utilities";
-import React, {
-  Suspense,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
@@ -29,24 +22,26 @@ import {
   atom,
   RecoilRoot,
   useRecoilCallback,
-  useRecoilRefresher_UNSTABLE,
+  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
 } from "recoil";
 
 import Setup from "./components/Setup";
 
-import {
-  useScreenshot,
-  useSetDataset,
-  useUnprocessedStateUpdate,
-} from "./utils/hooks";
+import { useScreenshot, useUnprocessedStateUpdate } from "./utils/hooks";
 
 import "./index.css";
 import { State } from "./recoil/types";
 import * as viewAtoms from "./recoil/view";
-import { refresher, stateSubscription } from "./recoil/selectors";
+import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
+import {
+  dataset,
+  selectedLabels,
+  selectedSamples,
+  useRefresh,
+} from "./recoil/atoms";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -80,9 +75,11 @@ enum Events {
 const App: React.FC = withTheme(
   withErrorBoundary(({}) => {
     const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
+    const readyStateRef = useRef<AppReadyState>();
+    readyStateRef.current = readyState;
     const subscription = useRecoilValue(stateSubscription);
     const handleError = useErrorHandler();
-    const refreshApp = useRecoilRefresher_UNSTABLE(refresher);
+    const refresh = useRefresh();
 
     const getView = useRecoilCallback(
       ({ snapshot }) => () => {
@@ -96,13 +93,27 @@ const App: React.FC = withTheme(
         makeRoutes(environment, {
           view: getView,
         }),
-      []
+      [readyState === AppReadyState.CLOSED]
     );
+
     const setState = useUnprocessedStateUpdate();
 
     const contextRef = useRef(context);
     contextRef.current = context;
-    const { session } = useContext(EventsContext);
+    const reset = useRecoilTransaction_UNSTABLE(({ reset }) => () => {
+      reset(selectedSamples);
+      reset(selectedLabels);
+      reset(viewAtoms.view);
+      reset(dataset);
+      contextRef.current.history.push("/");
+    });
+    useEffect(() => {
+      readyState === AppReadyState.CLOSED && reset();
+    }, [readyState]);
+
+    const screenshot = useScreenshot(
+      new URLSearchParams(window.location.search).get("context")
+    );
 
     useEffect(() => {
       const controller = new AbortController();
@@ -111,15 +122,14 @@ const App: React.FC = withTheme(
       getEventSource(
         "/events",
         {
-          onopen: async () => {
-            setReadyState(AppReadyState.OPEN);
-          },
+          onopen: async () => {},
           onmessage: (msg) => {
             switch (msg.event) {
               case Events.DEACTIVATE_NOTEBOOK_CELL:
+                screenshot();
                 break;
               case Events.REFRESH_APP:
-                refreshApp();
+                refresh();
                 break;
               case Events.STATE_UPDATE: {
                 const data = JSON.parse(msg.data).state;
@@ -128,15 +138,19 @@ const App: React.FC = withTheme(
                   view: data.view,
                 } as State.Description;
                 const current = getDatasetName();
-
-                if (current && current !== state.dataset) {
-                  session !== undefined &&
-                    getFetchFunction()("POST", "/dataset", {
-                      name: current,
-                      subscription,
-                    });
-                } else if (!current && state.dataset) {
-                  contextRef.current.history.push(`/datasets/${state.dataset}`);
+                if (readyStateRef.current !== AppReadyState.OPEN) {
+                  !current &&
+                    state.dataset &&
+                    contextRef.current.history.push(
+                      `/datasets/${state.dataset}${window.location.search}`
+                    );
+                  setReadyState(AppReadyState.OPEN);
+                } else {
+                  const path = state.dataset
+                    ? `/datasets/${state.dataset}${window.location.search}`
+                    : `/${window.location.search}`;
+                  contextRef.current.preload(path);
+                  contextRef.current.history.push(path);
                 }
 
                 setState({ state });
@@ -146,7 +160,6 @@ const App: React.FC = withTheme(
           },
           onclose: () => {
             setReadyState(AppReadyState.CLOSED);
-            contextRef.current.history.push("/");
           },
           onerror: (err) => {
             handleError(err);
@@ -167,15 +180,12 @@ const App: React.FC = withTheme(
       return () => controller.abort();
     }, []);
 
-    useScreenshot();
-
     switch (readyState) {
       case AppReadyState.CONNECTING:
         return <Loading />;
       case AppReadyState.OPEN:
         return <Network environment={environment} context={context} />;
       default:
-        AppReadyState.CLOSED;
         return <Setup />;
     }
   }),

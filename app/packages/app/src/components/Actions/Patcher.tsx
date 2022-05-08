@@ -82,9 +82,7 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(atoms.stateDescription).dataset.evaluations.map(
-      ({ key }) => key
-    );
+    return get(atoms.dataset).evaluations.map(({ key }) => key);
   },
 });
 
@@ -107,7 +105,10 @@ export const sendPatch = async (
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
   }).then((data) => {
-    updateState(data, callback);
+    updateState((t) => {
+      callback && callback(t.set);
+      return data;
+    });
   });
 };
 
