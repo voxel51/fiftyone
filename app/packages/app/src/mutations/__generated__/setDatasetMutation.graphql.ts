@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest, Mutation } from "relay-runtime";
 export type setDatasetMutation$variables = {
   subscription: string;
   session?: string | null;
@@ -22,81 +22,74 @@ export type setDatasetMutation = {
   response: setDatasetMutation$data;
 };
 
-const node: ConcreteRequest = (function(){
-var v0 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "name"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "session"
-},
-v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "subscription"
-},
-v3 = [
-  {
-    "alias": null,
-    "args": [
+const node: ConcreteRequest = (function () {
+  var v0 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "name",
+    },
+    v1 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "session",
+    },
+    v2 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "subscription",
+    },
+    v3 = [
       {
-        "kind": "Variable",
-        "name": "name",
-        "variableName": "name"
+        alias: null,
+        args: [
+          {
+            kind: "Variable",
+            name: "name",
+            variableName: "name",
+          },
+          {
+            kind: "Variable",
+            name: "session",
+            variableName: "session",
+          },
+          {
+            kind: "Variable",
+            name: "subscription",
+            variableName: "subscription",
+          },
+        ],
+        kind: "ScalarField",
+        name: "setDataset",
+        storageKey: null,
       },
-      {
-        "kind": "Variable",
-        "name": "session",
-        "variableName": "session"
-      },
-      {
-        "kind": "Variable",
-        "name": "subscription",
-        "variableName": "subscription"
-      }
-    ],
-    "kind": "ScalarField",
-    "name": "setDataset",
-    "storageKey": null
-  }
-];
-return {
-  "fragment": {
-    "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
-    ],
-    "kind": "Fragment",
-    "metadata": null,
-    "name": "setDatasetMutation",
-    "selections": (v3/*: any*/),
-    "type": "Mutation",
-    "abstractKey": null
-  },
-  "kind": "Request",
-  "operation": {
-    "argumentDefinitions": [
-      (v2/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/)
-    ],
-    "kind": "Operation",
-    "name": "setDatasetMutation",
-    "selections": (v3/*: any*/)
-  },
-  "params": {
-    "cacheID": "f3cdf3dc95b6a967d5734cd2e25ae04d",
-    "id": null,
-    "metadata": {},
-    "name": "setDatasetMutation",
-    "operationKind": "mutation",
-    "text": "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name)\n}\n"
-  }
-};
+    ];
+  return {
+    fragment: {
+      argumentDefinitions: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
+      kind: "Fragment",
+      metadata: null,
+      name: "setDatasetMutation",
+      selections: v3 /*: any*/,
+      type: "Mutation",
+      abstractKey: null,
+    },
+    kind: "Request",
+    operation: {
+      argumentDefinitions: [v2 /*: any*/, v1 /*: any*/, v0 /*: any*/],
+      kind: "Operation",
+      name: "setDatasetMutation",
+      selections: v3 /*: any*/,
+    },
+    params: {
+      cacheID: "f3cdf3dc95b6a967d5734cd2e25ae04d",
+      id: null,
+      metadata: {},
+      name: "setDatasetMutation",
+      operationKind: "mutation",
+      text:
+        "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name)\n}\n",
+    },
+  };
 })();
 
 (node as any).hash = "321f49f2b80ef0d0170c5038fe79bba5";
