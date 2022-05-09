@@ -56,7 +56,6 @@ class Event:
         return from_dict(event_cls, data)
 
 
-@t.final
 @dataclass
 class CaptureNotebookCell(Event):
     """Capture notebook cell screenshot event"""
@@ -66,19 +65,16 @@ class CaptureNotebookCell(Event):
     width: int
 
 
-@t.final
 @dataclass
 class CloseSession(Event):
     """Close session event"""
 
 
-@t.final
 @dataclass
 class DeactivateNotebookCell(Event):
     """Deactivate notebook cell event"""
 
 
-@t.final
 @dataclass
 class ReactivateNotebookCell(Event):
     """Reactivate notebook cell event"""
@@ -86,13 +82,11 @@ class ReactivateNotebookCell(Event):
     subscription: str
 
 
-@t.final
 @dataclass
 class RefreshApp(Event):
     """Refresh app event"""
 
 
-@t.final
 @dataclass
 class StateUpdate(Event):
     """State update event"""
@@ -100,7 +94,6 @@ class StateUpdate(Event):
     state: fos.StateDescription
 
 
-@t.final
 @dataclass
 class Ping(Event):
     """Ping (builtin) event"""
