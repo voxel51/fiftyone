@@ -545,6 +545,9 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | Config field              | Environment variable                   | Default value               | Description                                                                              |
 +===========================+========================================+=============================+==========================================================================================+
+| `color_by`                | `FIFTYONE_APP_COLOR_BY`                | `"field"`                   | Whether to color labels by their field name (`"field"`), `label` value (`"label"`), or   |
+|                           |                                        |                             | render each instance ID/trajectory index (`"instance"`).                                 |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `color_pool`              | `FIFTYONE_APP_COLOR_POOL`              | See below                   | A list of browser supported color strings from which the App should draw from when       |
 |                           |                                        |                             | drawing labels (e.g., object bounding boxes).                                            |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -556,6 +559,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                           |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                            |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `notebook_height`         | `FIFTYONE_APP_NOTEBOOK_HEIGHT`         | `800`                       | The height of App instances displayed in notebook cells.                                 |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_confidence`         | `FIFTYONE_APP_SHOW_CONFIDENCE`         | `True`                      | Whether to show confidences when rendering labels in the App's expanded sample view.     |
@@ -564,6 +569,8 @@ The FiftyOne App can be configured in the ways described below:
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_label`              | `FIFTYONE_APP_SHOW_LABEL`              | `True`                      | Whether to show the label value when rendering detection labels in the App's expanded    |
 |                           |                                        |                             | sample view.                                                                             |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `show_skeletons           | `FIFTYONE_APP_SHOW_SKELETONS`          | `True`                      | Whether to show keypoint skeletons, if available.                                        |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 | `show_tooltip`            | `FIFTYONE_APP_SHOW_TOOLTIP`            | `True`                      | Whether to show the tooltip when hovering over labels in the App's expanded sample view. |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
@@ -593,26 +600,33 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True
@@ -630,26 +644,33 @@ You can print your App config at any time via the Python library and the CLI:
     .. code-block:: text
 
         {
+            "color_by": "field",
             "color_pool": [
                 "#ee0000",
+                "#ee6600",
+                "#993300",
+                "#996633",
                 "#999900",
                 "#009900",
                 "#003300",
                 "#009999",
                 "#000099",
-                "#6600ff",
-                "#ee6600",
-                "#993300",
-                "#996633",
                 "#0066ff",
+                "#6600ff",
                 "#cc33cc",
                 "#777799"
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "loop_videos": false,
+            "multicolor_keypoints": false,
             "notebook_height": 800,
             "show_confidence": true,
-            "show_attributes": true
+            "show_index": true,
+            "show_label": true,
+            "show_skeletons": true,
+            "show_tooltip": true,
+            "use_frame_number": false
         }
 
         True

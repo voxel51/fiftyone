@@ -493,7 +493,11 @@ class EvaluationPatchesView(_PatchesView):
 
 
 def make_patches_dataset(
-    sample_collection, field, other_fields=None, keep_label_lists=False
+    sample_collection,
+    field,
+    other_fields=None,
+    keep_label_lists=False,
+    name=None,
 ):
     """Creates a dataset that contains one sample per object patch in the
     specified field of the collection.
@@ -520,6 +524,7 @@ def make_patches_dataset(
         keep_label_lists (False): whether to store the patches in label list
             fields of the same type as the input collection rather than using
             their single label variants
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -540,7 +545,7 @@ def make_patches_dataset(
     else:
         field_type = _get_single_label_field_type(sample_collection, field)
 
-    dataset = fod.Dataset(_patches=True)
+    dataset = fod.Dataset(name=name, _patches=True)
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )
@@ -597,7 +602,7 @@ def _get_single_label_field_type(sample_collection, field):
 
 
 def make_evaluation_patches_dataset(
-    sample_collection, eval_key, other_fields=None
+    sample_collection, eval_key, other_fields=None, name=None
 ):
     """Creates a dataset based on the results of the evaluation with the given
     key that contains one sample for each true positive, false positive, and
@@ -644,6 +649,7 @@ def make_evaluation_patches_dataset(
             -   a field or list of fields to include
             -   ``True`` to include all other fields
             -   ``None``/``False`` to include no other fields
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -681,7 +687,7 @@ def make_evaluation_patches_dataset(
     gt_type = sample_collection._get_label_field_type(gt_field)
 
     # Setup dataset with correct schema
-    dataset = fod.Dataset(_patches=True)
+    dataset = fod.Dataset(name=name, _patches=True)
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )

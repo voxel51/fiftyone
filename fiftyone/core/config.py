@@ -81,7 +81,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "database_admin",
             env_var="FIFTYONE_DATABASE_ADMIN",
-            default=False,
+            default=False,  # Teams clients can't migrate by default
         )
         self.database_dir = self.parse_path(
             d,
@@ -275,6 +275,12 @@ class AppConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.color_by = self.parse_string(
+            d,
+            "color_by",
+            env_var="FIFTYONE_APP_COLOR_BY",
+            default="field",
+        )
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
@@ -294,6 +300,12 @@ class AppConfig(EnvConfig):
             d,
             "loop_videos",
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
+            default=False,
+        )
+        self.multicolor_keypoints = self.parse_bool(
+            d,
+            "multicolor_keypoints",
+            env_var="FIFTYONE_APP_MULTICOLOR_KEYPOINTS",
             default=False,
         )
         self.notebook_height = self.parse_int(
@@ -318,6 +330,12 @@ class AppConfig(EnvConfig):
             d,
             "show_label",
             env_var="FIFTYONE_APP_SHOW_LABEL",
+            default=True,
+        )
+        self.show_skeletons = self.parse_bool(
+            d,
+            "show_skeletons",
+            env_var="FIFTYONE_APP_SHOW_SKELETONS",
             default=True,
         )
         self.show_tooltip = self.parse_bool(
@@ -379,6 +397,14 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
+        if self.color_by not in {"field", "instance", "label"}:
+            logger.warning(
+                "Invalid `color_by` option '%s'. Must be one of 'field', "
+                "'instance' or 'label'. Defaulting to 'field'",
+                self.color_by,
+            )
+            self.color_by = "field"
+
         if self.grid_zoom < 0 or self.grid_zoom > 10:
             logger.warning(
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom

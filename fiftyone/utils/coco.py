@@ -977,16 +977,11 @@ class COCOObject(object):
         points = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
-                continue
+                points.append((float("nan"), float("nan")))
+            else:
+                points.append((x / width, y / height))
 
-            points.append((x / width, y / height))
-
-        return fol.Keypoint(
-            label=label,
-            points=points,
-            confidence=self.score,
-            **self.attributes,
-        )
+        return fol.Keypoint(label=label, points=points, **self.attributes)
 
     def to_detection(
         self,

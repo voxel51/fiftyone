@@ -18,6 +18,7 @@ import unittest
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
 
@@ -944,6 +945,85 @@ class CVATTests(unittest.TestCase):
                 dataset.values("frames.test_field.detections.id", unwind=True)
             ),
         )
+
+
+class CVATCloudTests(unittest.TestCase):
+    """
+    These tests require the associated cloud storage to be attached to CVAT
+    beforehand and relevant manifest files to exist in the root of each bucket::
+
+        https://openvinotoolkit.github.io/cvat/docs/manual/basics/attach-cloud-storage/#prepare-manifest-file
+
+    """
+
+    def setUp(self):
+        super().setUp()
+        data_root = "voxel51-test/quickstart"
+        manifest = "voxel51-test/manifest.jsonl"
+
+        self.s3_root_dir = fos.S3_PREFIX + data_root
+        self.s3_manifest = fos.S3_PREFIX + manifest
+
+        self.gs_root_dir = fos.GCS_PREFIX + data_root
+        self.gs_manifest = fos.GCS_PREFIX + manifest
+
+        self.minio_root_dir = None
+        self.minio_manifest = None
+
+        if fos.minio_endpoint_prefix is not None:
+            # Spin up default local MinIO server and load in quickstart data
+            self.minio_root_dir = fos.minio_endpoint_prefix + data_root
+            self.minio_manifest = fos.minio_endpoint_prefix + manifest
+
+    def _test_cloud(self, root_dir, cloud_manifest):
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
+
+        fos.upload_media(
+            dataset, root_dir, update_filepaths=True, overwrite=False,
+        )
+
+        prev_ids = dataset.values("ground_truth.detections.id", unwind=True)
+
+        anno_key = "anno_key"
+        results = dataset.annotate(
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
+            cloud_manifest=cloud_manifest,
+        )
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+
+        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
+            "sample_id"
+        ]
+        self.assertEqual(sample_id, dataset.first().id)
+        api.close()
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        self.assertListEqual(
+            prev_ids,
+            dataset.values("ground_truth.detections.id", unwind=True),
+        )
+
+    def test_s3(self):
+        self._test_cloud(self.s3_root_dir, self.s3_manifest)
+        self._test_cloud(self.s3_root_dir, True)
+        self._test_cloud(self.s3_root_dir, False)
+
+    def test_gs(self):
+        self._test_cloud(self.gs_root_dir, self.gs_manifest)
+        self._test_cloud(self.gs_root_dir, True)
+        self._test_cloud(self.gs_root_dir, False)
+
+    def test_minio(self):
+        if self.minio_root_dir:
+            self._test_cloud(self.minio_root_dir, self.minio_manifest)
+            self._test_cloud(self.minio_root_dir, True)
+            self._test_cloud(self.minio_root_dir, False)
 
 
 if __name__ == "__main__":

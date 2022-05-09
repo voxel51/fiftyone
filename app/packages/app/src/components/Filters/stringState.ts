@@ -1,4 +1,6 @@
 import {
+  atom,
+  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -6,12 +8,34 @@ import {
 } from "recoil";
 
 import * as filterAtoms from "../../recoil/filters";
+import * as selectors from "../../recoil/selectors";
+import {
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  VALID_LIST_FIELDS,
+} from "../../utils/labels";
+import { filterStage, FilterParams } from "./atoms";
+
+export const LIST_LIMIT = 200;
 
 interface StringFilter {
   values: string[];
   exclude: boolean;
   _CLS: "str";
 }
+
+export const isStringField = selectorFamily<boolean, string>({
+  key: "isStringField",
+  get: (name) => ({ get }) => {
+    let map = get(selectors.primitivesMap("sample"));
+
+    if (VALID_LIST_FIELDS.includes(map[name])) {
+      map = get(selectors.primitivesSubfieldMap("sample"));
+    }
+
+    return [OBJECT_ID_FIELD, STRING_FIELD].includes(map[name]);
+  },
+});
 
 const getFilter = (
   get: GetRecoilValue,
@@ -37,18 +61,19 @@ const setFilter = (
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
-  const filter = {
+  let filter = {
     ...getFilter(get, modal, path),
     [key]: value,
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
   }
+
   if (meetsDefault(filter)) {
-    set(filterAtoms.filter({ modal, path }), null);
-  } else {
-    set(filterAtoms.filter({ modal, path }), filter);
+    filter = null;
   }
+
+  set(filterStage({ modal, path }), filter);
 };
 
 export const selectedValuesAtom = selectorFamily<

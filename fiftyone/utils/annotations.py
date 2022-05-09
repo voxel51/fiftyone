@@ -17,7 +17,6 @@ import eta.core.annotations as etaa
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foag
 import fiftyone.core.annotation as foa
 import fiftyone.core.clips as foc
 from fiftyone.core.expressions import ViewField as F
@@ -174,7 +173,8 @@ def annotate(
     if samples._dataset._is_patches:
         ids = _get_patches_view_label_ids(samples)
         samples = samples._root_dataset.select_labels(
-            ids=ids, fields=samples._label_fields,
+            ids=ids,
+            fields=samples._label_fields,
         )
 
     if not samples:
@@ -2079,7 +2079,8 @@ class AnnotationResults(foa.AnnotationResults):
                 sample_id_map = id_map[sample_id]
                 for frame_id, label_ids in content.items():
                     sample_id_map[frame_id] = self._format_label_ids(
-                        sample_id_map.get(frame_id, None), label_ids,
+                        sample_id_map.get(frame_id, None),
+                        label_ids,
                     )
         else:
             for sample_id, label_ids in new_id_map.items():
@@ -2167,7 +2168,9 @@ class DrawConfig(etaa.AnnotationConfig):
         super().__init__(d)
 
 
-def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
+def draw_labeled_images(
+    samples, output_dir, label_fields=None, config=None, **kwargs
+):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
 
@@ -2180,16 +2183,19 @@ def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated images
-        label_fields (None): a list of label fields to render. If omitted, all
-            compatiable fields are rendered
+        label_fields (None): a label field or list of label fields to render.
+            If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        **kwargs: optional keyword arguments specifying parameters of the
+            default :class:`DrawConfig` to override
 
     Returns:
         the list of paths to the labeled images
     """
-    if config is None:
-        config = DrawConfig.default()
+    config = _parse_draw_config(
+        config, kwargs, samples=samples, label_fields=label_fields
+    )
 
     samples.download_media()
 
@@ -2212,20 +2218,23 @@ def draw_labeled_images(samples, output_dir, label_fields=None, config=None):
     return outpaths
 
 
-def draw_labeled_image(sample, outpath, label_fields=None, config=None):
+def draw_labeled_image(
+    sample, outpath, label_fields=None, config=None, **kwargs
+):
     """Renders an annotated version of the sample's image with the specified
     label data overlaid to disk.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
-        label_fields (None): a list of label fields to render. If omitted, all
-            compatiable fields are rendered
+        label_fields (None): a label field or list of label fields to render.
+            If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        **kwargs: optional keyword arguments specifying parameters of the
+            default :class:`DrawConfig` to override
     """
-    if config is None:
-        config = DrawConfig.default()
+    config = _parse_draw_config(config, kwargs)
 
     fov.validate_image_sample(sample)
     img = foui.read(sample.local_path)
@@ -2236,7 +2245,9 @@ def draw_labeled_image(sample, outpath, label_fields=None, config=None):
     foui.write(anno_img, outpath)
 
 
-def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
+def draw_labeled_videos(
+    samples, output_dir, label_fields=None, config=None, **kwargs
+):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
 
@@ -2249,16 +2260,19 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         output_dir: the directory to write the annotated videos
-        label_fields (None): a list of label fields to render. If omitted, all
-            compatiable fields are rendered
+        label_fields (None): a label field or list of label fields to render.
+            If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        **kwargs: optional keyword arguments specifying parameters of the
+            default :class:`DrawConfig` to override
 
     Returns:
         the list of paths to the labeled videos
     """
-    if config is None:
-        config = DrawConfig.default()
+    config = _parse_draw_config(
+        config, kwargs, samples=samples, label_fields=label_fields
+    )
 
     filename_maker = fou.UniqueFilenameMaker(output_dir=output_dir)
     output_ext = fo.config.default_video_ext
@@ -2287,7 +2301,7 @@ def draw_labeled_videos(samples, output_dir, label_fields=None, config=None):
 
 
 def draw_labeled_video(
-    sample, outpath, support=None, label_fields=None, config=None
+    sample, outpath, support=None, label_fields=None, config=None, **kwargs
 ):
     """Renders an annotated version of the sample's video with the specified
     label data overlaid to disk.
@@ -2297,13 +2311,14 @@ def draw_labeled_video(
         outpath: the path to write the annotated image
         support (None): an optional ``[first, last]`` range of frames to
             render
-        label_fields (None): a list of label fields to render. If omitted, all
-            compatiable fields are rendered
+        label_fields (None): a label field or list of label fields to render.
+            If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        **kwargs: optional keyword arguments specifying parameters of the
+            default :class:`DrawConfig` to override
     """
-    if config is None:
-        config = DrawConfig.default()
+    config = _parse_draw_config(config, kwargs)
 
     video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
@@ -2321,7 +2336,51 @@ def draw_labeled_video(
         )
 
 
+def _parse_draw_config(config, kwargs, samples=None, label_fields=None):
+    if kwargs:
+        if config is not None:
+            d = config.serialize()
+            d.update(kwargs)
+        else:
+            d = kwargs
+
+        config = DrawConfig(d)
+
+    if config is None:
+        config = DrawConfig.default()
+
+    if samples is not None:
+        skeleton = _get_skeleton(samples, label_fields=label_fields)
+        if skeleton is not None:
+            config.keypoints_skeleton = dict(skeleton.to_dict())
+
+    return config
+
+
+def _get_skeleton(samples, label_fields=None):
+    if label_fields is None:
+        if samples.default_skeleton is not None:
+            return samples.default_skeleton
+
+        if samples.skeletons:
+            return next(iter(samples.skeletons.values()))
+
+        return None
+
+    if not etau.is_container(label_fields):
+        label_fields = [label_fields]
+
+    for label_field in label_fields:
+        if label_field in samples.skeletons:
+            return samples.skeletons[label_field]
+
+    return samples.default_skeleton
+
+
 def _to_image_labels(sample, label_fields=None):
+    if label_fields is not None and not etau.is_container(label_fields):
+        label_fields = [label_fields]
+
     labels = _get_sample_labels(sample, label_fields)
     return foue.to_image_labels(labels)
 

@@ -588,6 +588,21 @@ def parse_dataset_info(dataset, info, overwrite=True):
                 default_mask_targets
             )
 
+    skeletons = info.pop("skeletons", None)
+    if skeletons is not None:
+        skeletons = dataset._parse_skeletons(skeletons)
+        if overwrite:
+            dataset.skeletons.update(skeletons)
+        else:
+            _update_no_overwrite(dataset.skeletons, skeletons)
+
+    default_skeleton = info.pop("default_skeleton", None)
+    if default_skeleton is not None:
+        if overwrite or not dataset.default_skeleton:
+            dataset.default_skeleton = dataset._parse_default_skeleton(
+                default_skeleton
+            )
+
     if overwrite:
         dataset.info.update(info)
     else:

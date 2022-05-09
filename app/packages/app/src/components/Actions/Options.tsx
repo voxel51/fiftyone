@@ -56,27 +56,47 @@ export const RefreshButton = ({ modal }) => {
 };
 
 const ColorBy = ({ modal }) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(
-    atoms.colorByLabel(modal)
+  const [colorBy, setColorBy] = useRecoilState<string>(
+    selectors.appConfigOption({ modal, key: "color_by" })
   );
 
   return (
     <>
       <PopoutSectionTitle>Color by</PopoutSectionTitle>
+
       <TabOption
-        active={colorByLabel ? "value" : "field"}
-        options={[
-          {
-            text: "field",
-            title: "Color by field",
-            onClick: () => colorByLabel && setColorByLabel(false),
-          },
-          {
-            text: "value",
-            title: "Color by value",
-            onClick: () => !colorByLabel && setColorByLabel(true),
-          },
-        ]}
+        active={colorBy}
+        options={["field", "instance", "label"].map((value) => {
+          return {
+            text: value,
+            title: `Color by ${value}`,
+            onClick: () => colorBy !== value && setColorBy(value),
+          };
+        })}
+      />
+    </>
+  );
+};
+
+const Keypoints = ({ modal }) => {
+  const [shown, setShown] = useRecoilState<boolean>(
+    selectors.appConfigOption({ key: "show_skeletons", modal })
+  );
+  const [points, setPoints] = useRecoilState<boolean>(
+    selectors.appConfigOption({ key: "multicolor_keypoints", modal })
+  );
+
+  return (
+    <>
+      <Checkbox
+        name={"Multicolor keypoints"}
+        value={points}
+        setValue={(value) => setPoints(value)}
+      />
+      <Checkbox
+        name={"Show keypoint skeletons"}
+        value={shown}
+        setValue={(value) => setShown(value)}
       />
     </>
   );
@@ -221,11 +241,12 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
-      <SortFilterResults modal={modal} />
-      <Patches modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
+      <SortFilterResults modal={modal} />
+      <Keypoints modal={modal} />
+      <Patches modal={modal} />
     </Popout>
   );
 };

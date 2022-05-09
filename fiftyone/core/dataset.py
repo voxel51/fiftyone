@@ -324,6 +324,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 
@@ -415,6 +419,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.name = _name
             raise
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
 
     @property
     def created_at(self):
@@ -585,6 +593,75 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
+        self.save()
+
+    @property
+    def skeletons(self):
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
+        :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
+        field of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set keypoint skeleton for the `ground_truth` field
+            dataset.skeletons = {
+                "ground_truth": fo.KeypointSkeleton(
+                    labels=[
+                        "left hand" "left shoulder", "right shoulder", "right hand",
+                        "left eye", "right eye", "mouth",
+                    ],
+                    edges=[[0, 1, 2, 3], [4, 5, 6]],
+                )
+            }
+
+            # Edit an existing skeleton
+            dataset.skeletons["ground_truth"].labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._doc.skeletons = skeletons
+        self.save()
+
+    @property
+    def default_skeleton(self):
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default keypoint skeleton
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=[
+                    "left hand" "left shoulder", "right shoulder", "right hand",
+                    "left eye", "right eye", "mouth",
+                ],
+                edges=[[0, 1, 2, 3], [4, 5, 6]],
+            )
+
+            # Edit the default skeleton
+            dataset.default_skeleton.labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._doc.default_skeleton = skeleton
         self.save()
 
     @property
@@ -2378,8 +2455,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        _delete_dataset_doc(self._doc)
+        # Update singleton
+        self._instances.pop(self._doc.name, None)
 
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(
@@ -4169,6 +4248,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_mask_targets", {})
         )
 
+        dataset.skeletons = dataset._parse_skeletons(d.get("skeletons", {}))
+        dataset.default_skeleton = dataset._parse_default_skeleton(
+            d.get("default_skeleton", None)
+        )
+
         def parse_sample(sd):
             if rel_dir and not fost.isabs(sd["filepath"]):
                 sd["filepath"] = fost.join(rel_dir, sd["filepath"])
@@ -5140,22 +5224,30 @@ def _merge_dataset_doc(
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
+        curr_doc.skeletons.update(doc.skeletons)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
     else:
         _update_no_overwrite(curr_doc.info, doc.info)
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
+        _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets and not curr_doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton and not curr_doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
 

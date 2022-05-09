@@ -15,7 +15,9 @@ try:
 except ImportError:
     from importlib_metadata import metadata  # Python < 3.8
 
-D = {"s": False}
+
+CLIENT_TYPE = "fiftyone-teams"
+
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
@@ -81,6 +83,7 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
 MIN_MONGODB_VERSION = Version("4.4")
+DATABASE_APPNAME = "fiftyone"
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")

@@ -15,11 +15,13 @@ from .database import (
     drop_database,
     sync_database,
     list_datasets,
+    delete_non_persistent_datasets_if_allowed,
     delete_dataset,
     delete_evaluation,
     delete_evaluations,
     delete_brain_run,
     delete_brain_runs,
+    drop_collection,
     drop_orphan_collections,
     drop_orphan_run_results,
     list_collections,
@@ -36,6 +38,7 @@ from .database import (
 from .dataset import (
     create_field,
     SampleFieldDocument,
+    KeypointSkeleton,
     DatasetDocument,
 )
 from .document import (

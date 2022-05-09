@@ -21,30 +21,6 @@ import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-import { pathFilter } from "./Filters";
-import { ModalActionsRow } from "./Actions";
-import { useErrorHandler } from "react-error-boundary";
-import { Field, LIST_FIELD, Schema } from "@fiftyone/utilities";
-import { Checkbox } from "@material-ui/core";
-
-const Header = styled.div`
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  display: flex;
-  padding: 0.5rem;
-  justify-content: space-between;
-  overflow: visible;
-  width: 100%;
-  z-index: 1000;
-
-  background-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.backgroundDark}
-  );
-`;
 
 const TagBlock = styled.div`
   margin: 0;
@@ -220,6 +196,16 @@ const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <AttrInfo label={detail.label} />
+      {detail.point && (
+        <AttrInfo
+          label={Object.fromEntries(
+            detail.point.attributes.map(([k, v]) => [
+              `points[${detail.point.index}].${k}`,
+              v,
+            ])
+          )}
+        />
+      )}
     </AttrBlock>
   );
 };
@@ -380,12 +366,13 @@ const lookerOptions = selector({
       timeZone: get(selectors.timeZone),
       coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
-      imageFilters: Object.fromEntries(
-        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
-          filter,
-          get(atoms.imageFilters({ modal: false, filter })),
-        ])
+
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: true })
       ),
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(true)),
     };
   },
 });

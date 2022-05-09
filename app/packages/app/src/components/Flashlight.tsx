@@ -27,6 +27,12 @@ import {
   toSnakeCase,
 } from "@fiftyone/utilities";
 
+import { activeFields } from "./Filters/utils";
+import {
+  labelFilters,
+  skeletonFilter,
+} from "./Filters/LabelFieldFilters.state";
+
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
 import * as filterAtoms from "../recoil/filters";
@@ -115,12 +121,13 @@ const flashlightLookerOptions = selector({
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       disabled: false,
-      imageFilters: Object.fromEntries(
-        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
-          filter,
-          get(atoms.imageFilters({ modal: false, filter })),
-        ])
+
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "show_skeletons", modal: false })
       ),
+      defaultSkeleton: get(atoms.stateDescription)?.dataset.default_skeleton,
+      skeletons: get(atoms.stateDescription)?.dataset.skeletons,
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });

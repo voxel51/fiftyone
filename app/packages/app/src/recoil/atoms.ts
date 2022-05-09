@@ -136,11 +136,6 @@ export const viewCounter = atom({
   default: 0,
 });
 
-export const colorByLabel = atomFamily<boolean, boolean>({
-  key: "colorByLabel",
-  default: false,
-});
-
 export const DEFAULT_ALPHA = 0.7;
 
 export const alpha = atomFamily<number, boolean>({
