@@ -46,17 +46,10 @@ def register_experiment(
     return results
 
 
-def add_model_run(samples, exp_key, run_key, predictions):
+def add_model_run(samples, exp_key, run_key, predictions, key_field=None):
 
     results = foe.ExperimentMethod.load_run_results(samples, exp_key)
-    results.add_model_run(run_key, predictions)
-
-    # Every time a new model run is added, the config must be updated
-    exp_backend = results.backend
-    config = results.config
-    exp_backend.update_run_config(samples, exp_key, config)
-
-    exp_backend.save_run_results(samples, exp_key, results)
+    results.add_model_run(run_key, predictions, key_field=key_field)
 
     return results
 
@@ -72,9 +65,9 @@ def _parse_config(backend, label_fields, exp_key, **kwargs):
 
 
 class ExperimentBackendConfig(foe.ExperimentMethodConfig):
-    def __init__(self, label_fields, **kwargs):
+    def __init__(self, label_fields, exp_key, **kwargs):
         super().__init__(**kwargs)
-
+        self.exp_key = exp_key
         self.label_fields = label_fields
 
     @property
@@ -150,6 +143,7 @@ class ExperimentResults(foe.ExperimentResults):
         self._samples = samples
         self._backend = backend
         self._exp_dataset_name = exp_dataset_name
+        self._model_runs = []
 
     @property
     def config(self):
@@ -165,8 +159,45 @@ class ExperimentResults(foe.ExperimentResults):
     def experiment_dataset(self):
         return fod.load_dataset(self._exp_dataset_name)
 
-    def add_model_run(self, run_key, predictions):
-        pass
+    def add_model_run(self, run_key, predictions, key_field=None):
+        if run_key in self._model_runs:
+            raise ValueError(
+                "A model run with key '%s' already exists", run_key
+            )
+        self._model_runs.append(run_key)
+        self._add_predictions(run_key, predictions, key_field=key_field)
+        self._add_run_to_backend(run_key, predictions)
+
+        # Every time a new model run is added, the config may be updated
+        self._backend.update_run_config(
+            self._samples, self.config.exp_key, self.config
+        )
+
+        self._backend.save_run_results(
+            self._samples, self.config.exp_key, self
+        )
+
+    def _add_run_to_backend(self, run_key, predictions):
+        raise NotImplementedError(
+            "subclass must implement _add_run_to_backend()"
+        )
+
+    def _add_predictions(self, run_key, predictions, key_field=None):
+        exp_dataset = self.experiment_dataset
+        predictions = self._parse_predictions(predictions)
+        exp_dataset.set_values(
+            self._get_run_field(run_key),
+            predictions,
+            key_field=key_field,
+        )
+
+    def _parse_predictions(self, predictions):
+        # @todo support more types of predictions other than list of FiftyOne
+        # labels
+        return predictions
+
+    def _get_run_field(self, run_key):
+        return "predictions-%s" % run_key
 
     def evaluate(self):
         pass
@@ -203,8 +234,7 @@ class ExperimentResults(foe.ExperimentResults):
 
 class ManualExperimentBackendConfig(ExperimentBackendConfig):
     def __init__(self, label_fields, exp_key, exp_dir=None, **kwargs):
-        super().__init__(label_fields, **kwargs)
-        self.exp_key = exp_key
+        super().__init__(label_fields, exp_key, **kwargs)
         self.exp_dir = exp_dir
 
     @property
@@ -228,6 +258,9 @@ class ManualExperimentResults(ExperimentResults):
             config,
             **d,
         )
+
+    def _add_run_to_backend(self, run_key, predictions):
+        pass
 
     def cleanup(self):
         pass
