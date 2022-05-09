@@ -27,6 +27,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.experiment as foex
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
@@ -2236,6 +2237,83 @@ class SampleCollection(object):
         foev.EvaluationMethod.delete_runs(self)
 
     @property
+    def has_experiments(self):
+        """Whether this colection has any experiment results."""
+        return bool(self.list_experiments())
+
+    def has_experiment(self, exp_key):
+        """Whether this collection has an experiment with the given key.
+
+        Args:
+            exp_key: an experiment key
+
+        Returns:
+            True/False
+        """
+        return exp_key in self.list_experiments()
+
+    def list_experiments(self):
+        """Returns a list of all experiment keys on this collection.
+
+        Returns:
+            a list of experiment keys
+        """
+        return foex.ExperimentMethod.list_runs(self)
+
+    def get_experiment_info(self, exp_key):
+        """Returns information about the experiment with the given key on this
+        collection.
+
+        Args:
+            exp_key: an experiment key
+
+        Returns:
+            an :class:`fiftyone.core.experiment.ExperimentInfo`
+        """
+        return foex.ExperimentMethod.get_run_info(self, exp_key)
+
+    def load_experiment_results(self, exp_key):
+        """Loads the results for the experiment with the given key on this
+        collection.
+
+        Args:
+            exp_key: an experiment key
+
+        Returns:
+            a :class:`fiftyone.core.experiment.ExperimentResults`
+        """
+        return foex.ExperimentMethod.load_run_results(self, exp_key)
+
+    def load_experiment_view(self, exp_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified experiment was performed on this collection.
+
+        Args:
+            exp_key: an experiment key
+            select_fields (False): whether to select only the fields involved
+                in the experiment
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return foex.ExperimentMethod.load_run_view(
+            self, exp_key, select_fields=select_fields
+        )
+
+    def delete_experiment(self, exp_key):
+        """Deletes the experiment results associated with the given experiment
+        key from this collection.
+
+        Args:
+            exp_key: an experiment key
+        """
+        foex.ExperimentMethod.delete_run(self, exp_key)
+
+    def delete_experiments(self):
+        """Deletes all experiment results from this collection."""
+        foex.ExperimentMethod.delete_runs(self)
+
+    @property
     def has_brain_runs(self):
         """Whether this colection has any brain runs."""
         return bool(self.list_brain_runs())
@@ -3219,7 +3297,10 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(
-                field, filter=filter, labels=labels, only_matches=only_matches,
+                field,
+                filter=filter,
+                labels=labels,
+                only_matches=only_matches,
             )
         )
 

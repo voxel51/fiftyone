@@ -47,11 +47,11 @@ class ExperimentMethod(Run):
 
     @classmethod
     def _runs_field(cls):
-        return "experiment_runs"
+        return "experiments"
 
     @classmethod
     def _run_str(cls):
-        return "experiment run"
+        return "experiment"
 
     @classmethod
     def _results_cache_field(cls):

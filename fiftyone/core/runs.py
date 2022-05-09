@@ -562,18 +562,21 @@ class Run(Configurable):
             key: a run key
         """
         run_doc = cls._get_run_doc(samples, key)
-
-        try:
-            # Cleanup after run, if possible
-            run_info = cls.get_run_info(samples, key)
-            run = run_info.config.build()
-            run.cleanup(samples, key)
-        except:
-            logger.warning(
-                "Unable to run cleanup() for the %s with key '%s'",
-                cls._run_str(),
-                key,
-            )
+        # Cleanup after run, if possible
+        run_info = cls.get_run_info(samples, key)
+        run = run_info.config.build()
+        run.cleanup(samples, key)
+        # try:
+        #    # Cleanup after run, if possible
+        #    run_info = cls.get_run_info(samples, key)
+        #    run = run_info.config.build()
+        #    run.cleanup(samples, key)
+        # except:
+        #    logger.warning(
+        #        "Unable to run cleanup() for the %s with key '%s'",
+        #        cls._run_str(),
+        #        key,
+        #    )
 
         dataset = samples._root_dataset
 

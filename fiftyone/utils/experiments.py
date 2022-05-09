@@ -5,16 +5,19 @@ Experiment utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import logging
 
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.experiment as foe
 
 
 logger = logging.getLogger(__name__)
+
+
+EXPERIMENT_PREFIX = "experiment"
 
 
 def register_experiment(
@@ -24,11 +27,12 @@ def register_experiment(
     backend=None,
     **kwargs,
 ):
-    config = _parse_config(backend, label_fields, **kwargs)
+    config = _parse_config(backend, label_fields, exp_key, **kwargs)
     exp_backend = config.build()
     exp_backend.ensure_requirements()
 
-    results = exp_backend.construct_experiment()
+    exp_dataset = exp_backend.create_experiment_dataset(samples, exp_key)
+    results = exp_backend.construct_experiment(samples, exp_key, exp_dataset)
 
     #
     # Don't allow overwriting an existing run with same `exp_key`, since we
@@ -37,7 +41,7 @@ def register_experiment(
     #
     exp_backend.register_run(samples, exp_key, overwrite=False)
 
-    results = exp_backend.get_results(samples)
+    exp_backend.save_run_results(samples, exp_key, results)
 
     return results
 
@@ -57,12 +61,12 @@ def add_model_run(samples, exp_key, run_key, predictions):
     return results
 
 
-def _parse_config(backend, label_fields, **kwargs):
+def _parse_config(backend, label_fields, exp_key, **kwargs):
     if backend is None:
         backend = "manual"
 
     if backend == "manual":
-        return ManualExperimentBackendConfig(label_fields, **kwargs)
+        return ManualExperimentBackendConfig(label_fields, exp_key, **kwargs)
 
     # if backend == "mlflow":
     #    return MLFlowExperimentBackendConfig(label_fields, **kwargs)
@@ -71,16 +75,15 @@ def _parse_config(backend, label_fields, **kwargs):
 
 
 class ExperimentBackendConfig(foe.ExperimentMethodConfig):
-    def __init__(self, name, label_fields, **kwargs):
+    def __init__(self, label_fields, **kwargs):
         super().__init__(**kwargs)
 
-        self.name = name
         self.label_fields = label_fields
 
     @property
     def method(self):
         """The name of the experiment backend."""
-        return self.name
+        raise NotImplementedError("subclass must implement method")
 
     def serialize(self, *args, **kwargs):
         d = super().serialize(*args, **kwargs)
@@ -95,22 +98,61 @@ class ExperimentBackend(foe.ExperimentMethod):
     """
 
     def cleanup(self, samples, exp_key):
-        pass
+        results = samples.load_experiment_results(exp_key)
+        exp_dataset = results.experiment_dataset
+        exp_dataset.delete()
+        results.cleanup()
 
-    def construct_experiment(self, samples):
+    def construct_experiment(self, samples, exp_key):
+        """
+        Returns:
+            an :class:`ExperimentResults`
+        """
         raise NotImplementedError(
             "subclass must implement construct_experiment()"
         )
 
+    def create_experiment_dataset(self, samples, exp_key):
+        label_fields = self.config.label_fields
+        view = samples.select_fields(label_fields)
+
+        exp_name = "%s-experiment-%s" % (view.name, exp_key)
+        sample_collection_name = _make_exp_collection_name(view, exp_key)
+        exp_dataset = fod._clone_dataset_or_view(
+            view,
+            exp_name,
+            sample_collection_name=sample_collection_name,
+        )
+        exp_dataset.persistent = True
+        return exp_dataset
+
+
+def _make_exp_collection_name(samples, exp_key):
+    root_coll_name = samples._root_dataset._sample_collection_name
+    exp_coll_name = "%s.%s-%s" % (EXPERIMENT_PREFIX, root_coll_name, exp_key)
+    return exp_coll_name
+
+
+def _get_parent_sample_collection_name(exp_coll_name):
+    removed_key = exp_coll_name.split("-")[0]
+    return removed_key[len(EXPERIMENT_PREFIX + ".") :]
+
+
+def get_parent_dataset(exp_dataset):
+    exp_coll_name = exp_dataset._sample_collection_name
+    parent_coll_name = _get_parent_sample_collection_name(exp_coll_name)
+    return fod._get_dataset(parent_coll_name)
+
 
 class ExperimentResults(foe.ExperimentResults):
-    def __init__(self, samples, config, backend=None):
+    def __init__(self, samples, config, exp_dataset_name, backend=None):
         if backend is None:
             backend = config.build()
             backend.ensure_requirements()
 
         self._samples = samples
         self._backend = backend
+        self._exp_dataset_name = exp_dataset_name
 
     @property
     def config(self):
@@ -121,6 +163,10 @@ class ExperimentResults(foe.ExperimentResults):
     def backend(self):
         """The :class:`ExperimentBackend` for these results."""
         return self._backend
+
+    @property
+    def experiment_dataset(self):
+        return fod.load_dataset(self._exp_dataset_name)
 
     def add_model_run(self, run_key, predictions):
         pass
@@ -159,15 +205,22 @@ class ExperimentResults(foe.ExperimentResults):
 
 
 class ManualExperimentBackendConfig(ExperimentBackendConfig):
-    def __init__(self, label_fields, experiment_id, tracking_uri, **kwargs):
+    def __init__(self, label_fields, exp_key, exp_dir=None, **kwargs):
         super().__init__(label_fields, **kwargs)
-        self.experiment_id = experiment_id
-        self.tracking_uri = tracking_uri
+        self.exp_key = exp_key
+        self.exp_dir = exp_dir
+
+    @property
+    def method(self):
+        return "manual"
 
 
 class ManualExperimentBackend(ExperimentBackend):
-    def construct_experiment(self, samples):
-        return ExperimentResults(samples, self.config, backend=self)
+    def construct_experiment(self, samples, exp_key, exp_dataset):
+        exp_dataset_name = exp_dataset.name
+        return ManualExperimentResults(
+            samples, self.config, exp_dataset_name, backend=self
+        )
 
 
 class ManualExperimentResults(ExperimentResults):
@@ -178,3 +231,6 @@ class ManualExperimentResults(ExperimentResults):
             config,
             **d,
         )
+
+    def cleanup(self):
+        pass
