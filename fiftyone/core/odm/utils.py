@@ -31,7 +31,14 @@ def get_field_kwargs(field):
     Returns:
         a field specification dict
     """
-    kwargs = {"ftype": type(field), "fields": [], "db_field": field.db_field}
+    kwargs = {
+        "ftype": type(field),
+        "fields": [],
+        "db_field": field.db_field,
+        "required": field.required,
+        "primary_key": field.primary_key,
+        "null": field.null,
+    }
 
     if isinstance(field, (fof.ListField, fof.DictField)):
         field = field.field

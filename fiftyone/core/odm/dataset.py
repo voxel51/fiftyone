@@ -39,6 +39,7 @@ def create_field(
     db_field=None,
     fields=None,
     parent=None,
+    **field_kwargs
 ):
     """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
     given specification.
@@ -69,6 +70,7 @@ def create_field(
             Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
         parent (None): a parent
+        **field_kwargs: mongoengine field kwargs
 
     Returns:
         a :class:`fiftyone.core.fields.Field` instance
@@ -78,6 +80,7 @@ def create_field(
 
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
+    kwargs.update(field_kwargs)
 
     if fields is not None:
         for idx, value in enumerate(fields):
