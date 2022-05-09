@@ -44,9 +44,9 @@ old, you may encounter errors like these:
 
 .. code-block:: text
 
-    fiftyone requires Python '>=3.6' but the running Python is 3.4.10
+    fiftyone requires Python '>=3.7' but the running Python is 3.4.10
 
-To resolve this, you will need to use Python 3.6 or newer, and pip 19.3 or
+To resolve this, you will need to use Python 3.7 or newer, and pip 19.3 or
 newer. See the :ref:`installation guide <installing-fiftyone>` for details. If
 you have installed a suitable version of Python in a virtual environment and
 still encounter this error, ensure that the virtual environment is activated.
