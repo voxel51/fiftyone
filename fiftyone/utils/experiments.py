@@ -37,7 +37,7 @@ def register_experiment(
     #
     # Don't allow overwriting an existing run with same `exp_key`, since we
     # need the existing run in order to perform workflows like automatically
-    # cleaning up the backend's tasks
+    # cleaning up the backend
     #
     exp_backend.register_run(samples, exp_key, overwrite=False)
 
@@ -67,9 +67,6 @@ def _parse_config(backend, label_fields, exp_key, **kwargs):
 
     if backend == "manual":
         return ManualExperimentBackendConfig(label_fields, exp_key, **kwargs)
-
-    # if backend == "mlflow":
-    #    return MLFlowExperimentBackendConfig(label_fields, **kwargs)
 
     raise ValueError("Unsupported experiment backend '%s'" % backend)
 
