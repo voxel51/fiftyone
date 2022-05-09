@@ -1,16 +1,18 @@
 import { Resource } from "@fiftyone/utilities";
 import React, { PropsWithChildren, Suspense, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
-import { OperationType, VariablesOf } from "relay-runtime";
+import { OperationType } from "relay-runtime";
 
 import { Route } from "..";
-import { RoutingContext } from "../../routing/RoutingContext";
+import { RoutingContext, RouteData } from "../../routing";
 
-const RouteHandler = <T extends OperationType>(
+const RouteHandler = <T extends OperationType | undefined = OperationType>(
   props: PropsWithChildren<{
     component: Resource<Route<T>>;
-    prepared: Resource<PreloadedQuery<T>>;
-    routeData: { params: VariablesOf<T> };
+    prepared?:
+      | Resource<PreloadedQuery<T extends undefined ? never : T>>
+      | undefined;
+    routeData?: RouteData<T>;
   }>
 ) => {
   const Component = props.component.read();
@@ -19,7 +21,7 @@ const RouteHandler = <T extends OperationType>(
     <Suspense fallback={null}>
       <Component
         routeData={routeData}
-        prepared={prepared.read()}
+        prepared={prepared && prepared.read()}
         children={props.children}
       />
     </Suspense>

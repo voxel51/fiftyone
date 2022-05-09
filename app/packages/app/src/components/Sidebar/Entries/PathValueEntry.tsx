@@ -1,3 +1,4 @@
+import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -17,7 +18,6 @@ import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
 import * as selectors from "../../../recoil/selectors";
 import { prettify } from "../../../utils/generic";
-import { useTheme } from "../../../utils/hooks";
 
 import { NameAndCountContainer } from "../../utils";
 

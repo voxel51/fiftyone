@@ -100,11 +100,7 @@ export const getEventSource = (
         return;
       }
 
-      if (
-        response.status >= 400 &&
-        response.status < 500 &&
-        response.status !== 429
-      ) {
+      if (response.status !== 429) {
         throw new FatalError();
       }
 
@@ -121,13 +117,38 @@ export const getEventSource = (
       throw new RetriableError();
     },
     onerror(err) {
-      if (err instanceof FatalError) {
-        events.onerror && events.onerror(err);
+      if (
+        err instanceof TypeError &&
+        ["Failed to fetch", "network error"].includes(err.message)
+      ) {
+        events.onclose && events.onclose();
+        return;
       }
 
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        events.onclose && events.onclose();
+      events.onerror && events.onerror(err);
+    },
+    fetch: async (input, init) => {
+      try {
+        const response = await fetch(input, init);
+        if (response.status >= 400) {
+          let err;
+          try {
+            err = await response.json();
+          } catch {
+            throw new Error(`${response.status} ${response.url}`);
+          }
+
+          throw new ServerError(((err as unknown) as { stack: string }).stack);
+        }
+
+        return response;
+      } catch (err) {
+        throw err;
       }
     },
     openWhenHidden: true,
   });
+
+export const sendEvent = async (data: {}) => {
+  return await getFetchFunction()("POST", "/event", data);
+};

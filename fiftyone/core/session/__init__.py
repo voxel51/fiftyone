@@ -7,4 +7,4 @@ Session definitions for interacting with the FiftyOne App.
 """
 from .session import close_app, launch_app, Session
 
-__all__ = ["launch_app", "Session", "close_app"]
+__all__ = ["close_app", "launch_app", "Session"]

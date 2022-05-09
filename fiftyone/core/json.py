@@ -1,5 +1,5 @@
 """
-FiftyOne JSON
+FiftyOne JSON handling
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,7 +10,8 @@ from collections import OrderedDict
 from datetime import date, datetime
 from json import JSONEncoder
 import math
-import numpy as np
+
+import eta.core.serial as etas
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -34,12 +35,9 @@ def _handle_numpy_array(raw, _cls=None):
     if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
 
-    array = fou.deserialize_numpy_array(raw)
-
-    if np.isfortran(array):
-        array = np.ascontiguousarray(array)
-
-    return fou.serialize_numpy_array(array, ascii=True)
+    return fou.serialize_numpy_array(
+        fou.deserialize_numpy_array(raw), ascii=True
+    )
 
 
 def _handle_date(dt):
@@ -122,6 +120,9 @@ class FiftyOneJSONEncoder(JSONEncoder):
             return str(o)
         if isinstance(o, float):
             return json_util.dumps(o)
+        if isinstance(o, etas.Serializable):
+            return o.serialize()
+
         return super().default(o)
 
     @staticmethod

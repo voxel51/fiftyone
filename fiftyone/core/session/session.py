@@ -6,15 +6,15 @@ Session class for interacting with the FiftyOne App
 |
 """
 from collections import defaultdict
-from dataclasses import dataclass
 from functools import wraps
 import logging
+import pkg_resources
 import time
 import typing as t
 import webbrowser
+from uuid import uuid4
 
 try:
-    import IPython
     import IPython.display
 except:
     pass
@@ -30,7 +30,17 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.core.state import StateDescription
 
-from .client import Client
+import fiftyone.core.session.client as fosc
+from fiftyone.core.session.events import (
+    CaptureNotebookCell,
+    CloseSession,
+    DeactivateNotebookCell,
+    ReactivateNotebookCell,
+    RefreshApp,
+    StateUpdate,
+)
+
+import fiftyone.core.session.notebooks as fosn
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +169,7 @@ def launch_app(
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
     elif _session.desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
-    elif focx._get_context() != focx._NONE:
+    elif focx.is_notebook_context():
         if not auto:
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
@@ -179,27 +189,32 @@ def close_app() -> None:
         _session = None
 
 
-def _update_state(auto_show: bool = False) -> t.Callable:
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            result = func(self, *args, **kwargs)
-            if auto_show:
-                self._auto_show()
+def update_state(auto_show: bool = False) -> t.Callable:
+    """:class:`Session` method decorator for triggering state update events
 
-            self._update_state()
+    Args:
+        auto_show (False): whether the method should show a new notebook App cell as
+            well, if ``auto`` is ``True``
+
+    Returns:
+        the decorated method
+    """
+
+    def decorator(func: t.Callable) -> t.Callable:
+        @wraps(func)
+        def wrapper(
+            session: "Session", *args: t.Tuple, **kwargs: dict
+        ) -> t.Any:
+            result = func(session, *args, **kwargs)
+            session._client.send_event(StateUpdate(state=session._state))
+            if auto_show and session.auto and focx.is_notebook_context():
+                return session.show()
+
             return result
 
         return wrapper
 
     return decorator
-
-
-@dataclass
-class NotebookCell:
-    subscription: str
-    active: bool
-    handle: IPython.display.DisplayHandle
 
 
 class Session(object):
@@ -268,7 +283,7 @@ class Session(object):
 
     def __init__(
         self,
-        dataset: fod.Dataset = None,
+        dataset: t.Union[fod.Dataset, fov.DatasetView] = None,
         view: fov.DatasetView = None,
         plots: fop.PlotManager = None,
         port: int = None,
@@ -298,89 +313,73 @@ class Session(object):
         if height is not None:
             config.notebook_height = height
 
-        state = StateDescription
-        state.config = config
-
-        self._context = focx._get_context()
-        self._plots = None
-        self._remote = remote
+        self._plots: t.Optional[fop.PlotManager] = None
         self._wait_closed = False
-        self._client = Client(address, port)
 
         # Maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
-
-        self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
-        self._auto = auto
-        self._handles: t.Dict[str, NotebookCell] = {}
-
-        global _server_services  # pylint: disable=global-statement
-        if port not in _server_services:
-            _server_services[port] = fos.ServerService(
-                port, address=address, do_not_track=fo.config.do_not_track
-            )
-
-        global _subscribed_sessions  # pylint: disable=global-statement
-        _subscribed_sessions[port].add(self)
+        self._notebook_cells: t.Dict[str, fosn.NotebookCell] = {}
 
         if desktop is None:
-            if self._context == focx._NONE:
-                desktop = fo.config.desktop_app
-            else:
-                desktop = False
-
-        self._desktop = desktop
-        self._start_time = self._get_time()
-
-        if view is not None:
-            state.view = view
-            state.dataset = view._root_dataset
-        elif dataset is not None:
-            state.dataset = dataset
-
-        if state.dataset is not None:
-            state.dataset._reload()
-
-        state.datasets = fod.list_datasets()
-        state.active_handle = self._auto_show(height=config.notebook_height)
+            desktop = (
+                fo.config.desktop_app
+                if not focx.is_notebook_context()
+                else False
+            )
 
         self.plots = plots
-        self.state = state
 
-        if self._remote:
-            if self._context != focx._NONE:
+        self._state = StateDescription(
+            config=config,
+            dataset=view._root_dataset if view is not None else dataset,
+            view=view,
+        )
+        self._client = fosc.Client(
+            address=address,
+            auto=auto,
+            desktop=desktop,
+            port=port,
+            remote=remote,
+            start_time=self._get_time(),
+        )
+        self._client.run(self._state)
+        _attach_listeners(self)
+        _register_session(self)
+
+        if self.auto and focx.is_notebook_context():
+            self.show(height=config.notebook_height)
+
+        if self.remote:
+            if focx.is_notebook_context():
                 raise ValueError(
                     "Remote sessions cannot be run from a notebook"
                 )
 
             return
 
-        if self._desktop:
-            if (
-                self._context == focx._COLAB
-                or self._context == focx._DATABRICKS
-            ):
+        if self.desktop:
+            if focx.is_notebook_context():
                 raise ValueError(
                     "Cannot open a Desktop App instance from a %s notebook"
-                    % self._context
+                    % focx._get_context()
                 )
 
             if not focn.DEV_INSTALL:
-                _import_desktop()
+                import_desktop()
 
             self._app_service = fos.AppService(
                 server_port=port, server_address=address
             )
             return
 
-        if self._context == focx._NONE:
+        if not focx.is_notebook_context():
             self.open()
             return
 
     def _validate(
         self,
-        dataset: t.Optional[fod.Dataset],
+        dataset: t.Optional[t.Union[fod.Dataset, fov.DatasetView]],
         view: t.Optional[fov.DatasetView],
         plots: t.Optional[fop.PlotManager],
         config: t.Optional[AppConfig],
@@ -416,29 +415,28 @@ class Session(object):
         try:
             if (
                 not self._disable_wait_warning
-                and self._get_time() - self._start_time < 2.5
+                and self._get_time() - self._client.start_time < 2.5
             ):
                 # logger may already have been garbage-collected
-                print(self._WAIT_INSTRUCTIONS)
+                print(_WAIT_INSTRUCTIONS)
 
-            global _subscribed_sessions  # pylint: disable=global-statement
-            _subscribed_sessions[self._port].discard(self)
-
-            if len(_subscribed_sessions[self._port]) == 0:
-                global _server_services  # pylint: disable=global-statement
-                if self._port in _server_services:
-                    service = _server_services.pop(self._port)
-                    service.stop()
+            _unregister_session(self)
         except:
             # e.g. globals were already garbage-collected
             pass
-        d = getattr(super(), "__del__", None)
+
+        d: t.Union[t.Callable, None] = getattr(super(), "__del__", None)
         d and d()
+
+    @property
+    def auto(self) -> bool:
+        """The auto setting for the session."""
+        return self._client.auto
 
     @property
     def server_port(self) -> int:
         """The server port for the session."""
-        return self._port
+        return self._client.port
 
     @property
     def server_address(self) -> str:
@@ -448,29 +446,19 @@ class Session(object):
     @property
     def remote(self) -> bool:
         """Whether the session is remote."""
-        return self._remote
+        return self._client.remote
 
     @property
     def desktop(self) -> bool:
         """Whether the session is connected to a desktop App."""
-        return self._desktop
+        return self._client.desktop
 
     @property
     def url(self) -> str:
         """The URL of the session."""
-        if self._context == focx._COLAB:
-            # pylint: disable=no-name-in-module,import-error
-            from google.colab.output import eval_js
-
-            return eval_js(
-                "google.colab.kernel.proxyPort(%d)" % self.server_port
-            )
-
-        if self._context == focx._DATABRICKS:
-            return f"{_get_databricks_proxy_url(self.server_port)}"
-
-        address = self.server_address or "localhost"
-        return "http://%s:%d/" % (address, self.server_port)
+        return focx.get_url(
+            self.server_address, self.server_port, self.dataset
+        )
 
     @property
     def config(self) -> AppConfig:
@@ -490,9 +478,10 @@ class Session(object):
             session.config.show_confidence = False
             session.refresh()
         """
-        return self.state.config
+        return self._state.config
 
-    @config.setter
+    @config.setter  # type: ignore
+    @update_state()
     def config(self, config: t.Optional[AppConfig]) -> None:
         if config is None:
             config = fo.app_config.copy()
@@ -503,7 +492,7 @@ class Session(object):
                 % (AppConfig, type(config))
             )
 
-        self.state.config = config
+        self._state.config = config
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
@@ -515,11 +504,11 @@ class Session(object):
     @property
     def dataset(self) -> t.Union[fod.Dataset, None]:
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session."""
-        return self.state.dataset
+        return self._state.dataset
 
-    @dataset.setter
-    @_update_state(auto_show=True)
-    def dataset(self, dataset):
+    @dataset.setter  # type: ignore
+    @update_state(auto_show=True)
+    def dataset(self, dataset: t.Union[fod.Dataset, None]) -> None:
         if dataset is not None and not isinstance(dataset, fod.Dataset):
             raise ValueError(
                 "`Session.dataset` must be a %s or None; found %s"
@@ -529,64 +518,64 @@ class Session(object):
         if dataset is not None:
             dataset._reload()
 
-        self.state.dataset = dataset
-        self.state.view = None
-        self.state.selected = []
-        self.state.selected_labels = []
-        self.state.filters = {}
+        self._state.dataset = dataset
+        self._state.view = None
+        self._state.selected = []
+        self._state.selected_labels = []
 
-    def clear_dataset(self):
+    @update_state()
+    def clear_dataset(self) -> None:
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self.dataset = None
+        self._state.dataset = None
 
     @property
-    def view(self):
+    def view(self) -> t.Union[fov.DatasetView, None]:
         """The :class:`fiftyone.core.view.DatasetView` connected to the
         session, or ``None`` if no view is connected.
         """
-        return self.state.view
+        return self._state.view
 
-    @view.setter
-    @_update_state(auto_show=True)
-    def view(self, view):
+    @view.setter  # type: ignore
+    @update_state(auto_show=True)
+    def view(self, view: t.Union[fov.DatasetView, None]) -> None:
         if view is not None and not isinstance(view, fov.DatasetView):
             raise ValueError(
                 "`Session.view` must be a %s or None; found %s"
                 % (fov.DatasetView, type(view))
             )
 
-        self.state.view = view
+        self._state.view = view
 
         if view is not None:
-            self.state.dataset = self.state.view._root_dataset
-            self.state.dataset._reload()
+            view._root_dataset._reload()
+            self._state.dataset = view._root_dataset
 
-        self.state.selected = []
-        self.state.selected_labels = []
-        self.state.filters = {}
+        self._state.selected = []
+        self._state.selected_labels = []
 
-    def clear_view(self):
+    @update_state()
+    def clear_view(self) -> None:
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self.view = None
+        self._state.view = None
 
     @property
-    def has_plots(self):
+    def has_plots(self) -> bool:
         """Whether this session has any attached plots."""
         return bool(self._plots)
 
     @property
-    def plots(self):
+    def plots(self) -> t.Union[fop.PlotManager, None]:
         """The :class:`fiftyone.core.plots.manager.PlotManager` instance that
         manages plots attached to this session.
         """
         return self._plots
 
     @plots.setter
-    def plots(self, plots):
+    def plots(self, plots: t.Optional[fop.PlotManager]) -> None:
         if plots is not None and not isinstance(plots, fop.PlotManager):
             raise ValueError(
                 "`Session.plots` must be a %s or None; found %s"
@@ -600,46 +589,50 @@ class Session(object):
 
         self._plots = plots
 
-    @_update_state()
-    def refresh(self):
+    @update_state()
+    def refresh(self) -> None:
         """Refreshes the current App window."""
-        self.state.refresh = not self.state.refresh
+        self._client.send_event(RefreshApp())
 
     @property
-    def selected(self):
+    def selected(self) -> t.List[str]:
         """A list of sample IDs of the currently selected samples in the App,
         if any.
         """
-        return list(self.state.selected)
+        return list(self._state.selected)
 
-    @selected.setter
-    @_update_state()
-    def selected(self, sample_ids):
-        self.state.selected = list(sample_ids) if sample_ids else []
+    @selected.setter  # type: ignore
+    @update_state()
+    def selected(self, sample_ids: t.List[str]) -> None:
+        self._state.selected = list(sample_ids) if sample_ids else []
 
-    @_update_state()
-    def clear_selected(self):
+    @update_state()
+    def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
-        self.state.selected = []
+        self._state.selected = []
 
-    @_update_state()
-    def select_samples(self, ids=None, tags=None):
+    @update_state()
+    def select_samples(
+        self,
+        ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+    ) -> None:
         """Selects the specified samples in the current view in the App,
 
         Args:
             ids (None): an ID or iterable of IDs of samples to select
             tags (None): a tag or iterable of tags of samples to select
         """
-        if tags is not None:
+        if tags is not None and self._collection:
             ids = self._collection.match_tags(tags).values("id")
 
         if ids is None:
             ids = []
 
-        self.state.selected = list(ids)
+        self._state.selected = list(ids)
 
     @property
-    def selected_labels(self):
+    def selected_labels(self) -> t.List[dict]:
         """A list of labels currently selected in the App.
 
         Items are dictionaries with the following keys:
@@ -650,15 +643,21 @@ class Session(object):
         -   ``frame_number``: the frame number containing the label (only
             applicable to video samples)
         """
-        return list(self.state.selected_labels)
+        return list(self._state.selected_labels)
 
-    @selected_labels.setter
-    @_update_state()
-    def selected_labels(self, labels):
-        self.state.selected_labels = list(labels) if labels else []
+    @selected_labels.setter  # type: ignore
+    @update_state()
+    def selected_labels(self, labels: dict) -> None:
+        self._state.selected_labels = list(labels) if labels else []
 
-    @_update_state()
-    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+    @update_state()
+    def select_labels(
+        self,
+        labels: t.Optional[t.List[dict]] = None,
+        ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        tags: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+        fields: t.Optional[t.Union[str, t.Iterable[str]]] = None,
+    ) -> None:
         """Selects the specified labels in the current view in the App.
 
         This method uses the same interface as
@@ -671,20 +670,20 @@ class Session(object):
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
         """
-        if labels is None:
+        if labels is None and self._collection:
             labels = self._collection._get_selected_labels(
                 ids=ids, tags=tags, fields=fields
             )
 
-        self.state.selected_labels = list(labels)
+        self._state.selected_labels = list(labels or [])
 
-    @_update_state()
-    def clear_selected_labels(self):
+    @update_state()
+    def clear_selected_labels(self) -> None:
         """Clears the currently selected labels, if any."""
-        self.state.selected_labels = []
+        self._state.selected_labels = []
 
-    @_update_state()
-    def tag_selected_samples(self, tag):
+    @update_state()
+    def tag_selected_samples(self, tag: str) -> None:
         """Adds the tag to the currently selected samples, if necessary.
 
         The currently selected labels are :attr:`Session.selected`.
@@ -692,10 +691,11 @@ class Session(object):
         Args:
             tag: a tag
         """
-        self._collection.select(self.selected).tag_samples(tag)
+        if self._collection is not None:
+            self._collection.select(self.selected).tag_samples(tag)
 
-    @_update_state()
-    def untag_selected_samples(self, tag):
+    @update_state()
+    def untag_selected_samples(self, tag: str) -> None:
         """Removes the tag from the currently selected samples, if necessary.
 
         The currently selected labels are :attr:`Session.selected`.
@@ -703,10 +703,11 @@ class Session(object):
         Args:
             tag: a tag
         """
-        self._collection.select(self.selected).untag_samples(tag)
+        if self._collection is not None:
+            self._collection.select(self.selected).untag_samples(tag)
 
-    @_update_state()
-    def tag_selected_labels(self, tag):
+    @update_state()
+    def tag_selected_labels(self, tag: str) -> None:
         """Adds the tag to the currently selected labels, if necessary.
 
         The currently selected labels are :attr:`Session.selected_labels`.
@@ -714,12 +715,13 @@ class Session(object):
         Args:
             tag: a tag
         """
-        self._collection.select_labels(labels=self.selected_labels).tag_labels(
-            tag
-        )
+        if self._collection is not None:
+            self._collection.select_labels(
+                labels=self.selected_labels
+            ).tag_labels(tag)
 
-    @_update_state()
-    def untag_selected_labels(self, tag):
+    @update_state()
+    def untag_selected_labels(self, tag: str) -> None:
         """Removes the tag from the currently selected labels, if necessary.
 
         The currently selected labels are :attr:`Session.selected_labels`.
@@ -727,9 +729,10 @@ class Session(object):
         Args:
             tag: a tag
         """
-        self._collection.select_labels(
-            labels=self.selected_labels
-        ).untag_labels(tag)
+        if self._collection is not None:
+            self._collection.select_labels(
+                labels=self.selected_labels
+            ).untag_labels(tag)
 
     @property
     def selected_view(self) -> t.Optional[fov.DatasetView]:
@@ -747,6 +750,9 @@ class Session(object):
             :attr:`selected_labels`
         -   If no samples or labels are selected, the view will be ``None``
         """
+        if self._collection is None:
+            return None
+
         if self.selected:
             view = self._collection.select(self.selected)
 
@@ -766,7 +772,7 @@ class Session(object):
         Returns:
             a string summary
         """
-        if self.dataset:
+        if self._collection and self.dataset:
             etype = self._collection._elements_str
             elements = [
                 ("Dataset:", self.dataset.name),
@@ -778,13 +784,13 @@ class Session(object):
         else:
             elements = [("Dataset:", "-")]
 
-        if self._remote:
+        if self.remote:
             type_ = "remote"
-        elif self._context == focx._COLAB:
+        elif focx.is_colab_context():
             type_ = "colab"
-        elif self._context == focx._DATABRICKS:
+        elif focx.is_databricks_context():
             type_ = "databricks"
-        elif self._desktop:
+        elif self.desktop:
             type_ = "desktop"
         else:
             type_ = None
@@ -815,18 +821,18 @@ class Session(object):
         -   Desktop: opens the desktop App, if necessary
         -   Other (non-remote): opens the App in a new browser tab
         """
-        if self._remote:
+        if self.remote:
             logger.warning("Remote sessions cannot open new App windows")
             return
 
         if self.plots:
             self.plots.connect()
 
-        if self._context != focx._NONE:
+        if focx.is_notebook_context():
             self.show()
             return
 
-        if self._desktop:
+        if self.desktop:
             self._app_service.start()
             return
 
@@ -838,13 +844,11 @@ class Session(object):
         This method can be called from Jupyter notebooks and in desktop App
         mode to override the default location of the App.
         """
-        if self._remote:
+        if self.remote:
             logger.warning("Remote sessions cannot open new App windows")
             return
 
-        if self._context != focx._NONE:
-            import IPython.display
-
+        if focx.is_notebook_context():
             IPython.display.display(
                 IPython.display.Javascript(
                     "window.open('{url}');".format(url=self.url)
@@ -854,8 +858,8 @@ class Session(object):
 
         webbrowser.open(self.url, new=2)
 
-    @_update_state()
-    def show(self, height: int = None) -> None:
+    @update_state()
+    def show(self, height: int = None) -> str:
         """Opens the App in the output of the current notebook cell.
 
         This method has no effect in non-notebook contexts.
@@ -863,9 +867,28 @@ class Session(object):
         Args:
             height (None): a height, in pixels, for the App
         """
-        self._show(height)
+        if not focx.is_notebook_context() or self.desktop:
+            return
 
-    def no_show(self):
+        if self.dataset is not None:
+            self.dataset._reload()
+
+        if height is None:
+            height = self.config.notebook_height
+
+        uuid = str(uuid4())
+        self._notebook_cells[uuid] = fosn.NotebookCell(
+            address=self.server_address,
+            handle=IPython.display.DisplayHandle(display_id=uuid),
+            height=height,
+            port=self.server_port,
+            subscription=uuid,
+        )
+
+        fosn.display(self._notebook_cells[uuid])
+        return uuid
+
+    def no_show(self) -> fou.SetAttributes:
         """Returns a context manager that temporarily prevents new App
         instances from being opened in the current notebook cell when methods
         are run that normally would show new App windows.
@@ -909,7 +932,7 @@ class Session(object):
                 before returning if all connections are lost. If negative, the
                 process will wait forever, regardless of connections
         """
-        if self._context != focx._NONE:
+        if focx.is_notebook_context():
             logger.warning("Notebook sessions cannot wait")
             return
 
@@ -917,7 +940,7 @@ class Session(object):
             if wait < 0:
                 while True:
                     time.sleep(10)
-            elif self._remote or not self._desktop:
+            elif self.remote or not self._client.desktop:
                 self._wait_closed = False
                 while not self._wait_closed:
                     time.sleep(wait)
@@ -929,21 +952,114 @@ class Session(object):
 
     def close(self) -> None:
         """Closes the session and terminates the App, if necessary."""
-        if self._remote:
+        if self.remote:
             return
 
+        self._client.send_event(CloseSession())
         self.plots.disconnect()
-
-        self.state.close = True
-        self._update_state()
 
     def freeze(self) -> None:
         """Screenshots the active App cell, replacing it with a static image.
 
         Only applicable to notebook contexts.
         """
-        if self._context == focx._NONE:
+        if not focx.is_notebook_context():
             logger.warning("Only notebook sessions can be frozen")
             return
 
-        freeze(self)
+        self._client.send_event(DeactivateNotebookCell())
+        self.plots.freeze()
+
+
+def _attach_listeners(session: "Session"):
+    on_close_session: t.Callable[[CloseSession], None] = lambda event: setattr(
+        session, "_wait_closed", True
+    )
+    session._client.add_event_listener("close_session", on_close_session)
+
+    on_state_update: t.Callable[[StateUpdate], None] = lambda event: setattr(
+        session, "_state", event.state
+    )
+    session._client.add_event_listener("state_update", on_state_update)
+
+    if focx.is_notebook_context() and not focx.is_colab_context():
+
+        def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
+            fosn.capture(session._notebook_cells[event.subscription], event)
+
+        session._client.add_event_listener(
+            "capture_notebook_cell", on_capture_notebook_cell
+        )
+
+        def on_reactivate_notebook_cell(event: ReactivateNotebookCell) -> None:
+            session._client.send_event(DeactivateNotebookCell())
+            fosn.display(
+                session._notebook_cells[event.subscription], reactivate=True
+            )
+
+        session._client.add_event_listener(
+            "reactivate_notebook_cell", on_reactivate_notebook_cell
+        )
+
+
+def import_desktop() -> None:
+    """Attempts to import :mod:`fiftyone.desktop`
+
+    Raises:
+        RuntimeError: If matching ``fiftyone-desktop`` version is not
+        installed
+    """
+    try:
+        # pylint: disable=unused-import
+        import fiftyone.desktop
+    except ImportError as e:
+        raise RuntimeError(
+            "You must `pip install fiftyone-teams[desktop]` in order to launch the "
+            "desktop App"
+        ) from e
+
+    # Get `fiftyone-desktop` requirement for current `fiftyone` install
+    fiftyone_dist = pkg_resources.get_distribution("fiftyone-teams")
+    requirements = fiftyone_dist.requires(extras=["desktop"])
+    desktop_req = [
+        r for r in requirements if r.name == "fiftyone-teams-desktop"
+    ][0]
+
+    desktop_dist = pkg_resources.get_distribution("fiftyone-teams-desktop")
+
+    if not desktop_req.specifier.contains(desktop_dist.version):
+        raise RuntimeError(
+            "fiftyone-teams==%s requires fiftyone-teams-desktop%s, but you have "
+            "fiftyone-teams-desktop==%s installed.\n"
+            "Run `pip install fiftyone-teams[desktop]` to install the proper "
+            "desktop package version"
+            % (
+                fiftyone_dist.version,
+                desktop_req.specifier,
+                desktop_dist.version,
+            )
+        )
+
+
+def _register_session(session: Session) -> None:
+    global _server_services  # pylint: disable=global-statement
+    if session.server_port not in _server_services:
+        _server_services[session.server_port] = fos.ServerService(
+            session.server_port,
+            address=session.server_address,
+            do_not_track=fo.config.do_not_track,
+        )
+
+    global _subscribed_sessions  # pylint: disable=global-statement
+    _subscribed_sessions[session.server_port].add(session)
+
+
+def _unregister_session(session: Session) -> None:
+    global _subscribed_sessions  # pylint: disable=global-statement
+    _subscribed_sessions[session.server_port].discard(session)
+
+    if len(_subscribed_sessions[session.server_port]) == 0:
+        global _server_services  # pylint: disable=global-statement
+        if session.server_port in _server_services:
+            service = _server_services.pop(session.server_port)
+            service.stop()

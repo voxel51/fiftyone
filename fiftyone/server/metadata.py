@@ -6,7 +6,6 @@ FiftyOne Server JIT metadata utilities
 |
 """
 import logging
-import requests
 import shutil
 import struct
 
@@ -27,7 +26,7 @@ _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
 async def get_metadata(filepath, metadata=None):
-    """Gets the metadata for the given local or remote media file.
+    """Gets the metadata for the given local media file.
 
     Args:
         filepath: the path to the file
@@ -39,23 +38,7 @@ async def get_metadata(filepath, metadata=None):
     media_type = fom.get_media_type(filepath)
     is_video = media_type == fom.VIDEO
 
-    use_local = foc.media_cache.is_local_or_cached(filepath)
-    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
-        use_local = True
-
     d = {}
-
-    if use_local:
-        # Get local path to media on disk, downloading any uncached remote
-        # files if necessary
-        local_path = await foc.media_cache.get_local_path(
-            filepath, download=True, coroutine=True
-        )
-    else:
-        # Get a URL to use to retrieve metadata (if necessary) and for the App
-        # to use to serve the media
-        url = foc.media_cache.get_url(filepath, method="GET", hours=24)
-        d["url"] = url
 
     # If sufficient pre-existing metadata exists, use it
     if metadata:
@@ -79,12 +62,8 @@ async def get_metadata(filepath, metadata=None):
                 return d
 
     try:
-        if use_local:
-            # Retrieve media metadata from local disk
-            metadata = await read_local_metadata(local_path, is_video)
-        else:
-            # Retrieve metadata from remote source
-            metadata = await read_url_metadata(url, is_video)
+        # Retrieve media metadata from disk
+        metadata = await read_metadata(filepath, is_video)
     except:
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -98,8 +77,8 @@ async def get_metadata(filepath, metadata=None):
     return d
 
 
-async def read_url_metadata(url, is_video):
-    """Calculates the metadata for the given media URL.
+async def read_metadata(url, is_video):
+    """Calculates the metadata for the given local media path.
 
     Args:
         url: a file URL

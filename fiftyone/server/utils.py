@@ -5,7 +5,7 @@ FiftyOne Server utils
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone import ViewField as F
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol

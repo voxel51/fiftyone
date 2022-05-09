@@ -1,14 +1,8 @@
-import { atom, atomFamily } from "recoil";
+import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 
-import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
-import {
-  getEventSource,
-  getFetchFunction,
-  toCamelCase,
-} from "@fiftyone/utilities";
-import { getRoutingContext } from "@fiftyone/components";
 
 interface AppSample extends Sample {
   _id: string;
@@ -26,6 +20,20 @@ interface ModalSample extends SampleData {
   index: number;
   getIndex: (index: number) => void;
 }
+
+export const refresher = atom<boolean>({
+  key: "refresher",
+  default: false,
+});
+
+export const useRefresh = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => () => {
+      set(refresher, !get(refresher));
+    },
+    []
+  );
+};
 
 export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",
@@ -101,8 +109,8 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom<State.Description | null>({
-  key: "stateDescription",
+export const dataset = atom<State.Dataset>({
+  key: "dataset",
   default: null,
 });
 
@@ -161,4 +169,14 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
+});
+
+export const appConfig = atom<State.Config>({
+  key: "appConfig",
+  default: null,
+});
+
+export const colorscale = atom<RGB[]>({
+  key: "colorscale",
+  default: null,
 });

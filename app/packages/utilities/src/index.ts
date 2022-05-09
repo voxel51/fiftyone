@@ -4,14 +4,7 @@ import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
 export { GraphQLError, NotFoundError, ServerError } from "./errors";
-export {
-  getFetchFunction,
-  getFetchHeaders,
-  getFetchOrigin,
-  getFetchParameters,
-  setFetchFunction,
-  getEventSource,
-} from "./fetch";
+export * from "./fetch";
 export * from "./theme";
 export * from "./Resource";
 

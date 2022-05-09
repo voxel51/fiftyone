@@ -1,10 +1,8 @@
-import { Tooltip } from "@fiftyone/components";
+import { Tooltip, useTheme } from "@fiftyone/components";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";
 import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
-
-import { useTheme } from "../utils/hooks";
 
 export const Box = styled.div`
   padding: 1em;

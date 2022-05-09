@@ -4,8 +4,8 @@ import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";
-import { useTheme } from "../../utils/hooks";
 import { ItemAction } from "../Actions/ItemAction";
+import { useTheme } from "@fiftyone/components";
 
 const StyledRadioContainer = styled.div``;
 

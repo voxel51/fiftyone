@@ -19,7 +19,7 @@ import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
-import { useUnprocessedStateUpdate, useTheme } from "../../utils/hooks";
+import { useUnprocessedStateUpdate } from "../../utils/hooks";
 
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -34,6 +34,7 @@ import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
 import { aggregationsTick } from "../../recoil/aggregations";
 import { filters } from "../../recoil/filters";
+import { useTheme } from "@fiftyone/components";
 
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
@@ -104,12 +105,14 @@ const useSortBySimilarity = (close) => {
           }),
         });
 
-        update(data, (set) => {
+        update(({ set }) => {
           set(similarityParameters, { ...parameters, queryIds });
           set(atoms.modal, null);
           set(similaritySorting, false);
           set(aggregationsTick, (cur) => cur + 1);
           close();
+
+          return data;
         });
       } catch (error) {
         handleError(error);

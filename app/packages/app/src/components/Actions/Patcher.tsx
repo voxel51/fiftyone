@@ -22,11 +22,7 @@ import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
-import {
-  StateUpdate,
-  useTheme,
-  useUnprocessedStateUpdate,
-} from "../../utils/hooks";
+import { StateResolver, useUnprocessedStateUpdate } from "../../utils/hooks";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -39,6 +35,7 @@ import { SwitcherDiv, SwitchDiv } from "./utils";
 import { State } from "../../recoil/types";
 import { filters } from "../../recoil/filters";
 import { similarityParameters } from "./Similar";
+import { useTheme } from "@fiftyone/components";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -85,15 +82,13 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(atoms.stateDescription).dataset.evaluations.map(
-      ({ key }) => key
-    );
+    return get(atoms.dataset).evaluations.map(({ key }) => key);
   },
 });
 
 export const sendPatch = async (
   snapshot: Snapshot,
-  updateState: StateUpdate,
+  updateState: (resolve: StateResolver) => void,
   addStage?: object,
   callback?: (
     set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
@@ -110,8 +105,10 @@ export const sendPatch = async (
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
   }).then((data) => {
-    console.log(data);
-    updateState(data, callback);
+    updateState((t) => {
+      callback && callback(t.set);
+      return data;
+    });
   });
 };
 

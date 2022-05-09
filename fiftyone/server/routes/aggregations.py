@@ -36,6 +36,7 @@ class Aggregations(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
 
         view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view.reload()
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
@@ -83,9 +84,20 @@ def _build_field_aggregations(
     aggregations = []
     if meets_type(field, fof.FloatField):
         aggregations.append(
-            foa.Bounds(path, safe=True, _count_nonfinites=True,)
+            foa.Bounds(
+                path,
+                safe=True,
+                _count_nonfinites=True,
+            )
         )
-    elif meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField,),):
+    elif meets_type(
+        field,
+        (
+            fof.DateField,
+            fof.DateTimeField,
+            fof.IntField,
+        ),
+    ):
         aggregations.append(foa.Bounds(path))
     elif meets_type(field, fof.BooleanField):
         aggregations.append(foa.CountValues(path, _first=3))

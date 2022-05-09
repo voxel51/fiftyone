@@ -15,6 +15,7 @@ const processOverlays = <State extends BaseState>(
   const bins = Object.fromEntries(
     activePaths.map<[string, Overlay<State>[]]>((l) => [l, []])
   );
+
   let classifications = null;
 
   for (const overlay of overlays) {

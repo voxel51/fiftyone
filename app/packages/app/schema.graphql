@@ -1,7 +1,7 @@
 type AppConfig {
-  timezone: String
-  colorscale: String!
+  colorBy: ColorBy!
   colorPool: [String!]!
+  colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
   notebookHeight: Int!
@@ -9,6 +9,7 @@ type AppConfig {
   showIndex: Boolean!
   showLabel: Boolean!
   showTooltip: Boolean!
+  timezone: String
   useFrameNumber: Boolean!
 }
 
@@ -27,6 +28,12 @@ type BrainRunConfig implements RunConfig {
   patchesField: String
 }
 
+enum ColorBy {
+  field
+  instance
+  label
+}
+
 type Dataset {
   id: ID!
   name: String!
@@ -42,6 +49,7 @@ type Dataset {
   evaluations: [EvaluationRun!]!
   appSidebarGroups: [SidebarGroup!]
   version: String!
+  viewCls: String
 }
 
 type DatasetConnection {
@@ -82,9 +90,31 @@ type EvaluationRunConfig implements RunConfig {
   method: String!
 }
 
+scalar JSONArray
+
 enum MediaType {
   image
   video
+}
+
+type Mutation {
+  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    view: JSONArray!
+  ): ViewResponse!
+  storeTeamsSubmission: Boolean!
 }
 
 type NamedTargets {
@@ -107,7 +137,12 @@ type Query {
   ): DatasetConnection!
   colorscale: [[Int!]!]
   config: AppConfig!
-  dataset(name: String!): Dataset
+  context: String!
+  dev: Boolean!
+  doNotTrack: Boolean!
+  dataset(name: String!, view: JSONArray): Dataset
+  teamsSubmission: Boolean!
+  uid: String!
   version: String!
 }
 
@@ -131,6 +166,13 @@ type SampleField {
   dbField: String
 }
 
+input SelectedLabel {
+  field: String!
+  labelId: String!
+  sampleId: String!
+  frameNumber: Int = null
+}
+
 type SidebarGroup {
   name: String!
   paths: [String!]!
@@ -139,4 +181,9 @@ type SidebarGroup {
 type Target {
   target: Int!
   value: String!
+}
+
+type ViewResponse {
+  view: JSONArray!
+  dataset: Dataset!
 }

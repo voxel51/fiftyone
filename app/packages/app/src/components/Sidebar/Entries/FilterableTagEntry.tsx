@@ -8,12 +8,12 @@ import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
 import { elementNames } from "../../../recoil/view";
-import { useTheme } from "../../../utils/hooks";
 
 import { NameAndCountContainer } from "../../utils";
 
 import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
+import { useTheme } from "@fiftyone/components";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,

@@ -54,12 +54,9 @@ async def get_items(
 ) -> Connection[HasCollectionType]:
     start = list(filters)
     if search:
-        start += [
-            {"$match": {f"{key}": {"$regex": search}}},
-            {"$set": {"_length": {"$strLenCP": f"${key}"}}},
-            {"$sort": {"_length": 1, f"{key}": 1}},
-            {"$unset": "_length"},
-        ]
+        start += [{"$match": {"name": {"$regex": search}}}]
+
+    start += [{"$sort": {key: 1}}]
 
     if after:
         start += [{"$match": {"_id": {"$gt": ObjectId(after)}}}]
@@ -97,7 +94,8 @@ async def get_items(
 def get_paginator_resolver(
     cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
 ) -> t.Callable[
-    [t.Optional[int], t.Optional[Cursor], Info], Connection[HasCollectionType],
+    [t.Optional[int], t.Optional[Cursor], Info],
+    Connection[HasCollectionType],
 ]:
     async def paginate(
         search: t.Optional[str],

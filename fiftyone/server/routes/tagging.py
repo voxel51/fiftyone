@@ -98,6 +98,9 @@ def _add_to_label_tags_aggregations(path: str, field: fof.Field, counts, tags):
 
 def _expand_labels_path(root, label_field):
     if issubclass(label_field.document_type, fol._HasLabelList):
-        return "%s.%s" % (root, label_field.document_type._LABEL_LIST_FIELD,)
+        return "%s.%s" % (
+            root,
+            label_field.document_type._LABEL_LIST_FIELD,
+        )
 
     return root

@@ -13,7 +13,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
-from fiftyone.server.state import get_state
+import fiftyone.server.events as fose
 import fiftyone.server.view as fosv
 
 
@@ -33,7 +33,7 @@ class Sort(HTTPEndpoint):
 
         fosv.get_view(dataset_name, stages, filters, similarity=similarity)
 
-        state = get_state()
+        state = fose.get_state().copy()
         view = fosv.get_view(dataset_name, stages, filters)
         state.dataset = view._dataset
 

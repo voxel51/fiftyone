@@ -59,6 +59,7 @@ export interface SelectorProps<T> {
   inputStyle?: React.CSSProperties;
   containerStyle?: React.CSSProperties;
   overflow?: boolean;
+  onMouseEnter?: React.MouseEventHandler;
 }
 
 const Selector = <T extends unknown>({
@@ -72,6 +73,7 @@ const Selector = <T extends unknown>({
   inputClassName,
   containerStyle,
   overflow = false,
+  onMouseEnter,
 }: SelectorProps<T>) => {
   const [editing, setEditing] = useState(false);
   const [search, setSearch] = useState("");
@@ -157,7 +159,7 @@ const Selector = <T extends unknown>({
           const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
-              ref.current && ref.current.blur();
+              editing && setEditing(false);
               break;
             case "ArrowDown":
               active !== undefined &&
@@ -168,6 +170,7 @@ const Selector = <T extends unknown>({
               break;
           }
         }}
+        onMouseEnter={onMouseEnter}
       />
       {renderLayer(
         editing && (

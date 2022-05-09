@@ -546,7 +546,7 @@ def make_frames_dataset(
     )
 
     frame_schema = sample_collection.get_frame_field_schema()
-    dataset._sample_doc_cls.merge_field_schema([], frame_schema)
+    dataset._sample_doc_cls.merge_field_schema(frame_schema)
 
     dataset.create_index("sample_id")
 

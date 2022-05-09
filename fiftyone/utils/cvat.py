@@ -3220,8 +3220,6 @@ class CVATBackend(foua.AnnotationBackend):
 
         logger.info("Uploading samples to CVAT...")
         results = api.upload_samples(samples, self)
-        logger.info("Upload complete")
-
         api.close()
 
         if launch_editor:
@@ -4253,64 +4251,94 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 if label_field not in id_map:
                     id_map[label_field] = {}
 
-                if label_field not in labels_task_map:
-                    labels_task_map[label_field] = []
+        logger.info("Uploading samples to CVAT...")
 
-                if label_info.get("existing_field", False):
-                    label_type = label_info["type"]
-                    only_keyframes = label_info.get("only_keyframes", False)
+        with fou.ProgressBar(
+            total=num_samples,
+            iters_str="samples",
+            quiet=num_samples <= batch_size,
+        ) as pb:
 
-                    self._update_shapes_tags_tracks(
-                        _tags,
-                        _shapes,
-                        _tracks,
-                        id_map,
-                        label_type,
-                        samples_batch,
-                        label_field,
-                        label_info,
-                        cvat_schema,
-                        assign_scalar_attrs,
-                        only_keyframes,
-                        occluded_attrs,
-                    )
+            for idx, offset in enumerate(range(0, num_samples, batch_size)):
+                samples_batch = samples[offset : (offset + batch_size)]
+                anno_tags = []
+                anno_shapes = []
+                anno_tracks = []
 
-                anno_tags.extend(_tags)
-                anno_shapes.extend(_shapes)
-                anno_tracks.extend(_tracks)
+                for label_field, label_info in label_schema.items():
+                    _tags = []
+                    _shapes = []
+                    _tracks = []
 
-            # We must do this here because `cvat_schema` may be altered the
-            # first time shapes are created
-            if project_id is None and project_name is not None:
-                project_id = self.create_project(project_name, cvat_schema)
-                project_ids.append(project_id)
+                    if label_field not in id_map:
+                        id_map[label_field] = {}
 
-            _dataset_name = samples_batch._dataset.name.replace(" ", "_")
-            task_name = "FiftyOne_%s" % _dataset_name
+                    if label_field not in labels_task_map:
+                        labels_task_map[label_field] = []
 
-            task_id, class_id_map, attr_id_map = self._create_task_upload_data(
-                config,
-                idx,
-                task_name,
-                cvat_schema,
-                project_id,
-                samples_batch,
-                task_ids,
-                job_ids,
-                frame_id_map,
-            )
+                    if label_info.get("existing_field", False):
+                        label_type = label_info["type"]
+                        only_keyframes = label_info.get(
+                            "only_keyframes", False
+                        )
 
-            for label_field in label_schema.keys():
-                labels_task_map[label_field].append(task_id)
+                        self._update_shapes_tags_tracks(
+                            _tags,
+                            _shapes,
+                            _tracks,
+                            id_map,
+                            label_type,
+                            samples_batch,
+                            label_field,
+                            label_info,
+                            cvat_schema,
+                            assign_scalar_attrs,
+                            only_keyframes,
+                            occluded_attrs,
+                        )
 
-            server_id_map = self._upload_annotations(
-                anno_shapes,
-                anno_tags,
-                anno_tracks,
-                class_id_map,
-                attr_id_map,
-                task_id,
-            )
+                    anno_tags.extend(_tags)
+                    anno_shapes.extend(_shapes)
+                    anno_tracks.extend(_tracks)
+
+                # We must do this here because `cvat_schema` may be altered the
+                # first time shapes are created
+                if project_id is None and project_name is not None:
+                    project_id = self.create_project(project_name, cvat_schema)
+                    project_ids.append(project_id)
+
+                _dataset_name = samples_batch._dataset.name.replace(" ", "_")
+                task_name = "FiftyOne_%s" % _dataset_name
+
+                (
+                    task_id,
+                    class_id_map,
+                    attr_id_map,
+                ) = self._create_task_upload_data(
+                    config,
+                    idx,
+                    task_name,
+                    cvat_schema,
+                    project_id,
+                    samples_batch,
+                    task_ids,
+                    job_ids,
+                    frame_id_map,
+                )
+
+                for label_field in label_schema.keys():
+                    labels_task_map[label_field].append(task_id)
+
+                server_id_map = self._upload_annotations(
+                    anno_shapes,
+                    anno_tags,
+                    anno_tracks,
+                    class_id_map,
+                    attr_id_map,
+                    task_id,
+                )
+
+                pb.update(batch_size)
 
         return CVATAnnotationResults(
             samples,

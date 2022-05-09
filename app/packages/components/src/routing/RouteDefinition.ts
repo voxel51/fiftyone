@@ -1,37 +1,69 @@
 import { createResourceGroup, Resource } from "@fiftyone/utilities";
-import { PreloadedQuery } from "react-relay";
-import { OperationType, VariablesOf } from "relay-runtime";
+import { Environment } from "react-relay";
+import { ConcreteRequest, OperationType, VariablesOf } from "relay-runtime";
+import {} from "relay-runtime";
 import { Route } from "..";
 
-export interface RouteDefinition<T extends OperationType = OperationType> {
+export interface RouteBase<
+  T extends OperationType | undefined = OperationType
+> {
   path?: string;
   exact?: boolean;
   component: Resource<Route<T>>;
-  prepare: (params: VariablesOf<T>) => Resource<PreloadedQuery<T>>;
-  routes?: RouteDefinition<T>[];
+  children?: RouteBase<T>[];
+  defaultParams: T extends OperationType
+    ? {
+        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
+      }
+    : {};
 }
 
-const queries = createResourceGroup();
+export interface RouteDefinition<
+  T extends OperationType | undefined = OperationType
+> extends RouteBase<T> {
+  query?: Resource<ConcreteRequest>;
+  children?: RouteDefinition<T>[];
+  component: Resource<Route<T>>;
+}
+
 const components = createResourceGroup();
 
-export interface RouteOptions<T extends OperationType> {
+export interface RouteOptions<T extends OperationType | undefined> {
+  path: string;
   exact?: boolean;
-  routes?: RouteDefinition<T>[];
+  children?: RouteOptions<T>[];
+  component: { name: string; loader: () => Promise<Route<T>> };
+  query?: T extends undefined
+    ? undefined
+    : {
+        name: string;
+        loader: () => Promise<ConcreteRequest>;
+      };
+  defaultParams: T extends OperationType
+    ? {
+        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
+      }
+    : {};
 }
 
-export const makeRouteDefinition = <T extends OperationType>(
-  path: string,
-  get: () => Promise<Route<T>>,
-  prepare: (params: VariablesOf<T>) => Promise<PreloadedQuery<T>>,
-  options: RouteOptions<T>
-): RouteDefinition<T> => {
-  return {
-    path,
-    prepare: (params: VariablesOf<T>) =>
-      queries(`${path}-${JSON.stringify(params)}`, () => prepare(params)),
-    component: components(path, get),
-    ...options,
-  };
+export const makeRouteDefinitions = <T extends OperationType | undefined>(
+  environment: Environment,
+  children: RouteOptions<T>[]
+): RouteDefinition<T>[] => {
+  const queries = createResourceGroup();
+
+  return children.map(
+    ({ path, exact, children, component, query, defaultParams }) => ({
+      path,
+      exact,
+      children: children
+        ? makeRouteDefinitions(environment, children)
+        : undefined,
+      component: components(component.name, component.loader),
+      query: query ? queries(query.name, query.loader) : undefined,
+      defaultParams,
+    })
+  );
 };
 
 export default RouteDefinition;

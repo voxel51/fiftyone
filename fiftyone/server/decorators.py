@@ -35,7 +35,10 @@ def route(func):
             return FiftyOneResponse(response)
         except Exception as e:
             return FiftyOneResponse(
-                {"kind": "Server Error", "stack": traceback.format_exc(),},
+                {
+                    "kind": "Server Error",
+                    "stack": traceback.format_exc(),
+                },
                 status_code=500,
             )
 

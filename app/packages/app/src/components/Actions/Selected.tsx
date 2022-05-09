@@ -16,7 +16,6 @@ import { useEventHandler } from "../../utils/hooks";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
-import { getFetchFunction } from "@fiftyone/utilities";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
@@ -31,20 +30,25 @@ const useClearSampleSelection = (close) => {
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(viewAtoms.elementNames);
   const clearSelection = useClearSampleSelection(close);
-  const addStage = useRecoilTransaction_UNSTABLE(({ get }) => (name) => {
+  const setState = () => {};
+  const addStage = (name: string) => {
     close();
-    const state = get(atoms.stateDescription);
-    const newState = JSON.parse(JSON.stringify(state));
-    const samples = get(atoms.selectedSamples);
-    const newView = newState.view || [];
-    newView.push({
-      _cls: `fiftyone.core.stages.${name}`,
-      kwargs: [["sample_ids", Array.from(samples)]],
+
+    setState(({ get }) => {
+      const state = { ...get(atoms.stateDescription) };
+
+      state.view = [
+        ...(state?.view || []),
+        {
+          _cls: `fiftyone.core.stages.${name}`,
+          kwargs: [["sample_ids", Array.from(get(atoms.selectedSamples))]],
+        },
+      ];
+      state.selected = [];
+
+      return state;
     });
-    newState.view = newView;
-    newState.selected = [];
-    getFetchFunction()("POST", "/update", { state: newState });
-  });
+  };
 
   return [
     {

@@ -118,7 +118,10 @@ def _label_filter(field):
     ):
         path = field.name
         if issubclass(field.document_type, fol._HasLabelList):
-            path = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD,)
+            path = "%s.%s" % (
+                path,
+                field.document_type._LABEL_LIST_FIELD,
+            )
 
     return path
 

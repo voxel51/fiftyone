@@ -5,8 +5,9 @@ import numeral from "numeral";
 import styled from "styled-components";
 
 import { useHighlightHover } from "./utils";
-import { useKeydownHandler, useTheme } from "../../utils/hooks";
+import { useKeydownHandler } from "../../utils/hooks";
 import { ItemAction } from "./ItemAction";
+import { useTheme } from "@fiftyone/components";
 
 const CheckboxDiv = animated(styled(ItemAction)`
   display: flex;

@@ -68,14 +68,9 @@ def get_implied_field_kwargs(value):
             "fields": [
                 dict(
                     name=name,
-                    **_merge_field_kwargs(
-                        [
-                            get_implied_field_kwargs(value[name]),
-                            get_field_kwargs(value.get_field_def(name)),
-                        ]
-                    ),
+                    **get_field_kwargs(value.__class__._fields[name]),
                 )
-                for name in value._fields_ordered
+                for name in value.__class__._fields
                 if getattr(value, name, None) is not None
                 and not name.startswith("_")
             ],
@@ -121,7 +116,7 @@ def get_implied_field_kwargs(value):
                 data = defaultdict(list)
 
                 for v in value:
-                    for n, f in v.get_field_schema().items():
+                    for n, f in v._fields.items():
                         vv = getattr(v, n, None)
                         if vv is not None:
                             data[n].append(get_implied_field_kwargs(vv))

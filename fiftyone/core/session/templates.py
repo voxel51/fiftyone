@@ -11,11 +11,11 @@ from jinja2 import Template
 SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
-#focontainer-{{ handle }} {
+#focontainer-{{ subscription }} {
   position: relative;
   display: block !important;
 }
-#foactivate-{{ handle }} {
+#foactivate-{{ subscription }} {
   font-weight: bold;
   cursor: pointer;
   font-size: 24px;
@@ -33,10 +33,10 @@ SCREENSHOT_STYLE = """
   background: hsla(210,11%,15%, 0.8);
   border: none;
 }
-#foactivate-{{ handle }}:focus {
+#foactivate-{{ subscription }}:focus {
   outline: none;
 }
-#fooverlay-{{ handle }} {
+#fooverlay-{{ subscription }} {
   width: 100%;
   height: 100%;
   background: hsla(208, 7%, 46%, 0.7);
@@ -50,13 +50,19 @@ SCREENSHOT_STYLE = """
 
 SCREENSHOT_SCRIPT = """
    (function() {
-     var container = document.getElementById("focontainer-{{ handle }}");
-     var overlay = document.getElementById("fooverlay-{{ handle }}");
-     fetch(`{{ url }}notebook?handleId={{ handle }}`)
-     .then((response) => response.json())
+     var container = document.getElementById("focontainer-{{ subscription }}");
+     var overlay = document.getElementById("fooverlay-{{ subscription }}");
+     fetch(`{{ url }}fiftyone`)
      .then(() => {
         overlay.addEventListener("click", () => {
-          fetch(`{{ url }}reactivate?handleId={{ handle }}`)
+          fetch(`{{ url }}event`, {
+            method: "POST",
+            body: JSON.stringify({
+              event: "reactivate_notebook_cell",
+              data: { subscription: "{{ subscription }}" },
+              subscription: "{{ subscription }}"
+            })
+          })
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");
         container.addEventListener("mouseleave", () => overlay.style.display = "none");
@@ -66,9 +72,9 @@ SCREENSHOT_SCRIPT = """
 
 
 SCREENSHOT_DIV = """
-<div id="focontainer-{{ handle }}">
-   <div id="fooverlay-{{ handle }}" style="display: none;">
-      <button id="foactivate-{{ handle }}" >Activate</button>
+<div id="focontainer-{{ subscription }}">
+   <div id="fooverlay-{{ subscription }}" style="display: none;">
+      <button id="foactivate-{{ subscription }}" >Activate</button>
    </div>
    <img src='{{ image }}' style="width: 100%; max-width: {{ max_width }}px;"/>
 </div>
@@ -89,9 +95,9 @@ SCREENSHOT_COLAB = """
 <style>
 {{ style }}
 </style>
-<div id="focontainer-{{ handle }}" style="display: none;">
-   <div id="fooverlay-{{ handle }}">
-      <button id="foactivate-{{ handle }}" >Activate</button>
+<div id="focontainer-{{ subscription }}" style="display: none;">
+   <div id="fooverlay-{{ subscription }}">
+      <button id="foactivate-{{ subscription }}" >Activate</button>
    </div>
 </div>
 """
@@ -103,11 +109,9 @@ SCREENSHOT_COLAB_SCRIPT = """
         'cache': true
     }).then((baseURL) => {
         const url = new URL(baseURL);
-        const handleId = "{{ handle }}";
-        url.searchParams.set('colab', 'true');
-        url.searchParams.set('polling', 'true');
-        url.searchParams.set('notebook', 'true');
-        url.searchParams.set('handleId', handleId);
+        const handleId = "{{ subscription }}";
+        url.searchParams.set('context', 'colab');
+        url.searchParams.set('subscription', subscription);
         const iframe = document.createElement('iframe');
         iframe.src = url;
         iframe.setAttribute('width', '100%');
@@ -115,11 +119,11 @@ SCREENSHOT_COLAB_SCRIPT = """
         iframe.setAttribute('frameborder', 0);
         document.body.appendChild(iframe);
         window.addEventListener("message", (event) => {
-            if (event.data.handleId !== handleId) return;
+            if (event.data.subscription !== subscription) return;
             document.body.removeChild(iframe);
-            var container = document.getElementById(`focontainer-${handleId}`);
-            var overlay = document.getElementById(`fooverlay-${handleId}`);
-            google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
+            var container = document.getElementById(`focontainer-${subscription}`);
+            var overlay = document.getElementById(`fooverlay-${subscription}`);
+            google.colab.kernel.invokeFunction(`fiftyone.${subscription.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
             overlay.addEventListener("click", () => {
                 container.removeChild(container.children[1]);
                 document.body.appendChild(iframe);

@@ -33,13 +33,12 @@ import {
   tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import { http } from "../../shared/connection";
-import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle } from "../utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { store } from "../Flashlight.store";
+import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -336,8 +335,6 @@ const samplesPlaceholder = (selection, _, numSamples, elementNames) => {
 const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
-
-const url = `${http}/tag`;
 
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   const refreshers = [true, false]

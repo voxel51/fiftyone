@@ -1,7 +1,6 @@
 {
     "name": "@fiftyone/fiftyone",
     "productName": "FiftyOne Teams",
-    "version": "0.10.3",
     "license": "Apache-2.0",
     "private": true,
     "scripts": {
@@ -14,7 +13,7 @@
     },
     "devDependencies": {
         "patch-package": "^6.4.7",
-        "typescript": "^4.5.5",
+        "typescript": "4.2.4",
         "typescript-plugin-css-modules": "^3.4.0"
     },
     "workspaces": [

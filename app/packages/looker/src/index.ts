@@ -89,7 +89,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "field" | "instance" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -452,10 +452,17 @@ export abstract class Looker<
 
   detach(): void {
     this.resizeObserver.disconnect();
-    this.lookerElement.element.parentNode &&
+    if (this.lookerElement.element.parentNode) {
+      for (const eventType in this.rootEvents) {
+        this.lookerElement.element.parentElement.addEventListener(
+          eventType,
+          this.rootEvents[eventType]
+        );
+      }
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
       );
+    }
   }
 
   abstract updateOptions(options: Optional<State["options"]>): void;

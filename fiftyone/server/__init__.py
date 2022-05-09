@@ -5,4 +5,3 @@ FiftyOne Server
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .app import app

@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "@react-spring/web";
 
-import { isNotebook } from "../shared/connection";
-import { useTheme } from "../utils/hooks";
 import { scrollbarStyles } from "../components/utils";
 import { isElectron } from "@fiftyone/utilities";
 import {
@@ -12,7 +10,10 @@ import {
   Header,
   iconContainer,
   SlackLink,
+  useTheme,
 } from "@fiftyone/components";
+import { useRecoilValue } from "recoil";
+import { isNotebook } from "../recoil/selectors";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -182,6 +183,7 @@ const Setup = () => {
       activeTab === "remote" ? theme.brand : theme.backgroundDark,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
+  const notebook = useRecoilValue(isNotebook);
 
   return (
     <>
@@ -199,7 +201,7 @@ const Setup = () => {
         <SetupContainer>
           <Title>Welcome to FiftyOne!</Title>
           <Subtitle>It looks like you are not connected to a session</Subtitle>
-          {isNotebook ? (
+          {notebook ? (
             <NotebookInstructions />
           ) : (
             <>

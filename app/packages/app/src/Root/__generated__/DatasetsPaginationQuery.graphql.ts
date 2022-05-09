@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4f31c87501c6dde0035dbe7507e96077>>
+ * @generated SignedSource<<f64f5d2de46ce61ada13b4910bbdaec1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,13 +15,11 @@ export type DatasetsPaginationQuery$variables = {
   cursor?: string | null;
   search?: string | null;
 };
-export type DatasetsPaginationQueryVariables = DatasetsPaginationQuery$variables;
 export type DatasetsPaginationQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
 };
-export type DatasetsPaginationQueryResponse = DatasetsPaginationQuery$data;
 export type DatasetsPaginationQuery = {
-  variables: DatasetsPaginationQueryVariables;
+  variables: DatasetsPaginationQuery$variables;
   response: DatasetsPaginationQuery$data;
 };
 

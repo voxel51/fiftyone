@@ -5,6 +5,9 @@ Context utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import json
+import os
+import typing as t
 
 _COLAB = "COLAB"
 _DATABRICKS = "DATABRICKS"
@@ -86,8 +89,8 @@ def _get_context():
     # via the `get_trait` method.
     try:
         # Location: /databricks/python_shell/dbruntime
-        from dbruntime.dbutils import DBUtils  # noqa: F401
         import IPython
+        from dbruntime.dbutils import DBUtils  # noqa: F401
     except ImportError:
         pass
     else:
@@ -112,6 +115,37 @@ def _get_context():
     _context = _NONE
 
     return _context
+
+
+def get_url(
+    address: str, port: int, subscription: t.Optional[str] = None
+) -> str:
+    context = _get_context()
+    if context == _COLAB:
+        # pylint: disable=no-name-in-module,import-error
+        from google.colab.output import eval_js
+
+        _url = eval_js(f"google.colab.kernel.proxyPort({port})")
+    elif _context == _DATABRICKS:
+        import IPython
+
+        ipython = IPython.get_ipython()
+        dbutils = ipython.user_ns["dbutils"]
+        ctx = json.loads(
+            dbutils.entry_point.getDbutils().notebook().getContext().toJson()
+        )
+        ctx_tags = ctx["tags"]
+        browser_host_name = ctx_tags["browserHostName"]
+        org_id = ctx_tags["orgId"]
+        cluster_id = ctx_tags["clusterId"]
+        _url = f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
+    else:
+        _url = f"http://{address}:{port}/"
+
+    if subscription:
+        return f"{_url}?context={_get_context().lower()}&subscription={subscription}"
+
+    return _url
 
 
 class ContextError(EnvironmentError):

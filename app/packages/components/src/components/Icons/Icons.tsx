@@ -1,7 +1,6 @@
 import { SvgIcon } from "@material-ui/core";
 import { GitHub, MenuBook } from "@material-ui/icons";
 import React from "react";
-import { Tooltip } from "..";
 
 import ExternalLink from "../ExternalLink";
 

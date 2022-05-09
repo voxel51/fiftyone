@@ -64,6 +64,15 @@ export namespace State {
     config: {};
   }
 
+  export interface KeypointSkeleton {
+    labels: string[];
+    edges: number[][];
+  }
+
+  export interface StrictKeypointSkeleton extends KeypointSkeleton {
+    field: string;
+  }
+
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
@@ -80,6 +89,8 @@ export namespace State {
     sampleFields: StrictField[];
     version: string;
     appSidebarGroups?: { name: string; paths: string[] }[];
+    skeletons: StrictKeypointSkeleton[];
+    defaultSkeleton: KeypointSkeleton;
   }
 
   export interface Filter {}
@@ -123,13 +134,9 @@ export namespace State {
   }
 
   export interface Description {
-    activeHandle: string | null;
     colorscale: RGB[];
-    close: boolean;
     config: Config;
-    connected: boolean;
-    dataset?: Dataset;
-    refresh: boolean;
+    dataset: string;
     selected: string[];
     selectedLabels: SelectedLabel[];
     view: Stage[];

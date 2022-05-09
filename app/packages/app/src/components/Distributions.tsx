@@ -22,6 +22,7 @@ import {
   DATE_TIME_FIELD,
   getFetchFunction,
 } from "@fiftyone/utilities";
+import { refresher } from "../recoil/atoms";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -209,7 +210,7 @@ interface Distribution {
 const distributions = selectorFamily<Distribution[], string>({
   key: "distributions",
   get: (group) => async ({ get }) => {
-    get(selectors.refresh);
+    get(refresher);
     const { distributions } = await getFetchFunction()(
       "POST",
       "/distributions",

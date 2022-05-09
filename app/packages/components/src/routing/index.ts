@@ -1,3 +1,4 @@
-export * from "./RoutingContext";
-export * from "./RouteDefinition";
 export * from "./hooks";
+export * from "./matchPath";
+export * from "./RouterContext";
+export * from "./RouteDefinition";

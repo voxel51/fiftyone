@@ -1,12 +1,12 @@
 """
-Session Server-sent events client
+Session server-sent events client
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from dataclasses import dataclass
-from enum import Enum
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 import logging
 from retrying import retry
 from threading import Thread
@@ -15,9 +15,17 @@ import typing as t
 
 import requests
 import sseclient
+from uuid import uuid4
 
-from fiftyone.core.json import FiftyOneJSONEncoder
 import fiftyone.core.state as fos
+
+from fiftyone.core.json import stringify
+from fiftyone.core.session.events import (
+    Event,
+    EventType,
+    ListenPayload,
+    dict_factory,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -28,36 +36,64 @@ def _ping(url: str) -> None:
     requests.get(url)
 
 
-class Events(Enum):
-    pass
-
-
-@dataclass(frozen=True)
+@dataclass
 class Client:
     address: str
+    auto: bool
+    desktop: bool
     port: int
-    event_handler: t.Callable[[str, dict], None]
+    remote: bool
+    start_time: float
 
     def __post_init__(self) -> None:
-        self._state: t.Optional[fos.StateDescription] = None
-        self._listeners: t.Dict[str, t.Callable] = {}
+        self._subscription = str(uuid4())
+        self._connected = True
+        self._listeners: t.Dict[str, t.Set[t.Callable]] = defaultdict(set)
+
+    def run(self, state: fos.StateDescription) -> None:
+        """Runs the client subscription in a background thread
+
+        Arg:
+            state: the initial state description
+        """
+        if hasattr(self, "_thread"):
+            raise RuntimeError("Client is already running")
 
         def run_client() -> None:
             def subscribe() -> None:
                 response = requests.post(
-                    f"{self.origin}/state",
+                    f"{self.origin}/events",
                     stream=True,
-                    headers={"Accept": "text/event-stream"},
+                    headers={
+                        "Accept": "text/event-stream",
+                        "Content-type": "application/json",
+                    },
+                    json=asdict(
+                        ListenPayload(
+                            events=[
+                                "capture_notebook_cell",
+                                "close_session",
+                                "reactivate_notebook_cell",
+                                "reload_session",
+                                "state_update",
+                            ],
+                            initializer=state.serialize(),
+                            subscription=self._subscription,
+                        )
+                    ),
                 )
                 source = sseclient.SSEClient(response)
                 for message in source.events():
-                    self._handle_event(message)
+                    event = Event.from_data(message.event, message.data)
+                    self._dispatch_event(event)
 
             while True:
                 try:
                     _ping(f"{self.origin}/fiftyone")
+                    self._connected = True
                     subscribe()
-                except Exception:
+                except Exception as e:
+                    self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
                         "in 10 seconds\r\n"
@@ -68,57 +104,63 @@ class Client:
         self._thread.start()
 
     @property
-    def has_listeners(self) -> bool:
-        return bool(self._listeners)
-
-    @property
     def origin(self) -> str:
+        """The origin of the server"""
         return f"http://{self.address}:{self.port}"
 
-    @property
-    def state(self) -> t.Optional[fos.StateDescription]:
-        return self._state
+    def send_event(self, event: EventType) -> None:
+        """Sends an event to the server
 
-    @state.setter
-    def state(self, state: fos.StateDescription) -> None:
-        self._state = state
-        self._update_listeners()
+        Args:
+            event: the event
+        """
+        if not self._connected:
+            raise RuntimeError("Client is not connected")
 
-        _post(self.origin, {"state": state})
+        self._post_event(event)
+        self._dispatch_event(event)
 
-    def has_listener(self, key: str) -> bool:
-        return key in self._listeners
+    def add_event_listener(
+        self, event_name: str, listener: t.Callable
+    ) -> None:
+        """Adds an event listener callback for the provided event name. Events
+        sent from client and from the server connection will be dispatched to
+        the listener
 
-    def get_listeners(self) -> t.Dict[str, t.Callable]:
-        return self._listeners
+        Args:
+            event_name: the event name
+            listener: the listener callback
+        """
+        self._listeners[event_name].add(listener)
 
-    def add_listener(self, key: str, callback: t.Callable) -> None:
-        self._listeners[key] = callback
+    def remove_event_listener(
+        self, event_name: str, listener: t.Callable
+    ) -> None:
+        """Removes an event listener callback for the provided event name if
+        it has been registered
 
-    def delete_listener(self, key: str) -> None:
-        self._listeners.pop(key, None)
+        Args:
+            event_name: the event name
+            listener: the listener callback
+        """
+        self._listeners[event_name].discard(listener)
 
-    def delete_listeners(self) -> None:
-        self._listeners = {}
+    def _dispatch_event(self, event: EventType) -> None:
+        for listener in self._listeners[event.get_event_name()]:
+            listener(event)
 
-    def _update_listeners(self) -> None:
-        for callback in self._listeners.values():
-            callback(self)
+    def _post_event(self, event: Event) -> None:
+        response = requests.post(
+            f"{self.origin}/event",
+            headers={"Content-type": "application/json"},
+            json={
+                "event": event.get_event_name(),
+                "data": stringify(asdict(event, dict_factory=dict_factory)),
+                "subscription": self._subscription,
+            },
+        )
 
-    def _handle_event(self, event: sseclient.Event) -> None:
-        message = FiftyOneJSONEncoder.loads(event.data)
-
-        if event.event == "Update":
-            config = None
-            if self._state:
-                message["state"]["config"] = self._state.config.serialize()
-                config = self._state.config
-
-            self._state = self._state.from_dict(
-                message["state"], with_config=config
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Failed to post event `{event.event}` to {self.origin}/event"
             )
-            self._update_listeners()
-
-
-def _post(origin: str, data: dict) -> None:
-    requests.post(f"{origin}/update", data=FiftyOneJSONEncoder.dumps(data))

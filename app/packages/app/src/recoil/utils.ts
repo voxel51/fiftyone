@@ -1,14 +1,8 @@
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchOrigin } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import {
-  selector,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { selector, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as atoms from "./atoms";
-import * as selectors from "./selectors";
-import { State } from "./types";
 import * as viewAtoms from "./view";
 import { useUnprocessedStateUpdate } from "../utils/hooks";
 
@@ -58,15 +52,5 @@ export const useClearModal = () => {
       set(atoms.modal, null);
     },
     []
-  );
-};
-
-export const useSetState = () => {
-  const updateState = useUnprocessedStateUpdate();
-  return useRecoilTransaction_UNSTABLE(
-    ({ get }) => (state: Partial<State.Description>) =>
-      getFetchFunction()("POST", "/update", {
-        state: { ...get(atoms.stateDescription), ...state },
-      }).then((data) => updateState(data))
   );
 };

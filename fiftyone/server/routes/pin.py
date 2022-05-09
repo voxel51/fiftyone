@@ -9,17 +9,20 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
 import fiftyone as fo
+from fiftyone.core.session.events import StateUpdate
 import fiftyone.core.stages as fost
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
-from fiftyone.server.state import get_state, set_state
+from fiftyone.server.query import serialize_dataset
+import fiftyone.server.events as fose
 import fiftyone.server.view as fosv
 
 
 class Pin(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
+        subscription: str = data.get("subscription")
         filters = data.get("filters", {})
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
@@ -39,10 +42,15 @@ class Pin(HTTPEndpoint):
         if similarity:
             view = view.sort_by_similarity(**similarity)
 
-        state = get_state()
+        state = fose.get_state()
         state.selected = []
         state.selected_labels = []
         state.dataset = fo.load_dataset(dataset)
         state.view = view
 
-        return {"state": state.serialize()}
+        await fose.dispatch_event(subscription, StateUpdate(state=state))
+
+        return {
+            "state": state.serialize(),
+            "dataset": serialize_dataset(state.dataset, state.view),
+        }

@@ -27,7 +27,13 @@ const Header: React.FC<Props> = ({
   return (
     <div className={style.header}>
       <div className={style.left}>
-        <div className={style.title} onClick={() => setToggle(!toggle)}>
+        <div
+          className={style.title}
+          onClick={() => {
+            setToggle(!toggle);
+            onRefresh && onRefresh();
+          }}
+        >
           <animated.img className={style.logo} style={logoProps} src={logo} />
           <div className={style.fiftyone}>{title}</div>
         </div>

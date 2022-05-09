@@ -18,10 +18,6 @@ import string
 
 from bson import ObjectId
 from deprecated import deprecated
-from fiftyone.core.odm.embedded_document import (
-    BaseEmbeddedDocument,
-    EmbeddedDocument,
-)
 import mongoengine.errors as moe
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
@@ -359,7 +355,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         self._doc.media_type = media_type
+        self._set_metadata(media_type)
 
+    def _set_metadata(self, media_type):
         idx = None
         for i, field in enumerate(self._doc.sample_fields):
             if field.name == "metadata":
@@ -380,7 +378,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
-            self._sample_doc_cls._declare_field(field, field.name)
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -390,6 +387,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
 
         self._doc.save()
+        self.reload()
 
     @property
     def version(self):
@@ -1475,9 +1473,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         sample_ids = []
@@ -1546,21 +1543,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
-            old_doc = sample._doc
             sample._set_backing_doc(doc, dataset=self)
-            for name, field in self.get_field_schema().items():
-                while isinstance(field, fof.ListField):
-                    field = field.field
-
-                if not isinstance(field, fof.EmbeddedDocumentField):
-                    continue
-
-                doc._fields[name]._set_parent(self._sample_doc_cls)
-
-            for name, value in old_doc._data.items():
-                if isinstance(value, BaseEmbeddedDocument):
-                    value._set_parent(doc._fields[name])
-
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -1577,9 +1560,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         with fou.ProgressBar(total=num_samples) as pb:
@@ -4587,10 +4569,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 else:
                     if value is not None or not field.null:
                         try:
-                            if isinstance(field, fof.EmbeddedDocumentField):
-                                field.validate(value, expand=True)
-                            else:
-                                field.validate(value)
+                            field.validate(value)
                         except moe.ValidationError as e:
                             raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
@@ -4772,7 +4751,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
 def _declare_fields(doc_cls, field_docs=None):
     for field_name, field in doc_cls._fields.items():
         if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
             field._set_parent(doc_cls)
             doc_cls._fields[field_name] = field
             setattr(doc_cls, field_name, field)
@@ -4819,6 +4798,19 @@ def _create_frame_document_cls(frame_collection_name, field_docs=None):
     cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
     _declare_fields(cls, field_docs=field_docs)
     return cls
+
+
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field)
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -4878,6 +4870,13 @@ def _load_dataset(name, virtual=False):
         sample_collection_name, dataset_doc.sample_fields
     )
 
+    default_sample_fields = fos.get_default_sample_fields(include_private=True)
+    for sample_field in dataset_doc.sample_fields:
+        if sample_field.name in default_sample_fields:
+            continue
+
+        sample_doc_cls._declare_field(sample_field)
+
     frame_collection_name = dataset_doc.frame_collection_name
 
     if not virtual:
@@ -4897,6 +4896,16 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _create_frame_document_cls(
             frame_collection_name, dataset_doc.frame_fields
         )
+
+        if dataset_doc.media_type == fom.VIDEO:
+            default_frame_fields = fofr.get_default_frame_fields(
+                include_private=True
+            )
+            for frame_field in dataset_doc.frame_fields:
+                if frame_field.name in default_frame_fields:
+                    continue
+
+                frame_doc_cls._declare_field(frame_field)
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -5205,11 +5214,12 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        [], schema, expand_schema=expand_schema
+        schema, expand_schema=expand_schema
     )
+
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            [], frame_schema, expand_schema=expand_schema
+            frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:
@@ -5415,13 +5425,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
         for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,

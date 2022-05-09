@@ -1,5 +1,5 @@
-import React, { useCallback } from "react";
-import { getRoutingContext } from "../../with/Router";
+import React, { useCallback, useContext, useTransition } from "react";
+import { RouterContext } from "../../routing";
 
 const Link: React.FC<{
   to: string;
@@ -7,19 +7,18 @@ const Link: React.FC<{
   className?: string;
   style?: React.CSSProperties;
 }> = (props) => {
-  const router = getRoutingContext();
+  const router = useContext(RouterContext);
+  const [pending, startTransition] = useTransition();
 
   const changeRoute = useCallback(
     (event) => {
       event.preventDefault();
-      router.history.push(props.to);
+      startTransition(() => {
+        router.history.push(props.to);
+      });
     },
     [props.to, router]
   );
-
-  const preloadRouteCode = useCallback(() => {
-    router.preloadCode(props.to);
-  }, [props.to, router]);
 
   const preloadRoute = useCallback(() => {
     router.preload(props.to);
@@ -29,8 +28,7 @@ const Link: React.FC<{
     <a
       href={props.to}
       onClick={changeRoute}
-      onMouseEnter={preloadRouteCode}
-      onMouseDown={preloadRoute}
+      onMouseEnter={preloadRoute}
       style={props.style}
       className={props.className}
       title={props.title}

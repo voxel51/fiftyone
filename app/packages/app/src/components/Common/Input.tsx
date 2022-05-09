@@ -1,7 +1,6 @@
+import { useTheme } from "@fiftyone/components";
 import React, { forwardRef } from "react";
 import styled from "styled-components";
-
-import { useTheme } from "../../utils/hooks";
 
 const StyledInputContainer = styled.div`
   font-size: 14px;

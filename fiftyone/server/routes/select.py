@@ -7,9 +7,10 @@ FiftyOne Server /select route
 """
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
+from fiftyone.core.session.events import StateUpdate
 
 from fiftyone.server.decorators import route
-from fiftyone.server.state import get_state, set_state
+import fiftyone.server.events as fose
 
 
 class Select(HTTPEndpoint):
@@ -17,11 +18,14 @@ class Select(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         ids = data.get("ids", None)
         labels = data.get("labels", None)
+        subscription: str = data.get("subscription")
 
-        state = get_state()
+        state = fose.get_state()
 
         if ids is not None:
             state.selected = ids
 
         if labels is not None:
             state.selected_labels = labels
+
+        await fose.dispatch_event(subscription, StateUpdate(state=state))

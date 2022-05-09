@@ -190,9 +190,6 @@ def _make_filter_stages(
         if path == "tags" or path.startswith("_"):
             continue
 
-        keys = path.split(".")
-        full_path = path
-
         frames = path.startswith(view._FRAMES_PREFIX)
         keys = path.split(".")
         if frames:
@@ -200,28 +197,16 @@ def _make_filter_stages(
             keys = keys[2:]
             prefix = "frames."
         else:
-            schema = field_schema
-            path = keys[0]
-            field = schema[path]
+            field = field_schema[keys[0]]
+            keys = keys[1:]
+            prefix = ""
 
-        if isinstance(field, fof.EmbeddedDocumentField):
-            keypoints = issubclass(
-                field.document_type, (fol.Keypoint, fol.Keypoints)
-            )
-
-            if issubclass(field.document_type, fol.Keypoint):
-                if full_path == f"{path}.label":
-                    keypoints = False
-
-            if issubclass(field.document_type, fol.Keypoints):
-                if full_path == f"{path}.keypoints.label":
-                    keypoints = False
-
-            expr = (
-                _make_keypoint_kwargs(path, args, view)
-                if keypoints
-                else _make_scalar_expression(F(keys[-1]), args, field)
-            )
+        if _is_label(field):
+            parent = field
+            field = view.get_field(path)
+            key = field.db_field if field.db_field else field.name
+            view_field = F(key)
+            expr = _make_scalar_expression(view_field, args, field)
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[-1]
@@ -232,21 +217,14 @@ def _make_filter_stages(
                         )
                 else:
                     new_field = None
-
-                if keypoints:
-                    stage = fosg.FilterKeypoints(
-                        path,
-                        _new_field=new_field,
-                        **expr,
-                    )
-                else:
-                    stage = fosg.FilterLabels(
-                        path,
+                stages.append(
+                    fosg.FilterLabels(
+                        prefix + parent.name,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,
                     )
-                stages.append(stage)
+                )
 
                 filtered_labels.add(path)
                 if new_field:
@@ -318,10 +296,6 @@ def _is_label(field):
     return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
         field.document_type, fol.Label
     )
-
-
-def _make_keypoint_kwargs(path, args, view):
-    pass
 
 
 def _make_scalar_expression(f, args, field):

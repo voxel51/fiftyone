@@ -15,7 +15,8 @@ from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
 import mongoengine.errors as moe
-import motor.motor_asyncio
+import motor.motor_asyncio as mtr
+
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
@@ -203,7 +204,7 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_asyncio.AsyncIOMotorClient(
+        _async_client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
@@ -285,7 +286,7 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-    if isinstance(collection, motor.motor_asyncio.AsyncIOMotorCollection):
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             return collection.aggregate(pipelines[0], allowDiskUse=True)
 
@@ -317,7 +318,7 @@ async def _do_async_pooled_aggregate(collection, pipelines):
 
 async def _do_async_aggregate(collection, pipeline):
     cursor = collection.aggregate(pipeline, allowDiskUse=True)
-    return [doc async for doc in cursor]
+    return await cursor.to_list(1)
 
 
 def get_db_client():
@@ -341,14 +342,23 @@ def get_db_conn():
     return _apply_options(db)
 
 
+def get_async_db_client():
+    """Returns an async database client.
+
+    Returns:
+        a ``motor.motor_asyncio.AsyncIOMotorClient``
+    """
+    _async_connect()
+    return _async_client
+
+
 def get_async_db_conn():
     """Returns an async connection to the database.
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    _async_connect()
-    db = _async_client[fo.config.database_name]
+    db = get_async_db_client()[fo.config.database_name]
     return _apply_options(db)
 
 

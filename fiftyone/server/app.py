@@ -21,11 +21,12 @@ import fiftyone.constants as foc
 
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
+from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
 
 
-schema = gql.Schema(query=Query, extensions=[EndSession])
+schema = gql.Schema(mutation=Mutation, query=Query, extensions=[EndSession])
 
 
 class Static(StaticFiles):

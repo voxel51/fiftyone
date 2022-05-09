@@ -11,7 +11,6 @@ from .classification import (
     BinaryClassificationResults,
 )
 from .detection import (
-    compute_max_ious,
     evaluate_detections,
     DetectionResults,
 )
@@ -23,4 +22,3 @@ from .segmentation import (
     evaluate_segmentations,
     SegmentationResults,
 )
-from .utils import compute_ious

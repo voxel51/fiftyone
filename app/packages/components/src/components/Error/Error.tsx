@@ -34,16 +34,18 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
 
   return (
     <div className={style.wrapper}>
-      {stacks.map((stack) => (
-        <div className={classnames(style.container, scrollable)}>
+      {stacks.map((stack, i) => (
+        <div key={i} className={classnames(style.container, scrollable)}>
           <div className={style.heading}>
             <div>{error.name}</div>
             <div>
-              <div>
-                <span title={"Reset"} onClick={reset}>
-                  <Clear />
-                </span>
-              </div>
+              {i === 0 && (
+                <div>
+                  <span title={"Reset"} onClick={reset}>
+                    <Clear />
+                  </span>
+                </div>
+              )}
               {stack && (
                 <div>
                   <span title={"Copy stack"} onClick={() => copy(stack)}>

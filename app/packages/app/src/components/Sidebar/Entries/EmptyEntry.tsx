@@ -1,7 +1,7 @@
+import { useTheme } from "@fiftyone/components";
 import { useSpring } from "@react-spring/core";
 import React from "react";
 
-import { useTheme } from "../../../utils/hooks";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 

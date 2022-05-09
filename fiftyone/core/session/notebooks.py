@@ -1,4 +1,15 @@
+"""
+Session notebook handling
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from dataclasses import dataclass
+import os
+
+from jinja2 import Template
+from strawberry import subscription
 
 try:
     import IPython.display
@@ -6,41 +17,59 @@ except:
     pass
 
 import fiftyone.core.context as focx
+import fiftyone.core.session.events as fose
+import fiftyone.core.session.templates as fost
 
 
-@dataclass
-class DisplayCall:
+@dataclass(frozen=True)
+class NotebookCell:
     address: str
-    handle: IPython.display.DisplayHandle
+    height: int
+    handle: "IPython.display.DisplayHandle"
     port: int
     subscription: str
-    update: bool
 
 
-def display(call: DisplayCall):
+def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
+    cell.handle.update(
+        IPython.display.HTML(
+            fost.SCREENSHOT_HTML.render(
+                subscription=cell.subscription,
+                image=data.src,
+                url=focx.get_url(cell.address, cell.port),
+                max_width=data.width,
+            )
+        )
+    )
+
+
+def display(cell: NotebookCell, reactivate: bool = False) -> None:
     """Displays a running FiftyOne instance."""
     funcs = {
         focx._COLAB: display_colab,
         focx._IPYTHON: display_ipython,
-        focx._DATABRICKS: display_databricks,
     }
     fn = funcs[focx._get_context()]
-    fn(session, handle, uuid, port, address, height, update=update)
+    fn(cell, reactivate)
 
 
-def display_ipython(call):
-    import IPython.display
-
-    address = address or "localhost"
-    src = "http://%s:%d/?subscription=%s" % (address, port, uuid)
-    iframe = IPython.display.IFrame(src, height=height, width="100%")
-    if update:
-        handle.update(iframe)
+def display_ipython(cell: NotebookCell, reactivate: bool = False) -> None:
+    iframe = IPython.display.IFrame(
+        focx.get_url(
+            cell.address,
+            os.environ.get("FIFTYONE_APP_CLIENT_PORT", cell.port),
+            subscription=cell.subscription,
+        ),
+        height=cell.height,
+        width="100%",
+    )
+    if reactivate:
+        cell.handle.update(iframe)
     else:
-        handle.display(iframe)
+        cell.handle.display(iframe)
 
 
-def display_colab(session, handle, uuid, port, address, height, update=False):
+def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -55,74 +84,30 @@ def display_colab(session, handle, uuid, port, address, height, update=False):
     we manually fetch the FiftyOne index page with an XHR in the output frame,
     and inject the raw HTML into `document.body`.
     """
-    import IPython.display
-
     # pylint: disable=no-name-in-module,import-error
     from google.colab import output
 
-    style_text = Template(fout._SCREENSHOT_STYLE).render(handle=uuid)
-    html = Template(fout._SCREENSHOT_COLAB).render(
-        style=style_text, handle=uuid
+    style_text = Template(fost.SCREENSHOT_STYLE).render(
+        subscription=cell.subscription
     )
-    script = Template(fout._SCREENSHOT_COLAB_SCRIPT).render(
-        port=port, handle=uuid, height=height
+    html = Template(fost.SCREENSHOT_COLAB).render(
+        style=style_text, subscription=cell.subscription
+    )
+    script = Template(fost.SCREENSHOT_COLAB_SCRIPT).render(
+        height=cell.height, port=cell.port, subscription=cell.subscription
     )
 
-    handle.display(IPython.display.HTML(html))
+    cell.handle.display(IPython.display.HTML(html))
     output.eval_js(script)
 
     def capture(img: str, width: int) -> None:
-        idx = session._colab_img_counter[uuid]
-        session._colab_img_counter[uuid] = idx + 1
-        with output.redirect_to_element("#focontainer-%s" % uuid):
-            # pylint: disable=undefined-variable,bad-format-character
+        with output.redirect_to_element(f"#focontainer-{cell.subscription}"):
             display(
                 IPython.display.HTML(
-                    """
-                <img id='fo-%s%d' class='foimage' src='%s'
-                    style='width: 100%%; max-width: %dpx'/>
-                <style>
-                #fo-%s%d {
-                    display: none;
-                }
-                </style>
-                """
-                    % (uuid, idx, img, width, uuid, idx - 1)
+                    f"<img src='{img}' style='width: 100%%; max-width: {width}px;'/>"
                 )
             )
 
-    output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
-
-
-def display_databricks(
-    session, handle, uuid, port, address, height, update=False
-) -> None:
-    """Display a FiftyOne instance in a Databricks output frame.
-
-    The Databricks driver port is accessible via a proxy url and can be displayed inside an IFrame.
-    """
-    ipython = IPython.get_ipython()
-    display_html = ipython.user_ns["displayHTML"]
-
-    dbutils = ipython.user_ns["dbutils"]
-    ctx = json.loads(
-        dbutils.entry_point.getDbutils().notebook().getContext().toJson()
+    output.register_callback(
+        f"fiftyone.{cell.subscription.replace('-', '_')}", capture
     )
-    ctx_tags = ctx["tags"]
-    browser_host_name = ctx_tags["browserHostName"]
-    org_id = ctx_tags["orgId"]
-    cluster_id = ctx_tags["clusterId"]
-    url = f"https://{browser_host_name}/driver-proxy/o/{org_id}/{cluster_id}/{port}/"
-
-    frame_id = f"fiftyone-frame-{uuid}"
-    proxy_url = f"{url}?subscription={uuid}"
-    html_string = f"""
-    <div style="margin-bottom: 16px">
-        <a href="{proxy_url}">
-            Open in a new tab
-        </a>
-        <span style="margin-left: 1em; color: #a3a3a3">Note: FiftyOne is only available when this notebook remains attached to the cluster.</span>
-    </div>
-    <iframe id="{frame_id}" width="100%" height="{height}" frameborder="0" src="{proxy_url}"></iframe>
-    """
-    display_html(html_string)

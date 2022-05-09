@@ -1,6 +1,6 @@
+import { useTheme } from "@fiftyone/components";
 import React, { MouseEventHandler } from "react";
 import styled from "styled-components";
-import { useTheme } from "../utils/hooks";
 
 const Container = styled.div`
   display: flex;

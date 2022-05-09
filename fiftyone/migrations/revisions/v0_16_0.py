@@ -5,7 +5,6 @@ FiftyOne v0.16.0 revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 
 
 def up(db, dataset_name):
@@ -101,34 +100,13 @@ def _infer_fields(coll, name, embedded_doc_type):
             ltype = embedded_doc_type[:-1]  # remove "s"
             field["subfield"] = "fiftyone.core.fields.EmbeddedDocumentField"
             field["embedded_doc_type"] = ltype
-            field["fields"] = _do_infer_fields(
-                coll, list_path, ltype, is_list_field=True
-            )
-
+            field["fields"] = _do_infer_fields(coll, list_path, ltype)
     return fields
 
 
-def _do_infer_fields(coll, path, embedded_doc_type, is_list_field=False):
-    pipeline = _build_pipeline(path, is_list_field=is_list_field)
-    result = coll.aggregate(pipeline, allowDiskUse=True)
-    fields = _parse_result(result)
-
-    default_fields = _DEFAULT_LABEL_FIELDS.get(embedded_doc_type, None)
-    if default_fields is not None:
-        fields = _merge_fields(fields, default_fields)
-
+def _do_infer_fields(coll, path, embedded_doc_type):
+    fields = _DEFAULT_LABEL_FIELDS.get(embedded_doc_type, [])
     return [_make_field_doc(*f) for f in fields]
-
-
-def _merge_fields(fields, default_fields):
-    merged_fields = default_fields.copy()
-    default_names = set(f[0] for f in default_fields)
-
-    for f in fields:
-        if f[0] not in default_names:
-            merged_fields.append(f)
-
-    return merged_fields
 
 
 def _make_field_doc(name, ftype, subfield):
@@ -146,70 +124,6 @@ def _make_field_doc(name, ftype, subfield):
         "db_field": db_field,
         "fields": [],
     }
-
-
-def _build_pipeline(path, is_list_field=False):
-    pipeline = [{"$project": {path: True}}]
-
-    if is_list_field:
-        pipeline.append({"$unwind": "$" + path})
-
-    pipeline.extend(
-        [
-            {"$project": {"fields": {"$objectToArray": "$" + path}}},
-            {"$unwind": "$fields"},
-            {
-                "$group": {
-                    "_id": None,
-                    "schema": {
-                        "$addToSet": {
-                            "$concat": [
-                                "$fields.k",
-                                ".",
-                                {"$type": "$fields.v"},
-                            ]
-                        }
-                    },
-                }
-            },
-        ]
-    )
-
-    return pipeline
-
-
-def _parse_result(result):
-    result = list(result)
-
-    if not result:
-        return []
-
-    schema = defaultdict(set)
-    for name_and_type in result[0]["schema"]:
-        name, mongo_type = name_and_type.split(".", 1)
-        if name == "_cls":
-            continue
-
-        if mongo_type == "objectId" and name.startswith("_"):
-            name = name[1:]  # "_id" -> "id"
-
-        if mongo_type not in ("null", "missing", "undefined"):
-            schema[name].add(mongo_type)
-
-    fields = []
-    for name, mongo_types in schema.items():
-        if len(mongo_types) > 1:
-            # Field contains multiple types, must use generic `Field`
-            mongo_types = [None]
-
-        if len(mongo_types) == 1:
-            mongo_type = next(iter(mongo_types))
-            ftype = _MONGO_TO_FIFTYONE_TYPES.get(
-                mongo_type, "fiftyone.core.fields.Field"
-            )
-            fields.append((name, ftype, None))
-
-    return fields
 
 
 # format: (name, ftype, subfield)
@@ -359,16 +273,4 @@ _LABEL_LIST_FIELDS = {
     "fiftyone.core.labels.Keypoints": "keypoints",
     "fiftyone.core.labels.Polylines": "polylines",
     "fiftyone.core.labels.TemporalDetections": "detections",
-}
-
-_MONGO_TO_FIFTYONE_TYPES = {
-    "string": "fiftyone.core.fields.StringField",
-    "bool": "fiftyone.core.fields.BooleanField",
-    "int": "fiftyone.core.fields.IntField",
-    "long": "fiftyone.core.fields.IntField",
-    "double": "fiftyone.core.fields.FloatField",
-    "decimal": "fiftyone.core.fields.FloatField",
-    "array": "fiftyone.core.fields.ListField",
-    "object": "fiftyone.core.fields.DictField",
-    "objectId": "fiftyone.core.fields.ObjectIdField",
 }

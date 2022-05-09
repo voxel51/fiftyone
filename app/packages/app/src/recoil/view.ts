@@ -1,6 +1,5 @@
 import { atom, selector } from "recoil";
 
-import * as atoms from "./atoms";
 import { State } from "./types";
 
 export const view = atom<State.Stage[]>({
@@ -8,12 +7,9 @@ export const view = atom<State.Stage[]>({
   default: [],
 });
 
-export const viewCls = selector<string>({
+export const viewCls = atom<string>({
   key: "viewCls",
-  get: ({ get }) => get(atoms.stateDescription)?.viewCls,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  default: null,
 });
 
 export const isRootView = selector<boolean>({
