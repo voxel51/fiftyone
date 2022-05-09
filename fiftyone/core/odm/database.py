@@ -455,27 +455,28 @@ def drop_orphan_run_results(dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
 
-    results_in_use = set()
+    result_ids_in_use = set()
     for name in list_datasets():
         dataset_dict = conn.datasets.find_one({"name": name})
-        results_in_use.update(_get_result_ids(dataset_dict=dataset_dict))
+        run_ids = _get_run_ids(dataset_dict)
+        result_ids_in_use.update(_get_result_ids(run_ids))
 
     all_run_results = set(conn.fs.files.distinct("_id", {}, {}))
 
-    orphan_results = [
-        _id for _id in all_run_results if _id not in results_in_use
+    orphan_result_ids = [
+        _id for _id in all_run_results if _id not in result_ids_in_use
     ]
 
-    if not orphan_results:
+    if not orphan_result_ids:
         return
 
     _logger.info(
         "Deleting %d orphan run result(s): %s",
-        len(orphan_results),
-        orphan_results,
+        len(orphan_result_ids),
+        orphan_result_ids,
     )
     if not dry_run:
-        _delete_run_results(orphan_results)
+        _delete_run_results(orphan_result_ids)
 
 
 def stream_collection(collection_name):
@@ -676,19 +677,18 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    delete_results = _get_result_ids(dataset_dict=dataset_dict)
+    run_ids = _get_run_ids(dataset_dict)
+    result_ids = _get_result_ids(run_ids)
 
-    if delete_results:
-        _logger.info("Deleting %d run result(s)", len(delete_results))
+    if result_ids:
+        _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
-            _delete_run_results(delete_results)
+            _delete_run_results(result_ids)
 
-    delete_runs = _get_run_ids(dataset_dict)
-
-    if delete_runs:
-        _logger.info("Deleting %d run docs(s)", len(delete_runs))
+    if run_ids:
+        _logger.info("Deleting %d run doc(s)", len(run_ids))
         if not dry_run:
-            _delete_run_docs(delete_runs)
+            _delete_run_docs(run_ids)
 
 
 def delete_annotation_run(name, anno_key, dry_run=False):
@@ -710,39 +710,13 @@ def delete_annotation_run(name, anno_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    annotation_runs = dataset_dict.get("annotation_runs", {})
-    if anno_key not in annotation_runs:
-        _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'",
-            name,
-            anno_key,
-        )
-        return
-
-    run_id = annotation_runs.pop(anno_key)
-
-    run_doc = conn.runs.find_one({"_id": run_id})
-    result_id = run_doc.get("results", None)
-
-    if result_id is not None:
-        _logger.info("Deleting annotation result '%s'", result_id)
-        if not dry_run:
-            _delete_run_results([result_id])
-
-    _logger.info(
-        "Deleting annotation run '%s' from dataset '%s'", anno_key, name
+    _delete_run(
+        name,
+        anno_key,
+        "annotation_runs",
+        "annotation",
+        dry_run=dry_run,
     )
-    if not dry_run:
-        conn.runs.delete_one({"_id": run_id})
-        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_annotation_runs(name, dry_run=False):
@@ -762,35 +736,12 @@ def delete_annotation_runs(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    anno_keys, run_ids = zip(dataset_dict.get("annotation_runs", {}).items())
-
-    if not anno_keys:
-        _logger.info("Dataset '%s' has no annotation runs", name)
-        return
-
-    result_ids = _get_result_ids(run_ids=run_ids)
-
-    if result_ids:
-        _logger.info("Deleting %d annotation result(s)", len(result_ids))
-        if not dry_run:
-            _delete_run_results(result_ids)
-
-    _logger.info(
-        "Deleting annotation runs %s from dataset '%s'", anno_keys, name
+    _delete_runs(
+        name,
+        "annotation_runs",
+        "annotation",
+        dry_run=dry_run,
     )
-    if not dry_run:
-        _delete_run_docs(run_ids)
-
-        dataset_dict["annotation_runs"] = {}
-        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_brain_run(name, brain_key, dry_run=False):
@@ -812,39 +763,13 @@ def delete_brain_run(name, brain_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_methods = dataset_dict.get("brain_methods", {})
-    if brain_key not in brain_methods:
-        _logger.warning(
-            "Dataset '%s' has no brain method run with key '%s'",
-            name,
-            brain_key,
-        )
-        return
-
-    run_id = brain_methods.pop(brain_key)
-
-    run_doc = conn.runs.find_one({"_id": run_id})
-    result_id = run_doc.get("results", None)
-
-    if result_id is not None:
-        _logger.info("Deleting brain method result '%s'", result_id)
-        if not dry_run:
-            _delete_run_results([result_id])
-
-    _logger.info(
-        "Deleting brain method run '%s' from dataset '%s'", brain_key, name
+    _delete_run(
+        name,
+        brain_key,
+        "brain_methods",
+        "brain method",
+        dry_run=dry_run,
     )
-    if not dry_run:
-        conn.runs.delete_one({"_id": run_id})
-        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_brain_runs(name, dry_run=False):
@@ -864,37 +789,12 @@ def delete_brain_runs(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    brain_keys, run_ids = zip(dataset_dict.get("brain_methods", {}).items())
-
-    if not brain_keys:
-        _logger.info("Dataset '%s' has no brain method runs", name)
-        return
-
-    result_ids = _get_result_ids(run_ids=run_ids)
-
-    if result_ids:
-        _logger.info("Deleting %d brain method result(s)", len(result_ids))
-        if not dry_run:
-            _delete_run_results(result_ids)
-
-    _logger.info(
-        "Deleting brain method runs %s from dataset '%s'",
-        brain_keys,
+    _delete_runs(
         name,
+        "brain_methods",
+        "brain method",
+        dry_run=dry_run,
     )
-    if not dry_run:
-        _delete_run_docs(run_ids)
-
-        dataset_dict["brain_methods"] = {}
-        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def delete_evaluation(name, eval_key, dry_run=False):
@@ -916,35 +816,13 @@ def delete_evaluation(name, eval_key, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    evaluations = dataset_dict.get("evaluations", {})
-    if eval_key not in evaluations:
-        _logger.warning(
-            "Dataset '%s' has no evaluation with key '%s'", name, eval_key
-        )
-        return
-
-    run_id = evaluations.pop(eval_key)
-
-    run_doc = conn.runs.find_one({"_id": run_id})
-    result_id = run_doc.get("results", None)
-
-    if result_id is not None:
-        _logger.info("Deleting evaluation result '%s'", result_id)
-        if not dry_run:
-            _delete_run_results([result_id])
-
-    _logger.info("Deleting evaluation '%s' from dataset '%s'", eval_key, name)
-    if not dry_run:
-        conn.runs.delete_one({"_id": run_id})
-        conn.datasets.replace_one({"name": name}, dataset_dict)
+    _delete_run(
+        name,
+        eval_key,
+        "evaluations",
+        "evaluation",
+        dry_run=dry_run,
+    )
 
 
 def delete_evaluations(name, dry_run=False):
@@ -964,35 +842,12 @@ def delete_evaluations(name, dry_run=False):
         dry_run (False): whether to log the actions that would be taken but not
             perform them
     """
-    conn = get_db_conn()
-    _logger = _get_logger(dry_run=dry_run)
-
-    dataset_dict = conn.datasets.find_one({"name": name})
-    if not dataset_dict:
-        _logger.warning("Dataset '%s' not found", name)
-        return
-
-    eval_keys, run_ids = zip(dataset_dict.get("evaluations", {}).items())
-
-    if not eval_keys:
-        _logger.info("Dataset '%s' has no evaluation runs", name)
-        return
-
-    result_ids = _get_result_ids(run_ids=run_ids)
-
-    if result_ids:
-        _logger.info("Deleting %d evaluation result(s)", len(result_ids))
-        if not dry_run:
-            _delete_run_results(result_ids)
-
-    _logger.info(
-        "Deleting evaluation runs %s from dataset '%s'", eval_keys, name
+    _delete_runs(
+        name,
+        "evaluations",
+        "evaluation",
+        dry_run=dry_run,
     )
-    if not dry_run:
-        _delete_run_docs(run_ids)
-
-        dataset_dict["evaluations"] = {}
-        conn.datasets.replace_one({"name": name}, dataset_dict)
 
 
 def _get_logger(dry_run=False):
@@ -1008,6 +863,84 @@ class _DryRunLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
+def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    runs = dataset_dict.get(runs_field, {})
+    if run_key not in runs:
+        _logger.warning(
+            "Dataset '%s' has no %s run with key '%s'",
+            dataset_name,
+            run_str,
+            run_key,
+        )
+        return
+
+    _logger.info(
+        "Deleting %s run '%s' from dataset '%s'",
+        run_str,
+        run_key,
+        dataset_name,
+    )
+
+    run_id = runs.pop(run_key)
+
+    run_doc = conn.runs.find_one({"_id": run_id})
+    result_id = run_doc.get("results", None)
+    if result_id is not None:
+        _logger.info("Deleting %s result '%s'", run_str, result_id)
+        if not dry_run:
+            _delete_run_results([result_id])
+
+    if not dry_run:
+        _logger.info("Deleting %s doc '%s'", run_str, run_id)
+        conn.runs.delete_one({"_id": run_id})
+
+        conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
+
+
+def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    run_keys, run_ids = zip(dataset_dict.get(runs_field, {}).items())
+
+    if not run_keys:
+        _logger.info("Dataset '%s' has no %s runs", dataset_name, run_str)
+        return
+
+    _logger.info(
+        "Deleting %s runs %s from dataset '%s'",
+        run_str,
+        run_keys,
+        dataset_name,
+    )
+
+    result_ids = _get_result_ids(run_ids)
+    if result_ids:
+        _logger.info("Deleting %d %s result(s)", len(result_ids), run_str)
+        if not dry_run:
+            _delete_run_results(result_ids)
+
+    if not dry_run:
+        _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
+        _delete_run_docs(run_ids)
+
+        dataset_dict[runs_field] = {}
+        conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
+
+
 def _get_run_ids(dataset_dict):
     return (
         list(dataset_dict.get("annotation_runs", {}).values())
@@ -1016,10 +949,7 @@ def _get_run_ids(dataset_dict):
     )
 
 
-def _get_result_ids(dataset_dict=None, run_ids=None):
-    if dataset_dict is not None:
-        run_ids = _get_run_ids(dataset_dict)
-
+def _get_result_ids(run_ids):
     if not run_ids:
         return []
 
