@@ -24,7 +24,7 @@ import { getSampleSrc, lookerType } from "../recoil/utils";
 import { pathFilter } from "./Filters";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
-import { LIST_FIELD } from "@fiftyone/utilities";
+import { Field, LIST_FIELD, Schema } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 
 const Header = styled.div`
@@ -409,7 +409,7 @@ const useFullscreen = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(selectors.selectedLabels, {}),
+    ({ set }) => async () => set(atoms.selectedLabels, {}),
     []
   );
 };
@@ -438,7 +438,6 @@ const Looker = ({
   );
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-
   const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
@@ -450,6 +449,8 @@ const Looker = ({
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
+  const view = useRecoilValue(viewAtoms.view);
+  const dataset = useRecoilValue(selectors.datasetName);
 
   const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
 
@@ -472,9 +473,11 @@ const Looker = ({
               frames: {
                 fields: frameFieldSchema,
                 ftype: LIST_FIELD,
-              },
+              } as Field,
             }
           : fieldSchema,
+        view,
+        dataset,
         ...etc,
       },
       {

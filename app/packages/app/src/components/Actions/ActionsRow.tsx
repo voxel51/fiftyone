@@ -1,11 +1,13 @@
 import React, {
   MutableRefObject,
+  RefCallback,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
+  ArrowDownward,
   Bookmark,
   Check,
   FlipToBack,
@@ -26,7 +28,10 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
 import OptionsActions from "./Options";
+import ExportAction from "./Export";
 import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
@@ -34,9 +39,14 @@ import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
-import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
+import {
+  useEventHandler,
+  useOutsideClick,
+  useTheme,
+  useUnprocessedStateUpdate,
+} from "../../utils/hooks";
 import Similar, { similarityParameters } from "./Similar";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { useLayer } from "react-laag";
 
 const Loading = () => {
   const theme = useTheme();
@@ -100,7 +110,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   if (!hasSimilarity && !hasSorting) {
     return null;
   }
-
   return (
     <ActionDiv ref={ref}>
       <PillButton
@@ -283,6 +292,7 @@ const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
   const similarity = useRecoilValue(similarityParameters);
   const loading = useRecoilValue(savingFilters);
+  const updateState = useUnprocessedStateUpdate();
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) => async () => {
@@ -291,7 +301,7 @@ const SaveFilters = () => {
         return;
       }
       set(savingFilters, true);
-      sendPatch(snapshot).then(() => {
+      sendPatch(snapshot, updateState, null, (set) => {
         set(savingFilters, false);
         set(similarityParameters, null);
       });
@@ -313,10 +323,11 @@ const SaveFilters = () => {
   ) : null;
 };
 
-const ToggleSidebar = ({ modal }: { modal: boolean }) => {
+const ToggleSidebar: React.FC<{
+  modal: boolean;
+}> = React.forwardRef(({ modal, ...props }, ref) => {
   const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
 
-  const style = modal ? { right: "-3.5rem" } : { left: "-3.5rem" };
   return (
     <PillButton
       onClick={() => {
@@ -338,8 +349,29 @@ const ToggleSidebar = ({ modal }: { modal: boolean }) => {
         )
       }
       highlight={!visible}
-      style={{ height: "2rem", position: "absolute", ...style, zIndex: 1 }}
+      ref={ref}
     />
+  );
+});
+
+const Export = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+  useOutsideClick(ref, () => open && setOpen(false));
+  const [mRef, bounds] = useMeasure();
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<ArrowDownward />}
+        open={open}
+        onClick={() => setOpen(!open)}
+        highlight={open}
+        ref={mRef}
+        title={"Export CSV"}
+      />
+      {open && <ExportAction close={() => setOpen(false)} bounds={bounds} />}
+    </ActionDiv>
   );
 };
 
@@ -347,21 +379,23 @@ const ActionsRowDiv = styled.div`
   position: relative;
   display: flex;
   justify-content: ltr;
-  margin-top: 2.5px;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
+  align-items: center;
 `;
 
 export const GridActionsRow = () => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+
   return (
-    <ActionsRowDiv style={{ marginLeft: "1rem" }}>
+    <ActionsRowDiv>
       <ToggleSidebar modal={false} />
       <Options modal={false} />
       <Tag modal={false} />
       <Patches />
       {!isVideo && <Similarity modal={false} />}
       <SaveFilters />
+      <Export />
       <Selected modal={false} />
     </ActionsRowDiv>
   );
@@ -373,10 +407,10 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<VideoLooker>;
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
+
   return (
     <ActionsRowDiv
       style={{
-        marginRight: "2rem",
         flexDirection: "row-reverse",
         justifyContent: "rtl",
         right: 0,
@@ -387,7 +421,6 @@ export const ModalActionsRow = ({
       {!isVideo && <Similarity modal={true} />}
       <Tag modal={true} lookerRef={lookerRef} />
       <Options modal={true} />
-
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

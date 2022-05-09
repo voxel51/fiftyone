@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 
 
 def get_version():
@@ -32,9 +32,11 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
+    "dacite>=1.6.0,<2",
     "Deprecated",
     "eventlet",
     "future",
+    "hypercorn>=0.13.2,<14",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
@@ -55,8 +57,11 @@ INSTALL_REQUIRES = [
     "scikit-learn",
     "scikit-image",
     "setuptools",
+    "sseclient-py>=1.7.2,<2",
+    "sse-starlette>=0.10.3,<1",
+    "starlette==0.16.0",
+    "strawberry-graphql==0.96.0",
     "tabulate",
-    "tornado>=5.1.1,<7",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # teams specific
@@ -108,7 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.10.3,<0.11"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.11.0,<0.12"]}
 
 
 with open("README.md", "r") as fh:

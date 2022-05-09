@@ -2,22 +2,15 @@ import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
-import { v4 as uuid } from "uuid";
 
 import * as atoms from "../../recoil/atoms";
 import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { useTheme } from "../../utils/hooks";
-import { request } from "../../utils/socket";
-import {
-  datasetName,
-  hiddenLabelsArray,
-  selectedLabels,
-} from "../../recoil/selectors";
-import { http } from "../../shared/connection";
+import { datasetName, hiddenLabelsArray } from "../../recoil/selectors";
 import { view } from "../../recoil/view";
-import { toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -90,8 +83,6 @@ export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   },
 });
 
-const url = `${http}/tags`;
-
 export const tagStatistics = selectorFamily<
   {
     count: number;
@@ -109,29 +100,21 @@ export const tagStatistics = selectorFamily<
       labels = toSnakeCase(get(atoms.stateDescription).selectedLabels);
     }
 
-    const { count, tags } = await fetch(url, {
-      method: "POST",
-      cache: "no-cache",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      mode: "cors",
-      body: JSON.stringify({
-        dataset: get(datasetName),
-        view: get(view),
-        active_label_fields: activeLabels,
-        sample_ids: selected.size
-          ? [...selected]
-          : modal
-          ? [get(atoms.modal).sample._id]
-          : null,
-        labels,
-        count_labels,
-        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
-        hidden_labels:
-          modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
-      }),
-    }).then((response) => response.json());
+    const { count, tags } = await getFetchFunction()("POST", "/tagging", {
+      dataset: get(datasetName),
+      view: get(view),
+      active_label_fields: activeLabels,
+      sample_ids: selected.size
+        ? [...selected]
+        : modal
+        ? [get(atoms.modal).sample._id]
+        : null,
+      labels,
+      count_labels,
+      filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+      hidden_labels:
+        modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
+    });
 
     return { count, tags };
   },

@@ -22,11 +22,13 @@ logger = logging.getLogger(__name__)
 class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
-
     Args:
         datasets (None): the list of available datasets
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         view (None): the current :class:`fiftyone.core.view.DatasetView`
+        filters (None): a dictionary of currently active field filters
+        settings (None): a dictionary of the current field settings, if any
+        connected (False): whether the session is connected to an App
         active_handle (None): the UUID of the currently active App. Only
             applicable in notebook contexts
         selected (None): the list of currently selected samples
@@ -41,6 +43,9 @@ class StateDescription(etas.Serializable):
         datasets=None,
         dataset=None,
         view=None,
+        filters=None,
+        settings=None,
+        connected=False,
         active_handle=None,
         selected=None,
         selected_labels=None,
@@ -51,6 +56,8 @@ class StateDescription(etas.Serializable):
         self.datasets = datasets or fod.list_datasets()
         self.dataset = dataset
         self.view = view
+        self.filters = filters or {}
+        self.connected = connected
         self.active_handle = active_handle
         self.selected = selected or []
         self.selected_labels = selected_labels or []
@@ -80,9 +87,6 @@ class StateDescription(etas.Serializable):
                         _dataset["media_type"] = _tmp["media_type"]
                         _dataset["sample_fields"] = _tmp["sample_fields"]
                         _dataset["frame_fields"] = _tmp["frame_fields"]
-                        _dataset["app_sidebar_groups"] = _tmp.get(
-                            "app_sidebar_groups", None
-                        )
 
             d["dataset"] = _dataset
             d["view"] = _view
@@ -104,13 +108,11 @@ class StateDescription(etas.Serializable):
     @classmethod
     def from_dict(cls, d, with_config=None):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
-
         Args:
             d: a JSON dictionary
             with_config (None): an existing
                 :class:`fiftyone.core.config.AppConfig` to attach and apply
                 settings to
-
         Returns:
             :class:`StateDescription`
         """
@@ -124,6 +126,8 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
+        filters = d.get("filters", {})
+        connected = d.get("connected", False)
         active_handle = d.get("active_handle", None)
         selected = d.get("selected", [])
         selected_labels = d.get("selected_labels", [])
@@ -142,6 +146,8 @@ class StateDescription(etas.Serializable):
         return cls(
             dataset=dataset,
             view=view,
+            filters=filters,
+            connected=connected,
             active_handle=active_handle,
             selected=selected,
             selected_labels=selected_labels,

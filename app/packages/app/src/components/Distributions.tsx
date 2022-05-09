@@ -1,6 +1,6 @@
-import React, { useState, useRef, PureComponent, useEffect } from "react";
+import React, { useRef, PureComponent } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
-import { useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import useMeasure from "react-use-measure";
 import { scrollbarStyles } from "./utils";
@@ -13,12 +13,15 @@ import {
   isFloat,
   prettify,
 } from "../utils/generic";
-import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as viewAtoms from "../recoil/view";
 import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { meetsType } from "../recoil/schema";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  getFetchFunction,
+} from "@fiftyone/utilities";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -75,17 +78,17 @@ const Title = styled.div`
   line-height: 2rem;
 `;
 
-const Distribution = ({ distribution }) => {
-  const { name, data, ticks, type } = distribution;
+const Distribution: React.FC<{ distribution: Distribution }> = (props) => {
+  const { path, data, ticks, type } = props.distribution;
   const [ref, { height }] = useMeasure();
   const barWidth = 24;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isDateTime = useRecoilValue(
-    meetsType({ path: name, ftype: DATE_TIME_FIELD })
+    meetsType({ path, ftype: DATE_TIME_FIELD })
   );
-  const isDate = useRecoilValue(meetsType({ path: name, ftype: DATE_FIELD }));
+  const isDate = useRecoilValue(meetsType({ path, ftype: DATE_FIELD }));
   const timeZone = useRecoilValue(selectors.timeZone);
   const ticksSetting =
     ticks === 0
@@ -115,7 +118,7 @@ const Distribution = ({ distribution }) => {
 
   return (
     <Container ref={ref}>
-      <Title>{`${name}${hasMore ? ` (first ${data.length})` : ""}`}</Title>
+      <Title>{`${path}${hasMore ? ` (first ${data.length})` : ""}`}</Title>
       <BarChart
         ref={container}
         height={height - 37}
@@ -196,49 +199,52 @@ const DistributionsContainer = styled.div`
   ${scrollbarStyles}
 `;
 
+interface Distribution {
+  path: string;
+  type: string;
+  data: { key: string }[];
+  ticks: number;
+}
+
+const distributions = selectorFamily<Distribution[], string>({
+  key: "distributions",
+  get: (group) => async ({ get }) => {
+    get(selectors.refresh);
+    const { distributions } = await getFetchFunction()(
+      "POST",
+      "/distributions",
+      {
+        group: group.toLowerCase(),
+        limit: LIMIT,
+        view: get(viewAtoms.view),
+        dataset: get(selectors.datasetName),
+        get: get(filterAtoms.filters),
+      }
+    );
+
+    return distributions as Distribution[];
+  },
+});
+
 const Distributions = ({ group }: { group: string }) => {
-  const view = useRecoilValue(viewAtoms.view);
-  const filters = useRecoilValue(filterAtoms.filters);
-  const datasetName = useRecoilValue(selectors.datasetName);
-  const [loading, setLoading] = useState(true);
-  const refresh = useRecoilValue(selectors.refresh);
-  const [data, setData] = useState([]);
+  const data = useRecoilValueLoadable(distributions(group));
 
-  useSendMessage(
-    "distributions",
-    { group: group.toLowerCase(), limit: LIMIT },
-    null,
-    [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]
-  );
-
-  useMessageHandler("distributions", ({ results }) => {
-    setLoading(false);
-    setData(results);
-  });
-
-  useEffect(() => {
-    setData([]);
-    setLoading(true);
-  }, [
-    JSON.stringify(view),
-    JSON.stringify(filters),
-    datasetName,
-    refresh,
-    group,
-  ]);
-
-  if (loading) {
+  if (data.state === "loading") {
     return <Loading />;
   }
 
-  if (data.length === 0) {
+  if (data.state === "hasError") {
+    throw data.contents;
+  }
+
+  if (data.contents.length === 0) {
     return <Loading text={`No ${group.toLowerCase()}`} />;
   }
 
   return (
     <DistributionsContainer>
-      {data.map((distribution, i) => {
-        return <Distribution key={i} distribution={distribution} />;
+      {data.contents.map((d: Distribution, i) => {
+        return <Distribution key={i} distribution={d} />;
       })}
     </DistributionsContainer>
   );

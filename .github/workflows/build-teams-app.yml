@@ -1,0 +1,76 @@
+name: Build Teams App
+
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - teams-app-v*
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Build app
+        working-directory: package/teams
+        run: make app
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-v//")" >> $GITHUB_ENV
+          fi
+      - name: Build python
+        working-directory: package/teams
+        run: make python -o app
+      - name: Upload dist
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: package/teams/dist/
+          retention-days: 1
+
+  publish:
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/teams-app-v')
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+          path: dist
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: teams-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_TEAMS_PYPI_PASSWORD }}
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload --repository-url https://pypi.fiftyone.ai dist/*

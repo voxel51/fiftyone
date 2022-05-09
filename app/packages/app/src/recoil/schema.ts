@@ -16,6 +16,7 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { sidebarGroupsDefinition } from "../components/Sidebar";
 
 const RESERVED_FIELDS = [
   "id",
@@ -120,9 +121,6 @@ export const fieldSchema = selectorFamily<
 
     return fields;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const pathIsShown = selectorFamily<boolean, string>({
@@ -224,15 +222,18 @@ export const fieldPaths = selectorFamily<
       return f(sampleLabels.concat(frameLabels).sort());
     }
 
-    return Object.entries(get(field(path)).fields)
+    const fieldValue = get(field(path));
+
+    if (!fieldValue) {
+      return [];
+    }
+
+    return Object.entries(fieldValue.fields)
       .filter(
         ([_, field]) =>
           !ftype || meetsFieldType(field, { ftype, embeddedDocType })
       )
       .map(([name]) => name);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -256,9 +257,6 @@ export const fields = selectorFamily<
       .map((name) =>
         get(field(params.path ? [params.path, name].join(".") : name))
       );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -293,9 +291,6 @@ export const field = selectorFamily<Field, string>({
 
     return field;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
@@ -306,9 +301,6 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     return paths.filter((path) =>
       LABELS.includes(get(field(path)).embeddedDocType)
     );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -332,15 +324,18 @@ export const labelPaths = selectorFamily<
       return path;
     });
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
   get: (path) => ({ get }) => {
-    const { embeddedDocType } = get(field(path));
+    const data = get(field(path));
+
+    if (!data) {
+      return path;
+    }
+
+    const { embeddedDocType } = data;
 
     if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {
       const typePath = embeddedDocType.split(".");
@@ -365,9 +360,6 @@ export const labelPath = selectorFamily<string, string>({
     }
 
     return path;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -404,9 +396,6 @@ export const activeField = selectorFamily<
       active ? [path, ...fields] : fields.filter((field) => field !== path)
     );
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const activeTags = selectorFamily<string[], boolean>({
@@ -428,9 +417,6 @@ export const activeTags = selectorFamily<string[], boolean>({
       }
       set(activeFields({ modal }), active);
     }
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -454,9 +440,6 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
       set(activeFields({ modal }), active);
     }
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const activeLabelFields = selectorFamily<
@@ -467,9 +450,6 @@ export const activeLabelFields = selectorFamily<
   get: ({ modal }) => ({ get }) => {
     const active = new Set(get(activeFields({ modal })));
     return get(labelFields({})).filter((field) => active.has(field));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -483,9 +463,6 @@ export const activeLabelPaths = selectorFamily<
     return get(labelFields({}))
       .filter((field) => active.has(field))
       .map((field) => get(labelPath(field)));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -513,10 +490,11 @@ export const meetsType = selectorFamily<
 
     const fieldValue = get(field(path));
 
+    if (!fieldValue) {
+      return false;
+    }
+
     return meetsFieldType(fieldValue, { ftype, embeddedDocType, acceptLists });
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -532,8 +510,5 @@ export const fieldType = selectorFamily<
     }
 
     return ftype;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });

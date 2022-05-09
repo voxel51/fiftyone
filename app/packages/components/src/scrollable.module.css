@@ -1,0 +1,26 @@
+.scrollable {
+  scrollbar-color: var(--font-darkest) var(--background);
+
+  scrollbar-gutter: stable;
+
+  scrollbar-width: auto;
+}
+
+.scrollable::-webkit-scrollbar {
+  width: 16px;
+}
+
+.scrollable::-webkit-scrollbar-track {
+  border: solid 4px transparent var(--font-darkest);
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px transparent;
+  border: solid 4px transparent;
+  border-radius: 16px;
+  transition: box-shadow linear 0.5s;
+}
+
+.scrollable:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px var(--font-darkest);
+}

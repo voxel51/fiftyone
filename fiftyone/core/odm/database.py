@@ -15,7 +15,7 @@ from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
 import mongoengine.errors as moe
-import motor
+import motor.motor_asyncio
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
@@ -141,7 +141,9 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _async_client = motor.motor_asyncio.AsyncIOMotorClient(
+            **_connection_kwargs
+        )
 
 
 def _validate_db_version(config, client):
@@ -171,13 +173,13 @@ def aggregate(collection, pipelines):
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_tornado.MotorCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
         -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_tornado.MotorCommandCursor`` is returned
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -189,7 +191,7 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-    if isinstance(collection, motor.motor_tornado.MotorCollection):
+    if isinstance(collection, motor.motor_asyncio.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             return collection.aggregate(pipelines[0], allowDiskUse=True)
 
@@ -214,20 +216,14 @@ def _do_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
-    global _async_client
-
-    async with await _async_client.start_session() as session:
-        return await asyncio.gather(
-            *[
-                _do_async_aggregate(collection, pipeline, session)
-                for pipeline in pipelines
-            ]
-        )
+    return await asyncio.gather(
+        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+    )
 
 
-async def _do_async_aggregate(collection, pipeline, session):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    return await cursor.to_list(1)
+async def _do_async_aggregate(collection, pipeline):
+    cursor = collection.aggregate(pipeline, allowDiskUse=True)
+    return [doc async for doc in cursor]
 
 
 def get_db_client():
@@ -255,7 +251,7 @@ def get_async_db_conn():
     """Returns an async connection to the database.
 
     Returns:
-        a ``motor.motor_tornado.MotorDatabase``
+        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
     _async_connect()
     db = _async_client[fo.config.database_name]

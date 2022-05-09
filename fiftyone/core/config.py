@@ -168,7 +168,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
-            default=None,
+            default="localhost",
         )
         self.desktop_app = self.parse_bool(
             d,

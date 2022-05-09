@@ -1,5 +1,3 @@
-import { rgba } from "@react-spring/shared";
-
 export const white100 = "hsl(0, 0%, 100%)";
 export const white96 = "hsl(0, 0%, 96%)";
 export const white85 = "hsl(0, 0%, 85%)";
@@ -48,7 +46,7 @@ export type ColorTheme = {
   backgroundDark: string;
   backgroundDarker: string;
   backgroundLight: string;
-  backgroundLightBorder: string; // i.e. for components with the light background color
+  backgroundLightBorder: string;
   backgroundDarkBorder: string;
   backgroundTransparent: string;
   border: string;
@@ -103,13 +101,13 @@ export const darkTheme: ColorTheme = {
 
 export const lightTheme: ColorTheme = {
   ...darkTheme,
-  background: "rgb(250, 250, 250)",
-  backgroundDark: "rgb(242, 242, 242)",
-  backgroundDarker: "rgb(233, 233, 233)",
-  backgroundLight: "rgb(220, 220, 220)",
-  backgroundLightBorder: "rgb(240, 240, 240)",
-  backgroundDarkBorder: "rgb(235, 235, 235))",
-  backgroundTransparent: "rgb(250, 250, 250, 0.7)",
+  background: "rgb(230, 230, 230)",
+  backgroundDark: "rgb(255, 255, 255)",
+  backgroundDarker: "rgb(240, 240, 244)",
+  backgroundLight: "rgb(215, 215, 215)",
+  backgroundLightBorder: "hsl(220, 2%, 78%)",
+  backgroundDarkBorder: "hsl(220, 2%, 85%)",
+  backgroundTransparent: "rgba(244, 244, 244, 0.7)",
   border: grey37,
   borderLight: grey24,
   button: "rgb(233, 233, 233)",

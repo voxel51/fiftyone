@@ -266,8 +266,7 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raised when a problem with a :class:`ViewStage` is encountered.
-    """
+    """An error raised when a problem with a :class:`ViewStage` is encountered."""
 
     pass
 
@@ -2506,8 +2505,7 @@ class GroupBy(ViewStage):
 
     @property
     def sort_expr(self):
-        """An expression defining how the sort the groups in the output view.
-        """
+        """An expression defining how the sort the groups in the output view."""
         return self._sort_expr
 
     @property

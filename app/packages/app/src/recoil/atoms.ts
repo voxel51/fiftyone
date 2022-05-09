@@ -3,11 +3,12 @@ import { atom, atomFamily } from "recoil";
 import { Sample, Dimensions } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
-
-export const connected = atom<boolean>({
-  key: "connected",
-  default: true,
-});
+import {
+  getEventSource,
+  getFetchFunction,
+  toCamelCase,
+} from "@fiftyone/utilities";
+import { getRoutingContext } from "@fiftyone/components";
 
 interface AppSample extends Sample {
   _id: string;
@@ -85,7 +86,7 @@ export const imageFilters = atomFamily<
 
 export const activePlot = atom({
   key: "activePlot",
-  default: "labels",
+  default: "Labels",
 });
 
 export const loading = atom({
@@ -100,9 +101,14 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom<State.Description>({
+export const stateDescription = atom<State.Description | null>({
   key: "stateDescription",
   default: null,
+});
+
+export const selectedLabels = atom<State.SelectedLabelMap>({
+  key: "selectedLabels",
+  default: {},
 });
 
 export const selectedSamples = atom<Set<string>>({

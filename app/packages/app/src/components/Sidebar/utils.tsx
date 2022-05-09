@@ -65,6 +65,7 @@ export const useEntries = (
   const loadingEntries = useRecoilValue(
     sidebarEntries({ modal, loadingTags: true, filtered: true })
   );
+
   return [
     entries.state === "loading" ? loadingEntries : entries.contents,
     setEntries,

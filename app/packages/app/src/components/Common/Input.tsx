@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef } from "react";
 import styled from "styled-components";
 
 import { useTheme } from "../../utils/hooks";
@@ -47,48 +47,54 @@ interface InputProps {
 }
 
 const Input = React.memo(
-  ({
-    color = null,
-    placeholder,
-    validator = () => true,
-    setter,
-    value,
-    disabled = false,
-    onEnter,
-    onFocus,
-    onBlur,
-    onKeyDown,
-  }: InputProps) => {
-    const theme = useTheme();
-    color = color ?? theme.brand;
+  forwardRef(
+    (
+      {
+        color = null,
+        placeholder,
+        validator = () => true,
+        setter,
+        value,
+        disabled = false,
+        onEnter,
+        onFocus,
+        onBlur,
+        onKeyDown,
+      }: InputProps,
+      ref
+    ) => {
+      const theme = useTheme();
+      color = color ?? theme.brand;
 
-    return (
-      <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
-        <StyledInput
-          placeholder={placeholder}
-          value={value === null ? "" : String(value)}
-          onChange={(e: React.FormEvent<HTMLInputElement>) => {
-            if (validator(e.currentTarget.value)) {
-              setter(e.currentTarget.value);
-            }
-          }}
-          onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            e.key === "Enter" && onEnter && onEnter();
-          }}
-          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            e.key === "Escape" && e.currentTarget.blur();
-            onKeyDown && onKeyDown(e);
-          }}
-          style={disabled ? { color: theme.fontDark } : {}}
-          disabled={disabled}
-          onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
-            onFocus && onFocus();
-          }}
-          onBlur={onBlur}
-        />
-      </StyledInputContainer>
-    );
-  }
+      return (
+        <StyledInputContainer style={{ borderBottom: `1px solid ${color}` }}>
+          <StyledInput
+            ref={ref}
+            placeholder={placeholder}
+            value={value === null ? "" : String(value)}
+            onChange={(e: React.FormEvent<HTMLInputElement>) => {
+              if (validator(e.currentTarget.value)) {
+                setter(e.currentTarget.value);
+              }
+            }}
+            onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              e.key === "Enter" && onEnter && onEnter();
+            }}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              e.key === "Escape" && e.currentTarget.blur();
+              onKeyDown && onKeyDown(e);
+            }}
+            style={disabled ? { color: theme.fontDark } : {}}
+            disabled={disabled}
+            onFocus={(e: React.FocusEvent<HTMLInputElement>) => {
+              onFocus && onFocus();
+            }}
+            onBlur={onBlur}
+          />
+        </StyledInputContainer>
+      );
+    }
+  )
 );
 
 export default Input;

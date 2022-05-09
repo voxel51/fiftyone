@@ -1,14 +1,16 @@
-import { selector, useRecoilCallback } from "recoil";
-
+import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
-import socket, { http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
+import {
+  selector,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+} from "recoil";
 
 import * as atoms from "./atoms";
 import * as selectors from "./selectors";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { useUnprocessedStateUpdate } from "../utils/hooks";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
@@ -17,7 +19,9 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
     return url;
   }
 
-  return `${http}/filepath/${encodeURIComponent(filepath)}?id=${id}`;
+  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
+    filepath
+  )}&id=${id}`;
 };
 
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
@@ -41,24 +45,28 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 });
 
 export const useClearModal = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async () => {
-      const fullscreen = await snapshot.getPromise(atoms.fullscreen);
+  return useRecoilTransaction_UNSTABLE(
+    ({ set, get }) => () => {
+      const fullscreen = get(atoms.fullscreen);
       if (fullscreen) {
         return;
       }
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
+      const currentOptions = get(atoms.savedLookerOptions);
       set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
-      set(atoms.modal, null);
-      set(selectors.selectedLabels, {});
+      set(atoms.selectedLabels, {});
       set(atoms.hiddenLabels, {});
+      set(atoms.modal, null);
     },
     []
   );
 };
 
-export const setState = (state: State.Description) => {
-  socket.send(packageMessage("update", { state }));
+export const useSetState = () => {
+  const updateState = useUnprocessedStateUpdate();
+  return useRecoilTransaction_UNSTABLE(
+    ({ get }) => (state: Partial<State.Description>) =>
+      getFetchFunction()("POST", "/update", {
+        state: { ...get(atoms.stateDescription), ...state },
+      }).then((data) => updateState(data))
+  );
 };
