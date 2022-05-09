@@ -257,3 +257,4 @@ class DatasetDocument(Document):
     )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    experiments = DictField(EmbeddedDocumentField(document_type=RunDocument))

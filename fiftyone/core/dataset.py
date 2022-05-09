@@ -31,8 +31,9 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
+import fiftyone.core.experiment as foex
+import fiftyone.core.expressions as foexp
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
@@ -46,6 +47,7 @@ import fiftyone.core.view as fov
 
 fost = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+foue = fou.lazy_import("fiftyone.utils.experiments")
 
 
 logger = logging.getLogger(__name__)
@@ -192,6 +194,16 @@ def delete_non_persistent_datasets(verbose=False):
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
+        if not dataset.deleted and dataset._is_experiment:
+            try:
+                parent_dataset = foue.get_parent_dataset(dataset)
+                if parent_dataset.deleted:
+                    dataset.delete()
+            except ValueError:
+                # Parent dataset not found, delete experiment dataset
+                # @todo, what if dataset cannot be loaded due to migration?
+                dataset.delete()
+
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
@@ -247,6 +259,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache = {}
         self._brain_cache = {}
         self._evaluation_cache = {}
+        self._experiment_cache = {}
 
         self._deleted = False
 
@@ -264,7 +277,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, slice):
             return self.view()[id_filepath_slice]
 
-        if isinstance(id_filepath_slice, foex.ViewExpression):
+        if isinstance(id_filepath_slice, foexp.ViewExpression):
             return self.view()[id_filepath_slice]
 
         if etau.is_container(id_filepath_slice):
@@ -320,7 +333,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _is_generated(self):
-        return self._is_patches or self._is_frames or self._is_clips
+        return (
+            self._is_patches
+            or self._is_frames
+            or self._is_clips
+            or self._is_experiment
+        )
 
     @property
     def _is_patches(self):
@@ -333,6 +351,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_clips(self):
         return self._sample_collection_name.startswith("clips.")
+
+    @property
+    def _is_experiment(self):
+        return self._sample_collection_name.startswith(
+            foue.EXPERIMENT_PREFIX + "."
+        )
 
     @property
     def media_type(self):
@@ -3424,7 +3448,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3937,7 +3964,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3973,7 +4005,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
         )
         return dataset
 
@@ -4550,6 +4585,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
+        self._experiment_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -4634,6 +4670,7 @@ def _create_dataset(
     _patches=False,
     _frames=False,
     _clips=False,
+    _experiment=False,
     _src_collection=None,
 ):
     if dataset_exists(name):
@@ -4646,7 +4683,10 @@ def _create_dataset(
         )
 
     sample_collection_name = _make_sample_collection_name(
-        patches=_patches, frames=_frames, clips=_clips
+        patches=_patches,
+        frames=_frames,
+        clips=_clips,
+        experiment=_experiment,
     )
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
@@ -4708,7 +4748,9 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _make_sample_collection_name(patches=False, frames=False, clips=False):
+def _make_sample_collection_name(
+    patches=False, frames=False, clips=False, experiment=False
+):
     conn = foo.get_db_conn()
     now = datetime.now()
 
@@ -4718,6 +4760,8 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
         prefix = "frames"
     elif clips:
         prefix = "clips"
+    elif experiment:
+        prefix = foue.EXPERIMENT_PREFIX
     else:
         prefix = "samples"
 
@@ -4742,7 +4786,7 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
 
 
-def _get_dataset_doc(collection_name, frames=False):
+def _get_dataset(collection_name, frames=False):
     if frames:
         # Clips datasets share their parent dataset's frame collection, but
         # only the parent sample collection starts with "samples."
@@ -4764,6 +4808,11 @@ def _get_dataset_doc(collection_name, frames=False):
         )
 
     dataset = load_dataset(doc["name"])
+    return dataset
+
+
+def _get_dataset_doc(collection_name, frames=False):
+    dataset = _get_dataset(collection_name, frames=frames)
     return dataset._doc
 
 
@@ -4853,10 +4902,14 @@ def _delete_dataset_doc(dataset_doc):
         if run_doc.results is not None:
             run_doc.results.delete()
 
+    for run_doc in dataset_doc.experiments.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
     dataset_doc.delete()
 
 
-def _clone_dataset_or_view(dataset_or_view, name):
+def _clone_dataset_or_view(dataset_or_view, name, sample_collection_name=None):
     if dataset_exists(name):
         raise ValueError("Dataset '%s' already exists" % name)
 
@@ -4869,7 +4922,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     dataset._reload()
 
-    sample_collection_name = _make_sample_collection_name()
+    if sample_collection_name is None:
+        sample_collection_name = _make_sample_collection_name()
     frame_collection_name = _make_frame_collection_name(sample_collection_name)
 
     #
@@ -4888,6 +4942,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
+    dataset_doc.experiments.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -4930,6 +4985,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
         dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
+        or dataset.has_experiments
     ):
         _clone_runs(clone_dataset, dataset._doc)
 
@@ -5200,10 +5256,16 @@ def _merge_dataset_doc(
             logger.warning(
                 "Evaluations cannot be merged into a non-empty dataset"
             )
+
+        if doc.evaluations:
+            logger.warning(
+                "Experiments cannot be merged into a non-empty dataset"
+            )
     else:
         dataset.delete_annotation_runs()
         dataset.delete_brain_runs()
         dataset.delete_evaluations()
+        dataset.delete_experiments()
 
         _clone_runs(dataset, doc)
 
@@ -5270,6 +5332,25 @@ def _clone_runs(dst_dataset, src_doc):
         _run_doc.results = None
         foe.EvaluationMethod.save_run_results(
             dst_dataset, eval_key, results, cache=False
+        )
+
+    #
+    # Clone experiment results
+    #
+    # GridFS files must be manually copied
+    # This works by loading the source dataset's copy of the results into
+    # memory and then writing a new copy for the destination dataset
+    #
+
+    for exp_key, run_doc in src_doc.experiments.items():
+        _run_doc = deepcopy(run_doc)
+        dst_doc.experiments[exp_key] = _run_doc
+        results = foex.ExperimentMethod.load_run_results(
+            dst_dataset, exp_key, cache=False
+        )
+        _run_doc.results = None
+        foex.ExperimentMethod.save_run_results(
+            dst_dataset, exp_key, results, cache=False
         )
 
     dst_doc.save()
