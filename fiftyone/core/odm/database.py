@@ -462,7 +462,7 @@ def drop_orphan_views(dry_run=False):
 
     all_view_ids = set(conn.views.distinct("_id"))
 
-    orphan_view_ids = all_view_ids - view_ids_in_use
+    orphan_view_ids = list(all_view_ids - view_ids_in_use)
 
     if not orphan_view_ids:
         return
@@ -501,8 +501,8 @@ def drop_orphan_runs(dry_run=False):
     all_run_ids = set(conn.runs.distinct("_id"))
     all_result_ids = set(conn.fs.files.distinct("_id"))
 
-    orphan_run_ids = all_run_ids - run_ids_in_use
-    orphan_result_ids = all_result_ids - result_ids_in_use
+    orphan_run_ids = list(all_run_ids - run_ids_in_use)
+    orphan_result_ids = list(all_result_ids - result_ids_in_use)
 
     if orphan_run_ids:
         _logger.info(
@@ -511,7 +511,7 @@ def drop_orphan_runs(dry_run=False):
             orphan_run_ids,
         )
         if not dry_run:
-            conn.runs.delete_many({"_id": {"$in": orphan_run_ids}})
+            _delete_run_docs(conn, orphan_run_ids)
 
     if orphan_result_ids:
         _logger.info(
