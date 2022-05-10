@@ -6,6 +6,7 @@ Database utilities.
 |
 """
 from datetime import datetime
+import itertools
 import logging
 from multiprocessing.pool import ThreadPool
 import os
@@ -999,14 +1000,13 @@ def _get_view_ids(conn, dataset_dict):
 
 
 def _get_run_ids(conn, dataset_dict):
-    run_ids = (
-        list(dataset_dict.get("annotation_runs", {}).values())
-        + list(dataset_dict.get("brain_methods", {}).values())
-        + list(dataset_dict.get("evaluations", {}).values())
+    run_ids = itertools.chain(
+        dataset_dict.get(runs_field, {}).values()
+        for runs_field in _RUNS_FIELDS
     )
 
     # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
-    # Such data could be encountered here b/c datasets are lazily migrated
+    # Such data could be encountered here because datasets are lazily migrated
     return [_id for _id in run_ids if isinstance(_id, ObjectId)]
 
 
@@ -1014,15 +1014,17 @@ def _get_result_ids(conn, dataset_dict):
     run_ids = []
     result_ids = []
 
-    # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
-    # Such data could be encountered here b/c datasets are lazily migrated
-    for run_doc_or_id in dataset_dict.get("annotation_runs", {}).values():
-        if isinstance(run_doc_or_id, ObjectId):
-            run_ids.append(run_doc_or_id)
-        elif isinstance(run_doc_or_id, dict):
-            result_id = run_doc_or_id.get("results", None)
-            if result_id is not None:
-                result_ids.append(result_id)
+    for runs_field in _RUNS_FIELDS:
+        for run_doc_or_id in dataset_dict.get(runs_field, {}).values():
+            if isinstance(run_doc_or_id, ObjectId):
+                run_ids.append(run_doc_or_id)
+            elif isinstance(run_doc_or_id, dict):
+                # Prior to v0.15.2, run docs were stored directly in
+                # `dataset_dict`. Such data could be encountered here because
+                # datasets are lazily migrated
+                result_id = run_doc_or_id.get("results", None)
+                if result_id is not None:
+                    result_ids.append(result_id)
 
     if run_ids:
         for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
@@ -1044,3 +1046,6 @@ def _delete_run_docs(conn, run_ids):
 def _delete_run_results(conn, result_ids):
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+
+
+_RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations"]
