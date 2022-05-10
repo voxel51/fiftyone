@@ -423,8 +423,7 @@ def drop_orphan_collections(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     colls_in_use = set()
-    for name in list_datasets():
-        dataset_dict = conn.datasets.find_one({"name": name})
+    for dataset_dict in conn.datasets.find({}):
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
         if sample_coll_name:
             colls_in_use.add(sample_coll_name)
@@ -442,11 +441,11 @@ def drop_orphan_collections(dry_run=False):
                 conn.drop_collection(coll_name)
 
 
-def drop_orphan_run_results(dry_run=False):
-    """Drops all orphan run results from the database.
+def drop_orphan_views(dry_run=False):
+    """Drops all orphan views from the database.
 
-    Orphan run results are results that are not associated with any known
-    dataset.
+    Orphan views are saved view documents that are not associated with any
+    known dataset or other collections used by FiftyOne.
 
     Args:
         dry_run (False): whether to log the actions that would be taken but not
@@ -455,28 +454,72 @@ def drop_orphan_run_results(dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
 
-    result_ids_in_use = set()
-    for name in list_datasets():
-        dataset_dict = conn.datasets.find_one({"name": name})
-        run_ids = _get_run_ids(dataset_dict)
-        result_ids_in_use.update(_get_result_ids(run_ids))
+    view_ids_in_use = set()
+    for dataset_dict in conn.datasets.find({}):
+        view_ids = _get_view_ids(dataset_dict)
+        view_ids_in_use.update(view_ids)
 
-    all_run_results = set(conn.fs.files.distinct("_id", {}, {}))
+    all_view_ids = set(conn.views.distinct("_id", {}, {}))
 
-    orphan_result_ids = [
-        _id for _id in all_run_results if _id not in result_ids_in_use
-    ]
+    orphan_view_ids = all_view_ids - view_ids_in_use
 
-    if not orphan_result_ids:
+    if not orphan_view_ids:
         return
 
     _logger.info(
-        "Deleting %d orphan run result(s): %s",
-        len(orphan_result_ids),
-        orphan_result_ids,
+        "Deleting %d orphan view(s): %s",
+        len(orphan_view_ids),
+        orphan_view_ids,
     )
     if not dry_run:
-        _delete_run_results(orphan_result_ids)
+        _delete_views(conn, orphan_view_ids)
+
+
+def drop_orphan_runs(dry_run=False):
+    """Drops all orphan runs from the database.
+
+    Orphan runs are runs that are not associated with any known dataset or
+    other collections used by FiftyOne.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    run_ids_in_use = set()
+    result_ids_in_use = set()
+    for dataset_dict in conn.datasets.find({}):
+        run_ids = _get_run_ids(dataset_dict)
+        run_ids_in_use.update(run_ids)
+
+        result_ids = _get_result_ids(conn, run_ids)
+        result_ids_in_use.update(result_ids)
+
+    all_run_ids = set(conn.runs.distinct("_id", {}, {}))
+    all_result_ids = set(conn.fs.files.distinct("_id", {}, {}))
+
+    orphan_run_ids = all_run_ids - run_ids_in_use
+    orphan_result_ids = all_result_ids - result_ids_in_use
+
+    if orphan_run_ids:
+        _logger.info(
+            "Deleting %d orphan run(s): %s",
+            len(orphan_run_ids),
+            orphan_run_ids,
+        )
+        if not dry_run:
+            conn.runs.delete_many({"_id": {"$in": orphan_run_ids}})
+
+    if orphan_result_ids:
+        _logger.info(
+            "Deleting %d orphan run result(s): %s",
+            len(orphan_result_ids),
+            orphan_result_ids,
+        )
+        if not dry_run:
+            _delete_run_results(conn, orphan_result_ids)
 
 
 def stream_collection(collection_name):
@@ -677,18 +720,25 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    run_ids = _get_run_ids(dataset_dict)
-    result_ids = _get_result_ids(run_ids)
+    view_ids = _get_view_ids(dataset_dict)
 
-    if result_ids:
-        _logger.info("Deleting %d run result(s)", len(result_ids))
+    if view_ids:
+        _logger.info("Deleting %d saved view(s)", len(view_ids))
         if not dry_run:
-            _delete_run_results(result_ids)
+            _delete_views(conn, view_ids)
+
+    run_ids = _get_run_ids(dataset_dict)
+    result_ids = _get_result_ids(conn, run_ids)
 
     if run_ids:
         _logger.info("Deleting %d run doc(s)", len(run_ids))
         if not dry_run:
-            _delete_run_docs(run_ids)
+            _delete_run_docs(conn, run_ids)
+
+    if result_ids:
+        _logger.info("Deleting %d run result(s)", len(result_ids))
+        if not dry_run:
+            _delete_run_results(conn, result_ids)
 
 
 def delete_annotation_run(name, anno_key, dry_run=False):
@@ -896,7 +946,7 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
     if result_id is not None:
         _logger.info("Deleting %s result '%s'", run_str, result_id)
         if not dry_run:
-            _delete_run_results([result_id])
+            _delete_run_results(conn, [result_id])
 
     if not dry_run:
         _logger.info("Deleting %s doc '%s'", run_str, run_id)
@@ -927,18 +977,22 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         dataset_name,
     )
 
-    result_ids = _get_result_ids(run_ids)
+    result_ids = _get_result_ids(conn, run_ids)
     if result_ids:
         _logger.info("Deleting %d %s result(s)", len(result_ids), run_str)
         if not dry_run:
-            _delete_run_results(result_ids)
+            _delete_run_results(conn, result_ids)
 
     if not dry_run:
         _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
-        _delete_run_docs(run_ids)
+        _delete_run_docs(conn, run_ids)
 
         dataset_dict[runs_field] = {}
         conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
+
+
+def _get_view_ids(dataset_dict):
+    return list(dataset_dict.get("views", {}).values())
 
 
 def _get_run_ids(dataset_dict):
@@ -949,11 +1003,9 @@ def _get_run_ids(dataset_dict):
     )
 
 
-def _get_result_ids(run_ids):
+def _get_result_ids(conn, run_ids):
     if not run_ids:
         return []
-
-    conn = get_db_conn()
 
     result_ids = []
 
@@ -965,14 +1017,14 @@ def _get_result_ids(run_ids):
     return result_ids
 
 
-def _delete_run_docs(run_ids):
-    conn = get_db_conn()
+def _delete_views(conn, view_ids):
+    conn.views.delete_many({"_id": {"$in": view_ids}})
 
+
+def _delete_run_docs(conn, run_ids):
     conn.runs.delete_many({"_id": {"$in": run_ids}})
 
 
-def _delete_run_results(result_ids):
-    conn = get_db_conn()
-
+def _delete_run_results(conn, result_ids):
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
