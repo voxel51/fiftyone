@@ -456,7 +456,7 @@ def drop_orphan_views(dry_run=False):
 
     view_ids_in_use = set()
     for dataset_dict in conn.datasets.find({}):
-        view_ids = _get_view_ids(dataset_dict)
+        view_ids = _get_view_ids(conn, dataset_dict)
         view_ids_in_use.update(view_ids)
 
     all_view_ids = set(conn.views.distinct("_id"))
@@ -491,10 +491,10 @@ def drop_orphan_runs(dry_run=False):
     run_ids_in_use = set()
     result_ids_in_use = set()
     for dataset_dict in conn.datasets.find({}):
-        run_ids = _get_run_ids(dataset_dict)
+        run_ids = _get_run_ids(conn, dataset_dict)
         run_ids_in_use.update(run_ids)
 
-        result_ids = _get_result_ids(conn, run_ids)
+        result_ids = _get_result_ids(conn, dataset_dict)
         result_ids_in_use.update(result_ids)
 
     all_run_ids = set(conn.runs.distinct("_id"))
@@ -720,15 +720,15 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    view_ids = _get_view_ids(dataset_dict)
+    view_ids = _get_view_ids(conn, dataset_dict)
 
     if view_ids:
         _logger.info("Deleting %d saved view(s)", len(view_ids))
         if not dry_run:
             _delete_views(conn, view_ids)
 
-    run_ids = _get_run_ids(dataset_dict)
-    result_ids = _get_result_ids(conn, run_ids)
+    run_ids = _get_run_ids(conn, dataset_dict)
+    result_ids = _get_result_ids(conn, dataset_dict)
 
     if run_ids:
         _logger.info("Deleting %d run doc(s)", len(run_ids))
@@ -977,25 +977,28 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
         dataset_name,
     )
 
-    result_ids = _get_result_ids(conn, run_ids)
+    result_ids = _get_result_ids(conn, dataset_dict)
+
+    if run_ids:
+        _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
+        if not dry_run:
+            _delete_run_docs(conn, run_ids)
+
     if result_ids:
         _logger.info("Deleting %d %s result(s)", len(result_ids), run_str)
         if not dry_run:
             _delete_run_results(conn, result_ids)
 
     if not dry_run:
-        _logger.info("Deleting %d %s doc(s)", len(run_ids), run_str)
-        _delete_run_docs(conn, run_ids)
-
         dataset_dict[runs_field] = {}
         conn.datasets.replace_one({"name": dataset_name}, dataset_dict)
 
 
-def _get_view_ids(dataset_dict):
+def _get_view_ids(conn, dataset_dict):
     return list(dataset_dict.get("views", {}).values())
 
 
-def _get_run_ids(dataset_dict):
+def _get_run_ids(conn, dataset_dict):
     run_ids = (
         list(dataset_dict.get("annotation_runs", {}).values())
         + list(dataset_dict.get("brain_methods", {}).values())
@@ -1003,22 +1006,29 @@ def _get_run_ids(dataset_dict):
     )
 
     # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
-    # Such data could be encountered here because datasets are only lazily
-    # migrated. For this method, we only care about the docs that are stored
-    # outside of `dataset_dict`
+    # Such data could be encountered here b/c datasets are lazily migrated
     return [_id for _id in run_ids if isinstance(_id, ObjectId)]
 
 
-def _get_result_ids(conn, run_ids):
-    if not run_ids:
-        return []
-
+def _get_result_ids(conn, dataset_dict):
+    run_ids = []
     result_ids = []
 
-    for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
-        result_id = run_doc.get("results", None)
-        if result_id is not None:
-            result_ids.append(result_id)
+    # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
+    # Such data could be encountered here b/c datasets are lazily migrated
+    for run_doc_or_id in dataset_dict.get("annotation_runs", {}).values():
+        if isinstance(run_doc_or_id, ObjectId):
+            run_ids.append(run_doc_or_id)
+        elif isinstance(run_doc_or_id, dict):
+            result_id = run_doc_or_id.get("results", None)
+            if result_id is not None:
+                result_ids.append(result_id)
+
+    if run_ids:
+        for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
+            result_id = run_doc.get("results", None)
+            if result_id is not None:
+                result_ids.append(result_id)
 
     return result_ids
 
