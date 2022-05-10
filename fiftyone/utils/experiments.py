@@ -166,6 +166,8 @@ class ExperimentResults(foe.ExperimentResults):
             )
         self._model_runs.append(run_key)
         self._add_predictions(run_key, predictions, key_field=key_field)
+        self._evaluate_model_run(run_key)
+
         self._add_run_to_backend(run_key, predictions)
 
         # Every time a new model run is added, the config may be updated
@@ -199,17 +201,28 @@ class ExperimentResults(foe.ExperimentResults):
     def _get_run_field(self, run_key):
         return "predictions-%s" % run_key
 
-    def evaluate(self):
-        pass
+    def _evaluate_model_run(self, run_key):
+        pred_type = self._get_pred_type(run_key)
 
-    def list_notebooks(self):
-        raise NotImplementedError("subclass must implement list_notebooks()")
+    def _get_pred_type(self, run_key):
+        # @todo parse predictions type to get required evaluation type
+        pred_type = None
+        return pred_type
 
-    def launch_notebook(self):
-        raise NotImplementedError("subclass must implement launch_notebook()")
+    def evaluate(self, run_keys=None):
+        if run_keys is None:
+            run_keys = self._model_runs
 
-    def launch_tracker(self):
-        raise NotImplementedError("subclass must implement launch_tracker()")
+        elif isinstance(run_keys, str):
+            run_keys = [run_keys]
+
+        if not isinstance(run_keys, list):
+            raise ValueError(
+                "Expected a run key string or a list of run keys for "
+                "'run_keys' argument."
+            )
+
+        # @todo add evaluation
 
     def cleanup(self):
         """Deletes all information for this run from the experiment backend."""
