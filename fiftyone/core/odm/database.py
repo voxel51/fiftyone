@@ -11,7 +11,7 @@ from multiprocessing.pool import ThreadPool
 import os
 
 import asyncio
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
 from mongoengine import connect
 import mongoengine.errors as moe
@@ -459,7 +459,7 @@ def drop_orphan_views(dry_run=False):
         view_ids = _get_view_ids(dataset_dict)
         view_ids_in_use.update(view_ids)
 
-    all_view_ids = set(conn.views.distinct("_id", {}, {}))
+    all_view_ids = set(conn.views.distinct("_id"))
 
     orphan_view_ids = all_view_ids - view_ids_in_use
 
@@ -497,8 +497,8 @@ def drop_orphan_runs(dry_run=False):
         result_ids = _get_result_ids(conn, run_ids)
         result_ids_in_use.update(result_ids)
 
-    all_run_ids = set(conn.runs.distinct("_id", {}, {}))
-    all_result_ids = set(conn.fs.files.distinct("_id", {}, {}))
+    all_run_ids = set(conn.runs.distinct("_id"))
+    all_result_ids = set(conn.fs.files.distinct("_id"))
 
     orphan_run_ids = all_run_ids - run_ids_in_use
     orphan_result_ids = all_result_ids - result_ids_in_use
@@ -996,11 +996,17 @@ def _get_view_ids(dataset_dict):
 
 
 def _get_run_ids(dataset_dict):
-    return (
+    run_ids = (
         list(dataset_dict.get("annotation_runs", {}).values())
         + list(dataset_dict.get("brain_methods", {}).values())
         + list(dataset_dict.get("evaluations", {}).values())
     )
+
+    # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
+    # Such data could be encountered here because datasets are only lazily
+    # migrated. For this method, we only care about the docs that are stored
+    # outside of `dataset_dict`
+    return [_id for _id in run_ids if isinstance(_id, ObjectId)]
 
 
 def _get_result_ids(conn, run_ids):
