@@ -12,6 +12,7 @@ import motor.motor_asyncio as mtr
 import strawberry as gql
 
 import fiftyone as fo
+import fiftyone.constants as foc
 
 from fiftyone.server.data import Info
 import fiftyone.server.query as fosq
@@ -86,3 +87,11 @@ class Query:
         user = await users.find_one({"sub": request_user.sub})
         user["id"] = user.pop("_id")
         return from_dict(User, user, config=Config(check_types=False))
+
+    @gql.field
+    def dev(self) -> bool:
+        return foc.DEV_INSTALL or foc.RC_INSTALL
+
+    @gql.field
+    def version(self) -> str:
+        return foc.VERSION

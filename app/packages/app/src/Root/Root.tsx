@@ -5,16 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   PreloadedQuery,
   useFragment,
-  useMutation,
   usePaginationFragment,
   usePreloadedQuery,
 } from "react-relay";
 import { useDebounce } from "react-use";
-import {
-  useRecoilRefresher_UNSTABLE,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
 import {
@@ -60,7 +55,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-          @refetchable(queryName: "DatasetsPaginationQuery") {
+        @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -188,7 +183,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         datasetSelectorProps={{
           component: DatasetLink,
           onSelect: (name) => {
-            setDataset();
+            setDataset(name);
             fns.start(name);
             fns.to(name);
           },

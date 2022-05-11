@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1dcec7933075f1c8ad3fd71de9920a99>>
+ * @generated SignedSource<<863284256a6ee7fc98e8266f41c90305>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,13 +15,11 @@ export type RootQuery$variables = {
   count?: number | null;
   cursor?: string | null;
 };
-export type RootQueryVariables = RootQuery$variables;
 export type RootQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
 };
-export type RootQueryResponse = RootQuery$data;
 export type RootQuery = {
-  variables: RootQueryVariables;
+  variables: RootQuery$variables;
   response: RootQuery$data;
 };
 

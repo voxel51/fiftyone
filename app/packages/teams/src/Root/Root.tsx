@@ -14,7 +14,6 @@ import {
   Route,
   Link,
   useTo,
-  getRoutingContext,
 } from "@fiftyone/components";
 
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
@@ -29,7 +28,7 @@ const getUseSearch = (datasets: RootDatasets_query$key) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-          @refetchable(queryName: "DatasetsPaginationQuery") {
+        @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -78,7 +77,7 @@ const Nav: React.FC<{
 }> = (props) => {
   const dataset = useRecoilValue(datasetName);
   const useSearch = getUseSearch(props.datasets);
-  const fns = useTo(getRoutingContext());
+  const fns = useTo();
 
   return (
     <Header
@@ -86,10 +85,9 @@ const Nav: React.FC<{
       onRefresh={() => {}}
       datasetSelectorProps={{
         component: DatasetLink,
-        onSelect: (value) => {
-          fns.start(value);
-          fns.query(value);
-          fns.to(value);
+        onSelect: (name) => {
+          fns.start(name);
+          fns.to(name);
         },
         placeholder: "Select dataset",
         useSearch,

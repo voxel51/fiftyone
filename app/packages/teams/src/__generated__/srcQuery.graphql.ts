@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<766c6cdeef3599b02624c33b554030b4>>
+ * @generated SignedSource<<94839842a5d7ce3d5205e9c39cadbbd9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,15 +10,13 @@
 
 import { ConcreteRequest, Query } from 'relay-runtime';
 export type srcQuery$variables = {};
-export type srcQueryVariables = srcQuery$variables;
 export type srcQuery$data = {
   readonly teamsConfig: {
     readonly organization: string;
   };
 };
-export type srcQueryResponse = srcQuery$data;
 export type srcQuery = {
-  variables: srcQueryVariables;
+  variables: srcQuery$variables;
   response: srcQuery$data;
 };
 

@@ -1,29 +1,13 @@
-import React, { useEffect } from "react";
-import { graphql, usePreloadedQuery } from "react-relay";
-import { useResetRecoilState } from "recoil";
-
+import { dataset } from "@fiftyone/app/src/recoil/atoms";
 import { Loading, Route } from "@fiftyone/components";
+import React, { useLayoutEffect } from "react";
+import { useSetRecoilState } from "recoil";
 
-import { HomeQuery } from "./__generated__/HomeQuery.graphql";
-import { stateDescription } from "@fiftyone/app/src/recoil/atoms";
-
-const Home: Route<HomeQuery> = ({ prepared }) => {
-  const data = usePreloadedQuery(
-    graphql`
-      query HomeQuery {
-        viewer {
-          givenName
-        }
-      }
-    `,
-    prepared
-  );
-  const reset = useResetRecoilState(stateDescription);
-
-  useEffect(() => {
-    reset();
+const Home: Route = ({}) => {
+  const setDataset = useSetRecoilState(dataset);
+  useLayoutEffect(() => {
+    setDataset(null);
   }, []);
-
   return <Loading>No dataset selected</Loading>;
 };
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7c66e12ce8e1eaa2dfd4d0577d4ddf66>>
+ * @generated SignedSource<<c6065c85492e40edabd58aa448661cb4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,8 +12,8 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type MediaType = "image" | "video" | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
+  view?: Array | null;
 };
-export type DatasetQueryVariables = DatasetQuery$variables;
 export type DatasetQuery$data = {
   readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
   readonly config: {
@@ -90,9 +90,8 @@ export type DatasetQuery$data = {
     readonly version: string;
   };
 };
-export type DatasetQueryResponse = DatasetQuery$data;
 export type DatasetQuery = {
-  variables: DatasetQueryVariables;
+  variables: DatasetQuery$variables;
   response: DatasetQuery$data;
 };
 
@@ -102,6 +101,11 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "name"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "view"
   }
 ],
 v1 = {
@@ -295,6 +299,11 @@ v11 = {
       "kind": "Variable",
       "name": "name",
       "variableName": "name"
+    },
+    {
+      "kind": "Variable",
+      "name": "view",
+      "variableName": "view"
     }
   ],
   "concreteType": "Dataset",
@@ -526,16 +535,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "069b49709722e601f5fc72194c604451",
+    "cacheID": "abf203da0ffdfd9623702057faa06a6f",
     "id": null,
     "metadata": {},
     "name": "DatasetQuery",
     "operationKind": "query",
-    "text": "query DatasetQuery(\n  $name: String!\n) {\n  colorscale\n  config {\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    useFrameNumber\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n  }\n  dataset(name: $name) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    version\n  }\n}\n"
+    "text": "query DatasetQuery(\n  $name: String!\n  $view: JSONArray\n) {\n  colorscale\n  config {\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    useFrameNumber\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n  }\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    version\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e7e532731e2c5037ba34c9f97e8dc645";
+(node as any).hash = "c3233cc1433c48dd60be9152912e43a9";
 
 export default node;

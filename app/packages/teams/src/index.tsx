@@ -1,10 +1,5 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import {
-  Loading,
-  RelayEnvironment,
-  withErrorBoundary,
-  withTheme,
-} from "@fiftyone/components";
+import { Loading, withErrorBoundary, withTheme } from "@fiftyone/components";
 import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
 import React, { Suspense, useEffect } from "react";
 import ReactDOM from "react-dom";
@@ -21,6 +16,7 @@ import "./index.css";
 import Login from "./Login";
 import { useState } from "react";
 import configQuery, { srcQuery } from "./__generated__/srcQuery.graphql";
+import { getEnvironment } from "@fiftyone/components/src/use/useRouter";
 
 const Authenticate = () => {
   const auth0 = useAuth0();
@@ -62,7 +58,8 @@ const Authenticate = () => {
   return <Login />;
 };
 
-const query = loadQuery<srcQuery>(RelayEnvironment, configQuery, {});
+const unauthenticatedEnvironment = getEnvironment();
+const query = loadQuery<srcQuery>(unauthenticatedEnvironment, configQuery, {});
 
 const Config = () => {
   const { teamsConfig: config } = usePreloadedQuery<srcQuery>(
@@ -92,7 +89,7 @@ const Config = () => {
 const App = withErrorBoundary(
   withTheme(() => {
     return (
-      <RelayEnvironmentProvider environment={RelayEnvironment}>
+      <RelayEnvironmentProvider environment={unauthenticatedEnvironment}>
         <Suspense fallback={<Loading>Pixelating...</Loading>}>
           <Config />
         </Suspense>
@@ -101,11 +98,11 @@ const App = withErrorBoundary(
   }, atom({ key: "theme", default: darkTheme }))
 );
 
-document.addEventListener("DOMContentLoaded", () =>
-  ReactDOM.render(
-    <RecoilRoot>
-      <App />
-    </RecoilRoot>,
-    document.getElementById("root")
-  )
+const root = document.getElementById("root") as HTMLDivElement;
+
+ReactDOM.render(
+  <RecoilRoot>
+    <App />
+  </RecoilRoot>,
+  root
 );

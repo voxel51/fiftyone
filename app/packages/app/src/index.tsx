@@ -1,7 +1,4 @@
 import {
-  RouteRenderer,
-  RoutingContext,
-  RouterContext,
   useRouter,
   withErrorBoundary,
   withTheme,
@@ -14,10 +11,10 @@ import {
   setFetchFunction,
   toCamelCase,
 } from "@fiftyone/utilities";
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
-import { Environment, RelayEnvironmentProvider } from "react-relay";
+import { Environment } from "react-relay";
 import {
   atom,
   RecoilRoot,
@@ -42,29 +39,13 @@ import {
   selectedSamples,
   useRefresh,
 } from "./recoil/atoms";
+import Network from "./Network";
 
 enum AppReadyState {
   CONNECTING = 0,
   OPEN = 1,
   CLOSED = 2,
 }
-
-setFetchFunction(import.meta.env.VITE_API || window.location.origin);
-
-const Network: React.FC<{
-  environment: Environment;
-  context: RoutingContext<any>;
-}> = ({ environment, context }) => {
-  return (
-    <RelayEnvironmentProvider environment={environment}>
-      <RouterContext.Provider value={context}>
-        <Suspense fallback={null}>
-          <RouteRenderer router={context} />
-        </Suspense>
-      </RouterContext.Provider>
-    </RelayEnvironmentProvider>
-  );
-};
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
@@ -74,6 +55,9 @@ enum Events {
 
 const App: React.FC = withTheme(
   withErrorBoundary(({}) => {
+    useState(() =>
+      setFetchFunction(import.meta.env.VITE_API || window.location.origin)
+    );
     const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
     const readyStateRef = useRef<AppReadyState>();
     readyStateRef.current = readyState;

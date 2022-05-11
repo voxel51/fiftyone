@@ -2,15 +2,11 @@ import { useAuth0 } from "@auth0/auth0-react";
 import React, { Suspense, useEffect, useState } from "react";
 import { graphql } from "relay-runtime";
 
-import {
-  getRoutingContext,
-  Loading,
-  RouteRenderer,
-  withRouter,
-} from "@fiftyone/components";
+import { Loading, useRouter } from "@fiftyone/components";
 
 import useMutation from "./useMutation";
-import routes from "./routes";
+import Network from "@fiftyone/app/src/Network";
+import makeRoutes from "./makeRoutes";
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -21,7 +17,19 @@ const LoginMutation = graphql`
   }
 `;
 
-const Login = withRouter(() => {
+const Renderer = () => {
+  const { context, environment } = useRouter(
+    (environment) =>
+      makeRoutes(environment, {
+        view: () => [],
+      }),
+    []
+  );
+
+  return <Network environment={environment} context={context} />;
+};
+
+const Login = () => {
   const [loggedIn, setLoggedIn] = useState(false);
   const [pending, logIn] = useMutation(LoginMutation);
   const { user } = useAuth0();
@@ -52,9 +60,9 @@ const Login = withRouter(() => {
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <RouteRenderer router={getRoutingContext()} />
+      <Renderer />
     </Suspense>
   );
-}, routes);
+};
 
 export default Login;

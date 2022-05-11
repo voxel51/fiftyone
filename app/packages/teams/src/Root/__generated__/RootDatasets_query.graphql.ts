@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3502ad27f17a9798cc22b0407dafc843>>
+ * @generated SignedSource<<74c2c9546fcd54a781f6e21298f9b109>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,6 @@ export type RootDatasets_query$data = {
   };
   readonly " $fragmentType": "RootDatasets_query";
 };
-export type RootDatasets_query = RootDatasets_query$data;
 export type RootDatasets_query$key = {
   readonly " $data"?: RootDatasets_query$data;
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
