@@ -394,7 +394,7 @@ class Run(Configurable):
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_doc = run_docs[key]
         run_doc.config = deepcopy(config.serialize())
-        dataset._doc.save()
+        run_doc.save()
 
     @classmethod
     def save_run_results(
@@ -419,7 +419,6 @@ class Run(Configurable):
 
         if run_doc.results:
             if overwrite:
-                # Must manually delete existing result from GridFS
                 run_doc.results.delete()
             else:
                 raise ValueError(
@@ -430,16 +429,14 @@ class Run(Configurable):
         if run_results is None:
             run_doc.results = None
         else:
-            # Write run result to GridFS
             results_bytes = run_results.to_str().encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
-        # Cache the results for future use in this session
         if cache:
             results_cache = getattr(dataset, cls._results_cache_field())
             results_cache[key] = run_results
 
-        dataset._doc.save()
+        run_doc.save()
 
     @classmethod
     def load_run_results(cls, samples, key, cache=True):
@@ -457,7 +454,6 @@ class Run(Configurable):
 
         results_cache = getattr(dataset, cls._results_cache_field())
 
-        # Returned cached results if available
         if key in results_cache:
             return results_cache[key]
 
@@ -466,11 +462,9 @@ class Run(Configurable):
         if not run_doc.results:
             return None
 
-        # Load run info
         run_info = cls.get_run_info(samples, key)
         config = run_info.config
 
-        # Load run result from GridFS
         view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
         results_str = run_doc.results.read().decode()
@@ -495,7 +489,6 @@ class Run(Configurable):
                 )
             ) from e
 
-        # Cache the results for future use in this session
         if cache:
             results_cache[key] = run_results
 
@@ -567,7 +560,6 @@ class Run(Configurable):
         run_doc = cls._get_run_doc(samples, key)
 
         try:
-            # Cleanup after run, if possible
             run_info = cls.get_run_info(samples, key)
             run = run_info.config.build()
             run.cleanup(samples, key)
@@ -580,16 +572,15 @@ class Run(Configurable):
 
         dataset = samples._root_dataset
 
-        # Delete run from dataset doc
         run_docs = getattr(dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         results_cache = getattr(dataset, cls._results_cache_field())
         results_cache.pop(key, None)
 
-        # Must manually delete run result, which is stored via GridFS
         if run_doc.results:
             run_doc.results.delete()
 
+        run_doc.delete()
         dataset._doc.save()
 
     @classmethod

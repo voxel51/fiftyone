@@ -1000,14 +1000,17 @@ def _get_view_ids(conn, dataset_dict):
 
 
 def _get_run_ids(conn, dataset_dict):
-    run_ids = itertools.chain(
-        dataset_dict.get(runs_field, {}).values()
-        for runs_field in _RUNS_FIELDS
-    )
+    run_ids = []
 
-    # Prior to v0.15.2, run docs were stored directly in `dataset_dict`.
-    # Such data could be encountered here because datasets are lazily migrated
-    return [_id for _id in run_ids if isinstance(_id, ObjectId)]
+    for runs_field in _RUNS_FIELDS:
+        for run_doc_or_id in dataset_dict.get(runs_field, {}).values():
+            # Prior to v0.15.2, run docs were stored directly in `dataset_dict`
+            # Such data could be encountered here because datasets are lazily
+            # migrated
+            if isinstance(run_doc_or_id, ObjectId):
+                run_ids.append(run_doc_or_id)
+
+    return run_ids
 
 
 def _get_result_ids(conn, dataset_dict):
