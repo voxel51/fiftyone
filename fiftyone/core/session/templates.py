@@ -110,7 +110,7 @@ SCREENSHOT_COLAB_SCRIPT = """
         'cache': true
     }).then((baseURL) => {
         const url = new URL(baseURL);
-        const handleId = "{{ subscription }}";
+        const subscription = "{{ subscription }}";
         url.searchParams.set('context', 'colab');
         url.searchParams.set('subscription', subscription);
         const iframe = document.createElement('iframe');
