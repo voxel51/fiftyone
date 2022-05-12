@@ -41,10 +41,15 @@ LICENSE = _META["license"]
 VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
-DEV_INSTALL = os.path.isdir(
-    os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
+DEV_INSTALL = (
+    os.path.isdir(
+        os.path.normpath(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", ".git"
+            )
+        )
     )
+    or True
 )
 RC_INSTALL = "rc" in VERSION
 
