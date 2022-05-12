@@ -363,7 +363,10 @@ class Run(Configurable):
 
         dataset_doc = samples._root_dataset._doc
         run_docs = getattr(dataset_doc, cls._runs_field())
-        view_stages = [json_util.dumps(s) for s in samples.view()._serialize()]
+        view_stages = [
+            json_util.dumps(s)
+            for s in samples.view()._serialize(include_uuids=False)
+        ]
 
         run_doc = RunDocument(
             key=key,

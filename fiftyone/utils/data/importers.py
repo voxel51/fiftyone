@@ -1670,8 +1670,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
 def _import_views(dataset, views):
     for name, d in views.items():
-        view_doc = foo.ViewDocument.from_dict(json_util.loads(d))
-        view_doc.id = ObjectId()  # IDs must be unique across datasets
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        d.pop("_id", None)
+        view_doc = foo.ViewDocument.from_dict(d)
         view_doc.save()
 
         dataset._doc.views[name] = view_doc
@@ -1682,8 +1685,11 @@ def _import_views(dataset, views):
 def _import_runs(dataset, runs, results_dir, run_cls):
     # Import run documents
     for key, d in runs.items():
-        run_doc = foo.RunDocument.from_dict(json_util.loads(d))
-        run_doc.id = ObjectId()  # IDs must be unique across datasets
+        if etau.is_str(d):
+            d = json_util.loads(d)
+
+        d.pop("_id", None)
+        run_doc = foo.RunDocument.from_dict(d)
         run_doc.results = None
         run_doc.save()
 

@@ -1777,28 +1777,24 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         if full_dataset and dataset.has_views:
             dataset_dict["views"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.views.items()
+                k: v.to_dict() for k, v in dataset._doc.views.items()
             }
 
         if full_dataset and dataset.has_annotation_runs:
             dataset_dict["annotation_runs"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.annotation_runs.items()
+                k: v.to_dict() for k, v in dataset._doc.annotation_runs.items()
             }
             _export_annotation_results(dataset, self._anno_dir)
 
         if full_dataset and dataset.has_brain_runs:
             dataset_dict["brain_methods"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.brain_methods.items()
+                k: v.to_dict() for k, v in dataset._doc.brain_methods.items()
             }
             _export_brain_results(dataset, self._brain_dir)
 
         if full_dataset and dataset.has_evaluations:
             dataset_dict["evaluations"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.evaluations.items()
+                k: v.to_dict() for k, v in dataset._doc.evaluations.items()
             }
             _export_evaluation_results(dataset, self._eval_dir)
 
