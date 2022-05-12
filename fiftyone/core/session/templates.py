@@ -13,6 +13,7 @@ SCREENSHOT_STYLE = """
 
 #focontainer-{{ subscription }} {
   position: relative;
+  height: {{ height }}px;
   display: block !important;
 }
 #foactivate-{{ subscription }} {

@@ -38,7 +38,8 @@ def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
                 image=data.src,
                 url=focx.get_url(cell.address, cell.port),
                 max_width=data.width,
-            )
+                height=cell.height,
+            ),
         )
     )
 
