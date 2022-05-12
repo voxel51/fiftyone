@@ -139,6 +139,7 @@ export const getEventSource = (
       throw new RetriableError();
     },
     onerror(err) {
+      console.log(err);
       if (
         err instanceof TypeError &&
         ["Failed to fetch", "network error"].includes(err.message)
