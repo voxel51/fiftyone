@@ -156,7 +156,7 @@ const App: React.FC = withTheme(
 
     switch (readyState) {
       case AppReadyState.CONNECTING:
-        return <Loading />;
+        return <Loading>Pixelating...</Loading>;
       case AppReadyState.OPEN:
         return <Network environment={environment} context={context} />;
       default:

@@ -104,7 +104,7 @@ async def add_event_listener(
         request_listeners.add((event_name, listener))
 
     try:
-        if not isinstance(payload.initializer, fos.StateDescription):
+        if is_app:
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
                 data=FiftyOneJSONEncoder.dumps(
