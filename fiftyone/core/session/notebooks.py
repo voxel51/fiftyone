@@ -9,7 +9,6 @@ from dataclasses import dataclass
 import os
 
 from jinja2 import Template
-from strawberry import subscription
 
 try:
     import IPython.display
