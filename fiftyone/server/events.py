@@ -105,6 +105,7 @@ async def add_event_listener(
 
     try:
         if is_app:
+            print("EVENT")
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
                 data=FiftyOneJSONEncoder.dumps(
@@ -130,6 +131,7 @@ async def add_event_listener(
                 except asyncio.QueueEmpty:
                     continue
 
+                print("EVENT")
                 yield ServerSentEvent(
                     event=result.get_event_name(),
                     data=FiftyOneJSONEncoder.dumps(
