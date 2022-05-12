@@ -93,6 +93,7 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
+                    raise e
                     self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "
@@ -114,6 +115,7 @@ class Client:
         Args:
             event: the event
         """
+        print(event.get_event_name(), self._connected)
         if not self._connected:
             raise RuntimeError("Client is not connected")
 
