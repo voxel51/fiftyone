@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useContext } from "react";
 import mime from "mime";
 import styled from "styled-components";
 import { useExternalLink, prettify as pretty } from "@fiftyone/utilities";
-import { matchPath } from "@fiftyone/components";
+import { matchPath, RouterContext, RoutingContext } from "@fiftyone/components";
 
 export const isFloat = (n: number): boolean => {
   return Number(n) === n && n % 1 !== 0;
@@ -189,8 +189,8 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
   };
 })();
 
-export const getDatasetName = (): string => {
-  const result = matchPath(window.location.pathname, {
+export const getDatasetName = (context: RoutingContext<any>): string => {
+  const result = matchPath(context.get().pathname, {
     path: "/datasets/:name",
     exact: true,
     defaultParams: {},

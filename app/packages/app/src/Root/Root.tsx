@@ -1,4 +1,10 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,12 +27,11 @@ import {
   iconContainer,
   Route,
   Link,
-  useTo,
+  RouterContext,
 } from "@fiftyone/components";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
-import { datasetName } from "../recoil/selectors";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { appTeamsIsOpen, refresher, useRefresh } from "../recoil/atoms";
 import Teams from "../components/Teams/Teams";
@@ -35,7 +40,7 @@ import { RootQuery } from "./__generated__/RootQuery.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { useHashChangeHandler, useReset, useSetDataset } from "../utils/hooks";
+import { useHashChangeHandler, useSetDataset } from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
 
@@ -171,7 +176,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
   const refresh = useRefresh();
   const setDataset = useSetDataset();
-  const dataset = getDatasetName();
+  const context = useContext(RouterContext);
+  const dataset = getDatasetName(context);
 
   return (
     <>

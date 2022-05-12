@@ -103,7 +103,7 @@ export const tagStatistics = selectorFamily<
     }
 
     const { count, tags } = await getFetchFunction()("POST", "/tagging", {
-      dataset: getDatasetName(),
+      dataset: get(atoms.dataset).name,
       view: get(view),
       active_label_fields: activeLabels,
       sample_ids: selected.size

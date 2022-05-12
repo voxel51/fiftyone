@@ -32,7 +32,7 @@ import {
   SidebarEntry,
   InputEntry,
 } from "./utils";
-import { getDatasetName } from "../../utils/generic";
+import { datasetName } from "../../recoil/selectors";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -298,7 +298,7 @@ export const sidebarGroups = selectorFamily<
     });
 
     set(sidebarGroupsDefinition(modal), groups);
-    !modal && persistGroups(getDatasetName(), get(viewAtoms.view), groups);
+    !modal && persistGroups(get(datasetName), get(viewAtoms.view), groups);
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",

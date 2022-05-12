@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { RouterContext } from "@fiftyone/components";
+import React, { useContext, useState } from "react";
 import { useRecoilCallback } from "recoil";
 
 import { State } from "../../../recoil/types";
@@ -11,6 +12,7 @@ import { InputDiv } from "./utils";
 
 const AddGroup = () => {
   const [value, setValue] = useState("");
+  const context = useContext(RouterContext);
   const addGroup = useRecoilCallback(
     ({ set, snapshot }) => async (newGroup: string) => {
       const current = await snapshot.getPromise(sidebarGroupsDefinition(false));
@@ -26,7 +28,7 @@ const AddGroup = () => {
 
       const view = await snapshot.getPromise(viewAtoms.view);
       set(sidebarGroupsDefinition(false), newGroups);
-      persistGroups(getDatasetName(), view, newGroups);
+      persistGroups(getDatasetName(context), view, newGroups);
     },
     []
   );

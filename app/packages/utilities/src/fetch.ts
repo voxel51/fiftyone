@@ -89,7 +89,14 @@ export const getAPI = () => {
     : window.location.origin;
 };
 
-setFetchFunction(getAPI());
+if (
+  !(
+    typeof WorkerGlobalScope !== "undefined" &&
+    self instanceof WorkerGlobalScope
+  )
+) {
+  setFetchFunction(getAPI());
+}
 
 class RetriableError extends Error {}
 class FatalError extends Error {}

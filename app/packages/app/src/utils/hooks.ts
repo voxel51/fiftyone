@@ -20,7 +20,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { useSendEvent, useTo } from "@fiftyone/components";
+import { matchPath, useSendEvent, useTo } from "@fiftyone/components";
 import { useMutation } from "react-relay";
 import {
   setDataset,
@@ -313,7 +313,7 @@ export const useStateUpdate = () => {
 
         if (
           !viewsAreEqual(view, state.view || []) ||
-          state?.dataset !== getDatasetName()
+          state?.dataset !== t.get(atoms.dataset).name
         ) {
           set(viewAtoms.view, state.view || []);
           set(filterAtoms.filters, {});

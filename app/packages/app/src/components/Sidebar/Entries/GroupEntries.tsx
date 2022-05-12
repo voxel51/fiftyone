@@ -8,7 +8,7 @@ import {
   Remove,
   Visibility,
 } from "@material-ui/icons";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useContext, useLayoutEffect, useRef, useState } from "react";
 import {
   selectorFamily,
   useRecoilCallback,
@@ -40,7 +40,7 @@ import {
 
 import { elementNames } from "../../../recoil/view";
 import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
-import { useTheme } from "@fiftyone/components";
+import { RouterContext, useTheme } from "@fiftyone/components";
 import { getDatasetName } from "../../../utils/generic";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
@@ -136,6 +136,8 @@ const numGroupFieldsActive = selectorFamily<
 export const replace = {};
 
 export const useRenameGroup = (modal: boolean, group: string) => {
+  const context = useContext(RouterContext);
+
   return useRecoilCallback(
     ({ set, snapshot }) => async (newName: string) => {
       newName = newName.toLowerCase();
@@ -164,7 +166,7 @@ export const useRenameGroup = (modal: boolean, group: string) => {
 
       set(groupShown({ name: newName, modal }), shown);
       set(sidebarGroupsDefinition(modal), newGroups);
-      !modal && persistGroups(getDatasetName(), view, newGroups);
+      !modal && persistGroups(getDatasetName(context), view, newGroups);
     },
     []
   );

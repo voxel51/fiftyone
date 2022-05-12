@@ -223,7 +223,7 @@ const categoricalSearchResults = selectorFamily<
     );
 
     const data = await getFetchFunction()("POST", "/values", {
-      dataset: getDatasetName(),
+      dataset: get(atoms.dataset).name,
       view: get(view),
       path,
       search,

@@ -105,7 +105,7 @@ const App: React.FC = withTheme(
                   ...toCamelCase(data),
                   view: data.view,
                 } as State.Description;
-                let dataset = getDatasetName();
+                let dataset = getDatasetName(contextRef.current);
                 if (readyStateRef.current !== AppReadyState.OPEN) {
                   if (dataset !== state.dataset) {
                     dataset = state.dataset;
@@ -141,7 +141,7 @@ const App: React.FC = withTheme(
         },
         controller.signal,
         {
-          initializer: getDatasetName(),
+          initializer: getDatasetName(contextRef.current),
           subscription,
           events: [
             Events.DEACTIVATE_NOTEBOOK_CELL,
