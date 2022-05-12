@@ -233,7 +233,10 @@ def export_samples(
         if found_patches:
             # Export unlabeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples, label_field, include_labels=False, **patches_kwargs,
+                samples,
+                label_field,
+                include_labels=False,
+                **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
             num_samples = len(samples)
@@ -271,7 +274,10 @@ def export_samples(
         if found_patches:
             # Export labeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples, label_field, include_labels=True, **patches_kwargs,
+                samples,
+                label_field,
+                include_labels=True,
+                **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
             num_samples = len(samples)
@@ -280,7 +286,9 @@ def export_samples(
                 label_field, samples, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
-                label_field, label_fcn=label_fcn, compute_metadata=True,
+                label_field,
+                label_fcn=label_fcn,
+                compute_metadata=True,
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
@@ -308,7 +316,10 @@ def export_samples(
             label_field, samples, dataset_exporter
         )
         frame_labels_fcn = _make_label_coercion_functions(
-            frame_labels_field, samples, dataset_exporter, frames=True,
+            frame_labels_field,
+            samples,
+            dataset_exporter,
+            frames=True,
         )
         sample_parser = FiftyOneLabeledVideoSampleParser(
             label_field=label_field,
@@ -747,7 +758,10 @@ def _write_batch_dataset(dataset_exporter, samples):
 
 
 def _write_generic_sample_dataset(
-    dataset_exporter, samples, num_samples=None, sample_collection=None,
+    dataset_exporter,
+    samples,
+    num_samples=None,
+    sample_collection=None,
 ):
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
@@ -867,7 +881,10 @@ class ExportPathsMixin(object):
 
     @staticmethod
     def _parse_data_path(
-        export_dir=None, data_path=None, export_media=None, default=None,
+        export_dir=None,
+        data_path=None,
+        export_media=None,
+        default=None,
     ):
         """Helper function that computes default values for the ``data_path``
         and ``export_media`` parameters supported by many exporters.
@@ -1567,30 +1584,38 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         self._metadata["info"] = info
 
-        # Exporting runs only makes sense if the entire dataset is being
-        # exported, otherwise the view for the run cannot be reconstructed
-        # based on the information encoded in the run's document
-
         dataset = sample_collection._root_dataset
         if sample_collection != dataset:
             return
 
+        # Exporting the information below only makes sense when exporting an
+        # entire dataset
+
+        if dataset.has_views:
+            self._metadata["views"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.views.items()
+            }
+
         if dataset.has_annotation_runs:
-            d = dataset._doc.field_to_mongo("annotation_runs")
-            d = {k: json_util.dumps(v) for k, v in d.items()}
-            self._metadata["annotation_runs"] = d
+            self._metadata["annotation_runs"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.annotation_runs.items()
+            }
             _export_annotation_results(dataset, self._anno_dir)
 
         if dataset.has_brain_runs:
-            d = dataset._doc.field_to_mongo("brain_methods")
-            d = {k: json_util.dumps(v) for k, v in d.items()}
-            self._metadata["brain_methods"] = d
+            self._metadata["brain_methods"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.brain_methods.items()
+            }
             _export_brain_results(dataset, self._brain_dir)
 
         if dataset.has_evaluations:
-            d = dataset._doc.field_to_mongo("evaluations")
-            d = {k: json_util.dumps(v) for k, v in d.items()}
-            self._metadata["evaluations"] = d
+            self._metadata["evaluations"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.evaluations.items()
+            }
             _export_evaluation_results(dataset, self._eval_dir)
 
     def export_sample(self, sample):
@@ -1740,31 +1765,44 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 frames, self._frames_path, key="frames", num_docs=num_frames
             )
 
-        conn = foo.get_db_conn()
-        dataset = sample_collection._dataset
-        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+        dataset = sample_collection._root_dataset
+        dataset_dict = dataset._doc.to_dict()
+        dataset_dict["views"] = {}
+        dataset_dict["annotation_runs"] = {}
+        dataset_dict["brain_methods"] = {}
+        dataset_dict["evaluations"] = {}
 
-        # Exporting runs only makes sense if the entire dataset is being
-        # exported, otherwise the view for the run cannot be reconstructed
-        # based on the information encoded in the run's document
+        # Exporting views/runs only makes sense when exporting entire datasets
+        full_dataset = sample_collection == sample_collection._root_dataset
 
-        export_runs = sample_collection == sample_collection._root_dataset
+        if full_dataset and dataset.has_views:
+            dataset_dict["views"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.views.items()
+            }
 
-        if not export_runs:
-            dataset_dict["annotation_runs"] = {}
-            dataset_dict["brain_methods"] = {}
-            dataset_dict["evaluations"] = {}
+        if full_dataset and dataset.has_annotation_runs:
+            dataset_dict["annotation_runs"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.annotation_runs.items()
+            }
+            _export_annotation_results(dataset, self._anno_dir)
+
+        if full_dataset and dataset.has_brain_runs:
+            dataset_dict["brain_methods"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.brain_methods.items()
+            }
+            _export_brain_results(dataset, self._brain_dir)
+
+        if full_dataset and dataset.has_evaluations:
+            dataset_dict["evaluations"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.evaluations.items()
+            }
+            _export_evaluation_results(dataset, self._eval_dir)
 
         foo.export_document(dataset_dict, self._metadata_path)
-
-        if export_runs and sample_collection.has_annotation_runs:
-            _export_annotation_results(sample_collection, self._anno_dir)
-
-        if export_runs and sample_collection.has_brain_runs:
-            _export_brain_results(sample_collection, self._brain_dir)
-
-        if export_runs and sample_collection.has_evaluations:
-            _export_evaluation_results(sample_collection, self._eval_dir)
 
         self._media_exporter.close()
 
@@ -2134,7 +2172,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
         self._media_exporter = ImageExporter(
-            self.export_media, supported_modes=(True, "move", "symlink"),
+            self.export_media,
+            supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
 
@@ -2226,7 +2265,8 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
         self._media_exporter = VideoExporter(
-            self.export_media, supported_modes=(True, "move", "symlink"),
+            self.export_media,
+            supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
 
@@ -2578,7 +2618,9 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self._parse_classes()
 
         self._media_exporter = VideoExporter(
-            self.export_media, export_path=self.data_path, ignore_exts=True,
+            self.export_media,
+            export_path=self.data_path,
+            ignore_exts=True,
         )
         self._media_exporter.setup()
 
@@ -2717,7 +2759,9 @@ class ImageSegmentationDirectoryExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default="labels/",
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels/",
         )
 
         super().__init__(export_dir=export_dir)

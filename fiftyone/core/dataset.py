@@ -4967,9 +4967,8 @@ def _load_dataset(name, virtual=False):
 
 
 def _delete_dataset_doc(dataset_doc):
-    conn = foo.get_db_conn()
-
-    run_ids = []
+    for view_doc in dataset_doc.views.values():
+        view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
         if run_doc.results is not None:
@@ -4988,9 +4987,6 @@ def _delete_dataset_doc(dataset_doc):
             run_doc.results.delete()
 
         run_doc.delete()
-
-    for view_doc in dataset_doc.views.values():
-        view_doc.delete()
 
     dataset_doc.delete()
 
@@ -5023,7 +5019,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
 
-    # Run results get special treatment at the end
+    # Runs/views get special treatment at the end
+    dataset_doc.views.clear()
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
@@ -5064,13 +5061,14 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results (full datasets only)
+    # Clone extras (full datasets only)
     if view is None and (
-        dataset.has_annotation_runs
+        dataset.has_views
+        or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
     ):
-        _clone_runs(clone_dataset, dataset._doc)
+        _clone_extras(clone_dataset, dataset._doc)
 
     return clone_dataset
 
@@ -5238,7 +5236,7 @@ def _merge_dataset_doc(
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
-        doc = collection_or_doc._dataset._doc
+        doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
         if is_video:
             frame_schema = collection_or_doc.get_frame_field_schema()
@@ -5324,7 +5322,16 @@ def _merge_dataset_doc(
 
     curr_doc.save()
 
+    #
+    # Merge views/runs
+    #
+
     if dataset:
+        if doc.views:
+            logger.warning(
+                "Saved views cannot be merged into a non-empty dataset"
+            )
+
         if doc.annotation_runs:
             logger.warning(
                 "Annotation runs cannot be merged into a non-empty dataset"
@@ -5340,73 +5347,85 @@ def _merge_dataset_doc(
                 "Evaluations cannot be merged into a non-empty dataset"
             )
     else:
+        dataset.delete_views()
         dataset.delete_annotation_runs()
         dataset.delete_brain_runs()
         dataset.delete_evaluations()
 
-        _clone_runs(dataset, doc)
+        _clone_extras(dataset, doc)
 
 
 def _update_no_overwrite(d, dnew):
     d.update({k: v for k, v in dnew.items() if k not in d})
 
 
-def _clone_runs(dst_dataset, src_doc):
+def _clone_extras(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
+    # Clone saved views
+    for name, _view_doc in src_doc.views.items():
+        view_doc = _view_doc.copy()
+        view_doc.id = ObjectId()  # IDs must be unique across datasets
+        view_doc.save()
+
+        dst_doc.views[name] = view_doc
+
     #
-    # Clone annotation runs results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
+    # Note: unfortunately the only way to copy GridFS files is to read and
+    # rewrite them...
+    # https://jira.mongodb.org/browse/TOOLS-2208
     #
 
-    for anno_key, run_doc in src_doc.annotation_runs.items():
-        _run_doc = deepcopy(run_doc)
+    # Clone annotation runs
+    for anno_key, _run_doc in src_doc.annotation_runs.items():
+        # Temporarily insert `_run_doc` so we can load the results
         dst_doc.annotation_runs[anno_key] = _run_doc
         results = foan.AnnotationMethod.load_run_results(
             dst_dataset, anno_key, cache=False
         )
-        _run_doc.results = None
+
+        run_doc = _run_doc.copy()
+        run_doc.id = ObjectId()  # IDs must be unique across datasets
+        run_doc.results = None
+        run_doc.save()
+
+        dst_doc.annotation_runs[anno_key] = run_doc
         foan.AnnotationMethod.save_run_results(
             dst_dataset, anno_key, results, cache=False
         )
 
-    #
-    # Clone brain results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
-
-    for brain_key, run_doc in src_doc.brain_methods.items():
-        _run_doc = deepcopy(run_doc)
+    # Clone brain method runs
+    for brain_key, _run_doc in src_doc.brain_methods.items():
+        # Temporarily insert `_run_doc` so we can load the results
         dst_doc.brain_methods[brain_key] = _run_doc
         results = fob.BrainMethod.load_run_results(
             dst_dataset, brain_key, cache=False
         )
-        _run_doc.results = None
+
+        run_doc = _run_doc.copy()
+        run_doc.id = ObjectId()  # IDs must be unique across datasets
+        run_doc.results = None
+        run_doc.save()
+
+        dst_doc.brain_methods[brain_key] = run_doc
         fob.BrainMethod.save_run_results(
             dst_dataset, brain_key, results, cache=False
         )
 
-    #
-    # Clone evaluation results
-    #
-    # GridFS files must be manually copied
-    # This works by loading the source dataset's copy of the results into
-    # memory and then writing a new copy for the destination dataset
-    #
-
-    for eval_key, run_doc in src_doc.evaluations.items():
-        _run_doc = deepcopy(run_doc)
+    # Clone evaluation runs
+    for eval_key, _run_doc in src_doc.evaluations.items():
+        # Temporarily insert `_run_doc` so we can load the results
         dst_doc.evaluations[eval_key] = _run_doc
         results = foe.EvaluationMethod.load_run_results(
             dst_dataset, eval_key, cache=False
         )
-        _run_doc.results = None
+
+        run_doc = _run_doc.copy()
+        run_doc.id = ObjectId()  # IDs must be unique across datasets
+        run_doc.results = None
+        run_doc.save()
+
+        dst_doc.evaluations[eval_key] = run_doc
         foe.EvaluationMethod.save_run_results(
             dst_dataset, eval_key, results, cache=False
         )
