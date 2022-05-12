@@ -1765,7 +1765,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 frames, self._frames_path, key="frames", num_docs=num_frames
             )
 
-        dataset = sample_collection._root_dataset
+        dataset = sample_collection._dataset
         dataset_dict = dataset._doc.to_dict()
         dataset_dict["views"] = {}
         dataset_dict["annotation_runs"] = {}
