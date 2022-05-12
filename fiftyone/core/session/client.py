@@ -31,7 +31,7 @@ from fiftyone.core.session.events import (
 logger = logging.getLogger(__name__)
 
 
-@retry(wait_fixed=500, stop_max_delay=5000)
+@retry(wait_fixed=500, stop_max_delay=10000)
 def _ping(url: str) -> None:
     requests.get(url)
 
