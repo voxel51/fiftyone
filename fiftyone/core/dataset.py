@@ -5364,73 +5364,53 @@ def _clone_extras(dst_dataset, src_doc):
 
     # Clone saved views
     for name, _view_doc in src_doc.views.items():
-        view_doc = _view_doc.copy()
-        view_doc.id = ObjectId()  # IDs must be unique across datasets
+        view_doc = _clone_view_doc(_view_doc)
         view_doc.save()
 
         dst_doc.views[name] = view_doc
 
-    #
-    # Note: unfortunately the only way to copy GridFS files is to read and
-    # rewrite them...
-    # https://jira.mongodb.org/browse/TOOLS-2208
-    #
-
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():
-        # Temporarily insert `_run_doc` so we can load the results
-        dst_doc.annotation_runs[anno_key] = _run_doc
-        results = foan.AnnotationMethod.load_run_results(
-            dst_dataset, anno_key, cache=False
-        )
-
-        run_doc = _run_doc.copy()
-        run_doc.id = ObjectId()  # IDs must be unique across datasets
-        run_doc.results = None
+        run_doc = _clone_run(_run_doc)
         run_doc.save()
 
         dst_doc.annotation_runs[anno_key] = run_doc
-        foan.AnnotationMethod.save_run_results(
-            dst_dataset, anno_key, results, cache=False
-        )
 
     # Clone brain method runs
     for brain_key, _run_doc in src_doc.brain_methods.items():
-        # Temporarily insert `_run_doc` so we can load the results
-        dst_doc.brain_methods[brain_key] = _run_doc
-        results = fob.BrainMethod.load_run_results(
-            dst_dataset, brain_key, cache=False
-        )
-
-        run_doc = _run_doc.copy()
-        run_doc.id = ObjectId()  # IDs must be unique across datasets
-        run_doc.results = None
+        run_doc = _clone_run(_run_doc)
         run_doc.save()
 
         dst_doc.brain_methods[brain_key] = run_doc
-        fob.BrainMethod.save_run_results(
-            dst_dataset, brain_key, results, cache=False
-        )
 
     # Clone evaluation runs
     for eval_key, _run_doc in src_doc.evaluations.items():
-        # Temporarily insert `_run_doc` so we can load the results
-        dst_doc.evaluations[eval_key] = _run_doc
-        results = foe.EvaluationMethod.load_run_results(
-            dst_dataset, eval_key, cache=False
-        )
-
-        run_doc = _run_doc.copy()
-        run_doc.id = ObjectId()  # IDs must be unique across datasets
-        run_doc.results = None
+        run_doc = _clone_run(_run_doc)
         run_doc.save()
 
         dst_doc.evaluations[eval_key] = run_doc
-        foe.EvaluationMethod.save_run_results(
-            dst_dataset, eval_key, results, cache=False
-        )
 
     dst_doc.save()
+
+
+def _clone_view_doc(view_doc):
+    _view_doc = view_doc.copy()
+    _view_doc.id = ObjectId()  # IDs must be unique across datasets
+    return _view_doc
+
+
+def _clone_run(run_doc):
+    _run_doc = run_doc.copy()
+    _run_doc.id = ObjectId()  # IDs must be unique across datasets
+
+    # Unfortunately the only way to copy GridFS files is to read-write them...
+    # https://jira.mongodb.org/browse/TOOLS-2208
+    run_doc.results.seek(0)
+    results_bytes = run_doc.results.read()
+    _run_doc.results = None
+    _run_doc.results.put(results_bytes, content_type="application/json")
+
+    return _run_doc
 
 
 def _ensure_index(sample_collection, db_field, unique=False):
