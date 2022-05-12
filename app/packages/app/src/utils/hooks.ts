@@ -32,7 +32,6 @@ import {
   setView,
   setViewMutation,
 } from "../mutations";
-import { getDatasetName } from "./generic";
 import { useErrorHandler } from "react-error-boundary";
 import { transformDataset } from "../Root/Datasets";
 
@@ -261,7 +260,7 @@ export const useScreenshot = (
     });
   }, []);
 
-  return () => {
+  const run = () => {
     if (!context) return;
 
     fitSVGs();
@@ -275,6 +274,8 @@ export const useScreenshot = (
       chain.then(capture);
     }
   };
+
+  return run;
 };
 
 export type StateResolver =

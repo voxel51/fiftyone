@@ -50,7 +50,7 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
     let url: string;
     try {
       new URL(path);
-      origin = path;
+      url = path;
     } catch {
       url = `${origin}${path}`;
     }
