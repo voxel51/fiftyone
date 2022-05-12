@@ -343,7 +343,11 @@ class ImageNet2012Dataset(TorchVisionDataset):
         get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            dataset_dir, None, download_fcn, get_classes_fcn, sample_parser,
+            dataset_dir,
+            None,
+            download_fcn,
+            get_classes_fcn,
+            sample_parser,
         )
 
 
@@ -394,7 +398,10 @@ class VOC2007Dataset(TorchVisionDataset):
 
         def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                download_dir, year="2007", image_set=image_set, download=True,
+                download_dir,
+                year="2007",
+                image_set=image_set,
+                download=True,
             )
 
         get_classes_fcn = _parse_voc_detection_labels
@@ -455,7 +462,10 @@ class VOC2012Dataset(TorchVisionDataset):
 
         def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                download_dir, year="2012", image_set=image_set, download=True,
+                download_dir,
+                year="2012",
+                image_set=image_set,
+                download=True,
             )
 
         get_classes_fcn = _parse_voc_detection_labels
@@ -504,7 +514,11 @@ class _VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 
 
 def _download_and_prepare(
-    dataset_dir, scratch_dir, download_fcn, get_classes_fcn, sample_parser,
+    dataset_dir,
+    scratch_dir,
+    download_fcn,
+    get_classes_fcn,
+    sample_parser,
 ):
     # Download the torchvision dataset, if necessary
     dataset = download_fcn(scratch_dir)

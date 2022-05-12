@@ -537,7 +537,8 @@ class BinaryEvaluation(ClassificationEvaluation):
             # Sample-level accuracies
             dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
             samples.set_field(
-                eval_key, F("frames").map((Fgt == Fpred).to_double()).mean(),
+                eval_key,
+                F("frames").map((Fgt == Fpred).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies

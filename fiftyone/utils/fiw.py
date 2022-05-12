@@ -223,7 +223,9 @@ def _get_relationships(labels, member_id_int, num_members, family_id):
 
         rel_type = _RELATIONSHIP_MAP[rel_int]
         rel = fo.Classification(
-            label=rel_type, member_id=_format_mid(mid), family=family_id,
+            label=rel_type,
+            member_id=_format_mid(mid),
+            family=family_id,
         )
         rels.append(rel)
 
