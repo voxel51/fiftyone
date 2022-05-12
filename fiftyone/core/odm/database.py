@@ -210,29 +210,50 @@ def _async_connect():
         )
 
 
+# Publicially expose the following function as a manual method of reseting
+# "connection_count" if the value becomes out of sync.
+def _reset_db_connection_count():
+    db = _client[fo.config.database_name]
+    db.config.update_one({}, {"$set": {"connection_count": 0}})
+
+
 def _track_db_connection(config, client):
+    # Using an env variable so that this only happens once per "main" process
     if os.environ.get("_FIFTYONE_CONN_TRACKER"):
         return
 
     os.environ["_FIFTYONE_CONN_TRACKER"] = "1"
+
+    # Using "$inc" to update instead "$set" to avoid race conditions.
     db = client[config.database_name]
     db.config.update_one({}, {"$inc": {"connection_count": 1}})
 
+    # Register cleanup method which will  run when the python process exits
     @atexit.register
     def cleanup():
         try:
+            # Using "$inc" again, filter to ensure "connection_count" does not
+            # go negative, and returns the updated document
             doc = db.config.find_one_and_update(
                 {"connection_count": {"$gt": 0}},
                 {"$inc": {"connection_count": -1}},
                 return_document=pymongo.ReturnDocument.AFTER,
+                upsert=False,
             )
+
             connection_count = doc.get("connection_count") if doc else 0
             if connection_count > 0:
                 return
             try:
                 fod.delete_non_persistent_datasets()
-            except (AttributeError, ValueError):
-                pass
+            except Exception as e:
+                logger.debug(
+                    f"An error occured while trying to delete non-persistent datasets. {e}"
+                )
+        except Exception as e:
+            logger.debug(
+                f"An error occured while trying to cleanup tracked db connections. {e}"
+            )
         finally:
             os.environ.pop("_FIFTYONE_CONN_TRACKER", None)
 
