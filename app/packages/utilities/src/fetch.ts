@@ -206,12 +206,16 @@ const pollingEventSource = (
   opened: boolean = false
 ): void => {
   if (signal.aborted) {
-    events.onclose();
+    opened && events.onclose();
     return;
   }
 
   getFetchFunction()("POST", path, { polling: true, ...body })
     .then(({ events: data }: { events: PollingEventResponse[] }) => {
+      if (signal.aborted) {
+        return;
+      }
+
       if (!opened) {
         events.onopen && events.onopen();
         opened = true;
@@ -239,7 +243,8 @@ const pollingEventSource = (
         events.onclose && events.onclose();
         opened = false;
       } else {
-        events.onerror && events.onerror(error);
+        // todo: use onerror when appropriate? (colab network responses are unreliable)
+        events.onclose && events.onclose();
       }
 
       setTimeout(
