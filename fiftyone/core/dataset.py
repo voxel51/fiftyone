@@ -2183,6 +2183,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.save()
 
+    @property
+    def has_views(self):
+        """Whether this dataset has any saved views."""
+        return bool(self.list_views())
+
+    def has_view(self, name):
+        """Whether this dataset has a saved view with the given name.
+
+        Args:
+            name: a saved view name
+
+        Returns:
+            True/False
+        """
+        return name in self.list_views()
+
     def list_views(self):
         """Returns the names of saved views on this dataset.
 
@@ -2195,6 +2211,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Saves the given view into this dataset under the given name so it
         can be loaded later via :meth:`load_view`.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_view("cats")
+            assert view == also_view
+
         Args:
             name: a name for the saved view
             view: a :class:`fiftyone.core.view.DatasetView`
@@ -2204,8 +2234,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
 
-        if not overwrite and name in self._doc.views:
-            raise ValueError("Saved view with name '%s' already exists" % name)
+        if name in self._doc.views:
+            if not overwrite:
+                raise ValueError(
+                    "Saved view with name '%s' already exists" % name
+                )
+
+            _view_doc = self._doc.views.pop(name)
+            _view_doc.delete()
 
         view_doc = foo.ViewDocument(
             dataset_id=self._doc.id,
@@ -2221,6 +2257,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def load_view(self, name):
         """Loads the saved view with the given name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+            dataset.save_view("cats", view)
+
+            also_view = dataset.load_view("cats")
+            assert view == also_view
 
         Args:
             name: the name of a saved view
@@ -2244,8 +2294,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name not in self._doc.views:
             raise ValueError("Dataset has no saved view '%s'" % name)
 
-        self._doc.views.pop(name)
+        view_doc = self._doc.views.pop(name)
+        view_doc.delete()
         self._doc.save()
+
+    def delete_views(self):
+        """Deletes all saved views from this dataset."""
+        for name in self.list_views():
+            self.delete_view(name)
 
     def clone(self, name=None):
         """Creates a clone of the dataset containing deep copies of all samples
