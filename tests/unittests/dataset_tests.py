@@ -317,7 +317,9 @@ class DatasetTests(unittest.TestCase):
 
         sample11 = fo.Sample(filepath="image1.jpg", field=1)
         sample12 = fo.Sample(
-            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+            filepath="image2.jpg",
+            field=1,
+            gt=fo.Classification(label="cat"),
         )
 
         sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
@@ -414,7 +416,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample15 = fo.Sample(
-            filepath="image5.png", ground_truth=None, hello=None,
+            filepath="image5.png",
+            ground_truth=None,
+            hello=None,
         )
 
         dataset1 = fo.Dataset()
@@ -449,7 +453,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample24 = fo.Sample(
-            filepath="image4.png", ground_truth=None, hello=None,
+            filepath="image4.png",
+            ground_truth=None,
+            hello=None,
         )
 
         sample25 = fo.Sample(
@@ -559,7 +565,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "world", "world", "bar", None],
             )
             self.assertListEqual(
-                d4.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d4.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d4.values("ground_truth.detections.label"),
@@ -601,7 +608,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d5.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d5.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d5.values("ground_truth.detections.label"),
@@ -632,7 +640,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d6.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d6.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d6.values("ground_truth.detections.label"),
@@ -761,14 +770,16 @@ class DatasetTests(unittest.TestCase):
             self.assertNotIn("predictions2", d10_schema)
 
             self.assertListEqual(
-                d10.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d10.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d10.values("hello"),
                 [None, "world", "world", "world", None, None],
             )
             self.assertListEqual(
-                d10.values("hello2"), [None, None, "bar", None, "bar", None],
+                d10.values("hello2"),
+                [None, None, "bar", None, "bar", None],
             )
             self.assertListEqual(
                 d10.values("predictions1.detections.label"),
@@ -1308,6 +1319,178 @@ class DatasetTests(unittest.TestCase):
             )
 
 
+class DatasetExtrasTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="dog", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="image3.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="pig", confidence=0.1),
+                ),
+            ]
+        )
+
+    def test_saved_views(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_views)
+        self.assertListEqual(dataset.list_views(), [])
+
+        view = dataset.match(F("filepath").contains_str("image2"))
+
+        self.assertEqual(len(view), 1)
+        self.assertTrue("image2" in view.first().filepath)
+
+        dataset.save_view("test", view)
+
+        self.assertTrue(dataset.has_views)
+        self.assertTrue(dataset.has_view("test"))
+        self.assertListEqual(dataset.list_views(), ["test"])
+
+        also_view = dataset.load_view("test")
+
+        self.assertEqual(view, also_view)
+
+        #
+        # Verify that saved views are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_views)
+        self.assertTrue(dataset2.has_view("test"))
+        self.assertListEqual(dataset2.list_views(), ["test"])
+
+        view2 = dataset2.load_view("test")
+
+        self.assertEqual(len(view2), 1)
+        self.assertTrue("image2" in view2.first().filepath)
+
+        dataset.delete_view("test")
+
+        self.assertFalse(dataset.has_views)
+        self.assertFalse(dataset.has_view("test"))
+        self.assertListEqual(dataset.list_views(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        also_view2 = dataset2.load_view("test")
+        self.assertIsNotNone(also_view2)
+
+        #
+        # Verify that saved views are included in empty merges
+        #
+
+        dataset3 = fo.Dataset()
+        dataset3.merge_samples(dataset2)
+
+        view3 = dataset3.load_view("test")
+
+        self.assertEqual(len(view3), 1)
+        self.assertTrue("image2" in view3.first().filepath)
+
+        #
+        # Verify that saved views are deleted when a dataset is deleted
+        #
+
+        view_id = dataset2._doc.views["test"].id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
+
+    def test_runs(self):
+        dataset = self.dataset
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # We currently use only evaluations as a proxy for all run types
+        dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+
+        self.assertTrue(dataset.has_evaluations)
+        self.assertTrue(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are included in clones
+        #
+
+        dataset2 = dataset.clone()
+
+        self.assertTrue(dataset2.has_evaluations)
+        self.assertTrue(dataset2.has_evaluation("eval"))
+        self.assertListEqual(dataset2.list_evaluations(), ["eval"])
+
+        results = dataset.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        dataset.delete_evaluation("eval")
+
+        self.assertFalse(dataset.has_evaluations)
+        self.assertFalse(dataset.has_evaluation("eval"))
+        self.assertListEqual(dataset.list_evaluations(), [])
+
+        # Verify that cloned data is properly decoupled from source dataset
+        info = dataset2.get_evaluation_info("eval")
+        results = dataset2.load_evaluation_results("eval")
+        self.assertIsNotNone(info)
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are included in empty merges
+        #
+
+        dataset3 = fo.Dataset()
+        dataset3.merge_samples(dataset2)
+
+        results = dataset3.load_evaluation_results("eval")
+
+        self.assertIsNotNone(results)
+
+        #
+        # Verify that runs are deleted when a dataset is deleted
+        #
+
+        run_id = dataset2._doc.evaluations["eval"].id
+        result_id = dataset2._doc.evaluations["eval"].results.grid_id
+
+        db = foo.get_db_conn()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 1)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 1)
+
+        dataset2.delete()
+
+        self.assertEqual(len(list(db.runs.find({"_id": run_id}))), 0)
+        self.assertEqual(len(list(db.fs.files.find({"_id": result_id}))), 0)
+
+
 class DatasetDeletionTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):
@@ -1315,7 +1498,8 @@ class DatasetDeletionTests(unittest.TestCase):
 
     def _setUp_classification(self):
         sample1 = fo.Sample(
-            filepath="image1.png", ground_truth=fo.Classification(label="cat"),
+            filepath="image1.png",
+            ground_truth=fo.Classification(label="cat"),
         )
 
         sample2 = sample1.copy()
@@ -1348,9 +1532,13 @@ class DatasetDeletionTests(unittest.TestCase):
             filepath="image1.png",
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",
@@ -1376,9 +1564,13 @@ class DatasetDeletionTests(unittest.TestCase):
             frame_number=1,
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",

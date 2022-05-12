@@ -2171,26 +2171,6 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(str(field), str(deepcopy(field)))
 
 
-class SavedViewTests(unittest.TestCase):
-    @drop_datasets
-    def test_saved_views(self):
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
-        )
-
-        view = dataset.match(F("filepath").contains_str("image1"))
-        dataset.save_view("test", view)
-
-        self.assertListEqual(dataset.list_views(), ["test"])
-
-        also_view = dataset.load_view("test")
-        self.assertEqual(view, also_view)
-
-        dataset.delete_view("test")
-        self.assertListEqual(dataset.list_views(), [])
-
-
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
