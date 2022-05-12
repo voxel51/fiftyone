@@ -106,6 +106,7 @@ class ListenPayload:
     initializer: t.Union[str, None, fos.StateDescription]
     events: t.List[str]
     subscription: str
+    polling: t.Optional[bool] = False
 
     @classmethod
     def from_dict(cls, d: dict) -> "ListenPayload":

@@ -77,6 +77,9 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
   fetchFunctionSingleton = fetchFunction;
 };
 
+const isWorker =
+  typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+
 export const getAPI = () => {
   if (import.meta.env.VITE_API) {
     return import.meta.env.VITE_API;
@@ -89,89 +92,159 @@ export const getAPI = () => {
     : window.location.origin;
 };
 
-if (
-  !(
-    typeof WorkerGlobalScope !== "undefined" &&
-    self instanceof WorkerGlobalScope
-  )
-) {
+if (!isWorker) {
   setFetchFunction(getAPI());
 }
 
 class RetriableError extends Error {}
 class FatalError extends Error {}
 
+const polling =
+  !isWorker &&
+  typeof new URLSearchParams(window.location.search).get("polling") ===
+    "string";
+
 export const getEventSource = (
   path: string,
   events: {
-    onmessage?: (ev: EventSourceMessage) => void;
-    onopen?: (response: Response) => Promise<void>;
+    onmessage?: (event: EventSourceMessage) => void;
+    onopen?: () => void;
     onclose?: () => void;
-    onerror?: (err: any) => number | null | undefined | void;
+    onerror?: (error: Error) => void;
   },
   signal: AbortSignal,
   body = {}
-) =>
-  fetchEventSource(`${getFetchOrigin()}${path}`, {
-    headers: { "Content-Type": "text/event-stream" },
-    method: "POST",
-    signal,
-    body: JSON.stringify(body),
-    async onopen(response) {
-      if (response.ok) {
-        events.onopen && events.onopen(response);
-        return;
-      }
-
-      if (response.status !== 429) {
-        throw new FatalError();
-      }
-
-      throw new RetriableError();
-    },
-    onmessage(msg) {
-      if (msg.event === "FatalError") {
-        throw new FatalError(msg.data);
-      }
-      events.onmessage && events.onmessage(msg);
-    },
-    onclose() {
-      events.onclose && events.onclose();
-      throw new RetriableError();
-    },
-    onerror(err) {
-      if (
-        err instanceof TypeError &&
-        ["Failed to fetch", "network error"].includes(err.message)
-      ) {
-        events.onclose && events.onclose();
-        return;
-      }
-
-      events.onerror && events.onerror(err);
-    },
-    fetch: async (input, init) => {
-      try {
-        const response = await fetch(input, init);
-        if (response.status >= 400) {
-          let err;
-          try {
-            err = await response.json();
-          } catch {
-            throw new Error(`${response.status} ${response.url}`);
-          }
-
-          throw new ServerError(((err as unknown) as { stack: string }).stack);
+): void => {
+  if (polling) {
+    pollingEventSource(path, events, signal, body);
+  } else {
+    fetchEventSource(`${getFetchOrigin()}${path}`, {
+      headers: { "Content-Type": "text/event-stream" },
+      method: "POST",
+      signal,
+      body: JSON.stringify(body),
+      async onopen(response) {
+        if (response.ok) {
+          events.onopen && events.onopen();
+          return;
         }
 
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    openWhenHidden: true,
-  });
+        if (response.status !== 429) {
+          throw new FatalError();
+        }
+
+        throw new RetriableError();
+      },
+      onmessage(msg) {
+        if (msg.event === "FatalError") {
+          throw new FatalError(msg.data);
+        }
+        events.onmessage && events.onmessage(msg);
+      },
+      onclose() {
+        events.onclose && events.onclose();
+        throw new RetriableError();
+      },
+      onerror(err) {
+        if (
+          err instanceof TypeError &&
+          ["Failed to fetch", "network error"].includes(err.message)
+        ) {
+          events.onclose && events.onclose();
+          return;
+        }
+
+        events.onerror && events.onerror(err);
+      },
+      fetch: async (input, init) => {
+        try {
+          const response = await fetch(input, init);
+          if (response.status >= 400) {
+            let err;
+            try {
+              err = await response.json();
+            } catch {
+              throw new Error(`${response.status} ${response.url}`);
+            }
+
+            throw new ServerError(
+              ((err as unknown) as { stack: string }).stack
+            );
+          }
+
+          return response;
+        } catch (err) {
+          throw err;
+        }
+      },
+      openWhenHidden: true,
+    });
+  }
+};
 
 export const sendEvent = async (data: {}) => {
   return await getFetchFunction()("POST", "/event", data);
+};
+
+interface PollingEventResponse {
+  event: string;
+  data: {
+    [key: string]: any;
+  };
+}
+
+const pollingEventSource = (
+  path: string,
+  events: {
+    onmessage?: (event: EventSourceMessage) => void;
+    onopen?: () => void;
+    onclose?: () => void;
+    onerror?: (error: Error) => void;
+  },
+  signal: AbortSignal,
+  body = {},
+  opened: boolean = false
+): void => {
+  if (signal.aborted) {
+    events.onclose();
+    return;
+  }
+
+  getFetchFunction()("POST", path, { polling: true, ...body })
+    .then(({ events: data }: { events: PollingEventResponse[] }) => {
+      if (!opened) {
+        events.onopen && events.onopen();
+        opened = true;
+      }
+
+      data.forEach((e) => {
+        events.onmessage &&
+          events.onmessage({
+            id: null,
+            event: e.event,
+            data: JSON.stringify(e.data),
+          });
+      });
+
+      setTimeout(
+        () => pollingEventSource(path, events, signal, body, opened),
+        2000
+      );
+    })
+    .catch((error) => {
+      if (
+        error instanceof TypeError &&
+        ["Failed to fetch", "network error"].includes(error.message)
+      ) {
+        events.onclose && events.onclose();
+        opened = false;
+      } else {
+        events.onerror && events.onerror(error);
+      }
+
+      setTimeout(
+        () => pollingEventSource(path, events, signal, body, opened),
+        2000
+      );
+    });
 };
