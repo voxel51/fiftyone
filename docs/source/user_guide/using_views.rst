@@ -12,10 +12,9 @@ that will show only the samples and labels therein that match your criteria.
 
 .. note::
 
-    |DatasetView| does not hold its contents in-memory. Views simply store a
-    pipeline of operations that define rule(s) that are applied to extract the
-    content of interest from the underlying |Dataset| when the view is
-    iterated/aggregated on.
+    |DatasetView| does not hold its contents in-memory. Views simply store the
+    rule(s) that are applied to extract the content of interest from the
+    underlying |Dataset| when the view is iterated/aggregated on.
 
     This means, for example, that the contents of a |DatasetView| may change
     as the underlying |Dataset| is modified.
@@ -127,6 +126,7 @@ your dataset under a name of your choice:
         .sort_by(F("ground_truth.detections").length(), reverse=True)
     )
 
+    # Save the view
     dataset.save_view("cats-view", cats_view)
 
 Then you can conveniently use
@@ -153,13 +153,12 @@ your saved views.
 
 .. note::
 
-    Remember that |DatasetView| objects only store the rule(s) by which to
-    extract content from the underlying |Dataset|, not the actual content
-    itself. This means that:
+    Remember that |DatasetView| objects only store the rule(s) used to extract
+    content from the underlying |Dataset|, not the actual content itself.
+    Saving views is cheap. Don't worry about storage space!
 
-    -   Saving views is cheap. Don't worry about storage space!
-    -   The contents of a |DatasetView| may change as the underlying |Dataset|
-        is modified
+    Keep in mind though, the contents of a |DatasetView| may change as the
+    underlying |Dataset| is modified.
 
 .. _view-stages:
 
