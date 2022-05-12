@@ -80,7 +80,10 @@ async def add_event_listener(
     current = state.dataset.name if state.dataset is not None else None
     if is_app and payload.initializer != current:
         if payload.initializer is not None:
-            state.dataset = fo.load_dataset(payload.initializer)
+            try:
+                state.dataset = fo.load_dataset(payload.initializer)
+            except:
+                state.dataset = None
             state.selected = []
             state.selected_labels = []
             state.view = None

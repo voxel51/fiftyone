@@ -231,12 +231,12 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
-      <SortFilterResults modal={modal} />
-      <Patches modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
+      <SortFilterResults modal={modal} />
       <Keypoints modal={modal} />
+      <Patches modal={modal} />
     </Popout>
   );
 };

@@ -12,7 +12,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import { useEventHandler } from "../../utils/hooks";
+import { useEventHandler, useSetView } from "../../utils/hooks";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
@@ -30,26 +30,21 @@ const useClearSampleSelection = (close) => {
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(viewAtoms.elementNames);
   const clearSelection = useClearSampleSelection(close);
-  const setState = () => {};
-  const addStage = (name: string) => {
-    close();
+  const setView = useSetView();
+  const addStage = useRecoilTransaction_UNSTABLE(
+    ({ get }) => (name: string) => {
+      const view = get(viewAtoms.view);
 
-    setState(({ get }) => {
-      const state = { ...get(atoms.stateDescription) };
-
-      state.view = [
-        ...(state?.view || []),
+      setView([
+        ...(view || []),
         {
           _cls: `fiftyone.core.stages.${name}`,
           kwargs: [["sample_ids", Array.from(get(atoms.selectedSamples))]],
         },
-      ];
-      state.selected = [];
-
-      return state;
-    });
-  };
-
+      ]);
+      close();
+    }
+  );
   return [
     {
       text: `Clear selected ${elementNames.plural}`,

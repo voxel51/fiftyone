@@ -5,16 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   PreloadedQuery,
   useFragment,
-  useMutation,
   usePaginationFragment,
   usePreloadedQuery,
 } from "react-relay";
 import { useDebounce } from "react-use";
-import {
-  useRecoilRefresher_UNSTABLE,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 
 import {
@@ -40,8 +35,9 @@ import { RootQuery } from "./__generated__/RootQuery.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { useHashChangeHandler, useSetDataset } from "../utils/hooks";
+import { useHashChangeHandler, useReset, useSetDataset } from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
+import { getDatasetName } from "../utils/generic";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
@@ -98,7 +94,7 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
   value,
 }) => {
   return (
-    <Link title={value} className={className} to={`/datasets/${value}`}>
+    <Link title={value} className={className}>
       {value}
     </Link>
   );
@@ -162,7 +158,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 }) => {
   useGA(prepared);
   const useSearch = getUseSearch(prepared);
-  const fns = useTo();
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
   const { teamsSubmission } = useFragment(
@@ -175,8 +170,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   );
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
   const refresh = useRefresh();
-  const dataset = useRecoilValue(datasetName);
   const setDataset = useSetDataset();
+  const dataset = getDatasetName();
 
   return (
     <>
@@ -188,9 +183,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         datasetSelectorProps={{
           component: DatasetLink,
           onSelect: (name) => {
-            setDataset();
-            fns.start(name);
-            fns.to(name);
+            setDataset(name);
           },
           placeholder: "Select dataset",
           useSearch,

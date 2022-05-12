@@ -160,7 +160,7 @@ export const TEMPORAL_DETECTIONS = "TemporalDetections";
 export const LABEL_LISTS_MAP = {
   [CLASSIFICATIONS]: "classifications",
   [DETECTIONS]: "detections",
-  [KEYPOINTS]: "Keypoints",
+  [KEYPOINTS]: "keypoints",
   [POLYLINES]: "polylines",
   [TEMPORAL_DETECTIONS]: "detections",
 };
@@ -307,6 +307,7 @@ export function withPath(
 }
 
 export const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
+export const VALID_KEYPOINTS = withPath(LABELS_PATH, [KEYPOINT, KEYPOINTS]);
 
 export const useExternalLink = (href) => {
   let openExternal;

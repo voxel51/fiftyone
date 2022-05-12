@@ -26,12 +26,14 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  KEYPOINTS,
   LABELS,
   LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
   OBJECT_ID_FIELD,
   STRING_FIELD,
+  VALID_KEYPOINTS,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
@@ -53,6 +55,7 @@ import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -82,7 +85,8 @@ const getFilterData = (
   path: string,
   modal: boolean,
   parent: Field,
-  fields: Field[]
+  fields: Field[],
+  skeleton: (field: string) => KeypointSkeleton | null
 ): {
   ftype: string;
   path: string;
@@ -115,20 +119,45 @@ const getFilterData = (
   const label = LABELS.includes(parent.embeddedDocType);
   const excluded = EXCLUDED[parent.embeddedDocType] || [];
 
+  const extra = [];
+
+  if (VALID_KEYPOINTS.includes(parent.embeddedDocType)) {
+    let p = path;
+    if (withPath(LABELS_PATH, KEYPOINTS) === parent.embeddedDocType) {
+      p = path.split(".").slice(0, -1).join(".");
+    }
+
+    if (skeleton(p)) {
+      extra.push({
+        path: [path, "points"].join("."),
+        modal,
+        named: true,
+        ftype: STRING_FIELD,
+        listField: false,
+      });
+    }
+  }
+
   return fields
-    .filter(
-      ({ name, ftype }) =>
+    .filter(({ name, ftype, subfield }) => {
+      if (ftype === LIST_FIELD) {
+        ftype = subfield;
+      }
+
+      return (
         !label ||
         (name !== "tags" &&
           !excluded.includes(name) &&
           VALID_PRIMITIVE_TYPES.includes(ftype))
-    )
+      );
+    })
     .map(({ ftype, subfield, name }) => {
       const listField = ftype === LIST_FIELD;
 
       if (listField) {
         ftype = subfield;
       }
+
       return {
         path: [path, name].join("."),
         modal,
@@ -136,7 +165,8 @@ const getFilterData = (
         named: true,
         listField,
       };
-    });
+    })
+    .concat(extra);
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({
@@ -187,7 +217,7 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
-const pathIsExpanded = atomFamily<boolean, { modal: string; path: string }>({
+const pathIsExpanded = atomFamily<boolean, { modal: boolean; path: string }>({
   key: "pathIsExpanded",
   default: false,
 });
@@ -212,6 +242,7 @@ const FilterableEntry = React.memo(
     );
     const theme = useTheme();
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+    const skeleton = useRecoilValue(selectors.getSkeleton);
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
     const color = disabled
       ? theme.backgroundDark
@@ -224,8 +255,8 @@ const FilterableEntry = React.memo(
     );
     const field = useRecoilValue(schemaAtoms.field(path));
     const data = useMemo(
-      () => getFilterData(expandedPath, modal, field, fields),
-      [field, fields, expandedPath, modal]
+      () => getFilterData(expandedPath, modal, field, fields, skeleton),
+      [field, fields, expandedPath, modal, skeleton]
     );
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })

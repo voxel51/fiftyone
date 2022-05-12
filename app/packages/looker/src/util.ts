@@ -12,10 +12,12 @@ import {
   Buffers,
   Coordinates,
   Dimensions,
+  DispatchEvent,
   Optional,
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
+import { getFetchParameters } from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -34,6 +36,13 @@ export function compareData(a: object, b: object): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Elementwise vector multiplication
+ */
+export function multiply<T extends number[]>(one: T, two: T): T {
+  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -78,13 +87,6 @@ export function distance(
  */
 export function dot2d(ax: number, ay: number, bx: number, by: number): number {
   return ax * bx + ay * by;
-}
-
-/**
- * Elementwise vector multiplication
- */
-export function multiply<T extends number[]>(one: T, two: T): T {
-  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -405,18 +407,32 @@ export const mergeUpdates = <State extends BaseState>(
     if (n === null || o === null) {
       return n;
     }
-    if (o === null) {
-      return n;
-    }
     return mergeWith(merger, o, n);
   };
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (listeners?: {
-  [key: string]: ((worker: Worker, args: any) => void)[];
-}): Worker => {
+export const createWorker = (
+  listeners?: {
+    [key: string]: ((worker: Worker, args: any) => void)[];
+  },
+  dispatchEvent?: DispatchEvent
+): Worker => {
   const worker = new LookerWorker();
+
+  worker.onerror = (error) => {
+    dispatchEvent("error", error);
+  };
+  worker.addEventListener("message", ({ data }) => {
+    if (data.error) {
+      dispatchEvent("error", new ErrorEvent("error", { error: data.error }));
+    }
+  });
+
+  worker.postMessage({
+    method: "init",
+    ...getFetchParameters(),
+  });
 
   if (!listeners) {
     return worker;
@@ -492,33 +508,6 @@ export const getDPR = (() => {
     return dpr;
   };
 })();
-
-const isElectron = (): boolean => {
-  return (
-    window.process &&
-    window.process.versions &&
-    Boolean(window.process.versions.electron)
-  );
-};
-
-const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
-const path =
-  window.location.pathname +
-  (window.location.pathname.endsWith("/") ? "" : "/");
-
-export const port = isElectron()
-  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
-  : parseInt(window.location.port);
-
-const address = isElectron()
-  ? process.env.FIFTYONE_SERVER_ADDRESS || "localhost"
-  : window.location.hostname;
-
-export const getURL = () => {
-  return isElectron()
-    ? `http://${address}:${port}${path}`
-    : window.location.protocol + "//" + host + path;
-};
 
 export const getMimeType = (sample: any) => {
   return (

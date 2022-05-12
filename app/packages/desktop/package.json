@@ -10,7 +10,7 @@
   "scripts": {
     "build": "yarn build-source && yarn build-desktop",
     "build-desktop": "yarn pull-source && tsc -p tsconfig.json",
-    "build-source": "yarn workspace @fiftyone/app build-bare",
+    "build-source": "yarn workspace @fiftyone/app build-desktop",
     "pull-source": "yarn workspace @fiftyone/app copy-to-desktop",
     "start-desktop": "yarn build-desktop && cross-env DEBUG_APP=true electron ./dist/main.js",
     "package-linux-aarch64": "yarn build && electron-builder build --linux --arm64",

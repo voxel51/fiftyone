@@ -1,6 +1,10 @@
 import { atom, selectorFamily } from "recoil";
 
-import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+import {
+  LABEL_LIST,
+  VALID_LIST_TYPES,
+  VALID_PRIMITIVE_TYPES,
+} from "@fiftyone/utilities";
 
 import { expandPath, fields } from "./schema";
 import { State } from "./types";
@@ -115,21 +119,5 @@ export const fieldIsFiltered = selectorFamily<
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
-  },
-});
-
-interface Point {
-  points: [number | Nonfinite, number | Nonfinite];
-  label: string;
-  [key: string]: any;
-}
-
-export const skeletonFilter = selectorFamily<
-  (path: string, value: Point) => boolean,
-  boolean
->({
-  key: "skeletonFilter",
-  get: (modal) => ({}) => {
-    return (path: string, value: Point) => true;
   },
 });

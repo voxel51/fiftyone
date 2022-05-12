@@ -145,7 +145,9 @@ const Wrapper = ({
           disabled={totalCount === 1}
           name={value}
           count={
-            selectedCounts.current.has(value)
+            count < 0
+              ? null
+              : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
           }

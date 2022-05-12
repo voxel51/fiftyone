@@ -114,6 +114,17 @@ class SidebarGroup:
 
 
 @gql.type
+class KeypointSkeleton:
+    labels: t.Optional[t.List[str]]
+    edges: t.List[t.List[int]]
+
+
+@gql.type
+class NamedKeypointSkeleton(KeypointSkeleton):
+    name: str
+
+
+@gql.type
 class Dataset(HasCollection):
     id: gql.ID
     name: str
@@ -130,6 +141,8 @@ class Dataset(HasCollection):
     app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
     version: str
     view_cls: t.Optional[str]
+    default_skeleton: t.Optional[KeypointSkeleton]
+    skeletons: t.List[NamedKeypointSkeleton]
 
     @staticmethod
     def get_collection_name() -> str:
@@ -145,6 +158,11 @@ class Dataset(HasCollection):
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
         doc["evaluations"] = list(doc.get("evaluations", {}).values())
+        doc["skeletons"] = list(
+            dict(name=name, **data)
+            for name, data in doc.get("skeletons", {}).items()
+        )
+        doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
     @classmethod
@@ -156,7 +174,7 @@ class Dataset(HasCollection):
             return dataset
 
         ds = fo.load_dataset(name)
-        view = fov.DatasetView._build(ds, view)
+        view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
             dataset.media_type = d["media_type"]

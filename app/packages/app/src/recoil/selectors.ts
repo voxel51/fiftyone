@@ -116,16 +116,25 @@ export const targets = selector({
   },
 });
 
+export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
+  {
+    key: "skeleton",
+    get: ({ get }) => {
+      const dataset = get(atoms.dataset);
+      const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
+        acc[name] = rest;
+        return acc;
+      }, {});
+
+      return (field: string) => skeletons[field] || dataset.defaultSkeleton;
+    },
+  }
+);
+
 export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
   key: "skeleton",
   get: (field) => ({ get }) => {
-    const dataset = get(atoms.dataset) || {
-      skeletons: null,
-      defaultSkeleton: null,
-    };
-    const skeletons = dataset.skeletons || {};
-
-    return skeletons[field] || dataset.defaultSkeleton;
+    return get(getSkeleton)(field);
   },
 });
 

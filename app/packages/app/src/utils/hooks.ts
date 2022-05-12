@@ -20,7 +20,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { useSendEvent } from "@fiftyone/components";
+import { useSendEvent, useTo } from "@fiftyone/components";
 import { useMutation } from "react-relay";
 import {
   setDataset,
@@ -378,18 +378,21 @@ export const useStateUpdate = () => {
 };
 
 export const useSetDataset = () => {
+  const { to } = useTo();
   const send = useSendEvent();
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
   const onError = useErrorHandler();
 
-  return (name?: string) =>
+  return (name?: string) => {
+    to(name ? `/datasets/${encodeURI(name)}` : "/");
     send((session) =>
       commit({
         onError,
         variables: { subscription, session, name },
       })
     );
+  };
 };
 
 export const useSetSelected = () => {
@@ -439,6 +442,9 @@ export const useSetView = () => {
             dataset: transformDataset(dataset),
             state: {
               view,
+              viewCls: dataset.viewCls,
+              selected: [],
+              selectedLabels: [],
             },
           });
         },
@@ -460,4 +466,12 @@ export const useSelectSample = () => {
     },
     []
   );
+};
+
+export const useReset = () => {
+  return useRecoilTransaction_UNSTABLE(({ set }) => () => {
+    set(atoms.selectedSamples, new Set());
+    set(atoms.selectedLabels, new Array());
+    set(viewAtoms.view, []);
+  });
 };

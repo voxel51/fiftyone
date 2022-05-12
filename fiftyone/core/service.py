@@ -412,10 +412,6 @@ class AppService(Service):
         env = {}
         if self.server_port is not None:
             env["FIFTYONE_SERVER_PORT"] = str(self.server_port)
-            if foc.DEV_INSTALL:
-                # override port 1212 used by "yarn dev" for hot-reloading
-                # (specifying port 0 doesn't work here)
-                env["PORT"] = str(self.server_port + 1)
 
         if self.server_address:
             env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)

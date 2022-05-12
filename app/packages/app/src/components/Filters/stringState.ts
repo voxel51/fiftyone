@@ -6,12 +6,7 @@ import {
 } from "recoil";
 
 import * as filterAtoms from "../../recoil/filters";
-
-interface StringFilter {
-  values: string[];
-  exclude: boolean;
-  _CLS: "str";
-}
+import { StringFilter } from "./utils";
 
 const getFilter = (
   get: GetRecoilValue,

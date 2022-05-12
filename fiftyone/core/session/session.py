@@ -456,9 +456,7 @@ class Session(object):
     @property
     def url(self) -> str:
         """The URL of the session."""
-        return focx.get_url(
-            self.server_address, self.server_port, self.dataset
-        )
+        return focx.get_url(self.server_address, self.server_port)
 
     @property
     def config(self) -> AppConfig:

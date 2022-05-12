@@ -319,8 +319,7 @@ async def _do_async_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_aggregate(collection, pipeline):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True)
-    return await cursor.to_list(1)
+    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
 def get_db_client():

@@ -2,6 +2,7 @@ import {
   EventSourceMessage,
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
+import { isElectron } from "./electron";
 
 import { ServerError } from "./errors";
 
@@ -75,6 +76,20 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
 
   fetchFunctionSingleton = fetchFunction;
 };
+
+export const getAPI = () => {
+  if (import.meta.env.VITE_API) {
+    return import.meta.env.VITE_API;
+  }
+
+  return isElectron()
+    ? `http://${process.env.FIFTYONE_SERVER_ADDRESS || "localhost"}:${
+        process.env.FIFTYONE_SERVER_PORT || 5151
+      }`
+    : window.location.origin;
+};
+
+setFetchFunction(getAPI());
 
 class RetriableError extends Error {}
 class FatalError extends Error {}

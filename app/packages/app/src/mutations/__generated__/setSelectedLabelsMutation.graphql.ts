@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<00e0703c289292d87e068f8d406a7487>>
+ * @generated SignedSource<<45119163ea25fbf897d0f6825485a3af>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,9 +11,9 @@
 import { ConcreteRequest, Mutation } from "relay-runtime";
 export type SelectedLabel = {
   field: string;
-  frameNumber?: number | null;
   labelId: string;
   sampleId: string;
+  frameNumber?: number | null;
 };
 export type setSelectedLabelsMutation$variables = {
   subscription: string;

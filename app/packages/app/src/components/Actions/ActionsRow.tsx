@@ -1,5 +1,6 @@
 import React, {
   MutableRefObject,
+  RefCallback,
   useLayoutEffect,
   useRef,
   useState,

@@ -1,14 +1,16 @@
 import { Route } from "@fiftyone/components";
 import { NotFoundError } from "@fiftyone/utilities";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 
 import DatasetComponent from "../../components/Dataset";
 import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
-import { useRecoilValue } from "recoil";
+import { DefaultValue, useRecoilValue } from "recoil";
 import transformDataset from "./transformDataset";
+import { filters } from "../../recoil/filters";
+import { _activeFields } from "../../recoil/schema";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: JSONArray) {
@@ -70,6 +72,15 @@ const Query = graphql`
       }
       lastLoadedAt
       createdAt
+      skeletons {
+        name
+        labels
+        edges
+      }
+      defaultSkeleton {
+        labels
+        edges
+      }
       version
     }
   }
@@ -86,8 +97,16 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = useStateUpdate();
 
   useEffect(() => {
-    update({
-      dataset: transformDataset(dataset),
+    update(({ reset }) => {
+      reset(filters);
+      reset(_activeFields({ modal: false }));
+
+      return {
+        dataset: transformDataset(dataset),
+        state: name
+          ? { view: [], selected: [], selectedLabels: [], viewCls: null }
+          : undefined,
+      };
     });
   }, [dataset]);
 

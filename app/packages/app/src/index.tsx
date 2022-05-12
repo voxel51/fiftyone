@@ -1,7 +1,4 @@
 import {
-  RouteRenderer,
-  RoutingContext,
-  RouterContext,
   useRouter,
   withErrorBoundary,
   withTheme,
@@ -11,24 +8,22 @@ import {
 import {
   darkTheme,
   getEventSource,
-  setFetchFunction,
+  isElectron,
   toCamelCase,
 } from "@fiftyone/utilities";
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
-import { Environment, RelayEnvironmentProvider } from "react-relay";
-import {
-  atom,
-  RecoilRoot,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { Environment } from "react-relay";
+import { atom, RecoilRoot, useRecoilCallback, useRecoilValue } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useScreenshot, useUnprocessedStateUpdate } from "./utils/hooks";
+import {
+  useReset,
+  useScreenshot,
+  useUnprocessedStateUpdate,
+} from "./utils/hooks";
 
 import "./index.css";
 import { State } from "./recoil/types";
@@ -36,35 +31,14 @@ import * as viewAtoms from "./recoil/view";
 import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
-import {
-  dataset,
-  selectedLabels,
-  selectedSamples,
-  useRefresh,
-} from "./recoil/atoms";
+import { useRefresh } from "./recoil/atoms";
+import Network from "./Network";
 
 enum AppReadyState {
   CONNECTING = 0,
   OPEN = 1,
   CLOSED = 2,
 }
-
-setFetchFunction(import.meta.env.VITE_API || window.location.origin);
-
-const Network: React.FC<{
-  environment: Environment;
-  context: RoutingContext<any>;
-}> = ({ environment, context }) => {
-  return (
-    <RelayEnvironmentProvider environment={environment}>
-      <RouterContext.Provider value={context}>
-        <Suspense fallback={null}>
-          <RouteRenderer router={context} />
-        </Suspense>
-      </RouterContext.Provider>
-    </RelayEnvironmentProvider>
-  );
-};
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
@@ -100,13 +74,8 @@ const App: React.FC = withTheme(
 
     const contextRef = useRef(context);
     contextRef.current = context;
-    const reset = useRecoilTransaction_UNSTABLE(({ reset }) => () => {
-      reset(selectedSamples);
-      reset(selectedLabels);
-      reset(viewAtoms.view);
-      reset(dataset);
-      contextRef.current.history.push("/");
-    });
+    const reset = useReset();
+
     useEffect(() => {
       readyState === AppReadyState.CLOSED && reset();
     }, [readyState]);
@@ -117,7 +86,6 @@ const App: React.FC = withTheme(
 
     useEffect(() => {
       const controller = new AbortController();
-      const dataset = getDatasetName();
 
       getEventSource(
         "/events",
@@ -137,18 +105,24 @@ const App: React.FC = withTheme(
                   ...toCamelCase(data),
                   view: data.view,
                 } as State.Description;
-                const current = getDatasetName();
+                let dataset = getDatasetName();
                 if (readyStateRef.current !== AppReadyState.OPEN) {
-                  !current &&
-                    state.dataset &&
-                    contextRef.current.history.push(
-                      `/datasets/${state.dataset}${window.location.search}`
-                    );
+                  if (dataset !== state.dataset) {
+                    dataset = state.dataset;
+                  }
+
                   setReadyState(AppReadyState.OPEN);
                 } else {
-                  const path = state.dataset
-                    ? `/datasets/${state.dataset}${window.location.search}`
-                    : `/${window.location.search}`;
+                  dataset = state.dataset;
+                }
+
+                const path = state.dataset
+                  ? `/datasets/${encodeURIComponent(state.dataset)}${
+                      window.location.search
+                    }`
+                  : `/${window.location.search}`;
+
+                if (path !== contextRef.current.get().pathname) {
                   contextRef.current.preload(path);
                   contextRef.current.history.push(path);
                 }
@@ -167,7 +141,7 @@ const App: React.FC = withTheme(
         },
         controller.signal,
         {
-          initializer: dataset,
+          initializer: getDatasetName(),
           subscription,
           events: [
             Events.DEACTIVATE_NOTEBOOK_CELL,

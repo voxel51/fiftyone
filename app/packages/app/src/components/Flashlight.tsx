@@ -47,6 +47,7 @@ import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 import { similarityParameters } from "./Actions/Similar";
+import { skeletonFilter } from "./Filters/utils";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -126,8 +127,10 @@ const flashlightLookerOptions = selector({
         selectors.appConfigOption({ key: "showSkeletons", modal: false })
       ),
       defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: get(atoms.dataset)?.skeletons,
-      pointFilter: get(filterAtoms.skeletonFilter(false)),
+      skeletons: Object.fromEntries(
+        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+      ),
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });

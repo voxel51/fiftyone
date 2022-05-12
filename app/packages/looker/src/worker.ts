@@ -2,7 +2,7 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { LABELS, LABEL_LISTS_MAP } from "@fiftyone/utilities";
+import { getFetchFunction, setFetchFunction, Stage } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -205,45 +205,48 @@ const createReader = ({
   frameCount,
   frameNumber,
   sampleId,
-  url,
+  dataset,
+  view,
 }: {
   chunkSize: number;
   coloring: Coloring;
   frameCount: number;
   frameNumber: number;
   sampleId: string;
-  url: string;
+  dataset: string;
+  view: Stage[];
 }): FrameStream => {
   let cancelled = false;
 
   const privateStream = new ReadableStream<FrameChunkResponse>(
     {
-      pull: (controller: ReadableStreamDefaultController) => {
+      pull: async (controller: ReadableStreamDefaultController) => {
         if (frameNumber > frameCount || cancelled) {
           controller.close();
           return Promise.resolve();
         }
 
-        return new Promise((resolve, reject) => {
-          fetch(
-            `${url}frames?` +
-              new URLSearchParams({
-                frameNumber: frameNumber.toString(),
-                numFrames: chunkSize.toString(),
-                frameCount: frameCount.toString(),
+        return await (async () => {
+          try {
+            const { frames, range }: FrameChunk = await getFetchFunction()(
+              "POST",
+              "/frames",
+              {
+                frameNumber: frameNumber,
+                numFrames: chunkSize,
+                frameCount: frameCount,
                 sampleId,
-              })
-          )
-            .then((response: Response) => response.json())
-            .then(({ frames, range }: FrameChunk) => {
-              controller.enqueue({ frames, range, coloring });
-              frameNumber = range[1] + 1;
-              resolve();
-            })
-            .catch((error) => {
-              reject(error);
-            });
-        });
+                dataset,
+                view,
+              }
+            );
+
+            controller.enqueue({ frames, range, coloring });
+            frameNumber = range[1] + 1;
+          } catch (error) {
+            postMessage({ error });
+          }
+        })();
       },
       cancel: () => {
         cancelled = true;
@@ -294,11 +297,7 @@ type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
 
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream &&
-      stream.reader
-        .read()
-        .then(getSendChunk(uuid))
-        .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
+    stream && stream.reader.read().then(getSendChunk(uuid));
   }
 };
 
@@ -308,7 +307,8 @@ interface SetStream {
   frameNumber: number;
   sampleId: string;
   uuid: string;
-  url: string;
+  dataset: string;
+  view: Stage[];
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -319,7 +319,8 @@ const setStream = ({
   frameNumber,
   sampleId,
   uuid,
-  url,
+  dataset,
+  view,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -329,13 +330,11 @@ const setStream = ({
     frameCount: frameCount,
     frameNumber: frameNumber,
     sampleId,
-    url,
+    dataset,
+    view,
   });
 
-  stream.reader
-    .read()
-    .then(getSendChunk(uuid))
-    .catch(() => postMessage({ method: "requestFrameChunk", error: true }));
+  stream.reader.read().then(getSendChunk(uuid));
 };
 
 const isFloatArray = (arr) =>
@@ -350,7 +349,11 @@ const UPDATE_LABEL = {
     const color = await requestColor(
       coloring.pool,
       coloring.seed,
-      coloring.byLabel ? label.label : field
+      coloring.by === "label"
+        ? label.label
+        : coloring.by === "field"
+        ? field
+        : label.id
     );
 
     const overlay = new Uint32Array(label.mask.image);
@@ -392,26 +395,27 @@ const UPDATE_LABEL = {
 
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
-    const getColor = coloring.byLabel
-      ? (value) => {
-          if (value === 0) {
-            return 0;
+    const getColor =
+      coloring.by === "label"
+        ? (value) => {
+            if (value === 0) {
+              return 0;
+            }
+
+            const index = Math.round(
+              (Math.max(value - start, 0) / (stop - start)) *
+                (coloring.scale.length - 1)
+            );
+
+            return get32BitColor(coloring.scale[index]);
           }
+        : (value) => {
+            if (value === 0) {
+              return 0;
+            }
 
-          const index = Math.round(
-            (Math.max(value - start, 0) / (stop - start)) *
-              (coloring.scale.length - 1)
-          );
-
-          return get32BitColor(coloring.scale[index]);
-        }
-      : (value) => {
-          if (value === 0) {
-            return 0;
-          }
-
-          return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-        };
+            return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
+          };
 
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
@@ -462,14 +466,29 @@ const UPDATE_LABEL = {
   },
 };
 
+interface Init {
+  headers: HeadersInit;
+  origin: string;
+}
+
+type InitMethod = Init & ReaderMethod;
+
+const init = ({ origin, headers }: Init) => {
+  setFetchFunction(origin, headers);
+};
+
 type Method =
+  | InitMethod
   | ProcessSampleMethod
   | RequestFrameChunkMethod
-  | SetStreamMethod
-  | ResolveColorMethod;
+  | ResolveColorMethod
+  | SetStreamMethod;
 
 onmessage = ({ data: { method, ...args } }: MessageEvent<Method>) => {
   switch (method) {
+    case "init":
+      init(args as Init);
+      return;
     case "processSample":
       processSample(args as ProcessSample);
       return;

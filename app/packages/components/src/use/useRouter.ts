@@ -1,7 +1,6 @@
 import {
   getEventSource,
   getFetchFunction,
-  setFetchFunction,
   GraphQLError,
 } from "@fiftyone/utilities";
 import {
@@ -18,8 +17,6 @@ import React, { useMemo, useRef, useState } from "react";
 
 import { RouteDefinition, createRouter, Router } from "../routing";
 import { GQLError } from "@fiftyone/utilities/src/errors";
-
-setFetchFunction(import.meta.env.VITE_API || window.location.origin);
 
 async function fetchGraphQL(
   text: string | null | undefined,

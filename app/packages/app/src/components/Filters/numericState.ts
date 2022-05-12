@@ -6,19 +6,9 @@ import {
 } from "recoil";
 
 import * as aggregationAtoms from "../../recoil/aggregations";
-import { stateDescription } from "../../recoil/atoms";
 import * as filterAtoms from "../../recoil/filters";
 import { Range } from "../Common/RangeSlider";
-
-type NumericFilter = {
-  range: Range;
-  none: boolean;
-  nan: boolean;
-  ninf: boolean;
-  inf: boolean;
-  exclude: boolean;
-  _CLS: string;
-};
+import { NumericFilter } from "./utils";
 
 const getFilter = (
   get: GetRecoilValue,

@@ -1,9 +1,9 @@
 import React from "react";
-import { createBrowserHistory } from "history";
+import { createBrowserHistory, createMemoryHistory } from "history";
 import { Environment, loadQuery, PreloadedQuery } from "react-relay";
 import { OperationType, VariablesOf } from "relay-runtime";
 
-import { NotFoundError, Resource } from "@fiftyone/utilities";
+import { isElectron, NotFoundError, Resource } from "@fiftyone/utilities";
 import { Route } from "..";
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
 import { getEnvironment } from "../use/useRouter";
@@ -49,11 +49,11 @@ export interface Router<T extends OperationType | undefined = OperationType> {
 export const createRouter = (
   environment: Environment,
   routes: RouteDefinition[],
-  { errors, ...options } = {
+  { errors } = {
     errors: true,
   }
 ): Router<any> => {
-  const history = createBrowserHistory(options);
+  const history = isElectron() ? createMemoryHistory() : createBrowserHistory();
 
   let currentEntry: Entry;
 

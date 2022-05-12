@@ -5,6 +5,7 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from numpy import full
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -202,11 +203,27 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
+            keypoints = issubclass(
+                field.document_type, (fol.Keypoint, fol.Keypoints)
+            )
+
+            if keypoints:
+                if path.endswith(".id") or path.endswith(".label"):
+                    keypoints = False
+
             parent = field
             field = view.get_field(path)
             key = field.db_field if field.db_field else field.name
             view_field = F(key)
-            expr = _make_scalar_expression(view_field, args, field)
+            expr = (
+                _make_keypoint_kwargs(
+                    args,
+                    view,
+                    path if path.endswith(".points") else None,
+                )
+                if keypoints
+                else _make_scalar_expression(view_field, args, field)
+            )
             if expr is not None:
                 if hide_result:
                     new_field = "__%s" % path.split(".")[-1]
@@ -217,15 +234,22 @@ def _make_filter_stages(
                         )
                 else:
                     new_field = None
-                stages.append(
-                    fosg.FilterLabels(
+
+                if keypoints:
+                    stage = fosg.FilterKeypoints(
+                        prefix + parent.name,
+                        _new_field=new_field,
+                        **expr,
+                    )
+                else:
+                    stage = fosg.FilterLabels(
                         prefix + parent.name,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,
                     )
-                )
 
+                stages.append(stage)
                 filtered_labels.add(path)
                 if new_field:
                     cleanup.add(new_field)
@@ -350,6 +374,25 @@ def _make_scalar_expression(f, args, field):
         return expr
 
     return _apply_others(expr, f, args)
+
+
+def _make_keypoint_kwargs(args, view, points):
+    if points:
+        ske = view._dataset.default_skeleton
+        name = points.split(".")[0]
+
+        if name in view._dataset.skeletons:
+            ske = view._dataset.skeletons[name]
+
+        values = args.get("values", [])
+        if args["exclude"]:
+            values = set(ske.labels).difference(values)
+
+        return {"labels": values}
+
+    f = F("confidence")
+    mn, mx = args["range"]
+    return {"filter": (f >= mn) & (f <= mx)}
 
 
 def _apply_others(expr, f, args):

@@ -1717,8 +1717,8 @@ __metadata:
     "@material-ui/icons": ^4.9.1
     "@react-spring/web": ^9.4.3
     "@types/mime": ^2.0.3
-    "@types/react": ^17.0.43
-    "@types/react-dom": ^17.0.14
+    "@types/react": ^18.0.9
+    "@types/react-dom": ^18.0.3
     "@types/react-relay": ^13.0.0
     "@types/react-router": ^5.1.18
     "@types/relay-compiler": ^8.0.2
@@ -2390,12 +2390,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-dom@npm:^17.0.14":
-  version: 17.0.16
-  resolution: "@types/react-dom@npm:17.0.16"
+"@types/react-dom@npm:^18.0.3":
+  version: 18.0.3
+  resolution: "@types/react-dom@npm:18.0.3"
   dependencies:
-    "@types/react": ^17
-  checksum: eaa55eb29ffff57de25f56630a73fa2eeabf531e80b5153548e3cc219edd3d80efecb72d45c531c44d67960dae1ebd528890f107d6bc7d61dd00fee4ce5b954d
+    "@types/react": "*"
+  checksum: 63b5dbe41d6c24024d9b2ffb1776656981ee5c9ab539b1b1e772b61385511732943e70b6e3f2cc83741668496e9097e63c3044918be3661fcb78b10987d8feb6
   languageName: node
   linkType: hard
 
@@ -2448,14 +2448,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react@npm:^17, @types/react@npm:^17.0.43":
-  version: 17.0.44
-  resolution: "@types/react@npm:17.0.44"
+"@types/react@npm:^18.0.9":
+  version: 18.0.9
+  resolution: "@types/react@npm:18.0.9"
   dependencies:
     "@types/prop-types": "*"
     "@types/scheduler": "*"
     csstype: ^3.0.2
-  checksum: 50f46da2b774ab1e86eb896b4028b6e7e04a4201bbbba56fbba4742f37d31781b61f0f51f2d0872c4dc7441ece64856b007ab6e2584788310db64615be46769a
+  checksum: 0feb66bbc99985fd0d925cc7d82e9a629bc4c1a8dbff17410936c38414d7af08a5f21f66dfd62f8f8ccab76227ee27efbe01275a53dba82ab7fc00028caf273d
   languageName: node
   linkType: hard
 
