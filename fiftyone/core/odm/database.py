@@ -32,8 +32,6 @@ import fiftyone.core.utils as fou
 
 from .document import DynamicDocument
 
-fod = fou.lazy_import("fiftyone.core.dataset")
-
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +66,7 @@ class DatabaseConfigDocument(DynamicDocument):
 
     version = fof.StringField()
     type = fof.StringField()
+    connection_count = fof.IntField()
 
 
 def get_db_config():
@@ -209,36 +208,23 @@ def _async_connect():
         )
 
 
-def delete_non_persistent_datasets_if_allowed():
-    """Deletes all non-persistent datasets if and only if we are the only
-    client currently connected to the database.
-    """
-    try:
-        num_connections = len(
-            list(
-                _client.admin.aggregate(
-                    [
-                        {"$currentOp": {"allUsers": True}},
-                        {"$project": {"appName": 1, "command": 1}},
-                        {
-                            "$match": {
-                                "appName": foc.DATABASE_APPNAME,
-                                "command.ismaster": 1,
-                            }
-                        },
-                    ]
-                )
-            )
-        )
-    except:
-        logger.warning(
-            "Skipping automatic non-persistent dataset cleanup. This action "
-            "requires read access of the 'admin' database"
-        )
-        return
+def track_connection():
+    db = _client[fo.config.database_name]
+    db.config.update_one({}, {"$inc": {"connection_count": 1}})
 
-    if num_connections <= 1:
-        fod.delete_non_persistent_datasets()
+
+def untrack_connection():
+    db = _client[fo.config.database_name]
+    db.config.update_one(
+        {"connection_count": {"$gt": 0}},
+        {"$inc": {"connection_count": -1}},
+    )
+
+
+def get_connection_count():
+    db = _client[fo.config.database_name]
+    doc = db.config.find_one({})
+    return doc.get("connection_count") if doc else 0
 
 
 def _validate_db_version(config, client):
@@ -714,7 +700,9 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
         _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
         )
         return
 
@@ -871,7 +859,9 @@ def delete_brain_runs(name, dry_run=False):
             _delete_run_results(result_ids)
 
     _logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
+        name,
     )
     if not dry_run:
         dataset_dict["brain_methods"] = {}
