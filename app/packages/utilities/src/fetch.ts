@@ -113,6 +113,7 @@ export const getEventSource = (
   body = {}
 ) =>
   fetchEventSource(`${getFetchOrigin()}${path}`, {
+    headers: { "Content-Type": "text/event-stream" },
     method: "POST",
     signal,
     body: JSON.stringify(body),
@@ -139,7 +140,6 @@ export const getEventSource = (
       throw new RetriableError();
     },
     onerror(err) {
-      console.log(err);
       if (
         err instanceof TypeError &&
         ["Failed to fetch", "network error"].includes(err.message)
