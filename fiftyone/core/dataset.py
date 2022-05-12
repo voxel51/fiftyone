@@ -4583,19 +4583,17 @@ def _get_random_characters(n):
 def _list_datasets(include_private=False):
     conn = foo.get_db_conn()
 
+    if include_private:
+        query = {}
+    else:
+        # Datasets whose sample collections don't start with `samples.` are
+        # private e.g., patches or frames datasets
+        query = {"sample_collection_name": {"$regex": "^samples\\."}}
+
     # We don't want an error here if `name == None`
     _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
 
-    if include_private:
-        return _sort(conn.datasets.distinct("name"))
-
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return _sort(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    return _sort(conn.datasets.find(query).distinct("name"))
 
 
 def _list_dataset_info():
