@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import atexit
 from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
@@ -32,9 +33,9 @@ import fiftyone.core.utils as fou
 
 from .document import DynamicDocument
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 
 logger = logging.getLogger(__name__)
-
 
 _client = None
 _async_client = None
@@ -178,6 +179,7 @@ def establish_db_conn(config):
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )
     _validate_db_version(config, _client)
+    _track_db_connection(config, _client)
 
     connect(config.database_name, **_connection_kwargs)
 
@@ -208,23 +210,31 @@ def _async_connect():
         )
 
 
-def track_connection():
-    db = _client[fo.config.database_name]
+def _track_db_connection(config, client):
+    if os.environ.get("_FIFTYONE_CONN_TRACKER"):
+        return
+
+    os.environ["_FIFTYONE_CONN_TRACKER"] = "1"
+    db = client[config.database_name]
     db.config.update_one({}, {"$inc": {"connection_count": 1}})
 
-
-def untrack_connection():
-    db = _client[fo.config.database_name]
-    db.config.update_one(
-        {"connection_count": {"$gt": 0}},
-        {"$inc": {"connection_count": -1}},
-    )
-
-
-def get_connection_count():
-    db = _client[fo.config.database_name]
-    doc = db.config.find_one({})
-    return doc.get("connection_count") if doc else 0
+    @atexit.register
+    def cleanup():
+        try:
+            doc = db.config.find_one_and_update(
+                {"connection_count": {"$gt": 0}},
+                {"$inc": {"connection_count": -1}},
+                return_document=pymongo.ReturnDocument.AFTER,
+            )
+            connection_count = doc.get("connection_count") if doc else 0
+            if connection_count > 0:
+                return
+            try:
+                fod.delete_non_persistent_datasets()
+            except (AttributeError, ValueError):
+                pass
+        finally:
+            os.environ.pop("_FIFTYONE_CONN_TRACKER", None)
 
 
 def _validate_db_version(config, client):
