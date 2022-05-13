@@ -79,6 +79,11 @@ export const MATCH_LABEL_TAGS = {
 };
 
 export const validateGroupName = (current: string[], name: string): boolean => {
+  if (name.length) {
+    alert("group name cannot be empty");
+    return false;
+  }
+
   if (RESERVED_GROUPS.has(name)) {
     alert(`${name.toUpperCase()} is a reserved group`);
     return false;
