@@ -368,6 +368,7 @@ const GroupEntry = React.memo(
     const [hovering, setHovering] = useState(false);
     const ref = useRef<HTMLInputElement>();
     const canCommit = useRef(false);
+    const theme = useTheme();
 
     return (
       <GroupHeader
@@ -378,7 +379,10 @@ const GroupEntry = React.memo(
           editing ? event.stopPropagation() : (canCommit.current = true);
         }}
         onMouseMove={() => (canCommit.current = false)}
-        style={{ cursor: "unset" }}
+        style={{
+          cursor: "unset",
+          borderBottomColor: editing ? theme.brand : theme.border,
+        }}
         onMouseUp={(event) => {
           canCommit.current && onClick && onClick(event);
         }}

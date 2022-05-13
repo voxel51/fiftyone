@@ -79,7 +79,7 @@ export const MATCH_LABEL_TAGS = {
 };
 
 export const validateGroupName = (current: string[], name: string): boolean => {
-  if (name.length) {
+  if (!name.length) {
     alert("group name cannot be empty");
     return false;
   }
