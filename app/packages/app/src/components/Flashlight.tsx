@@ -452,6 +452,7 @@ export default React.memo(() => {
               "/samples",
               { ...paramsRef.current, page }
             );
+
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,

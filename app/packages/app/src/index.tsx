@@ -93,8 +93,13 @@ const App: React.FC = withTheme(
         {
           onopen: async () => {},
           onmessage: (msg) => {
+            if (controller.signal.aborted) {
+              return;
+            }
+
             switch (msg.event) {
               case Events.DEACTIVATE_NOTEBOOK_CELL:
+                controller.abort();
                 screenshot();
                 break;
               case Events.REFRESH_APP:

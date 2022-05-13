@@ -17,6 +17,7 @@ import requests
 import sseclient
 from uuid import uuid4
 
+import fiftyone.constants as foc
 import fiftyone.core.state as fos
 
 from fiftyone.core.json import stringify
@@ -93,6 +94,9 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
+                    if foc.DEV_INSTALL:
+                        raise e
+
                     self._connected = False
                     print(
                         "\r\nCould not connect session, trying again "

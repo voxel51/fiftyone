@@ -205,10 +205,12 @@ def update_state(auto_show: bool = False) -> t.Callable:
         def wrapper(
             session: "Session", *args: t.Tuple, **kwargs: dict
         ) -> t.Any:
+            if auto_show and session.auto and focx.is_notebook_context():
+                session.freeze()
             result = func(session, *args, **kwargs)
             session._client.send_event(StateUpdate(state=session._state))
             if auto_show and session.auto and focx.is_notebook_context():
-                return session.show()
+                session.show()
 
             return result
 
@@ -868,6 +870,7 @@ class Session(object):
         if not focx.is_notebook_context() or self.desktop:
             return
 
+        self.freeze()
         if self.dataset is not None:
             self.dataset._reload()
 

@@ -213,20 +213,16 @@ export const useScreenshot = (
     return Promise.all(styles);
   }, []);
 
-  const captureVideos = useCallback(() => {
-    const videos = document.body.querySelectorAll("video");
+  const captureCanvas = useCallback(() => {
+    const canvases = document.body.querySelectorAll("canvas");
     const promises = [];
-    videos.forEach((video) => {
-      const canvas = document.createElement("canvas");
-      const rect = video.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvases.forEach((canvas) => {
+      const rect = canvas.getBoundingClientRect();
       const dataURI = canvas.toDataURL("image/png");
       const img = new Image(rect.width, rect.height);
-      img.className = "p51-contained-image fo-captured";
-      video.parentNode.replaceChild(img, video);
+      img.style.height = `${rect.height}px`;
+      img.style.width = `${rect.width}px`;
+      canvas.parentNode.replaceChild(img, canvas);
       promises.push(
         new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -266,9 +262,6 @@ export const useScreenshot = (
 
     fitSVGs();
     let chain = Promise.resolve(null);
-    if (isVideoDataset) {
-      chain = chain.then(captureVideos);
-    }
     if (context === "colab") {
       chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
