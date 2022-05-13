@@ -197,12 +197,6 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
-        self.disable_automatic_dataset_cleanup = self.parse_bool(
-            d,
-            "disable_automatic_dataset_cleanup",
-            env_var="FIFTYONE_DISABLE_AUTOMATIC_DATASET_CLEANUP",
-            default=False,
-        )
 
         self._init()
 
