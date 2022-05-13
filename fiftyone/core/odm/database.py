@@ -179,7 +179,9 @@ def establish_db_conn(config):
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )
     _validate_db_version(config, _client)
-    _track_db_connection(config, _client)
+
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
 
     connect(config.database_name, **_connection_kwargs)
 
@@ -210,47 +212,39 @@ def _async_connect():
         )
 
 
-def _track_db_connection(config, client):
-    # Using an env variable so that this only happens once per "main" process
-    if config.disable_automatic_dataset_cleanup or os.environ.get(
-        "__FIFTYONE_CONN_TRACKER__"
-    ):
+def _delete_non_persistent_datasets_if_allowed():
+    """Deletes all non-persistent datasets if and only if we are the only
+    client currently connected to the database.
+    """
+    try:
+        num_connections = len(
+            list(
+                _client.admin.aggregate(
+                    [
+                        {"$currentOp": {"allUsers": True}},
+                        {"$project": {"appName": 1, "command": 1}},
+                        {
+                            "$match": {
+                                "appName": foc.DATABASE_APPNAME,
+                                "command.ismaster": 1,
+                            }
+                        },
+                    ]
+                )
+            )
+        )
+    except:
+        logger.warning(
+            "Skipping automatic non-persistent dataset cleanup. This action "
+            "requires read access of the 'admin' database"
+        )
         return
 
-    os.environ["__FIFTYONE_CONN_TRACKER__"] = "1"
-
-    # Using "$inc" to update instead "$set" to avoid race conditions.
-    db = client[config.database_name]
-    db.config.update_one({}, {"$inc": {"connection_count": 1}})
-
-    # Register cleanup method which will  run when the python process exits
-    @atexit.register
-    def cleanup():
-        try:
-            # Using "$inc" again, filter to ensure "connection_count" does not
-            # go negative, and returns the updated document
-            doc = db.config.find_one_and_update(
-                {"connection_count": {"$gt": 0}},
-                {"$inc": {"connection_count": -1}},
-                return_document=pymongo.ReturnDocument.AFTER,
-                upsert=False,
-            )
-
-            connection_count = doc.get("connection_count") if doc else 0
-            if connection_count > 0:
-                return
-            try:
-                fod.delete_non_persistent_datasets()
-            except Exception as e:
-                logger.debug(
-                    f"An error occured while trying to delete non-persistent datasets. {e}"
-                )
-        except Exception as e:
-            logger.debug(
-                f"An error occured while trying to cleanup tracked db connections. {e}"
-            )
-        finally:
-            os.environ.pop("__FIFTYONE_CONN_TRACKER__", None)
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(config, client):
