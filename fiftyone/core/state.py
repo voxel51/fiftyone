@@ -295,13 +295,19 @@ class DatasetStatistics(object):
                 if _has_support(field):
                     support_path = "%s.support" % path
                     aggregations.extend(
-                        [foa.Bounds(support_path), foa.Count(support_path),]
+                        [
+                            foa.Bounds(support_path),
+                            foa.Count(support_path),
+                        ]
                     )
 
                 if _has_value(field):
                     value_path = "%s.value" % path
                     aggregations.extend(
-                        [foa.Bounds(value_path), foa.Count(value_path),]
+                        [
+                            foa.Bounds(value_path),
+                            foa.Count(value_path),
+                        ]
                     )
 
             elif _meets_type(
@@ -335,7 +341,10 @@ class DatasetStatistics(object):
 
 def _expand_labels_path(root, label_field):
     if issubclass(label_field.document_type, fol._HasLabelList):
-        return "%s.%s" % (root, label_field.document_type._LABEL_LIST_FIELD,)
+        return "%s.%s" % (
+            root,
+            label_field.document_type._LABEL_LIST_FIELD,
+        )
 
     return root
 

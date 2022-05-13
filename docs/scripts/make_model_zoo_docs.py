@@ -299,7 +299,9 @@ def main():
     # Render model sections
 
     environment = Environment(
-        loader=BaseLoader, trim_blocks=True, lstrip_blocks=True,
+        loader=BaseLoader,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
 
     section_template = environment.from_string(_SECTION_TEMPLATE)

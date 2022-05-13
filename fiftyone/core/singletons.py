@@ -296,8 +296,7 @@ class FrameSingleton(DocumentSingleton):
                     frame._doc._data.pop(field_name, None)
 
     def _reload_doc(cls, collection_name, sample_id, frame_number, hard=False):
-        """Reloads the backing document for the given frame if it is in-memory.
-        """
+        """Reloads the backing document for the given frame if it is in-memory."""
         if collection_name not in cls._instances:
             return
 

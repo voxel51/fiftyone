@@ -3219,7 +3219,10 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterKeypoints(
-                field, filter=filter, labels=labels, only_matches=only_matches,
+                field,
+                filter=filter,
+                labels=labels,
+                only_matches=only_matches,
             )
         )
 

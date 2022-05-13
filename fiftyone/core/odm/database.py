@@ -210,13 +210,6 @@ def _async_connect():
         )
 
 
-# Publicially expose the following function as a manual method of reseting
-# "connection_count" if the value becomes out of sync.
-def _reset_db_connection_count():
-    db = _client[fo.config.database_name]
-    db.config.update_one({}, {"$set": {"connection_count": 0}})
-
-
 def _track_db_connection(config, client):
     # Using an env variable so that this only happens once per "main" process
     if os.environ.get("_FIFTYONE_CONN_TRACKER"):
@@ -642,7 +635,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):

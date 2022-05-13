@@ -104,7 +104,9 @@ class ClipsView(fov.DatasetView):
     @property
     def _base_view(self):
         return self.__class__(
-            self._source_collection, self._clips_stage, self._clips_dataset,
+            self._source_collection,
+            self._clips_stage,
+            self._clips_dataset,
         )
 
     @property
@@ -632,7 +634,10 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
 
     trajs = _get_trajectories(src_collection, field)
     src_collection.set_values(
-        _tmp_field, trajs, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        trajs,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -711,7 +716,10 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     _tmp_field = "_support"
 
     src_collection.set_values(
-        _tmp_field, clips, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        clips,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -756,7 +764,11 @@ def _get_trajectories(sample_collection, frame_field):
         raise ValueError(
             "Frame field '%s' has type %s, but trajectories can only be "
             "extracted for label list fields %s"
-            % (frame_field, label_type, fol._LABEL_LIST_FIELDS,)
+            % (
+                frame_field,
+                label_type,
+                fol._LABEL_LIST_FIELDS,
+            )
         )
 
     fn_expr = F("frames").map(F("frame_number"))

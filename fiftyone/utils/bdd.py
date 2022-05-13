@@ -94,7 +94,9 @@ class BDDDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -701,7 +703,11 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
             (round(width * x, 1), round(height * y, 1)) for (x, y) in points
         ]
         poly2d.append(
-            {"types": types, "closed": polyline.closed, "vertices": vertices,}
+            {
+                "types": types,
+                "closed": polyline.closed,
+                "vertices": vertices,
+            }
         )
 
     d = {

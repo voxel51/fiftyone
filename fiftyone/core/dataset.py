@@ -179,7 +179,9 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in _list_datasets(include_private=True):
+    conn = foo.get_db_conn()
+
+    for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
         except:
@@ -3424,7 +3426,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3937,7 +3942,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3973,7 +3983,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
         )
         return dataset
 
@@ -4584,15 +4597,16 @@ def _list_datasets(include_private=False):
     conn = foo.get_db_conn()
 
     if include_private:
-        return sorted(conn.datasets.distinct("name"))
+        query = {}
+    else:
+        # Datasets whose sample collections don't start with `samples.` are
+        # private e.g., patches or frames datasets
+        query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return sorted(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
 
 
 def _list_dataset_info():

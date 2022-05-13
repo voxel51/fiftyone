@@ -317,7 +317,9 @@ class DatasetTests(unittest.TestCase):
 
         sample11 = fo.Sample(filepath="image1.jpg", field=1)
         sample12 = fo.Sample(
-            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+            filepath="image2.jpg",
+            field=1,
+            gt=fo.Classification(label="cat"),
         )
 
         sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
@@ -414,7 +416,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample15 = fo.Sample(
-            filepath="image5.png", ground_truth=None, hello=None,
+            filepath="image5.png",
+            ground_truth=None,
+            hello=None,
         )
 
         dataset1 = fo.Dataset()
@@ -449,7 +453,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample24 = fo.Sample(
-            filepath="image4.png", ground_truth=None, hello=None,
+            filepath="image4.png",
+            ground_truth=None,
+            hello=None,
         )
 
         sample25 = fo.Sample(
@@ -559,7 +565,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "world", "world", "bar", None],
             )
             self.assertListEqual(
-                d4.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d4.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d4.values("ground_truth.detections.label"),
@@ -601,7 +608,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d5.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d5.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d5.values("ground_truth.detections.label"),
@@ -632,7 +640,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d6.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d6.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d6.values("ground_truth.detections.label"),
@@ -761,14 +770,16 @@ class DatasetTests(unittest.TestCase):
             self.assertNotIn("predictions2", d10_schema)
 
             self.assertListEqual(
-                d10.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d10.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d10.values("hello"),
                 [None, "world", "world", "world", None, None],
             )
             self.assertListEqual(
-                d10.values("hello2"), [None, None, "bar", None, "bar", None],
+                d10.values("hello2"),
+                [None, None, "bar", None, "bar", None],
             )
             self.assertListEqual(
                 d10.values("predictions1.detections.label"),
@@ -1315,7 +1326,8 @@ class DatasetDeletionTests(unittest.TestCase):
 
     def _setUp_classification(self):
         sample1 = fo.Sample(
-            filepath="image1.png", ground_truth=fo.Classification(label="cat"),
+            filepath="image1.png",
+            ground_truth=fo.Classification(label="cat"),
         )
 
         sample2 = sample1.copy()
@@ -1348,9 +1360,13 @@ class DatasetDeletionTests(unittest.TestCase):
             filepath="image1.png",
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",
@@ -1376,9 +1392,13 @@ class DatasetDeletionTests(unittest.TestCase):
             frame_number=1,
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",

@@ -4416,7 +4416,8 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         expr = ViewExpression.zip(
-            ViewExpression.range(start, stop=start + array.length()), array,
+            ViewExpression.range(start, stop=start + array.length()),
+            array,
         )
         return array.let_in(expr)
 

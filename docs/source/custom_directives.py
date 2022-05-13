@@ -57,7 +57,10 @@ class CustomCardItemDirective(Directive):
             )
 
             card_rst = template.format(
-                header=header, description=description, link=link, tags=tags,
+                header=header,
+                description=description,
+                link=link,
+                tags=tags,
             )
 
         card_list = StringList(card_rst.split("\n"))

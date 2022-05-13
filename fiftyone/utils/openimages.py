@@ -160,7 +160,10 @@ class OpenImagesV6DatasetImporter(foud.LabeledImageDatasetImporter):
         if "segmentations" in self._label_types:
             # Add segmentations
             segmentations = _create_segmentations(
-                self._seg_data, image_id, self._classes_map, self.dataset_dir,
+                self._seg_data,
+                image_id,
+                self._classes_map,
+                self.dataset_dir,
             )
             if segmentations is not None:
                 label["segmentations"] = segmentations
@@ -1492,7 +1495,11 @@ def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
 
         # Load boolean mask
         mask_path = os.path.join(
-            dataset_dir, "labels", "masks", image_id[0].upper(), mask_path,
+            dataset_dir,
+            "labels",
+            "masks",
+            image_id[0].upper(),
+            mask_path,
         )
         if not os.path.isfile(mask_path):
             msg = "Segmentation file %s does not exist", mask_path

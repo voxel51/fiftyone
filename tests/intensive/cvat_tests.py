@@ -204,7 +204,9 @@ class CVATTests(unittest.TestCase):
 
         anno_key = "anno_key"
         results = dataset.annotate(
-            anno_key, backend="cvat", label_field="ground_truth",
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
         )
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -235,7 +237,9 @@ class CVATTests(unittest.TestCase):
 
         anno_key = "anno_key"
         results = dataset.annotate(
-            anno_key, backend="cvat", label_field="frames.detections",
+            anno_key,
+            backend="cvat",
+            label_field="frames.detections",
         )
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -429,7 +433,8 @@ class CVATTests(unittest.TestCase):
         results.print_status()
         status = results.get_status()
         self.assertEqual(
-            status["ground_truth"][task_ids[0]]["assignee"]["username"], user,
+            status["ground_truth"][task_ids[0]]["assignee"]["username"],
+            user,
         )
         dataset.load_annotations(anno_key, cleanup=True)
         api.close()
@@ -551,8 +556,13 @@ class CVATTests(unittest.TestCase):
 
         # The new attributes that we want to populate
         attributes = {
-            "sex": {"type": "select", "values": ["male", "female"],},
-            "age": {"type": "text",},
+            "sex": {
+                "type": "select",
+                "values": ["male", "female"],
+            },
+            "age": {
+                "type": "text",
+            },
         }
 
         results = view.annotate(
@@ -595,17 +605,20 @@ class CVATTests(unittest.TestCase):
             "ground_truth", F("label") == "person"
         ).values("ground_truth.detections", unwind=True)
         self.assertListEqual(
-            [d.label for d in labels], [d.label for d in previous_labels],
+            [d.label for d in labels],
+            [d.label for d in previous_labels],
         )
         self.assertListEqual(
             [d.bounding_box for d in labels],
             [d.bounding_box for d in previous_labels],
         )
         self.assertListEqual(
-            [d.id for d in labels], [d.id for d in previous_labels],
+            [d.id for d in labels],
+            [d.id for d in previous_labels],
         )
         self.assertEqual(
-            len(dataset.filter_labels("ground_truth", F("sex") == "male")), 1,
+            len(dataset.filter_labels("ground_truth", F("sex") == "male")),
+            1,
         )
 
     def test_issue_1634(self):
@@ -636,7 +649,9 @@ class CVATTests(unittest.TestCase):
             points=[10, 20, 40, 30, 50, 60],
         )
         _create_annotation(
-            api, task_id, track=(20, 40),
+            api,
+            task_id,
+            track=(20, 40),
         )
 
         api.close()
@@ -676,7 +691,8 @@ class CVATTests(unittest.TestCase):
                 self.assertTrue(box_frame_40 in label_file_info)
 
             cvat_video_dataset = fo.Dataset.from_dir(
-                dataset_dir=tmp, dataset_type=fo.types.CVATVideoDataset,
+                dataset_dir=tmp,
+                dataset_type=fo.types.CVATVideoDataset,
             )
             detections = cvat_video_dataset.values(
                 "frames.detections", unwind=True
@@ -698,7 +714,9 @@ class CVATTests(unittest.TestCase):
 
         anno_key = "anno_key"
         results = dataset.annotate(
-            anno_key, backend="cvat", label_field="ground_truth",
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
         )
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -721,7 +739,13 @@ class CVATTests(unittest.TestCase):
         # Populate a new `occluded` attribute on the existing `ground_truth` labels
         # using CVAT's occluded widget
         label_schema = {
-            "ground_truth": {"attributes": {"occluded": {"type": "occluded",}}}
+            "ground_truth": {
+                "attributes": {
+                    "occluded": {
+                        "type": "occluded",
+                    }
+                }
+            }
         }
 
         results = dataset.annotate(
@@ -780,7 +804,9 @@ class CVATTests(unittest.TestCase):
 
         anno_key = "anno_key"
         results = view.annotate(
-            anno_key, backend="cvat", label_field="ground_truth",
+            anno_key,
+            backend="cvat",
+            label_field="ground_truth",
         )
         api = results.connect_to_api()
         task_id = results.task_ids[0]
@@ -819,10 +845,13 @@ class CVATTests(unittest.TestCase):
         results = dataset.annotate(anno_key, label_field="ground_truth")
 
         dataset.load_annotations(
-            anno_key, cleanup=True, dest_field="test_field",
+            anno_key,
+            cleanup=True,
+            dest_field="test_field",
         )
         self.assertListEqual(
-            prev_labels, dataset.values("ground_truth", unwind=True),
+            prev_labels,
+            dataset.values("ground_truth", unwind=True),
         )
         self.assertListEqual(
             sorted(dataset.values("ground_truth.detections.id", unwind=True)),
@@ -838,8 +867,14 @@ class CVATTests(unittest.TestCase):
 
         label_schema = {
             "ground_truth": {},
-            "new_points": {"type": "keypoints", "classes": ["test"],},
-            "new_polygon": {"type": "polygons", "classes": ["test2"],},
+            "new_points": {
+                "type": "keypoints",
+                "classes": ["test"],
+            },
+            "new_polygon": {
+                "type": "polygons",
+                "classes": ["test2"],
+            },
         }
         results = dataset.annotate(anno_key, label_schema=label_schema)
         api = results.connect_to_api()
@@ -865,24 +900,29 @@ class CVATTests(unittest.TestCase):
         }
 
         dataset.load_annotations(
-            anno_key, cleanup=True, dest_field=dest_field,
+            anno_key,
+            cleanup=True,
+            dest_field=dest_field,
         )
         self.assertFalse(dataset.has_sample_field("new_points"))
         self.assertTrue(dataset.has_sample_field("new_polygon"))
         self.assertTrue(dataset.has_sample_field("test_field_1"))
         self.assertTrue(dataset.has_sample_field("test_field_2"))
         self.assertListEqual(
-            prev_labels, dataset.values("ground_truth", unwind=True),
+            prev_labels,
+            dataset.values("ground_truth", unwind=True),
         )
         self.assertListEqual(
             sorted(dataset.values("ground_truth.detections.id", unwind=True)),
             sorted(dataset.values("test_field_1.detections.id", unwind=True)),
         )
         self.assertEqual(
-            len(dataset.values("test_field_2.keypoints.id", unwind=True)), 1,
+            len(dataset.values("test_field_2.keypoints.id", unwind=True)),
+            1,
         )
         self.assertEqual(
-            len(dataset.values("new_polygon.polylines.id", unwind=True)), 1,
+            len(dataset.values("new_polygon.polylines.id", unwind=True)),
+            1,
         )
 
         # Test modification
@@ -908,7 +948,10 @@ class CVATTests(unittest.TestCase):
         )
 
         dataset.load_annotations(
-            anno_key, cleanup=True, dest_field="test_field", unexpected="keep",
+            anno_key,
+            cleanup=True,
+            dest_field="test_field",
+            unexpected="keep",
         )
 
         self.assertListEqual(
@@ -931,10 +974,13 @@ class CVATTests(unittest.TestCase):
         results = dataset.annotate(anno_key, label_field="frames.detections")
 
         dataset.load_annotations(
-            anno_key, cleanup=True, dest_field="frames.test_field",
+            anno_key,
+            cleanup=True,
+            dest_field="frames.test_field",
         )
         self.assertListEqual(
-            prev_labels, dataset.values("frames.detections", unwind=True),
+            prev_labels,
+            dataset.values("frames.detections", unwind=True),
         )
         self.assertListEqual(
             sorted(
