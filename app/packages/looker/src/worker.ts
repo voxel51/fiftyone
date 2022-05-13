@@ -2,9 +2,13 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { LABELS } from "@fiftyone/utilities";
-import { LABEL_LISTS } from "@fiftyone/utilities";
-import { getFetchFunction, setFetchFunction, Stage } from "@fiftyone/utilities";
+import {
+  LABEL_LIST,
+  VALID_LABEL_TYPES,
+  getFetchFunction,
+  setFetchFunction,
+  Stage,
+} from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -122,6 +126,8 @@ const mapId = (obj) => {
   return obj;
 };
 
+const LABELS = new Set(VALID_LABEL_TYPES);
+
 const processLabels = (
   sample: { [key: string]: any },
   coloring: Coloring,
@@ -140,11 +146,11 @@ const processLabels = (
       DESERIALIZE[label._cls](label, buffers);
     }
 
-    if (label._cls in LABELS) {
-      if (label._cls in LABEL_LISTS) {
-        const list = label[LABEL_LISTS[label._cls]];
+    if (LABELS.has(label._cls)) {
+      if (label._cls in LABEL_LIST) {
+        const list = label[LABEL_LIST[label._cls]];
         if (Array.isArray(list)) {
-          label[LABEL_LISTS[label._cls]] = list.map(mapId);
+          label[LABEL_LIST[label._cls]] = list.map(mapId);
         }
       } else {
         mapId(label);
