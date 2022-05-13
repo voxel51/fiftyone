@@ -102,7 +102,7 @@ def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
 
     def capture(img: str, width: int) -> None:
         with output.redirect_to_element(f"#focontainer-{cell.subscription}"):
-            display(
+            IPython.display.display(
                 IPython.display.HTML(
                     f"<img src='{img}' style='width: 100%%; max-width: {width}px;'/>"
                 )

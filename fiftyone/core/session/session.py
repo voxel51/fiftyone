@@ -770,7 +770,7 @@ class Session(object):
         Returns:
             a string summary
         """
-        if self._collection and self.dataset:
+        if self._collection and self.dataset is not None:
             etype = self._collection._elements_str
             elements = [
                 ("Dataset:", self.dataset.name),
