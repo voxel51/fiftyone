@@ -153,7 +153,6 @@ export const useWindowSize = () => {
 export const useScreenshot = (
   context: "ipython" | "colab" | "databricks" | undefined
 ) => {
-  const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
 
   const fitSVGs = useCallback(() => {
@@ -235,6 +234,7 @@ export const useScreenshot = (
   }, []);
 
   const capture = useCallback(() => {
+    const { width } = document.body.getBoundingClientRect();
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       if (context === "colab") {
@@ -242,7 +242,7 @@ export const useScreenshot = (
           {
             src: imgData,
             subscription,
-            width: canvas.width,
+            width,
           },
           "*"
         );
