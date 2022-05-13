@@ -1,9 +1,7 @@
 import { Close } from "@material-ui/icons";
-import { AnimatePresence, motion } from "framer-motion";
 import React, { useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 
-import { getFetchFunction } from "@fiftyone/utilities";
 import { Button } from "@fiftyone/components";
 
 import * as atoms from "../../recoil/atoms";
@@ -86,7 +84,7 @@ const Teams = () => {
       .then(() => {
         setSubmitText("Submitted. Thank you!");
         setTeams((cur) => ({ ...cur, submitted: true }));
-        commit();
+        commit({ variables: {} });
         setTimeout(() => setOpen(false), 2000);
       })
       .catch((e) => {
