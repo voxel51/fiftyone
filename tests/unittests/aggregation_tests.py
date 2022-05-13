@@ -53,10 +53,12 @@ class DatasetTests(unittest.TestCase):
         )
         s.save()
         self.assertEqual(
-            d.bounds("detections.detections.confidence"), (0, 1),
+            d.bounds("detections.detections.confidence"),
+            (0, 1),
         )
         self.assertEqual(
-            d.bounds(1 + F("detections.detections.confidence")), (1, 2),
+            d.bounds(1 + F("detections.detections.confidence")),
+            (1, 2),
         )
 
         d = fo.Dataset()
@@ -64,7 +66,8 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.bounds("frames.detection.confidence"), (1, 1),
+            d.bounds("frames.detection.confidence"),
+            (1, 1),
         )
 
     @drop_datasets
@@ -320,7 +323,8 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            d.values(F("predictions.detections").length()), [2, 3, 2, 0, 0],
+            d.values(F("predictions.detections").length()),
+            [2, 3, 2, 0, 0],
         )
 
         self.assertListEqual(

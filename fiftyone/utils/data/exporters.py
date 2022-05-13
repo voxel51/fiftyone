@@ -233,7 +233,10 @@ def export_samples(
         if found_patches:
             # Export unlabeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples, label_field, include_labels=False, **patches_kwargs,
+                samples,
+                label_field,
+                include_labels=False,
+                **patches_kwargs,
             )
             sample_parser = ImageSampleParser()
             num_samples = len(samples)
@@ -271,7 +274,10 @@ def export_samples(
         if found_patches:
             # Export labeled image patches
             samples = foup.ImagePatchesExtractor(
-                samples, label_field, include_labels=True, **patches_kwargs,
+                samples,
+                label_field,
+                include_labels=True,
+                **patches_kwargs,
             )
             sample_parser = ImageClassificationSampleParser()
             num_samples = len(samples)
@@ -280,7 +286,9 @@ def export_samples(
                 label_field, samples, dataset_exporter
             )
             sample_parser = FiftyOneLabeledImageSampleParser(
-                label_field, label_fcn=label_fcn, compute_metadata=True,
+                label_field,
+                label_fcn=label_fcn,
+                compute_metadata=True,
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
@@ -308,7 +316,10 @@ def export_samples(
             label_field, samples, dataset_exporter
         )
         frame_labels_fcn = _make_label_coercion_functions(
-            frame_labels_field, samples, dataset_exporter, frames=True,
+            frame_labels_field,
+            samples,
+            dataset_exporter,
+            frames=True,
         )
         sample_parser = FiftyOneLabeledVideoSampleParser(
             label_field=label_field,
@@ -747,7 +758,10 @@ def _write_batch_dataset(dataset_exporter, samples):
 
 
 def _write_generic_sample_dataset(
-    dataset_exporter, samples, num_samples=None, sample_collection=None,
+    dataset_exporter,
+    samples,
+    num_samples=None,
+    sample_collection=None,
 ):
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
@@ -867,7 +881,10 @@ class ExportPathsMixin(object):
 
     @staticmethod
     def _parse_data_path(
-        export_dir=None, data_path=None, export_media=None, default=None,
+        export_dir=None,
+        data_path=None,
+        export_media=None,
+        default=None,
     ):
         """Helper function that computes default values for the ``data_path``
         and ``export_media`` parameters supported by many exporters.
@@ -2134,7 +2151,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
         self._media_exporter = ImageExporter(
-            self.export_media, supported_modes=(True, "move", "symlink"),
+            self.export_media,
+            supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
 
@@ -2226,7 +2244,8 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
         self._media_exporter = VideoExporter(
-            self.export_media, supported_modes=(True, "move", "symlink"),
+            self.export_media,
+            supported_modes=(True, "move", "symlink"),
         )
         self._media_exporter.setup()
 
@@ -2578,7 +2597,9 @@ class FiftyOneTemporalDetectionDatasetExporter(
         self._parse_classes()
 
         self._media_exporter = VideoExporter(
-            self.export_media, export_path=self.data_path, ignore_exts=True,
+            self.export_media,
+            export_path=self.data_path,
+            ignore_exts=True,
         )
         self._media_exporter.setup()
 
@@ -2717,7 +2738,9 @@ class ImageSegmentationDirectoryExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default="labels/",
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels/",
         )
 
         super().__init__(export_dir=export_dir)

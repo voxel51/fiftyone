@@ -105,7 +105,9 @@ class OpenLABELImageDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -314,7 +316,9 @@ class OpenLABELVideoDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -649,8 +653,7 @@ class OpenLABELParser(object):
 
 
 class OpenLABELObjectsParser(OpenLABELParser):
-    """Parses and collects :class:`OpenLABELObjects` from object dictionaries.
-    """
+    """Parses and collects :class:`OpenLABELObjects` from object dictionaries."""
 
     def __init__(self):
         super().__init__()
@@ -695,17 +698,23 @@ class OpenLABELObjects(object):
 
     def _to_detections(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Detections, OpenLABELObject.to_detections,
+            frame_size,
+            fol.Detections,
+            OpenLABELObject.to_detections,
         )
 
     def _to_keypoints(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Keypoints, OpenLABELObject.to_keypoints,
+            frame_size,
+            fol.Keypoints,
+            OpenLABELObject.to_keypoints,
         )
 
     def _to_polylines(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Polylines, OpenLABELObject.to_polylines,
+            frame_size,
+            fol.Polylines,
+            OpenLABELObject.to_polylines,
         )
 
     def _to_segmentations(
@@ -1135,7 +1144,9 @@ class OpenLABELObject(object):
 
             detections.append(
                 fol.Detection(
-                    label=label, bounding_box=bounding_box, **attributes,
+                    label=label,
+                    bounding_box=bounding_box,
+                    **attributes,
                 )
             )
 
@@ -1273,11 +1284,17 @@ class OpenLABELObject(object):
         bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox")
 
         polys, attributes, stream = cls._parse_obj_type(
-            object_data, "poly2d", attributes=attributes, stream=stream,
+            object_data,
+            "poly2d",
+            attributes=attributes,
+            stream=stream,
         )
 
         point, attributes, stream = cls._parse_obj_type(
-            object_data, "point2d", attributes=attributes, stream=stream,
+            object_data,
+            "point2d",
+            attributes=attributes,
+            stream=stream,
         )
         if point:
             point = [point]

@@ -114,7 +114,8 @@ class VideoRegressionTests(unittest.TestCase):
         sample2.frames[1] = fo.Frame()
         sample3 = fo.Sample(filepath="video3.mp4")
         sample3.frames[1] = fo.Frame(
-            ground_truth=fo.Regression(value=1.0), predictions=None,
+            ground_truth=fo.Regression(value=1.0),
+            predictions=None,
         )
         sample3.frames[2] = fo.Frame(
             ground_truth=None,
@@ -306,7 +307,8 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn("eval", dataset.list_evaluations())
         self.assertIn("eval", dataset.get_field_schema())
         self.assertListEqual(
-            dataset.values("eval"), [True, False, False, True, False],
+            dataset.values("eval"),
+            [True, False, False, True, False],
         )
 
         dataset.delete_evaluation("eval")
@@ -389,7 +391,8 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn("eval", dataset.list_evaluations())
         self.assertIn("eval", dataset.get_field_schema())
         self.assertListEqual(
-            dataset.values("eval"), [False, False, False, True, True],
+            dataset.values("eval"),
+            [False, False, False, True, True],
         )
 
         dataset.delete_evaluation("eval")
@@ -423,7 +426,8 @@ class ClassificationTests(unittest.TestCase):
         self.assertTrue((actual == expected).all())
 
         self.assertListEqual(
-            dataset.values("eval"), [False, False, False, True, False],
+            dataset.values("eval"),
+            [False, False, False, True, False],
         )
 
     @drop_datasets
@@ -491,7 +495,8 @@ class ClassificationTests(unittest.TestCase):
         self.assertIn("eval", dataset.list_evaluations())
         self.assertIn("eval", dataset.get_field_schema())
         self.assertListEqual(
-            dataset.values("eval"), ["TN", "TN", "TN", "TN", "FP"],
+            dataset.values("eval"),
+            ["TN", "TN", "TN", "TN", "FP"],
         )
 
         dataset.delete_evaluation("eval")
@@ -509,7 +514,8 @@ class VideoClassificationTests(unittest.TestCase):
         sample2.frames[1] = fo.Frame()
         sample3 = fo.Sample(filepath="video3.mp4")
         sample3.frames[1] = fo.Frame(
-            ground_truth=fo.Classification(label="cat"), predictions=None,
+            ground_truth=fo.Classification(label="cat"),
+            predictions=None,
         )
         sample3.frames[2] = fo.Frame(
             ground_truth=None,
@@ -815,7 +821,8 @@ class DetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -839,7 +846,8 @@ class DetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -858,7 +866,8 @@ class DetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -1389,7 +1398,8 @@ class VideoDetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -1412,7 +1422,8 @@ class VideoDetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -1430,7 +1441,8 @@ class VideoDetectionsTests(unittest.TestCase):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     )
                 ]
             ),
@@ -1528,17 +1540,20 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertIn("eval_tp", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+            dataset.values("frames.eval_tp"),
+            [[], [0], [0, 0], [1, 0]],
         )
         self.assertIn("eval_fp", dataset.get_field_schema())
         self.assertIn("eval_fp", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+            dataset.values("frames.eval_fp"),
+            [[], [0], [0, 1], [0, 1]],
         )
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertIn("eval_fn", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+            dataset.values("frames.eval_fn"),
+            [[], [0], [1, 0], [0, 1]],
         )
 
         dataset.delete_evaluation("eval")
@@ -1594,13 +1609,16 @@ class VideoDetectionsTests(unittest.TestCase):
             [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+            dataset.values("frames.eval_tp"),
+            [[], [0], [0, 0], [1, 0]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+            dataset.values("frames.eval_fp"),
+            [[], [0], [0, 1], [0, 1]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+            dataset.values("frames.eval_fn"),
+            [[], [0], [1, 0], [0, 1]],
         )
 
     def test_evaluate_video_detections_open_images(self):
@@ -1680,17 +1698,20 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertIn("eval_tp", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+            dataset.values("frames.eval_tp"),
+            [[], [0], [0, 0], [1, 0]],
         )
         self.assertIn("eval_fp", dataset.get_field_schema())
         self.assertIn("eval_fp", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+            dataset.values("frames.eval_fp"),
+            [[], [0], [0, 1], [0, 1]],
         )
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertIn("eval_fn", dataset.get_frame_field_schema())
         self.assertListEqual(
-            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+            dataset.values("frames.eval_fn"),
+            [[], [0], [1, 0], [0, 1]],
         )
 
         dataset.delete_evaluation("eval")
@@ -1745,13 +1766,16 @@ class VideoDetectionsTests(unittest.TestCase):
             [[], [None], [None, ["fp"]], [["tp"], ["fp"]]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_tp"), [[], [0], [0, 0], [1, 0]],
+            dataset.values("frames.eval_tp"),
+            [[], [0], [0, 0], [1, 0]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_fp"), [[], [0], [0, 1], [0, 1]],
+            dataset.values("frames.eval_fp"),
+            [[], [0], [0, 1], [0, 1]],
         )
         self.assertListEqual(
-            dataset.values("frames.eval_fn"), [[], [0], [1, 0], [0, 1]],
+            dataset.values("frames.eval_fn"),
+            [[], [0], [1, 0], [0, 1]],
         )
 
 

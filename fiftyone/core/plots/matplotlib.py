@@ -1617,7 +1617,12 @@ def _plot_scatter(
         args.append(points[:, 2])
 
     collection = ax.scatter(
-        *args, c=values, s=sizes, cmap=cmap, norm=norm, **kwargs,
+        *args,
+        c=values,
+        s=sizes,
+        cmap=cmap,
+        norm=norm,
+        **kwargs,
     )
 
     if values is not None:

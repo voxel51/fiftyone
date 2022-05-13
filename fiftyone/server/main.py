@@ -717,7 +717,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_tag(
-        caller, changes, target_labels=False, active_labels=None,
+        caller,
+        changes,
+        target_labels=False,
+        active_labels=None,
     ):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
@@ -985,7 +988,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return [
             cls.send_statistics(
-                view, extended=False, filters=state.filters, only=only,
+                view,
+                extended=False,
+                filters=state.filters,
+                only=only,
             ),
             cls.send_statistics(
                 view, extended=True, filters=state.filters, only=only

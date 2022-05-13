@@ -287,6 +287,6 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass

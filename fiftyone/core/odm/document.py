@@ -509,7 +509,8 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
 
 
 class DynamicEmbeddedDocument(
-    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
+    BaseEmbeddedDocument,
+    mongoengine.DynamicEmbeddedDocument,
 ):
     """Base class for dynamic documents that are embedded within other
     documents and therefore aren't stored in their own collection in the

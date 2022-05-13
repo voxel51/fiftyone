@@ -101,7 +101,9 @@ class FramesView(fov.DatasetView):
     @property
     def _base_view(self):
         return self.__class__(
-            self._source_collection, self._frames_stage, self._frames_dataset,
+            self._source_collection,
+            self._frames_stage,
+            self._frames_dataset,
         )
 
     @property
@@ -901,7 +903,9 @@ def _parse_video_frames(
         count = total_frame_count if total_frame_count >= 0 else "???"
         if sample_frame_numbers is None:
             logger.info(
-                "Must sample all %s frames of '%s'", count, video_path,
+                "Must sample all %s frames of '%s'",
+                count,
+                video_path,
             )
         elif sample_frame_numbers != []:
             logger.info(
