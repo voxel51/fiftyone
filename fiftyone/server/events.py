@@ -168,13 +168,16 @@ async def dispatch_polling_event_listener(
             events.append(listener.queue.get_nowait())
 
     return {
-        "events": [
-            {
-                "event": e.get_event_name(),
-                "data": asdict(e, dict_factory=dict_factory),
-            }
-            for e in events
-        ]
+        "events": sorted(
+            [
+                {
+                    "event": e.get_event_name(),
+                    "data": asdict(e, dict_factory=dict_factory),
+                }
+                for e in events
+            ],
+            key=lambda e: e["event"],
+        )
     }
 
 
