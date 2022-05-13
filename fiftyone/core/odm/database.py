@@ -237,8 +237,11 @@ def delete_non_persistent_datasets_if_allowed():
         )
         return
 
-    if num_connections <= 1:
-        fod.delete_non_persistent_datasets()
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(config, client):
@@ -625,7 +628,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):

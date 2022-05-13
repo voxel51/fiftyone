@@ -4597,15 +4597,16 @@ def _list_datasets(include_private=False):
     conn = foo.get_db_conn()
 
     if include_private:
-        return sorted(conn.datasets.distinct("name"))
+        query = {}
+    else:
+        # Datasets whose sample collections don't start with `samples.` are
+        # private e.g., patches or frames datasets
+        query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return sorted(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
 
 
 def _list_dataset_info():
