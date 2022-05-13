@@ -241,7 +241,7 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample._id);
+        this.dispatchEvent(eventType, this.sample.id);
         return;
       }
 
@@ -496,13 +496,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -1063,13 +1063,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -1085,9 +1085,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              labelId: label._id,
+              labelId: label.id,
               frameNumber: this.frameNumber,
-              sampleId: this.sample._id,
+              sampleId: this.sample.id,
             });
           });
         } else {
@@ -1095,7 +1095,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           labels.push({
             labelId,
             field,
-            sampleId: this.sample._id,
+            sampleId: this.sample.id,
             frameNumber: this.frameNumber,
           });
         }

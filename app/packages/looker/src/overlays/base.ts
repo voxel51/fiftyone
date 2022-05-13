@@ -14,7 +14,7 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
-  _id: string;
+  id: string;
   _cls: string;
   frame_number?: number;
   tags: string[];
@@ -88,7 +88,7 @@ export abstract class CoordinateOverlay<
   }
 
   isSelected(state: Readonly<State>): boolean {
-    return state.options.selectedLabels.includes(this.label._id);
+    return state.options.selectedLabels.includes(this.label.id);
   }
 
   getColor({ options: { coloring } }: Readonly<State>): string {
@@ -98,7 +98,7 @@ export abstract class CoordinateOverlay<
       case "field":
         return getColor(coloring.pool, coloring.seed, this.field);
       case "instance":
-        key = this.label.index !== undefined ? "index" : "_id";
+        key = this.label.index !== undefined ? "index" : "id";
         break;
       default:
         key = "label";
@@ -121,7 +121,7 @@ export abstract class CoordinateOverlay<
 
   getSelectData(state: Readonly<State>): SelectData {
     return {
-      id: this.label._id,
+      id: this.label.id,
       field: this.field,
       // @ts-ignore
       frameNumber: state.frameNumber,
