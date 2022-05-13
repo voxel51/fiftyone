@@ -143,19 +143,10 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
       [gaConfig.dimensions.dev]: buildType,
       [gaConfig.dimensions.version]: `${info.version}`,
       [gaConfig.dimensions.context]:
-        info.context + isElectron() ? "-desktop" : "",
+        info.context + (isElectron() ? "-DESKTOP" : ""),
     });
     setGAInitialized(true);
-    ReactGA.pageview(window.location.pathname + window.location.search);
   }, []);
-  useHashChangeHandler(() => {
-    if (info.doNotTrack) {
-      return;
-    }
-    if (gaInitialized) {
-      ReactGA.pageview(window.location.pathname + window.location.search);
-    }
-  });
 };
 
 const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({

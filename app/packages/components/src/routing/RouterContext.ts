@@ -3,7 +3,12 @@ import { createBrowserHistory, createMemoryHistory } from "history";
 import { Environment, loadQuery, PreloadedQuery } from "react-relay";
 import { OperationType, VariablesOf } from "relay-runtime";
 
-import { isElectron, NotFoundError, Resource } from "@fiftyone/utilities";
+import {
+  isElectron,
+  isNotebook,
+  NotFoundError,
+  Resource,
+} from "@fiftyone/utilities";
 import { Route } from "..";
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
 import { getEnvironment } from "../use/useRouter";
@@ -53,7 +58,10 @@ export const createRouter = (
     errors: true,
   }
 ): Router<any> => {
-  const history = isElectron() ? createMemoryHistory() : createBrowserHistory();
+  const history =
+    isElectron() || isNotebook()
+      ? createMemoryHistory()
+      : createBrowserHistory();
 
   let currentEntry: Entry;
 

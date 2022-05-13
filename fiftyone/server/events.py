@@ -8,6 +8,7 @@ FiftyOne Server events
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 import typing as t
+from datetime import datetime
 
 import asyncio
 from sse_starlette import ServerSentEvent
@@ -57,7 +58,7 @@ async def dispatch_event(
         if listener.subscription == subscription:
             continue
 
-        events.append(listener.queue.put(event))
+        events.append(listener.queue.put((datetime.now(), event)))
 
     await asyncio.gather(*events)
 
@@ -96,16 +97,18 @@ async def add_event_listener(
                 )
                 break
 
+            events: t.List[t.Tuple[datetime, EventType]] = []
             for _, listener in data.request_listeners:
-                try:
-                    result: EventType = listener.queue.get_nowait()
-                except asyncio.QueueEmpty:
-                    continue
+                if listener.queue.qsize():
+                    events.append(listener.queue.get_nowait())
 
+            events = sorted(events, key=lambda event: event[0])
+
+            for (_, event) in events:
                 yield ServerSentEvent(
-                    event=result.get_event_name(),
+                    event=event.get_event_name(),
                     data=FiftyOneJSONEncoder.dumps(
-                        asdict(result, dict_factory=dict_factory)
+                        asdict(event, dict_factory=dict_factory)
                     ),
                 )
 
@@ -162,22 +165,21 @@ async def dispatch_polling_event_listener(
     if not listeners:
         raise ValueError("no listeners")
 
-    events: t.List[EventType] = []
+    events: t.List[t.Tuple[datetime, EventType]] = []
     for _, listener in listeners:
         if listener.queue.qsize():
             events.append(listener.queue.get_nowait())
 
+    events = sorted(events, key=lambda event: event[0])
+
     return {
-        "events": sorted(
-            [
-                {
-                    "event": e.get_event_name(),
-                    "data": asdict(e, dict_factory=dict_factory),
-                }
-                for e in events
-            ],
-            key=lambda e: e["event"],
-        )
+        "events": [
+            {
+                "event": e.get_event_name(),
+                "data": asdict(e, dict_factory=dict_factory),
+            }
+            for e in events
+        ]
     }
 
 
