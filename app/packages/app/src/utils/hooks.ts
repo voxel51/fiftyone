@@ -250,6 +250,7 @@ export const useScreenshot = (
           },
           "*"
         );
+        return;
       }
 
       sendEvent({
@@ -312,10 +313,7 @@ export const useStateUpdate = () => {
       if (state?.view) {
         const view = get(viewAtoms.view);
 
-        if (
-          !viewsAreEqual(view, state.view || []) ||
-          state?.dataset !== t.get(atoms.dataset).name
-        ) {
+        if (!viewsAreEqual(view, state.view || [])) {
           set(viewAtoms.view, state.view || []);
           set(filterAtoms.filters, {});
         }

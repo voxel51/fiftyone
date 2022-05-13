@@ -120,7 +120,6 @@ const flashlightLookerOptions = selector({
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
-      inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       showSkeletons: get(
@@ -518,7 +517,6 @@ export default React.memo(() => {
           looker.updateOptions({
             ...lookerOptions.contents,
             selected: selected.has(sampleId),
-            inSelectionMode: selected.size > 0,
           });
       });
     }

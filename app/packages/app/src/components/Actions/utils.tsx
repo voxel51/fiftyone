@@ -8,10 +8,10 @@ import * as aggregationAtoms from "../../recoil/aggregations";
 import * as filterAtoms from "../../recoil/filters";
 import * as schemaAtoms from "../../recoil/schema";
 import { hiddenLabelsArray } from "../../recoil/selectors";
+import { State } from "../../recoil/types";
 import { view } from "../../recoil/view";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
-import { getDatasetName } from "../../utils/generic";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -96,10 +96,14 @@ export const tagStatistics = selectorFamily<
     const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
     const selected = get(atoms.selectedSamples);
 
-    let labels = [];
+    let labels: State.SelectedLabel[] = [];
     if (modal) {
-      alert("todo");
-      // labels = toSnakeCase(get(selectors.selectedLa));
+      labels = Object.entries(get(atoms.selectedLabels)).map(
+        ([labelId, data]) => ({
+          labelId,
+          ...data,
+        })
+      );
     }
 
     const { count, tags } = await getFetchFunction()("POST", "/tagging", {
@@ -111,7 +115,7 @@ export const tagStatistics = selectorFamily<
         : modal
         ? [get(atoms.modal).sample._id]
         : null,
-      labels,
+      labels: toSnakeCase(labels),
       count_labels,
       filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
       hidden_labels:

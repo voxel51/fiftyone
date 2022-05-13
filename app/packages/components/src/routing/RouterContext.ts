@@ -103,7 +103,10 @@ export const createRouter = (
     },
   };
 
-  return { cleanup, context };
+  return {
+    cleanup,
+    context,
+  };
 };
 
 export const matchRoutes = <

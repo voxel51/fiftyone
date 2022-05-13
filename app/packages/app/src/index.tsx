@@ -31,7 +31,7 @@ import * as viewAtoms from "./recoil/view";
 import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
-import { useRefresh } from "./recoil/atoms";
+import { refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
 
 enum AppReadyState {
@@ -54,6 +54,7 @@ const App: React.FC = withTheme(
     const subscription = useRecoilValue(stateSubscription);
     const handleError = useErrorHandler();
     const refresh = useRefresh();
+    const refreshRouter = useRecoilValue(refresher);
 
     const getView = useRecoilCallback(
       ({ snapshot }) => () => {
@@ -67,7 +68,7 @@ const App: React.FC = withTheme(
         makeRoutes(environment, {
           view: getView,
         }),
-      [readyState === AppReadyState.CLOSED]
+      [readyState === AppReadyState.CLOSED, refreshRouter]
     );
 
     const setState = useUnprocessedStateUpdate();
