@@ -179,7 +179,9 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in _list_datasets(include_private=True):
+    conn = foo.get_db_conn()
+
+    for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
         except:
