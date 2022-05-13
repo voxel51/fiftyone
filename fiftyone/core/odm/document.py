@@ -10,7 +10,6 @@ import json
 import re
 
 from bson import json_util, ObjectId
-from fiftyone.core.fields import EmbeddedDocumentField
 import mongoengine
 import pymongo
 

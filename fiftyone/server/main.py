@@ -12,7 +12,6 @@ import asyncio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
 
-
 if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
     del os.environ["FIFTYONE_DISABLE_SERVICES"]
 
