@@ -8,11 +8,11 @@ The following installation steps are a part of the
 [install script](../install.bash)
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
-node version to `v18.1.0` using `nvm`.
+node version to `v17.9.0` using `nvm`.
 
 ```sh
-nvm install v18.1.0
-nvm use v18.1.0
+nvm install v17.9.0
+nvm use v17.9.0
 ```
 
 Then install `yarn` globally in your node environment with `npm`:
