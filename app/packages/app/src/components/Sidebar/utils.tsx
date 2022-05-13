@@ -84,10 +84,10 @@ export const validateGroupName = (current: string[], name: string): boolean => {
     return false;
   }
 
-  if (current.filter(([cur]) => name === cur).length > 1) {
+  if (current.filter((cur) => name === cur).length >= 1) {
     alert(`Group ${name.toUpperCase()} already exists`);
 
-    return;
+    return false;
   }
   return true;
 };

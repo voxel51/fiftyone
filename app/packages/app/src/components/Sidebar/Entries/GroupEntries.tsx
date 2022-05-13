@@ -145,11 +145,11 @@ export const useRenameGroup = (modal: boolean, group: string) => {
       const current = await snapshot.getPromise(sidebarGroupsDefinition(modal));
       if (
         !validateGroupName(
-          current.map(([name]) => name),
+          current.map(([name]) => name).filter((name) => name !== group),
           newName
         )
       ) {
-        return;
+        return false;
       }
 
       const newGroups = current.map<[string, string[]]>(([name, paths]) => [
@@ -167,6 +167,7 @@ export const useRenameGroup = (modal: boolean, group: string) => {
       set(groupShown({ name: newName, modal }), shown);
       set(sidebarGroupsDefinition(modal), newGroups);
       !modal && persistGroups(getDatasetName(context), view, newGroups);
+      return true;
     },
     []
   );
@@ -326,10 +327,7 @@ const GroupHeader = styled.div`
   font-weight: bold;
   color: ${({ theme }) => theme.fontDark};
   background: ${({ theme }) => theme.backgroundTransparent};
-
-  * {
-    user-select: none;
-  }
+  user-select: text;
 
   svg {
     font-size: 1.25em;
@@ -350,7 +348,7 @@ const GroupInput = styled.input`
 type GroupEntryProps = {
   pills?: React.ReactNode;
   title: string;
-  setValue?: (name: string) => void;
+  setValue?: (name: string) => Promise<boolean>;
   onDelete?: () => void;
   before?: React.ReactNode;
   expanded: boolean;
@@ -397,9 +395,15 @@ const GroupEntry = React.memo(
           defaultValue={title}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
-              setValue(event.target.value);
-              setEditing(false);
-              event.target.blur();
+              setValue(event.target.value).then((success) => {
+                if (!success) {
+                  event.target.value = title;
+                }
+
+                setEditing(false);
+                event.target.blur();
+              });
+
               return;
             }
             if (event.key === "Escape") {

@@ -25,6 +25,7 @@ import RegularEntry from "./RegularEntry";
 
 const ScalarDiv = styled.div`
   & > div {
+    user-select: text;
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;

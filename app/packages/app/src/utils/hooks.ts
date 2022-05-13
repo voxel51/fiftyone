@@ -356,6 +356,8 @@ export const useStateUpdate = () => {
         set(atoms.dataset, dataset);
       }
 
+      set(atoms.modal, null);
+
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>
           set(atoms.tagging({ modal: i, labels: j }), false)

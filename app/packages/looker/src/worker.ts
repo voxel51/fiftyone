@@ -2,6 +2,8 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
+import { LABELS } from "@fiftyone/utilities";
+import { LABEL_LISTS } from "@fiftyone/utilities";
 import { getFetchFunction, setFetchFunction, Stage } from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
@@ -112,6 +114,14 @@ const DESERIALIZE = {
   },
 };
 
+const mapId = (obj) => {
+  if (obj._id) {
+    obj.id = obj._id;
+    delete obj._id;
+  }
+  return obj;
+};
+
 const processLabels = (
   sample: { [key: string]: any },
   coloring: Coloring,
@@ -128,6 +138,17 @@ const processLabels = (
 
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
+    }
+
+    if (label._cls in LABELS) {
+      if (label._cls in LABEL_LISTS) {
+        const list = label[LABEL_LISTS[label._cls]];
+        if (Array.isArray(list)) {
+          label[LABEL_LISTS[label._cls]] = list.map(mapId);
+        }
+      } else {
+        mapId(label);
+      }
     }
 
     if (UPDATE_LABEL[label._cls]) {
@@ -163,6 +184,8 @@ interface ProcessSample {
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
+  mapId(sample);
+
   let bufferPromises = [processLabels(sample, coloring)];
 
   if (sample.frames && sample.frames.length) {

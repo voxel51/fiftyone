@@ -31,7 +31,7 @@ import * as viewAtoms from "./recoil/view";
 import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
-import { refresher, useRefresh } from "./recoil/atoms";
+import { modal, refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
 
 enum AppReadyState {
@@ -84,6 +84,15 @@ const App: React.FC = withTheme(
     const screenshot = useScreenshot(
       new URLSearchParams(window.location.search).get("context")
     );
+
+    const isModalActive = Boolean(useRecoilValue(modal));
+
+    useEffect(() => {
+      document.body.classList.toggle("noscroll", isModalActive);
+      document
+        .getElementById("modal")
+        ?.classList.toggle("modalon", isModalActive);
+    }, [isModalActive]);
 
     useEffect(() => {
       const controller = new AbortController();

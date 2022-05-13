@@ -16,6 +16,7 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
+  user-select: text;
 `;
 
 type RegularEntryProps = {

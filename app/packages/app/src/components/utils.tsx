@@ -322,16 +322,16 @@ export const Button = ({
   );
 };
 
-export const NameAndCountContainer = styled.div`
+const NameAndCountContainerDiv = styled.div`
   display: flex;
   justify-content: space-between;
   flex: 1;
   min-width: 0;
-  user-select: none;
   align-items: center;
+  user-select: text;
 
-  & * {
-    user-select: none;
+  & > span {
+    user-select: text;
   }
 
   & > span:first-child {
@@ -346,3 +346,13 @@ export const NameAndCountContainer = styled.div`
     margin-right: 6px;
   }
 `;
+
+export const NameAndCountContainer: React.FC<React.PropsWithChildren<{}>> = ({
+  children,
+}) => {
+  return (
+    <NameAndCountContainerDiv onMouseDown={(e) => e.stopPropagation()}>
+      {children}
+    </NameAndCountContainerDiv>
+  );
+};

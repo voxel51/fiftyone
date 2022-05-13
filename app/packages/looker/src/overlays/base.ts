@@ -75,7 +75,6 @@ export abstract class CoordinateOverlay<
 > implements Overlay<State> {
   readonly field: string;
   protected label: Label;
-  private color: string;
 
   constructor(field: string, label: Label) {
     this.field = field;
@@ -99,7 +98,7 @@ export abstract class CoordinateOverlay<
       case "field":
         return getColor(coloring.pool, coloring.seed, this.field);
       case "instance":
-        key = this.label.index !== undefined ? "index" : "id";
+        key = this.label.index !== undefined ? "index" : "_id";
         break;
       default:
         key = "label";

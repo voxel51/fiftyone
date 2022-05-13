@@ -410,7 +410,6 @@ export const ModalActionsRow = ({
   return (
     <ActionsRowDiv
       style={{
-        flexDirection: "row-reverse",
         justifyContent: "rtl",
         right: 0,
       }}

@@ -378,10 +378,6 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  & * {
-    user-select: none;
-  }
-
   scrollbar-color: ${({ theme }) => theme.fontDarkest}
     ${({ theme }) => theme.background};
   background: ${({ theme }) => theme.background};

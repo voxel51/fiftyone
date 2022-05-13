@@ -3,7 +3,7 @@ import { useSpring } from "@react-spring/web";
 
 import { PopoutDiv } from "../utils";
 
-const Popout = ({ children, style = {} }) => {
+const Popout = ({ children, style = {}, modal }) => {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -15,7 +15,9 @@ const Popout = ({ children, style = {} }) => {
   });
 
   return (
-    <PopoutDiv style={{ ...show, ...style, zIndex: 100001 }}>
+    <PopoutDiv
+      style={{ ...show, ...style, zIndex: 100001, right: modal ? 0 : "unset" }}
+    >
       {children}
     </PopoutDiv>
   );
