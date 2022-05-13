@@ -212,10 +212,12 @@ def _async_connect():
 
 def _track_db_connection(config, client):
     # Using an env variable so that this only happens once per "main" process
-    if os.environ.get("_FIFTYONE_CONN_TRACKER"):
+    if config.disable_automatic_dataset_cleanup or os.environ.get(
+        "__FIFTYONE_CONN_TRACKER__"
+    ):
         return
 
-    os.environ["_FIFTYONE_CONN_TRACKER"] = "1"
+    os.environ["__FIFTYONE_CONN_TRACKER__"] = "1"
 
     # Using "$inc" to update instead "$set" to avoid race conditions.
     db = client[config.database_name]
@@ -248,7 +250,7 @@ def _track_db_connection(config, client):
                 f"An error occured while trying to cleanup tracked db connections. {e}"
             )
         finally:
-            os.environ.pop("_FIFTYONE_CONN_TRACKER", None)
+            os.environ.pop("__FIFTYONE_CONN_TRACKER__", None)
 
 
 def _validate_db_version(config, client):
