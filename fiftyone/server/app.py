@@ -7,26 +7,25 @@ FiftyOne Server app
 """
 import os
 
-import strawberry as gql
-from starlette.applications import Starlette
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import Response
-from starlette.routing import Mount, Route
-from starlette.staticfiles import StaticFiles
-from starlette.types import Scope
-
-
 import fiftyone.constants as foc
-
+import strawberry as gql
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
-
-
-schema = gql.Schema(mutation=Mutation, query=Query, extensions=[EndSession])
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.base import (
+    BaseHTTPMiddleware,
+    RequestResponseEndpoint,
+)
+from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 
 
 class Static(StaticFiles):
@@ -40,6 +39,18 @@ class Static(StaticFiles):
         return response
 
 
+class HeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["x-colab-notebook-cache-control"] = "no-cache"
+        return response
+
+
+schema = gql.Schema(mutation=Mutation, query=Query, extensions=[EndSession])
+
+
 app = Starlette(
     middleware=[
         Middleware(
@@ -51,7 +62,8 @@ app = Starlette(
                 "authorization",
                 "content-type",
             ],
-        )
+        ),
+        Middleware(HeadersMiddleware),
     ],
     debug=foc.DEV_INSTALL,
     routes=[Route(route, endpoint) for route, endpoint in routes]
