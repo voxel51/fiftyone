@@ -3870,6 +3870,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
 
+        Examples::
+
+            import fiftyone as fo
+
+            sample1 = fo.Sample(filepath="image1.jpg")
+            sample2 = fo.Sample(filepath="image2.jpg")
+
+            dataset = fo.Dataset()
+            dataset.add_samples([sample1, sample2])
+
+            dataset.delete_samples([sample1])
+            assert sample1.id == None  # no longer in dataset
+            assert len(dataset) == 1
+
+            dataset.delete_samples([sample2.id])
+            assert sample2.id == None  # no longer in dataset
+            assert len(dataset) == 0
+
         Args:
             samples_or_ids: the sample(s) to delete. Can be any of the
                 following:
@@ -3890,6 +3908,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+
+            sample1 = fo.Sample(filepath="video1.mp4")
+            frame1 = fo.Frame()
+            sample1.frames[1] = frame1
+
+            sample2 = fo.Sample(filepath="video2.mp4")
+            frame2 = fo.Frame()
+            sample2.frames[1] = frame2
+
+            dataset = fo.Dataset()
+            dataset.add_samples([sample1, sample2])
+
+            dataset.delete_frames([sample1])
+            assert frame1.id == None  # no longer in dataset
+            assert dataset.count("frames") == 1
+
+            dataset.delete_frames([frame2.id])
+            assert frame2.id == None  # no longer in dataset
+            assert dataset.count("frames") == 0
 
         Args:
             frames_or_ids: the frame(s) to delete. Can be any of the following:
@@ -3960,6 +4001,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         deletion to specific field(s), either for efficiency or to ensure that
         labels from other fields are not deleted if their contents are included
         in the other arguments.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by view
+            cats = dataset.filter_labels("ground_truth", F("label") == "cat")
+            dataset.delete_labels(view=cats, fields="ground_truth")
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by ID
+            dogs = dataset.filter_labels("ground_truth", F("label") == "dog")
+            dog_ids = dogs.values("ground_truth.detections.id", unwind=True)
+            dataset.delete_labels(ids=dog_ids)
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by tag
+            people = dataset.filter_labels("ground_truth", F("label") == "person")
+            people.tag_labels("delete", label_fields="ground_truth")
+            dataset.delete_labels(tags="delete")
+            print(dataset.count("ground_truth.detections"))
+
+            dataset.delete()
 
         Args:
             labels (None): a list of dicts specifying the labels to delete in
@@ -4274,8 +4343,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def save(self):
         """Saves the dataset to the database.
 
-        This only needs to be called when dataset-level information such as its
-        :meth:`Dataset.info` is modified.
+        This method only needs to be called when dataset-level information such
+        as its :meth:`Dataset.info` is modified in-place.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store some information
+            dataset.info = {"author": "Voxel51"}
+
+            # Edit the info
+            dataset.info["foo"] = ["bar", "spam", "eggs"]
+            dataset.save()  # must save after edits
         """
         self._save()
 
@@ -4959,6 +5041,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         information in the source dataset. The source *media files*, however,
         are not copied.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset1 = foz.load_zoo_dataset("quickstart")
+
+            dataset2 = dataset1.clone()
+            dataset1.delete()
+
+            print(dataset2)
+
         Args:
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
@@ -4985,6 +5079,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            sample = dataset.first()
+
+            dataset.clear()
+
+            assert len(dataset) == 0
+            assert sample.in_dataset == False
         """
         self._clear()
 
@@ -5082,6 +5189,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+            frame = dataset.first().frames.first()
+
+            dataset.clear_frames()
+
+            assert dataset.count("frames") == 0
+            assert frame.in_dataset == False
         """
         self._clear_frames()
 
@@ -5210,6 +5330,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Empty frames will be inserted for missing frames, and already existing
         frames are left unchanged.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            dataset.clear_frames()
+            assert dataset.count("frames") == 0
+
+            dataset.ensure_frames()
+            assert dataset.count("frames") > 0
         """
         self._ensure_frames()
 
@@ -5267,6 +5400,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            sample = dataset.first()
+
+            dataset.delete()
+
+            assert dataset.deleted == True
+            assert sample.in_dataset == False
         """
         self._delete()
 
