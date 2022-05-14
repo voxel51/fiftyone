@@ -1004,61 +1004,61 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
-            predictions=fo.Classification(label="friend", field=1),
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
         dataset.add_sample(sample)
 
         dataset.rename_sample_field(
-            "predictions.field", "predictions.new_field"
+            "predictions.detections.field",
+            "predictions.detections.new_field",
         )
-        self.assertIsNotNone(sample.predictions.new_field)
+        self.assertIsNotNone(sample.predictions.detections[0].new_field)
 
-        dataset.clear_sample_field("predictions.field")
-        self.assertIsNone(sample.predictions.field)
+        dataset.clear_sample_field("predictions.detections.field")
+        self.assertIsNone(sample.predictions.detections[0].field)
 
-        dataset.delete_sample_field("predictions.field")
-        self.assertIsNotNone(sample.predictions.new_field)
+        dataset.delete_sample_field("predictions.detections.field")
+        self.assertIsNotNone(sample.predictions.detections[0].new_field)
         with self.assertRaises(AttributeError):
-            sample.predictions.field
+            sample.predictions.detections[0].field
 
         dataset.rename_sample_field(
-            "predictions.new_field", "predictions.field"
+            "predictions.detections.new_field",
+            "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.field)
+        self.assertIsNotNone(sample.predictions.detections[0].field)
         with self.assertRaises(AttributeError):
-            sample.predictions.new_field
+            sample.predictions.detections[0].new_field
 
     @drop_datasets
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
-        sample = fo.Sample(
-            filepath="image.jpg", predictions=fo.Classification(label="friend")
-        )
+        sample = fo.Sample(filepath="image.jpg", field=1)
         dataset.add_sample(sample)
 
-        dataset.clone_sample_field("predictions", "predictions_copy")
+        dataset.clone_sample_field("field", "field_copy")
         schema = dataset.get_field_schema()
-        self.assertIn("predictions", schema)
-        self.assertIn("predictions_copy", schema)
-        self.assertIsNotNone(sample.predictions)
-        self.assertIsNotNone(sample.predictions_copy)
+        self.assertIn("field", schema)
+        self.assertIn("field_copy", schema)
+        self.assertIsNotNone(sample.field)
+        self.assertIsNotNone(sample.field_copy)
 
-        dataset.clear_sample_field("predictions")
+        dataset.clear_sample_field("field")
         schema = dataset.get_field_schema()
-        self.assertIn("predictions", schema)
-        self.assertIsNone(sample.predictions)
-        self.assertIsNotNone(sample.predictions_copy)
+        self.assertIn("field", schema)
+        self.assertIsNone(sample.field)
+        self.assertIsNotNone(sample.field_copy)
 
-        dataset.delete_sample_field("predictions")
-        self.assertIsNotNone(sample.predictions_copy)
+        dataset.delete_sample_field("field")
+        self.assertIsNotNone(sample.field_copy)
         with self.assertRaises(AttributeError):
-            sample.predictions
+            sample.field
 
-        dataset.rename_sample_field("predictions_copy", "predictions")
-        self.assertIsNotNone(sample.predictions)
+        dataset.rename_sample_field("field_copy", "field")
+        self.assertIsNotNone(sample.field)
         with self.assertRaises(AttributeError):
-            sample.predictions_copy
+            sample.field_copy
 
     @drop_datasets
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
@@ -1066,29 +1066,96 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
-            predictions=fo.Classification(label="friend", field=1),
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
         dataset.add_sample(sample)
 
         dataset.clone_sample_field(
-            "predictions.field", "predictions.new_field"
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
         )
-        self.assertIsNotNone(sample.predictions.new_field)
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
 
-        dataset.clear_sample_field("predictions.field")
-        self.assertIsNone(sample.predictions.field)
+        dataset.clear_sample_field("predictions.detections.field")
+        self.assertIsNone(sample.predictions.detections[0].field)
 
-        dataset.delete_sample_field("predictions.field")
-        self.assertIsNotNone(sample.predictions.new_field)
+        dataset.delete_sample_field("predictions.detections.field")
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
         with self.assertRaises(AttributeError):
-            sample.predictions.field
+            sample.predictions.detections[0].field
 
         dataset.rename_sample_field(
-            "predictions.new_field", "predictions.field"
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.field)
+        self.assertIsNotNone(sample.predictions.detections[0].field)
         with self.assertRaises(AttributeError):
-            sample.predictions.new_field
+            sample.predictions.detections[0].field_copy
+
+    @drop_datasets
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_clone_frame_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame(field=1)
+        sample.frames[1] = frame
+        dataset.add_sample(sample)
+
+        dataset.clone_frame_field("field", "field_copy")
+        schema = dataset.get_frame_field_schema()
+        self.assertIn("field", schema)
+        self.assertIn("field_copy", schema)
+        self.assertIsNotNone(frame.field)
+        self.assertIsNotNone(frame.field_copy)
+
+        dataset.clear_frame_field("field")
+        schema = dataset.get_frame_field_schema()
+        self.assertIn("field", schema)
+        self.assertIsNone(frame.field)
+        self.assertIsNotNone(frame.field_copy)
+
+        dataset.delete_frame_field("field")
+        self.assertIsNotNone(frame.field_copy)
+        with self.assertRaises(AttributeError):
+            frame.field
+
+        dataset.rename_frame_field("field_copy", "field")
+        self.assertIsNotNone(frame.field)
+        with self.assertRaises(AttributeError):
+            frame.field_copy
+
+    @drop_datasets
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_clone_embedded_frame_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame(
+            predictions=fo.Detections(detections=[fo.Detection(field=1)])
+        )
+        sample.frames[1] = frame
+        dataset.add_sample(sample)
+
+        dataset.clone_frame_field(
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
+        )
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+
+        dataset.clear_frame_field("predictions.detections.field")
+        self.assertIsNone(frame.predictions.detections[0].field)
+
+        dataset.delete_frame_field("predictions.detections.field")
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field
+
+        dataset.rename_frame_field(
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
+        )
+        self.assertIsNotNone(frame.predictions.detections[0].field)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field_copy
 
     @drop_datasets
     def test_classes(self):
