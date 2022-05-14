@@ -427,9 +427,6 @@ class Session(object):
             # e.g. globals were already garbage-collected
             pass
 
-        d: t.Union[t.Callable, None] = getattr(super(), "__del__", None)
-        d and d()
-
     @property
     def auto(self) -> bool:
         """The auto setting for the session."""
@@ -1015,24 +1012,22 @@ def import_desktop() -> None:
         import fiftyone.desktop
     except ImportError as e:
         raise RuntimeError(
-            "You must `pip install fiftyone-teams[desktop]` in order to launch the "
+            "You must `pip install fiftyone[desktop]` in order to launch the "
             "desktop App"
         ) from e
 
     # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    fiftyone_dist = pkg_resources.get_distribution("fiftyone-teams")
+    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
     requirements = fiftyone_dist.requires(extras=["desktop"])
-    desktop_req = [
-        r for r in requirements if r.name == "fiftyone-teams-desktop"
-    ][0]
+    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
 
-    desktop_dist = pkg_resources.get_distribution("fiftyone-teams-desktop")
+    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
 
     if not desktop_req.specifier.contains(desktop_dist.version):
         raise RuntimeError(
-            "fiftyone-teams==%s requires fiftyone-teams-desktop%s, but you have "
-            "fiftyone-teams-desktop==%s installed.\n"
-            "Run `pip install fiftyone-teams[desktop]` to install the proper "
+            "fiftyone==%s requires fiftyone-desktop%s, but you have "
+            "fiftyone-desktop==%s installed.\n"
+            "Run `pip install fiftyone[desktop]` to install the proper "
             "desktop package version"
             % (
                 fiftyone_dist.version,
