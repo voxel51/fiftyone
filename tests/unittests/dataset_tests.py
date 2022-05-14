@@ -284,6 +284,17 @@ class DatasetTests(unittest.TestCase):
         common12 = common12_view.first()
         self.assertEqual(common12.field, common2.field)
 
+        # Merge specific fields, no new samples
+
+        dataset1c = dataset1.clone()
+        dataset1c.merge_samples(dataset2, fields=["field"], insert_new=False)
+        self.assertEqual(len(dataset1c), 2)
+        common12_view = dataset1c.match(F("filepath") == common_filepath)
+        self.assertEqual(len(common12_view), 1)
+
+        common12 = common12_view.first()
+        self.assertEqual(common12.field, common2.field)
+
         # Merge a view with excluded fields
 
         dataset21 = dataset1.clone()

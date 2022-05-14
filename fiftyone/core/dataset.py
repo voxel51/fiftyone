@@ -5554,7 +5554,8 @@ def _merge_samples_pipeline(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {}
+        project = {key_field: True}
+
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)
