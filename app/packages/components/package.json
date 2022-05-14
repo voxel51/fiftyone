@@ -1,7 +1,7 @@
 {
   "name": "@fiftyone/components",
-  "version": "0.1.0",
   "author": "Voxel51, Inc.",
+  "version": "0.0.0",
   "description": "FiftyOne component library.",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/componentsr",
   "license": "Apache-2.0",

@@ -1,8 +1,8 @@
 {
   "name": "FiftyOne",
-  "version": "0.19.4",
   "description": "Explore, Analyze, Curate",
   "author": "Voxel51, Inc.",
+  "version": "0.0.0",
   "main": "./dist/main.js",
   "license": "Apache-2.0",
   "private": true,

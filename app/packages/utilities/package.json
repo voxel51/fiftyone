@@ -1,7 +1,7 @@
 {
   "name": "@fiftyone/utilities",
-  "version": "0.1.0",
   "author": "Voxel51, Inc.",
+  "version": "0.0.0",
   "description": "Generic JavaScript utilities for the FiftyOne monorepo",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/utilities",
   "license": "Apache-2.0",
