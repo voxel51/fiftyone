@@ -1,14 +1,16 @@
-import React, { MouseEventHandler, ReactNode, useRef } from "react";
-import { animated, SpringValue } from "@react-spring/web";
+import React, { MouseEventHandler, ReactNode, useRef, useState } from "react";
+import { animated, SpringValue, useSpring } from "@react-spring/web";
 import styled from "styled-components";
+import { useTheme } from "@fiftyone/components";
+import { DragIndicator } from "@material-ui/icons";
 
 const Container = animated(styled.div`
+  display: flex;
+  justify-content: space-between;
   position: relative;
   overflow: visible;
-  justify-content: space-between;
-  padding: 3px;
+  padding: 3px 3px 3px 8px;
   border-radius: 2px;
-  user-select: none;
 `);
 
 const Header = styled.div`
@@ -16,31 +18,93 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
-  user-select: text;
+  cursor: pointer;
+  flex: 1;
 `;
 
-type RegularEntryProps = {
-  backgroundColor?: SpringValue<string>;
-  clickable?: boolean;
-  children?: ReactNode;
-  heading: ReactNode;
-  onClick?: MouseEventHandler;
-  left?: boolean;
-  title: string;
-  color?: string;
+const Wrapper = styled.div`
+  width: 100%;
+`;
+
+const Drag: React.FC<{
+  color: string;
+  entryKey: string;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}> = ({ color, entryKey, trigger }) => {
+  const theme = useTheme();
+  const [hovering, setHovering] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  const style = useSpring({
+    width: dragging || hovering ? 20 : 5,
+    cursor: dragging ? "grabbing" : "grab",
+  });
+
+  return (
+    <animated.div
+      onMouseDown={(event) => {
+        setDragging(true);
+        trigger(event, entryKey, () => setDragging(false));
+      }}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      style={{
+        backgroundColor: color,
+        position: "absolute",
+        left: 0,
+        top: 0,
+        zIndex: 1,
+        borderTopLeftRadius: 2,
+        borderBottomLeftRadius: 2,
+        height: "100%",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: `0 2px 20px ${theme.backgroundDark}`,
+        ...style,
+      }}
+      title={"Drag to reorder"}
+    >
+      {(dragging || hovering) && (
+        <DragIndicator style={{ color: theme.backgroundLight }} />
+      )}
+    </animated.div>
+  );
 };
+
+type RegularEntryProps = React.PropsWithChildren<{
+  backgroundColor?: SpringValue<string>;
+  entryKey: string;
+  color?: string;
+  clickable?: boolean;
+  heading: ReactNode;
+  left?: boolean;
+  onClick?: MouseEventHandler;
+  title: string;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}>;
 
 const RegularEntry = React.forwardRef(
   (
     {
-      color,
       backgroundColor,
       children,
+      clickable,
+      color,
+      entryKey,
       heading,
+      left = false,
       onClick,
       title,
-      clickable,
-      left = false,
+      trigger,
     }: RegularEntryProps,
     ref
   ) => {
@@ -61,14 +125,16 @@ const RegularEntry = React.forwardRef(
         style={{
           backgroundColor,
           cursor: clickable ? "pointer" : "unset",
-          borderLeft: color ? `${color} 3px solid` : null,
         }}
         title={title}
       >
-        <Header style={{ justifyContent: left ? "left" : "space-between" }}>
-          {heading}
-        </Header>
-        {children}
+        <Drag color={color} entryKey={entryKey} trigger={trigger} />
+        <Wrapper>
+          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+            {heading}
+          </Header>
+          {children}
+        </Wrapper>
       </Container>
     );
   }

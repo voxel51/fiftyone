@@ -45,7 +45,7 @@ type BaseAggregations = {
   None: None;
 };
 
-type CategoricalAggregations<T = unknown> = {
+export type CategoricalAggregations<T = unknown> = {
   CountValues: CountValues<T>;
 } & BaseAggregations;
 

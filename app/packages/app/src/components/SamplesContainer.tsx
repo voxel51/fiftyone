@@ -41,7 +41,8 @@ const SamplesContainer = React.memo(() => {
       key: string,
       group: string,
       entry: SidebarEntry,
-      controller: Controller
+      controller: Controller,
+      trigger: (event: React.MouseEvent<HTMLDivElement>, key: string) => void
     ) => {
       switch (entry.kind) {
         case EntryKind.PATH:
@@ -52,24 +53,28 @@ const SamplesContainer = React.memo(() => {
             children:
               isTag || isLabelTag ? (
                 <Entries.FilterableTag
+                  entryKey={key}
                   modal={false}
-                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
-                  tag={entry.path.split(".").slice(1).join(".")}
                   key={key}
+                  tag={entry.path.split(".").slice(1).join(".")}
+                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                  trigger={trigger}
                 />
               ) : (
                 <Entries.FilterablePath
+                  entryKey={key}
+                  disabled={disabled.has(entry.path)}
+                  group={group}
+                  key={key}
                   modal={false}
                   path={entry.path}
-                  group={group}
-                  disabled={disabled.has(entry.path)}
-                  onFocus={() => {
-                    controller.set({ zIndex: "1", overflow: "visible" });
-                  }}
                   onBlur={() => {
                     controller.set({ zIndex: "0", overflow: "hidden" });
                   }}
-                  key={key}
+                  onFocus={() => {
+                    controller.set({ zIndex: "1", overflow: "visible" });
+                  }}
+                  trigger={trigger}
                 />
               ),
             disabled: isTag || isLabelTag || disabled.has(entry.path),

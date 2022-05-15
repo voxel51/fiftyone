@@ -401,7 +401,12 @@ type RenderEntry = (
   key: string,
   group: string,
   entry: SidebarEntry,
-  controller: Controller
+  controller: Controller,
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void
 ) => { children: React.ReactNode; disabled: boolean };
 
 const InteractiveSidebar = ({
@@ -425,6 +430,7 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
+  const cb = useRef<() => void>();
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
@@ -558,30 +564,30 @@ const InteractiveSidebar = ({
     }
   }, []);
 
-  const exit = useCallback(
-    (event) => {
-      if (down.current == null) {
-        down.current = null;
-        start.current = null;
-        return;
-      }
+  const exit = useCallback(() => {
+    if (down.current === null) {
+      start.current = null;
+      cb.current = null;
+      return;
+    }
 
-      requestAnimationFrame(() => {
-        lastTouched.current = down.current;
-        const newOrder = getNewOrder(lastDirection.current);
-        order.current = newOrder;
+    requestAnimationFrame(() => {
+      cb.current();
 
-        const newEntries = order.current.map((key) => items.current[key].entry);
+      lastTouched.current = down.current;
+      const newOrder = getNewOrder(lastDirection.current);
+      order.current = newOrder;
 
-        down.current = null;
-        start.current = null;
-        lastDirection.current = null;
+      const newEntries = order.current.map((key) => items.current[key].entry);
 
-        setEntries(newEntries);
-      });
-    },
-    [entries]
-  );
+      cb.current = null;
+      down.current = null;
+      start.current = null;
+      lastDirection.current = null;
+
+      setEntries(newEntries);
+    });
+  }, [entries]);
 
   useEventHandler(document.body, "mouseup", exit);
   useEventHandler(document.body, "mouseleave", exit);
@@ -608,6 +614,7 @@ const InteractiveSidebar = ({
 
   const animate = useCallback((y) => {
     if (down.current == null) return;
+    document.getSelection().removeAllRanges();
     const entry = items.current[down.current].entry;
 
     const d = y - last.current;
@@ -647,10 +654,15 @@ const InteractiveSidebar = ({
   });
 
   const trigger = useCallback(
-    (event) => {
+    (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      callback: () => void
+    ) => {
       if (event.button !== 0) return;
 
-      down.current = event.currentTarget.dataset.key;
+      down.current = key;
+      cb.current = callback;
       start.current = event.clientY;
       last.current = start.current;
       lastOrder.current = order.current;
@@ -679,7 +691,6 @@ const InteractiveSidebar = ({
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
-        overflow: "visible",
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
@@ -705,21 +716,20 @@ const InteractiveSidebar = ({
             const { shadow, cursor, ...springs } = items.current[
               key
             ].controller.springs;
-            const { children, disabled } = render(
+            const { children } = render(
               key,
               group,
               entry,
-              items.current[key].controller
+              items.current[key].controller,
+              trigger
             );
-            const style = { cursor: disabled ? "unset" : cursor };
+            const style = {};
             if (entry.kind === EntryKind.INPUT) {
               style.zIndex = 0;
             }
 
             return (
               <animated.div
-                data-key={key}
-                onMouseDown={disabled ? undefined : trigger}
                 onMouseDownCapture={() => {
                   lastTouched.current = undefined;
                   placeItems();

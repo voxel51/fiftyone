@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useMemo, useState } from "react";
+import React, { Suspense, useLayoutEffect, useMemo } from "react";
 import { Checkbox } from "@material-ui/core";
 import {
   KeyboardArrowDown,
@@ -224,18 +224,26 @@ const pathIsExpanded = atomFamily<boolean, { modal: boolean; path: string }>({
 
 const FilterableEntry = React.memo(
   ({
+    entryKey,
     modal,
     path,
     onFocus,
     onBlur,
     disabled = false,
+    trigger,
   }: {
+    disabled?: boolean;
+    entryKey: string;
+    group: string;
     modal: boolean;
     path: string;
-    group: string;
     onFocus?: () => void;
     onBlur?: () => void;
-    disabled?: boolean;
+    trigger: (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      cb: () => void
+    ) => void;
   }) => {
     const [expanded, setExpanded] = useRecoilState(
       pathIsExpanded({ modal, path })
@@ -282,14 +290,9 @@ const FilterableEntry = React.memo(
 
     return (
       <RegularEntry
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
+        backgroundColor={backgroundColor}
         color={color}
+        entryKey={entryKey}
         heading={
           <>
             {!disabled && (
@@ -299,6 +302,7 @@ const FilterableEntry = React.memo(
                 title={`Show ${path}`}
                 style={{
                   color: active ? color : theme.fontDark,
+                  marginLeft: 2,
                   padding: 0,
                 }}
                 key="checkbox"
@@ -328,8 +332,15 @@ const FilterableEntry = React.memo(
             </NameAndCountContainer>
           </>
         }
-        backgroundColor={backgroundColor}
         onClick={!disabled ? () => setActive(!active) : null}
+        title={`${path} (${
+          field.embeddedDocType
+            ? field.embeddedDocType
+            : field.subfield
+            ? `${field.ftype}(${field.subfield})`
+            : field.ftype
+        })`}
+        trigger={trigger}
       >
         <Suspense fallback={null}>
           {expanded &&

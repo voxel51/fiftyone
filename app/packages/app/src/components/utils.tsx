@@ -322,7 +322,7 @@ export const Button = ({
   );
 };
 
-const NameAndCountContainerDiv = styled.div`
+export const NameAndCountContainer = styled.div`
   display: flex;
   justify-content: space-between;
   flex: 1;
@@ -346,13 +346,3 @@ const NameAndCountContainerDiv = styled.div`
     margin-right: 6px;
   }
 `;
-
-export const NameAndCountContainer: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  return (
-    <NameAndCountContainerDiv onMouseDown={(e) => e.stopPropagation()}>
-      {children}
-    </NameAndCountContainerDiv>
-  );
-};

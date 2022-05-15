@@ -85,13 +85,21 @@ const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
 };
 
 const FilterableTagEntry = ({
-  tagKey,
-  tag,
+  entryKey,
   modal,
+  tag,
+  tagKey,
+  trigger,
 }: {
+  entryKey: string;
+  modal: boolean;
   tagKey: State.TagKey;
   tag: string;
-  modal: boolean;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
 }) => {
   const theme = useTheme();
   const [active, setActive] = useRecoilState(
@@ -115,8 +123,9 @@ const FilterableTagEntry = ({
 
   return (
     <RegularEntry
-      title={tag}
+      entryKey={entryKey}
       backgroundColor={backgroundColor}
+      clickable
       color={color}
       heading={
         <>
@@ -151,7 +160,8 @@ const FilterableTagEntry = ({
         </>
       }
       onClick={() => setActive(!active)}
-      clickable
+      title={tag}
+      trigger={trigger}
     />
   );
 };
