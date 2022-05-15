@@ -105,7 +105,6 @@ const fn = (
             return height + child.getBoundingClientRect().height;
           }, 0)
         : 0,
-      overflow: "hidden",
     };
 
     if (active) {

@@ -42,6 +42,7 @@ import { elementNames } from "../../../recoil/view";
 import { MATCH_LABEL_TAGS, validateGroupName } from "../utils";
 import { RouterContext, useTheme } from "@fiftyone/components";
 import { getDatasetName } from "../../../utils/generic";
+import Draggable from "./Draggable";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
@@ -316,9 +317,10 @@ const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
   expanded ? <Remove /> : <Add />;
 
 const GroupHeader = styled.div`
-  border-bottom: 1px solid ${({ theme }) => theme.border};
+  border-bottom: 2px solid ${({ theme }) => theme.border};
   border-top-radius: 3px;
-  padding: 0.25rem;
+  margin-left: 2px;
+  padding: 3px 3px 3px 8px;
   text-transform: uppercase;
   display: flex;
   justify-content: space-between;
@@ -333,6 +335,7 @@ const GroupHeader = styled.div`
     font-size: 1.25em;
     vertical-align: middle;
   }
+  cursor: pointer;
 `;
 
 const GroupInput = styled.input`
@@ -346,16 +349,23 @@ const GroupInput = styled.input`
 `;
 
 type GroupEntryProps = {
+  entryKey: string;
   pills?: React.ReactNode;
   title: string;
   setValue?: (name: string) => Promise<boolean>;
   onDelete?: () => void;
   before?: React.ReactNode;
   expanded: boolean;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
 } & React.HTMLProps<HTMLDivElement>;
 
 const GroupEntry = React.memo(
   ({
+    entryKey,
     title,
     pills,
     onDelete,
@@ -363,6 +373,7 @@ const GroupEntry = React.memo(
     before,
     onClick,
     expanded,
+    trigger,
   }: GroupEntryProps) => {
     const [editing, setEditing] = useState(false);
     const [hovering, setHovering] = useState(false);
@@ -371,95 +382,123 @@ const GroupEntry = React.memo(
     const theme = useTheme();
 
     return (
-      <GroupHeader
-        title={title}
-        onMouseEnter={() => !hovering && setHovering(true)}
-        onMouseLeave={() => hovering && setHovering(false)}
-        onMouseDown={(event) => {
-          editing ? event.stopPropagation() : (canCommit.current = true);
-        }}
-        onMouseMove={() => (canCommit.current = false)}
+      <div
         style={{
-          cursor: "unset",
-          borderBottomColor: editing ? theme.brand : theme.border,
-        }}
-        onMouseUp={(event) => {
-          canCommit.current && onClick && onClick(event);
+          paddingTop: 8,
+          boxShadow: `0 2px 20px ${theme.backgroundDark}`,
         }}
       >
-        {before}
-        <GroupInput
-          ref={ref}
-          maxLength={40}
-          style={{
-            flexGrow: 1,
-            pointerEvents: editing ? "unset" : "none",
-            textOverflow: "ellipsis",
-          }}
-          defaultValue={title}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              setValue(event.target.value).then((success) => {
-                if (!success) {
-                  event.target.value = title;
-                }
-
-                setEditing(false);
-                event.target.blur();
-              });
-
-              return;
-            }
-            if (event.key === "Escape") {
-              event.target.blur();
-            }
-          }}
-          onFocus={() => !editing && setEditing(true)}
-          onBlur={() => {
-            if (editing) {
-              setEditing(false);
-            }
-          }}
-        />
-        {hovering && !editing && setValue && (
-          <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
-            <Edit
+        <div style={{ position: "relative", cursor: "pointer" }}>
+          <Draggable color={theme.border} entryKey={entryKey} trigger={trigger}>
+            <GroupHeader
+              title={title}
+              onMouseEnter={() => !hovering && setHovering(true)}
+              onMouseLeave={() => hovering && setHovering(false)}
               onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
+                editing ? event.stopPropagation() : (canCommit.current = true);
               }}
-              onClick={() => {
-                setEditing(true);
-                if (ref.current) {
-                  ref.current.setSelectionRange(0, ref.current.value.length);
-                  ref.current.focus();
-                }
+              onMouseMove={() => (canCommit.current = false)}
+              style={{
+                cursor: "unset",
+                borderBottomColor: editing ? theme.brand : theme.border,
               }}
-            />
-          </span>
-        )}
-        {pills}
-        {onDelete && !editing && (
-          <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
-            <Close
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
+              onMouseUp={(event) => {
+                canCommit.current && onClick && onClick(event);
               }}
-              onClick={() => onDelete()}
-            />
-          </span>
-        )}
-        <span>
-          <PlusMinusButton expanded={expanded} />
-        </span>
-      </GroupHeader>
+            >
+              {before}
+              <GroupInput
+                ref={ref}
+                maxLength={40}
+                style={{
+                  flexGrow: 1,
+                  pointerEvents: editing ? "unset" : "none",
+                  textOverflow: "ellipsis",
+                }}
+                defaultValue={title}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    setValue(event.target.value).then((success) => {
+                      if (!success) {
+                        event.target.value = title;
+                      }
+
+                      setEditing(false);
+                      event.target.blur();
+                    });
+
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.target.blur();
+                  }
+                }}
+                onFocus={() => !editing && setEditing(true)}
+                onBlur={() => {
+                  if (editing) {
+                    setEditing(false);
+                  }
+                }}
+              />
+              {hovering && !editing && setValue && (
+                <span title={"Rename group"} style={{ margin: "0 0.25rem" }}>
+                  <Edit
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={() => {
+                      setEditing(true);
+                      if (ref.current) {
+                        ref.current.setSelectionRange(
+                          0,
+                          ref.current.value.length
+                        );
+                        ref.current.focus();
+                      }
+                    }}
+                  />
+                </span>
+              )}
+              {pills}
+              {onDelete && !editing && (
+                <span title={"Delete group"} style={{ margin: "0 0.25rem" }}>
+                  <Close
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={() => onDelete()}
+                  />
+                </span>
+              )}
+              <span>
+                <PlusMinusButton expanded={expanded} />
+              </span>
+            </GroupHeader>
+          </Draggable>
+        </div>
+      </div>
     );
   }
 );
 
 export const TagGroupEntry = React.memo(
-  ({ tagKey, modal }: { tagKey: State.TagKey; modal: boolean }) => {
+  ({
+    entryKey,
+    modal,
+    tagKey,
+    trigger,
+  }: {
+    entryKey: string;
+    modal: boolean;
+    tagKey: State.TagKey;
+    trigger: (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      cb: () => void
+    ) => void;
+  }) => {
     const [expanded, setExpanded] = useRecoilState(
       groupShown({ name: TAGS[tagKey], modal })
     );
@@ -469,9 +508,10 @@ export const TagGroupEntry = React.memo(
     return (
       <GroupEntry
         before={<LocalOffer style={{ marginRight: "0.5rem" }} />}
+        entryKey={entryKey}
+        expanded={expanded}
         title={name.toUpperCase()}
         onClick={() => setExpanded(!expanded)}
-        expanded={expanded}
         pills={
           <Pills
             entries={[
@@ -497,26 +537,34 @@ export const TagGroupEntry = React.memo(
               }))}
           />
         }
+        trigger={trigger}
       />
     );
   }
 );
 
 interface PathGroupProps {
+  entryKey: string;
   name: string;
   modal: boolean;
   mutable?: boolean;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
 }
 
 export const PathGroupEntry = React.memo(
-  ({ name, modal, mutable = true }: PathGroupProps) => {
+  ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
     const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
     const renameGroup = useRenameGroup(modal, name);
-    const onDelete = useDeleteGroup(modal, name);
+    const onDelete = !modal ? useDeleteGroup(modal, name) : null;
     const empty = useRecoilValue(groupIsEmpty({ modal, group: name }));
 
     return (
       <GroupEntry
+        entryKey={entryKey}
         title={name.toUpperCase()}
         expanded={expanded}
         onClick={() => setExpanded(!expanded)}
@@ -549,6 +597,7 @@ export const PathGroupEntry = React.memo(
               }))}
           />
         }
+        trigger={trigger}
       />
     );
   }

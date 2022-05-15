@@ -42,7 +42,11 @@ const SamplesContainer = React.memo(() => {
       group: string,
       entry: SidebarEntry,
       controller: Controller,
-      trigger: (event: React.MouseEvent<HTMLDivElement>, key: string) => void
+      trigger: (
+        event: React.MouseEvent<HTMLDivElement>,
+        key: string,
+        cb: () => void
+      ) => void
     ) => {
       switch (entry.kind) {
         case EntryKind.PATH:
@@ -87,18 +91,22 @@ const SamplesContainer = React.memo(() => {
             children:
               isTags || isLabelTags ? (
                 <Entries.TagGroup
+                  entryKey={key}
+                  key={key}
+                  modal={false}
                   tagKey={
                     isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
                   }
-                  modal={false}
-                  key={key}
+                  trigger={trigger}
                 />
               ) : (
                 <Entries.PathGroup
+                  entryKey={key}
+                  key={key}
                   name={entry.name}
                   modal={false}
                   mutable={entry.name !== "other"}
-                  key={key}
+                  trigger={trigger}
                 />
               ),
             disabled: false,

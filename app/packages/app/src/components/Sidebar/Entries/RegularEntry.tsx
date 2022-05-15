@@ -1,8 +1,7 @@
-import React, { MouseEventHandler, ReactNode, useRef, useState } from "react";
-import { animated, SpringValue, useSpring } from "@react-spring/web";
+import React, { MouseEventHandler, ReactNode, useRef } from "react";
+import { animated, SpringValue } from "@react-spring/web";
 import styled from "styled-components";
-import { useTheme } from "@fiftyone/components";
-import { DragIndicator } from "@material-ui/icons";
+import Draggable from "./Draggable";
 
 const Container = animated(styled.div`
   display: flex;
@@ -21,60 +20,6 @@ const Header = styled.div`
   cursor: pointer;
   flex: 1;
 `;
-
-const Wrapper = styled.div`
-  width: 100%;
-`;
-
-const Drag: React.FC<{
-  color: string;
-  entryKey: string;
-  trigger: (
-    event: React.MouseEvent<HTMLDivElement>,
-    key: string,
-    cb: () => void
-  ) => void;
-}> = ({ color, entryKey, trigger }) => {
-  const theme = useTheme();
-  const [hovering, setHovering] = useState(false);
-  const [dragging, setDragging] = useState(false);
-
-  const style = useSpring({
-    width: dragging || hovering ? 20 : 5,
-    cursor: dragging ? "grabbing" : "grab",
-  });
-
-  return (
-    <animated.div
-      onMouseDown={(event) => {
-        setDragging(true);
-        trigger(event, entryKey, () => setDragging(false));
-      }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-      style={{
-        backgroundColor: color,
-        position: "absolute",
-        left: 0,
-        top: 0,
-        zIndex: 1,
-        borderTopLeftRadius: 2,
-        borderBottomLeftRadius: 2,
-        height: "100%",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        boxShadow: `0 2px 20px ${theme.backgroundDark}`,
-        ...style,
-      }}
-      title={"Drag to reorder"}
-    >
-      {(dragging || hovering) && (
-        <DragIndicator style={{ color: theme.backgroundLight }} />
-      )}
-    </animated.div>
-  );
-};
 
 type RegularEntryProps = React.PropsWithChildren<{
   backgroundColor?: SpringValue<string>;
@@ -128,13 +73,12 @@ const RegularEntry = React.forwardRef(
         }}
         title={title}
       >
-        <Drag color={color} entryKey={entryKey} trigger={trigger} />
-        <Wrapper>
+        <Draggable color={color} entryKey={entryKey} trigger={trigger}>
           <Header style={{ justifyContent: left ? "left" : "space-between" }}>
             {heading}
           </Header>
           {children}
-        </Wrapper>
+        </Draggable>
       </Container>
     );
   }
