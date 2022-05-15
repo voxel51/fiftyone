@@ -126,23 +126,19 @@ const SampleModal = () => {
               <>
                 {isLabelTag && (
                   <Entries.FilterableTag
-                    entryKey={key}
                     key={key}
                     modal={true}
                     tag={entry.path.split(".").slice(1).join(".")}
                     tagKey={
                       isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
                     }
-                    trigger={trigger}
                   />
                 )}
                 {isTag && (
                   <Entries.TagValue
-                    entryKey={key}
                     key={key}
                     path={entry.path}
                     tag={entry.path.slice("tags.".length)}
-                    trigger={trigger}
                   />
                 )}
                 {(isLabel || isOther) && (

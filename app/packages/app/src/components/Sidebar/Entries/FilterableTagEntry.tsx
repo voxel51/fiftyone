@@ -85,11 +85,9 @@ const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
 };
 
 const FilterableTagEntry = ({
-  entryKey,
   modal,
   tag,
   tagKey,
-  trigger,
 }: {
   entryKey: string;
   modal: boolean;
@@ -123,7 +121,6 @@ const FilterableTagEntry = ({
 
   return (
     <RegularEntry
-      entryKey={entryKey}
       backgroundColor={backgroundColor}
       clickable
       color={color}
@@ -161,7 +158,6 @@ const FilterableTagEntry = ({
       }
       onClick={() => setActive(!active)}
       title={tag}
-      trigger={trigger}
     />
   );
 };

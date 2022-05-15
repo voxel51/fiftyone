@@ -57,12 +57,10 @@ const SamplesContainer = React.memo(() => {
             children:
               isTag || isLabelTag ? (
                 <Entries.FilterableTag
-                  entryKey={key}
                   modal={false}
                   key={key}
                   tag={entry.path.split(".").slice(1).join(".")}
                   tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
-                  trigger={trigger}
                 />
               ) : (
                 <Entries.FilterablePath

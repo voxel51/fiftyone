@@ -10,19 +10,12 @@ import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 
 const TagValueEntry = ({
-  entryKey,
   path,
   tag,
-  trigger,
 }: {
   entryKey: string;
   path: string;
   tag: string;
-  trigger: (
-    event: React.MouseEvent<HTMLDivElement>,
-    key: string,
-    cb: () => void
-  ) => void;
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
@@ -34,7 +27,6 @@ const TagValueEntry = ({
     <RegularEntry
       backgroundColor={backgroundColor}
       color={color}
-      entryKey={entryKey}
       heading={
         <>
           <LocalOffer style={{ margin: 2, height: 21, width: 21, color }} />
@@ -45,7 +37,6 @@ const TagValueEntry = ({
       }
       left={true}
       title={tag}
-      trigger={trigger}
     />
   );
 };

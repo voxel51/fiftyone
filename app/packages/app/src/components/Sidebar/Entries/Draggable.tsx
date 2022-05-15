@@ -6,7 +6,7 @@ import React, { useState } from "react";
 const Draggable: React.FC<React.PropsWithChildren<{
   color: string;
   entryKey: string;
-  trigger: (
+  trigger?: (
     event: React.MouseEvent<HTMLDivElement>,
     key: string,
     cb: () => void
@@ -16,20 +16,26 @@ const Draggable: React.FC<React.PropsWithChildren<{
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  const active = trigger && (dragging || hovering);
+
   const style = useSpring({
-    width: dragging || hovering ? 20 : 5,
-    left: dragging || hovering ? -10 : 0,
+    width: active ? 20 : 5,
+    left: active ? -10 : 0,
     cursor: dragging ? "grabbing" : "grab",
   });
 
   return (
     <>
       <animated.div
-        onMouseDown={(event) => {
-          setDragging(true);
-          trigger(event, entryKey, () => setDragging(false));
-        }}
-        onMouseEnter={() => setHovering(true)}
+        onMouseDown={
+          trigger
+            ? (event) => {
+                setDragging(true);
+                trigger(event, entryKey, () => setDragging(false));
+              }
+            : null
+        }
+        onMouseEnter={() => trigger && setHovering(true)}
         onMouseLeave={() => setHovering(false)}
         style={{
           backgroundColor: color,
@@ -46,9 +52,9 @@ const Draggable: React.FC<React.PropsWithChildren<{
           boxShadow: `0 2px 20px ${theme.backgroundDark}`,
           ...style,
         }}
-        title={"Drag to reorder"}
+        title={trigger ? "Drag to reorder" : null}
       >
-        {(dragging || hovering) && (
+        {active && (dragging || hovering) && (
           <DragIndicator style={{ color: theme.backgroundLight }} />
         )}
       </animated.div>
