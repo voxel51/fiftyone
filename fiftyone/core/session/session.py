@@ -8,6 +8,7 @@ Session class for interacting with the FiftyOne App
 from collections import defaultdict
 from functools import wraps
 import logging
+from packaging.version import Version
 import pkg_resources
 import time
 import typing as t
@@ -1023,7 +1024,9 @@ def import_desktop() -> None:
 
     desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
 
-    if not desktop_req.specifier.contains(desktop_dist.version):
+    if not desktop_req.specifier.contains(
+        Version(desktop_dist.version).base_version
+    ):
         raise RuntimeError(
             "fiftyone==%s requires fiftyone-desktop%s, but you have "
             "fiftyone-desktop==%s installed.\n"
