@@ -241,7 +241,10 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample.id);
+        this.dispatchEvent(eventType, {
+          shiftKey: detail,
+          sampleId: this.sample.id,
+        });
         return;
       }
 

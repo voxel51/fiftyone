@@ -10,7 +10,6 @@ from .colorscales import Colorscales
 from .distributions import Distributions
 from .event import Event
 from .events import Events
-from .export import Export
 from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
@@ -31,7 +30,6 @@ routes = [
     ("/distributions", Distributions),
     ("/event", Event),
     ("/events", Events),
-    ("/export", Export),
     ("/fiftyone", FiftyOne),
     ("/frames", Frames),
     ("/media", Media),

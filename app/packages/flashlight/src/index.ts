@@ -14,6 +14,7 @@ import {
   Render,
   RowData,
   State,
+  ItemIndexMap,
 } from "./state";
 import { createScrollReader } from "./zooming";
 
@@ -110,6 +111,10 @@ export default class Flashlight<K> {
     );
 
     this.element.appendChild(this.container);
+  }
+
+  get itemIndexes(): ItemIndexMap {
+    return this.state.itemIndexMap;
   }
 
   reset() {

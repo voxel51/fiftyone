@@ -17,7 +17,9 @@ from starlette.requests import Request
 
 class FiftyOneResponse(JSONResponse):
     def render(self, content: t.Any) -> bytes:
-        bytes(FiftyOneJSONEncoder.dumps(stringify(content)), encoding="utf-8")
+        return bytes(
+            FiftyOneJSONEncoder.dumps(stringify(content)), encoding="utf-8"
+        )
 
 
 def route(func):
