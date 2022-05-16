@@ -50,6 +50,7 @@ const Draggable: React.FC<React.PropsWithChildren<{
           justifyContent: "space-between",
           alignItems: "center",
           boxShadow: `0 2px 20px ${theme.backgroundDark}`,
+          overflow: "hidden",
           ...style,
         }}
         title={trigger ? "Drag to reorder" : null}
