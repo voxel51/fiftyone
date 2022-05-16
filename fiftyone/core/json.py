@@ -63,35 +63,20 @@ def stringify(d):
     Returns:
         a stringified version of the data
     """
-    if isinstance(d, (dict, OrderedDict)):
-        for k, v in d.items():
-            if isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, d.get("_cls", None))
-            elif isinstance(v, (date, datetime)):
-                d[k] = _handle_date(v)
-            elif isinstance(v, ObjectId):
-                d[k] = str(v)
-            elif isinstance(v, (dict, OrderedDict, list)):
-                stringify(v)
-            elif _is_invalid_number(v):
-                d[k] = str(v)
+    if isinstance(d, dict):
+        return {k: stringify(v) for k, v in d.items()}
 
-    if isinstance(d, list):
-        for idx, i in enumerate(d):
-            if isinstance(i, tuple):
-                d[idx] = list(i)
-                i = d[idx]
+    if isinstance(d, (list, tuple)):
+        return [stringify(v) for v in d]
 
-            if isinstance(i, bytes):
-                d[idx] = _handle_numpy_array(i)
-            elif isinstance(i, (date, datetime)):
-                d[idx] = _handle_date(i)
-            elif isinstance(i, ObjectId):
-                d[idx] = str(i)
-            elif isinstance(i, (dict, OrderedDict, list)):
-                stringify(i)
-            elif _is_invalid_number(i):
-                d[idx] = str(i)
+    if isinstance(d, bytes):
+        return _handle_numpy_array(d, d.get("_cls", None))
+    elif isinstance(d, (date, datetime)):
+        return _handle_date(d)
+    elif isinstance(d, ObjectId):
+        return str(d)
+    elif _is_invalid_number(d):
+        return str(d)
 
     return d
 
