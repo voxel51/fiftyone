@@ -47,7 +47,7 @@ const Code = styled.pre`
 
 const port = (() => {
   if (isElectron()) {
-    parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+    return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
   }
 
   if (window.location.port !== undefined) {
@@ -188,10 +188,7 @@ const Setup = () => {
   return (
     <>
       <Header title={"FiftyOne"}>
-        <div
-          className={iconContainer}
-          style={{ flex: 1, justifyContent: "right" }}
-        >
+        <div className={iconContainer} style={{ flex: 1 }}>
           <SlackLink />
           <GitHubLink />
           <DocsLink />

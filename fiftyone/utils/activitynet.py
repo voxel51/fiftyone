@@ -117,9 +117,10 @@ def download_activitynet_split(
 
         num_samples = num_existing
     else:
-        (_, num_downloaded_samples,) = manager.download_necessary_samples(
-            download_config
-        )
+        (
+            _,
+            num_downloaded_samples,
+        ) = manager.download_necessary_samples(download_config)
         num_samples = num_existing + num_downloaded_samples
 
     manager.write_data_json(split)
@@ -201,7 +202,9 @@ class ActivityNetDatasetImporter(
         self.max_duration = max_duration
 
         self.data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data.json",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data.json",
         )
         labels_path = self._parse_labels_path(
             dataset_dir=dataset_dir,
@@ -531,7 +534,9 @@ class ActivityNetDatasetManager(object):
         self.info.cleanup_split(split)
 
         any_class_samples, all_class_samples = self.info.get_matching_samples(
-            split=split, max_duration=max_duration, classes=classes,
+            split=split,
+            max_duration=max_duration,
+            classes=classes,
         )
 
         all_class_ids = list(all_class_samples.keys())
@@ -550,7 +555,9 @@ class ActivityNetDatasetManager(object):
         # 1) Take the all class IDs that are downloaded up to max_samples
         dl_all_class_ids = list(set_all_ids.intersection(set_downloaded_ids))
         loaded_samples = self._load_requested_samples(
-            dl_all_class_ids, shuffle, requested_num,
+            dl_all_class_ids,
+            shuffle,
+            requested_num,
         )
         requested_sample_ids.extend(loaded_samples)
         num_loaded = len(loaded_samples)
@@ -560,7 +567,9 @@ class ActivityNetDatasetManager(object):
         # 2) Take the any class IDs that are downloaded up to max_samples
         dl_any_class_ids = list(set_any_ids.intersection(set_downloaded_ids))
         loaded_samples = self._load_requested_samples(
-            dl_any_class_ids, shuffle, requested_num,
+            dl_any_class_ids,
+            shuffle,
+            requested_num,
         )
         requested_sample_ids.extend(loaded_samples)
         num_loaded = len(loaded_samples)
@@ -627,7 +636,11 @@ class ActivityNetDatasetManager(object):
                 random.shuffle(ids)
 
             downloaded_ids = self._separate_versions_and_attempt_to_download(
-                ids, class_samples, requested_num, num_workers, split,
+                ids,
+                class_samples,
+                requested_num,
+                num_workers,
+                split,
             )
 
             return downloaded_ids
@@ -635,7 +648,12 @@ class ActivityNetDatasetManager(object):
         return []
 
     def _separate_versions_and_attempt_to_download(
-        self, ids, samples_info, num_samples, num_workers, split,
+        self,
+        ids,
+        samples_info,
+        num_samples,
+        num_workers,
+        split,
     ):
         all_a100_ids = self.a100_info.all_sample_ids
         a100_ids = [i for i in ids if i in all_a100_ids]
@@ -1162,8 +1180,16 @@ _SPLIT_MAP = {
 _SPLIT_MAP_REV = {v: k for k, v in _SPLIT_MAP.items()}
 
 _NUM_TOTAL_SAMPLES = {
-    "100": {"train": 4819, "test": 2480, "validation": 2383,},
-    "200": {"train": 10024, "test": 5044, "validation": 4926,},
+    "100": {
+        "train": 4819,
+        "test": 2480,
+        "validation": 2383,
+    },
+    "200": {
+        "train": 10024,
+        "test": 5044,
+        "validation": 4926,
+    },
 }
 
 _SOURCE_ZIPS = [

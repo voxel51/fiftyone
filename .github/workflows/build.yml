@@ -119,8 +119,8 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install -r requirements/extras.txt
-          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta["storage"]
-          pip install -e .
+          pip install downloads/*.whl
+          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |

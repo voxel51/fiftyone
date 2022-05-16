@@ -28,6 +28,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
+import { skeletonFilter } from "./Filters/utils";
 
 const Header = styled.div`
   position: absolute;
@@ -410,8 +411,10 @@ const lookerOptions = selector({
         selectors.appConfigOption({ key: "showSkeletons", modal: true })
       ),
       defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: get(atoms.dataset).skeletons,
-      pointFilter: get(filterAtoms.skeletonFilter(true)),
+      skeletons: Object.fromEntries(
+        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+      ),
+      pointFilter: get(skeletonFilter(true)),
     };
   },
 });

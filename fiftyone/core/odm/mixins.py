@@ -635,8 +635,14 @@ class DatasetMixin(object):
         else:
             field = field_or_doc
 
+        prev = cls._fields.get(field.name, None)
+
         cls._fields[field.name] = field
-        cls._fields_ordered += (field.name,)
+        if prev is None:
+            cls._fields_ordered += (field.name,)
+        else:
+            field.required = prev.required
+            field.null = prev.null
         setattr(cls, field.name, field)
 
     @classmethod

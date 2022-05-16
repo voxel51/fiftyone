@@ -1,4 +1,10 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, {
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,12 +27,11 @@ import {
   iconContainer,
   Route,
   Link,
-  useTo,
+  RouterContext,
 } from "@fiftyone/components";
 
 import gaConfig from "../ga";
 import style from "./Root.module.css";
-import { datasetName } from "../recoil/selectors";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { appTeamsIsOpen, refresher, useRefresh } from "../recoil/atoms";
 import Teams from "../components/Teams/Teams";
@@ -37,6 +42,7 @@ import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { useHashChangeHandler, useSetDataset } from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
+import { getDatasetName } from "../utils/generic";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
@@ -55,7 +61,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-        @refetchable(queryName: "DatasetsPaginationQuery") {
+          @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -93,7 +99,7 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
   value,
 }) => {
   return (
-    <Link title={value} className={className} to={`/datasets/${value}`}>
+    <Link title={value} className={className}>
       {value}
     </Link>
   );
@@ -137,19 +143,10 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
       [gaConfig.dimensions.dev]: buildType,
       [gaConfig.dimensions.version]: `${info.version}`,
       [gaConfig.dimensions.context]:
-        info.context + isElectron() ? "-desktop" : "",
+        info.context + (isElectron() ? "-DESKTOP" : ""),
     });
     setGAInitialized(true);
-    ReactGA.pageview(window.location.pathname + window.location.search);
   }, []);
-  useHashChangeHandler(() => {
-    if (info.doNotTrack) {
-      return;
-    }
-    if (gaInitialized) {
-      ReactGA.pageview(window.location.pathname + window.location.search);
-    }
-  });
 };
 
 const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
@@ -157,7 +154,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 }) => {
   useGA(prepared);
   const useSearch = getUseSearch(prepared);
-  const fns = useTo();
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
   const { teamsSubmission } = useFragment(
@@ -170,13 +166,14 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   );
   const [teams, setTeams] = useRecoilState(appTeamsIsOpen);
   const refresh = useRefresh();
-  const dataset = useRecoilValue(datasetName);
   const setDataset = useSetDataset();
+  const context = useContext(RouterContext);
+  const dataset = getDatasetName(context);
 
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title={"FiftyOne Teams"}
         onRefresh={() => {
           refresh();
         }}
@@ -184,8 +181,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
           component: DatasetLink,
           onSelect: (name) => {
             setDataset(name);
-            fns.start(name);
-            fns.to(name);
           },
           placeholder: "Select dataset",
           useSearch,

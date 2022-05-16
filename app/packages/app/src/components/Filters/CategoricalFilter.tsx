@@ -21,10 +21,11 @@ import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 
 import ExcludeOption from "./Exclude";
-import { getFetchFunction } from "@fiftyone/utilities";
+import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { view } from "../../recoil/view";
 import { Selector, useTheme } from "@fiftyone/components";
 import { selectedValuesAtom } from "./stringState";
+import { field } from "../../recoil/schema";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -108,8 +109,9 @@ const Wrapper = ({
     value,
     count: counts[String(value)] ?? 0,
   }));
+  const skeleton = useRecoilValue(isKeypointLabel(path));
 
-  if (results.length <= CHECKBOX_LIMIT) {
+  if (results.length <= CHECKBOX_LIMIT || skeleton) {
     allValues = [
       ...allValues,
       ...results
@@ -145,7 +147,9 @@ const Wrapper = ({
           disabled={totalCount === 1}
           name={value}
           count={
-            selectedCounts.current.has(value)
+            count < 0
+              ? null
+              : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
           }
@@ -221,7 +225,7 @@ const categoricalSearchResults = selectorFamily<
     );
 
     const data = await getFetchFunction()("POST", "/values", {
-      dataset: getDatasetName(),
+      dataset: get(atoms.dataset).name,
       view: get(view),
       path,
       search,
@@ -317,6 +321,28 @@ const ResultComponent = ({
   );
 };
 
+export const isKeypointLabel = selectorFamily<boolean, string>({
+  key: "isKeypointLabel",
+  get: (path) => ({ get }) => {
+    const { CountValues } = get(
+      aggregationAtoms.aggregations({ modal: false, extended: false })
+    )[path] as aggregationAtoms.CategoricalAggregations;
+
+    if (!CountValues) {
+      const parent = path.split(".")[0];
+
+      if (VALID_KEYPOINTS.includes(get(field(parent)).embeddedDocType)) {
+        return true;
+      }
+    }
+
+    return false;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 const CategoricalFilter = ({
   countsAtom,
   selectedValuesAtom,
@@ -332,6 +358,7 @@ const CategoricalFilter = ({
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
+  const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
 
   if (countsLoadable.state === "loading") return null;
@@ -346,7 +373,7 @@ const CategoricalFilter = ({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {results.length > CHECKBOX_LIMIT && (
+        {results.length > CHECKBOX_LIMIT && !skeleton && (
           <Selector
             useSearch={useSearch}
             placeholder={

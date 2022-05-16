@@ -27,7 +27,7 @@ export interface Sample {
     width: number;
     height: number;
   };
-  _id: string;
+  id: string;
   media_type: "image" | "image";
   filepath: string;
   tags: string[];

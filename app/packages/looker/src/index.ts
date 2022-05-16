@@ -89,7 +89,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  by: "field" | "instance" | "label";
+  by: "instance" | "field" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -241,7 +241,7 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample._id);
+        this.dispatchEvent(eventType, this.sample.id);
         return;
       }
 
@@ -298,7 +298,12 @@ export abstract class Looker<
         const ctx = this.ctx;
         this.lookerElement.render(this.state, this.sample);
 
-        if (!this.state.loaded || this.state.destroyed || this.waiting) {
+        if (
+          !this.state.loaded ||
+          this.state.destroyed ||
+          this.waiting ||
+          this.state.error
+        ) {
           return;
         }
 
@@ -342,7 +347,14 @@ export abstract class Looker<
         }
         ctx.globalAlpha = 1;
       } catch (error) {
-        this.dispatchEvent("error", error);
+        if (error instanceof MediaError) {
+          this.updater({ error });
+        } else {
+          this.dispatchEvent(
+            "error",
+            new ErrorEvent("looker error", { error })
+          );
+        }
       }
     };
   }
@@ -452,17 +464,10 @@ export abstract class Looker<
 
   detach(): void {
     this.resizeObserver.disconnect();
-    if (this.lookerElement.element.parentNode) {
-      for (const eventType in this.rootEvents) {
-        this.lookerElement.element.parentElement.addEventListener(
-          eventType,
-          this.rootEvents[eventType]
-        );
-      }
+    this.lookerElement.element.parentNode &&
       this.lookerElement.element.parentNode.removeChild(
         this.lookerElement.element
       );
-    }
   }
 
   abstract updateOptions(options: Optional<State["options"]>): void;
@@ -491,13 +496,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -1058,13 +1063,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -1080,9 +1085,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              labelId: label._id,
+              labelId: label.id,
               frameNumber: this.frameNumber,
-              sampleId: this.sample._id,
+              sampleId: this.sample.id,
             });
           });
         } else {
@@ -1090,7 +1095,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           labels.push({
             labelId,
             field,
-            sampleId: this.sample._id,
+            sampleId: this.sample.id,
             frameNumber: this.frameNumber,
           });
         }

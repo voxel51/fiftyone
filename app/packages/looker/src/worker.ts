@@ -2,7 +2,13 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { getFetchFunction, setFetchFunction, Stage } from "@fiftyone/utilities";
+import {
+  LABEL_LIST,
+  VALID_LABEL_TYPES,
+  getFetchFunction,
+  setFetchFunction,
+  Stage,
+} from "@fiftyone/utilities";
 import { get32BitColor } from "./color";
 import { CHUNK_SIZE } from "./constants";
 import { ARRAY_TYPES, deserialize } from "./numpy";
@@ -112,6 +118,16 @@ const DESERIALIZE = {
   },
 };
 
+const mapId = (obj) => {
+  if (obj._id !== undefined) {
+    obj.id = obj._id;
+    delete obj._id;
+  }
+  return obj;
+};
+
+const LABELS = new Set(VALID_LABEL_TYPES);
+
 const processLabels = (
   sample: { [key: string]: any },
   coloring: Coloring,
@@ -128,6 +144,17 @@ const processLabels = (
 
     if (label._cls in DESERIALIZE) {
       DESERIALIZE[label._cls](label, buffers);
+    }
+
+    if (LABELS.has(label._cls)) {
+      if (label._cls in LABEL_LIST) {
+        const list = label[LABEL_LIST[label._cls]];
+        if (Array.isArray(list)) {
+          label[LABEL_LIST[label._cls]] = list.map(mapId);
+        }
+      } else {
+        mapId(label);
+      }
     }
 
     if (UPDATE_LABEL[label._cls]) {
@@ -163,6 +190,8 @@ interface ProcessSample {
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = ({ sample, uuid, coloring }: ProcessSample) => {
+  mapId(sample);
+
   let bufferPromises = [processLabels(sample, coloring)];
 
   if (sample.frames && sample.frames.length) {
@@ -349,7 +378,11 @@ const UPDATE_LABEL = {
     const color = await requestColor(
       coloring.pool,
       coloring.seed,
-      coloring.byLabel ? label.label : field
+      coloring.by === "label"
+        ? label.label
+        : coloring.by === "field"
+        ? field
+        : label.id
     );
 
     const overlay = new Uint32Array(label.mask.image);
@@ -391,26 +424,27 @@ const UPDATE_LABEL = {
 
     const color = await requestColor(coloring.pool, coloring.seed, field);
 
-    const getColor = coloring.byLabel
-      ? (value) => {
-          if (value === 0) {
-            return 0;
+    const getColor =
+      coloring.by === "label"
+        ? (value) => {
+            if (value === 0) {
+              return 0;
+            }
+
+            const index = Math.round(
+              (Math.max(value - start, 0) / (stop - start)) *
+                (coloring.scale.length - 1)
+            );
+
+            return get32BitColor(coloring.scale[index]);
           }
+        : (value) => {
+            if (value === 0) {
+              return 0;
+            }
 
-          const index = Math.round(
-            (Math.max(value - start, 0) / (stop - start)) *
-              (coloring.scale.length - 1)
-          );
-
-          return get32BitColor(coloring.scale[index]);
-        }
-      : (value) => {
-          if (value === 0) {
-            return 0;
-          }
-
-          return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
-        };
+            return get32BitColor(color, Math.min(max, Math.abs(value)) / max);
+          };
 
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {

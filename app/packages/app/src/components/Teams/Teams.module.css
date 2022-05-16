@@ -3,6 +3,7 @@
   display: flex;
   flex-direction: column;
 
+  z-index: 1000;
   right: 1rem;
   bottom: 1rem;
   padding: 1rem;

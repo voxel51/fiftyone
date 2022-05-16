@@ -1,13 +1,14 @@
 {
     "name": "@fiftyone/app",
-    "version": "0.10.3",
     "license": "Apache-2.0",
+    "version": "0.0.0",
     "private": true,
     "main": "./src/index.tsx",
     "scripts": {
         "dev": "vite",
         "build": "yarn build-bare && yarn copy-to-python",
         "build-bare": "tsc && vite build",
+        "build-desktop": "tsc && vite build --mode desktop",
         "copy-to-python": "rm -rf ../../../fiftyone/server/static && cp -r ./dist ../../../fiftyone/server/static",
         "copy-to-desktop": "rm -rf ../desktop/dist/ && cp -r ./dist ../desktop/dist"
     },
@@ -50,8 +51,8 @@
     "devDependencies": {
         "@fiftyone/prettier-config": "*",
         "@types/mime": "^2.0.3",
-        "@types/react": "^17.0.43",
-        "@types/react-dom": "^17.0.14",
+        "@types/react": "^18.0.9",
+        "@types/react-dom": "^18.0.3",
         "@types/react-relay": "^13.0.0",
         "@types/react-router": "^5.1.18",
         "@types/relay-compiler": "^8.0.2",

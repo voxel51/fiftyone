@@ -363,7 +363,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
       const dataset = await snapshot.getPromise(selectors.datasetName);
       const selectedLabels =
         modal && targetLabels
-          ? (await snapshot.getPromise(atoms.stateDescription)).selectedLabels
+          ? await snapshot.getPromise(atoms.selectedLabels)
           : null;
       const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
       const hiddenLabels =

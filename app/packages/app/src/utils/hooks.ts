@@ -20,7 +20,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { useSendEvent } from "@fiftyone/components";
+import { matchPath, useSendEvent, useTo } from "@fiftyone/components";
 import { useMutation } from "react-relay";
 import {
   setDataset,
@@ -32,7 +32,6 @@ import {
   setView,
   setViewMutation,
 } from "../mutations";
-import { getDatasetName } from "./generic";
 import { useErrorHandler } from "react-error-boundary";
 import { transformDataset } from "../Root/Datasets";
 
@@ -154,7 +153,6 @@ export const useWindowSize = () => {
 export const useScreenshot = (
   context: "ipython" | "colab" | "databricks" | undefined
 ) => {
-  const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
 
   const fitSVGs = useCallback(() => {
@@ -214,20 +212,16 @@ export const useScreenshot = (
     return Promise.all(styles);
   }, []);
 
-  const captureVideos = useCallback(() => {
-    const videos = document.body.querySelectorAll("video");
+  const captureCanvas = useCallback(() => {
+    const canvases = document.body.querySelectorAll("canvas");
     const promises = [];
-    videos.forEach((video) => {
-      const canvas = document.createElement("canvas");
-      const rect = video.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvases.forEach((canvas) => {
+      const rect = canvas.getBoundingClientRect();
       const dataURI = canvas.toDataURL("image/png");
       const img = new Image(rect.width, rect.height);
-      img.className = "p51-contained-image fo-captured";
-      video.parentNode.replaceChild(img, video);
+      img.style.height = `${rect.height}px`;
+      img.style.width = `${rect.width}px`;
+      canvas.parentNode.replaceChild(img, canvas);
       promises.push(
         new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -240,6 +234,7 @@ export const useScreenshot = (
   }, []);
 
   const capture = useCallback(() => {
+    const { width } = document.body.getBoundingClientRect();
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       if (context === "colab") {
@@ -247,10 +242,11 @@ export const useScreenshot = (
           {
             src: imgData,
             subscription,
-            width: canvas.width,
+            width,
           },
           "*"
         );
+        return;
       }
 
       sendEvent({
@@ -261,20 +257,19 @@ export const useScreenshot = (
     });
   }, []);
 
-  return () => {
+  const run = () => {
     if (!context) return;
 
     fitSVGs();
     let chain = Promise.resolve(null);
-    if (isVideoDataset) {
-      chain = chain.then(captureVideos);
-    }
     if (context === "colab") {
       chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
       chain.then(capture);
     }
   };
+
+  return run;
 };
 
 export type StateResolver =
@@ -315,10 +310,7 @@ export const useStateUpdate = () => {
       if (state?.view) {
         const view = get(viewAtoms.view);
 
-        if (
-          !viewsAreEqual(view, state.view || []) ||
-          state?.dataset !== getDatasetName()
-        ) {
+        if (!viewsAreEqual(view, state.view || [])) {
           set(viewAtoms.view, state.view || []);
           set(filterAtoms.filters, {});
         }
@@ -368,6 +360,8 @@ export const useStateUpdate = () => {
         set(atoms.dataset, dataset);
       }
 
+      set(atoms.modal, null);
+
       [true, false].forEach((i) =>
         [true, false].forEach((j) =>
           set(atoms.tagging({ modal: i, labels: j }), false)
@@ -382,18 +376,21 @@ export const useStateUpdate = () => {
 };
 
 export const useSetDataset = () => {
+  const { to } = useTo();
   const send = useSendEvent();
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
   const onError = useErrorHandler();
 
-  return (name?: string) =>
+  return (name?: string) => {
+    to(name ? `/datasets/${encodeURI(name)}` : "/");
     send((session) =>
       commit({
         onError,
         variables: { subscription, session, name },
       })
     );
+  };
 };
 
 export const useSetSelected = () => {
@@ -443,6 +440,9 @@ export const useSetView = () => {
             dataset: transformDataset(dataset),
             state: {
               view,
+              viewCls: dataset.viewCls,
+              selected: [],
+              selectedLabels: [],
             },
           });
         },
@@ -464,4 +464,12 @@ export const useSelectSample = () => {
     },
     []
   );
+};
+
+export const useReset = () => {
+  return useRecoilTransaction_UNSTABLE(({ set }) => () => {
+    set(atoms.selectedSamples, new Set());
+    set(atoms.selectedLabels, new Array());
+    set(viewAtoms.view, []);
+  });
 };

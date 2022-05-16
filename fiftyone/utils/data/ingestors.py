@@ -497,7 +497,11 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
     """
 
     def __init__(
-        self, dataset_dir, samples, sample_parser, max_samples=None,
+        self,
+        dataset_dir,
+        samples,
+        sample_parser,
+        max_samples=None,
     ):
         LabeledVideoDatasetImporter.__init__(
             self, dataset_dir=dataset_dir, max_samples=max_samples

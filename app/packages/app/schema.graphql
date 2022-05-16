@@ -50,6 +50,8 @@ type Dataset {
   appSidebarGroups: [SidebarGroup!]
   version: String!
   viewCls: String
+  defaultSkeleton: KeypointSkeleton
+  skeletons: [NamedKeypointSkeleton!]!
 }
 
 type DatasetConnection {
@@ -92,6 +94,11 @@ type EvaluationRunConfig implements RunConfig {
 
 scalar JSONArray
 
+type KeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+}
+
 enum MediaType {
   image
   video
@@ -115,6 +122,12 @@ type Mutation {
     view: JSONArray!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
+}
+
+type NamedKeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+  name: String!
 }
 
 type NamedTargets {

@@ -70,7 +70,7 @@ export namespace State {
   }
 
   export interface StrictKeypointSkeleton extends KeypointSkeleton {
-    field: string;
+    name: string;
   }
 
   export interface Dataset {

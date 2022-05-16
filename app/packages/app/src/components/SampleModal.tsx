@@ -2,11 +2,7 @@ import React, { useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Controller } from "@react-spring/core";
 import styled from "styled-components";
-import {
-  useRecoilValue,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-} from "recoil";
+import { useRecoilValue, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
@@ -19,7 +15,6 @@ import FieldsSidebar, {
 } from "../components/Sidebar";
 import Looker from "../components/Looker";
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
@@ -110,7 +105,12 @@ const SampleModal = () => {
       key: string,
       group: string,
       entry: SidebarEntry,
-      controller: Controller
+      controller: Controller,
+      trigger: (
+        event: React.MouseEvent<HTMLDivElement>,
+        key: string,
+        cb: () => void
+      ) => void
     ) => {
       switch (entry.kind) {
         case EntryKind.PATH:
@@ -126,23 +126,24 @@ const SampleModal = () => {
               <>
                 {isLabelTag && (
                   <Entries.FilterableTag
+                    key={key}
                     modal={true}
+                    tag={entry.path.split(".").slice(1).join(".")}
                     tagKey={
                       isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
                     }
-                    tag={entry.path.split(".").slice(1).join(".")}
-                    key={key}
                   />
                 )}
                 {isTag && (
                   <Entries.TagValue
-                    tag={entry.path.slice("tags.".length)}
-                    path={entry.path}
                     key={key}
+                    path={entry.path}
+                    tag={entry.path.slice("tags.".length)}
                   />
                 )}
                 {(isLabel || isOther) && (
                   <Entries.FilterablePath
+                    entryKey={key}
                     modal={true}
                     path={entry.path}
                     group={group}
@@ -154,10 +155,16 @@ const SampleModal = () => {
                     }}
                     disabled={isOther}
                     key={key}
+                    trigger={trigger}
                   />
                 )}
                 {isFieldPrimitive && (
-                  <Entries.PathValue path={entry.path} key={key} />
+                  <Entries.PathValue
+                    entryKey={key}
+                    key={key}
+                    path={entry.path}
+                    trigger={trigger}
+                  />
                 )}
               </>
             ),
@@ -171,14 +178,22 @@ const SampleModal = () => {
             children:
               isTags || isLabelTags ? (
                 <Entries.TagGroup
+                  entryKey={key}
                   tagKey={
                     isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
                   }
                   modal={true}
                   key={key}
+                  trigger={trigger}
                 />
               ) : (
-                <Entries.PathGroup name={entry.name} modal={true} key={key} />
+                <Entries.PathGroup
+                  entryKey={key}
+                  name={entry.name}
+                  modal={true}
+                  key={key}
+                  trigger={trigger}
+                />
               ),
             disabled: false,
           };

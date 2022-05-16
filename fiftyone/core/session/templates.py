@@ -13,6 +13,7 @@ SCREENSHOT_STYLE = """
 
 #focontainer-{{ subscription }} {
   position: relative;
+  height: {{ height }}px;
   display: block !important;
 }
 #foactivate-{{ subscription }} {
@@ -109,8 +110,9 @@ SCREENSHOT_COLAB_SCRIPT = """
         'cache': true
     }).then((baseURL) => {
         const url = new URL(baseURL);
-        const handleId = "{{ subscription }}";
         url.searchParams.set('context', 'colab');
+        url.searchParams.set('polling', 'true');
+        const subscription = "{{ subscription }}";
         url.searchParams.set('subscription', subscription);
         const iframe = document.createElement('iframe');
         iframe.src = url;

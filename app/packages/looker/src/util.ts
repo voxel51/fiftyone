@@ -12,11 +12,12 @@ import {
   Buffers,
   Coordinates,
   Dimensions,
+  DispatchEvent,
   Optional,
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
-import { getFetchParameters, ServerError } from "@fiftyone/utilities";
+import { getFetchParameters } from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -35,6 +36,13 @@ export function compareData(a: object, b: object): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Elementwise vector multiplication
+ */
+export function multiply<T extends number[]>(one: T, two: T): T {
+  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -79,13 +87,6 @@ export function distance(
  */
 export function dot2d(ax: number, ay: number, bx: number, by: number): number {
   return ax * bx + ay * by;
-}
-
-/**
- * Elementwise vector multiplication
- */
-export function multiply<T extends number[]>(one: T, two: T): T {
-  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -406,9 +407,6 @@ export const mergeUpdates = <State extends BaseState>(
     if (n === null || o === null) {
       return n;
     }
-    if (o === null) {
-      return n;
-    }
     return mergeWith(merger, o, n);
   };
   return mergeWith(merger, state, updates);
@@ -418,7 +416,7 @@ export const createWorker = (
   listeners?: {
     [key: string]: ((worker: Worker, args: any) => void)[];
   },
-  dispatchEvent
+  dispatchEvent?: DispatchEvent
 ): Worker => {
   const worker = new LookerWorker();
 

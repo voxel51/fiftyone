@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6d9c48677e1823cf4c4b456e45f6f249>>
+ * @generated SignedSource<<a8eb95a1671754ea5fb130e3d2b6fe4e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -73,6 +73,15 @@ export type DatasetQuery$data = {
     }>;
     readonly lastLoadedAt: string;
     readonly createdAt: string;
+    readonly skeletons: ReadonlyArray<{
+      readonly name: string;
+      readonly labels: ReadonlyArray<string> | null;
+      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+    }>;
+    readonly defaultSkeleton: {
+      readonly labels: ReadonlyArray<string> | null;
+      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+    } | null;
     readonly version: string;
   } | null;
 };
@@ -189,7 +198,21 @@ const node: ConcreteRequest = (function () {
       name: "cls",
       storageKey: null,
     },
-    v9 = [
+    v9 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "labels",
+      storageKey: null,
+    },
+    v10 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "edges",
+      storageKey: null,
+    },
+    v11 = [
       {
         alias: null,
         args: [
@@ -398,6 +421,26 @@ const node: ConcreteRequest = (function () {
             name: "createdAt",
             storageKey: null,
           },
+          {
+            alias: null,
+            args: null,
+            concreteType: "NamedKeypointSkeleton",
+            kind: "LinkedField",
+            name: "skeletons",
+            plural: true,
+            selections: [v1 /*: any*/, v9 /*: any*/, v10 /*: any*/],
+            storageKey: null,
+          },
+          {
+            alias: null,
+            args: null,
+            concreteType: "KeypointSkeleton",
+            kind: "LinkedField",
+            name: "defaultSkeleton",
+            plural: false,
+            selections: [v9 /*: any*/, v10 /*: any*/],
+            storageKey: null,
+          },
           v5 /*: any*/,
         ],
         storageKey: null,
@@ -409,7 +452,7 @@ const node: ConcreteRequest = (function () {
       kind: "Fragment",
       metadata: null,
       name: "DatasetQuery",
-      selections: v9 /*: any*/,
+      selections: v11 /*: any*/,
       type: "Query",
       abstractKey: null,
     },
@@ -418,20 +461,20 @@ const node: ConcreteRequest = (function () {
       argumentDefinitions: v0 /*: any*/,
       kind: "Operation",
       name: "DatasetQuery",
-      selections: v9 /*: any*/,
+      selections: v11 /*: any*/,
     },
     params: {
-      cacheID: "33bb58955b13aadd3c3abc537b89af36",
+      cacheID: "77fcfeca7708b6954695299d15d6436f",
       id: null,
       metadata: {},
       name: "DatasetQuery",
       operationKind: "query",
       text:
-        "query DatasetQuery(\n  $name: String!\n  $view: JSONArray\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    version\n  }\n}\n",
+        "query DatasetQuery(\n  $name: String!\n  $view: JSONArray\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "671e9861e5a3128117633ab7554973b0";
+(node as any).hash = "9fbe69220d8394be674fe05939dd94c6";
 
 export default node;

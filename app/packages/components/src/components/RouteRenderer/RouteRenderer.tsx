@@ -1,5 +1,11 @@
 import { Resource } from "@fiftyone/utilities";
-import React, { PropsWithChildren, Suspense, useEffect, useState } from "react";
+import React, {
+  PropsWithChildren,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { PreloadedQuery } from "react-relay";
 import { OperationType } from "relay-runtime";
 
@@ -31,11 +37,6 @@ const RouteHandler = <T extends OperationType | undefined = OperationType>(
 const RouterRenderer: React.FC<{ router: RoutingContext }> = ({ router }) => {
   const [routeEntry, setRouteEntry] = useState(router.get());
   useEffect(() => {
-    const currentEntry = router.get();
-    if (currentEntry !== routeEntry) {
-      setRouteEntry(currentEntry);
-      return;
-    }
     const dispose = router.subscribe((nextEntry) => {
       setRouteEntry(nextEntry);
     });

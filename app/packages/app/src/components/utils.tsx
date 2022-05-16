@@ -327,11 +327,11 @@ export const NameAndCountContainer = styled.div`
   justify-content: space-between;
   flex: 1;
   min-width: 0;
-  user-select: none;
   align-items: center;
+  user-select: text;
 
-  & * {
-    user-select: none;
+  & > span {
+    user-select: text;
   }
 
   & > span:first-child {

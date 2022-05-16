@@ -237,8 +237,11 @@ def delete_non_persistent_datasets_if_allowed():
         )
         return
 
-    if num_connections <= 1:
-        fod.delete_non_persistent_datasets()
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(config, client):
@@ -317,8 +320,7 @@ async def _do_async_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_aggregate(collection, pipeline):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True)
-    return await cursor.to_list(1)
+    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
 def get_db_client():
@@ -626,7 +628,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):

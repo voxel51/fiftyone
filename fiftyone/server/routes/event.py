@@ -16,15 +16,9 @@ from fiftyone.server.decorators import route
 from fiftyone.server.events import dispatch_event
 
 
-class EventData(t.TypedDict):
-    event: str
-    data: dict
-    subscription: str
-
-
 class Event(HTTPEndpoint):
     @route
-    async def post(self, request: Request, data: EventData) -> t.Dict:
+    async def post(self, request: Request, data: t.Dict) -> t.Dict:
         await dispatch_event(
             data["subscription"],
             fose.Event.from_data(data["event"], data["data"]),

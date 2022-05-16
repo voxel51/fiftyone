@@ -42,7 +42,7 @@ const IconsContainer = styled.div`
   display: flex;
   align-items: center;
   position: absolute;
-  z-index: 904;
+  z-index: 1;
   height: 100%;
   border-radius: 3px;
   top 0;

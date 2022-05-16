@@ -14,4 +14,9 @@ class Media(HTTPEndpoint):
     def get(self, request: Request):
         path = request.query_params["filepath"]
 
-        return FileResponse(path)
+        return FileResponse(
+            path,
+            headers={
+                "Accept-Ranges": "bytes",
+            },
+        )

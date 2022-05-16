@@ -92,7 +92,8 @@ def objects_to_segmentations(
 
             if isinstance(label, fol.Detections):
                 segmentation = label.to_segmentation(
-                    frame_size=frame_size, mask_targets=mask_targets,
+                    frame_size=frame_size,
+                    mask_targets=mask_targets,
                 )
 
             image[out_field] = segmentation
@@ -147,7 +148,9 @@ def segmentations_to_detections(
                 for each class
     """
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Segmentation,
+        sample_collection,
+        in_field,
+        fol.Segmentation,
     )
 
     if mask_targets is None:
@@ -200,7 +203,9 @@ def instances_to_polylines(
         filled (True): whether the polylines should be filled
     """
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Detections,
+        sample_collection,
+        in_field,
+        fol.Detections,
     )
 
     samples = sample_collection.select_fields(in_field)
@@ -268,7 +273,9 @@ def segmentations_to_polylines(
                 polylines for each region. Typical values are 1-3 pixels
     """
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Segmentation,
+        sample_collection,
+        in_field,
+        fol.Segmentation,
     )
 
     if mask_targets is None:

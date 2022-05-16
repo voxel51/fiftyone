@@ -71,6 +71,10 @@ def _get_context():
     if _context is not None:
         return _context
 
+    if os.environ.get("FIFTYONE_COLAB", None):
+        _context = _COLAB
+        return _context
+
     # In Colab, the `google.colab` module is available, but the shell returned
     # by `IPython.get_ipython` does not have a `get_trait` method.
     try:

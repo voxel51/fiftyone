@@ -369,16 +369,16 @@ export const labelPath = selectorFamily<string, string>({
   },
 });
 
-const _activeFields = atomFamily<string[], { modal: boolean }>({
+export const _activeFields = atomFamily<string[], { modal: boolean }>({
   key: "_activeFields",
-  default: ({ modal }) => labelFields({}),
+  default: null,
 });
 
 export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get: ({ modal }) => ({ get }) => {
     return filterPaths(
-      get(_activeFields({ modal })),
+      get(_activeFields({ modal })) || get(labelFields({})),
       buildSchema(get(atoms.dataset))
     );
   },
@@ -464,7 +464,7 @@ export const activeLabelPaths = selectorFamily<
   { modal: boolean; space?: State.SPACE }
 >({
   key: "activeLabelPaths",
-  get: ({ modal, space }) => ({ get }) => {
+  get: ({ modal }) => ({ get }) => {
     const active = new Set(get(activeFields({ modal })));
     return get(labelFields({}))
       .filter((field) => active.has(field))

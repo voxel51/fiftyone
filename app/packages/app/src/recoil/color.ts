@@ -20,6 +20,9 @@ export const coloring = selectorFamily<Coloring, boolean>({
       pool,
       scale: get(atoms.colorscale),
       by: get(selectors.appConfigOption({ key: "colorBy", modal })),
+      points: get(
+        selectors.appConfigOption({ key: "multicolorKeypoints", modal })
+      ),
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(pool.length)

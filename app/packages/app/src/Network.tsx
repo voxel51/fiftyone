@@ -3,8 +3,19 @@ import {
   RouteRenderer,
   RoutingContext,
 } from "@fiftyone/components";
-import React, { Suspense } from "react";
+
+import React, { Suspense, useContext } from "react";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
+
+const Renderer: React.FC = () => {
+  const context = useContext(RouterContext);
+
+  return (
+    <Suspense fallback={null}>
+      <RouteRenderer router={context} />
+    </Suspense>
+  );
+};
 
 const Network: React.FC<{
   environment: Environment;
@@ -13,9 +24,7 @@ const Network: React.FC<{
   return (
     <RelayEnvironmentProvider environment={environment}>
       <RouterContext.Provider value={context}>
-        <Suspense fallback={null}>
-          <RouteRenderer router={context} />
-        </Suspense>
+        <Renderer />
       </RouterContext.Provider>
     </RelayEnvironmentProvider>
   );

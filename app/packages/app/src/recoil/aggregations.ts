@@ -12,6 +12,7 @@ import {
   FLOAT_FIELD,
   getFetchFunction,
   toSnakeCase,
+  VALID_KEYPOINTS,
 } from "@fiftyone/utilities";
 
 import * as atoms from "./atoms";
@@ -44,7 +45,7 @@ type BaseAggregations = {
   None: None;
 };
 
-type CategoricalAggregations<T = unknown> = {
+export type CategoricalAggregations<T = unknown> = {
   CountValues: CountValues<T>;
 } & BaseAggregations;
 
@@ -220,21 +221,49 @@ export const sampleTagCounts = selectorFamily<
   },
 });
 
-const makeCountResults = <T>(key) =>
+const makeCountResults = <T extends string | null | boolean>(key) =>
   selectorFamily<
     { count: number; results: [T, number][] },
     { path: string; modal: boolean; extended: boolean }
   >({
     key,
     get: ({ extended, path, modal }) => ({ get }) => {
-      const data = get(aggregations({ modal, extended }))[
+      const { CountValues, None } = get(aggregations({ modal, extended }))[
         path
       ] as CategoricalAggregations<T>;
-      const results = [...data.CountValues[1]];
 
-      let count = data.CountValues[0];
-      if (data.None) {
-        results.push([null, data.None]);
+      if (!CountValues) {
+        const keys = path.split(".");
+        let parent = keys[0];
+
+        let field = get(schemaAtoms.field(parent));
+        if (!field && parent === "frames") {
+          parent = `frames.${keys[1]}`;
+          field = get(schemaAtoms.field(parent));
+        }
+
+        if (
+          VALID_KEYPOINTS.includes(
+            get(schemaAtoms.field(parent)).embeddedDocType
+          )
+        ) {
+          const skeleton = get(selectors.skeleton(parent));
+
+          return {
+            count: skeleton.labels.length,
+            results: skeleton.labels.map((label) => [
+              (label as unknown) as T,
+              -1,
+            ]),
+          };
+        }
+      }
+
+      const results = [...CountValues[1]];
+
+      let count = CountValues[0];
+      if (None) {
+        results.push([null, None]);
         count++;
       }
 
@@ -320,6 +349,7 @@ export const count = selectorFamily<
       }
 
       const parent = split.slice(0, split.length - 1).join(".");
+
       if (data[parent]) {
         return get(counts({ extended, path: parent, modal }))[
           split[split.length - 1]
@@ -348,13 +378,26 @@ export const counts = selectorFamily<
 >({
   key: "counts",
   get: ({ extended, modal, path }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }));
+    const { CountValues } = get(aggregations({ modal, extended }))[
+      path
+    ] as CategoricalAggregations;
 
-    return data
-      ? Object.fromEntries(
-          (data[path] as CategoricalAggregations).CountValues[1]
-        )
-      : null;
+    if (!CountValues) {
+      const parent = path.split(".")[0];
+
+      if (
+        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
+      ) {
+        const skeleton = get(selectors.skeleton(parent));
+
+        return skeleton.labels.reduce((acc, cur) => {
+          acc[cur] = -1;
+          return acc;
+        }, {});
+      }
+    }
+
+    return CountValues ? Object.fromEntries(CountValues[1]) : null;
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -539,7 +582,7 @@ export const boundedCount = selectorFamily<
   key: "boundedCount",
   get: (params) => ({ get }) => {
     const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
-      (sum, [key, count]) => (key === "none" ? sum : sum + count),
+      (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
       0
     );
 

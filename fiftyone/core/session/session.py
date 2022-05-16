@@ -8,6 +8,7 @@ Session class for interacting with the FiftyOne App
 from collections import defaultdict
 from functools import wraps
 import logging
+from packaging.version import Version
 import pkg_resources
 import time
 import typing as t
@@ -205,10 +206,12 @@ def update_state(auto_show: bool = False) -> t.Callable:
         def wrapper(
             session: "Session", *args: t.Tuple, **kwargs: dict
         ) -> t.Any:
+            if auto_show and session.auto and focx.is_notebook_context():
+                session.freeze()
             result = func(session, *args, **kwargs)
             session._client.send_event(StateUpdate(state=session._state))
             if auto_show and session.auto and focx.is_notebook_context():
-                return session.show()
+                session.show()
 
             return result
 
@@ -425,9 +428,6 @@ class Session(object):
             # e.g. globals were already garbage-collected
             pass
 
-        d: t.Union[t.Callable, None] = getattr(super(), "__del__", None)
-        d and d()
-
     @property
     def auto(self) -> bool:
         """The auto setting for the session."""
@@ -456,9 +456,7 @@ class Session(object):
     @property
     def url(self) -> str:
         """The URL of the session."""
-        return focx.get_url(
-            self.server_address, self.server_port, self.dataset
-        )
+        return focx.get_url(self.server_address, self.server_port)
 
     @property
     def config(self) -> AppConfig:
@@ -772,7 +770,7 @@ class Session(object):
         Returns:
             a string summary
         """
-        if self._collection and self.dataset:
+        if self._collection and self.dataset is not None:
             etype = self._collection._elements_str
             elements = [
                 ("Dataset:", self.dataset.name),
@@ -870,6 +868,7 @@ class Session(object):
         if not focx.is_notebook_context() or self.desktop:
             return
 
+        self.freeze()
         if self.dataset is not None:
             self.dataset._reload()
 
@@ -1014,24 +1013,24 @@ def import_desktop() -> None:
         import fiftyone.desktop
     except ImportError as e:
         raise RuntimeError(
-            "You must `pip install fiftyone-teams[desktop]` in order to launch the "
+            "You must `pip install fiftyone[desktop]` in order to launch the "
             "desktop App"
         ) from e
 
     # Get `fiftyone-desktop` requirement for current `fiftyone` install
-    fiftyone_dist = pkg_resources.get_distribution("fiftyone-teams")
+    fiftyone_dist = pkg_resources.get_distribution("fiftyone")
     requirements = fiftyone_dist.requires(extras=["desktop"])
-    desktop_req = [
-        r for r in requirements if r.name == "fiftyone-teams-desktop"
-    ][0]
+    desktop_req = [r for r in requirements if r.name == "fiftyone-desktop"][0]
 
-    desktop_dist = pkg_resources.get_distribution("fiftyone-teams-desktop")
+    desktop_dist = pkg_resources.get_distribution("fiftyone-desktop")
 
-    if not desktop_req.specifier.contains(desktop_dist.version):
+    if not desktop_req.specifier.contains(
+        Version(desktop_dist.version).base_version
+    ):
         raise RuntimeError(
-            "fiftyone-teams==%s requires fiftyone-teams-desktop%s, but you have "
-            "fiftyone-teams-desktop==%s installed.\n"
-            "Run `pip install fiftyone-teams[desktop]` to install the proper "
+            "fiftyone==%s requires fiftyone-desktop%s, but you have "
+            "fiftyone-desktop==%s installed.\n"
+            "Run `pip install fiftyone[desktop]` to install the proper "
             "desktop package version"
             % (
                 fiftyone_dist.version,

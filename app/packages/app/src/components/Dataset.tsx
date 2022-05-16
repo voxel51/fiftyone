@@ -1,13 +1,11 @@
-import React, { useContext, useEffect } from "react";
-import { useRecoilValue, useResetRecoilState } from "recoil";
+import React, { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "./SampleModal";
-import * as schemaAtoms from "../recoil/schema";
 import { modal } from "../recoil/atoms";
-import { RouterContext } from "@fiftyone/components";
 
 const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
 
@@ -26,26 +24,8 @@ const Body = styled.div`
   position: relative;
 `;
 
-const useResetPaths = () => {
-  const resetPaths = useResetRecoilState(
-    schemaAtoms.activeFields({ modal: false })
-  );
-  const router = useContext(RouterContext);
-  router.subscribe(() => {
-    resetPaths();
-  });
-};
-
 function Dataset() {
   const isModalActive = Boolean(useRecoilValue(modal));
-  useResetPaths();
-
-  useEffect(() => {
-    document.body.classList.toggle("noscroll", isModalActive);
-    document
-      .getElementById("modal")
-      ?.classList.toggle("modalon", isModalActive);
-  }, [isModalActive]);
 
   return (
     <>

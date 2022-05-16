@@ -66,6 +66,16 @@ export default graphql`
         lastLoadedAt
         createdAt
         version
+        viewCls
+        skeletons {
+          name
+          labels
+          edges
+        }
+        defaultSkeleton {
+          labels
+          edges
+        }
       }
       view
     }

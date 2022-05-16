@@ -47,6 +47,7 @@ import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 import { similarityParameters } from "./Actions/Similar";
+import { skeletonFilter } from "./Filters/utils";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -119,15 +120,16 @@ const flashlightLookerOptions = selector({
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
-      inSelectionMode: get(atoms.selectedSamples).size > 0,
       timeZone: get(selectors.timeZone),
       alpha: get(atoms.alpha(false)),
       showSkeletons: get(
         selectors.appConfigOption({ key: "showSkeletons", modal: false })
       ),
       defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: get(atoms.dataset)?.skeletons,
-      pointFilter: get(filterAtoms.skeletonFilter(false)),
+      skeletons: Object.fromEntries(
+        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+      ),
+      pointFilter: get(skeletonFilter(false)),
     };
   },
 });
@@ -451,6 +453,7 @@ export default React.memo(() => {
               "/samples",
               { ...paramsRef.current, page }
             );
+
             const itemData = results.map((result) => {
               const data: atoms.SampleData = {
                 sample: result.sample,
@@ -516,7 +519,6 @@ export default React.memo(() => {
           looker.updateOptions({
             ...lookerOptions.contents,
             selected: selected.has(sampleId),
-            inSelectionMode: selected.size > 0,
           });
       });
     }

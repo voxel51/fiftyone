@@ -9,7 +9,6 @@ from dataclasses import dataclass
 import os
 
 from jinja2 import Template
-from strawberry import subscription
 
 try:
     import IPython.display
@@ -38,7 +37,8 @@ def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
                 image=data.src,
                 url=focx.get_url(cell.address, cell.port),
                 max_width=data.width,
-            )
+                height=cell.height,
+            ),
         )
     )
 
@@ -102,7 +102,7 @@ def display_colab(cell: NotebookCell, reactivate: bool = False) -> None:
 
     def capture(img: str, width: int) -> None:
         with output.redirect_to_element(f"#focontainer-{cell.subscription}"):
-            display(
+            IPython.display.display(
                 IPython.display.HTML(
                     f"<img src='{img}' style='width: 100%%; max-width: {width}px;'/>"
                 )

@@ -1,9 +1,7 @@
 import { Close } from "@material-ui/icons";
-import { AnimatePresence, motion } from "framer-motion";
 import React, { useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 
-import { getFetchFunction } from "@fiftyone/utilities";
 import { Button } from "@fiftyone/components";
 
 import * as atoms from "../../recoil/atoms";
@@ -18,7 +16,6 @@ const Teams = () => {
     lastname: "",
     company: "",
     role: "",
-    discover: "",
   });
   const [submitText, setSubmitText] = useState("Submit");
   const [teams, setTeams] = useRecoilState(atoms.teams);
@@ -69,10 +66,6 @@ const Teams = () => {
             name: "role",
             value: formState.role,
           },
-          {
-            name: "app_how_did_you_hear_about_us",
-            value: formState.discover,
-          },
         ],
         context: { pageName: "FiftyOne App" },
       }),
@@ -86,7 +79,7 @@ const Teams = () => {
       .then(() => {
         setSubmitText("Submitted. Thank you!");
         setTeams((cur) => ({ ...cur, submitted: true }));
-        commit();
+        commit({ variables: {} });
         setTimeout(() => setOpen(false), 2000);
       })
       .catch((e) => {
@@ -150,13 +143,6 @@ const Teams = () => {
         value={formState.role ?? ""}
         maxLength={100}
         onChange={setFormValue("role")}
-      />
-      <input
-        key="discover"
-        placeholder={"How did you hear about FiftyOne?"}
-        value={formState.discover ?? ""}
-        maxLength={100}
-        onChange={setFormValue("discover")}
       />
       <Button
         key="submit"

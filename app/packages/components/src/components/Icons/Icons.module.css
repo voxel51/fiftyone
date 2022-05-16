@@ -1,8 +1,8 @@
 div.iconContainer {
   display: flex;
+  justify-content: flex-end;
   height: 100%;
   align-items: center;
-  justify-content: center;
   column-gap: 0.5rem;
   padding: 1rem;
 }
