@@ -54,7 +54,7 @@ def _is_invalid_number(value):
     return math.isnan(value) or math.isinf(value)
 
 
-def stringify(d):
+def stringify(d, _cls=None):
     """Converts unsafe JSON types to strings
 
     Args:
@@ -64,13 +64,13 @@ def stringify(d):
         a stringified version of the data
     """
     if isinstance(d, dict):
-        return {k: stringify(v) for k, v in d.items()}
+        return {k: stringify(v, d.get("_cls", None)) for k, v in d.items()}
 
     if isinstance(d, (list, tuple)):
         return [stringify(v) for v in d]
 
     if isinstance(d, bytes):
-        return _handle_numpy_array(d, d.get("_cls", None))
+        return _handle_numpy_array(d, _cls)
     elif isinstance(d, (date, datetime)):
         return _handle_date(d)
     elif isinstance(d, ObjectId):
