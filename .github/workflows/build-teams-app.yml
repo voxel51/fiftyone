@@ -41,8 +41,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-v.*-rc\..*$ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-v//")" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-app-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-app-v//")" >> $GITHUB_ENV
           fi
       - name: Build python
         working-directory: package/teams
