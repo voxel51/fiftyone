@@ -93,7 +93,9 @@ class VOCDetectionDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -290,7 +292,9 @@ class VOCDetectionDatasetExporter(
         )
 
         labels_path = self._parse_labels_path(
-            export_dir=export_dir, labels_path=labels_path, default="labels/",
+            export_dir=export_dir,
+            labels_path=labels_path,
+            default="labels/",
         )
 
         super().__init__(export_dir=export_dir)

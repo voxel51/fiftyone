@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import atexit
 from datetime import datetime
 import itertools
 import logging
@@ -35,9 +36,7 @@ from .document import DynamicDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
-
 logger = logging.getLogger(__name__)
-
 
 _client = None
 _async_client = None
@@ -181,6 +180,9 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
+
     connect(config.database_name, **_connection_kwargs)
 
     config = get_db_config()
@@ -210,7 +212,7 @@ def _async_connect():
         )
 
 
-def delete_non_persistent_datasets_if_allowed():
+def _delete_non_persistent_datasets_if_allowed():
     """Deletes all non-persistent datasets if and only if we are the only
     client currently connected to the database.
     """
@@ -238,8 +240,11 @@ def delete_non_persistent_datasets_if_allowed():
         )
         return
 
-    if num_connections <= 1:
-        fod.delete_non_persistent_datasets()
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(config, client):
@@ -670,7 +675,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):

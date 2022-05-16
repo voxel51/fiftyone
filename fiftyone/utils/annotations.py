@@ -172,7 +172,8 @@ def annotate(
     if samples._dataset._is_patches:
         ids = _get_patches_view_label_ids(samples)
         samples = samples._root_dataset.select_labels(
-            ids=ids, fields=samples._label_fields,
+            ids=ids,
+            fields=samples._label_fields,
         )
 
     if not samples:
@@ -2077,7 +2078,8 @@ class AnnotationResults(foa.AnnotationResults):
                 sample_id_map = id_map[sample_id]
                 for frame_id, label_ids in content.items():
                     sample_id_map[frame_id] = self._format_label_ids(
-                        sample_id_map.get(frame_id, None), label_ids,
+                        sample_id_map.get(frame_id, None),
+                        label_ids,
                     )
         else:
             for sample_id, label_ids in new_id_map.items():
