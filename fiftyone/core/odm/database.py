@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import atexit
 from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
@@ -35,9 +36,7 @@ from .document import DynamicDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
-
 logger = logging.getLogger(__name__)
-
 
 _client = None
 _async_client = None
@@ -181,6 +180,9 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
+
     connect(config.database_name, **_connection_kwargs)
 
     config = get_db_config()
@@ -211,7 +213,7 @@ def _async_connect():
         )
 
 
-def delete_non_persistent_datasets_if_allowed():
+def _delete_non_persistent_datasets_if_allowed():
     """Deletes all non-persistent datasets if and only if we are the only
     client currently connected to the database.
     """
