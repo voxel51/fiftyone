@@ -153,15 +153,17 @@ const argMin = argFact((max, el) => (el[0] < max[0] ? el : max));
 const useThumbnailClick = (
   flashlight: MutableRefObject<Flashlight<number>>
 ) => {
-  const clearModal = useClearModal();
   const setSelected = useSetSelected();
 
   return useRecoilCallback(
-    ({ set, snapshot }) => async (
-      event: MouseEvent,
-      sampleId: string,
-      itemIndexMap: { [key: string]: number }
-    ) => {
+    ({ set, snapshot }) => async ({
+      shiftKey,
+      sampleId,
+    }: {
+      shiftKey: boolean;
+      sampleId: string;
+    }) => {
+      const itemIndexMap = flashlight.current.itemIndexes;
       const clickedIndex = itemIndexMap[sampleId];
       const reverse = Object.fromEntries(
         Object.entries(itemIndexMap).map(([k, v]) => [v, k])
@@ -169,31 +171,6 @@ const useThumbnailClick = (
       let selected = new Set(await snapshot.getPromise(atoms.selectedSamples));
       const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
       set(sidebarGroupsDefinition(true), groups);
-      const openModal = () => {
-        const getIndex = (index) => {
-          const promise = store.indices.has(index)
-            ? Promise.resolve(store.samples.get(store.indices.get(index)))
-            : flashlight.current.get()?.then(() => {
-                return store.indices.has(index)
-                  ? store.samples.get(store.indices.get(index))
-                  : null;
-              });
-
-          promise
-            ? promise.then((sample) => {
-                sample
-                  ? set(atoms.modal, { ...sample, index, getIndex })
-                  : clearModal();
-              })
-            : clearModal();
-        };
-        set(atoms.modal, {
-          ...store.samples.get(sampleId),
-          index: clickedIndex,
-          getIndex,
-        });
-        setModal(snapshot, set);
-      };
 
       const addRange = () => {
         const closeIndex =
@@ -244,19 +221,10 @@ const useThumbnailClick = (
         );
       };
 
-      const selectedopen = selected.size > 0 && event.type === "contextmenu";
-      if (selectedopen) {
-        event.preventDefault();
-      }
-      if (!selected.size || selectedopen) {
-        openModal();
-        return;
-      }
-
       const array = [...selected];
-      if (event.shiftKey && !selected.has(sampleId)) {
+      if (shiftKey && !selected.has(sampleId)) {
         addRange();
-      } else if (event.shiftKey) {
+      } else if (shiftKey) {
         removeRange();
       } else {
         selected.has(sampleId)
@@ -268,6 +236,45 @@ const useThumbnailClick = (
       setSelected([...selected]);
     },
     []
+  );
+};
+
+const useOpenModal = (flashlight: MutableRefObject<Flashlight<number>>) => {
+  const clearModal = useClearModal();
+  return useRecoilCallback(
+    ({ set, snapshot }) => async (
+      event: MouseEvent,
+      sampleId: string,
+      itemIndexMap: { [key: string]: number }
+    ) => {
+      const clickedIndex = itemIndexMap[sampleId];
+      const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
+      set(sidebarGroupsDefinition(true), groups);
+
+      const getIndex = (index) => {
+        const promise = store.indices.has(index)
+          ? Promise.resolve(store.samples.get(store.indices.get(index)))
+          : flashlight.current.get()?.then(() => {
+              return store.indices.has(index)
+                ? store.samples.get(store.indices.get(index))
+                : null;
+            });
+
+        promise
+          ? promise.then((sample) => {
+              sample
+                ? set(atoms.modal, { ...sample, index, getIndex })
+                : clearModal();
+            })
+          : clearModal();
+      };
+      set(atoms.modal, {
+        ...store.samples.get(sampleId),
+        index: clickedIndex,
+        getIndex,
+      });
+      setModal(snapshot, set);
+    }
   );
 };
 
@@ -309,8 +316,8 @@ export default React.memo(() => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(viewAtoms.view);
   const selected = useRecoilValue(atoms.selectedSamples);
-  const onThumbnailClick = useThumbnailClick(flashlight);
-  const onSelect = useSelectSample();
+  const onThumbnailClick = useOpenModal(flashlight);
+  const onSelect = useThumbnailClick(flashlight);
   const params = useRecoilValue(pageParameters);
   const paramsRef = useRef(params);
 
