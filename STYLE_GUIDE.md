@@ -323,11 +323,10 @@ information.
 
 ## App Style Guide
 
-[The App](https://github.com/voxel51/fiftyone/tree/develop/app) is written in
-TypeScript and CSS.
+[The App](https://github.com/voxel51/fiftyone/tree/develop/app) is a TypeScript
+monorepo in which the main package is a React 18 application.
 
-We don't have an official style guide yet, but a good reference is
-[Google JavaScript style](https://google.github.io/styleguide/jsguide.html).
+Style guide forthcoming.
 
 ### Pre-commit hooks
 
