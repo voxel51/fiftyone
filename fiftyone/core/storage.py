@@ -55,7 +55,7 @@ def init_storage():
     global minio_endpoint_prefix
 
     try:
-        d = _load_minio_credentials()
+        d = _load_minio_credentials() or {}
     except:
         d = {}
 
@@ -1687,7 +1687,9 @@ def upload_media(
     filepaths = sample_collection.values("filepath")
 
     filename_maker = fou.UniqueFilenameMaker(
-        output_dir=remote_dir, rel_dir=rel_dir, ignore_existing=True,
+        output_dir=remote_dir,
+        rel_dir=rel_dir,
+        ignore_existing=True,
     )
 
     paths_map = {}
