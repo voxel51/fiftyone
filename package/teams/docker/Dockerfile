@@ -108,13 +108,14 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 # Your install token
 ARG TOKEN
 
-# The Teams client version to install
-ARG TEAMS_VERSION=0.8.1
-ARG TEAMS_APP_VERSION=0.2.0
+# The Teams App version to install, or "latest"
+ARG TEAMS_APP_VERSION=latest
 
-RUN pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai \
-    fiftyone==${TEAMS_VERSION} \
-    fiftyone-teams-app==${TEAMS_APP_VERSION}
+RUN if [ "${TEAMS_APP_VERSION}" = "latest" ]; then \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app; \
+    else \
+        pip --no-cache-dir install --index-url https://${TOKEN}@pypi.fiftyone.ai fiftyone-teams-app==${TEAMS_APP_VERSION}; \
+    fi
 
 #
 # Configure shared storage
