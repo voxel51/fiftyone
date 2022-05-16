@@ -157,7 +157,6 @@ const NumericFieldFilter = ({
     aggregationAtoms.boundedCount({ modal, path, extended: false })
   );
 
-  return null;
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(selectors.timeZone);
 

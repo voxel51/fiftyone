@@ -42,7 +42,7 @@ const Draggable: React.FC<React.PropsWithChildren<{
           position: "absolute",
           left: 0,
           top: 0,
-          zIndex: 1,
+          zIndex: active ? 100 : 0,
           borderRadius: 2,
 
           height: "100%",
