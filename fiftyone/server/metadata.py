@@ -1,11 +1,11 @@
 """
-FiftyOne Server JIT metadata utilities
-
+FiftyOne Server JIT metadata utilities.
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
+import requests
 import shutil
 import struct
 
@@ -19,6 +19,9 @@ import eta.core.video as etav
 
 import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
+import fiftyone.core.utils as fou
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,19 +29,33 @@ _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
 async def get_metadata(filepath, metadata=None):
-    """Gets the metadata for the given local media file.
-
+    """Gets the metadata for the given local or remote media file.
     Args:
         filepath: the path to the file
         metadata (None): a pre-existing metadata dict to use if possible
-
     Returns:
         metadata dict
     """
     media_type = fom.get_media_type(filepath)
     is_video = media_type == fom.VIDEO
 
+    use_local = foc.media_cache.is_local_or_cached(filepath)
+    if media_type == fom.IMAGE and foc.media_cache.config.cache_app_images:
+        use_local = True
+
     d = {}
+
+    if use_local:
+        # Get local path to media on disk, downloading any uncached remote
+        # files if necessary
+        local_path = await foc.media_cache.get_local_path(
+            filepath, download=True, coroutine=True
+        )
+    else:
+        # Get a URL to use to retrieve metadata (if necessary) and for the App
+        # to use to serve the media
+        url = foc.media_cache.get_url(filepath, method="GET", hours=24)
+        d["url"] = url
 
     # If sufficient pre-existing metadata exists, use it
     if metadata:
@@ -62,8 +79,12 @@ async def get_metadata(filepath, metadata=None):
                 return d
 
     try:
-        # Retrieve media metadata from disk
-        metadata = await read_metadata(filepath, is_video)
+        if use_local:
+            # Retrieve media metadata from local disk
+            metadata = await read_local_metadata(local_path, is_video)
+        else:
+            # Retrieve metadata from remote source
+            metadata = await read_url_metadata(url, is_video)
     except:
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -77,13 +98,11 @@ async def get_metadata(filepath, metadata=None):
     return d
 
 
-async def read_metadata(url, is_video):
-    """Calculates the metadata for the given local media path.
-
+async def read_url_metadata(url, is_video):
+    """Calculates the metadata for the given media URL.
     Args:
         url: a file URL
         is_video: whether the file is a video
-
     Returns:
         metadata dict
     """
@@ -118,11 +137,9 @@ async def read_metadata(url, is_video):
 
 async def read_local_metadata(local_path, is_video):
     """Calculates the metadata for the given local media path.
-
     Args:
         local_path: a local filepath
         is_video: whether the file is a video
-
     Returns:
         dict
     """
@@ -141,7 +158,6 @@ async def read_local_metadata(local_path, is_video):
 
 class Reader(object):
     """Asynchronous file-like reader.
-
     Args:
         content: a :class:`aiohttp.StreamReader`
     """
@@ -168,10 +184,8 @@ class Reader(object):
 async def get_stream_info(path):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.
-
     Args:
         path: a video filepath or URL
-
     Returns:
         a :class:`eta.core.video.VideoStreamInfo`
     """
@@ -218,13 +232,16 @@ async def get_stream_info(path):
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
 
 
+def _get_image_dimensions(url):
+    with requests.get(url, stream=True) as r:
+        return fome.get_image_info(fou.ResponseStream(r))
+
+
 async def get_image_dimensions(input):
     """Gets the dimensions of an image from its file-like asynchronous byte
     stream.
-
     Args:
         input: file-like object with async read and seek methods
-
     Returns:
         the ``(width, height)``
     """
