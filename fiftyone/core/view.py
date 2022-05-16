@@ -60,6 +60,7 @@ class DatasetView(foc.SampleCollection):
 
         self.__dataset = dataset
         self.__stages = _stages
+        self.__media_type = None
 
     def __eq__(self, other_view):
         if type(other_view) != type(self):
@@ -109,7 +110,9 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        return self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
+        view = self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
+        view.__media_type = self.__media_type
+        return view
 
     @property
     def _base_view(self):
@@ -153,7 +156,10 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def media_type(self):
-        """The media type of the underlying dataset."""
+        """The media type of the view."""
+        if self.__media_type is not None:
+            return self.__media_type
+
         return self._dataset.media_type
 
     @property
@@ -228,12 +234,20 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        if self.media_type == fom.GROUP:
+            group_field = self.get_group_field()
+            group_ids, tags = self.aggregate(
+                [foa.Distinct(group_field + "._id"), foa.Distinct("tags")]
+            )
+            count = len(group_ids)
+        else:
+            count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
+
         elements = [
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
-            ("Num %s:" % self._elements_str, aggs[0]),
-            ("Tags:", aggs[1]),
+            ("Num %s:" % self._elements_str, count),
+            ("Tags:", tags),
         ]
 
         elements = fou.justify_headings(elements)

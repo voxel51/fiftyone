@@ -8,7 +8,7 @@ Dataset sample fields.
 from datetime import date, datetime
 import numbers
 
-from bson import SON
+from bson import ObjectId, SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -18,6 +18,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+from fiftyone.core.odm.document import EmbeddedDocument
 
 
 def parse_field_str(field_str):
@@ -624,6 +625,39 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+
+class Group(EmbeddedDocument):
+    """A named group membership.
+
+    Args:
+        id (None): the group ID
+        name (None): the group name
+    """
+
+    _id = ObjectIdField(default=ObjectId)
+    name = StringField()
+
+    @property
+    def id(self):
+        return str(self._id)
+
+    def _get_repr_fields(self):
+        # pylint: disable=no-member
+        return ("id",) + self._fields_ordered
+
+    def element(self, name):
+        return self.__class__(_id=self._id, name=name)
+
+
+class GroupField(EmbeddedDocumentField):
+    """A field that stores :class:`Group` memberships."""
+
+    def __init__(self, **kwargs):
+        super().__init__(field=Group(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)

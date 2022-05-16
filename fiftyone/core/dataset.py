@@ -364,6 +364,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     @property
+    def groups(self):
+        """A dict mapping group names to group media types, or None if the
+        dataset does not contain groups.
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._doc.groups
+
+    @property
     def version(self):
         """The version of the ``fiftyone`` package for which the dataset is
         formatted.
@@ -647,13 +657,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        if self.media_type == fom.GROUP:
+            group_field = self.get_group_field()
+            group_ids, tags = self.aggregate(
+                [foa.Distinct(group_field + "._id"), foa.Distinct("tags")]
+            )
+            count = len(group_ids)
+        else:
+            count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
+
         elements = [
             ("Name:", self.name),
             ("Media type:", self.media_type),
-            ("Num samples:", aggs[0]),
+            ("Num samples:", count),
             ("Persistent:", self.persistent),
-            ("Tags:", aggs[1]),
+            ("Tags:", tags),
         ]
 
         elements = fou.justify_headings(elements)
@@ -837,7 +855,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dictionary mapping field names to field types, or ``None`` if
             the dataset is not a video dataset
         """
-        if self.media_type != fom.VIDEO:
+        if self.media_type not in (fom.VIDEO, fom.GROUP):
             return None
 
         return self._frame_doc_cls.get_field_schema(
@@ -971,6 +989,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._frame_doc_cls.add_implied_field(field_name, value)
         self._reload()
+
+    def add_group_field(self, field_name):
+        """Adds a new sample field to the dataset.
+
+        Args:
+            field_name: the field name
+            ftype: the field type to create. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the :class:`fiftyone.core.fields.Field` type of
+                the contained field. Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
+        """
+        self._sample_doc_cls.add_field(
+            field_name,
+            fof.GroupField,
+            embedded_doc_type=fof.Group,
+        )
+        self._reload()
+
+        self.create_index(field_name + "._id")
+        self.create_index(field_name + ".name")
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -1498,7 +1542,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
-            self.media_type = samples[0].media_type
+            self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
             self._expand_schema(samples)
@@ -1519,7 +1563,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
-            if self.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
@@ -1546,7 +1590,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _upsert_samples_batch(self, samples, expand_schema, validate):
         if self.media_type is None and samples:
-            self.media_type = samples[0].media_type
+            self.media_type = _get_media_type(samples[0])
 
         if expand_schema:
             self._expand_schema(samples)
@@ -1572,7 +1616,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
-            if self.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
     def _make_dict(self, sample, include_id=False):
@@ -4458,8 +4502,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expanded = False
         fields = self.get_field_schema(include_private=True)
         for sample in samples:
-            self._validate_media_type(sample)
-
             if self.media_type == fom.VIDEO:
                 expanded |= self._expand_frame_schema(sample.frames)
 
@@ -4467,10 +4509,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
+                value = sample[field_name]
+
+                if (
+                    isinstance(value, fof.Group)
+                    and value.name not in self._doc.groups
+                ):
+                    self._doc.groups[value.name] = sample.media_type
+                    self._doc.save()
+
                 if field_name in fields:
                     continue
 
-                value = sample[field_name]
                 if value is None:
                     continue
 
@@ -4483,13 +4533,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_frame_schema(self, frames):
         expanded = False
-        fields = self.get_frame_field_schema(include_private=True)
+        schema = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
                 if field_name == "_id":
                     continue
 
-                if field_name in fields:
+                if field_name in schema:
                     continue
 
                 value = frame[field_name]
@@ -4497,17 +4547,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 self._frame_doc_cls.add_implied_field(field_name, value)
-                fields = self.get_frame_field_schema(include_private=True)
+                schema = self.get_frame_field_schema(include_private=True)
                 expanded = True
 
         return expanded
-
-    def _validate_media_type(self, sample):
-        if self.media_type != sample.media_type:
-            raise fom.MediaTypeError(
-                "Sample media type '%s' does not match dataset media type '%s'"
-                % (sample.media_type, self.media_type)
-            )
 
     def _sample_dict_to_doc(self, d):
         try:
@@ -4530,12 +4573,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _validate_samples(self, samples):
-        fields = self.get_field_schema(include_private=True)
+        schema = self.get_field_schema(include_private=True)
+
         for sample in samples:
+            if (
+                self.media_type != fom.GROUP
+                and sample.media_type != self.media_type
+            ):
+                raise fom.MediaTypeError(
+                    "Sample media type '%s' does not match dataset media type "
+                    "'%s'" % (sample.media_type, self.media_type)
+                )
+
             non_existent_fields = set()
 
             for field_name, value in sample.iter_fields():
-                field = fields.get(field_name, None)
+                if isinstance(value, fof.Group):
+                    if self.media_type != fom.GROUP:
+                        raise ValueError(
+                            "Only datasets with media type '%s' may contain "
+                            "Group fields" % fom.GROUP
+                        )
+
+                    group_media_type = self._doc.groups.get(value.name, None)
+                    if group_media_type is None:
+                        raise ValueError(
+                            "Dataset has no group name '%s'" % value.name
+                        )
+                    elif sample.media_type != group_media_type:
+                        raise ValueError(
+                            "Sample media type '%s' does not match group '%s' "
+                            "media type '%s'"
+                            % (sample.media_type, value.name, group_media_type)
+                        )
+
+                field = schema.get(field_name, None)
                 if field is None:
                     if value is not None:
                         non_existent_fields.add(field_name)
@@ -6020,6 +6092,14 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     ]
 
     foo.bulk_write(ops, frame_coll)
+
+
+def _get_media_type(sample):
+    for field, value in sample.iter_fields():
+        if isinstance(value, fof.Group):
+            return fom.GROUP
+
+    return sample.media_type
 
 
 def _get_sample_ids(arg):

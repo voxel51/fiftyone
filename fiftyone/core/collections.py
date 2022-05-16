@@ -146,10 +146,16 @@ class SampleCollection(object):
 
     @property
     def _element_str(self):
+        if self.media_type == fom.GROUP:
+            return "group"
+
         return "sample"
 
     @property
     def _elements_str(self):
+        if self.media_type == fom.GROUP:
+            return "groups"
+
         return "samples"
 
     @property
@@ -503,6 +509,41 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def iter_groups(self, group_field=None):
+        """Returns an iterator over the samples in the collection.
+
+        Args:
+            group_field (None): the name of the group field to use. If none is
+                provided, :meth:`get_group_field` is used to retrive the group
+                field
+
+        Returns:
+            an iterator that emits dicts mapping group names to
+            :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` instances, one per group
+        """
+        if group_field is None:
+            group_field = self.get_group_field()
+
+        group_view = self.group_by(F(group_field + "._id"))
+
+        curr_id = None
+        group = {}
+
+        # @todo when `self` is a dataset, don't return samples, not views
+        for sample in group_view.iter_samples():
+            group_id = sample[group_field].id
+            if group_id == curr_id:
+                group[sample[group_field].name] = sample
+            else:
+                curr_id = group_id
+                group = {}
+
+                if curr_id is None:
+                    group[sample[group_field].name] = sample
+                else:
+                    yield group
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
@@ -563,6 +604,26 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
         )
+
+    def get_group_field(self):
+        """Returns the name of the :class:`fiftyone.core.fields.GroupField` for
+        the collection.
+
+        If the collection has multiple group fields, the name of the one that
+        was declared first is returned.
+
+        Returns:
+            a field name
+
+        Raises:
+            ValueError: if the collection has no group fields
+        """
+        schema = self.get_field_schema(ftype=fof.GroupField)
+
+        try:
+            return next(iter(schema.keys()))
+        except StopIteration:
+            raise ValueError("%s has no group fields" % type(self))
 
     def make_unique_field_name(self, root=""):
         """Makes a unique field name with the given root name for the
@@ -3388,7 +3449,13 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def group_by(self, field_or_expr, sort_expr=None, reverse=False):
+    def group_by(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         """Creates a view that reorganizes the samples in the collection so
         that they are grouped by a specified field or expression.
 
@@ -3422,6 +3489,12 @@ class SampleCollection(object):
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            match_expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines which groups to include in the output view. If
+                provided, this expression will be evaluated on the list of
+                samples in each group
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -3434,7 +3507,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.GroupBy(field_or_expr, sort_expr=sort_expr, reverse=reverse)
+            fos.GroupBy(
+                field_or_expr,
+                match_expr=match_expr,
+                sort_expr=sort_expr,
+                reverse=reverse,
+            )
         )
 
     @view_stage
@@ -4390,6 +4468,79 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.SelectFrames(frame_ids, omit_empty=omit_empty)
+        )
+
+    @view_stage
+    def select_group(self, name=None, group_field=None):
+        """Selects the samples in the collection with a given group name(s).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1-left.jpg",
+                        group=group1.name("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-center.jpg",
+                        group=group1.name("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-right.jpg",
+                        group=group1.name("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-left.jpg",
+                        group=group2.name("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-center.jpg",
+                        group=group2.name("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-right.jpg",
+                        group=group2.name("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Retrieve the samples with the "center" group name
+            #
+
+            view = dataset.select_group("center")
+
+            #
+            # Retrieve the samples with the "left" or "right" group names
+            #
+
+            view = dataset.select_group(["left", "right"])
+
+            #
+            # Retrieve a flattened list of all samples
+            #
+
+            view = dataset.select_group()
+
+        Args:
+            name (None): a group name or list of group names to select. By
+                default, a flattened list of all samples is returned
+            group_field (None): the name of a
+                :class:`fiftyone.core.fields.GroupField` to use
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectGroup(name=name, group_field=group_field)
         )
 
     @view_stage

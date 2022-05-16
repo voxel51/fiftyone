@@ -2764,6 +2764,12 @@ class GroupBy(ViewStage):
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
+        match_expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines which groups to include in the output view. If
+            provided, this expression will be evaluated on the list of samples
+            in each group
         sort_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -2773,8 +2779,15 @@ class GroupBy(ViewStage):
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field_or_expr, sort_expr=None, reverse=False):
+    def __init__(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         self._field_or_expr = field_or_expr
+        self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
 
@@ -2782,6 +2795,11 @@ class GroupBy(ViewStage):
     def field_or_expr(self):
         """The field or expression to group by."""
         return self._field_or_expr
+
+    @property
+    def match_expr(self):
+        """An expression to apply to select groups in the output view."""
+        return self._match_expr
 
     @property
     def sort_expr(self):
@@ -2795,6 +2813,7 @@ class GroupBy(ViewStage):
 
     def to_mongo(self, _):
         field_or_expr = self._get_mongo_field_or_expr()
+        match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
         if etau.is_str(field_or_expr):
@@ -2805,6 +2824,9 @@ class GroupBy(ViewStage):
         pipeline = [
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
         ]
+
+        if match_expr is not None:
+            pipeline.append({"$match": match_expr})
 
         if sort_expr is not None:
             order = -1 if self._reverse else 1
@@ -2842,6 +2864,12 @@ class GroupBy(ViewStage):
 
         return self._field_or_expr
 
+    def _get_mongo_match_expr(self):
+        if isinstance(self._match_expr, foe.ViewExpression):
+            return self._match_expr.to_mongo(prefix="$docs")
+
+        return self._match_expr
+
     def _get_mongo_sort_expr(self):
         if isinstance(self._sort_expr, foe.ViewExpression):
             return self._sort_expr.to_mongo(prefix="$docs")
@@ -2851,6 +2879,7 @@ class GroupBy(ViewStage):
     def _kwargs(self):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
         ]
@@ -2862,6 +2891,12 @@ class GroupBy(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+            },
+            {
+                "name": "match_expr",
+                "type": "NoneType|json",
+                "placeholder": "match expression",
+                "default": "None",
             },
             {
                 "name": "sort_expr",
@@ -3542,6 +3577,173 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class SelectGroup(ViewStage):
+    """Selects the samples in a collection with a given group name(s).
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1-left.jpg",
+                    group=group1.name("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-center.jpg",
+                    group=group1.name("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-right.jpg",
+                    group=group1.name("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-left.jpg",
+                    group=group2.name("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-center.jpg",
+                    group=group2.name("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-right.jpg",
+                    group=group2.name("right"),
+                ),
+            ]
+        )
+
+        #
+        # Retrieve the samples with the "center" group name
+        #
+
+        stage = fo.SelectGroup("center")
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve the samples with the "left" or "right" group names
+        #
+
+        stage = fo.SelectGroup(["left", "right"])
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve a flattened list of all samples
+        #
+
+        stage = fo.SelectGroup()
+        view = dataset.add_stage(stage)
+
+    Args:
+        name (None): a group name or list of group names to select. By default,
+            a flattened list of all samples is returned
+        group_field (None): the name of a
+            :class:`fiftyone.core.fields.GroupField` to use
+    """
+
+    def __init__(self, name=None, group_field=None):
+        self._name = name
+        self._group_field = group_field
+
+    @property
+    def name(self):
+        """The group name(s) to match."""
+        return self._name
+
+    @property
+    def group_field(self):
+        """The group field to use."""
+        return self._group_field
+
+    @property
+    def has_view(self):
+        return True
+
+    def load_view(self, sample_collection):
+        if self._group_field is None:
+            raise ValueError(
+                "`validate()` must be called before using this stage"
+            )
+
+        group_path = "$" + self._group_field + ".name"
+        dataset = sample_collection._dataset
+
+        if self._name is None:
+            stage = None
+            media_types = set(dataset.groups.values())
+
+            if len(media_types) > 1:
+                raise ValueError(
+                    "Cannot select all groups when dataset contains multiple "
+                    "media types %s" % media_types
+                )
+
+            media_type = next(iter(dataset.groups.values()))
+        elif etau.is_container(self._name):
+            names = list(self._name)
+
+            media_types = set()
+            for name in names:
+                if name not in dataset.groups:
+                    raise ValueError("Dataset has no group '%s'" % name)
+
+                media_types.add(dataset.groups[name])
+
+            if len(media_types) > 1:
+                raise ValueError(
+                    "Cannot select groups %s with different media types %s"
+                    % (names, media_types)
+                )
+
+            stage = Match(F(group_path).is_in(names))
+            media_type = next(iter(media_types))
+        else:
+            name = self._name
+
+            if name not in dataset.groups:
+                raise ValueError("Dataset has no group '%s'" % name)
+
+            stage = Match(F(group_path) == name)
+            media_type = dataset.groups[name]
+
+        view = sample_collection.view()
+        view.__media_type = media_type
+
+        if stage is not None:
+            view = view.add_stage(stage)
+
+        return view
+
+    def _kwargs(self):
+        return [["name", self._name], ["group_field", self._group_field]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "name",
+                "type": "NoneType|str|list<str>",
+                "placeholder": "name (default=None)",
+                "default": "None",
+            },
+            {
+                "name": "group_field",
+                "type": "NoneType|field|str",
+                "placeholder": "group_field (default=None)",
+                "default": "None",
+            },
+        ]
+
+    def validate(self, sample_collection):
+        if self._group_field is None:
+            self._group_field = sample_collection.get_group_field()
 
 
 class MatchFrames(ViewStage):
@@ -6565,6 +6767,7 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroup,
     SelectLabels,
     SetField,
     Skip,

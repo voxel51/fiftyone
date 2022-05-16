@@ -12,7 +12,8 @@ import eta.core.video as etav
 # @todo convert to a MediaType enum class?
 VIDEO = "video"
 IMAGE = "image"
-MEDIA_TYPES = {IMAGE, VIDEO}
+GROUP = "group"
+MEDIA_TYPES = {IMAGE, VIDEO, GROUP}
 
 
 def get_media_type(filepath):
