@@ -8,7 +8,6 @@ See https://voxel51.com/fiftyone for more information.
 |
 """
 from pkgutil import extend_path as _extend_path
-import atexit as _atexit
 import os as _os
 
 #
@@ -27,7 +26,6 @@ from fiftyone.__public__ import *
 
 import fiftyone.core.uid as _fou
 import fiftyone.migrations as _fom
-
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _fom.migrate_database_if_necessary()

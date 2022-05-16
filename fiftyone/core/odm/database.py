@@ -67,7 +67,6 @@ class DatabaseConfigDocument(DynamicDocument):
 
     version = fof.StringField()
     type = fof.StringField()
-    connection_count = fof.IntField()
 
 
 def get_db_config():
