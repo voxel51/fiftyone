@@ -149,6 +149,10 @@ class ClipsView(fov.DatasetView):
     def media_type(self):
         return fom.VIDEO
 
+    @property
+    def _media_type(self):
+        return fom.VIDEO
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):

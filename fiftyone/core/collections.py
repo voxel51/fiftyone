@@ -530,19 +530,23 @@ class SampleCollection(object):
         curr_id = None
         group = {}
 
-        # @todo when `self` is a dataset, don't return samples, not views
+        # @todo when `self` is a dataset, return `Sample` not `SampleView`
         for sample in group_view.iter_samples():
             group_id = sample[group_field].id
             if group_id == curr_id:
                 group[sample[group_field].name] = sample
+            elif curr_id is None:
+                curr_id = group_id
+                group[sample[group_field].name] = sample
             else:
                 curr_id = group_id
-                group = {}
+                yield group
 
-                if curr_id is None:
-                    group[sample[group_field].name] = sample
-                else:
-                    yield group
+                group = {}
+                group[sample[group_field].name] = sample
+
+        if group:
+            yield group
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False

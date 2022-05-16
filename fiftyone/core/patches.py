@@ -159,6 +159,10 @@ class _PatchesView(fov.DatasetView):
     def media_type(self):
         return fom.IMAGE
 
+    @property
+    def _media_type(self):
+        return fom.IMAGE
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):

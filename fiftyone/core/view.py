@@ -54,13 +54,13 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
-    def __init__(self, dataset, _stages=None):
+    def __init__(self, dataset, _stages=None, _media_type=None):
         if _stages is None:
             _stages = []
 
         self.__dataset = dataset
         self.__stages = _stages
-        self.__media_type = None
+        self.__media_type = _media_type
 
     def __eq__(self, other_view):
         if type(other_view) != type(self):
@@ -110,9 +110,11 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        view = self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
-        view.__media_type = self.__media_type
-        return view
+        return self.__class__(
+            self.__dataset,
+            _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
+        )
 
     @property
     def _base_view(self):
@@ -161,6 +163,14 @@ class DatasetView(foc.SampleCollection):
             return self.__media_type
 
         return self._dataset.media_type
+
+    @property
+    def _media_type(self):
+        return self.__media_type
+
+    @_media_type.setter
+    def _media_type(self, media_type):
+        self.__media_type = media_type
 
     @property
     def name(self):

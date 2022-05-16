@@ -3714,7 +3714,7 @@ class SelectGroup(ViewStage):
             media_type = dataset.groups[name]
 
         view = sample_collection.view()
-        view.__media_type = media_type
+        view._media_type = media_type
 
         if stage is not None:
             view = view.add_stage(stage)
