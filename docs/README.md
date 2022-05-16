@@ -1,7 +1,7 @@
-# FiftyOne Documentation Guide
+# FiftyOne Documentation
 
-Instructions for contributing to the FiftyOne Documentation, available publicly
-at [fiftyone.ai](https://fiftyone.ai).
+The official FiftyOne documentation, available at
+[fiftyone.ai](https://fiftyone.ai).
 
 ## Building
 
@@ -17,21 +17,21 @@ bash generate_docs.bash
 ```
 
 The script expects that you have performed a developer install of `fiftyone`
-(see main README) and that the `fiftyone-brain` package is installed in your
-environment.
+(see [main README](../CONTRIBUTING.md#developer-guide)) and that the
+`fiftyone-brain` package is installed in your environment.
 
-A couple flags are supported:
+A couple noteable flags are supported:
 
 -   `-c` performs a clean build by removing the `docs/build` folder beforehand.
     This is sometimes necessary to force updates, e.g. if you have edited a
     template and want to see how it affects pages whose source files haven't
     changed
--   `-s` will update static files only (i.e. `custom.css` and `custom.js`
-    mentioned below)
+-   `-s` will update static files only, i.e. `custom.css` and `custom.js`
+    mentioned below
 
 ## Contributing
 
-### Main content
+### Main Content
 
 The main content is located in the `docs/source` folder. The files are written
 in [Sphinx RST format](https://sphinx-tutorial.readthedocs.io/step-1).
@@ -41,6 +41,14 @@ whose docstrings are written in
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) format.
 
 Check out the existing patterns in the source files and you'll catch on.
+
+### Style Guide
+
+All documentation, including RST and all code samples embedded in it, must
+follow our [style guide](../STYLE_GUIDE.md#documentation-style-guide).
+
+Note that pre-commit hooks will automatically enforce the whitespace-related
+components of our style when you commit changes.
 
 ### Themes
 

@@ -16,7 +16,6 @@ from .database import (
     drop_database,
     sync_database,
     list_datasets,
-    delete_non_persistent_datasets_if_allowed,
     delete_dataset,
     delete_evaluation,
     delete_evaluations,
