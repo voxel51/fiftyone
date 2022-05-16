@@ -24,11 +24,9 @@ __version__ = _foc.VERSION
 
 from fiftyone.__public__ import *
 
-import fiftyone.core.odm as _foo
 import fiftyone.core.uid as _fou
 import fiftyone.migrations as _fom
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
-    _foo.delete_non_persistent_datasets_if_allowed()
     _fom.migrate_database_if_necessary()
     _fou.log_import_if_allowed()

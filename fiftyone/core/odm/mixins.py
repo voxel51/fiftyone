@@ -636,24 +636,34 @@ class DatasetMixin(object):
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
 
-        field_roots = set()
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name, new_field_name in zip(field_names, new_field_names):
-            field_roots.add(field_name.split(".", 1)[0])
-            field_roots.add(new_field_name.split(".", 1)[0])
-
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
             else:
                 base, leaf = field_name, ""
 
-            expr = F(leaf) if new_base == base else F("$" + field_name)
+            if new_base == base:
+                expr = F(leaf)
+            else:
+                expr = F("$" + field_name)
+
             view = view.set_field(new_field_name, expr)
 
         view = view.mongo([{"$unset": field_names}])
 
-        view.save(list(field_roots))
+        #
+        # Ideally only the embedded field would be saved, but the `$merge`
+        # operator will always overwrite top-level fields of each document, so
+        # we limit the damage by projecting onto the modified fields
+        #
+        field_roots = list(set(root(f) for f in field_names + new_field_names))
+        view.save(field_roots)
 
     @classmethod
     def _clone_fields_simple(cls, field_names, new_field_names):
@@ -674,18 +684,23 @@ class DatasetMixin(object):
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
 
-        new_field_roots = set()
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name, new_field_name in zip(field_names, new_field_names):
-            new_field_roots.add(new_field_name.split(".", 1)[0])
-
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
             else:
                 base, leaf = field_name, ""
 
-            expr = F(leaf) if new_base == base else F("$" + field_name)
+            if new_base == base:
+                expr = F(leaf)
+            else:
+                expr = F("$" + field_name)
+
             view = view.set_field(new_field_name, expr)
 
         #
@@ -693,7 +708,8 @@ class DatasetMixin(object):
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        view.save(list(new_field_roots))
+        field_roots = list(set(root(f) for f in new_field_names))
+        view.save(field_roots)
 
     @classmethod
     def _clear_fields_simple(cls, field_names):
@@ -706,14 +722,13 @@ class DatasetMixin(object):
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
             field_names = [prefix + f for f in field_names]
-            n = 2
-        else:
-            n = 1
 
-        field_roots = set()
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name in field_names:
-            field_roots.add(".".join(field_name.split(".", n)[:n]))
             view = view.set_field(field_name, None)
 
         #
@@ -721,7 +736,8 @@ class DatasetMixin(object):
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        view.save(list(field_roots))
+        field_roots = list(set(root(f) for f in field_names))
+        view.save(field_roots)
 
     @classmethod
     def _delete_fields_simple(cls, field_names):
