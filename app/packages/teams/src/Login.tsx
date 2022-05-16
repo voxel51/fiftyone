@@ -1,12 +1,14 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import React, { Suspense, useEffect, useState } from "react";
 import { graphql } from "relay-runtime";
+import { useRecoilValue } from "recoil";
 
 import { Loading, useRouter } from "@fiftyone/components";
 
 import useMutation from "./useMutation";
 import Network from "@fiftyone/app/src/Network";
 import makeRoutes from "./makeRoutes";
+import { refresher } from "@fiftyone/app/src/recoil/atoms";
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -18,12 +20,13 @@ const LoginMutation = graphql`
 `;
 
 const Renderer = () => {
+  const refreshRouter = useRecoilValue(refresher);
   const { context, environment } = useRouter(
     (environment) =>
       makeRoutes(environment, {
         view: () => [],
       }),
-    []
+    [refreshRouter]
   );
 
   return <Network environment={environment} context={context} />;

@@ -278,10 +278,6 @@ export type StateResolver =
       t: TransactionInterface_UNSTABLE
     ) => { dataset?: State.Dataset; state?: Partial<State.Description> });
 
-export type StateResolver =
-  | State.Description
-  | ((t: TransactionInterface_UNSTABLE) => State.Description);
-
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
   return (resolve: StateResolver) => {

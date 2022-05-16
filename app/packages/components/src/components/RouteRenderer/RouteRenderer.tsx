@@ -1,11 +1,5 @@
 import { Resource } from "@fiftyone/utilities";
-import React, {
-  PropsWithChildren,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { PropsWithChildren, Suspense, useEffect, useState } from "react";
 import { PreloadedQuery } from "react-relay";
 import { OperationType } from "relay-runtime";
 

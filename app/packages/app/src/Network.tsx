@@ -1,4 +1,5 @@
 import {
+  Loading,
   RouterContext,
   RouteRenderer,
   RoutingContext,
@@ -11,7 +12,7 @@ const Renderer: React.FC = () => {
   const context = useContext(RouterContext);
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<Loading>Pixelating...</Loading>}>
       <RouteRenderer router={context} />
     </Suspense>
   );

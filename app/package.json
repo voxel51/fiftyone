@@ -1,12 +1,12 @@
 {
     "name": "@fiftyone/fiftyone",
-    "productName": "FiftyOne Teams",
     "version": "0.0.0",
+    "productName": "FiftyOne",
     "license": "Apache-2.0",
     "private": true,
+    "main": "index.js",
     "scripts": {
         "build": "yarn workspace @fiftyone/app build",
-        "build-teams": "yarn workspace @fiftyone/teams build",
         "dev": "yarn workspace @fiftyone/app dev",
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",

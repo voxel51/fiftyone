@@ -50,6 +50,8 @@ type Dataset {
   appSidebarGroups: [SidebarGroup!]
   version: String!
   viewCls: String
+  defaultSkeleton: KeypointSkeleton
+  skeletons: [NamedKeypointSkeleton!]!
 }
 
 type DatasetConnection {
@@ -63,10 +65,14 @@ type DatasetEdge {
   cursor: String!
 }
 
-"""Date (isoformat)"""
+"""
+Date (isoformat)
+"""
 scalar Date
 
-"""Date with time (isoformat)"""
+"""
+Date with time (isoformat)
+"""
 scalar DateTime
 
 type EvaluationRun implements Run {
@@ -88,6 +94,11 @@ type EvaluationRunConfig implements RunConfig {
 
 scalar JSONArray
 
+type KeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+}
+
 enum MediaType {
   image
   video
@@ -95,6 +106,12 @@ enum MediaType {
 
 type Mutation {
   login(user: UserInput!): User!
+}
+
+type NamedKeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+  name: String!
 }
 
 type NamedTargets {
@@ -110,12 +127,18 @@ type PageInfo {
 }
 
 type Query {
-  datasets(search: String, first: Int = 10, after: String = null): DatasetConnection!
+  datasets(
+    search: String
+    first: Int = 10
+    after: String = null
+  ): DatasetConnection!
   teamsConfig: TeamsConfig!
   colorscale: [[Int!]!]
   config: AppConfig!
   dataset(name: String!, view: JSONArray): Dataset
   viewer: User!
+  dev: Boolean!
+  version: String!
 }
 
 interface Run {
@@ -154,7 +177,11 @@ type TeamsConfig {
 
 type User {
   id: ID!
-  datasets(search: String, first: Int = 10, after: String = null): DatasetConnection!
+  datasets(
+    search: String
+    first: Int = 10
+    after: String = null
+  ): DatasetConnection!
   email: String!
   familyName: String
   givenName: String

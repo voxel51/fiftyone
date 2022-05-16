@@ -78,7 +78,7 @@ const ViewBar = React.memo(() => {
     send({
       type: "UPDATE",
       view,
-      setView: (v) => setState({ view: v }),
+      setView,
       fieldNames: fieldPaths,
     });
   }, [view]);

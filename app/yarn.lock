@@ -1881,21 +1881,19 @@ __metadata:
     "@types/react-dom": ^18.0.3
     "@types/react-relay": ^13.0.0
     "@types/relay-compiler": ^8.0.2
-    "@types/relay-runtime": 13.0.1
     "@vitejs/plugin-react": ^1.2.0
-    history: ^4.10.1
+    history: ^5.3.0
     re-resizable: ^6.9.1
     react: ^18.1.0
     react-dom: ^18.1.0
     react-error-boundary: ^3.1.4
     react-icons: ^4.3.1
-    react-relay: 13.0.2
+    react-relay: ^13.2.0
     react-use: ^17.3.2
-    recoil: ^0.6.1
+    recoil: ^0.7.2
     relay-compiler: ^13.0.2
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
-    relay-runtime: 13.0.2
     rollup-plugin-commonjs: ^10.1.0
     typescript: 4.2.4
     vite: 2.4.2
@@ -2532,13 +2530,6 @@ __metadata:
   version: 13.0.3
   resolution: "@types/relay-runtime@npm:13.0.3"
   checksum: b6151ddc74bd306873a854afaa651f972c7ca6e7685c9fe791f32f3ce1cff56e30c64db457abfa8488957af6a8e3462a5097d4b87ae2076d25e0ec59a115ac5f
-  languageName: node
-  linkType: hard
-
-"@types/relay-runtime@npm:13.0.1":
-  version: 13.0.1
-  resolution: "@types/relay-runtime@npm:13.0.1"
-  checksum: 286f32679e517ba4a665b51583d8784b7fc8e7669fefec86b2235309c55cc99c1b1add2fabcb71273add99a465268d680b79da54f37e58a1e873c3cb9d98b86d
   languageName: node
   linkType: hard
 
@@ -3940,9 +3931,9 @@ __metadata:
   linkType: hard
 
 "csstype@npm:^3.0.2, csstype@npm:^3.0.6":
-  version: 3.0.11
-  resolution: "csstype@npm:3.0.11"
-  checksum: 95e56abfe9ca219ae065acb4e43f61771a03170eed919127f558dfa168240867aba7629c8d98a201a0dd06d9a5ce82686f0570031c928516c61816adbc7c877f
+  version: 3.1.0
+  resolution: "csstype@npm:3.1.0"
+  checksum: 644e986cefab86525f0b674a06889cfdbb1f117e5b7d1ce0fc55b0423ecc58807a1ea42ecc75c4f18999d14fc42d1d255f84662a45003a52bb5840e977eb2ffd
   languageName: node
   linkType: hard
 
@@ -5080,20 +5071,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"history@npm:^4.10.1":
-  version: 4.10.1
-  resolution: "history@npm:4.10.1"
-  dependencies:
-    "@babel/runtime": ^7.1.2
-    loose-envify: ^1.2.0
-    resolve-pathname: ^3.0.0
-    tiny-invariant: ^1.0.2
-    tiny-warning: ^1.0.0
-    value-equal: ^1.0.1
-  checksum: addd84bc4683929bae4400419b5af132ff4e4e9b311a0d4e224579ea8e184a6b80d7f72c55927e4fa117f69076a9e47ce082d8d0b422f1a9ddac7991490ca1d0
-  languageName: node
-  linkType: hard
-
 "history@npm:^5.3.0":
   version: 5.3.0
   resolution: "history@npm:5.3.0"
@@ -6017,7 +5994,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"loose-envify@npm:^1.0.0, loose-envify@npm:^1.1.0, loose-envify@npm:^1.2.0, loose-envify@npm:^1.4.0":
+"loose-envify@npm:^1.0.0, loose-envify@npm:^1.1.0, loose-envify@npm:^1.4.0":
   version: 1.4.0
   resolution: "loose-envify@npm:1.4.0"
   dependencies:
@@ -6196,11 +6173,11 @@ __metadata:
   linkType: hard
 
 "minimatch@npm:^5.0.1":
-  version: 5.0.1
-  resolution: "minimatch@npm:5.0.1"
+  version: 5.1.0
+  resolution: "minimatch@npm:5.1.0"
   dependencies:
     brace-expansion: ^2.0.1
-  checksum: b34b98463da4754bc526b244d680c69d4d6089451ebe512edaf6dd9eeed0279399cfa3edb19233513b8f830bf4bfcad911dddcdf125e75074100d52f724774f0
+  checksum: 15ce53d31a06361e8b7a629501b5c75491bc2b59712d53e802b1987121d91b433d73fcc5be92974fde66b2b51d8fb28d75a9ae900d249feb792bb1ba2a4f0a90
   languageName: node
   linkType: hard
 
@@ -7166,21 +7143,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-relay@npm:13.0.2":
-  version: 13.0.2
-  resolution: "react-relay@npm:13.0.2"
-  dependencies:
-    "@babel/runtime": ^7.0.0
-    fbjs: ^3.0.2
-    invariant: ^2.2.4
-    nullthrows: ^1.1.1
-    relay-runtime: 13.0.2
-  peerDependencies:
-    react: ^16.9.0 || ^17
-  checksum: c3f837eebe2a51474e1a9199c193b6cd2fd68a0f74f4680ca3b500dcdb709948372b5631bacd114c04a4cc034c83f8f077d8aab77e509e4032788ad5e16e167c
-  languageName: node
-  linkType: hard
-
 "react-relay@npm:^13.2.0":
   version: 13.2.0
   resolution: "react-relay@npm:13.2.0"
@@ -7399,22 +7361,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recoil@npm:^0.6.1":
-  version: 0.6.1
-  resolution: "recoil@npm:0.6.1"
-  dependencies:
-    hamt_plus: 1.0.2
-  peerDependencies:
-    react: ">=16.13.1"
-  peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
-      optional: true
-  checksum: 823c098e30f9b711f6e5d73ae3bf3c6d43ae6342998825f00ee18b01c88f499f7216fd59b472bd5ad349c6475e698e2937ad73b82499e31535bd63e431244146
-  languageName: node
-  linkType: hard
-
 "recoil@npm:^0.7.2":
   version: 0.7.2
   resolution: "recoil@npm:0.7.2"
@@ -7556,17 +7502,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"relay-runtime@npm:13.0.2":
-  version: 13.0.2
-  resolution: "relay-runtime@npm:13.0.2"
-  dependencies:
-    "@babel/runtime": ^7.0.0
-    fbjs: ^3.0.2
-    invariant: ^2.2.4
-  checksum: d91966af3a13bacb7060bf41167af56906965751578e5f10f890eded42aeaf0962a9f254476b2abbb84f6082c01671a936a0f54bd2a20988a1658d3d9f616df4
-  languageName: node
-  linkType: hard
-
 "relay-runtime@npm:13.2.0":
   version: 13.2.0
   resolution: "relay-runtime@npm:13.2.0"
@@ -7610,13 +7545,6 @@ __metadata:
   version: 4.0.0
   resolution: "resolve-from@npm:4.0.0"
   checksum: f4ba0b8494846a5066328ad33ef8ac173801a51739eb4d63408c847da9a2e1c1de1e6cbbf72699211f3d13f8fc1325648b169bd15eb7da35688e30a5fb0e4a7f
-  languageName: node
-  linkType: hard
-
-"resolve-pathname@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "resolve-pathname@npm:3.0.0"
-  checksum: 6147241ba42c423dbe83cb067a2b4af4f60908c3af57e1ea567729cc71416c089737fe2a73e9e79e7a60f00f66c91e4b45ad0d37cd4be2d43fec44963ef14368
   languageName: node
   linkType: hard
 
@@ -8339,14 +8267,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tiny-invariant@npm:^1.0.2":
-  version: 1.2.0
-  resolution: "tiny-invariant@npm:1.2.0"
-  checksum: e09a718a7c4a499ba592cdac61f015d87427a0867ca07f50c11fd9b623f90cdba18937b515d4a5e4f43dac92370498d7bdaee0d0e7a377a61095e02c4a92eade
-  languageName: node
-  linkType: hard
-
-"tiny-warning@npm:^1.0.0, tiny-warning@npm:^1.0.2, tiny-warning@npm:^1.0.3":
+"tiny-warning@npm:^1.0.2, tiny-warning@npm:^1.0.3":
   version: 1.0.3
   resolution: "tiny-warning@npm:1.0.3"
   checksum: da62c4acac565902f0624b123eed6dd3509bc9a8d30c06e017104bedcf5d35810da8ff72864400ad19c5c7806fc0a8323c68baf3e326af7cb7d969f846100d71
@@ -8740,13 +8661,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"value-equal@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "value-equal@npm:1.0.1"
-  checksum: bb7ae1facc76b5cf8071aeb6c13d284d023fdb370478d10a5d64508e0e6e53bb459c4bbe34258df29d82e6f561f874f0105eba38de0e61fe9edd0bdce07a77a2
-  languageName: node
-  linkType: hard
-
 "verror@npm:^1.10.0":
   version: 1.10.1
   resolution: "verror@npm:1.10.1"
@@ -8939,8 +8853,8 @@ __metadata:
   linkType: hard
 
 "yargs@npm:^17.0.1":
-  version: 17.5.0
-  resolution: "yargs@npm:17.5.0"
+  version: 17.5.1
+  resolution: "yargs@npm:17.5.1"
   dependencies:
     cliui: ^7.0.2
     escalade: ^3.1.1
@@ -8949,7 +8863,7 @@ __metadata:
     string-width: ^4.2.3
     y18n: ^5.0.5
     yargs-parser: ^21.0.0
-  checksum: e2c662a7a63aa125a162cc0d77e38bdfe2a0dd5121a0d485a464499cd7782c5198b57103aed4608df96a017d01cb6a834bc22d4a1f20b92649fa82983d53522b
+  checksum: 00d58a2c052937fa044834313f07910fd0a115dec5ee35919e857eeee3736b21a4eafa8264535800ba8bac312991ce785ecb8a51f4d2cc8c4676d865af1cfbde
   languageName: node
   linkType: hard
 

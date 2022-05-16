@@ -43,9 +43,6 @@ enum Events {
 
 const App: React.FC = withTheme(
   withErrorBoundary(({}) => {
-    useState(() =>
-      setFetchFunction(import.meta.env.VITE_API || window.location.origin)
-    );
     const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
     const readyStateRef = useRef<AppReadyState>();
     readyStateRef.current = readyState;
@@ -186,15 +183,3 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
     </EventsContext.Provider>
   </RecoilRoot>
 );
-
-const Root = withErrorBoundary(() => {
-  return (
-    <RecoilRoot>
-      <App />
-    </RecoilRoot>
-  );
-});
-
-const root = document.getElementById("root") as HTMLDivElement;
-
-ReactDOM.render(<Root />, root);

@@ -1,8 +1,13 @@
 import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
-import { Loading, withErrorBoundary, withTheme } from "@fiftyone/components";
+import {
+  EventsContext,
+  Loading,
+  withErrorBoundary,
+  withTheme,
+} from "@fiftyone/components";
 import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
 import React, { Suspense, useEffect } from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import {
   graphql,
   loadQuery,
@@ -86,8 +91,8 @@ const Config = () => {
   );
 };
 
-const App = withErrorBoundary(
-  withTheme(() => {
+const App = withTheme(
+  withErrorBoundary(() => {
     return (
       <RelayEnvironmentProvider environment={unauthenticatedEnvironment}>
         <Suspense fallback={<Loading>Pixelating...</Loading>}>
@@ -95,14 +100,14 @@ const App = withErrorBoundary(
         </Suspense>
       </RelayEnvironmentProvider>
     );
-  }, atom({ key: "theme", default: darkTheme }))
+  }),
+  atom({ key: "theme", default: darkTheme })
 );
 
-const root = document.getElementById("root") as HTMLDivElement;
-
-ReactDOM.render(
+createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
-    <App />
-  </RecoilRoot>,
-  root
+    <EventsContext.Provider value={{}}>
+      <App />
+    </EventsContext.Provider>
+  </RecoilRoot>
 );
