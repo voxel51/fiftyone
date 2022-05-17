@@ -794,6 +794,9 @@ class OpenLABELObjects(OpenLABELGroup):
     def _get_filtered_object(self, obj_id, stream_info):
         # Get object that contains exactly the information needed, either with
         # frames filtered, removed, or merged
+        if obj_id not in self._element_id_to_element:
+            return None
+
         obj = self._element_id_to_element[obj_id]
         return obj.filter_stream(stream_info)
 
@@ -801,7 +804,7 @@ class OpenLABELObjects(OpenLABELGroup):
         stream_objects = OpenLABELObjects()
         for stream_info in stream_infos.infos:
             label_file_id = stream_info.label_file_id
-            obj_keys = self._keys_by_label_file_id[label_file_id]
+            obj_keys = self._keys_by_label_file_id.get(label_file_id, [])
             for obj_key in obj_keys:
                 obj_id = self._get_element_id(obj_key, label_file_id)
                 obj = self._get_filtered_object(obj_id, stream_info)
@@ -897,9 +900,7 @@ class OpenLABELStreams(OpenLABELGroup):
         else:
             # Does not match any stream, create info with only label file id,
             # must be sample level
-            info = OpenLABELStreamInfo(
-                label_file_id=label_file_id, is_sample_level=True
-            )
+            info = OpenLABELStreamInfo(label_file_id=uri, is_sample_level=True)
             infos.append(info)
 
         return OpenLABELStreamInfos(infos=infos)
