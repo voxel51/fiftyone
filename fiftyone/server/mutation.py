@@ -86,6 +86,7 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         view: JSONArray,
+        dataset: str,
         info: Info,
     ) -> ViewResponse:
         state = get_state()

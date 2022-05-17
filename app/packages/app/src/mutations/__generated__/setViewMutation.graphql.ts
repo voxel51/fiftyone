@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<55d4376d5e551f52d20d11a23061b07d>>
+ * @generated SignedSource<<cc56560ff186274f79ee961c13fe8449>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type setViewMutation$variables = {
   subscription: string;
   session?: string | null;
   view: Array;
+  dataset: string;
 };
 export type setViewMutation$data = {
   readonly setView: {
@@ -99,26 +100,31 @@ const node: ConcreteRequest = (function () {
   var v0 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "session",
+      name: "dataset",
     },
     v1 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "subscription",
+      name: "session",
     },
     v2 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "view",
+      name: "subscription",
     },
     v3 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "view",
+    },
+    v4 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "name",
       storageKey: null,
     },
-    v4 = [
+    v5 = [
       {
         alias: null,
         args: null,
@@ -155,7 +161,7 @@ const node: ConcreteRequest = (function () {
         storageKey: null,
       },
     ],
-    v5 = [
+    v6 = [
       {
         alias: null,
         args: null,
@@ -171,59 +177,64 @@ const node: ConcreteRequest = (function () {
         storageKey: null,
       },
     ],
-    v6 = {
+    v7 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "key",
       storageKey: null,
     },
-    v7 = {
+    v8 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "version",
       storageKey: null,
     },
-    v8 = {
+    v9 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "timestamp",
       storageKey: null,
     },
-    v9 = {
+    v10 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "viewStages",
       storageKey: null,
     },
-    v10 = {
+    v11 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "cls",
       storageKey: null,
     },
-    v11 = {
+    v12 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "labels",
       storageKey: null,
     },
-    v12 = {
+    v13 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "edges",
       storageKey: null,
     },
-    v13 = [
+    v14 = [
       {
         alias: null,
         args: [
+          {
+            kind: "Variable",
+            name: "dataset",
+            variableName: "dataset",
+          },
           {
             kind: "Variable",
             name: "session",
@@ -260,7 +271,7 @@ const node: ConcreteRequest = (function () {
                 name: "id",
                 storageKey: null,
               },
-              v3 /*: any*/,
+              v4 /*: any*/,
               {
                 alias: null,
                 args: null,
@@ -275,7 +286,7 @@ const node: ConcreteRequest = (function () {
                 kind: "LinkedField",
                 name: "sampleFields",
                 plural: true,
-                selections: v4 /*: any*/,
+                selections: v5 /*: any*/,
                 storageKey: null,
               },
               {
@@ -285,7 +296,7 @@ const node: ConcreteRequest = (function () {
                 kind: "LinkedField",
                 name: "frameFields",
                 plural: true,
-                selections: v4 /*: any*/,
+                selections: v5 /*: any*/,
                 storageKey: null,
               },
               {
@@ -296,7 +307,7 @@ const node: ConcreteRequest = (function () {
                 name: "appSidebarGroups",
                 plural: true,
                 selections: [
-                  v3 /*: any*/,
+                  v4 /*: any*/,
                   {
                     alias: null,
                     args: null,
@@ -315,7 +326,7 @@ const node: ConcreteRequest = (function () {
                 name: "maskTargets",
                 plural: true,
                 selections: [
-                  v3 /*: any*/,
+                  v4 /*: any*/,
                   {
                     alias: null,
                     args: null,
@@ -323,7 +334,7 @@ const node: ConcreteRequest = (function () {
                     kind: "LinkedField",
                     name: "targets",
                     plural: true,
-                    selections: v5 /*: any*/,
+                    selections: v6 /*: any*/,
                     storageKey: null,
                   },
                 ],
@@ -336,7 +347,7 @@ const node: ConcreteRequest = (function () {
                 kind: "LinkedField",
                 name: "defaultMaskTargets",
                 plural: true,
-                selections: v5 /*: any*/,
+                selections: v6 /*: any*/,
                 storageKey: null,
               },
               {
@@ -347,10 +358,10 @@ const node: ConcreteRequest = (function () {
                 name: "evaluations",
                 plural: true,
                 selections: [
-                  v6 /*: any*/,
                   v7 /*: any*/,
                   v8 /*: any*/,
                   v9 /*: any*/,
+                  v10 /*: any*/,
                   {
                     alias: null,
                     args: null,
@@ -359,7 +370,7 @@ const node: ConcreteRequest = (function () {
                     name: "config",
                     plural: false,
                     selections: [
-                      v10 /*: any*/,
+                      v11 /*: any*/,
                       {
                         alias: null,
                         args: null,
@@ -388,10 +399,10 @@ const node: ConcreteRequest = (function () {
                 name: "brainMethods",
                 plural: true,
                 selections: [
-                  v6 /*: any*/,
                   v7 /*: any*/,
                   v8 /*: any*/,
                   v9 /*: any*/,
+                  v10 /*: any*/,
                   {
                     alias: null,
                     args: null,
@@ -400,7 +411,7 @@ const node: ConcreteRequest = (function () {
                     name: "config",
                     plural: false,
                     selections: [
-                      v10 /*: any*/,
+                      v11 /*: any*/,
                       {
                         alias: null,
                         args: null,
@@ -442,7 +453,7 @@ const node: ConcreteRequest = (function () {
                 name: "createdAt",
                 storageKey: null,
               },
-              v7 /*: any*/,
+              v8 /*: any*/,
               {
                 alias: null,
                 args: null,
@@ -457,7 +468,7 @@ const node: ConcreteRequest = (function () {
                 kind: "LinkedField",
                 name: "skeletons",
                 plural: true,
-                selections: [v3 /*: any*/, v11 /*: any*/, v12 /*: any*/],
+                selections: [v4 /*: any*/, v12 /*: any*/, v13 /*: any*/],
                 storageKey: null,
               },
               {
@@ -467,7 +478,7 @@ const node: ConcreteRequest = (function () {
                 kind: "LinkedField",
                 name: "defaultSkeleton",
                 plural: false,
-                selections: [v11 /*: any*/, v12 /*: any*/],
+                selections: [v12 /*: any*/, v13 /*: any*/],
                 storageKey: null,
               },
             ],
@@ -486,33 +497,43 @@ const node: ConcreteRequest = (function () {
     ];
   return {
     fragment: {
-      argumentDefinitions: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
+      argumentDefinitions: [
+        v0 /*: any*/,
+        v1 /*: any*/,
+        v2 /*: any*/,
+        v3 /*: any*/,
+      ],
       kind: "Fragment",
       metadata: null,
       name: "setViewMutation",
-      selections: v13 /*: any*/,
+      selections: v14 /*: any*/,
       type: "Mutation",
       abstractKey: null,
     },
     kind: "Request",
     operation: {
-      argumentDefinitions: [v1 /*: any*/, v0 /*: any*/, v2 /*: any*/],
+      argumentDefinitions: [
+        v2 /*: any*/,
+        v1 /*: any*/,
+        v3 /*: any*/,
+        v0 /*: any*/,
+      ],
       kind: "Operation",
       name: "setViewMutation",
-      selections: v13 /*: any*/,
+      selections: v14 /*: any*/,
     },
     params: {
-      cacheID: "eab956618e91f79dd9a3e19c44252dfc",
+      cacheID: "40c94d07980bfe7f87ed1e874504c872",
       id: null,
       metadata: {},
       name: "setViewMutation",
       operationKind: "mutation",
       text:
-        "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: JSONArray!\n) {\n  setView(subscription: $subscription, session: $session, view: $view) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      appSidebarGroups {\n        name\n        paths\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n    }\n    view\n  }\n}\n",
+        "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: JSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      appSidebarGroups {\n        name\n        paths\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n    }\n    view\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "a9b8d05dcbd77ea49637588c20dd0971";
+(node as any).hash = "251008764217a8dde2ed6ecc76f13c80";
 
 export default node;
