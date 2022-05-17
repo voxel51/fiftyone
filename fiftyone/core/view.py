@@ -173,6 +173,20 @@ class DatasetView(foc.SampleCollection):
         self.__media_type = media_type
 
     @property
+    def group_field(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_field
+
+    @property
+    def group_media_types(self):
+        if self.group_field is None:
+            return None
+
+        return self._dataset.group_media_types
+
+    @property
     def name(self):
         """The name of the view."""
         return self.dataset_name + "-view"
@@ -245,7 +259,7 @@ class DatasetView(foc.SampleCollection):
             a string summary
         """
         if self.media_type == fom.GROUP:
-            group_field = self.get_group_field()
+            group_field = self.group_field
             group_ids, tags = self.aggregate(
                 [foa.Distinct(group_field + "._id"), foa.Distinct("tags")]
             )

@@ -239,7 +239,7 @@ class DatasetDocument(Document):
     frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     media_type = StringField()
-    groups = DictField(StringField())
+    groups = DictField(DictField(StringField()))
     info = DictField()
     classes = DictField(ClassesField())
     default_classes = ClassesField()

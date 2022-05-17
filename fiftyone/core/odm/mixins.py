@@ -141,7 +141,10 @@ def get_implied_field_kwargs(value):
         a field specification dict
     """
     if isinstance(value, fof.Group):
-        return {"ftype": fof.GroupField, "embedded_doc_type": fof.Group}
+        return {
+            "ftype": fof.GroupField,
+            "embedded_doc_type": fof.Group,
+        }
 
     if isinstance(value, BaseEmbeddedDocument):
         return {

@@ -169,6 +169,20 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement media_type")
 
     @property
+    def group_field(self):
+        """The group field of the collection, or None if the collection has no
+        groups.
+        """
+        raise NotImplementedError("Subclass must implement group_field")
+
+    @property
+    def group_media_types(self):
+        """A dict mapping group names to media types, or None if the collection
+        has no groups.
+        """
+        raise NotImplementedError("Subclass must implement group_media_types")
+
+    @property
     def info(self):
         """The info dict of the underlying dataset.
 
@@ -509,22 +523,18 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def iter_groups(self, group_field=None):
+    def iter_groups(self):
         """Returns an iterator over the samples in the collection.
-
-        Args:
-            group_field (None): the name of the group field to use. If none is
-                provided, :meth:`get_group_field` is used to retrive the group
-                field
 
         Returns:
             an iterator that emits dicts mapping group names to
             :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` instances, one per group
         """
-        if group_field is None:
-            group_field = self.get_group_field()
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
 
+        group_field = self.group_field
         group_view = self.group_by(F(group_field + "._id"))
 
         curr_id = None
@@ -547,6 +557,38 @@ class SampleCollection(object):
 
         if group:
             yield group
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.sample.Sample`
+            or :class:`fiftyone.core.sample.SampleView` instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        group_view = self.match(F(group_field + "._id") == ObjectId(group_id))
+
+        group = {
+            sample[group_field].name: sample
+            for sample in group_view.iter_samples()
+        }
+
+        if not group:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
+
+        return group
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
@@ -608,26 +650,6 @@ class SampleCollection(object):
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
         )
-
-    def get_group_field(self):
-        """Returns the name of the :class:`fiftyone.core.fields.GroupField` for
-        the collection.
-
-        If the collection has multiple group fields, the name of the one that
-        was declared first is returned.
-
-        Returns:
-            a field name
-
-        Raises:
-            ValueError: if the collection has no group fields
-        """
-        schema = self.get_field_schema(ftype=fof.GroupField)
-
-        try:
-            return next(iter(schema.keys()))
-        except StopIteration:
-            raise ValueError("%s has no group fields" % type(self))
 
     def make_unique_field_name(self, root=""):
         """Makes a unique field name with the given root name for the
@@ -4475,7 +4497,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_group(self, name=None, group_field=None):
+    def select_group(self, name=None):
         """Selects the samples in the collection with a given group name(s).
 
         Examples::
@@ -4537,15 +4559,11 @@ class SampleCollection(object):
         Args:
             name (None): a group name or list of group names to select. By
                 default, a flattened list of all samples is returned
-            group_field (None): the name of a
-                :class:`fiftyone.core.fields.GroupField` to use
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(
-            fos.SelectGroup(name=name, group_field=group_field)
-        )
+        return self._add_view_stage(fos.SelectGroup(name=name))
 
     @view_stage
     def select_labels(

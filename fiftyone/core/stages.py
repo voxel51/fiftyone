@@ -3644,13 +3644,10 @@ class SelectGroup(ViewStage):
     Args:
         name (None): a group name or list of group names to select. By default,
             a flattened list of all samples is returned
-        group_field (None): the name of a
-            :class:`fiftyone.core.fields.GroupField` to use
     """
 
-    def __init__(self, name=None, group_field=None):
+    def __init__(self, name=None):
         self._name = name
-        self._group_field = group_field
 
     @property
     def name(self):
@@ -3658,26 +3655,22 @@ class SelectGroup(ViewStage):
         return self._name
 
     @property
-    def group_field(self):
-        """The group field to use."""
-        return self._group_field
-
-    @property
     def has_view(self):
         return True
 
     def load_view(self, sample_collection):
-        if self._group_field is None:
+        if sample_collection.group_field is None:
             raise ValueError(
-                "`validate()` must be called before using this stage"
+                "%s has no group fields" % type(sample_collection)
             )
 
-        group_path = "$" + self._group_field + ".name"
-        dataset = sample_collection._dataset
+        group_field = sample_collection.group_field
+        group_media_types = sample_collection.group_media_types
+        group_path = "$" + group_field + ".name"
 
         if self._name is None:
             stage = None
-            media_types = set(dataset.groups.values())
+            media_types = set(group_media_types.values())
 
             if len(media_types) > 1:
                 raise ValueError(
@@ -3685,21 +3678,24 @@ class SelectGroup(ViewStage):
                     "media types %s" % media_types
                 )
 
-            media_type = next(iter(dataset.groups.values()))
+            media_type = next(iter(group_media_types.values()))
         elif etau.is_container(self._name):
             names = list(self._name)
 
             media_types = set()
             for name in names:
-                if name not in dataset.groups:
-                    raise ValueError("Dataset has no group '%s'" % name)
+                if name not in group_media_types:
+                    raise ValueError(
+                        "Group field '%s' has no name '%s'"
+                        % (group_field, name)
+                    )
 
-                media_types.add(dataset.groups[name])
+                media_types.add(group_media_types[name])
 
             if len(media_types) > 1:
                 raise ValueError(
-                    "Cannot select groups %s with different media types %s"
-                    % (names, media_types)
+                    "Cannot select names %s with different media types %s "
+                    "from group field '%s'" % (names, media_types, group_field)
                 )
 
             stage = Match(F(group_path).is_in(names))
@@ -3707,11 +3703,13 @@ class SelectGroup(ViewStage):
         else:
             name = self._name
 
-            if name not in dataset.groups:
-                raise ValueError("Dataset has no group '%s'" % name)
+            if name not in group_media_types:
+                raise ValueError(
+                    "Group field '%s' has no name '%s'" % (group_field, name)
+                )
 
             stage = Match(F(group_path) == name)
-            media_type = dataset.groups[name]
+            media_type = group_media_types[name]
 
         view = sample_collection.view()
         view._media_type = media_type
@@ -3722,7 +3720,7 @@ class SelectGroup(ViewStage):
         return view
 
     def _kwargs(self):
-        return [["name", self._name], ["group_field", self._group_field]]
+        return [["name", self._name]]
 
     @classmethod
     def _params(cls):
@@ -3732,18 +3730,8 @@ class SelectGroup(ViewStage):
                 "type": "NoneType|str|list<str>",
                 "placeholder": "name (default=None)",
                 "default": "None",
-            },
-            {
-                "name": "group_field",
-                "type": "NoneType|field|str",
-                "placeholder": "group_field (default=None)",
-                "default": "None",
-            },
+            }
         ]
-
-    def validate(self, sample_collection):
-        if self._group_field is None:
-            self._group_field = sample_collection.get_group_field()
 
 
 class MatchFrames(ViewStage):
