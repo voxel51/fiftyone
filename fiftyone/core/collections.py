@@ -170,15 +170,15 @@ class SampleCollection(object):
 
     @property
     def group_field(self):
-        """The group field of the collection, or None if the collection has no
-        groups.
+        """The group field of the collection, or None if the collection is not
+        grouped.
         """
         raise NotImplementedError("Subclass must implement group_field")
 
     @property
     def group_media_types(self):
         """A dict mapping group names to media types, or None if the collection
-        has no groups.
+        is not grouped.
         """
         raise NotImplementedError("Subclass must implement group_media_types")
 
@@ -4495,6 +4495,19 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.SelectFrames(frame_ids, omit_empty=omit_empty)
         )
+
+    @view_stage
+    def use_group(self, name=None):
+        """Selects the samples in the collection with a given group name(s).
+
+        Args:
+            name (None): a group name or list of group names to select. By
+                default, a flattened list of all samples is returned
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.UseGroup(name=name))
 
     @view_stage
     def select_group(self, name=None):

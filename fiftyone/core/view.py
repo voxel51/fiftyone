@@ -258,14 +258,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        if self.media_type == fom.GROUP:
-            group_field = self.group_field
-            group_ids, tags = self.aggregate(
-                [foa.Distinct(group_field + "._id"), foa.Distinct("tags")]
-            )
-            count = len(group_ids)
-        else:
-            count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
 
         elements = [
             ("Dataset:", self.dataset_name),

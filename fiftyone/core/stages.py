@@ -3579,8 +3579,77 @@ class Match(ViewStage):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
+class UseGroup(ViewStage):
+    def __init__(self, name=None):
+        self._name = name
+
+    @property
+    def name(self):
+        """The group name(s) to use."""
+        return self._name
+
+    def to_mongo(self, sample_collection):
+        if sample_collection.group_field is None:
+            raise ValueError(
+                "%s has no group fields" % type(sample_collection)
+            )
+
+        group_field = sample_collection.group_field
+        group_media_types = sample_collection.group_media_types
+        group_path = "$" + group_field + ".name"
+
+        if self._name is None:
+            return []
+
+        if etau.is_container(self._name):
+            names = list(self._name)
+
+            for name in names:
+                if name not in group_media_types:
+                    raise ValueError(
+                        "Group field '%s' has no name '%s'"
+                        % (group_field, name)
+                    )
+
+            stage = Match(F(group_path).is_in(names))
+        else:
+            name = self._name
+
+            if name not in group_media_types:
+                raise ValueError(
+                    "Group field '%s' has no name '%s'" % (group_field, name)
+                )
+
+            stage = Match(F(group_path) == name)
+
+        stage.validate(sample_collection)
+        return stage.to_mongo(sample_collection)
+
+    def _kwargs(self):
+        return [["name", self._name]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "name",
+                "type": "NoneType|str|list<str>",
+                "placeholder": "name (default=None)",
+                "default": "None",
+            }
+        ]
+
+
 class SelectGroup(ViewStage):
     """Selects the samples in a collection with a given group name(s).
+
+    The returned view is a flattened non-grouped view containing only the
+    slice(s) of interest.
+
+    .. note::
+
+        Use :class:`MatchGroup` if you want to write a view that processes
+        specific group slice(s) without flattening the group view.
 
     Examples::
 
@@ -3651,7 +3720,7 @@ class SelectGroup(ViewStage):
 
     @property
     def name(self):
-        """The group name(s) to match."""
+        """The group name(s) to select."""
         return self._name
 
     @property
@@ -6766,6 +6835,7 @@ _STAGES = [
     ToEvaluationPatches,
     ToClips,
     ToFrames,
+    UseGroup,
 ]
 
 

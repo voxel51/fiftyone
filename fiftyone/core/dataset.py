@@ -366,7 +366,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def group_field(self):
-        """The group field of the dataset, if any."""
+        """The group field of the dataset, or None if the dataset is not
+        grouped.
+        """
         return self._group_field
 
     @group_field.setter
@@ -382,6 +384,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def group_media_types(self):
+        """A dict mapping group names to media types, or None if the dataset is
+        not grouped.
+        """
         if self._group_field is None:
             return None
 
@@ -671,14 +676,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        if self.media_type == fom.GROUP:
-            group_field = self.group_field
-            group_ids, tags = self.aggregate(
-                [foa.Distinct(group_field + "._id"), foa.Distinct("tags")]
-            )
-            count = len(group_ids)
-        else:
-            count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
 
         elements = [
             ("Name:", self.name),

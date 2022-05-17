@@ -441,6 +441,13 @@ class Count(Aggregation):
 
     def to_mongo(self, sample_collection):
         if self._field_name is None and self._expr is None:
+            if sample_collection.group_field is not None:
+                group_id = sample_collection.group_field + "._id"
+                return [
+                    {"$group": {"_id": "$" + group_id}},
+                    {"$count": "count"},
+                ]
+
             return [{"$count": "count"}]
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
