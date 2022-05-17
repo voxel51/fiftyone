@@ -8,7 +8,7 @@ import { Loading, useRouter } from "@fiftyone/components";
 import useMutation from "./useMutation";
 import Network from "@fiftyone/app/src/Network";
 import makeRoutes from "./makeRoutes";
-import { refresher } from "@fiftyone/app/src/recoil/atoms";
+import { modal, refresher } from "@fiftyone/app/src/recoil/atoms";
 
 const LoginMutation = graphql`
   mutation LoginMutation($user: UserInput!) {
@@ -28,6 +28,15 @@ const Renderer = () => {
       }),
     [refreshRouter]
   );
+
+  const isModalActive = Boolean(useRecoilValue(modal));
+
+  useEffect(() => {
+    document.body.classList.toggle("noscroll", isModalActive);
+    document
+      .getElementById("modal")
+      ?.classList.toggle("modalon", isModalActive);
+  }, [isModalActive]);
 
   return <Network environment={environment} context={context} />;
 };
