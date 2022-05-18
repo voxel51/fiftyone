@@ -1,16 +1,11 @@
 import {
   useRouter,
   withErrorBoundary,
-  withTheme,
   Loading,
   EventsContext,
+  Theme,
 } from "@fiftyone/components";
-import {
-  darkTheme,
-  getEventSource,
-  isElectron,
-  toCamelCase,
-} from "@fiftyone/utilities";
+import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
@@ -46,144 +41,143 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const App: React.FC = withTheme(
-  withErrorBoundary(({}) => {
-    const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
-    const readyStateRef = useRef<AppReadyState>();
-    readyStateRef.current = readyState;
-    const subscription = useRecoilValue(stateSubscription);
-    const handleError = useErrorHandler();
-    const refresh = useRefresh();
-    const refreshRouter = useRecoilValue(refresher);
+const App: React.FC = withErrorBoundary(({}) => {
+  const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
+  const readyStateRef = useRef<AppReadyState>();
+  readyStateRef.current = readyState;
+  const subscription = useRecoilValue(stateSubscription);
+  const handleError = useErrorHandler();
+  const refresh = useRefresh();
+  const refreshRouter = useRecoilValue(refresher);
 
-    const getView = useRecoilCallback(
-      ({ snapshot }) => () => {
-        return snapshot.getLoadable(viewAtoms.view).contents;
-      },
-      []
-    );
+  const getView = useRecoilCallback(
+    ({ snapshot }) => () => {
+      return snapshot.getLoadable(viewAtoms.view).contents;
+    },
+    []
+  );
 
-    const { context, environment } = useRouter(
-      (environment: Environment) =>
-        makeRoutes(environment, {
-          view: getView,
-        }),
-      [readyState === AppReadyState.CLOSED, refreshRouter]
-    );
+  const { context, environment } = useRouter(
+    (environment: Environment) =>
+      makeRoutes(environment, {
+        view: getView,
+      }),
+    [readyState === AppReadyState.CLOSED, refreshRouter]
+  );
 
-    const setState = useUnprocessedStateUpdate();
+  const setState = useUnprocessedStateUpdate();
 
-    const contextRef = useRef(context);
-    contextRef.current = context;
-    const reset = useReset();
+  const contextRef = useRef(context);
+  contextRef.current = context;
+  const reset = useReset();
 
-    useEffect(() => {
-      readyState === AppReadyState.CLOSED && reset();
-    }, [readyState]);
+  useEffect(() => {
+    readyState === AppReadyState.CLOSED && reset();
+  }, [readyState]);
 
-    const screenshot = useScreenshot(
-      new URLSearchParams(window.location.search).get("context")
-    );
+  const screenshot = useScreenshot(
+    new URLSearchParams(window.location.search).get("context")
+  );
 
-    const isModalActive = Boolean(useRecoilValue(modal));
+  const isModalActive = Boolean(useRecoilValue(modal));
 
-    useEffect(() => {
-      document.body.classList.toggle("noscroll", isModalActive);
-      document
-        .getElementById("modal")
-        ?.classList.toggle("modalon", isModalActive);
-    }, [isModalActive]);
+  useEffect(() => {
+    document.body.classList.toggle("noscroll", isModalActive);
+    document
+      .getElementById("modal")
+      ?.classList.toggle("modalon", isModalActive);
+  }, [isModalActive]);
 
-    useEffect(() => {
-      const controller = new AbortController();
+  useEffect(() => {
+    const controller = new AbortController();
 
-      getEventSource(
-        "/events",
-        {
-          onopen: async () => {},
-          onmessage: (msg) => {
-            if (controller.signal.aborted) {
-              return;
-            }
+    getEventSource(
+      "/events",
+      {
+        onopen: async () => {},
+        onmessage: (msg) => {
+          if (controller.signal.aborted) {
+            return;
+          }
 
-            switch (msg.event) {
-              case Events.DEACTIVATE_NOTEBOOK_CELL:
-                controller.abort();
-                screenshot();
-                break;
-              case Events.REFRESH_APP:
-                refresh();
-                break;
-              case Events.STATE_UPDATE: {
-                const data = JSON.parse(msg.data).state;
-                const state = {
-                  ...toCamelCase(data),
-                  view: data.view,
-                } as State.Description;
-                let dataset = getDatasetName(contextRef.current);
-                if (readyStateRef.current !== AppReadyState.OPEN) {
-                  if (dataset !== state.dataset) {
-                    dataset = state.dataset;
-                  }
-
-                  setReadyState(AppReadyState.OPEN);
-                } else {
+          switch (msg.event) {
+            case Events.DEACTIVATE_NOTEBOOK_CELL:
+              controller.abort();
+              screenshot();
+              break;
+            case Events.REFRESH_APP:
+              refresh();
+              break;
+            case Events.STATE_UPDATE: {
+              const data = JSON.parse(msg.data).state;
+              const state = {
+                ...toCamelCase(data),
+                view: data.view,
+              } as State.Description;
+              let dataset = getDatasetName(contextRef.current);
+              if (readyStateRef.current !== AppReadyState.OPEN) {
+                if (dataset !== state.dataset) {
                   dataset = state.dataset;
                 }
 
-                const path = state.dataset
-                  ? `/datasets/${encodeURIComponent(state.dataset)}${
-                      window.location.search
-                    }`
-                  : `/${window.location.search}`;
-
-                if (path !== contextRef.current.pathname) {
-                  contextRef.current.history.push(path);
-                }
-
-                setState({ state });
-                break;
+                setReadyState(AppReadyState.OPEN);
+              } else {
+                dataset = state.dataset;
               }
+
+              const path = state.dataset
+                ? `/datasets/${encodeURIComponent(state.dataset)}${
+                    window.location.search
+                  }`
+                : `/${window.location.search}`;
+
+              if (path !== contextRef.current.pathname) {
+                contextRef.current.history.push(path);
+              }
+
+              setState({ state });
+              break;
             }
-          },
-          onclose: () => {
-            setReadyState(AppReadyState.CLOSED);
-          },
-          onerror: (err) => {
-            handleError(err);
-          },
+          }
         },
-        controller.signal,
-        {
-          initializer: getDatasetName(contextRef.current),
-          subscription,
-          events: [
-            Events.DEACTIVATE_NOTEBOOK_CELL,
-            Events.REFRESH_APP,
-            Events.STATE_UPDATE,
-          ],
-        }
-      );
+        onclose: () => {
+          setReadyState(AppReadyState.CLOSED);
+        },
+        onerror: (err) => {
+          handleError(err);
+        },
+      },
+      controller.signal,
+      {
+        initializer: getDatasetName(contextRef.current),
+        subscription,
+        events: [
+          Events.DEACTIVATE_NOTEBOOK_CELL,
+          Events.REFRESH_APP,
+          Events.STATE_UPDATE,
+        ],
+      }
+    );
 
-      return () => controller.abort();
-    }, []);
+    return () => controller.abort();
+  }, []);
 
-    switch (readyState) {
-      case AppReadyState.CONNECTING:
-        return <Loading>Pixelating...</Loading>;
-      case AppReadyState.OPEN:
-        return <Network environment={environment} context={context} />;
-      default:
-        return <Setup />;
-    }
-  }),
-  atom({ key: "theme", default: darkTheme })
-);
+  switch (readyState) {
+    case AppReadyState.CONNECTING:
+      return <Loading>Pixelating...</Loading>;
+    case AppReadyState.OPEN:
+      return <Network environment={environment} context={context} />;
+    default:
+      return <Setup />;
+  }
+});
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
     <EventsContext.Provider value={{ session: null }}>
-      <App />
+      <Theme theme={darkTheme}>
+        <App />
+      </Theme>
     </EventsContext.Provider>
   </RecoilRoot>
 );

@@ -437,8 +437,6 @@ export const useSetView = () => {
             state: {
               view,
               viewCls: dataset.viewCls,
-              selected: [],
-              selectedLabels: [],
             },
           });
         },

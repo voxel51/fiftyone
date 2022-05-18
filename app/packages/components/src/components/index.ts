@@ -8,3 +8,4 @@ export * from "./Route";
 export { default as RouteRenderer } from "./RouteRenderer";
 export { default as Selector } from "./Selector";
 export { default as Tooltip } from "./Tooltip";
+export { default as Theme, ThemeContext, useTheme } from "./Theme";

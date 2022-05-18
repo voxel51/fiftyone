@@ -7,7 +7,7 @@ const Container = animated(styled.div`
   display: flex;
   justify-content: space-between;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   padding: 3px 3px 3px 8px;
   border-radius: 2px;
 `);
