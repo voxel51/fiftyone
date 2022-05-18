@@ -506,7 +506,6 @@ def make_patches_dataset(
 
     dataset.media_type = fom.IMAGE
     dataset._set_metadata(sample_collection.media_type)
-    print(dataset.get_field("metadata"))
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )

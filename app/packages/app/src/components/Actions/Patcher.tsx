@@ -89,12 +89,10 @@ const evaluationKeys = selector<string[]>({
 export const sendPatch = async (
   snapshot: Snapshot,
   updateState: (resolve: StateResolver) => void,
-  addStage?: object,
-  callback?: (
-    set: <T>(s: RecoilState<T>, u: T | ((currVal: T) => T)) => void
-  ) => void
+  addStage?: object
 ) => {
   const similarity = await snapshot.getPromise(similarityParameters);
+  const subscription = await snapshot.getPromise(selectors.stateSubscription);
 
   return getFetchFunction()("POST", "/pin", {
     filters: await snapshot.getPromise(filters),
@@ -104,12 +102,8 @@ export const sendPatch = async (
     labels: toSnakeCase(await snapshot.getPromise(atoms.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
-  }).then((data) => {
-    updateState((t) => {
-      callback && callback(t.set);
-      return data;
-    });
-  });
+    subscription,
+  }).then((data) => updateState(data));
 };
 
 const useToPatches = () => {

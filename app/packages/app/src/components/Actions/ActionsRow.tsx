@@ -299,7 +299,7 @@ const SaveFilters = () => {
         return;
       }
       set(savingFilters, true);
-      sendPatch(snapshot, updateState, null, (set) => {
+      sendPatch(snapshot, updateState, null).then(() => {
         set(savingFilters, false);
         set(similarityParameters, null);
       });

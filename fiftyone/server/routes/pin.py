@@ -48,7 +48,6 @@ class Pin(HTTPEndpoint):
         state.selected_labels = []
         state.dataset = fo.load_dataset(dataset)
         state.view = view
-
         await fose.dispatch_event(subscription, StateUpdate(state=state))
 
         return {

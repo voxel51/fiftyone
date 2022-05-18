@@ -1,16 +1,11 @@
 import {
   useRouter,
   withErrorBoundary,
-  withTheme,
   Loading,
   EventsContext,
+  withTheme,
 } from "@fiftyone/components";
-import {
-  darkTheme,
-  getEventSource,
-  isElectron,
-  toCamelCase,
-} from "@fiftyone/utilities";
+import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useErrorHandler } from "react-error-boundary";
