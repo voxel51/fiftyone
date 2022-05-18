@@ -177,6 +177,9 @@ class Dataset(HasCollection):
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
+            dataset.id = (
+                ObjectId()
+            )  # if it is not the root dataset, change the id (relay requires it)
             dataset.media_type = d["media_type"]
             dataset.sample_fields = [
                 from_dict(SampleField, s)

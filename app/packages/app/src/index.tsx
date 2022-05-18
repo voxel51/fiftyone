@@ -131,8 +131,7 @@ const App: React.FC = withErrorBoundary(({}) => {
                   }`
                 : `/${window.location.search}`;
 
-              if (path !== contextRef.current.get().pathname) {
-                contextRef.current.preload(path);
+              if (path !== contextRef.current.pathname) {
                 contextRef.current.history.push(path);
               }
 

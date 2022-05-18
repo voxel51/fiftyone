@@ -92,11 +92,12 @@ export const pathFilter = selectorFamily<
             primitiveFilter({ modal, path: `${expandedPath}.${name}` })
           );
 
-          return (value: any) => filter(value[dbField || name]);
+          return (value: any) =>
+            filter(value[name === "id" ? "id" : dbField || name]);
         });
 
         f[path] = (value: any) => {
-          if (hidden.has(value._id)) {
+          if (hidden.has(value.id)) {
             return false;
           }
 

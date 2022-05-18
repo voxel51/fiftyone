@@ -1743,7 +1743,8 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
-    recoil: 0.7.2
+    recoil: 0.7.0
+    recoil-relay: ^0.0.0
     relay-compiler: ^13.0.2
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
@@ -7451,9 +7452,16 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"recoil@npm:0.7.2":
-  version: 0.7.2
-  resolution: "recoil@npm:0.7.2"
+"recoil-relay@npm:^0.0.0":
+  version: 0.0.0
+  resolution: "recoil-relay@npm:0.0.0"
+  checksum: 455eb4d86801bf913fb1b94164dd8ca670c472107f065550da61bfcd64f57145d96e43664a9a279abeab2cf03766d5e67b0477c3d97e21f07239e80ee29dec4a
+  languageName: node
+  linkType: hard
+
+"recoil@npm:0.7.0":
+  version: 0.7.0
+  resolution: "recoil@npm:0.7.0"
   dependencies:
     hamt_plus: 1.0.2
   peerDependencies:
@@ -7463,7 +7471,7 @@ fsevents@~2.3.2:
       optional: true
     react-native:
       optional: true
-  checksum: 2ad0c2052fd33ee358e3b448fd36ea6d4b37e69ace65ff44124605171c4794e4f167215209731aac3d45d42ea9f4c67e9c5a0704ff04ab94b64bcca96d5f59a3
+  checksum: e190db5153e322ba8ca824e97701e756c41681080da23f3e87d104544da2e8c9eea44ada8a36857ef9a1ade368dfe6ea3af7d51796441b08c40272c0a1386c81
   languageName: node
   linkType: hard
 
