@@ -384,7 +384,6 @@ const GroupEntry = React.memo(
     return (
       <div
         style={{
-          paddingTop: 8,
           boxShadow: `0 2px 20px ${theme.backgroundDark}`,
         }}
       >

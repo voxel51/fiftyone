@@ -103,6 +103,7 @@ const useRouter = (
   const router = useRef<Router<any>>();
 
   router.current = useMemo(() => {
+    alert("E");
     router.current && router.current.cleanup();
 
     return createRouter(environment, makeRoutes(environment));
