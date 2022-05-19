@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   TransactionInterface_UNSTABLE,
   useRecoilTransaction_UNSTABLE,
@@ -34,6 +34,8 @@ import {
 } from "../mutations";
 import { useErrorHandler } from "react-error-boundary";
 import { transformDataset } from "../Root/Datasets";
+import { getDatasetName } from "./generic";
+import { RouterContext } from "@fiftyone/components";
 
 export const useEventHandler = (
   target,
@@ -420,7 +422,8 @@ export const useSetSelectedLabels = () => {
 };
 
 export const useSetView = () => {
-  const send = useSendEvent();
+  const send = useSendEvent(true);
+  const context = useContext(RouterContext);
   const updateState = useStateUpdate();
   const subscription = useRecoilValue(selectors.stateSubscription);
   const [commit] = useMutation<setViewMutation>(setView);
@@ -429,7 +432,12 @@ export const useSetView = () => {
   return (view) =>
     send((session) =>
       commit({
-        variables: { subscription, session, view },
+        variables: {
+          subscription,
+          session,
+          view,
+          dataset: getDatasetName(context),
+        },
         onError,
         onCompleted: ({ setView: { dataset, view } }) => {
           updateState({

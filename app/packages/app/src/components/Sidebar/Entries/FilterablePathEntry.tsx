@@ -119,7 +119,13 @@ const getFilterData = (
   const label = LABELS.includes(parent.embeddedDocType);
   const excluded = EXCLUDED[parent.embeddedDocType] || [];
 
-  const extra = [];
+  const extra: {
+    ftype: string;
+    path: string;
+    modal: boolean;
+    named?: boolean;
+    listField: boolean;
+  }[] = [];
 
   if (VALID_KEYPOINTS.includes(parent.embeddedDocType)) {
     let p = path;

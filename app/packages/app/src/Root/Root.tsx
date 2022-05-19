@@ -37,15 +37,21 @@ import { appTeamsIsOpen, refresher, useRefresh } from "../recoil/atoms";
 import Teams from "../components/Teams/Teams";
 
 import { RootQuery } from "./__generated__/RootQuery.graphql";
+import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { useHashChangeHandler, useSetDataset } from "../utils/hooks";
+import {
+  useHashChangeHandler,
+  useSetDataset,
+  useStateUpdate,
+} from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
+    ...RootConfig_query
     ...RootDatasets_query
     ...RootGA_query
     ...RootNav_query
@@ -173,7 +179,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title={"FiftyOne Teams"}
         onRefresh={() => {
           refresh();
         }}
@@ -228,6 +234,35 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 };
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
+  const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
+  const { config, colorscale } = useFragment(
+    graphql`
+      fragment RootConfig_query on Query {
+        config {
+          colorBy
+          colorPool
+          colorscale
+          gridZoom
+          loopVideos
+          notebookHeight
+          showConfidence
+          showIndex
+          showLabel
+          showTooltip
+          timezone
+          useFrameNumber
+        }
+        colorscale
+      }
+    `,
+    query as RootConfig_query$key
+  );
+
+  const update = useStateUpdate();
+  useEffect(() => {
+    update({ state: { config, colorscale } });
+  }, []);
+
   return (
     <>
       <Nav prepared={prepared} />

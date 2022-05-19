@@ -5,8 +5,14 @@ export default graphql`
     $subscription: String!
     $session: String
     $view: JSONArray!
+    $dataset: String!
   ) {
-    setView(subscription: $subscription, session: $session, view: $view) {
+    setView(
+      subscription: $subscription
+      session: $session
+      view: $view
+      dataset: $dataset
+    ) {
       dataset {
         id
         name
