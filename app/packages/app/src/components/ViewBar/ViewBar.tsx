@@ -12,6 +12,7 @@ import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
+import { useSetState } from "../../recoil/utils";
 
 const ViewBarDiv = styled.div`
   position: relative;

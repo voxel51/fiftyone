@@ -330,6 +330,7 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
+  const dataset = useRecoilValue(selectors.datasetName);
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })

@@ -120,6 +120,7 @@ type Mutation {
     subscription: String!
     session: String
     view: JSONArray!
+    dataset: String!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
 }
