@@ -394,14 +394,15 @@ class FrameSingleton(DocumentSingleton):
 
         if sample_ids is not None:
             samples = cls._instances[collection_name]
-            frames = (samples.pop(sample_id, {}) for sample_id in sample_ids)
-
+            for sample_id in sample_ids:
+                frames = samples.pop(sample_id, {})
+                for frame in frames.values():
+                    frame._reset_backing_doc()
         else:
             samples = cls._instances.pop(collection_name)
-            frames = (frames for frames in samples.values())
-
-        for frame in frames.values():
-            frame._reset_backing_doc()
+            for frames in samples.values():
+                for frame in frames.values():
+                    frame._reset_backing_doc()
 
     def _reset_docs_for_sample(
         cls, collection_name, sample_id, frame_numbers, keep=False

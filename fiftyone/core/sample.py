@@ -625,6 +625,17 @@ class SampleView(_SampleMixin, DocumentView):
 
         super().save()
 
+    def _deferred_save(self):
+        """Saves the sample view to the database."""
+
+        frame_ops = []
+        if self.media_type == fomm.VIDEO:
+            frame_ops = self.frames._deferred_save()
+
+        sample_op = self._doc._deferred_save()
+
+        return sample_op, frame_ops
+
 
 def _apply_confidence_thresh(label, confidence_thresh):
     if _is_frames_dict(label):

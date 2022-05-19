@@ -441,9 +441,9 @@ class Frames(object):
                 "a dataset"
             )
 
-        return self._save_deletions(deferred=True) + self._save_replacements(
-            deferred=True
-        )
+        delete_ops = self._save_deletions(deferred=True)
+        replace_ops = self._save_replacements(deferred=True)
+        return delete_ops + replace_ops
 
     def reload(self, hard=False):
         """Reloads all frames for the sample from the database.
@@ -681,11 +681,10 @@ class Frames(object):
             replacements = self._replacements
 
         if not replacements:
-            return
+            return [] if deferred else None
 
         new_dicts = {}
-        ops = []
-        for idx, (frame_number, frame) in enumerate(replacements.items()):
+        for frame_number, frame in replacements.items():
             d = self._make_dict(frame)
             if not frame._in_db:
                 new_dicts[frame_number] = d
@@ -712,7 +711,7 @@ class Frames(object):
 
         self._replacements.clear()
 
-        if not deferred:
+        if deferred:
             return ops
 
 

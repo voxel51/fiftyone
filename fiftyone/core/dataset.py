@@ -16,6 +16,7 @@ import numbers
 import os
 import random
 import string
+import requests
 
 from bson import ObjectId
 from deprecated import deprecated
@@ -194,51 +195,6 @@ def delete_non_persistent_datasets(verbose=False):
             dataset.delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
-
-
-class _AutosaveSample:
-    def __init__(self, batch, sample):
-        self._batch = batch
-        self._sample = sample
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self._batch.save_sample(self._sample)
-
-
-class _AutosaveSampleBatch:
-    def __init__(self, sample_collection, frame_collection, batch_size=None):
-        self._sample_collection = sample_collection
-        self._frame_collection = frame_collection
-        self._batch_size = batch_size or 3
-        self._samples = []
-
-    def save_sample(self, sample):
-        self._samples.append(sample)
-        if len(self._samples) >= self._batch_size:
-            self._save_samples()
-
-    def _save_samples(self):
-        if not self._samples:
-            return
-
-        sample_ops, frame_ops = [], []
-        for sample in self._samples:
-            sample_op, sample_frame_ops = sample._deferred_save()
-            sample_ops.append(sample_op)
-            frame_ops.extend(sample_frame_ops)
-
-        foo.bulk_write(sample_ops, self._sample_collection, ordered=False)
-        foo.bulk_write(frame_ops, self._frame_collection, ordered=False)
-        self._samples.clear()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self._save_samples()
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -1402,21 +1358,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
-    def iter_samples(
-        self, progress=False, autosave=False, autosave_batch_size=None
-    ):
-        """Returns an iterator over the samples in the dataset.
+    def iter_samples(self, progress=False, autosave=False):
+        """Returns an iterator over the samples in the collection.
 
-        Args:
+         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
 
-        Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
-        """
+            autosave (False): whether to automatically save :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` during iteration
 
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample`
+        """
         pipeline = self._pipeline(detach_frames=True)
 
+        autosave_batch_size = 10
         with contextlib.ExitStack() as iter_ctx:
             samples = self._iter_samples(pipeline)
 
@@ -1426,7 +1383,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 samples = pbar(samples)
 
             if autosave:
-                autosave_batch = _AutosaveSampleBatch(
+                autosave_batch = foc._AutosaveSampleBatch(
                     self._sample_collection,
                     self._frame_collection,
                     batch_size=autosave_batch_size,
@@ -1437,7 +1394,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 with contextlib.ExitStack() as sample_ctx:
                     if autosave:
                         sample_ctx.enter_context(
-                            _AutosaveSample(autosave_batch, sample)
+                            foc._AutosaveSample(autosave_batch, sample)
                         )
                     yield sample
 
@@ -4669,7 +4626,8 @@ def _list_datasets(include_private=False):
         query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
     # We don't want an error here if `name == None`
-    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+    def _sort(l):
+        return sorted(l, key=lambda x: (x is None, x))
 
     return _sort(conn.datasets.find(query).distinct("name"))
 
@@ -4800,7 +4758,8 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     else:
         prefix = "samples"
 
-    create_name = lambda timestamp: ".".join([prefix, timestamp])
+    def create_name(timestamp):
+        return ".".join([prefix, timestamp])
 
     name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
@@ -5429,7 +5388,10 @@ def _merge_samples_python(
 
     if key_fcn is None:
         id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
-        key_fcn = lambda sample: sample[key_field]
+
+        def key_fcn(sample):
+            return sample[key_field]
+
     else:
         id_map = {}
         logger.info("Indexing dataset...")
@@ -5619,8 +5581,7 @@ def _merge_samples_pipeline(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {key_field: True}
-
+        project = {}
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)

@@ -6,6 +6,7 @@ Dataset views.
 |
 """
 from collections import OrderedDict
+import contextlib
 from copy import copy, deepcopy
 import numbers
 
@@ -277,23 +278,42 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False):
         """Returns an iterator over the samples in the view.
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
 
+            autosave (False): whether to automatically save :class:`fiftyone.core.sample.SampleView` during iteration
+
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples()):
+        autosave_batch_size = 10
+        with contextlib.ExitStack() as iter_ctx:
+            samples = self._iter_samples()
+
+            if progress:
+                pbar = fou.ProgressBar(total=len(self))
+                iter_ctx.enter_context(pbar)
+                samples = pbar(samples)
+
+            if autosave:
+                autosave_batch = foc._AutosaveSampleBatch(
+                    self._dataset._sample_collection,
+                    self._dataset._frame_collection,
+                    batch_size=autosave_batch_size,
+                )
+                iter_ctx.enter_context(autosave_batch)
+
+            for sample in samples:
+                with contextlib.ExitStack() as sample_ctx:
+                    if autosave:
+                        sample_ctx.enter_context(
+                            foc._AutosaveSample(autosave_batch, sample)
+                        )
                     yield sample
-        else:
-            for sample in self._iter_samples():
-                yield sample
 
     def _iter_samples(self):
         sample_cls = self._sample_cls
