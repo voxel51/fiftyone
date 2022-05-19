@@ -105,6 +105,24 @@ enum MediaType {
 }
 
 type Mutation {
+  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    view: JSONArray!
+    dataset: String!
+  ): ViewResponse!
+  storeTeamsSubmission: Boolean!
   login(user: UserInput!): User!
 }
 
@@ -132,13 +150,17 @@ type Query {
     first: Int = 10
     after: String = null
   ): DatasetConnection!
-  teamsConfig: TeamsConfig!
   colorscale: [[Int!]!]
   config: AppConfig!
-  dataset(name: String!, view: JSONArray): Dataset
-  viewer: User!
+  context: String!
   dev: Boolean!
+  doNotTrack: Boolean!
+  dataset(name: String!, view: JSONArray): Dataset
+  teamsSubmission: Boolean!
+  uid: String!
   version: String!
+  teamsConfig: TeamsConfig!
+  viewer: User!
 }
 
 interface Run {
@@ -161,6 +183,13 @@ type SampleField {
   dbField: String
 }
 
+input SelectedLabel {
+  field: String!
+  labelId: String!
+  sampleId: String!
+  frameNumber: Int = null
+}
+
 type SidebarGroup {
   name: String!
   paths: [String!]!
@@ -172,16 +201,12 @@ type Target {
 }
 
 type TeamsConfig {
+  clientId: String!
   organization: String!
 }
 
 type User {
   id: ID!
-  datasets(
-    search: String
-    first: Int = 10
-    after: String = null
-  ): DatasetConnection!
   email: String!
   familyName: String
   givenName: String
@@ -192,4 +217,9 @@ input UserInput {
   sub: String
   familyName: String = null
   givenName: String = null
+}
+
+type ViewResponse {
+  view: JSONArray!
+  dataset: Dataset!
 }

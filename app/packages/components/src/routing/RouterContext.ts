@@ -37,6 +37,7 @@ export interface RoutingContext<
 > {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
+  pathname: string;
   preload: (pathname: string) => void;
   subscribe: (cb: (entry: Entry<T>) => void) => () => void;
 }
@@ -95,6 +96,9 @@ export const createRouter = (
         };
       }
       return currentEntry;
+    },
+    get pathname() {
+      return history.location.pathname;
     },
     preload(pathname) {
       if (currentEntry.pathname !== pathname) {

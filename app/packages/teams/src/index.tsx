@@ -2,8 +2,8 @@ import { Auth0Provider, useAuth0 } from "@auth0/auth0-react";
 import {
   EventsContext,
   Loading,
+  Theme,
   withErrorBoundary,
-  withTheme,
 } from "@fiftyone/components";
 import { darkTheme, setFetchFunction } from "@fiftyone/utilities";
 import React, { Suspense, useEffect } from "react";
@@ -14,7 +14,7 @@ import {
   RelayEnvironmentProvider,
   usePreloadedQuery,
 } from "react-relay";
-import { atom, RecoilRoot } from "recoil";
+import { RecoilRoot } from "recoil";
 
 import "./index.css";
 
@@ -71,6 +71,7 @@ const Config = () => {
     graphql`
       query srcQuery {
         teamsConfig {
+          clientId
           organization
         }
       }
@@ -81,7 +82,7 @@ const Config = () => {
   return (
     <Auth0Provider
       audience={import.meta.env.VITE_AUTH0_AUDIENCE}
-      clientId={import.meta.env.VITE_AUTH0_CLIENT_ID}
+      clientId={config.clientId}
       domain={import.meta.env.VITE_AUTH0_DOMAIN}
       organization={config.organization}
       onRedirectCallback={(state) => {}}
@@ -91,23 +92,22 @@ const Config = () => {
   );
 };
 
-const App = withTheme(
-  withErrorBoundary(() => {
-    return (
-      <RelayEnvironmentProvider environment={unauthenticatedEnvironment}>
-        <Suspense fallback={<Loading>Pixelating...</Loading>}>
-          <Config />
-        </Suspense>
-      </RelayEnvironmentProvider>
-    );
-  }),
-  atom({ key: "theme", default: darkTheme })
-);
+const App = withErrorBoundary(() => {
+  return (
+    <RelayEnvironmentProvider environment={unauthenticatedEnvironment}>
+      <Suspense fallback={<Loading>Pixelating...</Loading>}>
+        <Config />
+      </Suspense>
+    </RelayEnvironmentProvider>
+  );
+});
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
     <EventsContext.Provider value={{}}>
-      <App />
+      <Theme theme={darkTheme}>
+        <App />
+      </Theme>
     </EventsContext.Provider>
   </RecoilRoot>
 );

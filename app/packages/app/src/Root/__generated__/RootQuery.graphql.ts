@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e6761d7ff415e46dd218d2c6bc692085>>
+ * @generated SignedSource<<e591c52b44ca1e0ca8ffe952350867f4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,7 @@ export type RootQuery$variables = {
 };
 export type RootQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<
-    "RootDatasets_query" | "RootGA_query" | "RootNav_query"
+    "RootConfig_query" | "RootDatasets_query" | "RootGA_query" | "RootNav_query"
   >;
 };
 export type RootQuery = {
@@ -41,7 +41,14 @@ const node: ConcreteRequest = (function () {
       kind: "LocalArgument",
       name: "search",
     },
-    v3 = [
+    v3 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "colorscale",
+      storageKey: null,
+    },
+    v4 = [
       {
         kind: "Variable",
         name: "after",
@@ -65,6 +72,11 @@ const node: ConcreteRequest = (function () {
       metadata: null,
       name: "RootQuery",
       selections: [
+        {
+          args: null,
+          kind: "FragmentSpread",
+          name: "RootConfig_query",
+        },
         {
           args: null,
           kind: "FragmentSpread",
@@ -92,7 +104,97 @@ const node: ConcreteRequest = (function () {
       selections: [
         {
           alias: null,
-          args: v3 /*: any*/,
+          args: null,
+          concreteType: "AppConfig",
+          kind: "LinkedField",
+          name: "config",
+          plural: false,
+          selections: [
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "colorBy",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "colorPool",
+              storageKey: null,
+            },
+            v3 /*: any*/,
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "gridZoom",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "loopVideos",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "notebookHeight",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "showConfidence",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "showIndex",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "showLabel",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "showTooltip",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "timezone",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "useFrameNumber",
+              storageKey: null,
+            },
+          ],
+          storageKey: null,
+        },
+        v3 /*: any*/,
+        {
+          alias: null,
+          args: v4 /*: any*/,
           concreteType: "DatasetConnection",
           kind: "LinkedField",
           name: "datasets",
@@ -185,7 +287,7 @@ const node: ConcreteRequest = (function () {
         },
         {
           alias: null,
-          args: v3 /*: any*/,
+          args: v4 /*: any*/,
           filters: ["search"],
           handle: "connection",
           key: "DatasetsList_query_datasets",
@@ -237,17 +339,17 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "2d8bc133a1f906f1c953a989c97b5982",
+      cacheID: "1fa31f0d30b95bb2356348ab08feb522",
       id: null,
       metadata: {},
       name: "RootQuery",
       operationKind: "query",
       text:
-        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
+        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootConfig_query\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootConfig_query on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
     },
   };
 })();
 
-(node as any).hash = "58b33be2ff73c5d66f21b1505e4b7d64";
+(node as any).hash = "9be21f4e0ffa4278e7e92b1c5ef6a0b5";
 
 export default node;

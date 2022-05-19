@@ -15,7 +15,8 @@
 # REQUIRED RUNTIME ENV VARS::
 #
 #   FIFTYONE_DATABASE_URI: your MongoDB database URI
-#   FIFTYONE_TEAMS_ORGANIZATION: your organization's authentication key
+#   FIFTYONE_TEAMS_CLIENT_ID: your application client ID
+#   FIFTYONE_TEAMS_ORGANIZATION: your organization's authentication ID
 #   (your cloud storage credentials)
 #
 # Example usage::
@@ -29,6 +30,7 @@
 #   SHARED_DIR=/data # if necessary
 #   docker run \
 #       -e FIFTYONE_DATABASE_URI=mongodb://... \
+#       -e FIFTYONE_TEAMS_CLIENT_ID=... \
 #       -e FIFTYONE_TEAMS_ORGANIZATION=... \
 #       -e AWS_CONFIG_FILE=/fiftyone/aws-credentials.ini \
 #       -v ${SHARED_DIR}:/fiftyone \

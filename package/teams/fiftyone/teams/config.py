@@ -24,8 +24,16 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.client_id = self.parse_string(
+            d,
+            "client_id",
+            default="69dStE2hz7Ciifd1wBO4fzxxpFRR8aQc",
+            env_var="FIFTYONE_TEAMS_CLIENT_ID",
+        )
         self.organization = self.parse_string(
-            d, "organization", env_var="FIFTYONE_TEAMS_ORGANIZATION",
+            d,
+            "organization",
+            env_var="FIFTYONE_TEAMS_ORGANIZATION",
         )
 
 

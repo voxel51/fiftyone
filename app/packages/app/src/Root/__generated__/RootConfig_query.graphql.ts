@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fa1ff28838040d69c6dd13003496a67a>>
+ * @generated SignedSource<<7f8e8497095b9097d76934dacf9af779>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type RootConfig_query$data = {
     readonly colorscale: string;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
+    readonly notebookHeight: number;
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;
@@ -88,6 +89,13 @@ const node: ReaderFragment = (function () {
             alias: null,
             args: null,
             kind: "ScalarField",
+            name: "notebookHeight",
+            storageKey: null,
+          },
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
             name: "showConfidence",
             storageKey: null,
           },
@@ -136,6 +144,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "ebb4a278ba10178c825ca08cb22a34eb";
+(node as any).hash = "85f4c6bc30144f4727c2654f762bc73b";
 
 export default node;

@@ -16,12 +16,13 @@ import fiftyone as fo
 from fiftyone.server.data import Info
 import fiftyone.core.view as fov
 
-from fiftyone.teams.permissions import IsAuthenticated
-from fiftyone.teams.query import User
 
-from fiftyone.server.mutation import ViewResponse
+import fiftyone.server.mutation as fosm
 from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import JSONArray
+
+
+from fiftyone.teams.query import User
 
 
 @gql.input
@@ -33,8 +34,8 @@ class UserInput:
 
 
 @gql.type
-class Mutation:
-    @gql.mutation(permission_classes=[IsAuthenticated])
+class Mutation(fosm.Mutation):
+    @gql.mutation
     async def login(self, user: UserInput, info: Info) -> User:
         db = info.context.db
         users: mtr.AsyncIOMotorCollection = db.users
@@ -54,18 +55,3 @@ class Mutation:
 
         updated_user["id"] = updated_user.pop("_id")
         return from_dict(User, updated_user, config=Config(check_types=False))
-
-    @gql.mutation
-    async def set_view(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        view: JSONArray,
-        dataset: str,
-        info: Info,
-    ) -> ViewResponse:
-        view_result = fov.DatasetView._build(fo.load_dataset(dataset), view)
-        dataset_result = await Dataset.resolver(dataset, view, info)
-        return ViewResponse(
-            view=view_result._serialize(), dataset=dataset_result
-        )

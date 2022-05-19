@@ -12,12 +12,12 @@ import re
 from setuptools import setup
 
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
-    "fiftyone>=0.8.0",
+    "fiftyone>=0.8.1",
 ]
 
 

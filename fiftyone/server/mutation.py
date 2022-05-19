@@ -90,7 +90,6 @@ class Mutation:
         info: Info,
     ) -> ViewResponse:
         state = get_state()
-
         state.selected = []
         state.selected_labels = []
         state.view = fov.DatasetView._build(state.dataset, view)

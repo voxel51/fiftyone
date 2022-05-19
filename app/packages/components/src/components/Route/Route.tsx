@@ -8,7 +8,7 @@ export type Route<
   Operation extends OperationType | undefined = undefined
 > = React.FC<
   React.PropsWithChildren<{
-    prepared?: Operation extends OperationType
+    prepared: Operation extends OperationType
       ? PreloadedQuery<Operation>
       : undefined;
     routeData?: RouteData<Operation>;
