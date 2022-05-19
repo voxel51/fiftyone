@@ -6,6 +6,7 @@ FiftyOne datasets.
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 from datetime import datetime
 import fnmatch
@@ -193,6 +194,51 @@ def delete_non_persistent_datasets(verbose=False):
             dataset.delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
+
+
+class _AutosaveSample:
+    def __init__(self, batch, sample):
+        self._batch = batch
+        self._sample = sample
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._batch.save_sample(self._sample)
+
+
+class _AutosaveSampleBatch:
+    def __init__(self, sample_collection, frame_collection, batch_size=None):
+        self._sample_collection = sample_collection
+        self._frame_collection = frame_collection
+        self._batch_size = batch_size or 3
+        self._samples = []
+
+    def save_sample(self, sample):
+        self._samples.append(sample)
+        if len(self._samples) >= self._batch_size:
+            self._save_samples()
+
+    def _save_samples(self):
+        if not self._samples:
+            return
+
+        sample_ops, frame_ops = [], []
+        for sample in self._samples:
+            sample_op, sample_frame_ops = sample._deferred_save()
+            sample_ops.append(sample_op)
+            frame_ops.extend(sample_frame_ops)
+
+        foo.bulk_write(sample_ops, self._sample_collection, ordered=False)
+        foo.bulk_write(frame_ops, self._frame_collection, ordered=False)
+        self._samples.clear()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        self._save_samples()
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -1356,7 +1402,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
-    def iter_samples(self, progress=False):
+    def iter_samples(
+        self, progress=False, autosave=False, autosave_batch_size=None
+    ):
         """Returns an iterator over the samples in the dataset.
 
         Args:
@@ -1366,15 +1414,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
+
         pipeline = self._pipeline(detach_frames=True)
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples(pipeline)):
+        with contextlib.ExitStack() as iter_ctx:
+            samples = self._iter_samples(pipeline)
+
+            if progress:
+                pbar = fou.ProgressBar(total=len(self))
+                iter_ctx.enter_context(pbar)
+                samples = pbar(samples)
+
+            if autosave:
+                autosave_batch = _AutosaveSampleBatch(
+                    self._sample_collection,
+                    self._frame_collection,
+                    batch_size=autosave_batch_size,
+                )
+                iter_ctx.enter_context(autosave_batch)
+
+            for sample in samples:
+                with contextlib.ExitStack() as sample_ctx:
+                    if autosave:
+                        sample_ctx.enter_context(
+                            _AutosaveSample(autosave_batch, sample)
+                        )
                     yield sample
-        else:
-            for sample in self._iter_samples(pipeline):
-                yield sample
 
     def _iter_samples(self, pipeline):
         index = 0

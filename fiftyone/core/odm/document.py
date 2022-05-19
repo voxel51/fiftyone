@@ -459,6 +459,54 @@ class Document(BaseDocument, mongoengine.Document):
 
         return self
 
+    def _deferred_save(self):
+        # pylint: disable=no-member
+        if self._meta.get("abstract"):
+            raise mongoengine.InvalidDocumentError(
+                "Cannot save an abstract document."
+            )
+
+        self.validate(clean=True)
+
+        doc_id = self.to_mongo(fields=[self._meta["id_field"]])
+        created = "_id" not in doc_id or self._created
+
+        # It might be refreshed by the pre_save_post_validation hook, e.g., for
+        # etag generation
+        doc = self.to_mongo()
+
+        if self._meta.get("auto_create_index", True):
+            self.ensure_indexes()
+
+        if created:
+            object_id = doc.get("_id") or ObjectId()
+            save_op = pymongo.UpdateOne({"_id": object_id}, doc, upsert=True)
+        else:
+            object_id = doc.get("_id")
+            created = False
+
+            sets, unsets = self._delta()
+
+            update_doc = {}
+            if sets:
+                update_doc["$set"] = sets
+            if unsets:
+                update_doc["$unset"] = unsets
+            if update_doc:
+                save_op = pymongo.UpdateOne(
+                    {"_id": object_id}, update_doc, upsert=True
+                )
+
+        # Make sure we store the PK on this document now that it's saved
+        id_field = self._meta["id_field"]
+        if created or id_field not in self._meta.get("shard_key", []):
+            self[id_field] = self._fields[id_field].to_python(object_id)
+
+        self._clear_changed_fields()
+        self._created = False
+
+        return save_op
+
     def _update(self, object_id, update_doc, **kwargs):
         """Updates an existing document.
 

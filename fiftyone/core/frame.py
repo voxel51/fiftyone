@@ -7,7 +7,7 @@ Video frames.
 """
 import itertools
 
-from pymongo import ReplaceOne, UpdateOne, DeleteOne
+from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
@@ -433,6 +433,18 @@ class Frames(object):
         self._save_deletions()
         self._save_replacements()
 
+    def _deferred_save(self):
+        """Saves all frames for the sample to the database."""
+        if not self._in_db:
+            raise ValueError(
+                "Cannot save frames of a sample that has not been added to "
+                "a dataset"
+            )
+
+        return self._save_deletions(deferred=True) + self._save_replacements(
+            deferred=True
+        )
+
     def reload(self, hard=False):
         """Reloads all frames for the sample from the database.
 
@@ -602,9 +614,16 @@ class Frames(object):
     def _to_frames_dict(self):
         return {str(fn): frame.to_dict() for fn, frame in self.items()}
 
-    def _save_deletions(self):
+    def _save_deletions(self, deferred=False):
+        ops = []
+
         if self._delete_all:
-            self._frame_collection.delete_many({"_sample_id": self._sample_id})
+            if deferred:
+                ops.append(DeleteMany({"_sample_id": self._sample_id}))
+            else:
+                self._frame_collection.delete_many(
+                    {"_sample_id": self._sample_id}
+                )
 
             Frame._reset_docs(
                 self._frame_collection_name, sample_ids=[self._sample.id]
@@ -623,7 +642,9 @@ class Frames(object):
                 )
                 for frame_number in self._delete_frames
             ]
-            self._frame_collection.bulk_write(ops, ordered=False)
+
+            if not deferred:
+                self._frame_collection.bulk_write(ops, ordered=False)
 
             Frame._reset_docs_for_sample(
                 self._frame_collection_name,
@@ -633,7 +654,12 @@ class Frames(object):
 
             self._delete_frames.clear()
 
-    def _save_replacements(self, include_singletons=True):
+        if deferred:
+            return ops
+
+    def _save_replacements(self, include_singletons=True, deferred=False):
+        ops = []
+
         if include_singletons:
             #
             # Since frames are singletons, the user will expect changes to any
@@ -671,7 +697,8 @@ class Frames(object):
             )
             ops.append(op)
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
 
         if new_dicts:
             ids_map = self._get_ids_map()
@@ -684,6 +711,9 @@ class Frames(object):
                 frame._doc.id = ids_map[frame_number]
 
         self._replacements.clear()
+
+        if not deferred:
+            return ops
 
 
 class FramesView(Frames):

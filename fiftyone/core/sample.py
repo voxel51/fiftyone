@@ -469,6 +469,21 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         super().save()
 
+    def _deferred_save(self):
+        """Saves the sample to the database."""
+        if not self._in_db:
+            raise ValueError(
+                "Cannot save a sample that has not been added to a dataset"
+            )
+
+        frame_ops = []
+        if self.media_type == fomm.VIDEO:
+            frame_ops = self.frames._deferred_save()
+
+        sample_op = self._doc._deferred_save()
+
+        return sample_op, frame_ops
+
     @classmethod
     def from_frame(cls, frame, filepath):
         """Creates an image :class:`Sample` from the given
