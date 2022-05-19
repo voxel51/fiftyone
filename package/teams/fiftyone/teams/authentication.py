@@ -5,8 +5,10 @@ FiftyOne Teams authentication
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 from dataclasses import dataclass
 from inspect import isclass
+
 import aiohttp as aio
 from dacite import from_dict
 from jose import jwt
@@ -20,6 +22,10 @@ from starlette.authentication import (
 from starlette.endpoints import HTTPEndpoint, WebSocketEndpoint
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
+from strawberry.field import StrawberryField as Field
+import strawberry.permission as gqlp
+
+from fiftyone.server.data import Info
 
 import fiftyone.teams.constants as fotc
 from fiftyone.teams.data import JWKS
@@ -183,3 +189,20 @@ def authenticate_route(endpoint):
 
 
 middleware = [Middleware(AuthenticationMiddleware, backend=Authentication())]
+
+
+class IsAuthenticated(gqlp.BasePermission):
+    message = "Unauthenticated request"
+
+    async def has_permission(
+        self, source: t.Any, info: Info, **kwargs: t.Dict
+    ) -> bool:
+        return isinstance(info.context.request.user, AuthenticatedUser)
+
+
+def authenticate_gql_class(query: t.Type[t.Any]) -> t.Type[t.Any]:
+    fields: t.List[Field] = query._type_definition._fields
+    for field in fields:
+        field.permission_classes = [IsAuthenticated]
+
+    return query

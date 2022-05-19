@@ -6,6 +6,7 @@ FiftyOne Teams mutations.
 |
 """
 from dacite import Config, from_dict
+from fiftyone.teams.authentication import authenticate_gql_class
 import motor.motor_asyncio as mtr
 from pymongo import ReturnDocument
 import strawberry as gql
@@ -31,6 +32,9 @@ class UserInput:
     sub: t.Optional[str]
     family_name: t.Optional[str] = None
     given_name: t.Optional[str] = None
+
+
+authenticate_gql_class(fosm.Mutation)
 
 
 @gql.type

@@ -10,7 +10,6 @@ import typing as t
 from dacite import Config, from_dict
 import motor.motor_asyncio as mtr
 import strawberry as gql
-from strawberry.field import StrawberryField as Field
 
 
 from fiftyone.server.data import Info
@@ -18,8 +17,11 @@ import fiftyone.server.query as fosq
 import fiftyone.server.mixins as fosm
 
 import fiftyone.teams as fot
-from fiftyone.teams.authentication import AuthenticatedUser
-from fiftyone.teams.permissions import IsAuthenticated
+from fiftyone.teams.authentication import (
+    IsAuthenticated,
+    authenticate_gql_class,
+    AuthenticatedUser,
+)
 
 
 @gql.type
@@ -40,13 +42,7 @@ class TeamsConfig:
     organization: str
 
 
-def authenticate(query: t.Type) -> None:
-    fields: t.List[Field] = query._type_definition._fields
-    for field in fields:
-        field.permission_classes = [IsAuthenticated]
-
-
-authenticate(fosq.Query)
+authenticate_gql_class(fosq.Query)
 
 
 @gql.type
