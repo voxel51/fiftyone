@@ -165,14 +165,6 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.media_type
 
     @property
-    def _media_type(self):
-        return self.__media_type
-
-    @_media_type.setter
-    def _media_type(self, media_type):
-        self.__media_type = media_type
-
-    @property
     def group_field(self):
         if self.media_type != fom.GROUP:
             return None
@@ -908,7 +900,14 @@ class DatasetView(foc.SampleCollection):
             view = copy(self)
             view._stages.append(stage)
 
+            media_type = stage.get_media_type(self)
+            if media_type is not None:
+                view._set_media_type(media_type)
+
         return view
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:

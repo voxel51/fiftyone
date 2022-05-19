@@ -137,6 +137,20 @@ class ViewStage(object):
         """
         return None
 
+    def get_media_type(self, sample_collection):
+        """Returns the media type outputted by this stage when applied to the
+        given collection, if and only if it is different from the input type.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            the media type, or ``None`` if the stage does not change the media
+        """
+        return None
+
     def load_view(self, sample_collection):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
@@ -3579,13 +3593,13 @@ class Match(ViewStage):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
-class UseGroup(ViewStage):
+class _SelectGroup(ViewStage):
     def __init__(self, name=None):
         self._name = name
 
     @property
     def name(self):
-        """The group name(s) to use."""
+        """The group name(s) to select."""
         return self._name
 
     def to_mongo(self, sample_collection):
@@ -3594,33 +3608,15 @@ class UseGroup(ViewStage):
                 "%s has no group fields" % type(sample_collection)
             )
 
-        group_field = sample_collection.group_field
-        group_media_types = sample_collection.group_media_types
-        group_path = "$" + group_field + ".name"
-
         if self._name is None:
             return []
 
+        group_path = "$" + sample_collection.group_field + ".name"
+
         if etau.is_container(self._name):
-            names = list(self._name)
-
-            for name in names:
-                if name not in group_media_types:
-                    raise ValueError(
-                        "Group field '%s' has no name '%s'"
-                        % (group_field, name)
-                    )
-
-            stage = Match(F(group_path).is_in(names))
+            stage = Match(F(group_path).is_in(list(self._name)))
         else:
-            name = self._name
-
-            if name not in group_media_types:
-                raise ValueError(
-                    "Group field '%s' has no name '%s'" % (group_field, name)
-                )
-
-            stage = Match(F(group_path) == name)
+            stage = Match(F(group_path) == self._name)
 
         stage.validate(sample_collection)
         return stage.to_mongo(sample_collection)
@@ -3640,7 +3636,11 @@ class UseGroup(ViewStage):
         ]
 
 
-class SelectGroup(ViewStage):
+class UseGroup(_SelectGroup):
+    pass
+
+
+class SelectGroup(_SelectGroup):
     """Selects the samples in a collection with a given group name(s).
 
     The returned view is a flattened non-grouped view containing only the
@@ -3715,30 +3715,11 @@ class SelectGroup(ViewStage):
             a flattened list of all samples is returned
     """
 
-    def __init__(self, name=None):
-        self._name = name
-
-    @property
-    def name(self):
-        """The group name(s) to select."""
-        return self._name
-
-    @property
-    def has_view(self):
-        return True
-
-    def load_view(self, sample_collection):
-        if sample_collection.group_field is None:
-            raise ValueError(
-                "%s has no group fields" % type(sample_collection)
-            )
-
+    def get_media_type(self, sample_collection):
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
-        group_path = "$" + group_field + ".name"
 
         if self._name is None:
-            stage = None
             media_types = set(group_media_types.values())
 
             if len(media_types) > 1:
@@ -3747,8 +3728,9 @@ class SelectGroup(ViewStage):
                     "media types %s" % media_types
                 )
 
-            media_type = next(iter(group_media_types.values()))
-        elif etau.is_container(self._name):
+            return next(iter(group_media_types.values()))
+
+        if etau.is_container(self._name):
             names = list(self._name)
 
             media_types = set()
@@ -3767,40 +3749,14 @@ class SelectGroup(ViewStage):
                     "from group field '%s'" % (names, media_types, group_field)
                 )
 
-            stage = Match(F(group_path).is_in(names))
-            media_type = next(iter(media_types))
-        else:
-            name = self._name
+            return next(iter(media_types))
 
-            if name not in group_media_types:
-                raise ValueError(
-                    "Group field '%s' has no name '%s'" % (group_field, name)
-                )
+        if self._name not in group_media_types:
+            raise ValueError(
+                "Group field '%s' has no name '%s'" % (group_field, self._name)
+            )
 
-            stage = Match(F(group_path) == name)
-            media_type = group_media_types[name]
-
-        view = sample_collection.view()
-        view._media_type = media_type
-
-        if stage is not None:
-            view = view.add_stage(stage)
-
-        return view
-
-    def _kwargs(self):
-        return [["name", self._name]]
-
-    @classmethod
-    def _params(cls):
-        return [
-            {
-                "name": "name",
-                "type": "NoneType|str|list<str>",
-                "placeholder": "name (default=None)",
-                "default": "None",
-            }
-        ]
+        return group_media_types[self._name]
 
 
 class MatchFrames(ViewStage):
