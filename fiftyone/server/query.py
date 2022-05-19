@@ -259,6 +259,7 @@ class Query:
 
     @gql.field
     def teams_submission(self) -> bool:
+        return True
         isfile = os.path.isfile(foc.TEAMS_PATH)
         if isfile:
             submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]

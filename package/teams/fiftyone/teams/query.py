@@ -59,3 +59,7 @@ class Query(fosq.Query):
         user = await users.find_one({"sub": request_user.sub})
         user["id"] = user.pop("_id")
         return from_dict(User, user, config=Config(check_types=False))
+
+    @gql.field(permission_classes=[IsAuthenticated])
+    def teams_submission(self) -> bool:
+        return True
