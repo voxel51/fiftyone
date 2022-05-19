@@ -170,8 +170,8 @@ class SampleCollection(object):
 
     @property
     def group_field(self):
-        """The group field of the collection, or None if the collection is not
-        grouped.
+        """The current group field of the collection, or None if the collection
+        is not grouped.
         """
         raise NotImplementedError("Subclass must implement group_field")
 

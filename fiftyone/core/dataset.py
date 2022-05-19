@@ -366,8 +366,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def group_field(self):
-        """The group field of the dataset, or None if the dataset is not
-        grouped.
+        """The current group field of the dataset, or None if the dataset is
+        not grouped.
         """
         return self._group_field
 
@@ -1042,19 +1042,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload()
 
     def _add_group_field(self, field_name):
-        if self.group_field is not None:
-            raise ValueError(
-                "%s already has a group field '%s'"
-                % (type(self), self.group_field)
-            )
-
         if "." in field_name:
             raise ValueError(
                 "Invalid group field '%s'. Group fields must be top-level "
                 "sample fields" % field_name
             )
 
-        self._group_field = field_name
+        if self._group_field is None:
+            self._group_field = field_name
+
         self._sample_doc_cls.add_field(
             field_name,
             fof.GroupField,
