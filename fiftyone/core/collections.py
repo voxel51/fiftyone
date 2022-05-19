@@ -183,6 +183,13 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement group_media_types")
 
     @property
+    def default_group_name(self):
+        """The default group name of the collection, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement default_group_name")
+
+    @property
     def info(self):
         """The info dict of the underlying dataset.
 
@@ -4498,11 +4505,68 @@ class SampleCollection(object):
 
     @view_stage
     def use_group(self, name=None):
-        """Selects the samples in the collection with a given group name(s).
+        """Returns a view that treats the specific group slice as the primary
+        sample for each group in the collection.
+
+        .. note::
+
+            Use :meth:`select_group` if you want to write a view that extracts
+            a flattened list of samples from specific group(s).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="center")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1-left.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-center.jpg",
+                        group=group1.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-right.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-left.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-center.jpg",
+                        group=group2.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-right.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Use the "left" group
+            #
+
+            view = dataset.use_group("left")
+
+            #
+            # Use the default ("center") group
+            #
+
+            view = dataset.use_group()
 
         Args:
-            name (None): a group name or list of group names to select. By
-                default, a flattened list of all samples is returned
+            name (None): the group name to use. If none is specified, the
+                default group name is used
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4518,6 +4582,7 @@ class SampleCollection(object):
             import fiftyone as fo
 
             dataset = fo.Dataset()
+            dataset.add_group_field("group", default="center")
 
             group1 = fo.Group()
             group2 = fo.Group()
@@ -4526,27 +4591,27 @@ class SampleCollection(object):
                 [
                     fo.Sample(
                         filepath="/path/to/image1-left.jpg",
-                        group=group1.name("left"),
+                        group=group1.element("left"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image1-center.jpg",
-                        group=group1.name("center"),
+                        group=group1.element("center"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image1-right.jpg",
-                        group=group1.name("right"),
+                        group=group1.element("right"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-left.jpg",
-                        group=group2.name("left"),
+                        group=group2.element("left"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-center.jpg",
-                        group=group2.name("center"),
+                        group=group2.element("center"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-right.jpg",
-                        group=group2.name("right"),
+                        group=group2.element("right"),
                     ),
                 ]
             )

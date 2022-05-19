@@ -179,6 +179,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_media_types
 
     @property
+    def default_group_name(self):
+        if self.group_field is None:
+            return None
+
+        return self._dataset.default_group_name
+
+    @property
     def name(self):
         """The name of the view."""
         return self.dataset_name + "-view"

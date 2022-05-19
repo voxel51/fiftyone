@@ -393,6 +393,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.groups[self._group_field]
 
     @property
+    def default_group_name(self):
+        """The default group name of the dataset, or None if the dataset is not
+        grouped.
+        """
+        if self._group_field is None:
+            return None
+
+        return self._doc.default_group_names[self._group_field]
+
+    @default_group_name.setter
+    def default_group_name(self, name):
+        if self._group_field is None:
+            raise ValueError("Dataset has no groups")
+
+        if name not in self._doc.groups[self._group_field]:
+            raise ValueError(
+                "Group field '%s' has no name '%s'" % (self._group_field, name)
+            )
+
+        self._doc.default_group_names[self._group_field] = name
+        self._doc.save()
+
+    @property
     def version(self):
         """The version of the ``fiftyone`` package for which the dataset is
         formatted.
@@ -937,7 +960,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _add_implied_sample_field(self, field_name, value):
         if isinstance(value, fof.Group):
-            self._add_group_field(field_name)
+            self._add_group_field(field_name, default=value.name)
         else:
             self._sample_doc_cls.add_implied_field(field_name, value)
 
@@ -1022,40 +1045,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._frame_doc_cls.add_implied_field(field_name, value)
         self._reload()
 
-    def add_group_field(self, field_name):
+    def add_group_field(self, field_name, default=None):
         """Adds a group field to the dataset.
 
         Args:
             field_name: the field name
-            ftype: the field type to create. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Only applicable when ``ftype`` is
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the :class:`fiftyone.core.fields.Field` type of
-                the contained field. Only applicable when ``ftype`` is
-                :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
+            default (None): a default group name for the field
         """
-        self._add_group_field(field_name)
+        self._add_group_field(field_name, default=default)
         self._reload()
 
-    def _add_group_field(self, field_name):
+    def _add_group_field(self, field_name, default=None):
         if "." in field_name:
             raise ValueError(
                 "Invalid group field '%s'. Group fields must be top-level "
                 "sample fields" % field_name
             )
 
-        if self._group_field is None:
-            self._group_field = field_name
-
         self._sample_doc_cls.add_field(
             field_name,
             fof.GroupField,
             embedded_doc_type=fof.Group,
         )
+
+        if self._group_field is None:
+            self._group_field = field_name
+
+        if field_name not in self._doc.groups:
+            self._doc.groups[field_name] = {}
+
+        self._doc.default_group_names[field_name] = default
+        self._doc.save()
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
@@ -4556,14 +4576,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 value = sample[field_name]
 
                 if isinstance(value, fof.Group):
-                    if field_name not in self._doc.groups:
-                        self._doc.groups[field_name] = {}
-
-                    if value.name not in self._doc.groups[field_name]:
-                        self._doc.groups[field_name][
-                            value.name
-                        ] = sample.media_type
-                        self._doc.save()
+                    self._expand_group_schema(sample, field_name)
 
                 if field_name in schema:
                     continue
@@ -4572,7 +4585,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if isinstance(value, fof.Group):
-                    self._add_group_field(field_name)
+                    self._add_group_field(field_name, default=value.name)
                 else:
                     self._sample_doc_cls.add_implied_field(field_name, value)
 
@@ -4581,6 +4594,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if expanded:
             self._reload()
+
+    def _expand_group_schema(self, sample, field_name):
+        value = sample[field_name]
+
+        if field_name not in self._doc.groups:
+            self._doc.groups[field_name] = {}
+
+        if value.name not in self._doc.groups[field_name]:
+            # @todo some weird MongoEngine  error occurs here if `copy()` is`
+            # not used here. Fix it?
+            group_media_types = self._doc.groups[field_name].copy()
+            group_media_types[value.name] = sample.media_type
+            self._doc.groups[field_name] = group_media_types
+            self._doc.save()
 
     def _expand_frame_schema(self, frames):
         expanded = False

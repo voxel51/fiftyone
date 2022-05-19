@@ -240,6 +240,7 @@ class DatasetDocument(Document):
     persistent = BooleanField(default=False)
     media_type = StringField()
     groups = DictField(DictField(StringField()))
+    default_group_names = DictField(StringField())
     info = DictField()
     classes = DictField(ClassesField())
     default_classes = ClassesField()
