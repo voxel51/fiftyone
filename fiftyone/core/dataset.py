@@ -16,7 +16,6 @@ import numbers
 import os
 import random
 import string
-import requests
 
 from bson import ObjectId
 from deprecated import deprecated
@@ -4626,8 +4625,7 @@ def _list_datasets(include_private=False):
         query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
     # We don't want an error here if `name == None`
-    def _sort(l):
-        return sorted(l, key=lambda x: (x is None, x))
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
 
     return _sort(conn.datasets.find(query).distinct("name"))
 
@@ -4758,8 +4756,7 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     else:
         prefix = "samples"
 
-    def create_name(timestamp):
-        return ".".join([prefix, timestamp])
+    create_name = lambda timestamp: ".".join([prefix, timestamp])
 
     name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
@@ -5388,10 +5385,7 @@ def _merge_samples_python(
 
     if key_fcn is None:
         id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
-
-        def key_fcn(sample):
-            return sample[key_field]
-
+        key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
@@ -5581,7 +5575,8 @@ def _merge_samples_pipeline(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {}
+        project = {key_field: True}
+
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)
