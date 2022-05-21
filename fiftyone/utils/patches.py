@@ -6,6 +6,8 @@ Image patch utilities.
 |
 """
 import cv2
+import numpy.typing as npt
+from typing import Any
 
 import eta.core.image as etai
 
@@ -85,7 +87,7 @@ class ImagePatchesExtractor(object):
                         yield patch
 
 
-def parse_patches(doc, patches_field, handle_missing="skip"):
+def parse_patches(doc, patches_field: str, handle_missing: str="skip"):
     """Parses the patches from the given document.
 
     Args:
@@ -136,7 +138,7 @@ def parse_patches(doc, patches_field, handle_missing="skip"):
     return patches
 
 
-def extract_patch(img, detection, force_square=False, alpha=None):
+def extract_patch(img: npt.ArrayLike, detection: fol.Detection, force_square: bool=False, alpha: Any=None) -> np.ndarray:
     """Extracts the patch from the image.
 
     Args:
@@ -152,7 +154,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
             the box by 10%, and set ``alpha = 0.9`` to contract the box by 10%
 
     Returns:
-        the image patch
+        the image patch: a numpy image array
     """
     dobj = foue.to_detected_object(detection, extra_attrs=False)
 
@@ -163,7 +165,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
     return bbox.extract_from(img, force_square=force_square)
 
 
-def _load_image(image_path, force_rgb=False):
+def _load_image(image_path: str, force_rgb: bool=False):
     # pylint: disable=no-member
     flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
     return etai.read(image_path, flag=flag)
