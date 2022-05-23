@@ -9,7 +9,7 @@ httpx==0.7.7
 hypercorn==0.13.2
 Jinja2==3.0.3
 kaleido==0.2.1
-matplotlib==3.2.1
+matplotlib==3.5.2
 mongoengine==0.20.0
 motor==2.3.0
 ndjson==0.3.1
