@@ -433,6 +433,10 @@ class Session(object):
         """The auto setting for the session."""
         return self._client.auto
 
+    @auto.setter
+    def auto(self, auto: bool) -> None:
+        self._client.auto = auto
+
     @property
     def server_port(self) -> int:
         """The server port for the session."""
@@ -915,7 +919,7 @@ class Session(object):
         Returns:
             a context manager
         """
-        return fou.SetAttributes(self, _auto=False)
+        return fou.SetAttributes(self, auto=False)
 
     def wait(self, wait: float = 3) -> None:
         """Blocks execution until the App is closed by the user.

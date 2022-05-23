@@ -131,13 +131,12 @@ export const aggregations = selectorFamily<
       return get(aggregations({ extended: false, modal })) as AggregationsData;
     }
 
-    const dataset = get(atoms.dataset)?.name;
+    const dataset = get(selectors.datasetName);
 
     if (!dataset) {
       return null;
     }
 
-    get(aggregationsTick);
     const { aggregations: data } = (await getFetchFunction()(
       "POST",
       "/aggregations",

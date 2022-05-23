@@ -41,11 +41,7 @@ import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import {
-  useHashChangeHandler,
-  useSetDataset,
-  useStateUpdate,
-} from "../utils/hooks";
+import { useSetDataset, useStateUpdate } from "../utils/hooks";
 import { isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
 
@@ -179,7 +175,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   return (
     <>
       <Header
-        title={"FiftyOne Teams"}
+        title={"FiftyOne"}
         onRefresh={() => {
           refresh();
         }}

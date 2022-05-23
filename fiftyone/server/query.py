@@ -286,6 +286,7 @@ def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
     if view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
+        data.id = ObjectId()
         data.sample_fields = [
             from_dict(SampleField, s)
             for s in _flatten_fields([], d["sample_fields"])

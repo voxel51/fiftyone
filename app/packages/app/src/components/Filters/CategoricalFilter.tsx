@@ -329,7 +329,13 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
     )[path] as aggregationAtoms.CategoricalAggregations;
 
     if (!CountValues) {
-      const parent = path.split(".")[0];
+      const keys = path.split(".");
+      let parent = keys[0];
+
+      let f = get(field(parent));
+      if (!f && parent === "frames") {
+        parent = `frames.${keys[1]}`;
+      }
 
       if (VALID_KEYPOINTS.includes(get(field(parent)).embeddedDocType)) {
         return true;

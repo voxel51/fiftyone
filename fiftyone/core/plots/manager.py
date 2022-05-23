@@ -314,7 +314,9 @@ class PlotManager(object):
         for name in self._plots:
             self._connect_plot(name)
 
-        self._session.add_event_listener("update", self._on_session_update)
+        self._session._client.add_event_listener(
+            "state_update", self._on_session_update
+        )
 
         self._connected = True
         self._disconnected = False

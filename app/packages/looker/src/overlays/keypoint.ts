@@ -232,7 +232,7 @@ const getSkeleton = (
   const defaultSkeleton = state.options.defaultSkeleton;
 
   const namedSkeleton = state.options.skeletons
-    ? state.options.skeletons[name]
+    ? state.options.skeletons[name.split(".").slice(-1)[0]]
     : null;
 
   return namedSkeleton || defaultSkeleton || null;
