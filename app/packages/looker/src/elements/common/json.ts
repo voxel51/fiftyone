@@ -21,6 +21,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
   private json?: boolean;
   getEvents(): Events<State> {
     return {
+      mousemove: ({ event }) => event.stopPropagation(),
       click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();

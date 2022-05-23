@@ -37,6 +37,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -352,7 +353,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (media_type, fom.MEDIA_TYPES)
             )
 
+        if media_type == self._doc.media_type:
+            return
+
         self._doc.media_type = media_type
+        self._set_metadata(media_type)
+
+    def _set_metadata(self, media_type):
+        idx = None
+        for i, field in enumerate(self._doc.sample_fields):
+            if field.name == "metadata":
+                idx = i
+
+        if idx is not None:
+            if media_type == fom.IMAGE:
+                doc_type = fome.ImageMetadata
+            elif media_type == fom.VIDEO:
+                doc_type = fome.VideoMetadata
+            else:
+                doc_type = fome.Metadata
+
+            field = foo.create_field(
+                "metadata",
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=doc_type,
+            )
+            field_doc = foo.SampleFieldDocument.from_field(field)
+            self._doc.sample_fields[idx] = field_doc
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -362,6 +389,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
 
         self._doc.save()
+        self.reload()
 
     @property
     def version(self):
@@ -1518,7 +1546,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
-
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -4722,6 +4749,20 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
+            field._set_parent(doc_cls)
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field, field.name)
+
+
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4748,12 +4789,29 @@ def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(sample_collection_name):
-    return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+def _create_sample_document_cls(sample_collection_name, field_docs=None):
+    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+    _declare_fields(cls, field_docs=field_docs)
+    return cls
 
 
-def _create_frame_document_cls(frame_collection_name):
-    return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+def _create_frame_document_cls(frame_collection_name, field_docs=None):
+    cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+    _declare_fields(cls, field_docs=field_docs)
+    return cls
+
+
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field)
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -4809,7 +4867,9 @@ def _load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(
+        sample_collection_name, dataset_doc.sample_fields
+    )
 
     default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
@@ -4834,7 +4894,9 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _src_dataset._frame_doc_cls
         dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+        frame_doc_cls = _create_frame_document_cls(
+            frame_collection_name, dataset_doc.frame_fields
+        )
 
         if dataset_doc.media_type == fom.VIDEO:
             default_frame_fields = fofr.get_default_frame_fields(
@@ -5155,6 +5217,7 @@ def _merge_dataset_doc(
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
     )
+
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
             frame_schema, expand_schema=expand_schema
@@ -5363,13 +5426,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
         for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,

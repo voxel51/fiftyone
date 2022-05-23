@@ -255,19 +255,13 @@ class SimpleEvaluation(SegmentationEvaluation):
             # note: fields are manually declared so they'll exist even when
             # `samples` is empty
             dataset = samples._dataset
-            dataset._add_sample_field_if_necessary(acc_field, fof.FloatField)
-            dataset._add_sample_field_if_necessary(pre_field, fof.FloatField)
-            dataset._add_sample_field_if_necessary(rec_field, fof.FloatField)
+            dataset.add_sample_field(acc_field, fof.FloatField)
+            dataset.add_sample_field(pre_field, fof.FloatField)
+            dataset.add_sample_field(rec_field, fof.FloatField)
             if processing_frames:
-                dataset._add_frame_field_if_necessary(
-                    acc_field, fof.FloatField
-                )
-                dataset._add_frame_field_if_necessary(
-                    pre_field, fof.FloatField
-                )
-                dataset._add_frame_field_if_necessary(
-                    rec_field, fof.FloatField
-                )
+                dataset.add_frame_field(acc_field, fof.FloatField)
+                dataset.add_frame_field(pre_field, fof.FloatField)
+                dataset.add_frame_field(rec_field, fof.FloatField)
 
         logger.info("Evaluating segmentations...")
         for sample in _samples.iter_samples(progress=True):

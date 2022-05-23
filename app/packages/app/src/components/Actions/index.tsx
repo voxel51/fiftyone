@@ -1,3 +1,3 @@
-import ActionsRow from "./ActionsRow";
+import { GridActionsRow, ModalActionsRow } from "./ActionsRow";
 
-export default ActionsRow;
+export { GridActionsRow, ModalActionsRow };

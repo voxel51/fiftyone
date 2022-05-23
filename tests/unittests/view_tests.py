@@ -1836,6 +1836,7 @@ class ViewStageTests(unittest.TestCase):
         view = self.dataset.set_field(
             "test_dets.detections.is_best_friend",
             (F("confidence") > 0.5) & (F("label") == "friend"),
+            _allow_missing=True,
         )
 
         for sample in view:
@@ -1845,7 +1846,9 @@ class ViewStageTests(unittest.TestCase):
 
         # Set an embedded field
         view = self.dataset.set_field(
-            "test_dets.num_predictions", F("detections").length()
+            "test_dets.num_predictions",
+            F("detections").length(),
+            _allow_missing=True,
         )
 
         for sample in view:

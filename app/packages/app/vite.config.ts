@@ -1,13 +1,17 @@
-import { UserConfig } from "vite";
 import reactRefresh from "@vitejs/plugin-react-refresh";
 import nodePolyfills from "rollup-plugin-polyfill-node";
+import { defineConfig } from "vite";
+import relay from "vite-plugin-relay";
 
-export default {
-  base: "",
-  plugins: [
-    reactRefresh({
-      parserPlugins: ["classProperties", "classPrivateProperties"],
-    }),
-    nodePolyfills(),
-  ],
-} as UserConfig;
+export default defineConfig(({ mode }) => {
+  return {
+    base: mode === "desktop" ? "" : "/",
+    plugins: [
+      reactRefresh({
+        parserPlugins: ["classProperties", "classPrivateProperties"],
+      }),
+      relay,
+      nodePolyfills(),
+    ],
+  };
+});
