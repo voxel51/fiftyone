@@ -51,6 +51,9 @@ Core
 - Fixed image lists for the `image_path` parameter when importing
   :ref:`GeoTIFF datasets <GeoTIFFDataset-import>`
   `#1728 <https://github.com/voxel51/fiftyone/pull/1728>`_
+- Added a :func:`find_duplicates() <fiftyone.utils.iou.find_duplicates>`
+  utility to automatically find duplicate objects based on IoU
+  `#1714 <https://github.com/voxel51/fiftyone/pull/1714>`_
 
 .. _release-notes-v0.15.1:
 
