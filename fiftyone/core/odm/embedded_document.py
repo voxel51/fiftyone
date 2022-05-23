@@ -21,7 +21,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """
 
 
-class EmbeddedDocument(MongoEngineBaseDocument, mongoengine.EmbeddedDocument):
+class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
     """
