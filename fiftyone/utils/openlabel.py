@@ -182,7 +182,7 @@ class OpenLABELImageDatasetImporter(
             skeleton_key=self.skeleton_key,
         )
 
-        labels = _merge_frame_labels(sample_labels, frame_labels)
+        labels = sample_labels
 
         if self._has_scalar_labels:
             labels = next(iter(labels.values())) if labels else None
@@ -672,18 +672,22 @@ class OpenLABELLabelConverter(object):
         frame_segs = defaultdict(list)
         for obj in self.objects.all_objects:
             if "detections" in label_types:
-                for frame_number, dets in obj.to_detections(frame_size):
+                for frame_number, dets in obj.to_detections(
+                    frame_size
+                ).items():
                     frame_dets[frame_number].extend(dets)
 
             if "keypoints" in label_types:
                 for frame_number, kps in obj.to_keypoints(
                     frame_size, skeleton=skeleton, skeleton_key=skeleton_key
-                ):
+                ).items():
                     frame_kps[frame_number].extend(kps)
 
             if "segmentations" in label_types:
-                for frame_number, segs in obj.to_segmentations(frame_size):
+                for frame_number, segs in obj.to_polylines(frame_size).items():
                     frame_kps[frame_number].extend(segs)
+
+        sample_labels = stream_infos.get_stream_attributes()
 
         frame_labels = defaultdict(dict)
         for frame_number in stream_infos.frame_numbers:
@@ -691,16 +695,26 @@ class OpenLABELLabelConverter(object):
                 frame_number=frame_number
             )
 
+        sample_labels["detections"] = fol.Detections(detections=[])
+        sample_labels["keypoints"] = fol.Keypoints(keypoints=[])
+        sample_labels["segmentations"] = fol.Polylines(polylines=[])
         for frame_number, dets in frame_dets.items():
-            frame_labels[frame_number]["detections"] = dets
+            frame_labels[frame_number]["detections"] = fol.Detections(
+                detections=dets
+            )
+            sample_labels["detections"].detections.extend(dets)
 
         for frame_number, kps in frame_kps.items():
-            frame_labels[frame_number]["keypoints"] = kps
+            frame_labels[frame_number]["keypoints"] = fol.Keypoints(
+                keypoints=kps
+            )
+            sample_labels["keypoints"].keypoints.extend(kps)
 
         for frame_number, segs in frame_segs.items():
-            frame_labels[frame_number]["segmentations"] = segs
-
-        sample_labels = stream_infos.get_stream_attributes()
+            frame_labels[frame_number]["segmentations"] = fol.Polylines(
+                polylines=segs
+            )
+            sample_labels["segmentations"].polylines.extend(segs)
 
         return sample_labels, dict(frame_labels)
 
@@ -730,7 +744,7 @@ class OpenLABELGroup(object):
 
     @classmethod
     def _get_label_file_id(cls, element_id, element_name):
-        return element_id[: len(element_name) - 1]
+        return element_id[: -len(element_name) - 1]
 
     def _add_element_dict(self, label_file_id, key, info_d, frame_number=None):
         """Parses the given raw stream dictionary.
@@ -806,7 +820,7 @@ class OpenLABELObjects(OpenLABELGroup):
             label_file_id = stream_info.label_file_id
             obj_keys = self._keys_by_label_file_id.get(label_file_id, [])
             for obj_key in obj_keys:
-                obj_id = self._get_element_id(obj_key, label_file_id)
+                obj_id = self._get_element_id(label_file_id, obj_key)
                 obj = self._get_filtered_object(obj_id, stream_info)
                 if obj:
                     stream_objects.add_object(obj_key, label_file_id, obj)
@@ -967,7 +981,8 @@ class OpenLABELBBox(OpenLABELShape):
         y = cy - (h / 2)
         bounding_box = [x / width, y / height, w / width, h / height]
 
-        _attrs = deepcopy(attributes).update(self.attributes)
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
 
         return fol.Detection(
             label=label,
@@ -981,7 +996,8 @@ class OpenLABELPoly2D(OpenLABELShape):
         rel_points = [
             [(x / width, y / height) for x, y, in _pairwise(self.coords)]
         ]
-        _attrs = deepcopy(attributes).update(self.attributes)
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
 
         filled = _attrs.pop("filled", None)
         if filled is None:
@@ -1040,10 +1056,9 @@ class OpenLABELPoint(OpenLABELShape):
         skeleton=None,
         skeleton_key=None,
     ):
-        rel_points = [
-            (x / width, y / height) for x, y, in _pairwise(self.coords)
-        ]
-        _attrs = deepcopy(attributes).update(self.attributes)
+        rel_points = [(x / width, y / height) for x, y, in self.coords]
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
         if skeleton and skeleton_key and skeleton_key in _attrs:
             label_order = _attrs.pop(skeleton_key)
             rel_points, _attrs = self._sort_by_skeleton(
@@ -1158,7 +1173,7 @@ class OpenLABELShapes(AttributeParser):
         stream = None
         for shape in self.shapes:
             coords.append(shape.coords)
-            for k, v in shape.attributes:
+            for k, v in shape.attributes.items():
                 _attrs[k].append(v)
 
             if shape.stream:
@@ -1183,7 +1198,8 @@ class OpenLABELShapes(AttributeParser):
 
     def _to_individual_labels(self, label, attributes, width, height):
         labels = []
-        _attrs = deepcopy(attributes).update(self.attributes)
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
         for shape in self.shapes:
             labels.append(shape.to_label(label, _attrs, width, height))
 
@@ -1472,7 +1488,8 @@ class OpenLABELObject(AttributeParser):
 
     def keep_frames(self, frame_numbers):
         _obj = deepcopy(self)
-        for frame_number in frame_numbers:
+        numbers_to_remove = set(_obj.frame_objects.keys()) - set(frame_numbers)
+        for frame_number in numbers_to_remove:
             _obj.frame_objects.pop(frame_number, None)
         return _obj
 
@@ -1526,7 +1543,7 @@ class OpenLABELObject(AttributeParser):
             a list of :class:`fiftyone.core.labels.Detection` objects for each
             bounding box in this object
         """
-        self._to_labels(frame_size, "bboxes")
+        return self._to_labels(frame_size, "bboxes")
 
     def _get_label_attrs(self, frame_size, parent=None):
         label = self.type
@@ -1549,7 +1566,7 @@ class OpenLABELObject(AttributeParser):
             a list of :class:`fiftyone.core.labels.Polyline` objects for each
             polyline in this object
         """
-        self._to_labels(frame_size, "segmentations")
+        return self._to_labels(frame_size, "segmentations")
 
     def to_keypoints(self, frame_size, skeleton=None, skeleton_key=None):
         """Converts the keypoints in this object to
@@ -1562,7 +1579,7 @@ class OpenLABELObject(AttributeParser):
             a list of :class:`fiftyone.core.labels.Keypoint` objects for each
             keypoint in this object
         """
-        self._to_labels(
+        return self._to_labels(
             frame_size,
             "keypoints",
             is_points=True,
