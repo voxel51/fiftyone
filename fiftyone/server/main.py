@@ -50,7 +50,7 @@ from fiftyone.server.extended_view import get_extended_view, get_view_field
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 import fiftyone.server.metadata as fosm
 import fiftyone.server.utils as fosu
-
+import uuid
 
 db = foo.get_async_db_conn()
 _notebook_clients = {}
@@ -81,11 +81,18 @@ class RequestHandler(tornado.web.RequestHandler):
         raise NotImplementedError("subclass must implement get_response()")
 
 
-class FiftyOneHandler(RequestHandler):
+class FiftyOneHandler(tornado.web.RequestHandler):
     """Returns the version info of the fiftyone being used"""
 
-    @staticmethod
-    def get_response():
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+
+    async def get(self,access_key=None):
+
         """Returns the serializable response
 
         Returns:
@@ -98,13 +105,15 @@ class FiftyOneHandler(RequestHandler):
         else:
             submitted = False
 
-        return {
-            "version": foc.VERSION,
+
+        # self.set_cookie("fiftyone_user_id", "434234324")
+        self.write({"version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
             "teams": {"submitted": submitted, "minimized": isfile},
             "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
-        }
+        })
+
 
 
 class NotebookHandler(RequestHandler):
@@ -235,19 +244,24 @@ class PageHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
-    async def get(self):
+    async def get(self,access_key=None):
+        user_id = self.get_cookie("fiftyone_user_id")
         # pylint: disable=no-value-for-parameter
         page = int(self.get_argument("page", 1))
         page_length = int(self.get_argument("page_length", 20))
-
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset
-        else:
-            self.write({"results": [], "more": False})
-            return
+        state= fos.StateDescription.from_dict(StateHandler.state_pool.get(user_id))
+        if state is None:
+            state = fos.StateDescription.from_dict(StateHandler.state)
+        try:
+            if state.view is not None:
+                view = state.view
+            elif state.dataset is not None:
+                view = state.dataset
+            else:
+                self.write({"results": [], "more": False})
+                return
+        except Exception as e:
+            print("Error in state")
 
         view = get_extended_view(view, state.filters, count_labels_tags=True)
         if view.media_type == fom.VIDEO:
@@ -261,7 +275,7 @@ class PageHandler(tornado.web.RequestHandler):
         view = view.skip((page - 1) * page_length)
 
         samples = await foo.aggregate(
-            StateHandler.sample_collection(),
+            StateHandler.sample_collection(state),
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(page_length + 1)
         convert(samples)
@@ -464,6 +478,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     app_clients = set()
     clients = set()
     state = fos.StateDescription().serialize()
+    state_pool = {}
     prev_state = fos.StateDescription().serialize()
 
     @staticmethod
@@ -491,9 +506,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         return FiftyOneJSONEncoder.loads(data)
 
     @staticmethod
-    def sample_collection():
+    def sample_collection(state= None):
         """Getter for the current sample collection."""
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state is None:
+            raise
+
         if state.view is not None:
             dataset = state.view._dataset
         else:
@@ -520,14 +537,28 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         return True
 
-    def open(self):
+    def open(self, *args, **kwargs):
         """On open, add the client to the active clients set, and write the
         current state to the new client.
         """
+        user_id = self.get_cookie("fiftyone_user_id")
+        self.current_user=user_id
         StateHandler.clients.add(self)
+        StateHandler.state_pool[user_id] = fos.StateDescription().serialize()
+        dataset_name = self.get_cookie("fiftyone_task_id")
+        if dataset_name:
+            dataset = fod.load_dataset(dataset_name)
+            config = fos.StateDescription.from_dict(StateHandler.state_pool[user_id]).config
+            active_handle = StateHandler.state_pool[user_id]["active_handle"]
+            StateHandler.state_pool[user_id] = fos.StateDescription(
+                dataset=dataset, config=config, active_handle=active_handle
+            ).serialize()
+            StateHandler.state_pool[user_id]["datasets"]=[dataset_name]
+
         _write_message(
-            {"type": "update", "state": StateHandler.state}, only=self
+            {"type": "update", "state": StateHandler.state_pool[user_id] }, only=self
         )
+
 
     def on_close(self):
         """On close, remove the client from the active clients set, and
@@ -535,7 +566,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
-
+        del StateHandler.state_pool[self.get_cookie("fiftyone_user_id")]
         async def close_wait():
             await asyncio.sleep(_DISCONNECT_TIMEOUT)
             if not StateHandler.app_clients:
@@ -551,6 +582,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             message: a serialized message
         """
+        self.current_user=self.get_cookie("fiftyone_user_id")
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         await event(self, **message)
@@ -586,9 +618,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_refresh(self, polling_client=None):
         """Event for refreshing an App client."""
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        user_id = self.get_cookie("fiftyone_user_id")
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[user_id] )
         state.refresh = not state.refresh
-        StateHandler.state = state.serialize()
+        StateHandler.state_pool[user_id] = state.serialize()
 
         if polling_client:
             PollingHandler.clients[polling_client].update(
@@ -608,7 +641,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             filters: a :class:`dict` mapping field path to a serialized
                 :class:fiftyone.core.stages.Stage`
         """
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        user_id = self.get_cookie("fiftyone_user_id")
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[user_id])
         state.filters = filters
         state.selected_labels = []
         state.selected = []
@@ -617,11 +651,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = state.dataset
 
-        StateHandler.state = state.serialize()
+        StateHandler.state_pool[user_id] = state.serialize()
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
 
-        await self.send_statistics(view, filters=filters, extended=True)
+        await self.send_statistics(view, filters=filters, extended=True,only=self)
 
     @staticmethod
     async def on_update(caller, state, ignore_polling_client=None):
@@ -631,7 +665,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
-        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
+        # StateHandler.state = fos.StateDescription.from_dict(state).serialize()
+        StateHandler.state_pool[caller.current_user]= state
         active_handle = state["active_handle"]
         global _notebook_clients
         global _deactivated_clients
@@ -662,9 +697,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             events.update({"update", "statistics", "extended_statistics"})
 
         awaitables = [
-            StateHandler.send_updates(),
+            StateHandler.send_updates(only=caller),
         ]
-        awaitables += StateHandler.get_statistics_awaitables()
+        awaitables += StateHandler.get_statistics_awaitables(only=caller)
         asyncio.gather(*awaitables)
 
     @staticmethod
@@ -675,8 +710,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             _ids: a list of sample _id
         """
-        StateHandler.state["selected"] = _ids
-        await self.send_updates(ignore=self)
+        user_id = self.get_cookie("fiftyone_user_id")
+        StateHandler.state_pool[user_id]["selected"] = _ids
+        # await self.send_updates(only=self,ignore=self)
 
     @staticmethod
     async def on_clear_selection(self):
@@ -684,8 +720,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         Sends state updates to all active clients.
         """
-        StateHandler.state["selected"] = []
-        await self.send_updates(ignore=self)
+        user_id = self.get_cookie("fiftyone_user_id")
+        StateHandler.state_pool[user_id]["selected"] = []
+        # await self.send_updates(ignore=self)
 
     @staticmethod
     async def on_set_selected_labels(self, selected_labels):
@@ -697,8 +734,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if not isinstance(selected_labels, list):
             raise TypeError("selected_labels must be a list")
 
-        StateHandler.state["selected_labels"] = selected_labels
-        await self.send_updates(ignore=self)
+        user_id = self.get_cookie("fiftyone_user_id")
+        StateHandler.state_pool[user_id]["selected_labels"] = selected_labels
+        # await self.send_updates(ignore=self)
 
     @staticmethod
     async def on_set_dataset(self, dataset_name):
@@ -707,22 +745,21 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             dataset_name: the dataset name
         """
+        raise
         dataset = fod.load_dataset(dataset_name)
-        config = fos.StateDescription.from_dict(StateHandler.state).config
+        config = fos.StateDescription.from_dict(StateHandler.state_pool[self.current_user]).config
         active_handle = StateHandler.state["active_handle"]
-        StateHandler.state = fos.StateDescription(
+        StateHandler.state_pool[self.current_user] = fos.StateDescription(
             dataset=dataset, config=config, active_handle=active_handle
         ).serialize()
-        await self.on_update(self, StateHandler.state)
+        await self.on_update(self, self.state_pool[self.current_user])
 
     @staticmethod
     async def on_tag(
-        caller,
-        changes,
-        target_labels=False,
-        active_labels=None,
+        caller, changes, target_labels=False, active_labels=None,
     ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[caller.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -737,11 +774,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             fosu.change_sample_tags(view, changes)
 
-        StateHandler.state["refresh"] = not state.refresh
+        StateHandler.state_pool[caller.current_user]["refresh"] = not state.refresh
         for clients in PollingHandler.clients.values():
             clients.update({"update"})
 
-        await StateHandler.on_update(caller, StateHandler.state)
+        await StateHandler.on_update(caller, StateHandler.state_pool[caller.current_user])
 
     @staticmethod
     async def on_all_tags(caller, sample_id=None):
@@ -771,7 +808,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_modal_statistics(caller, sample_id, uuid, filters=None):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[caller.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -805,7 +842,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     async def on_save_filters(caller, add_stages=[], with_selected=False):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[caller.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -840,7 +877,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         active_labels=[],
         frame_number=None,
     ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[caller.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -874,10 +911,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         awaitables = [
             StateHandler.send_samples(
-                sample_id, sample_ids, current_frame=frame_number
+                sample_id, sample_ids, current_frame=frame_number,only=caller
             )
         ]
-        awaitables += StateHandler.get_statistics_awaitables()
+        awaitables += StateHandler.get_statistics_awaitables(only=caller)
 
         asyncio.gather(*awaitables)
 
@@ -890,7 +927,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         uuid=None,
         labels=False,
     ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[caller.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -936,7 +973,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def send_samples(
         cls, sample_id, sample_ids, current_frame=None, only=None
     ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[only.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -957,7 +994,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.set_field("frames", expr)
 
         samples = await foo.aggregate(
-            StateHandler.sample_collection(),
+            StateHandler.sample_collection(state),
             view._pipeline(attach_frames=True, detach_frames=False),
         ).to_list(len(sample_ids))
         convert(samples)
@@ -977,10 +1014,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Returns:
             a list of coroutines
         """
-        if StateHandler.state["dataset"] is None:
+        if StateHandler.state_pool[only.current_user]["dataset"] is None:
             return []
-
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        # else:
+        #     return []
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[only.current_user])
         if state.view is not None:
             view = state.view
         else:
@@ -988,10 +1026,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return [
             cls.send_statistics(
-                view,
-                extended=False,
-                filters=state.filters,
-                only=only,
+                view, extended=False, filters=state.filters, only=only,
             ),
             cls.send_statistics(
                 view, extended=True, filters=state.filters, only=only
@@ -1008,7 +1043,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the updates to
         """
         _write_message(
-            {"type": "update", "state": StateHandler.state},
+            {"type": "update", "state": StateHandler.state_pool[only.current_user]},
             ignore=ignore,
             only=only,
         )
@@ -1075,7 +1110,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         limit=_LIST_LIMIT,
         sample_id=None,
     ):
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[self.current_user])
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -1109,7 +1144,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             group: the distribution group. Valid groups are 'labels', 'scalars',
                 and 'tags'.
         """
-        state = fos.StateDescription.from_dict(StateHandler.state)
+        state = fos.StateDescription.from_dict(StateHandler.state_pool[self.current_user])
         results = None
         if state.view is not None:
             view = state.view
@@ -1238,13 +1273,14 @@ def _get_search_view(view, path, search, selected):
 
 
 def _write_message(message, app=False, session=False, ignore=None, only=None):
+
     clients = StateHandler.app_clients if app else StateHandler.clients
     clients = _filter_deactivated_clients(clients)
 
     if only:
         only.write_message(message)
         return
-
+    raise
     for client in clients:
         if session and client in StateHandler.app_clients:
             continue
@@ -1461,9 +1497,15 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
+        if self.absolute_path.endswith(".html"):
+
+            self.set_cookie("fiftyone_user_id", self.get_argument("uid"))
+            self.set_cookie("fiftyone_task_id", self.get_argument("tid"))
+
     def get_content_type(self):
         if self.absolute_path.endswith(".js"):
             return "text/javascript"
+
 
         return super().get_content_type()
 
@@ -1492,6 +1534,14 @@ class MediaHandler(FileHandler):
         return absolute_path
 
 
+class MainHandler(tornado.web.RequestHandler):
+
+
+    def get(self,access_key=None):
+        self.set_cookie("fiftyone_user_id", access_key,path="/"+access_key)
+        self.set_cookie("fiftyone_task_id", self.get_argument("tid"),path="/"+access_key)
+        self.render("index.html")
+
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
@@ -1499,6 +1549,10 @@ class Application(tornado.web.Application):
         server_path = os.path.dirname(os.path.abspath(__file__))
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
+        settings = {
+            "template_path": web_path,
+            "static_path": web_path,
+        }
         handlers = [
             (r"/colorscales", ColorscalesHandler),
             (r"/fiftyone", FiftyOneHandler),
@@ -1511,6 +1565,14 @@ class Application(tornado.web.Application):
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (r"/teams", TeamsHandler),
+            # 用于多state的路由
+            (r"/(?P<access_key>[^\/]+)",MainHandler,),
+            (r"/(?P<access_key>[^\/]+)/fiftyone",FiftyOneHandler, ),
+            (r"/(?P<access_key>[^\/]+)/page", PageHandler),
+            (r"/(?P<access_key>[^\/]+)/stages", tornado.web.RedirectHandler,{"url":"/stages", "permanent":False}),
+            (r"/(?P<access_key>[^\/]+)/state",StateHandler),
+            (r"/([^\/]+)/filepath/(.*)",tornado.web.RedirectHandler, {"url":"/filepath/{1}", "permanent":False}),
+
             (
                 r"/(.*)",
                 FileHandler,
