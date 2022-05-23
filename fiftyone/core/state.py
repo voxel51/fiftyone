@@ -24,69 +24,37 @@ class StateDescription(etas.Serializable):
     a corresponding :class:`fiftyone.core.session.Session`.
 
     Args:
-        datasets (None): the list of available datasets
+        config (None): an optional :class:`fiftyone.core.config.AppConfig`
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
-        view (None): the current :class:`fiftyone.core.view.DatasetView`
-        active_handle (None): the UUID of the currently active App. Only
-            applicable in notebook contexts
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        config (None): an optional :class:`fiftyone.core.config.AppConfig`
-        refresh (False): a boolean toggle for forcing an App refresh
-        close (False): whether to close the App
+        view (None): the current :class:`fiftyone.core.view.DatasetView`
     """
 
     def __init__(
         self,
-        datasets=None,
+        config=None,
         dataset=None,
-        view=None,
-        active_handle=None,
         selected=None,
         selected_labels=None,
-        config=None,
-        refresh=False,
-        close=False,
+        view=None,
     ):
-        self.datasets = datasets or fod.list_datasets()
+        self.config = config or fo.app_config.copy()
         self.dataset = dataset
-        self.view = view
-        self.active_handle = active_handle
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.config = config or fo.app_config.copy()
-        self.refresh = refresh
-        self.close = close
+        self.view = view
 
     def serialize(self, reflective=False):
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
 
-            _dataset = None
-            _view = None
-            _view_cls = None
-
             if self.dataset is not None:
-                _dataset = self.dataset._serialize()
-
+                d["dataset"] = self.dataset.name
                 if self.view is not None:
-                    _view = self.view._serialize()
-                    _view_cls = etau.get_class_name(self.view)
+                    d["view"] = self.view._serialize()
+                    d["view_cls"] = etau.get_class_name(self.view)
 
-                    # If the view uses a temporary dataset, we must use its
-                    # media type and field schemas
-                    if self.view._dataset != self.dataset:
-                        _tmp = self.view._dataset._serialize()
-                        _dataset["media_type"] = _tmp["media_type"]
-                        _dataset["sample_fields"] = _tmp["sample_fields"]
-                        _dataset["frame_fields"] = _tmp["frame_fields"]
-                        _dataset["app_sidebar_groups"] = _tmp.get(
-                            "app_sidebar_groups", None
-                        )
-
-            d["dataset"] = _dataset
-            d["view"] = _view
-            d["view_cls"] = _view_cls
             d["config"]["timezone"] = fo.config.timezone
 
             if self.config.colorscale:
@@ -116,17 +84,13 @@ class StateDescription(etas.Serializable):
         """
         dataset = d.get("dataset", None)
         if dataset is not None:
-            dataset = fod.load_dataset(dataset.get("name"))
+            dataset = fod.load_dataset(dataset)
 
         stages = d.get("view", None)
         if dataset is not None and stages:
             view = fov.DatasetView._build(dataset, stages)
         else:
             view = None
-
-        active_handle = d.get("active_handle", None)
-        selected = d.get("selected", [])
-        selected_labels = d.get("selected_labels", [])
 
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
@@ -136,16 +100,10 @@ class StateDescription(etas.Serializable):
         if timezone:
             fo.config.timezone = timezone
 
-        close = d.get("close", False)
-        refresh = d.get("refresh", False)
-
         return cls(
-            dataset=dataset,
-            view=view,
-            active_handle=active_handle,
-            selected=selected,
-            selected_labels=selected_labels,
             config=config,
-            refresh=refresh,
-            close=close,
+            dataset=dataset,
+            selected=d.get("selected", []),
+            selected_labels=d.get("selected_labels", []),
+            view=view,
         )

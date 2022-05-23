@@ -8,12 +8,12 @@ import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
 import { State } from "../../../recoil/types";
 import { elementNames } from "../../../recoil/view";
-import { useTheme } from "../../../utils/hooks";
 
 import { NameAndCountContainer } from "../../utils";
 
 import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
+import { useTheme } from "@fiftyone/components";
 
 const ACTIVE_ATOM = {
   [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
@@ -85,13 +85,19 @@ const MatchEye = ({ elementsName, name, matched, onClick }: MatchEyeProps) => {
 };
 
 const FilterableTagEntry = ({
-  tagKey,
-  tag,
   modal,
+  tag,
+  tagKey,
 }: {
+  entryKey: string;
+  modal: boolean;
   tagKey: State.TagKey;
   tag: string;
-  modal: boolean;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
 }) => {
   const theme = useTheme();
   const [active, setActive] = useRecoilState(
@@ -115,8 +121,8 @@ const FilterableTagEntry = ({
 
   return (
     <RegularEntry
-      title={tag}
       backgroundColor={backgroundColor}
+      clickable
       color={color}
       heading={
         <>
@@ -151,7 +157,7 @@ const FilterableTagEntry = ({
         </>
       }
       onClick={() => setActive(!active)}
-      clickable
+      title={tag}
     />
   );
 };

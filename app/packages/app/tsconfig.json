@@ -3,14 +3,15 @@
         "target": "ESNext",
         "module": "ESNext",
         "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "noImplicitAny": false,
         "sourceMap": true,
         "outDir": "dist",
         "jsx": "preserve",
-        "types": ["vite/client"],
-        "strict": true
+        "types": ["vite/client"]
     },
     "include": ["index.ts"],
     "references": [
+        { "path": "../components" },
         { "path": "../looker" },
         { "path": "../flashlight" },
         { "path": "../utilities" }

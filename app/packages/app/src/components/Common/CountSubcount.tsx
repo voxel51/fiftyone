@@ -1,8 +1,7 @@
+import { useTheme } from "@fiftyone/components";
 import { CircularProgress } from "@material-ui/core";
 import React, { Suspense } from "react";
 import { RecoilValue, useRecoilValue } from "recoil";
-
-import { useTheme } from "../../utils/hooks";
 
 const Loading = () => {
   const theme = useTheme();

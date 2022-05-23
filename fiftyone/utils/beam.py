@@ -307,7 +307,9 @@ def beam_export(
         view_stages = None
 
     export_batch = ExportBatch(
-        dataset_name, view_stages=view_stages, render_kwargs=render_kwargs,
+        dataset_name,
+        view_stages=view_stages,
+        render_kwargs=render_kwargs,
     )
 
     n = len(sample_collection)

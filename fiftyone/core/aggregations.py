@@ -1624,14 +1624,7 @@ class Values(Aggregation):
             return values
 
         if self._field is not None:
-            if isinstance(
-                self._field,
-                (fof.EmbeddedDocumentField, fof.ListField, fof.DictField),
-            ):
-                fcn = lambda v: self._field.to_python(v, detached=True)
-            else:
-                fcn = self._field.to_python
-
+            fcn = self._field.to_python
             level = 1 + self._num_list_fields
 
             return _transform_values(values, fcn, level=level)

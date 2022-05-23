@@ -1,22 +1,21 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
 import * as schemaAtoms from "../../recoil/schema";
 import * as viewAtoms from "../../recoil/view";
-import { http } from "../../shared/connection";
-import { useOutsideClick } from "../../utils/hooks";
+import { useOutsideClick, useSetView } from "../../utils/hooks";
 import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
+import { useSetState } from "../../recoil/utils";
 
 const ViewBarDiv = styled.div`
   position: relative;
-  margin: 1rem 0.5rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
@@ -40,29 +39,23 @@ const ViewBarDiv = styled.div`
 `;
 
 const IconsContainer = styled.div`
+  display: flex;
+  align-items: center;
   position: absolute;
-  z-index: 904;
-  padding: 14px 0.5rem;
-  height: 52px;
+  z-index: 1;
+  height: 100%;
   border-radius: 3px;
+  top 0;
+  height: 52px;
   right: 0;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
-    5%,
+    30%,
     ${({ theme }) => theme.backgroundDark}
   );
-
-  & > * {
-    height: 100%;
-  }
-
-  & > * > {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-  }
+  column-gap: 0.5rem;
+  padding: 0 0.5rem;
 `;
 
 const viewBarKeyMap = {
@@ -76,18 +69,19 @@ const viewBarKeyMap = {
 
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
-  const [view, setView] = useRecoilState(viewAtoms.view);
+  const view = useRecoilValue(viewAtoms.view);
+  const setView = useSetView();
+
   const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
 
   useEffect(() => {
     send({
       type: "UPDATE",
-      http,
       view,
       setView,
       fieldNames: fieldPaths,
     });
-  }, [http, view]);
+  }, [view]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
@@ -110,7 +104,14 @@ const ViewBar = React.memo(() => {
   );
 
   return (
-    <>
+    <div
+      style={{
+        position: "relative",
+        flex: "1",
+        marginRight: "0.5rem",
+        overflow: "hidden",
+      }}
+    >
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         onClick={() =>
@@ -161,20 +162,22 @@ const ViewBar = React.memo(() => {
             height: "100%",
           }}
         ></div>
-
-        <IconsContainer>
-          <Close
-            onClick={() => send("CLEAR")}
-            style={{
-              cursor: "pointer",
-            }}
-          />
-          <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
-            <Help />
-          </ExternalLink>
-        </IconsContainer>
       </ViewBarDiv>
-    </>
+      <IconsContainer>
+        <Close
+          onClick={() => send("CLEAR")}
+          style={{
+            cursor: "pointer",
+          }}
+        />
+        <ExternalLink
+          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+          style={{ display: "flex" }}
+        >
+          <Help />
+        </ExternalLink>
+      </IconsContainer>
+    </div>
   );
 });
 

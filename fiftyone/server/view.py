@@ -1,10 +1,11 @@
 """
-FiftyOne Server extended view.
+FiftyOne Server view
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from numpy import full
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -46,7 +47,7 @@ def get_view(
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity:
+    if filters or similarity or count_label_tags:
         view = get_extended_view(
             view,
             filters,
@@ -103,19 +104,13 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
+    if similarity:
+        view = view.sort_by_similarity(**similarity)
+
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
-
-    if similarity:
-        stage = fosg.ViewStage._from_dict(
-            {
-                "_cls": "fiftyone.core.stages.SortBySimilarity",
-                "kwargs": [[k, v] for k, v in similarity.items()],
-            }
-        )
-        view = view.add_stage(stage)
 
     return view
 
@@ -146,18 +141,6 @@ def _add_labels_tags_counts(view, filtered_fields, label_tags):
     view = _count_list_items(_LABEL_TAGS, view)
 
     return view
-
-
-def get_view_field(fields_map, path):
-    """Returns the proper view field, even for special paths like "id"
-
-    Returns:
-        :class:`fiftyone.core.expressions.ViewField`
-    """
-    if path in fields_map:
-        return F(fields_map[path]).to_string()
-
-    return F(path)
 
 
 def _make_expression(field, path, args):
@@ -220,27 +203,53 @@ def _make_filter_stages(
             prefix = ""
 
         if _is_label(field):
+            keypoints = issubclass(
+                field.document_type, (fol.Keypoint, fol.Keypoints)
+            )
+
+            if keypoints:
+                if path.endswith(".id") or path.endswith(".label"):
+                    keypoints = False
+
             parent = field
             field = view.get_field(path)
             key = field.db_field if field.db_field else field.name
             view_field = F(key)
-            expr = _make_scalar_expression(view_field, args, field)
+            expr = (
+                _make_keypoint_kwargs(
+                    args,
+                    view,
+                    path if path.endswith(".points") else None,
+                )
+                if keypoints
+                else _make_scalar_expression(view_field, args, field)
+            )
             if expr is not None:
                 if hide_result:
-                    new_field = "__%s" % path.split(".")[0]
+                    new_field = "__%s" % path.split(".")[-1]
                     if frames:
-                        new_field = "%s%s" % (view._FRAMES_PREFIX, new_field,)
+                        new_field = "%s%s" % (
+                            view._FRAMES_PREFIX,
+                            new_field,
+                        )
                 else:
                     new_field = None
-                stages.append(
-                    fosg.FilterLabels(
+
+                if keypoints:
+                    stage = fosg.FilterKeypoints(
+                        prefix + parent.name,
+                        _new_field=new_field,
+                        **expr,
+                    )
+                else:
+                    stage = fosg.FilterLabels(
                         prefix + parent.name,
                         expr,
                         _new_field=new_field,
                         only_matches=only_matches,
                     )
-                )
 
+                stages.append(stage)
                 filtered_labels.add(path)
                 if new_field:
                     cleanup.add(new_field)
@@ -365,6 +374,25 @@ def _make_scalar_expression(f, args, field):
         return expr
 
     return _apply_others(expr, f, args)
+
+
+def _make_keypoint_kwargs(args, view, points):
+    if points:
+        ske = view._dataset.default_skeleton
+        name = points.split(".")[0]
+
+        if name in view._dataset.skeletons:
+            ske = view._dataset.skeletons[name]
+
+        values = args.get("values", [])
+        if args["exclude"]:
+            values = set(ske.labels).difference(values)
+
+        return {"labels": values}
+
+    f = F("confidence")
+    mn, mx = args["range"]
+    return {"filter": (f >= mn) & (f <= mx)}
 
 
 def _apply_others(expr, f, args):

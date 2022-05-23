@@ -2,6 +2,7 @@ import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  getFetchFunction,
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
@@ -20,10 +21,8 @@ import {
   filterPaths,
   pathIsShown,
 } from "../../recoil/schema";
-import { datasetName } from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import { http } from "../../shared/connection";
 
 import {
   EmptyEntry,
@@ -33,6 +32,7 @@ import {
   SidebarEntry,
   InputEntry,
 } from "./utils";
+import { datasetName } from "../../recoil/selectors";
 
 export const groupShown = atomFamily<boolean, { name: string; modal: boolean }>(
   {
@@ -194,20 +194,10 @@ export const persistGroups = (
   view: State.Stage[],
   groups: State.SidebarGroups
 ) => {
-  fetch(`${http}/sidebar`, {
-    method: "POST",
-    cache: "no-cache",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    mode: "cors",
-    body: JSON.stringify({
-      dataset,
-      groups: groups.map(([name, paths]) => ({ name, paths })),
-      view,
-    }),
-  }).catch((error) => {
-    throw error;
+  getFetchFunction()("POST", "/sidebar", {
+    dataset,
+    groups: groups.map(([name, paths]) => ({ name, paths })),
+    view,
   });
 };
 
@@ -423,7 +413,9 @@ export const sidebarGroup = selectorFamily<
 >({
   key: "sidebarGroup",
   get: ({ group, ...params }) => ({ get }) => {
-    return get(sidebarGroups(params)).filter(([name]) => name === group)[0][1];
+    const match = get(sidebarGroups(params)).filter(([name]) => name === group);
+
+    return match.length ? match[0][1] : [];
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",

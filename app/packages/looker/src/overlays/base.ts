@@ -14,7 +14,7 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
-  _id: string;
+  id: string;
   _cls: string;
   frame_number?: number;
   tags: string[];
@@ -25,7 +25,11 @@ export interface PointInfo<Label extends BaseLabel> {
   color: string;
   field: string;
   label: Label;
-  point?: Coordinates;
+  point?: {
+    index: number;
+    attributes: [string, unknown][];
+    coordinates: Coordinates;
+  };
   target?: number;
   type: string;
 }
@@ -71,7 +75,6 @@ export abstract class CoordinateOverlay<
 > implements Overlay<State> {
   readonly field: string;
   protected label: Label;
-  private color: string;
 
   constructor(field: string, label: Label) {
     this.field = field;
@@ -85,15 +88,23 @@ export abstract class CoordinateOverlay<
   }
 
   isSelected(state: Readonly<State>): boolean {
-    return state.options.selectedLabels.includes(this.label._id);
+    return state.options.selectedLabels.includes(this.label.id);
   }
 
-  getColor({ options }: Readonly<State>): string {
-    if (!this.color) {
-      const key = options.coloring.byLabel ? this.label.label : this.field;
-      this.color = getColor(options.coloring.pool, options.coloring.seed, key);
+  getColor({ options: { coloring } }: Readonly<State>): string {
+    let key;
+
+    switch (coloring.by) {
+      case "field":
+        return getColor(coloring.pool, coloring.seed, this.field);
+      case "instance":
+        key = this.label.index !== undefined ? "index" : "id";
+        break;
+      default:
+        key = "label";
     }
-    return this.color;
+
+    return getColor(coloring.pool, coloring.seed, this.label[key]);
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;
@@ -110,7 +121,7 @@ export abstract class CoordinateOverlay<
 
   getSelectData(state: Readonly<State>): SelectData {
     return {
-      id: this.label._id,
+      id: this.label.id,
       field: this.field,
       // @ts-ignore
       frameNumber: state.frameNumber,

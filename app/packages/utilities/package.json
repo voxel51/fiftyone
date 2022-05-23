@@ -1,7 +1,7 @@
 {
   "name": "@fiftyone/utilities",
-  "version": "0.1.0",
   "author": "Voxel51, Inc.",
+  "version": "0.0.0",
   "description": "Generic JavaScript utilities for the FiftyOne monorepo",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/utilities",
   "license": "Apache-2.0",
@@ -26,6 +26,7 @@
     "vite": "2.4.2"
   },
   "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
     "lodash": "^4.17.21"
   }
 }

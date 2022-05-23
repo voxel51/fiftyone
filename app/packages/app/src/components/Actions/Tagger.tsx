@@ -33,13 +33,12 @@ import {
   tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import { http } from "../../shared/connection";
-import { useTheme } from "../../utils/hooks";
 import { PopoutSectionTitle } from "../utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
-import { toSnakeCase } from "@fiftyone/utilities";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { store } from "../Flashlight.store";
+import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -337,8 +336,6 @@ const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
 
-const url = `${http}/tag`;
-
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   const refreshers = [true, false]
     .map((modal) =>
@@ -366,7 +363,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
       const dataset = await snapshot.getPromise(selectors.datasetName);
       const selectedLabels =
         modal && targetLabels
-          ? (await snapshot.getPromise(atoms.stateDescription)).selectedLabels
+          ? await snapshot.getPromise(atoms.selectedLabels)
           : null;
       const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
       const hiddenLabels =
@@ -376,56 +373,45 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
 
       const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
 
-      const response = await fetch(url, {
-        method: "POST",
-        cache: "no-cache",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        mode: "cors",
-        body: JSON.stringify({
-          filters: f,
-          view,
-          dataset,
-          active_label_fields: activeLabels,
-          target_labels: targetLabels,
-          changes,
-          modal: modal ? modalData.sample._id : null,
-          sample_ids: modal
-            ? null
-            : selectedSamples.size
-            ? [...selectedSamples]
+      const { samples } = await getFetchFunction()("POST", "/tag", {
+        filters: f,
+        view,
+        dataset,
+        active_label_fields: activeLabels,
+        target_labels: targetLabels,
+        changes,
+        modal: modal ? modalData.sample._id : null,
+        sample_ids: modal
+          ? null
+          : selectedSamples.size
+          ? [...selectedSamples]
+          : null,
+        labels:
+          selectedLabels && selectedLabels.length
+            ? toSnakeCase(selectedLabels)
             : null,
-          labels:
-            selectedLabels && selectedLabels.length
-              ? toSnakeCase(selectedLabels)
-              : null,
-          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
-        }),
+        hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
       });
 
-      if (response.ok) {
-        const { samples } = await response.json();
-        samples &&
-          samples.forEach((sample) => {
-            if (modalData.sample._id === sample._id) {
-              set(atoms.modal, { ...modalData, sample });
-              lookerRef.current.updateSample(sample);
-            }
+      samples &&
+        samples.forEach((sample) => {
+          if (modalData.sample._id === sample._id) {
+            set(atoms.modal, { ...modalData, sample });
+            lookerRef.current.updateSample(sample);
+          }
 
-            store.samples.set(sample._id, {
-              ...store.samples.get(sample._id),
-              sample,
-            });
-            store.lookers.has(sample._id) &&
-              store.lookers.get(sample._id).updateSample(sample);
+          store.samples.set(sample._id, {
+            ...store.samples.get(sample._id),
+            sample,
           });
+          store.lookers.has(sample._id) &&
+            store.lookers.get(sample._id).updateSample(sample);
+        });
 
-        set(selectors.anyTagging, false);
+      set(selectors.anyTagging, false);
 
-        refreshers.forEach((r) => r());
-        set(atoms.tagging({ modal, labels: targetLabels }), false);
-      }
+      refreshers.forEach((r) => r());
+      set(atoms.tagging({ modal, labels: targetLabels }), false);
     },
     [modal, targetLabels, lookerRef]
   );

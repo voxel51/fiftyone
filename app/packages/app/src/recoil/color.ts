@@ -3,7 +3,7 @@ import { selectorFamily } from "recoil";
 import { Coloring, createColorGenerator } from "@fiftyone/looker";
 import { getColor } from "@fiftyone/looker/src/color";
 
-import { darkTheme } from "../shared/colors";
+import { darkTheme } from "../colors";
 
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
@@ -18,8 +18,11 @@ export const coloring = selectorFamily<Coloring, boolean>({
     return {
       seed,
       pool,
-      scale: get(atoms.stateDescription).colorscale,
-      byLabel: get(atoms.colorByLabel(modal)),
+      scale: get(atoms.colorscale),
+      by: get(selectors.appConfigOption({ key: "colorBy", modal })),
+      points: get(
+        selectors.appConfigOption({ key: "multicolorKeypoints", modal })
+      ),
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(pool.length)
@@ -35,7 +38,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get: (modal) => ({ get }) => {
-    get(atoms.colorByLabel(modal));
+    get(selectors.appConfigOption({ key: "colorBy", modal }));
     let pool = get(atoms.colorPool);
     pool = pool.length ? pool : [darkTheme.brand];
     const seed = get(atoms.colorSeed(modal));

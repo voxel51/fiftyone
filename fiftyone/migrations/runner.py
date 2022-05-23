@@ -8,7 +8,7 @@ FiftyOne migrations runner.
 import bisect
 import logging
 import os
-from packaging.version import Version
+from packaging.version import Version as V
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 
 DOWN = "down"
 UP = "up"
+
+
+def Version(version: str) -> V:
+    """Version proxy to ensure only base versions are used (strip rc versions)"""
+    return V(V(version).base_version)
 
 
 def _migrations_disabled():
@@ -88,24 +93,32 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if _migrations_disabled():
         return
 
-    if destination is None:
+    use_client_version = destination is None
+    if use_client_version:
         destination = foc.VERSION
 
     config = fod.get_db_config()
 
     head = config.version
-    if head is None:
-        #
-        # The database version was moved in v0.15.0, so if no version is
-        # available, assume the database is at the preceeding release.
-        #
-        # It's okay if the database's version is actually older, because there
-        # are no significant admin migrations prior to v0.14.4
-        #
-        head = "0.14.4"
 
     if head == destination:
         return
+
+    if not fo.config.database_admin:
+        if use_client_version:
+            raise EnvironmentError(
+                "Cannot connect to database v%s with client v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
+        else:
+            raise EnvironmentError(
+                "Cannot migrate database from v%s to v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
 
     if _database_exists():
         runner = MigrationRunner(head=head, destination=destination)
@@ -137,7 +150,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = get_dataset_revision(name)
 
     if head is None:
-        head = "0.0"  # < 0.6.2
+        head = "0.0"
 
     if destination is None:
         destination = foc.VERSION
@@ -166,11 +179,21 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         destination = foc.VERSION
 
     head = get_dataset_revision(name)
+
     if head is None:
-        head = "0.0"  # < 0.6.2
+        head = "0.0"
 
     if head == destination:
         return
+
+    if not fo.config.database_admin and destination != foc.VERSION:
+        raise EnvironmentError(
+            "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
+            "be migrated to the current revision (v%s) when database_admin=%s."
+            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+            "for more information"
+            % (name, head, destination, foc.VERSION, fo.config.database_admin)
+        )
 
     runner = MigrationRunner(head=head, destination=destination)
     if runner.has_revisions:

@@ -599,7 +599,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     frames[frame_id] = labels_dict
 
                 self._add_video_labels_to_results(
-                    annotations, frames, sample_id, label_schema,
+                    annotations,
+                    frames,
+                    sample_id,
+                    label_schema,
                 )
 
             else:
@@ -611,7 +614,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                         label_schema, labels_dict
                     )
                 annotations = self._add_labels_to_results(
-                    annotations, labels_dict, sample_id, label_schema,
+                    annotations,
+                    labels_dict,
+                    sample_id,
+                    label_schema,
                 )
 
         return annotations
@@ -748,7 +754,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             class_type = self.attr_type_map[attr_type]
             if attr_type == "text":
                 attr = lbo.Classification(
-                    class_type=class_type, instructions=attr_name,
+                    class_type=class_type,
+                    instructions=attr_name,
                 )
             else:
                 attr_values = attr_info["values"]
@@ -803,7 +810,8 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         if label_type == "scalar" and not classes:
             classification = lbo.Classification(
-                class_type=lbo.Classification.Type.TEXT, instructions=name,
+                class_type=lbo.Classification.Type.TEXT,
+                instructions=name,
             )
             classifications.append(classification)
         elif label_type == "classifications":
@@ -861,7 +869,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def _build_tool_for_class(self, class_name, label_type, attributes):
         tool_type = self._tool_types_map[label_type]
         return lbo.Tool(
-            name=str(class_name), tool=tool_type, classifications=attributes,
+            name=str(class_name),
+            tool=tool_type,
+            classifications=attributes,
         )
 
     def _create_classes_as_attrs(self, classes, general_attrs):
@@ -917,7 +927,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return download_labels_from_labelbox(project)
 
     def _add_labels_to_results(
-        self, results, labels_dict, sample_id, label_schema,
+        self,
+        results,
+        labels_dict,
+        sample_id,
+        label_schema,
     ):
         """Adds the labels in ``labels_dict`` to ``results``.
 
@@ -948,13 +962,21 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         # Parse remaining label fields and add classification attributes if
         # necessary
         results = self._parse_expected_label_fields(
-            results, labels_dict, sample_id, label_schema, attributes,
+            results,
+            labels_dict,
+            sample_id,
+            label_schema,
+            attributes,
         )
 
         return results
 
     def _add_video_labels_to_results(
-        self, results, frames_dict, sample_id, label_schema,
+        self,
+        results,
+        frames_dict,
+        sample_id,
+        label_schema,
     ):
         """Adds the video labels in ``frames_dict`` to ``results``.
 
@@ -1355,7 +1377,11 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
     @classmethod
     def _from_dict(cls, d, samples, config):
         return cls(
-            samples, config, d["id_map"], d["project_id"], d["frame_id_map"],
+            samples,
+            config,
+            d["id_map"],
+            d["project_id"],
+            d["frame_id_map"],
         )
 
 
@@ -1578,7 +1604,10 @@ def export_to_labelbox(
 
     # Get label fields to export
     label_fields = sample_collection._parse_label_field(
-        label_field, allow_coercion=False, force_dict=True, required=False,
+        label_field,
+        allow_coercion=False,
+        force_dict=True,
+        required=False,
     )
 
     # Get frame label fields to export

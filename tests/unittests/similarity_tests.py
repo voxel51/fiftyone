@@ -36,7 +36,9 @@ class SimilarityTests(unittest.TestCase):
         embeddings = np.random.randn(9, 4)
 
         fob.compute_similarity(
-            dataset, embeddings=embeddings, brain_key="image_similarity",
+            dataset,
+            embeddings=embeddings,
+            brain_key="image_similarity",
         )
 
         query_id = dataset.first().id

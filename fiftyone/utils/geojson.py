@@ -368,7 +368,9 @@ class GeoJSONDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -453,7 +455,7 @@ class GeoJSONDatasetImporter(
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
                 if "filename" in properties:
-                    filename = properties.pop("filename")
+                    filename = fou.normpath(properties.pop("filename"))
                     if os.path.isabs(filename):
                         filepath = filename
                     else:

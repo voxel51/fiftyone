@@ -1,9 +1,8 @@
+import { Tooltip, useTheme } from "@fiftyone/components";
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring, useSprings } from "@react-spring/web";
 import { KeyboardArrowUp, KeyboardArrowDown } from "@material-ui/icons";
-
-import { useTheme } from "../utils/hooks";
 
 export const Box = styled.div`
   padding: 1em;
@@ -102,7 +101,7 @@ type PillButton = {
   icon?: any;
   arrow?: boolean;
   style?: React.CSSProperties;
-  title?: string;
+  title: string;
 };
 
 export const PillButton = React.memo(
@@ -125,20 +124,23 @@ export const PillButton = React.memo(
         backgroundColor: !highlight ? theme.button : theme.brand,
       });
       return (
-        <PillButtonDiv
-          onClick={onClick}
-          ref={ref}
-          style={{ ...props, ...style }}
-          title={title}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-        >
-          {text && <span>{text}</span>}
-          {icon}
-          {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
-        </PillButtonDiv>
+        <Tooltip text={title}>
+          <PillButtonDiv
+            onClick={(e) => {
+              onClick(e);
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            ref={ref}
+            style={{ ...props, ...style }}
+            title={title}
+          >
+            {text && <span>{text}</span>}
+            {icon}
+            {arrow && (open ? <KeyboardArrowUp /> : <KeyboardArrowDown />)}
+          </PillButtonDiv>
+        </Tooltip>
       );
     }
   )
@@ -325,10 +327,11 @@ export const NameAndCountContainer = styled.div`
   justify-content: space-between;
   flex: 1;
   min-width: 0;
-  user-select: none;
+  align-items: center;
+  user-select: text;
 
-  & * {
-    user-select: none;
+  & > span {
+    user-select: text;
   }
 
   & > span:first-child {

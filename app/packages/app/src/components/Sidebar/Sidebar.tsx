@@ -84,7 +84,6 @@ const fn = (
     const dragging =
       (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
     const raise = dragging || groupRaised || key === lastTouched;
-
     let shown = true;
 
     if (entry.kind === EntryKind.PATH) {
@@ -106,7 +105,6 @@ const fn = (
             return height + child.getBoundingClientRect().height;
           }, 0)
         : 0,
-      overflow: "hidden",
     };
 
     if (active) {
@@ -379,10 +377,6 @@ const SidebarColumn = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
 
-  & * {
-    user-select: none;
-  }
-
   scrollbar-color: ${({ theme }) => theme.fontDarkest}
     ${({ theme }) => theme.background};
   background: ${({ theme }) => theme.background};
@@ -406,7 +400,12 @@ type RenderEntry = (
   key: string,
   group: string,
   entry: SidebarEntry,
-  controller: Controller
+  controller: Controller,
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void
 ) => { children: React.ReactNode; disabled: boolean };
 
 const InteractiveSidebar = ({
@@ -430,9 +429,14 @@ const InteractiveSidebar = ({
   const shown = useRecoilValue(sidebarVisible(modal));
   const [entries, setEntries] = useEntries(modal);
   const disabled = useRecoilValue(disabledPaths);
+  const cb = useRef<() => void>();
   const [containerController] = useState(
-    () => new Controller({ maxHeight: 0 })
+    () => new Controller({ minHeight: 0 })
   );
+
+  if (entries instanceof Error) {
+    throw entries;
+  }
 
   let group = null;
   order.current = [...entries].map((entry) => getEntryKey(entry));
@@ -470,11 +474,11 @@ const InteractiveSidebar = ({
           scale: 1,
           shadow: 0,
           height: 0,
-          overflow: "hidden",
           config: {
             ...config.stiff,
             bounce: 0,
           },
+          overflow: "visible",
         }),
         entry,
         active: false,
@@ -546,7 +550,7 @@ const InteractiveSidebar = ({
       lastTouched.current
     );
 
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
     for (const key of order.current) {
       const item = items.current[key];
 
@@ -559,30 +563,30 @@ const InteractiveSidebar = ({
     }
   }, []);
 
-  const exit = useCallback(
-    (event) => {
-      if (down.current == null) {
-        down.current = null;
-        start.current = null;
-        return;
-      }
+  const exit = useCallback(() => {
+    if (down.current === null) {
+      start.current = null;
+      cb.current = null;
+      return;
+    }
 
-      requestAnimationFrame(() => {
-        const newOrder = getNewOrder(lastDirection.current);
-        order.current = newOrder;
+    requestAnimationFrame(() => {
+      cb.current();
 
-        const newEntries = order.current.map((key) => items.current[key].entry);
+      lastTouched.current = down.current;
+      const newOrder = getNewOrder(lastDirection.current);
+      order.current = newOrder;
 
-        lastTouched.current = down.current;
-        down.current = null;
-        start.current = null;
-        lastDirection.current = null;
+      const newEntries = order.current.map((key) => items.current[key].entry);
 
-        setEntries(newEntries);
-      });
-    },
-    [entries]
-  );
+      cb.current = null;
+      down.current = null;
+      start.current = null;
+      lastDirection.current = null;
+
+      setEntries(newEntries);
+    });
+  }, [entries]);
 
   useEventHandler(document.body, "mouseup", exit);
   useEventHandler(document.body, "mouseleave", exit);
@@ -609,6 +613,7 @@ const InteractiveSidebar = ({
 
   const animate = useCallback((y) => {
     if (down.current == null) return;
+    document.getSelection().removeAllRanges();
     const entry = items.current[down.current].entry;
 
     const d = y - last.current;
@@ -629,7 +634,7 @@ const InteractiveSidebar = ({
       down.current,
       realDelta
     );
-    containerController.set({ maxHeight: minHeight });
+    containerController.set({ minHeight: minHeight + MARGIN });
 
     for (const key of order.current)
       items.current[key].controller.start(results[key]);
@@ -647,15 +652,25 @@ const InteractiveSidebar = ({
     });
   });
 
-  const trigger = useCallback((event) => {
-    if (event.button !== 0) return;
+  const trigger = useCallback(
+    (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      callback: () => void
+    ) => {
+      if (event.button !== 0) return;
 
-    down.current = event.currentTarget.dataset.key;
-    start.current = event.clientY;
-    last.current = start.current;
-    lastOrder.current = order.current;
-    maxScrollHeight.current = container.current.scrollHeight;
-  }, []);
+      down.current = key;
+      cb.current = callback;
+      start.current = event.clientY;
+      last.current = start.current;
+      lastOrder.current = order.current;
+      maxScrollHeight.current = container.current.scrollHeight;
+      lastTouched.current = null;
+      placeItems();
+    },
+    [placeItems]
+  );
 
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
@@ -700,24 +715,31 @@ const InteractiveSidebar = ({
             const { shadow, cursor, ...springs } = items.current[
               key
             ].controller.springs;
-            const { children, disabled } = render(
+            const { children } = render(
               key,
               group,
               entry,
-              items.current[key].controller
+              items.current[key].controller,
+              trigger
             );
+            const style = {};
+            if (entry.kind === EntryKind.INPUT) {
+              style.zIndex = 0;
+            }
 
             return (
               <animated.div
-                data-key={key}
-                onMouseDown={disabled ? null : trigger}
+                onMouseDownCapture={() => {
+                  lastTouched.current = undefined;
+                  placeItems();
+                }}
                 key={key}
                 style={{
                   ...springs,
                   boxShadow: shadow.to(
                     (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
                   ),
-                  cursor: disabled ? "unset" : cursor,
+                  ...style,
                 }}
               >
                 <div

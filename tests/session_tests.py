@@ -10,7 +10,7 @@ import sys
 import subprocess
 
 import fiftyone as fo
-import fiftyone.core.session as fos
+import fiftyone.core.session.session as fos
 
 
 def _run_helper(*args):

@@ -38,13 +38,14 @@ while getopts "hdempv" FLAG; do
         e) SOURCE_ETA_INSTALL=true ;;
         m) SCRATCH_MONGODB_INSTALL=true ;;
         v) VOXEL51_INSTALL=true ;;
-	    p) BUILD_APP=false ;;
+        p) BUILD_APP=false ;;
         *) usage ;;
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 set -e
+NODE_VERSION=17.9.0
 OS=$(uname -s)
 
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
@@ -97,8 +98,8 @@ if [ ${BUILD_APP} = true ]; then
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
     export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-    nvm install v17.3.1
-    nvm use v17.3.1
+    nvm install ${NODE_VERSION}
+    nvm use ${NODE_VERSION}
     npm -g install yarn
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc

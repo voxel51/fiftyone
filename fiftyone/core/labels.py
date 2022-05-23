@@ -855,7 +855,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        confidence (None): a confidence in ``[0, 1]`` for the points
+        confidence (None): a list of confidences in ``[0, 1]`` for each point
         index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
@@ -865,7 +865,7 @@ class Keypoint(_HasID, _HasAttributesDict, Label):
     points: t.List[t.Tuple[float, float]] = field(
         validator=keypoints_validator
     )
-    confidence: float
+    confidence: t.List[float]
     index: int
 
     def to_shapely(self, frame_size=None):

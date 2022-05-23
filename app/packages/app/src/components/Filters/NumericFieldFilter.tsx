@@ -136,6 +136,7 @@ const NumericFieldFilter = ({
   const bounds = useRecoilValue(
     numericAtoms.boundsAtom({ path, defaultRange })
   );
+
   const ftype = useRecoilValue(schemaAtoms.fieldType({ path }));
   const hasDefaultRange = useRecoilValue(
     numericAtoms.isDefaultRange({ modal, path, defaultRange })
@@ -147,12 +148,15 @@ const NumericFieldFilter = ({
     defaultRange,
     fieldType: ftype,
   });
+
   const isFiltered = useRecoilValue(
     filterAtoms.fieldIsFiltered({ modal, path })
   );
+
   const bounded = useRecoilValue(
     aggregationAtoms.boundedCount({ modal, path, extended: false })
   );
+
   const one = bounds[0] === bounds[1];
   const timeZone = useRecoilValue(selectors.timeZone);
 

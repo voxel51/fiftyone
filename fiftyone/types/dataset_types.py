@@ -45,8 +45,7 @@ class UnlabeledDataset(Dataset):
 
 
 class UnlabeledImageDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of images.
-    """
+    """Base type for datasets that represent an unlabeled collection of images."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -72,8 +71,7 @@ class UnlabeledImageDataset(UnlabeledDataset):
 
 
 class UnlabeledVideoDataset(UnlabeledDataset):
-    """Base type for datasets that represent an unlabeled collection of videos.
-    """
+    """Base type for datasets that represent an unlabeled collection of videos."""
 
     def get_dataset_importer_cls(self):
         """Returns the
@@ -454,6 +452,18 @@ class OpenImagesV6Dataset(ImageDetectionDataset):
         import fiftyone.utils.openimages as fouo
 
         return fouo.OpenImagesV6DatasetImporter
+
+
+class FIWDataset(Dataset):
+    """A labeled dataset consisting of images and their associated annotations
+    saved in
+    `Families in the Wild format <https://github.com/visionjo/pykinship#db-contents-and-structure>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.fiw as fouf
+
+        return fouf.FIWDatasetImporter
 
 
 class OpenLABELImageDataset(ImageLabelsDataset):

@@ -1,13 +1,8 @@
-import { atom, atomFamily } from "recoil";
+import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 
-import { Sample, Dimensions } from "@fiftyone/looker/src/state";
+import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
-
-export const connected = atom<boolean>({
-  key: "connected",
-  default: true,
-});
 
 interface AppSample extends Sample {
   _id: string;
@@ -18,12 +13,27 @@ export interface SampleData {
   dimensions: Dimensions;
   frameRate?: number;
   frameNumber?: number;
+  url?: string;
 }
 
 interface ModalSample extends SampleData {
   index: number;
   getIndex: (index: number) => void;
 }
+
+export const refresher = atom<boolean>({
+  key: "refresher",
+  default: false,
+});
+
+export const useRefresh = () => {
+  return useRecoilTransaction_UNSTABLE(
+    ({ get, set }) => () => {
+      set(refresher, !get(refresher));
+    },
+    []
+  );
+};
 
 export const sidebarWidth = atomFamily<number, boolean>({
   key: "sidebarWidth",
@@ -84,7 +94,7 @@ export const imageFilters = atomFamily<
 
 export const activePlot = atom({
   key: "activePlot",
-  default: "labels",
+  default: "Labels",
 });
 
 export const loading = atom({
@@ -99,9 +109,14 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-export const stateDescription = atom<State.Description>({
-  key: "stateDescription",
+export const dataset = atom<State.Dataset>({
+  key: "dataset",
   default: null,
+});
+
+export const selectedLabels = atom<State.SelectedLabelMap>({
+  key: "selectedLabels",
+  default: {},
 });
 
 export const selectedSamples = atom<Set<string>>({
@@ -129,11 +144,6 @@ export const viewCounter = atom({
   default: 0,
 });
 
-export const colorByLabel = atomFamily<boolean, boolean>({
-  key: "colorByLabel",
-  default: false,
-});
-
 export const DEFAULT_ALPHA = 0.7;
 
 export const alpha = atomFamily<number, boolean>({
@@ -159,4 +169,14 @@ export const appTeamsIsOpen = atom({
 export const savedLookerOptions = atom({
   key: "savedLookerOptions",
   default: {},
+});
+
+export const appConfig = atom<State.Config>({
+  key: "appConfig",
+  default: null,
+});
+
+export const colorscale = atom<RGB[]>({
+  key: "colorscale",
+  default: null,
 });

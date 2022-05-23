@@ -411,7 +411,9 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True,
+            [],
+            tf.float32,
+            allow_missing=True,
         ),
         "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True

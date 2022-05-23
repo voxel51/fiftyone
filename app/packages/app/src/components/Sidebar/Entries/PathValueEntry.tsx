@@ -1,3 +1,4 @@
+import { useTheme } from "@fiftyone/components";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -17,7 +18,6 @@ import * as colorAtoms from "../../../recoil/color";
 import * as schemaAtoms from "../../../recoil/schema";
 import * as selectors from "../../../recoil/selectors";
 import { prettify } from "../../../utils/generic";
-import { useTheme } from "../../../utils/hooks";
 
 import { NameAndCountContainer } from "../../utils";
 
@@ -25,6 +25,7 @@ import RegularEntry from "./RegularEntry";
 
 const ScalarDiv = styled.div`
   & > div {
+    user-select: text;
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;
@@ -60,11 +61,19 @@ const format = ({
 };
 
 const ScalarValueEntry = ({
-  value,
+  entryKey,
   path,
+  trigger,
+  value,
 }: {
+  entryKey: string;
   path: string;
   value: unknown;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
 }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
@@ -81,6 +90,7 @@ const ScalarValueEntry = ({
 
   return (
     <RegularEntry
+      entryKey={entryKey}
       title={`${path} (${
         embeddedDocType
           ? embeddedDocType
@@ -91,6 +101,7 @@ const ScalarValueEntry = ({
       backgroundColor={backgroundColor}
       color={color}
       heading={null}
+      trigger={trigger}
     >
       <ScalarDiv>
         <div style={none ? { color } : {}}>{none ? "None" : formatted}</div>
@@ -116,7 +127,21 @@ const ListContainer = styled.div`
   padding: 0.25rem 0.5rem;
 `;
 
-const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
+const ListValueEntry = ({
+  entryKey,
+  data,
+  path,
+  trigger,
+}: {
+  data: unknown[];
+  entryKey: string;
+  path: string;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}) => {
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
@@ -146,6 +171,7 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
 
   return (
     <RegularEntry
+      entryKey={entryKey}
       title={`${path} (${
         embeddedDocType
           ? embeddedDocType
@@ -176,6 +202,7 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
           )}
         </NameAndCountContainer>
       }
+      trigger={trigger}
     >
       {expanded && (
         <ListContainer>
@@ -188,7 +215,19 @@ const ListValueEntry = ({ path, data }: { path: string; data: unknown[] }) => {
   );
 };
 
-const PathValueEntry = ({ path }: { path: string }) => {
+const PathValueEntry = ({
+  entryKey,
+  path,
+  trigger,
+}: {
+  entryKey: string;
+  path: string;
+  trigger: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}) => {
   const keys = path.split(".");
 
   let field = useRecoilValue(schemaAtoms.field(keys[0]));
@@ -201,7 +240,6 @@ const PathValueEntry = ({ path }: { path: string }) => {
 
     const key = keys[index];
 
-    console.log(key, field, data);
     data = data[field.dbField || key];
 
     if (keys[index + 1]) {
@@ -210,10 +248,24 @@ const PathValueEntry = ({ path }: { path: string }) => {
   }
 
   if (field.ftype !== LIST_FIELD) {
-    return <ScalarValueEntry path={path} value={data as unknown} />;
+    return (
+      <ScalarValueEntry
+        entryKey={entryKey}
+        path={path}
+        trigger={trigger}
+        value={data as unknown}
+      />
+    );
   }
 
-  return <ListValueEntry path={path} data={(data as unknown) as unknown[]} />;
+  return (
+    <ListValueEntry
+      entryKey={entryKey}
+      data={(data as unknown) as unknown[]}
+      path={path}
+      trigger={trigger}
+    />
+  );
 };
 
 export default React.memo(PathValueEntry);

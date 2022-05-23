@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -93,7 +94,9 @@ class BDDDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -171,6 +174,9 @@ class BDDDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = {
+                fou.normpath(k): v for k, v in anno_dict_map.items()
+            }
         else:
             anno_dict_map = {}
 
@@ -697,7 +703,11 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
             (round(width * x, 1), round(height * y, 1)) for (x, y) in points
         ]
         poly2d.append(
-            {"types": types, "closed": polyline.closed, "vertices": vertices,}
+            {
+                "types": types,
+                "closed": polyline.closed,
+                "vertices": vertices,
+            }
         )
 
     d = {

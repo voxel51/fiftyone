@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   atom,
+  RecoilState,
   selector,
   Snapshot,
   useRecoilCallback,
@@ -12,6 +13,7 @@ import {
   CLIPS_FRAME_FIELDS,
   CLIPS_SAMPLE_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
+  getFetchFunction,
   PATCHES_FIELDS,
   toSnakeCase,
 } from "@fiftyone/utilities";
@@ -20,9 +22,7 @@ import * as atoms from "../../recoil/atoms";
 import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
-import socket, { http } from "../../shared/connection";
-import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
+import { StateResolver, useUnprocessedStateUpdate } from "../../utils/hooks";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -35,6 +35,7 @@ import { SwitcherDiv, SwitchDiv } from "./utils";
 import { State } from "../../recoil/types";
 import { filters } from "../../recoil/filters";
 import { similarityParameters } from "./Similar";
+import { useTheme } from "@fiftyone/components";
 
 export const patching = atom<boolean>({
   key: "patching",
@@ -81,38 +82,36 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(atoms.stateDescription).dataset.evaluations.map(
-      ({ key }) => key
-    );
+    return get(atoms.dataset).evaluations.map(({ key }) => key);
   },
 });
 
-export const sendPatch = async (snapshot: Snapshot, addStage?: object) => {
+export const sendPatch = async (
+  snapshot: Snapshot,
+  updateState: (resolve: StateResolver) => void,
+  addStage?: object
+) => {
   const similarity = await snapshot.getPromise(similarityParameters);
-  return fetch(`${http}/pin`, {
-    method: "POST",
-    cache: "no-cache",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    mode: "cors",
-    body: JSON.stringify({
-      filters: await snapshot.getPromise(filters),
-      view: await snapshot.getPromise(viewAtoms.view),
-      dataset: await snapshot.getPromise(selectors.datasetName),
-      sample_ids: await snapshot.getPromise(atoms.selectedSamples),
-      labels: toSnakeCase(await snapshot.getPromise(selectors.selectedLabels)),
-      add_stages: addStage ? [addStage] : null,
-      similarity: similarity ? toSnakeCase(similarity) : null,
-    }),
-  });
+  const subscription = await snapshot.getPromise(selectors.stateSubscription);
+
+  return getFetchFunction()("POST", "/pin", {
+    filters: await snapshot.getPromise(filters),
+    view: await snapshot.getPromise(viewAtoms.view),
+    dataset: await snapshot.getPromise(selectors.datasetName),
+    sample_ids: await snapshot.getPromise(atoms.selectedSamples),
+    labels: toSnakeCase(await snapshot.getPromise(atoms.selectedLabels)),
+    add_stages: addStage ? [addStage] : null,
+    similarity: similarity ? toSnakeCase(similarity) : null,
+    subscription,
+  }).then((data) => updateState(data));
 };
 
 const useToPatches = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToPatches",
         kwargs: [
           ["field", field],
@@ -125,10 +124,11 @@ const useToPatches = () => {
 };
 
 const useToClips = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (field) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToClips",
         kwargs: [
           ["field_or_expr", field],
@@ -141,10 +141,11 @@ const useToClips = () => {
 };
 
 const useToEvaluationPatches = () => {
+  const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
     ({ set, snapshot }) => async (evaluation: string) => {
       set(patching, true);
-      sendPatch(snapshot, {
+      sendPatch(snapshot, updateState, {
         _cls: "fiftyone.core.stages.ToEvaluationPatches",
         kwargs: [
           ["eval_key", evaluation],

@@ -190,7 +190,9 @@ def delete_non_persistent_datasets(verbose: bool = False) -> None:
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in _list_datasets(include_private=True):
+    conn = foo.get_db_conn()
+
+    for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
         except:
@@ -413,7 +415,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             data_type = fome.Metadata
 
         self.__fiftyone_ref__.schema["metadata"].type = data_type
-
         self.__fiftyone_ref__.commit()
 
     @property
@@ -443,6 +444,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         except:
             self.__fiftyone_ref__.name = self.__fiftyone_name__
             raise
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
 
     @property
     def created_at(self) -> datetime:
@@ -617,6 +622,75 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
+        self.save()
+
+    @property
+    def skeletons(self):
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
+        :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
+        field of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set keypoint skeleton for the `ground_truth` field
+            dataset.skeletons = {
+                "ground_truth": fo.KeypointSkeleton(
+                    labels=[
+                        "left hand" "left shoulder", "right shoulder", "right hand",
+                        "left eye", "right eye", "mouth",
+                    ],
+                    edges=[[0, 1, 2, 3], [4, 5, 6]],
+                )
+            }
+
+            # Edit an existing skeleton
+            dataset.skeletons["ground_truth"].labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._doc.skeletons = skeletons
+        self.save()
+
+    @property
+    def default_skeleton(self):
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default keypoint skeleton
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=[
+                    "left hand" "left shoulder", "right shoulder", "right hand",
+                    "left eye", "right eye", "mouth",
+                ],
+                edges=[[0, 1, 2, 3], [4, 5, 6]],
+            )
+
+            # Edit the default skeleton
+            dataset.default_skeleton.labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._doc.default_skeleton = skeleton
         self.save()
 
     @property
@@ -1373,9 +1447,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         sample_ids = []
@@ -1462,9 +1535,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         with fou.ProgressBar(total=num_samples) as pb:
@@ -2294,7 +2366,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         such that ``sample.in_dataset`` is False.
         """
         self.__fiftyone_ref__.delete()
-
         self._deleted = True
 
     def add_dir(
@@ -4084,6 +4155,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             d.get("default_mask_targets", {})
         )
 
+        dataset.skeletons = dataset._parse_skeletons(d.get("skeletons", {}))
+        dataset.default_skeleton = dataset._parse_default_skeleton(
+            d.get("default_skeleton", None)
+        )
+
         def parse_sample(sd):
             if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
@@ -4395,10 +4471,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
                 else:
                     if value is not None or not field.null:
                         try:
-                            if isinstance(field, fof.EmbeddedDocumentField):
-                                field.validate(value, expand=True)
-                            else:
-                                field.validate(value)
+                            field.validate(value)
                         except moe.ValidationError as e:
                             raise moe.ValidationError(
                                 "Invalid value for field '%s'. Reason: %s"
@@ -4452,9 +4525,11 @@ def _get_random_characters(n):
 def _list_datasets(include_private=False):
     conn = fod.get_db_conn()
 
+    print("TODO")
     if include_private:
         return sorted(conn.datasets.distinct("name"))
 
+    # We don't want an error here if `name == None`
     return sorted(conn.datasets.find({"root": True}).distinct("name"))
 
 
@@ -4694,11 +4769,12 @@ def _merge_dataset_doc(
         schema = {fields[k]: v for k, v in schema.items() if k in fields}
 
     dataset._sample_doc_cls.merge_field_schema(
-        [], schema, expand_schema=expand_schema
+        schema, expand_schema=expand_schema
     )
+
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
-            [], frame_schema, expand_schema=expand_schema
+            frame_schema, expand_schema=expand_schema
         )
 
     if not merge_info:
@@ -4713,22 +4789,30 @@ def _merge_dataset_doc(
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
+        curr_doc.skeletons.update(doc.skeletons)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
     else:
         _update_no_overwrite(curr_doc.info, doc.info)
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
+        _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets and not curr_doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton and not curr_doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
 
@@ -4896,13 +4980,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
         for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,
@@ -5087,7 +5171,8 @@ def _merge_samples_pipeline(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {}
+        project = {key_field: True}
+
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)

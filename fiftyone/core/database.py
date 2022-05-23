@@ -6,18 +6,20 @@ Database utilities.
 |
 """
 import asyncio
+import atexit
+from datetime import datetime
 import logging
 import os
 import typing as t
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
 
-import motor
 import pymongo
 import pytz
 from bson import json_util
 from bson.codec_options import CodecOptions
 from dacite import from_dict
+
 from packaging.version import Version
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
@@ -31,20 +33,39 @@ from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-logger = logging.getLogger(__name__)
+fod = fou.lazy_import("fiftyone.core.dataset")
 
+
+logger = logging.getLogger(__name__)
 
 _client: t.Optional[pymongo.MongoClient] = None
 _async_client = None
 _connection_kwargs = {}
 _db_service = None
 
+#
+# IMPORTANT DATABASE CONFIG REQUIREMENTS
+#
+# All past and future versions of FiftyOne must be able to deduce the
+# database's current version and type from the `config` collection without an
+# error being raised so that migrations can be properly run and, if necsssary,
+# informative errors can be raised alerting the user that they are using the
+# wrong version or type of client.
+#
+# This is currently guaranteed because:
+#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
+#     are added will not cause an error
+#   - All declared fields are optional and we have promised ourselves that
+#     their type and meaning will never change
+#
+
 
 @gql.type
 class DatabaseConfig:
     """Backing document for the database config."""
 
-    version = str
+    type: str
+    version: str
 
 
 def get_db_config():
@@ -53,14 +74,48 @@ def get_db_config():
     Returns:
         a :class:`fiftyone.core.data.types.DatabaseConfigDocument`
     """
+    save = False
+
     conn = get_db_conn()
     try:
         data = conn.config.find_one({})
     except:
         conn.config.insert_one({"version": fo.__version__})
         data = conn.config.find_one({})
+        save = True
 
-    return from_dict(DatabaseConfig, data=data)
+    config = from_dict(DatabaseConfig, data=data)
+
+    if config.version is None:
+        #
+        # The database version was added to this config in v0.15.0, so if no
+        # version is available, assume the database is at the preceeding
+        # release. It's okay if the database's version is actually older,
+        # because there are no significant admin migrations prior to v0.14.4.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to run migrations...
+        #
+        config.version = "0.14.4"
+        save = True
+
+    if config.type is None:
+        #
+        # If the database has no type, then assume the type of the client that
+        # is currently connecting to it.
+        #
+        # This needs to be implemented here rather than in a migration because
+        # this information is required in order to decide if a client is
+        # allowed to connect to the database at all (a precursor to running a
+        # migration)...
+        #
+        config.type = foc.CLIENT_TYPE
+        save = True
+
+    if save:
+        config.save()
+
+    return config
 
 
 def establish_db_conn(config: FiftyOneConfig) -> None:
@@ -121,8 +176,22 @@ def establish_db_conn(config: FiftyOneConfig) -> None:
 
             raise error
 
-    _client = pymongo.MongoClient(**_connection_kwargs)
+    _client = pymongo.MongoClient(
+        **_connection_kwargs, appname=foc.DATABASE_APPNAME
+    )
     _validate_db_version(config, _client)
+
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
+
+    _connect(config.database_name, **_connection_kwargs)
+
+    config = get_db_config()
+    if foc.CLIENT_TYPE != config.type:
+        raise ConnectionError(
+            "Cannot connect to database type '%s' with client type '%s'"
+            % (config.type, foc.CLIENT_TYPE)
+        )
 
 
 def _connect() -> pymongo.MongoClient:
@@ -139,7 +208,44 @@ def _async_connect() -> None:
     if _async_client is None:
         _connect()
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(**_connection_kwargs)
+        _async_client = mtr.AsyncIOMotorClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
+
+
+def _delete_non_persistent_datasets_if_allowed():
+    """Deletes all non-persistent datasets if and only if we are the only
+    client currently connected to the database.
+    """
+    try:
+        num_connections = len(
+            list(
+                _client.admin.aggregate(
+                    [
+                        {"$currentOp": {"allUsers": True}},
+                        {"$project": {"appName": 1, "command": 1}},
+                        {
+                            "$match": {
+                                "appName": foc.DATABASE_APPNAME,
+                                "command.ismaster": 1,
+                            }
+                        },
+                    ]
+                )
+            )
+        )
+    except:
+        logger.warning(
+            "Skipping automatic non-persistent dataset cleanup. This action "
+            "requires read access of the 'admin' database"
+        )
+        return
+
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(
@@ -171,13 +277,13 @@ def aggregate(collection, pipelines):
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_tornado.MotorCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
         -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_tornado.MotorCommandCursor`` is returned
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -189,7 +295,7 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-    if isinstance(collection, motor.motor_tornado.MotorCollection):
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             return collection.aggregate(pipelines[0], allowDiskUse=True)
 
@@ -214,20 +320,13 @@ def _do_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
-    global _async_client
-
-    async with await _async_client.start_session() as session:
-        return await asyncio.gather(
-            *[
-                _do_async_aggregate(collection, pipeline, session)
-                for pipeline in pipelines
-            ]
-        )
+    return await asyncio.gather(
+        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+    )
 
 
-async def _do_async_aggregate(collection, pipeline, session):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    return await cursor.to_list(1)
+async def _do_async_aggregate(collection, pipeline):
+    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
 def get_db_client() -> pymongo.MongoClient:
@@ -249,14 +348,23 @@ def get_db_conn() -> Database:
     return _apply_options(_connect()[fo.config.database_name])
 
 
+def get_async_db_client():
+    """Returns an async database client.
+
+    Returns:
+        a ``motor.motor_asyncio.AsyncIOMotorClient``
+    """
+    _async_connect()
+    return _async_client
+
+
 def get_async_db_conn():
     """Returns an async connection to the database.
 
     Returns:
-        a ``motor.motor_tornado.MotorDatabase``
+        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    _async_connect()
-    db = _async_client[fo.config.database_name]
+    db = get_async_db_client()[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -296,6 +404,16 @@ def list_collections():
     """
     conn = get_db_conn()
     return list(conn.list_collection_names())
+
+
+def drop_collection(collection_name):
+    """Drops specified collection from the database.
+
+    Args:
+        collection_name: the collection name
+    """
+    conn = get_db_conn()
+    conn.drop_collection(collection_name)
 
 
 def drop_orphan_collections(dry_run=False):
@@ -514,7 +632,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):

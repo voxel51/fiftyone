@@ -10,7 +10,6 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   LABELS,
-  LABELS_MAP,
   LABELS_PATH,
   LABEL_LISTS,
   LABEL_LISTS_MAP,
@@ -71,7 +70,6 @@ import {
   getElementBBox,
   getFitRect,
   getMimeType,
-  getURL,
   mergeUpdates,
   removeFromBuffers,
   snapBox,
@@ -91,7 +89,7 @@ export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "instance" | "field" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -119,14 +117,17 @@ const getLabelsWorker = (() => {
   // one labels worker seems to be best
   // const numWorkers = navigator.hardwareConcurrency || 4;
   const numWorkers = 1;
-
-  const workers = [];
-  for (let i = 0; i < numWorkers; i++) {
-    workers.push(createWorker(workerCallbacks));
-  }
+  let workers: Worker[];
 
   let next = -1;
-  return () => {
+  return (dispatchEvent) => {
+    if (!workers) {
+      workers = [];
+      for (let i = 0; i < numWorkers; i++) {
+        workers.push(createWorker(workerCallbacks, dispatchEvent));
+      }
+    }
+
     next++;
     next %= numWorkers;
     return workers[next];
@@ -213,6 +214,11 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
+    if (detail instanceof ErrorEvent) {
+      this.eventTarget.dispatchEvent(detail);
+      return;
+    }
+
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -235,7 +241,10 @@ export abstract class Looker<
       }
 
       if (eventType === "selectthumbnail") {
-        this.dispatchEvent(eventType, this.sample._id);
+        this.dispatchEvent(eventType, {
+          shiftKey: detail,
+          sampleId: this.sample.id,
+        });
         return;
       }
 
@@ -292,7 +301,12 @@ export abstract class Looker<
         const ctx = this.ctx;
         this.lookerElement.render(this.state, this.sample);
 
-        if (!this.state.loaded || this.state.destroyed || this.waiting) {
+        if (
+          !this.state.loaded ||
+          this.state.destroyed ||
+          this.waiting ||
+          this.state.error
+        ) {
           return;
         }
 
@@ -336,7 +350,14 @@ export abstract class Looker<
         }
         ctx.globalAlpha = 1;
       } catch (error) {
-        this.dispatchEvent("error", error);
+        if (error instanceof MediaError) {
+          this.updater({ error });
+        } else {
+          this.dispatchEvent(
+            "error",
+            new ErrorEvent("looker error", { error })
+          );
+        }
       }
     };
   }
@@ -413,6 +434,7 @@ export abstract class Looker<
     }
 
     if (element === this.lookerElement.element.parentElement) {
+      this.state.disabled && this.updater({ disabled: false });
       return;
     }
 
@@ -431,6 +453,7 @@ export abstract class Looker<
     }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
+      disabled: false,
     });
     element.appendChild(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
@@ -476,13 +499,13 @@ export abstract class Looker<
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -631,7 +654,9 @@ export abstract class Looker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const worker = getLabelsWorker();
+    const worker = getLabelsWorker((event, detail) =>
+      this.dispatchEvent(event, detail)
+    );
     const listener = ({ data: { sample, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
@@ -727,7 +752,11 @@ export class FrameLooker extends Looker<FrameState> {
     }
 
     if (reload) {
-      this.updater({ ...state, reloading: this.state.disabled });
+      this.updater({
+        ...state,
+        reloading: this.state.disabled,
+        disabled: false,
+      });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
@@ -808,7 +837,11 @@ export class ImageLooker extends Looker<ImageState> {
     }
 
     if (reload) {
-      this.updater({ ...state, reloading: this.state.disabled });
+      this.updater({
+        ...state,
+        reloading: this.state.disabled,
+        disabled: false,
+      });
       this.updateSample(this.sample);
     } else {
       this.updater({ ...state, disabled: false });
@@ -828,6 +861,8 @@ interface AcquireReaderOptions {
   addFrameBuffers: (range: [number, number]) => void;
   removeFrame: RemoveFrame;
   getCurrentFrame: () => number;
+  dataset: string;
+  view: any[];
   sampleId: string;
   frameNumber: number;
   frameCount: number;
@@ -836,7 +871,7 @@ interface AcquireReaderOptions {
   coloring: Coloring;
 }
 
-const { aquireReader, addFrame } = (() => {
+const { acquireReader, addFrame } = (() => {
   const createCache = () =>
     new LRU<WeakRef<RemoveFrame>, Frame>({
       max: MAX_FRAME_CACHE_SIZE_BYTES,
@@ -872,17 +907,15 @@ const { aquireReader, addFrame } = (() => {
     update,
     dispatchEvent,
     coloring,
+    dataset,
+    view,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
     frameReader && frameReader.terminate();
-    frameReader = createWorker(workerCallbacks);
+    frameReader = createWorker(workerCallbacks, dispatchEvent);
     frameReader.onmessage = ({ data }: MessageEvent<FrameChunkResponse>) => {
-      if (data.error) {
-        dispatchEvent("error", { error: "Frames" });
-      }
-
       if (data.uuid !== subscription || data.method !== "frameChunk") {
         return;
       }
@@ -945,14 +978,15 @@ const { aquireReader, addFrame } = (() => {
       frameCount,
       frameNumber,
       uuid: subscription,
-      url: getURL(),
       coloring,
+      dataset,
+      view,
     });
     return subscription;
   };
 
   return {
-    aquireReader: (
+    acquireReader: (
       options: AcquireReaderOptions
     ): ((frameNumber?: number) => void) => {
       currentOptions = options;
@@ -1032,13 +1066,13 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
         overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
           labels.push({
             field: field,
-            labelId: label._id,
-            sampleId: this.sample._id,
+            labelId: label.id,
+            sampleId: this.sample.id,
           });
         });
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample._id });
+        labels.push({ labelId, field, sampleId: this.sample.id });
       }
     });
 
@@ -1054,9 +1088,9 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
             labels.push({
               field: field,
-              labelId: label._id,
+              labelId: label.id,
               frameNumber: this.frameNumber,
-              sampleId: this.sample._id,
+              sampleId: this.sample.id,
             });
           });
         } else {
@@ -1064,7 +1098,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
           labels.push({
             labelId,
             field,
-            sampleId: this.sample._id,
+            sampleId: this.sample.id,
             frameNumber: this.frameNumber,
           });
         }
@@ -1208,7 +1242,7 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
   }
 
   private setReader() {
-    this.requestFrames = aquireReader({
+    this.requestFrames = acquireReader({
       addFrame: (frameNumber, frame) =>
         this.frames.set(frameNumber, new WeakRef(frame)),
       addFrameBuffers: (range) =>
@@ -1226,6 +1260,8 @@ export class VideoLooker extends Looker<VideoState, VideoSample> {
       update: this.updater,
       dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       coloring: this.state.options.coloring,
+      dataset: this.state.config.dataset,
+      view: this.state.config.view,
     });
   }
 

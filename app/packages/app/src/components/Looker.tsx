@@ -11,21 +11,24 @@ import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useSelect, useTheme } from "../utils/hooks";
+import { useEventHandler, useSelectSample } from "../utils/hooks";
 import { getMimeType } from "../utils/generic";
 
+import { pathFilter } from "./Filters";
 import * as atoms from "../recoil/atoms";
 import * as colorAtoms from "../recoil/color";
+import * as filterAtoms from "../recoil/filters";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType } from "../recoil/utils";
-import { pathFilter } from "./Filters";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
-import { LIST_FIELD } from "@fiftyone/utilities";
+import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
+import { useTheme } from "@fiftyone/components";
+import { skeletonFilter } from "./Filters/utils";
 
 const Header = styled.div`
   position: absolute;
@@ -220,6 +223,16 @@ const KeypointInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
       <AttrInfo label={detail.label} />
+      {detail.point && (
+        <AttrInfo
+          label={Object.fromEntries(
+            detail.point.attributes.map(([k, v]) => [
+              `points[${detail.point.index}].${k}`,
+              v,
+            ])
+          )}
+        />
+      )}
     </AttrBlock>
   );
 };
@@ -351,13 +364,27 @@ type EventCallback = (event: CustomEvent) => void;
 const lookerOptions = selector({
   key: "lookerOptions",
   get: ({ get }) => {
-    const showConfidence = get(selectors.appConfig).showConfidence;
-    const showIndex = get(selectors.appConfig).showIndex;
-    const showLabel = get(selectors.appConfig).showLabel;
-    const showTooltip = get(selectors.appConfig).showTooltip;
-    const useFrameNumber = get(selectors.appConfig).useFrameNumber;
+    const showConfidence = get(
+      selectors.appConfigOption({ modal: true, key: "showConfidence" })
+    );
+    const showIndex = get(
+      selectors.appConfigOption({ modal: true, key: "showIndex" })
+    );
+    const showLabel = get(
+      selectors.appConfigOption({ modal: true, key: "showLabel" })
+    );
+    const showTooltip = get(
+      selectors.appConfigOption({ modal: true, key: "showTooltip" })
+    );
+    const useFrameNumber = get(
+      selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
+    );
     const video = get(selectors.isVideoDataset)
-      ? { loop: get(selectors.appConfig).loopVideos }
+      ? {
+          loop: get(
+            selectors.appConfigOption({ modal: true, key: "loopVideos" })
+          ),
+        }
       : {};
     const zoom = get(viewAtoms.isPatchesView)
       ? get(atoms.cropToContent(true))
@@ -380,12 +407,14 @@ const lookerOptions = selector({
       timeZone: get(selectors.timeZone),
       coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
-      imageFilters: Object.fromEntries(
-        Object.keys(atoms.IMAGE_FILTERS).map((filter) => [
-          filter,
-          get(atoms.imageFilters({ modal: false, filter })),
-        ])
+      showSkeletons: get(
+        selectors.appConfigOption({ key: "showSkeletons", modal: true })
       ),
+      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+      skeletons: Object.fromEntries(
+        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+      ),
+      pointFilter: get(skeletonFilter(true)),
     };
   },
 });
@@ -409,7 +438,7 @@ const useFullscreen = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(selectors.selectedLabels, {}),
+    ({ set }) => async () => set(atoms.selectedLabels, {}),
     []
   );
 };
@@ -433,12 +462,12 @@ const Looker = ({
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, dimensions, frameRate, frameNumber } = useRecoilValue(
+  const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
     atoms.modal
   );
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id);
+  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
@@ -449,6 +478,8 @@ const Looker = ({
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
+  const view = useRecoilValue(viewAtoms.view);
+  const dataset = useRecoilValue(selectors.datasetName);
 
   const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
 
@@ -471,9 +502,11 @@ const Looker = ({
               frames: {
                 fields: frameFieldSchema,
                 ftype: LIST_FIELD,
-              },
+              } as Field,
             }
           : fieldSchema,
+        view,
+        dataset,
         ...etc,
       },
       {
@@ -507,7 +540,7 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = useSelect();
+  const onSelect = useSelectSample();
   const selected = useRecoilValue(atoms.selectedSamples);
 
   useEffect(() => {

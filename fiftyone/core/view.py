@@ -124,12 +124,20 @@ class DatasetView(foc.SampleCollection):
         return self.__dataset
 
     @property
+    def _is_generated(self):
+        return self._dataset._is_generated
+
+    @property
     def _is_patches(self):
         return self._dataset._is_patches
 
     @property
     def _is_frames(self):
         return self._dataset._is_frames
+
+    @property
+    def _is_clips(self):
+        return self._dataset._is_clips
 
     @property
     def _sample_cls(self):
@@ -197,6 +205,22 @@ class DatasetView(foc.SampleCollection):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._root_dataset.default_mask_targets = targets
+
+    @property
+    def skeletons(self):
+        return self._root_dataset.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._root_dataset.skeletons = skeletons
+
+    @property
+    def default_skeleton(self):
+        return self._root_dataset.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._root_dataset.default_skeleton = skeleton
 
     def summary(self):
         """Returns a string summary of the view.

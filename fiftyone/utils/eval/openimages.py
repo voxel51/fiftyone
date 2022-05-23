@@ -11,15 +11,12 @@ from copy import deepcopy
 import numpy as np
 
 import fiftyone.core.plots as fop
+import fiftyone.utils.iou as foui
 
 from .detection import (
     DetectionEvaluation,
     DetectionEvaluationConfig,
     DetectionResults,
-)
-from .utils import (
-    compute_ious,
-    make_iscrowd_fcn,
 )
 
 
@@ -211,7 +208,12 @@ class OpenImagesEvaluation(DetectionEvaluation):
             preds = _copy_labels(preds)
 
         return _open_images_evaluation_single_iou(
-            gts, preds, eval_key, self.config, pos_labs, neg_labs,
+            gts,
+            preds,
+            eval_key,
+            self.config,
+            pos_labs,
+            neg_labs,
         )
 
     def generate_results(
@@ -496,7 +498,7 @@ def _open_images_evaluation_setup(
     else:
         relevant_labs = list(set(pos_labs + neg_labs))
 
-    iscrowd = make_iscrowd_fcn(config.iscrowd)
+    iscrowd = lambda l: bool(l.get_attribute_value(config.iscrowd, False))
     classwise = config.classwise
 
     iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
@@ -553,7 +555,7 @@ def _open_images_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = compute_ious(preds, gts, **iou_kwargs)
+        ious = foui.compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -568,7 +570,7 @@ def _compute_matches(
     matches = []
 
     # For efficient rounding
-    p_round = 10 ** 10
+    p_round = 10**10
 
     # Match preds to GT, highest confidence first
     for cat, objects in cats.items():

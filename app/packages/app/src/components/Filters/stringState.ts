@@ -6,12 +6,7 @@ import {
 } from "recoil";
 
 import * as filterAtoms from "../../recoil/filters";
-
-interface StringFilter {
-  values: string[];
-  exclude: boolean;
-  _CLS: "str";
-}
+import { StringFilter } from "./utils";
 
 const getFilter = (
   get: GetRecoilValue,
@@ -37,18 +32,19 @@ const setFilter = (
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
-  const filter = {
+  let filter = {
     ...getFilter(get, modal, path),
     [key]: value,
   };
   if (filter.values.length === 0) {
     filter.exclude = false;
   }
+
   if (meetsDefault(filter)) {
-    set(filterAtoms.filter({ modal, path }), null);
-  } else {
-    set(filterAtoms.filter({ modal, path }), filter);
+    filter = null;
   }
+
+  set(filterAtoms.filter({ modal, path }), filter);
 };
 
 export const selectedValuesAtom = selectorFamily<

@@ -1,15 +1,22 @@
+import { useTheme } from "@fiftyone/components";
 import { LocalOffer } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
 import * as colorAtoms from "../../../recoil/color";
-import { useTheme } from "../../../utils/hooks";
 import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";
 
-const TagValueEntry = ({ tag, path }: { tag: string; path: string }) => {
+const TagValueEntry = ({
+  path,
+  tag,
+}: {
+  entryKey: string;
+  path: string;
+  tag: string;
+}) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
@@ -18,7 +25,7 @@ const TagValueEntry = ({ tag, path }: { tag: string; path: string }) => {
 
   return (
     <RegularEntry
-      title={tag}
+      backgroundColor={backgroundColor}
       color={color}
       heading={
         <>
@@ -28,8 +35,8 @@ const TagValueEntry = ({ tag, path }: { tag: string; path: string }) => {
           </NameAndCountContainer>
         </>
       }
-      backgroundColor={backgroundColor}
       left={true}
+      title={tag}
     />
   );
 };

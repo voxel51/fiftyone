@@ -5,13 +5,14 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.config as foc
-import fiftyone.core.database as fod
+import fiftyone.core.config as _foc
+import fiftyone.core.data as _fod
 
-config = foc.load_config()
-annotation_config = foc.load_annotation_config()
-app_config = foc.load_app_config()
-fod.establish_db_conn(config)
+config = _foc.load_config()
+annotation_config = _foc.load_annotation_config()
+app_config = _foc.load_app_config()
+
+_fod.establish_db_conn(config)
 
 from .core.aggregations import (
     Bounds,
@@ -83,6 +84,7 @@ from .core.models import (
     ModelManagerConfig,
     ModelManager,
 )
+from .core.odm import KeypointSkeleton
 from .core.plots import (
     plot_confusion_matrix,
     plot_pr_curve,
@@ -101,6 +103,7 @@ from .core.plots import (
 )
 from .core.sample import Sample
 from .core.stages import (
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeFields,
@@ -109,9 +112,6 @@ from .core.stages import (
     Exists,
     FilterField,
     FilterLabels,
-    FilterClassifications,
-    FilterDetections,
-    FilterPolylines,
     FilterKeypoints,
     Limit,
     LimitLabels,

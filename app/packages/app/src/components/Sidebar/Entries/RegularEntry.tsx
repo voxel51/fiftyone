@@ -1,14 +1,14 @@
 import React, { MouseEventHandler, ReactNode, useRef } from "react";
 import { animated, SpringValue } from "@react-spring/web";
 import styled from "styled-components";
+import Draggable from "./Draggable";
 
 const Container = animated(styled.div`
-  position: relative;
-  overflow: visible;
+  display: flex;
   justify-content: space-between;
-  padding: 3px;
+  position: relative;
+  padding: 3px 3px 3px 8px;
   border-radius: 2px;
-  user-select: none;
 `);
 
 const Header = styled.div`
@@ -16,30 +16,39 @@ const Header = styled.div`
   display: flex;
   font-weight: bold;
   width: 100%;
+  cursor: pointer;
+  flex: 1;
 `;
 
-type RegularEntryProps = {
+type RegularEntryProps = React.PropsWithChildren<{
   backgroundColor?: SpringValue<string>;
-  clickable?: boolean;
-  children?: ReactNode;
-  heading: ReactNode;
-  onClick?: MouseEventHandler;
-  left?: boolean;
-  title: string;
+  entryKey?: string;
   color?: string;
-};
+  clickable?: boolean;
+  heading: ReactNode;
+  left?: boolean;
+  onClick?: MouseEventHandler;
+  title: string;
+  trigger?: (
+    event: React.MouseEvent<HTMLDivElement>,
+    key: string,
+    cb: () => void
+  ) => void;
+}>;
 
 const RegularEntry = React.forwardRef(
   (
     {
-      color,
       backgroundColor,
       children,
+      clickable,
+      color,
+      entryKey,
       heading,
+      left = false,
       onClick,
       title,
-      clickable,
-      left = false,
+      trigger,
     }: RegularEntryProps,
     ref
   ) => {
@@ -60,14 +69,15 @@ const RegularEntry = React.forwardRef(
         style={{
           backgroundColor,
           cursor: clickable ? "pointer" : "unset",
-          borderLeft: color ? `${color} 3px solid` : null,
         }}
         title={title}
       >
-        <Header style={{ justifyContent: left ? "left" : "space-between" }}>
-          {heading}
-        </Header>
-        {children}
+        <Draggable color={color} entryKey={entryKey} trigger={trigger}>
+          <Header style={{ justifyContent: left ? "left" : "space-between" }}>
+            {heading}
+          </Header>
+          {children}
+        </Draggable>
       </Container>
     );
   }

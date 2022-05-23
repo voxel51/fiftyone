@@ -1,5 +1,10 @@
 import React, { MutableRefObject, useLayoutEffect } from "react";
-import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  RecoilValueReadOnly,
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
@@ -7,18 +12,15 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import socket from "../../shared/connection";
-import { useEventHandler } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
+import { useEventHandler, useSetView } from "../../utils/hooks";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
 const useClearSampleSelection = (close) => {
-  return useRecoilCallback(
+  return useRecoilTransaction_UNSTABLE(
     ({ set }) => async () => {
       set(atoms.selectedSamples, new Set());
-      socket.send(packageMessage("clear_selection", {}));
       close();
     },
     [close]
@@ -28,21 +30,21 @@ const useClearSampleSelection = (close) => {
 const useGridActions = (close: () => void) => {
   const elementNames = useRecoilValue(viewAtoms.elementNames);
   const clearSelection = useClearSampleSelection(close);
-  const addStage = useRecoilCallback(({ snapshot }) => async (name) => {
-    close();
-    const state = await snapshot.getPromise(atoms.stateDescription);
-    const newState = JSON.parse(JSON.stringify(state));
-    const samples = await snapshot.getPromise(atoms.selectedSamples);
-    const newView = newState.view || [];
-    newView.push({
-      _cls: `fiftyone.core.stages.${name}`,
-      kwargs: [["sample_ids", Array.from(samples)]],
-    });
-    newState.view = newView;
-    newState.selected = [];
-    socket.send(packageMessage("update", { state: newState }));
-  });
+  const setView = useSetView();
+  const addStage = useRecoilTransaction_UNSTABLE(
+    ({ get }) => (name: string) => {
+      const view = get(viewAtoms.view);
 
+      setView([
+        ...(view || []),
+        {
+          _cls: `fiftyone.core.stages.${name}`,
+          kwargs: [["sample_ids", Array.from(get(atoms.selectedSamples))]],
+        },
+      ]);
+      close();
+    }
+  );
   return [
     {
       text: `Clear selected ${elementNames.plural}`,
@@ -70,9 +72,9 @@ const useSelectVisible = (
   visible?: State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const selected = await snapshot.getPromise(atoms.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
-    set(selectors.selectedLabels, {
+    set(atoms.selectedLabels, {
       ...selected,
       ...toLabelMap(visible),
     });
@@ -84,7 +86,7 @@ const useUnselectVisible = (
   visibleIds?: Set<string>
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const selected = await snapshot.getPromise(atoms.selectedLabels);
     visibleIds = visibleIdsAtom
       ? await snapshot.getPromise(visibleIdsAtom)
       : visibleIds;
@@ -92,14 +94,14 @@ const useUnselectVisible = (
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
     );
-    set(selectors.selectedLabels, Object.fromEntries(filtered));
+    set(atoms.selectedLabels, Object.fromEntries(filtered));
   });
 };
 
 const useClearSelectedLabels = (close) => {
   return useRecoilCallback(
     ({ set }) => async () => {
-      set(selectors.selectedLabels, {});
+      set(atoms.selectedLabels, {});
       close();
     },
     []
@@ -108,9 +110,9 @@ const useClearSelectedLabels = (close) => {
 
 const useHideSelected = () => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(selectors.selectedLabels);
+    const selected = await snapshot.getPromise(atoms.selectedLabels);
     const hidden = await snapshot.getPromise(atoms.hiddenLabels);
-    set(selectors.selectedLabels, {});
+    set(atoms.selectedLabels, {});
     set(atoms.hiddenLabels, { ...hidden, ...selected });
   });
 };

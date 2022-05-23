@@ -1573,6 +1573,14 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
                 "default_mask_targets"
             ] = sample_collection._serialize_default_mask_targets()
 
+        if sample_collection.skeletons:
+            info["skeletons"] = sample_collection._serialize_skeletons()
+
+        if sample_collection.default_skeleton:
+            info[
+                "default_skeleton"
+            ] = sample_collection._serialize_default_skeleton()
+
         self._metadata["info"] = info
 
         # Exporting runs only makes sense if the entire dataset is being

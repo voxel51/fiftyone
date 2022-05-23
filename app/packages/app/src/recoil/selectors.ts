@@ -1,117 +1,39 @@
-import { selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
+import { v4 as uuid } from "uuid";
 
-import socket, { handleId, isNotebook, http } from "../shared/connection";
-import { packageMessage } from "../utils/socket";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => {
-    return Boolean(get(atoms.modal));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const refresh = selector<boolean>({
-  key: "refresh",
-  get: ({ get }) => get(atoms.stateDescription)?.refresh,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const deactivated = selector({
-  key: "deactivated",
-  get: ({ get }) => {
-    const activeHandle = get(atoms.stateDescription)?.activeHandle;
-    if (isNotebook) {
-      return handleId !== activeHandle && typeof activeHandle === "string";
-    }
-    return false;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const fiftyone = selector({
-  key: "fiftyone",
-  get: async () => {
-    let response = null;
-    do {
-      try {
-        response = await (await fetch(`${http}/fiftyone`)).json();
-      } catch {}
-      if (response) break;
-      await new Promise((r) => setTimeout(r, 2000));
-    } while (response === null);
-    return response;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const showTeamsButton = selector({
-  key: "showTeamsButton",
-  get: ({ get }) => {
-    const teams = get(fiftyone).teams;
-    const localTeams = get(atoms.teams);
-    const storedTeams = window.localStorage.getItem("fiftyone-teams");
-    if (storedTeams) {
-      window.localStorage.removeItem("fiftyone-teams");
-      fetch(`${http}/teams?submitted=true`, { method: "post" });
-    }
-    if (
-      teams.submitted ||
-      localTeams.submitted ||
-      storedTeams === "submitted"
-    ) {
-      return "hidden";
-    }
-    if (teams.minimized || localTeams.minimized) {
-      return "minimized";
-    }
-    return "shown";
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const datasetName = selector({
+export const datasetName = selector<string>({
   key: "datasetName",
-  get: ({ get }) => get(atoms.stateDescription)?.dataset?.name,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const datasets = selector({
-  key: "datasets",
   get: ({ get }) => {
-    return get(atoms.stateDescription)?.datasets ?? [];
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+    return get(atoms.dataset)?.name;
   },
 });
 
-export const hasDataset = selector({
-  key: "hasDataset",
-  get: ({ get }) => Boolean(get(datasetName)),
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+export const isNotebook = selector<boolean>({
+  key: "isNotebook",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return Boolean(params.get("notebook"));
+  },
+});
+
+export const stateSubscription = selector<string>({
+  key: "stateSubscription",
+  get: () => {
+    const params = new URLSearchParams(window.location.search);
+
+    return params.get("subscription") || uuid();
   },
 });
 
 export const mediaType = selector({
   key: "mediaType",
-  get: ({ get }) => get(atoms.stateDescription)?.dataset?.mediaType,
+  get: ({ get }) => get(atoms.dataset)?.mediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -127,7 +49,7 @@ export const isVideoDataset = selector({
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
-  get: ({ get }) => get(appConfig)?.gridZoom,
+  get: ({ get }) => get(atoms.appConfig)?.gridZoom,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -136,26 +58,40 @@ export const defaultGridZoom = selector<number>({
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
-    return get(appConfig)?.timezone || "UTC";
+    return get(atoms.appConfig)?.timezone || "UTC";
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
-export const appConfig = selector<State.Config>({
-  key: "appConfig",
-  get: ({ get }) => get(atoms.stateDescription)?.config,
+export const appConfigDefault = selectorFamily<
+  any,
+  { key: string; modal: boolean }
+>({
+  key: "appConfigDefault",
+  get: ({ modal, key }) => ({ get }) => {
+    if (modal) {
+      return get(appConfigDefault({ modal: false, key }));
+    }
+
+    return get(atoms.appConfig)[key];
+  },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
+export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
+  {
+    key: "appConfigOptions",
+    default: appConfigDefault,
+  }
+);
 
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets =
-      get(atoms.stateDescription).dataset?.defaultMaskTargets || {};
+    const targets = get(atoms.dataset).defaultMaskTargets || {};
     return Object.fromEntries(
       Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
     );
@@ -168,9 +104,8 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults =
-      get(atoms.stateDescription).dataset?.defaultMaskTargets || {};
-    const labelTargets = get(atoms.stateDescription).dataset?.maskTargets || {};
+    const defaults = get(atoms.dataset).defaultMaskTargets || {};
+    const labelTargets = get(atoms.dataset)?.maskTargets || {};
     return {
       defaults,
       fields: labelTargets,
@@ -178,6 +113,28 @@ export const targets = selector({
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
+  },
+});
+
+export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
+  {
+    key: "skeleton",
+    get: ({ get }) => {
+      const dataset = get(atoms.dataset);
+      const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
+        acc[name] = rest;
+        return acc;
+      }, {});
+
+      return (field: string) => skeletons[field] || dataset.defaultSkeleton;
+    },
+  }
+);
+
+export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
+  key: "skeleton",
+  get: (field) => ({ get }) => {
+    return get(getSkeleton)(field);
   },
 });
 
@@ -200,7 +157,7 @@ export const getTarget = selector({
 export const selectedLabelIds = selector<Set<string>>({
   key: "selectedLabelIds",
   get: ({ get }) => {
-    const labels = get(selectedLabels);
+    const labels = get(atoms.selectedLabels);
     return new Set(Object.keys(labels));
   },
   cachePolicy_UNSTABLE: {
@@ -297,35 +254,6 @@ export const pathHiddenLabelsMap = selector<{
   },
 });
 
-export const selectedLabels = selector<State.SelectedLabelMap>({
-  key: "selectedLabels",
-  get: ({ get }) => {
-    const labels: State.SelectedLabel[] =
-      get(atoms.stateDescription)?.selectedLabels || [];
-    return Object.fromEntries(labels.map((l) => [l.labelId, l]));
-  },
-  set: ({ get, set }, value) => {
-    const state = get(atoms.stateDescription);
-    const labels: State.SelectedLabel[] = Object.entries(value).map(
-      ([labelId, label]) => ({
-        ...label,
-        labelId,
-      })
-    );
-    const newState: State.Description = {
-      ...state,
-      selectedLabels: labels,
-    };
-    socket.send(
-      packageMessage("set_selected_labels", { selected_labels: labels })
-    );
-    set(atoms.stateDescription, newState);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const hiddenFieldLabels = selectorFamily<string[], string>({
   key: "hiddenFieldLabels",
   get: (fieldName) => ({ get }) => {
@@ -354,7 +282,7 @@ export const similarityKeys = selector<{
 }>({
   key: "similarityKeys",
   get: ({ get }) => {
-    const methods = get(atoms.stateDescription).dataset.brainMethods;
+    const methods = get(atoms.dataset).brainMethods;
     return methods
       .filter(({ config: { method } }) => method === "similarity")
       .reduce(

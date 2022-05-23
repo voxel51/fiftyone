@@ -83,13 +83,13 @@ class MNISTDataset(TorchVisionDataset):
                 download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels
+        get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -136,13 +136,13 @@ class FashionMNISTDataset(TorchVisionDataset):
                 download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels
+        get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -188,13 +188,13 @@ class CIFAR10Dataset(TorchVisionDataset):
                 download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels
+        get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -242,13 +242,13 @@ class CIFAR100Dataset(TorchVisionDataset):
                 download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels
+        get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -340,13 +340,13 @@ class ImageNet2012Dataset(TorchVisionDataset):
         def download_fcn(_):
             return torchvision.datasets.ImageNet(self.source_dir, split=_split)
 
-        get_class_labels_fcn = _parse_classification_labels
+        get_classes_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             None,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -398,16 +398,19 @@ class VOC2007Dataset(TorchVisionDataset):
 
         def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                download_dir, year="2007", image_set=image_set, download=True,
+                download_dir,
+                year="2007",
+                image_set=image_set,
+                download=True,
             )
 
-        get_class_labels_fcn = _parse_voc_detection_labels
+        get_classes_fcn = _parse_voc_detection_labels
         sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -459,16 +462,19 @@ class VOC2012Dataset(TorchVisionDataset):
 
         def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                download_dir, year="2012", image_set=image_set, download=True,
+                download_dir,
+                year="2012",
+                image_set=image_set,
+                download=True,
             )
 
-        get_class_labels_fcn = _parse_voc_detection_labels
+        get_classes_fcn = _parse_voc_detection_labels
         sample_parser = _VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             sample_parser,
         )
 
@@ -511,13 +517,13 @@ def _download_and_prepare(
     dataset_dir,
     scratch_dir,
     download_fcn,
-    get_class_labels_fcn,
+    get_classes_fcn,
     sample_parser,
 ):
     # Download the torchvision dataset, if necessary
     dataset = download_fcn(scratch_dir)
 
-    classes = get_class_labels_fcn(dataset)
+    classes = get_classes_fcn(dataset)
     num_samples = len(dataset)
     sample_parser.classes = classes
     label_cls = sample_parser.label_cls

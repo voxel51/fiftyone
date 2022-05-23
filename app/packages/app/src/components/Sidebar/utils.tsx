@@ -65,6 +65,7 @@ export const useEntries = (
   const loadingEntries = useRecoilValue(
     sidebarEntries({ modal, loadingTags: true, filtered: true })
   );
+
   return [
     entries.state === "loading" ? loadingEntries : entries.contents,
     setEntries,
@@ -78,15 +79,20 @@ export const MATCH_LABEL_TAGS = {
 };
 
 export const validateGroupName = (current: string[], name: string): boolean => {
+  if (!name.length) {
+    alert("group name cannot be empty");
+    return false;
+  }
+
   if (RESERVED_GROUPS.has(name)) {
     alert(`${name.toUpperCase()} is a reserved group`);
     return false;
   }
 
-  if (current.filter(([cur]) => name === cur).length > 1) {
+  if (current.filter((cur) => name === cur).length >= 1) {
     alert(`Group ${name.toUpperCase()} already exists`);
 
-    return;
+    return false;
   }
   return true;
 };

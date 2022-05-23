@@ -1,4 +1,4 @@
-import React, { Suspense, useLayoutEffect, useMemo, useState } from "react";
+import React, { Suspense, useLayoutEffect, useMemo } from "react";
 import { Checkbox } from "@material-ui/core";
 import {
   KeyboardArrowDown,
@@ -26,12 +26,14 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
+  KEYPOINTS,
   LABELS,
   LABELS_PATH,
   LIST_FIELD,
   meetsFieldType,
   OBJECT_ID_FIELD,
   STRING_FIELD,
+  VALID_KEYPOINTS,
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
@@ -42,7 +44,6 @@ import * as colorAtoms from "../../../recoil/color";
 import * as filterAtoms from "../../../recoil/filters";
 import * as schemaAtoms from "../../../recoil/schema";
 import * as selectors from "../../../recoil/selectors";
-import { useTheme } from "../../../utils/hooks";
 
 import {
   BooleanFieldFilter,
@@ -53,6 +54,8 @@ import {
 import { PathEntryCounts } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
+import { useTheme } from "@fiftyone/components";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
@@ -82,7 +85,8 @@ const getFilterData = (
   path: string,
   modal: boolean,
   parent: Field,
-  fields: Field[]
+  fields: Field[],
+  skeleton: (field: string) => KeypointSkeleton | null
 ): {
   ftype: string;
   path: string;
@@ -90,6 +94,10 @@ const getFilterData = (
   named?: boolean;
   listField: boolean;
 }[] => {
+  if (!parent) {
+    return [];
+  }
+
   if (meetsFieldType(parent, { ftype: VALID_PRIMITIVE_TYPES })) {
     let ftype = parent.ftype;
     const listField = ftype === LIST_FIELD;
@@ -111,20 +119,51 @@ const getFilterData = (
   const label = LABELS.includes(parent.embeddedDocType);
   const excluded = EXCLUDED[parent.embeddedDocType] || [];
 
+  const extra: {
+    ftype: string;
+    path: string;
+    modal: boolean;
+    named?: boolean;
+    listField: boolean;
+  }[] = [];
+
+  if (VALID_KEYPOINTS.includes(parent.embeddedDocType)) {
+    let p = path;
+    if (withPath(LABELS_PATH, KEYPOINTS) === parent.embeddedDocType) {
+      p = path.split(".").slice(0, -1).join(".");
+    }
+
+    if (skeleton(p)) {
+      extra.push({
+        path: [path, "points"].join("."),
+        modal,
+        named: true,
+        ftype: STRING_FIELD,
+        listField: false,
+      });
+    }
+  }
+
   return fields
-    .filter(
-      ({ name, ftype }) =>
+    .filter(({ name, ftype, subfield }) => {
+      if (ftype === LIST_FIELD) {
+        ftype = subfield;
+      }
+
+      return (
         !label ||
         (name !== "tags" &&
           !excluded.includes(name) &&
           VALID_PRIMITIVE_TYPES.includes(ftype))
-    )
+      );
+    })
     .map(({ ftype, subfield, name }) => {
       const listField = ftype === LIST_FIELD;
 
       if (listField) {
         ftype = subfield;
       }
+
       return {
         path: [path, name].join("."),
         modal,
@@ -132,7 +171,8 @@ const getFilterData = (
         named: true,
         listField,
       };
-    });
+    })
+    .concat(extra);
 };
 
 const hiddenPathLabels = selectorFamily<string[], string>({
@@ -183,31 +223,40 @@ const useHidden = (path: string) => {
   ) : null;
 };
 
-const pathIsExpanded = atomFamily<boolean, { modal: string; path: string }>({
+const pathIsExpanded = atomFamily<boolean, { modal: boolean; path: string }>({
   key: "pathIsExpanded",
   default: false,
 });
 
 const FilterableEntry = React.memo(
   ({
+    entryKey,
     modal,
     path,
     onFocus,
     onBlur,
     disabled = false,
+    trigger,
   }: {
+    disabled?: boolean;
+    entryKey: string;
+    group: string;
     modal: boolean;
     path: string;
-    group: string;
     onFocus?: () => void;
     onBlur?: () => void;
-    disabled?: boolean;
+    trigger: (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      cb: () => void
+    ) => void;
   }) => {
     const [expanded, setExpanded] = useRecoilState(
       pathIsExpanded({ modal, path })
     );
     const theme = useTheme();
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+    const skeleton = useRecoilValue(selectors.getSkeleton);
     const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
     const color = disabled
       ? theme.backgroundDark
@@ -220,8 +269,8 @@ const FilterableEntry = React.memo(
     );
     const field = useRecoilValue(schemaAtoms.field(path));
     const data = useMemo(
-      () => getFilterData(expandedPath, modal, field, fields),
-      [field, fields, expandedPath, modal]
+      () => getFilterData(expandedPath, modal, field, fields, skeleton),
+      [field, fields, expandedPath, modal, skeleton]
     );
     const fieldIsFiltered = useRecoilValue(
       filterAtoms.fieldIsFiltered({ path, modal })
@@ -237,17 +286,19 @@ const FilterableEntry = React.memo(
         setExpanded(false);
       }
     }, [expandable.state, expandable.contents, expanded]);
+    const { backgroundColor } = useSpring({
+      backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
+    });
+
+    if (!field) {
+      return null;
+    }
 
     return (
       <RegularEntry
-        title={`${path} (${
-          field.embeddedDocType
-            ? field.embeddedDocType
-            : field.subfield
-            ? `${field.ftype}(${field.subfield})`
-            : field.ftype
-        })`}
+        backgroundColor={backgroundColor}
         color={color}
+        entryKey={entryKey}
         heading={
           <>
             {!disabled && (
@@ -257,6 +308,7 @@ const FilterableEntry = React.memo(
                 title={`Show ${path}`}
                 style={{
                   color: active ? color : theme.fontDark,
+                  marginLeft: 2,
                   padding: 0,
                 }}
                 key="checkbox"
@@ -286,10 +338,15 @@ const FilterableEntry = React.memo(
             </NameAndCountContainer>
           </>
         }
-        {...useSpring({
-          backgroundColor: fieldIsFiltered ? "#6C757D" : theme.backgroundLight,
-        })}
         onClick={!disabled ? () => setActive(!active) : null}
+        title={`${path} (${
+          field.embeddedDocType
+            ? field.embeddedDocType
+            : field.subfield
+            ? `${field.ftype}(${field.subfield})`
+            : field.ftype
+        })`}
+        trigger={trigger}
       >
         <Suspense fallback={null}>
           {expanded &&

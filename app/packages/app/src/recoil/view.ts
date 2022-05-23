@@ -1,37 +1,15 @@
 import { atom, selector } from "recoil";
-import { viewsAreEqual } from "../utils/view";
 
-import * as atoms from "./atoms";
 import { State } from "./types";
-import { setState } from "./utils";
 
 export const view = atom<State.Stage[]>({
   key: "view",
   default: [],
-  effects_UNSTABLE: [
-    ({ onSet, getPromise }) => {
-      onSet(async (newValue, oldValue) => {
-        if (viewsAreEqual(newValue, oldValue)) return;
-
-        const state = await getPromise(atoms.stateDescription);
-
-        setState({
-          ...state,
-          view: newValue,
-          selected: [],
-          selectedLabels: [],
-        });
-      });
-    },
-  ],
 });
 
-export const viewCls = selector<string>({
+export const viewCls = atom<string>({
   key: "viewCls",
-  get: ({ get }) => get(atoms.stateDescription)?.viewCls,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  default: null,
 });
 
 export const isRootView = selector<boolean>({

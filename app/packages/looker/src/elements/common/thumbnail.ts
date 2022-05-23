@@ -27,7 +27,7 @@ export class ThumbnailSelectorElement<
           event.stopPropagation();
           event.preventDefault();
 
-          dispatchEvent("selectthumbnail");
+          dispatchEvent("selectthumbnail", event.shiftKey);
 
           return { options: { selected: !selected } };
         });

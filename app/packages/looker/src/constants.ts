@@ -9,7 +9,6 @@ import {
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
 } from "@fiftyone/utilities";
-import { ImageFilter } from "./state";
 
 export const BASE_ALPHA = 0.7;
 export const LINE_WIDTH = 3;
@@ -28,7 +27,7 @@ export const CHUNK_SIZE = 20;
 export const DATE_TIME = "DateTime";
 
 export const SELECTION_TEXT =
-  "Click to select sample, Shift+Click to select a range, Right click to expand";
+  "Click to select sample, Shift+Click to select a range";
 
 export const JSON_COLORS = {
   keyColor: "rgb(138, 138, 138)",

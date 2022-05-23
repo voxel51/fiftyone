@@ -439,7 +439,9 @@ def test_to_frame_eval_patches():
         sample.save()
 
     dataset.evaluate_detections(
-        "frames.predictions", gt_field="frames.detections", eval_key="eval",
+        "frames.predictions",
+        gt_field="frames.detections",
+        eval_key="eval",
     )
 
     try:

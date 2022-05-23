@@ -6,12 +6,12 @@ import { atom, useRecoilValue, useSetRecoilState } from "recoil";
 import * as aggregationAtoms from "../recoil/aggregations";
 import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
-import { useTheme } from "./../utils/hooks";
 
 import { GridActionsRow } from "./Actions";
 import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
+import { useTheme } from "@fiftyone/components";
 
 export const gridZoom = atom<number>({
   key: "gridZoom",
@@ -32,6 +32,7 @@ const SamplesHeader = styled.div`
     30%,
     ${({ theme }) => theme.backgroundDark}
   );
+  margin-left: -1rem;
 `;
 
 const CountDiv = styled.div`
@@ -53,9 +54,9 @@ const RightContainer = styled.div`
 
 const SliderContainer = styled.div`
   display: flex;
+  align-items: center;
   width: 8rem;
   padding-right: 1rem;
-  margin: 0.25rem 0;
 `;
 
 const Count = () => {
@@ -105,9 +106,9 @@ const ImageContainerHeader = () => {
             onClick={() => {
               setGridZoom(Math.max(gridZoomRangeValue[0], 5));
             }}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "pointer", display: "flex" }}
           >
-            <Apps style={{ marginTop: 2.5 }} />
+            <Apps />
           </div>
         </SliderContainer>
       </RightContainer>

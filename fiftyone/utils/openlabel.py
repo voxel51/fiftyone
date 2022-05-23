@@ -105,7 +105,9 @@ class OpenLABELImageDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -206,22 +208,22 @@ class OpenLABELImageDatasetImporter(
         image_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
-        info = {}
-        potential_file_ids = []
+
+        file_ids = []
         annotations = OpenLABELAnnotations(fom.IMAGE)
 
         if self.labels_path is not None:
+            labels_path = fou.normpath(self.labels_path)
+
             base_dir = None
-            if os.path.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
-                base_dir = self.labels_path
+            if os.path.isfile(labels_path):
+                label_paths = [labels_path]
+            elif os.path.isdir(labels_path):
+                base_dir = labels_path
             elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and os.path.isdir(
-                _remove_ext(self.labels_path)
-            ):
-                base_dir = _remove_ext(self.labels_path)
+                labels_path
+            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -230,16 +232,14 @@ class OpenLABELImageDatasetImporter(
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
-                potential_file_ids.extend(
-                    annotations.parse_labels(base_dir, label_path)
-                )
+                file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        self._annotations = annotations
-        self._info = info
-        self._file_ids = _validate_file_ids(
-            potential_file_ids, image_paths_map
-        )
+        file_ids = _validate_file_ids(file_ids, image_paths_map)
+
+        self._info = {}
         self._image_paths_map = image_paths_map
+        self._annotations = annotations
+        self._file_ids = file_ids
 
     def get_dataset_info(self):
         return self._info
@@ -316,7 +316,9 @@ class OpenLABELVideoDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -421,22 +423,22 @@ class OpenLABELVideoDatasetImporter(
         video_paths_map = self._load_data_map(
             self.data_path, ignore_exts=True, recursive=True
         )
-        info = {}
-        potential_file_ids = []
+
+        file_ids = []
         annotations = OpenLABELAnnotations(fom.VIDEO)
 
         if self.labels_path is not None:
+            labels_path = fou.normpath(self.labels_path)
+
             base_dir = None
-            if os.path.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif os.path.isdir(self.labels_path):
-                base_dir = self.labels_path
+            if os.path.isfile(labels_path):
+                label_paths = [labels_path]
+            elif os.path.isdir(labels_path):
+                base_dir = labels_path
             elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and os.path.isdir(
-                _remove_ext(self.labels_path)
-            ):
-                base_dir = _remove_ext(self.labels_path)
+                labels_path
+            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -445,16 +447,14 @@ class OpenLABELVideoDatasetImporter(
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
-                potential_file_ids.extend(
-                    annotations.parse_labels(base_dir, label_path)
-                )
+                file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        self._annotations = annotations
-        self._info = info
-        self._file_ids = _validate_file_ids(
-            potential_file_ids, video_paths_map
-        )
+        file_ids = _validate_file_ids(file_ids, video_paths_map)
+
+        self._info = {}
         self._video_paths_map = video_paths_map
+        self._annotations = annotations
+        self._file_ids = file_ids
 
     def get_dataset_info(self):
         return self._info
@@ -653,8 +653,7 @@ class OpenLABELParser(object):
 
 
 class OpenLABELObjectsParser(OpenLABELParser):
-    """Parses and collects :class:`OpenLABELObjects` from object dictionaries.
-    """
+    """Parses and collects :class:`OpenLABELObjects` from object dictionaries."""
 
     def __init__(self):
         super().__init__()
@@ -699,17 +698,23 @@ class OpenLABELObjects(object):
 
     def _to_detections(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Detections, OpenLABELObject.to_detections,
+            frame_size,
+            fol.Detections,
+            OpenLABELObject.to_detections,
         )
 
     def _to_keypoints(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Keypoints, OpenLABELObject.to_keypoints,
+            frame_size,
+            fol.Keypoints,
+            OpenLABELObject.to_keypoints,
         )
 
     def _to_polylines(self, frame_size):
         return self._to_labels(
-            frame_size, fol.Polylines, OpenLABELObject.to_polylines,
+            frame_size,
+            fol.Polylines,
+            OpenLABELObject.to_polylines,
         )
 
     def _to_segmentations(
@@ -1139,7 +1144,9 @@ class OpenLABELObject(object):
 
             detections.append(
                 fol.Detection(
-                    label=label, bounding_box=bounding_box, **attributes,
+                    label=label,
+                    bounding_box=bounding_box,
+                    **attributes,
                 )
             )
 
@@ -1277,11 +1284,17 @@ class OpenLABELObject(object):
         bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox")
 
         polys, attributes, stream = cls._parse_obj_type(
-            object_data, "poly2d", attributes=attributes, stream=stream,
+            object_data,
+            "poly2d",
+            attributes=attributes,
+            stream=stream,
         )
 
         point, attributes, stream = cls._parse_obj_type(
-            object_data, "point2d", attributes=attributes, stream=stream,
+            object_data,
+            "point2d",
+            attributes=attributes,
+            stream=stream,
         )
         if point:
             point = [point]

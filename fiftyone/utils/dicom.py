@@ -172,7 +172,9 @@ class DICOMDatasetImporter(
             )
 
         dicom_path = self._parse_labels_path(
-            dataset_dir=dataset_dir, labels_path=dicom_path, default="*.dcm",
+            dataset_dir=dataset_dir,
+            labels_path=dicom_path,
+            default="*.dcm",
         )
 
         if images_dir is None:

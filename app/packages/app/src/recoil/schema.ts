@@ -16,6 +16,7 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
+import { sidebarGroupsDefinition } from "../components/Sidebar";
 
 const RESERVED_FIELDS = [
   "id",
@@ -30,7 +31,7 @@ const RESERVED_FIELDS = [
 export const schemaReduce = (schema: Schema, field: StrictField): Schema => {
   schema[field.name] = {
     ...field,
-    fields: field.fields.reduce(schemaReduce, {}),
+    fields: field.fields?.reduce(schemaReduce, {}),
   };
   return schema;
 };
@@ -60,6 +61,9 @@ export const buildSchema = (dataset: State.Dataset): Schema => {
       ftype: LIST_FIELD,
       name: "frames",
       fields: dataset.frameFields.reduce(schemaReduce, {}),
+      dbField: null,
+      embeddedDocType: null,
+      subfield: "Frame",
     };
   }
 
@@ -105,23 +109,20 @@ export const fieldSchema = selectorFamily<
 >({
   key: "fieldSchema",
   get: ({ space, filtered }) => ({ get }) => {
-    const state = get(atoms.stateDescription);
+    const dataset = get(atoms.dataset);
 
-    if (!state.dataset) {
+    if (!dataset) {
       return {};
     }
 
     const fields = (space === State.SPACE.FRAME
-      ? state.dataset.frameFields
-      : state.dataset.sampleFields
+      ? dataset.frameFields
+      : dataset.sampleFields
     ).reduce(schemaReduce, {});
 
     filtered && fieldFilter(fields, get(viewAtoms.view), space);
 
     return fields;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -172,6 +173,9 @@ export const fullSchema = selector<Schema>({
           ftype: LIST_FIELD,
           name: "frames",
           fields: frames,
+          embeddedDocType: null,
+          subfield: "Frame",
+          dbField: null,
         },
       } as Schema;
     }
@@ -224,15 +228,18 @@ export const fieldPaths = selectorFamily<
       return f(sampleLabels.concat(frameLabels).sort());
     }
 
-    return Object.entries(get(field(path)).fields)
+    const fieldValue = get(field(path));
+
+    if (!fieldValue) {
+      return [];
+    }
+
+    return Object.entries(fieldValue.fields)
       .filter(
         ([_, field]) =>
           !ftype || meetsFieldType(field, { ftype, embeddedDocType })
       )
       .map(([name]) => name);
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -256,9 +263,6 @@ export const fields = selectorFamily<
       .map((name) =>
         get(field(params.path ? [params.path, name].join(".") : name))
       );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -293,9 +297,6 @@ export const field = selectorFamily<Field, string>({
 
     return field;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
@@ -306,9 +307,6 @@ export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
     return paths.filter((path) =>
       LABELS.includes(get(field(path)).embeddedDocType)
     );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -332,15 +330,18 @@ export const labelPaths = selectorFamily<
       return path;
     });
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const expandPath = selectorFamily<string, string>({
   key: "expandPath",
   get: (path) => ({ get }) => {
-    const { embeddedDocType } = get(field(path));
+    const data = get(field(path));
+
+    if (!data) {
+      return path;
+    }
+
+    const { embeddedDocType } = data;
 
     if (withPath(LABELS_PATH, LABEL_LISTS).includes(embeddedDocType)) {
       const typePath = embeddedDocType.split(".");
@@ -366,22 +367,19 @@ export const labelPath = selectorFamily<string, string>({
 
     return path;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
-const _activeFields = atomFamily<string[], { modal: boolean }>({
+export const _activeFields = atomFamily<string[], { modal: boolean }>({
   key: "_activeFields",
-  default: ({ modal }) => labelFields({}),
+  default: null,
 });
 
 export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get: ({ modal }) => ({ get }) => {
     return filterPaths(
-      get(_activeFields({ modal })),
-      buildSchema(get(atoms.stateDescription).dataset)
+      get(_activeFields({ modal })) || get(labelFields({})),
+      buildSchema(get(atoms.dataset))
     );
   },
   set: ({ modal }) => ({ set }, value) => {
@@ -403,9 +401,6 @@ export const activeField = selectorFamily<
       activeFields({ modal }),
       active ? [path, ...fields] : fields.filter((field) => field !== path)
     );
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -429,9 +424,6 @@ export const activeTags = selectorFamily<string[], boolean>({
       set(activeFields({ modal }), active);
     }
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const activeLabelTags = selectorFamily<string[], boolean>({
@@ -454,9 +446,6 @@ export const activeLabelTags = selectorFamily<string[], boolean>({
       set(activeFields({ modal }), active);
     }
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const activeLabelFields = selectorFamily<
@@ -468,9 +457,6 @@ export const activeLabelFields = selectorFamily<
     const active = new Set(get(activeFields({ modal })));
     return get(labelFields({})).filter((field) => active.has(field));
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const activeLabelPaths = selectorFamily<
@@ -478,14 +464,11 @@ export const activeLabelPaths = selectorFamily<
   { modal: boolean; space?: State.SPACE }
 >({
   key: "activeLabelPaths",
-  get: ({ modal, space }) => ({ get }) => {
+  get: ({ modal }) => ({ get }) => {
     const active = new Set(get(activeFields({ modal })));
     return get(labelFields({}))
       .filter((field) => active.has(field))
       .map((field) => get(labelPath(field)));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -513,10 +496,11 @@ export const meetsType = selectorFamily<
 
     const fieldValue = get(field(path));
 
+    if (!fieldValue) {
+      return false;
+    }
+
     return meetsFieldType(fieldValue, { ftype, embeddedDocType, acceptLists });
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -532,8 +516,5 @@ export const fieldType = selectorFamily<
     }
 
     return ftype;
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
