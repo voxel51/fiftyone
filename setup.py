@@ -114,7 +114,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.12.1,<0.13"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.12.2,<0.13"]}
 
 
 with open("README.md", "r") as fh:
