@@ -208,7 +208,12 @@ class OpenImagesEvaluation(DetectionEvaluation):
             preds = _copy_labels(preds)
 
         return _open_images_evaluation_single_iou(
-            gts, preds, eval_key, self.config, pos_labs, neg_labs,
+            gts,
+            preds,
+            eval_key,
+            self.config,
+            pos_labs,
+            neg_labs,
         )
 
     def generate_results(
@@ -447,7 +452,7 @@ def _expand_detection_hierarchy(cats, obj, config, label_type):
     keyed_children = config._hierarchy_keyed_child
     for parent in keyed_children[obj.label]:
         new_obj = obj.copy()
-        new_obj._id = obj._id  # we need ID to stay the same
+        new_obj.id = obj.id  # we need ID to stay the same
         new_obj.label = parent
         cats[parent][label_type].append(new_obj)
 
@@ -565,7 +570,7 @@ def _compute_matches(
     matches = []
 
     # For efficient rounding
-    p_round = 10 ** 10
+    p_round = 10**10
 
     # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
@@ -815,7 +820,7 @@ def _copy_labels(labels):
 
     # We need the IDs to stay the same
     for _label, label in zip(_labels[field], labels[field]):
-        _label._id = label._id
+        _label.id = label.id
 
     return _labels
 

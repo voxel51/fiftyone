@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import atexit
 from datetime import datetime
 import logging
 from multiprocessing.pool import ThreadPool
@@ -15,7 +16,8 @@ from bson import json_util
 from bson.codec_options import CodecOptions
 from mongoengine import connect
 import mongoengine.errors as moe
-import motor
+import motor.motor_asyncio as mtr
+
 from packaging.version import Version
 import pymongo
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
@@ -34,9 +36,7 @@ from .document import DynamicDocument
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
-
 logger = logging.getLogger(__name__)
-
 
 _client = None
 _async_client = None
@@ -180,6 +180,9 @@ def establish_db_conn(config):
     )
     _validate_db_version(config, _client)
 
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
+
     connect(config.database_name, **_connection_kwargs)
 
     config = get_db_config()
@@ -194,6 +197,7 @@ def _connect():
     global _client
     if _client is None:
         global _connection_kwargs
+
         _client = pymongo.MongoClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
@@ -204,12 +208,12 @@ def _async_connect():
     global _async_client
     if _async_client is None:
         global _connection_kwargs
-        _async_client = motor.motor_tornado.MotorClient(
+        _async_client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
 
-def delete_non_persistent_datasets_if_allowed():
+def _delete_non_persistent_datasets_if_allowed():
     """Deletes all non-persistent datasets if and only if we are the only
     client currently connected to the database.
     """
@@ -237,8 +241,11 @@ def delete_non_persistent_datasets_if_allowed():
         )
         return
 
-    if num_connections <= 1:
-        fod.delete_non_persistent_datasets()
+    try:
+        if num_connections <= 1:
+            fod.delete_non_persistent_datasets()
+    except:
+        logger.exception("Skipping automatic non-persistent dataset cleanup")
 
 
 def _validate_db_version(config, client):
@@ -250,14 +257,13 @@ def _validate_db_version(config, client):
 
         raise RuntimeError("Failed to validate `mongod` version") from e
 
-    min_ver, max_ver = foc.MONGODB_VERSION_RANGE
-    if config.database_validation and not min_ver <= version < max_ver:
+    if config.database_validation and version < foc.MIN_MONGODB_VERSION:
         raise RuntimeError(
-            "Found `mongod` version %s, but only [%s, %s) are compatible. "
-            "You can suppress this exception by setting your "
+            "Found `mongod` version %s, but only %s and higher are "
+            "compatible. You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://voxel51.com/docs/fiftyone/user_guide/config.html#configuring-a-mongodb-connection "
-            "for more information" % (version, min_ver, max_ver)
+            "for more information" % (version, foc.MIN_MONGODB_VERSION)
         )
 
 
@@ -269,13 +275,13 @@ def aggregate(collection, pipelines):
 
     Args:
         collection: a ``pymongo.collection.Collection`` or
-            ``motor.motor_tornado.MotorCollection``
+            ``motor.motor_asyncio.AsyncIOMotorCollection``
         pipelines: a MongoDB aggregation pipeline or a list of pipelines
 
     Returns:
         -   If a single pipeline is provided, a
             ``pymongo.command_cursor.CommandCursor`` or
-            ``motor.motor_tornado.MotorCommandCursor`` is returned
+            ``motor.motor_asyncio.AsyncIOMotorCommandCursor`` is returned
 
         -   If multiple pipelines are provided, each cursor is extracted into
             a list and the list of lists is returned
@@ -287,8 +293,7 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-
-    if isinstance(collection, motor.motor_tornado.MotorCollection):
+    if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             return collection.aggregate(pipelines[0], allowDiskUse=True)
 
@@ -313,20 +318,13 @@ def _do_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
-    global _async_client
-
-    async with await _async_client.start_session() as session:
-        return await asyncio.gather(
-            *[
-                _do_async_aggregate(collection, pipeline, session)
-                for pipeline in pipelines
-            ]
-        )
+    return await asyncio.gather(
+        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+    )
 
 
-async def _do_async_aggregate(collection, pipeline, session):
-    cursor = collection.aggregate(pipeline, allowDiskUse=True, session=session)
-    return await cursor.to_list(1)
+async def _do_async_aggregate(collection, pipeline):
+    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
 
 
 def get_db_client():
@@ -350,14 +348,23 @@ def get_db_conn():
     return _apply_options(db)
 
 
+def get_async_db_client():
+    """Returns an async database client.
+
+    Returns:
+        a ``motor.motor_asyncio.AsyncIOMotorClient``
+    """
+    _async_connect()
+    return _async_client
+
+
 def get_async_db_conn():
     """Returns an async connection to the database.
 
     Returns:
-        a ``motor.motor_tornado.MotorDatabase``
+        a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    _async_connect()
-    db = _async_client[fo.config.database_name]
+    db = get_async_db_client()[fo.config.database_name]
     return _apply_options(db)
 
 
@@ -625,7 +632,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     conn = get_db_conn()
-    return sorted([d["name"] for d in conn.datasets.find({})])
+    return conn.datasets.distinct("name")
 
 
 def delete_dataset(name, dry_run=False):
@@ -714,7 +721,9 @@ def delete_annotation_run(name, anno_key, dry_run=False):
     annotation_runs = dataset_dict.get("annotation_runs", {})
     if anno_key not in annotation_runs:
         _logger.warning(
-            "Dataset '%s' has no annotation run with key '%s'", name, anno_key,
+            "Dataset '%s' has no annotation run with key '%s'",
+            name,
+            anno_key,
         )
         return
 
@@ -871,7 +880,9 @@ def delete_brain_runs(name, dry_run=False):
             _delete_run_results(result_ids)
 
     _logger.info(
-        "Deleting brain method runs %s from dataset '%s'", brain_keys, name,
+        "Deleting brain method runs %s from dataset '%s'",
+        brain_keys,
+        name,
     )
     if not dry_run:
         dataset_dict["brain_methods"] = {}

@@ -21,6 +21,10 @@ export default class KeypointOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.points || !this.label.points.length) {
+      return CONTAINS.NONE;
+    }
+
     const result = this.getDistanceAndMaybePoint(state);
     if (result && result[0] <= state.pointRadius) {
       return CONTAINS.BORDER;

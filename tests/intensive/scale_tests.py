@@ -85,7 +85,9 @@ def _test_scale_image(dataset, label_field):
 
     # Export labels in Scale format
     fous.export_to_scale(
-        dataset, scale_export_path, label_field=label_field,
+        dataset,
+        scale_export_path,
+        label_field=label_field,
     )
 
     # Convert to Scale import format

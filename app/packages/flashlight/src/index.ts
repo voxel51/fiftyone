@@ -1,7 +1,6 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-
 import { MARGIN, NUM_ROWS_PER_SECTION } from "./constants";
 import SectionElement from "./section";
 import {
@@ -15,6 +14,7 @@ import {
   Render,
   RowData,
   State,
+  ItemIndexMap,
 } from "./state";
 import { createScrollReader } from "./zooming";
 
@@ -113,6 +113,10 @@ export default class Flashlight<K> {
     this.element.appendChild(this.container);
   }
 
+  get itemIndexes(): ItemIndexMap {
+    return this.state.itemIndexMap;
+  }
+
   reset() {
     this.ctx++;
     this.loading = false;
@@ -165,7 +169,7 @@ export default class Flashlight<K> {
     this.get();
   }
 
-  updateOptions(options: Optional<Options>, newWidth: boolean) {
+  updateOptions(options: Optional<Options>, newWidth?: boolean) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );
@@ -200,7 +204,7 @@ export default class Flashlight<K> {
         this.state.currentRowRemainder = [];
       }
 
-      this.state.height = 0;
+      this.state.height = 60;
       this.state.sections = [];
       this.state.shownSections = new Set();
       this.state.clean = new Set();
@@ -219,6 +223,7 @@ export default class Flashlight<K> {
         this.state.height += sectionElement.getHeight();
       });
       newContainer.style.height = `${this.state.height}px`;
+
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
           this.container.parentElement.scrollTop = section.getTop();
@@ -234,8 +239,10 @@ export default class Flashlight<K> {
       });
       this.container.style.height = `${this.state.height}px`;
       const activeSection = this.state.sections[this.state.activeSection];
-      activeSection &&
-        (this.container.parentElement.scrollTop = activeSection.getTop());
+      if (activeSection) {
+        this.container.parentElement.scrollTop =
+          this.state.activeSection === 0 ? 0 : activeSection.getTop();
+      }
 
       this.render();
     }
@@ -468,7 +475,7 @@ export default class Flashlight<K> {
       currentRequestKey: config.initialRequestKey,
       containerHeight: null,
       width: null,
-      height: 0,
+      height: 60,
       ...config,
       currentRemainder: [],
       currentRowRemainder: [],
@@ -505,16 +512,12 @@ export default class Flashlight<K> {
   private createContainer(): HTMLDivElement {
     const container = document.createElement("div");
     container.classList.add(flashlightContainer);
-    container.tabIndex = -1;
-    container.addEventListener("mouseenter", () => container.focus());
-    container.removeEventListener("mouseleaver", () => container.blur());
-
     return container;
   }
 
   private resetResize(): void {
     this.state.resized = new Set();
-    this.state.height = 0;
+    this.state.height = 60;
     this.state.resizing = true;
     this.resizeTimeout && clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {

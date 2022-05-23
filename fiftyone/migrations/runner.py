@@ -8,7 +8,7 @@ FiftyOne migrations runner.
 import bisect
 import logging
 import os
-from packaging.version import Version
+from packaging.version import Version as V
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 
 DOWN = "down"
 UP = "up"
+
+
+def Version(version: str) -> V:
+    """Version proxy to ensure only base versions are used (strip rc versions)"""
+    return V(V(version).base_version)
 
 
 def _migrations_disabled():
