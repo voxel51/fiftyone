@@ -23,7 +23,7 @@
         "react-error-boundary": "^3.1.4",
         "react-relay": "^13.2.0",
         "react-use": "^17.3.2",
-        "recoil": "^0.7.3-alpha.2"
+        "recoil": "0.7.2"
     },
     "devDependencies": {
         "@types/react": "^18.0.9",

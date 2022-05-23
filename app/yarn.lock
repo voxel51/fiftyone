@@ -1905,7 +1905,7 @@ __metadata:
     react-icons: ^4.3.1
     react-relay: ^13.2.0
     react-use: ^17.3.2
-    recoil: ^0.7.3-alpha.2
+    recoil: 0.7.2
     relay-compiler: ^13.0.2
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
@@ -7407,22 +7407,6 @@ __metadata:
     react-native:
       optional: true
   checksum: 2ad0c2052fd33ee358e3b448fd36ea6d4b37e69ace65ff44124605171c4794e4f167215209731aac3d45d42ea9f4c67e9c5a0704ff04ab94b64bcca96d5f59a3
-  languageName: node
-  linkType: hard
-
-"recoil@npm:^0.7.3-alpha.2":
-  version: 0.7.3-alpha.2
-  resolution: "recoil@npm:0.7.3-alpha.2"
-  dependencies:
-    hamt_plus: 1.0.2
-  peerDependencies:
-    react: ">=16.13.1"
-  peerDependenciesMeta:
-    react-dom:
-      optional: true
-    react-native:
-      optional: true
-  checksum: 3af4b8ef88f0602515bd2730a8dba12f9aa866db5ce1310e5dc8a431b2e5bd4b5e16b9bc9b2e496b0024b78ece80ebfd61797eb4e64b6cbc62e4e23833d02c6a
   languageName: node
   linkType: hard
 

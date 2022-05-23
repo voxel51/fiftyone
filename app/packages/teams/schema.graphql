@@ -85,8 +85,6 @@ type EvaluationRun implements Run {
 
 type EvaluationRunConfig implements RunConfig {
   cls: String!
-  classwise: Boolean!
-  errorLevel: Int!
   gtField: String!
   predField: String!
   method: String!
