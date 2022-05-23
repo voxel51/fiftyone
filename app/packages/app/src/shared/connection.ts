@@ -122,7 +122,7 @@ export const http = isElectron()
   : window.location.protocol + "//" + host + path;
 
 export const ws = isElectron()
-  ? `ws://${address}:${port}/state`
+  ? `ws://${address}:${port}/${path}/state`
   : `${
       window.location.protocol === "https:" ? "wss:" : "ws:"
     }//${host}${path}/state`;
