@@ -1,21 +1,24 @@
 """
-Utilities for the ImageNet dataset.
+Utilities for working with the `ImageNet dataset <http://www.image-net.org>`_.
 
-The ImageNet dataset: http://www.image-net.org.
-
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import os
 
 
-def ensure_imagenet_manual_download(dataset_dir, split, devkit=False):
+_TRAIN_IMAGES_TAR = "ILSVRC2012_img_train.tar"
+_VAL_IMAGES_DIR = "ILSVRC2012_img_val.tar"
+_DEVKIT_TAR = "ILSVRC2012_devkit_t12.tar.gz"
+
+
+def ensure_imagenet_manual_download(source_dir, split, devkit=False):
     """Ensures that the ImageNet archive(s) for the requested split have been
     manually downloaded to the required locations.
 
     Args:
-        dataset_dir: the dataset directory
+        source_dir: the dataset directory
         split: the split of interest. Supported values are
             ``("train", "validation")``
         devkit (False): whether to ensure that the devkit archive is present
@@ -24,34 +27,44 @@ def ensure_imagenet_manual_download(dataset_dir, split, devkit=False):
         OSError: if the required files are not present
     """
     if split == "train":
-        archive_name = "ILSVRC2012_img_train.tar"
+        archive_name = _TRAIN_IMAGES_TAR
     elif split == "validation":
-        archive_name = "ILSVRC2012_img_val.tar"
+        archive_name = _VAL_IMAGES_DIR
     else:
         raise ValueError(
             "Unsupported split '%s'; Supported values are "
             "('train', 'validation')"
         )
 
-    _ensure_archive(archive_name, dataset_dir)
+    _ensure_archive(archive_name, source_dir)
 
     if devkit:
-        devkit_name = "ILSVRC2012_devkit_t12.tar.gz"
-        _ensure_archive(devkit_name, dataset_dir)
+        devkit_name = _DEVKIT_TAR
+        _ensure_archive(devkit_name, source_dir)
 
 
-def _ensure_archive(archive_name, dataset_dir):
-    archive_path = os.path.join(dataset_dir, archive_name)
-    if not os.path.isfile(archive_path):
-        raise OSError(
-            (
-                "Archive '%s' not found in dataset directory '%s'."
-                "\n\n"
-                "You must download the source files for the ImageNet dataset "
-                "manually to the dataset directory."
-                "\n\n"
-                "Register at http://www.image-net.org/download-images in "
-                "order to get the link to download the dataset"
-            )
-            % (archive_name, dataset_dir)
+def _ensure_archive(archive_name, source_dir):
+    if source_dir is None:
+        _raise_imagenet_error(
+            "You must provide a `source_dir` in order to load the ImageNet "
+            "dataset."
         )
+
+    archive_path = os.path.join(source_dir, archive_name)
+    if not os.path.isfile(archive_path):
+        _raise_imagenet_error(
+            "Archive '%s' not found in directory '%s'."
+            % (archive_name, source_dir)
+        )
+
+
+def _raise_imagenet_error(msg):
+    raise OSError(
+        "\n\n"
+        + msg
+        + "\n\n"
+        + "You must download the source files for the ImageNet dataset "
+        "manually."
+        + "\n\n"
+        + "Run `fiftyone zoo datasets info imagenet-2012` for more information"
+    )

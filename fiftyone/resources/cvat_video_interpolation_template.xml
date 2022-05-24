@@ -3,8 +3,8 @@
     <version>1.1</version>
     <meta>
         <task>
-            <id>{{ id }}</id>
-            <name>{{ name }}</name>
+            <id>{{ id if id is not none else "" }}</id>
+            <name>{{ name if name is not none else "" }}</name>
             <size>{{ size }}</size>
             <mode>interpolation</mode>
             <overlap></overlap>
@@ -29,7 +29,7 @@
             </labels>
             <segments>
                     <segment>
-                        <id>{{ id }}</id>
+                        <id>{{ id if id is not none else "" }}</id>
                         <start>{{ 0 }}</start>
                         <stop>{{ [size - 1, 0]|max }}</stop>
                         <url></url>
@@ -54,6 +54,27 @@
             <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
 {% endfor %}
         </box>
+{% endfor %}
+{% for frame, polygon in track.polygons|dictsort %}
+        <polygon frame="{{ frame }}" points="{{ polygon.points_str }}"{% if polygon.outside is not none %} outside="{{ polygon.outside }}" {%endif %}{% if polygon.occluded is not none %} occluded="{{ polygon.occluded }}" {%endif %}{% if polygon.keyframe is not none %} keyframe="{{ polygon.keyframe }}" {%endif %}>
+{% for attr in polygon.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polygon>
+{% endfor %}
+{% for frame, polyline in track.polylines|dictsort %}
+        <polyline frame="{{ frame }}" points="{{ polyline.points_str }}"{% if polyline.outside is not none %} outside="{{ polyline.outside }}" {%endif %}{% if polyline.occluded is not none %} occluded="{{ polyline.occluded }}" {%endif %}{% if polyline.keyframe is not none %} keyframe="{{ polyline.keyframe }}" {%endif %}>
+{% for attr in polyline.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polyline>
+{% endfor %}
+{% for frame, point in track.points|dictsort %}
+        <points frame="{{ frame }}" points="{{ point.points_str }}"{% if point.outside is not none %} outside="{{ point.outside }}" {%endif %}{% if point.occluded is not none %} occluded="{{ point.occluded }}" {%endif %}{% if point.keyframe is not none %} keyframe="{{ point.keyframe }}" {%endif %}>
+{% for attr in point.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </points>
 {% endfor %}
     </track>
 {% endfor %}

@@ -1,14 +1,19 @@
 """
 Data utilities.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
+import multiprocessing
+import requests
 import os
+import pathlib
+import urllib
 
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -22,10 +27,6 @@ logger = logging.getLogger(__name__)
 
 def parse_images_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of images.
-
-    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
-    details. In particular, note that files with non-image MIME types are
-    omitted.
 
     Args:
         dataset_dir: the dataset directory
@@ -42,10 +43,6 @@ def parse_images_dir(dataset_dir, recursive=True):
 
 def parse_videos_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of videos.
-
-    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
-    details. In particular, note that files with non-video MIME types are
-    omitted.
 
     Args:
         dataset_dir: the dataset directory
@@ -81,228 +78,127 @@ def parse_image_classification_dir_tree(dataset_dir):
         samples: a list of ``(image_path, target)`` pairs
         classes: a list of class label strings
     """
-    # Get classes
-    classes = sorted(etau.list_subdirs(dataset_dir))
-    labels_map_rev = {c: i for i, c in enumerate(classes)}
-
-    # Generate dataset
-    glob_patt = os.path.join(dataset_dir, "*", "*")
     samples = []
-    for path in etau.get_glob_matches(glob_patt):
-        chunks = path.split(os.path.sep)
-        if any(s.startswith(".") for s in chunks[-2:]):
+    for filepath in etau.list_files(dataset_dir, recursive=True):
+        chunks = pathlib.PurePath(filepath).parts
+
+        if any(c.startswith(".") for c in chunks):
             continue
 
-        target = labels_map_rev[chunks[-2]]
-        samples.append((path, target))
+        samples.append((filepath, chunks[0]))
+
+    classes = sorted(set(s[1] for s in samples))
+    labels_map_rev = {c: i for i, c in enumerate(classes)}
+
+    samples = [
+        (os.path.join(dataset_dir, f), labels_map_rev[c]) for f, c in samples
+    ]
 
     return samples, classes
 
 
-def convert_classification_field_to_detections(
-    dataset,
-    classification_field,
-    detections_field=None,
-    keep_classification_field=False,
+def download_image_classification_dataset(
+    csv_path, dataset_dir, classes=None, num_workers=None
 ):
-    """Converts the :class:`fiftyone.core.labels.Classification` field of the
-    dataset into a :class:`fiftyone.core.labels.Detections` field containing
-    the classification label.
+    """Downloads the classification dataset specified by the given CSV file,
+    which should have the following format::
 
-    The detections are given bounding boxes that span the entire image.
+        <label1>,<image_url1>
+        <label2>,<image_url2>
+        ...
+
+    The image filenames are the basenames of the URLs, which are assumed to be
+    unique.
+
+    The dataset is written to disk in
+    :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
+    format.
 
     Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset`
-        classification_field: the name of the
-            :class:`fiftyone.core.labels.Classification` field to convert to
-            detections
-        detections_field (None): the name of the
-            :class:`fiftyone.core.labels.Detections` field to create. By
-            default, ``classification_field`` is overwritten
-        keep_classification_field (False): whether to keep
-            ``classification_field`` after the conversion is completed. By
-            default, the field is deleted from the dataset. If
-            ``classification_field`` is being overwritten, this flag has no
-            effect
+        csv_path: a CSV file containing the labels and image URLs
+        dataset_dir: the directory to write the dataset
+        classes (None): an optional list of classes. By default, this will be
+            inferred from the contents of ``csv_path``
+        num_workers (None): the number of processes to use to download images.
+            By default, ``multiprocessing.cpu_count()`` is used
     """
-    dataset.validate_field_type(
-        classification_field,
-        fof.EmbeddedDocumentField,
-        embedded_doc_type=fol.Classification,
+    labels, image_urls = zip(
+        *[
+            tuple(line.split(",", 1))
+            for line in etau.read_file(csv_path).splitlines()
+        ]
     )
 
-    if detections_field is None:
-        detections_field = classification_field
+    if classes is None:
+        classes = sorted(set(labels))
 
-    overwrite = detections_field == classification_field
-    if overwrite:
-        logger.info(
-            "Converting Classification field '%s' to Detections format",
-            classification_field,
-        )
-        keep_classification_field = False
-        detections_field = dataset.make_unique_field_name(
-            root=classification_field
-        )
-    else:
-        logger.info(
-            "Converting Classification field '%s' to Detections format in "
-            "field '%s'",
-            classification_field,
-            detections_field,
-        )
+    labels_map_rev = {label: idx for idx, label in enumerate(classes)}
 
-    with fou.ProgressBar() as pb:
-        for sample in pb(dataset):
-            label = sample[classification_field]
-            if label is None:
-                continue
+    images_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
 
-            detection = fol.Detection(
-                label=label.label,
-                bounding_box=[0, 0, 1, 1],  # entire image
-                confidence=label.confidence,
-            )
-            sample[detections_field] = fol.Detections(detections=[detection])
-            if not keep_classification_field:
-                sample.clear_field(classification_field)
-
-            sample.save()
-
-    if not keep_classification_field:
-        dataset.delete_sample_field(classification_field)
-
-    if overwrite:
-        dataset.rename_field(detections_field, classification_field)
-
-
-def expand_image_labels_field(
-    dataset,
-    label_field,
-    prefix=None,
-    labels_dict=None,
-    multilabel=False,
-    skip_non_categorical=False,
-    keep_label_field=False,
-):
-    """Expands the :class:`fiftyone.core.labels.ImageLabels` field of the
-    dataset into per-label fields.
-
-    Provide ``labels_dict`` if you want to customize which components of the
-    labels are expanded. Otherwise, all objects/attributes are expanded as
-    explained below.
-
-    If ``multilabel`` is False, frame attributes will be stored in separate
-    :class:`fiftyone.core.labels.Classification` fields with names
-    ``prefix + attr.name``.
-
-    If ``multilabel`` if True, all frame attributes will be stored in a
-    :class:`fiftyone.core.labels.Classifications` field called
-    ``prefix + "attrs"``.
-
-    Objects are stored in :class:`fiftyone.core.labels.Detections` fields whose
-    names are ``prefix + obj.name``, or ``prefix + "objs"`` for objects that
-    do not have their ``name`` field populated.
-
-    Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset`
-        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
-            field to expand
-        prefix (None): a string prefix to prepend to each expanded field name
-        labels_dict (None): a dictionary mapping names of attributes/objects
-            in ``label_field`` to field names into which to expand them
-        multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` field
-        skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False)
-        keep_label_field (False): whether to keep ``label_field`` after the
-            expansion is completed. By default, the field is deleted from the
-            dataset
-    """
-    logger.info("Expanding image labels field '%s'", label_field)
-    with fou.ProgressBar() as pb:
-        for sample in pb(dataset):
-            labels = sample[label_field]
-            if labels is None:
-                continue
-
-            sample.update_fields(
-                labels.expand(
-                    prefix=prefix,
-                    labels_dict=labels_dict,
-                    multilabel=multilabel,
-                    skip_non_categorical=skip_non_categorical,
-                )
-            )
-            if not keep_label_field:
-                sample.clear_field(label_field)
-
-            sample.save()
-
-    if not keep_label_field:
-        dataset.delete_sample_field(label_field)
-
-
-def condense_image_labels_field(
-    dataset,
-    label_field,
-    prefix=None,
-    labels_dict=None,
-    keep_label_fields=False,
-):
-    """Condenses multiple :class:`fiftyone.core.labels.Label`` fields into a
-    single :class:`fiftyone.core.labels.ImageLabels` field.
-
-    Provide either ``prefix`` or ``labels_dict`` to customize the fields that
-    are condensed. If you provide neither, all
-    :class:`fiftyone.core.labels.Label`` fields are condensed.
-
-    Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset`
-        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
-            field to create
-        prefix (None): a label field prefix; all
-            :class:`fiftyone.core.labels.Label` fields matching this prefix are
-            merged into ``label_field``, with the prefix removed from the names
-            of the labels
-        labels_dict (None): a dictionary mapping names of
-            :class:`fiftyone.core.labels.Label` fields to names to give them in
-            the condensed :class:`fiftyone.core.labels.ImageLabels`
-        keep_label_fields (False): whether to keep the input label fields after
-            ``label_field`` is created. By default, the fields are deleted
-    """
-    if prefix is None:
-        prefix = ""
-
-    if labels_dict is None:
-        labels_dict = _get_label_dict_for_prefix(dataset, prefix)
-
-    logger.info("Condensing image labels into field '%s'", label_field)
-    with fou.ProgressBar() as pb:
-        for sample in pb(dataset):
-            image_labels = etai.ImageLabels()
-            for field_name, name in labels_dict.items():
-                image_labels.merge_labels(
-                    sample[field_name].to_image_labels(name=name)
-                )
-                if not keep_label_fields:
-                    sample.clear_field(field_name)
-
-            sample[label_field] = fol.ImageLabels(labels=image_labels)
-            sample.save()
-
-    if not keep_label_fields:
-        for field_name in labels_dict:
-            dataset.delete_sample_field(field_name)
-
-
-def _get_label_dict_for_prefix(dataset, prefix):
-    label_fields = dataset.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    logger.info("Downloading images to '%s'...", images_dir)
+    image_paths = download_images(
+        image_urls, images_dir, num_workers=num_workers
     )
+
     labels_dict = {}
-    for field_name in label_fields:
-        if field_name.startswith(prefix):
-            labels_dict[field_name] = field_name[len(prefix) :]
+    for image_path, label in zip(image_paths, labels):
+        uuid = os.path.splitext(os.path.basename(image_path))[0]
+        labels_dict[uuid] = labels_map_rev[label]
 
-    return labels_dict
+    _labels = {"classes": classes, "labels": labels_dict}
+
+    logger.info("Writing labels to '%s'", labels_path)
+    etas.write_json(_labels, labels_path)
+
+
+def download_images(image_urls, output_dir, num_workers=None):
+    """Downloads the images from the given URLs.
+
+    The filenames in ``output_dir`` are the basenames of the URLs, which are
+    assumed to be unique.
+
+    Args:
+        image_urls: a list of image URLs to download
+        output_dir: the directory to write the images
+        num_workers (None): the number of processes to use. By default,
+            ``multiprocessing.cpu_count()`` is used
+
+    Returns:
+        the list of downloaded image paths
+    """
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    inputs = []
+    for url in image_urls:
+        filename = os.path.basename(urllib.parse.urlparse(url).path)
+        outpath = os.path.join(output_dir, filename)
+        inputs.append((url, outpath))
+
+    if num_workers <= 1:
+        _download_images(inputs)
+    else:
+        _download_images_multi(inputs, num_workers)
+
+    return tuple(zip(*inputs))[1]
+
+
+def _download_images(inputs):
+    with fou.ProgressBar() as pb:
+        for args in pb(inputs):
+            _download_image(args)
+
+
+def _download_images_multi(inputs, num_workers):
+    with fou.ProgressBar(inputs) as pb:
+        with multiprocessing.Pool(processes=num_workers) as pool:
+            for _ in pb(pool.imap_unordered(_download_image, inputs)):
+                pass
+
+
+def _download_image(args):
+    url, outpath = args
+    img_bytes = requests.get(url).content
+    etau.write_file(img_bytes, outpath)

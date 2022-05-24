@@ -1,18 +1,15 @@
 """
 FiftyOne Services.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import logging
-import multiprocessing
 import os
-import re
 import subprocess
 import sys
 
-from packaging.version import Version
 import psutil
 import requests
 from retrying import retry
@@ -20,6 +17,8 @@ from retrying import retry
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.config as focn
+import fiftyone.core.context as focx
 import fiftyone.service.util as fosu
 
 
@@ -43,7 +42,14 @@ class ServiceListenTimeout(ServiceException):
         message = "%s failed to bind to port" % self.name
         if self.port is not None:
             message += " " + str(self.port)
+
         return message
+
+
+class ServiceExecutableNotFound(ServiceException):
+    """Exception raised when the service executable is not found on disk."""
+
+    pass
 
 
 class Service(object):
@@ -62,30 +68,21 @@ class Service(object):
     allow_headless = False
 
     def __init__(self):
-        """Creates (starts) the Service."""
         self._system = os.system
-        self._disabled = (
-            os.environ.get("FIFTYONE_SERVER", False)
-            or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
-            or multiprocessing.current_process().name != "MainProcess"
-            or (
-                os.environ.get("FIFTYONE_HEADLESS", False)
-                and not self.allow_headless
-            )
+        self._disabled = os.environ.get(
+            "FIFTYONE_DISABLE_SERVICES", False
+        ) or (
+            os.environ.get("FIFTYONE_HEADLESS", False)
+            and not self.allow_headless
         )
         self.child = None
         if not self._disabled:
             self.start()
 
     def __del__(self):
-        """Deletes (stops) the Service."""
+        """Stops the service."""
         if not self._disabled:
-            try:
-                self.stop()
-            except:
-                # something probably failed due to interpreter shutdown, which
-                # will be handled by service/main.py
-                pass
+            self.stop()
 
     @property
     def command(self):
@@ -97,20 +94,22 @@ class Service(object):
 
     @property
     def _service_args(self):
-        """Arguments passed to the service entrypoint"""
+        """Arguments passed to the service entrypoint."""
         if not self.service_name:
             raise NotImplementedError(
                 "%r must define `service_name`" % type(self)
             )
+
         return ["--51-service", self.service_name]
 
     def start(self):
-        """Starts the Service."""
+        """Starts the service."""
         service_main_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "service",
             "main.py",
         )
+
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows
         self.child = psutil.Popen(
@@ -123,30 +122,23 @@ class Service(object):
         )
 
     def stop(self):
-        """Stops the Service."""
+        """Stops the service."""
         self.child.stdin.close()
-        self.child.wait()
+        try:
+            self.child.wait()
+        except TypeError:
+            pass
 
     def wait(self):
-        """Waits for the Service to exit and returns its exit code."""
+        """Waits for the service to exit and returns its exit code."""
         return self.child.wait()
 
-    @staticmethod
-    def cleanup():
-        """Performs any necessary cleanup when the service exits.
-
-        Note that this is called by the subprocess (service/main.py) and is
-        not intended to be called directly.
-        """
-        pass
-
-    def _wait_for_child_port(self, port=None, timeout=10):
-        """
-        Waits for any child process of this service to bind to a TCP port.
+    def _wait_for_child_port(self, port=None, timeout=60):
+        """Waits for any child process of this service to bind to a TCP port.
 
         Args:
-            port: if specified, wait for a child to bind to this port
-            timeout: the number of seconds to wait before failing
+            port (None): if specified, wait for a child to bind to this port
+            timeout (60): the number of seconds to wait before failing
 
         Returns:
             the port the child has bound to (equal to the ``port`` argument
@@ -158,7 +150,7 @@ class Service(object):
 
         @retry(
             wait_fixed=250,
-            stop_max_delay=timeout * 1000,
+            stop_max_delay=1000 * timeout,
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
@@ -169,22 +161,13 @@ class Service(object):
                     for local_port in fosu.get_listening_tcp_ports(child):
                         if port is None or port == local_port:
                             return local_port
+
                 except psutil.Error:
                     pass
+
             raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
-
-    @classmethod
-    def find_subclass_by_name(cls, name):
-        for subclass in cls.__subclasses__():
-            if subclass.service_name == name:
-                return subclass
-            try:
-                return subclass.find_subclass_by_name(name)
-            except ValueError:
-                pass
-        raise ValueError("Unrecognized %s subclass: %s" % (cls.__name__, name))
 
 
 class MultiClientService(Service):
@@ -192,9 +175,6 @@ class MultiClientService(Service):
 
     # set when attaching to an existing process
     attached = False
-
-    def __init__(self):
-        super().__init__()
 
     @property
     def _service_args(self):
@@ -207,7 +187,9 @@ class MultiClientService(Service):
         for process in fosu.find_processes_by_args(self._service_args):
             desc = "Process %i (%s)" % (
                 process.pid,
-                " ".join(["service/main.py"] + self._service_args),
+                " ".join(
+                    [os.path.join("service", "main.py")] + self._service_args
+                ),
             )
             logger.debug("Connecting to %s", desc)
             try:
@@ -219,9 +201,10 @@ class MultiClientService(Service):
                     self.child = process
                     return
                 else:
-                    logger.warn("Failed to connect to %s: %r", desc, reply)
+                    logger.warning("Failed to connect to %s: %r", desc, reply)
+
             except IOError:
-                logger.warn("%s did not respond", desc)
+                logger.warning("%s did not respond", desc)
 
         super().start()
 
@@ -232,6 +215,7 @@ class MultiClientService(Service):
         elif self.child is not None:
             # this process is the original parent
             self.child.stdin.close()
+
         self.child = None
 
 
@@ -245,109 +229,66 @@ class DatabaseService(MultiClientService):
     if sys.platform.startswith("win"):
         MONGOD_EXE_NAME += ".exe"
 
-    MIN_MONGO_VERSION = "3.6"
-
     @property
     def command(self):
+        database_dir = focn.load_config().database_dir
+        log_path = os.path.join(database_dir, "log", "mongo.log")
+
         args = [
             DatabaseService.find_mongod(),
             "--dbpath",
-            foc.DB_PATH,
+            database_dir,
             "--logpath",
-            foc.DB_LOG_PATH,
+            log_path,
             "--port",
             "0",
         ]
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
+
+        try:
+            etau.ensure_dir(database_dir)
+        except:
+            raise PermissionError(
+                "Database directory `%s` cannot be written to" % database_dir
+            )
+
+        try:
+            etau.ensure_basedir(log_path)
+
+            if not os.path.isfile(log_path):
+                etau.ensure_empty_file(log_path)
+        except:
+            raise PermissionError(
+                "Database log path `%s` cannot be written to" % log_path
+            )
+
+        if focx._get_context() == focx._COLAB:
+            return ["sudo"] + args
+
+        if focx._get_context() == focx._DATABRICKS:
+            return ["sudo"] + args
+
         return args
 
     @property
     def port(self):
         return self._wait_for_child_port()
 
-    def start(self):
-        """Starts the DatabaseService."""
-        for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
-            if not os.path.isdir(folder):
-                os.makedirs(folder)
-
-        super().start()
-
-        # Set up a default connection
-        import fiftyone.core.odm.database as food
-
-        food.set_default_port(self.port)
-        food.get_db_conn()
-
-    @staticmethod
-    def cleanup():
-        """Deletes non-persistent datasets when the DB shuts down."""
-        import fiftyone.core.dataset as fod
-        import fiftyone.core.odm.database as food
-        import fiftyone.service.util as fosu
-
-        try:
-            port = next(
-                port
-                for child in psutil.Process().children()
-                for port in fosu.get_listening_tcp_ports(child)
-            )
-        except (StopIteration, psutil.Error):
-            # mongod may have exited - ok to wait until next time
-            return
-
-        food.set_default_port(port)
-        food.get_db_conn()
-        fod.delete_non_persistent_datasets()
-        food.sync_database()
-
     @staticmethod
     def find_mongod():
         """Returns the path to the `mongod` executable."""
-        search_paths = [
-            foc.FIFTYONE_DB_BIN_DIR,
-            os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
-        ] + os.environ["PATH"].split(os.pathsep)
-        searched = set()
-        attempts = []
-        for folder in search_paths:
-            if folder in searched:
-                continue
-            searched.add(folder)
-            mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
-            if os.path.isfile(mongod_path):
-                logger.debug("Trying %s", mongod_path)
-                p = psutil.Popen(
-                    [mongod_path, "--version"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                out, err = p.communicate()
-                out = out.decode(errors="ignore").strip()
-                err = err.decode(errors="ignore").strip()
-                mongod_version = None
-                if p.returncode == 0:
-                    match = re.search(r"db version.+?([\d\.]+)", out, re.I)
-                    if match:
-                        mongod_version = match.group(1)
-                        if Version(mongod_version) >= Version(
-                            DatabaseService.MIN_MONGO_VERSION
-                        ):
-                            return mongod_path
-                attempts.append(
-                    (mongod_path, mongod_version, p.returncode, err)
-                )
-        for path, version, code, err in attempts:
-            if version is not None:
-                logger.warn("%s: incompatible version %s" % (path, version))
-            else:
-                logger.error(
-                    "%s: failed to launch (code %r): %s" % (path, code, err)
-                )
-        raise RuntimeError(
-            "Could not find mongod >= %s" % DatabaseService.MIN_MONGO_VERSION
+        mongod = os.path.join(
+            foc.FIFTYONE_DB_BIN_DIR, DatabaseService.MONGOD_EXE_NAME
         )
+
+        if not os.path.isfile(mongod):
+            raise ServiceExecutableNotFound("Could not find `mongod`")
+
+        if not os.access(mongod, os.X_OK):
+            raise PermissionError("`mongod` is not executable")
+
+        return mongod
 
 
 class ServerService(Service):
@@ -357,18 +298,22 @@ class ServerService(Service):
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
-    def __init__(self, port):
+    def __init__(self, port, address=None, do_not_track=False):
         self._port = port
+        self._address = address
+        self._do_not_track = do_not_track
         super().__init__()
 
     def start(self):
-        server_version = None
+        address = self._address or "127.0.0.1"
+        port = self._port
+
         try:
             server_version = requests.get(
-                "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
+                "http://%s:%i/fiftyone" % (address, port), timeout=2
             ).json()["version"]
-        except Exception:
-            pass
+        except:
+            server_version = None
 
         if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
@@ -376,17 +321,20 @@ class ServerService(Service):
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-            self._wait_for_child_port(self._port)
+            self._wait_for_child_port(port=port)
         else:
-            logger.info("Connected to fiftyone on local port %i" % self._port)
             logger.info(
-                "If you are not connecting to a remote session, you may need\n"
-                "to start a new session and specify a port.\n"
+                "Connected to FiftyOne on port %i at %s.\nIf you are not "
+                "connecting to a remote session, you may need to start a new "
+                "session and specify a port",
+                port,
+                address,
             )
             if server_version != foc.VERSION:
-                logger.warn(
-                    "Server version (%s) does not match client version (%s)"
-                    % (server_version, foc.VERSION)
+                logger.warning(
+                    "Server version (%s) does not match client version (%s)",
+                    server_version,
+                    foc.VERSION,
                 )
 
     @property
@@ -397,53 +345,75 @@ class ServerService(Service):
             "--port",
             str(self.port),
         ]
+
+        if self.address:
+            command += ["--address", self.address]
+
         return command
 
     @property
     def port(self):
-        """Getter for the current port"""
         return self._port
+
+    @property
+    def address(self):
+        return self._address
+
+    @property
+    def env(self):
+        dnt = "1" if self._do_not_track else "0"
+        return {"FIFTYONE_DO_NOT_TRACK": dnt}
 
 
 class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     service_name = "app"
-    working_dir = foc.FIFTYONE_APP_DIR
+    working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
-    def __init__(self, server_port=None):
+    def __init__(self, server_port=None, server_address=None):
         # initialize before start() is called
         self.server_port = server_port
+        self.server_address = server_address
         super().__init__()
 
     @property
     def command(self):
-        with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            if os.path.isfile("FiftyOne.AppImage"):
-                # Linux
-                args = ["./FiftyOne.AppImage"]
-            elif os.path.isdir("FiftyOne.app"):
-                # macOS
-                args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
-            elif os.path.isfile("FiftyOne.exe"):
-                # Windows
-                args = ["./FiftyOne.exe"]
-            elif os.path.isfile("package.json"):
-                # dev build
-                args = ["yarn", "dev"]
-            else:
-                raise RuntimeError(
-                    "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
+        with etau.WorkingDir(foc.FIFTYONE_DESKTOP_APP_DIR):
+            return self.find_app()
+
+    def find_app(self):
+        if foc.DEV_INSTALL:
+            return ["yarn", "start-desktop"]
+
+        for path in etau.list_files("./"):
+            if path.endswith(".tar.gz"):
+                logger.info("Installing FiftyOne App")
+                etau.extract_tar(path, "./", delete_tar=True)
+
+        pre = foc.FIFTYONE_DESKTOP_APP_DIR
+        for path in etau.list_files("./"):
+            if path.endswith(".AppImage") or path.endswith(".exe"):
+                return [os.path.join(pre, path)]
+
+        if os.path.isdir("./FiftyOne.app"):
+            return [
+                os.path.join(
+                    pre, "FiftyOne.app", "Contents", "MacOS", "FiftyOne"
                 )
-        return args
+            ]
+
+        raise RuntimeError(
+            "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
+        )
 
     @property
     def env(self):
         env = {}
         if self.server_port is not None:
             env["FIFTYONE_SERVER_PORT"] = str(self.server_port)
-            if foc.DEV_INSTALL:
-                # override port 1212 used by "yarn dev" for hot-reloading
-                # (specifying port 0 doesn't work here)
-                env["PORT"] = str(self.server_port + 1)
+
+        if self.server_address:
+            env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)
+
         return env

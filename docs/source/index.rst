@@ -9,14 +9,20 @@ FiftyOne
     <table id="social-links-table">
       <th>
         <a target="_blank" href="https://github.com/voxel51/fiftyone">
-          <img alt="GitHub repository" src="_static/images/icons/github-mark.svg" />
+          <img alt="GitHub repository" src="_static/images/icons/github-logo-256px.png">
           &nbsp View on GitHub
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">
-          <img alt="Slack community" src="_static/images/icons/slack-mark.svg" />
+        <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ">
+          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
           &nbsp Join us on Slack
+        </a>
+      </th>
+      <th>
+        <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">
+          <img alt="Colab quickstart" src="_static/images/icons/colab-logo-256px.png">
+          &nbsp Try it in Colab
         </a>
       </th>
     </table>
@@ -24,39 +30,131 @@ FiftyOne
 
 .. End social links -----------------------------------------------------------
 
-*"Rapidly experiment with your datasets"*
+**The open-source tool for building high-quality datasets and computer vision models**
 
-If you are looking to boost the performance of your machine learning models,
-chances are improving the quality of your dataset will provide the highest
-return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
-for machine learning/computer vision engineers and scientists that enables you
-to curate better datasets. Work efficiently with FiftyOne to achieve better
-models with dependable performance.
+Nothing hinders the success of machine learning systems more than poor quality
+data. And without the right tools, improving a model can be time-consuming and
+inefficient.
 
-*"Become one with your data"*
+FiftyOne supercharges your machine learning workflows by enabling you to
+visualize datasets and interpret models faster and more effectively.
 
-FiftyOne does more than improve your dataset; it gets you closer to your data.
-Rapidly gain insight by visualizing samples overlayed with dynamic and
-queryable fields such as ground truth and predicted labels, dataset splits, and
-much more!
+.. raw:: html
 
-.. image:: images/homepage1.png
-   :alt: Overview
-   :align: center
+  <div style="margin-top: 20px; margin-bottom: 20px">
+    <video controls muted poster="https://voxel51.com/images/fiftyone_poster.png" style="width: 100%;">
+      <source src="https://voxel51.com/images/fiftyone_long_sizzle.mp4" type="video/mp4">
+    </video>
+  </div>
+
+Improving data quality and understanding your model's failure modes are the
+most impactful ways to boost the performance of your model.
+
+FiftyOne provides the building blocks for optimizing your dataset analysis
+pipeline. Use it to get hands-on with your data, including visualizing complex
+labels, evaluating your models, exploring scenarios of interest, identifying
+failure modes, finding annotation mistakes, and much more!
+
+.. custombutton::
+    :button_text: Install FiftyOne!
+    :button_link: getting_started/install.html
+
+FiftyOne integrates naturally with your favorite tools. Click on a logo to
+learn how:
+
+.. raw:: html
+
+    <div class="integrations-logos">
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-128.png
+    :image_title: PyTorch
+
+.. customimagelink::
+    :image_link: integrations/lightning_flash.html
+    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
+    :image_title: PyTorch Lightning
+
+.. customimagelink::
+    :image_link: recipes/adding_detections.html
+    :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
+    :image_title: TensorFlow
+
+.. customimagelink::
+    :image_link: integrations/activitynet.html
+    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
+    :image_title: ActivityNet
+
+.. customimagelink::
+    :image_link: integrations/coco.html
+    :image_src: https://voxel51.com/images/integrations/coco-128.png
+    :image_title: COCO
+
+.. customimagelink::
+    :image_link: integrations/open_images.html
+    :image_src: https://voxel51.com/images/integrations/open-images-128.png
+    :image_title: Open Images
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/images/integrations/jupyter-128.png
+    :image_title: Jupyter
+
+.. customimagelink::
+    :image_link: environments/index.html#notebooks
+    :image_src: https://voxel51.com/images/integrations/colab-128.png
+    :image_title: Google Colab
+
+.. customimagelink::
+    :image_link: user_guide/plots.html
+    :image_src: https://voxel51.com/images/integrations/plotly-128.png
+    :image_title: Plotly
+
+.. customimagelink::
+    :image_link: integrations/cvat.html
+    :image_src: https://voxel51.com/images/integrations/cvat-128.png
+    :image_title: CVAT
+
+.. customimagelink::
+    :image_link: integrations/labelbox.html
+    :image_src: https://voxel51.com/images/integrations/labelbox-128.png
+    :image_title: Labelbox
+
+.. customimagelink::
+    :image_link: api/fiftyone.utils.scale.html
+    :image_src: https://voxel51.com/images/integrations/scale-128.png
+    :image_title: Scale AI
+
+.. customimagelink::
+    :image_link: environments/index.html#google-cloud
+    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
+    :image_title: Google Cloud
+
+.. customimagelink::
+    :image_link: environments/index.html#aws
+    :image_src: https://voxel51.com/images/integrations/aws-128.png
+    :image_title: Amazon Web Services
+
+.. customimagelink::
+    :image_link: environments/index.html#azure
+    :image_src: https://voxel51.com/images/integrations/azure-128.png
+    :image_title: Azure
+
+.. raw:: html
+
+    </div>
 
 .. note::
 
-  FiftyOne is rapidly growing.
+  FiftyOne is growing!
   `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  so we can keep you posted on new features as they come out!
+  to learn about new features as they come out.
 
 .. _core-capabilities:
 
 Core Capabilities
 _________________
-
-FiftyOne provides advanced capabilities that will turbocharge your machine
-learning workflows.
 
 .. Callout items --------------------------------------------------------------
 
@@ -68,28 +166,46 @@ learning workflows.
 .. Add callout items below this line
 
 .. customcalloutitem::
+    :header: Curating datasets
+    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
+    :button_text: Learn how to load data into FiftyOne
+    :button_link: user_guide/dataset_creation/index.html
+    :image: _static/images/homepage_curate.gif
+
+.. customcalloutitem::
+    :header: Evaluating models
+    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
+    :button_text: See how to evaluate models with FiftyOne
+    :button_link: tutorials/evaluate_detections.html
+    :image: _static/images/homepage_evaluate.gif
+
+.. customcalloutitem::
+    :header: Visualizing embeddings
+    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
+    :button_text: Experience the power of embeddings
+    :button_link: tutorials/image_embeddings.html
+    :image: _static/images/homepage_embeddings.gif
+
+.. customcalloutitem::
+    :header: Working with geolocation
+    :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
+    :button_text: Visualize your location data
+    :button_link: user_guide/plots.html#geolocation-plots
+    :image: _static/images/homepage_location.gif
+
+.. customcalloutitem::
     :header: Finding annotation mistakes
     :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
     :button_text: Check out the label mistakes tutorial
-    :button_link: tutorials/label_mistakes.html
+    :button_link: tutorials/classification_mistakes.html
+    :image: _static/images/homepage_mistakes.gif
 
 .. customcalloutitem::
     :header: Removing redundant images
     :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
     :button_text: Try the image uniqueness tutorial
     :button_link: tutorials/uniqueness.html
-
-.. customcalloutitem::
-    :header: Bootstrapping datasets from raw images
-    :description: "What data should I select to annotate?" Use FiftyOne to automatically recommend unlabeled samples from your dataset to send for annotation, enabling you to bootsrap a training dataset that leads to demonstrably better model performance.
-    :button_text: Tutorial coming soon
-    :button_link:
-
-.. customcalloutitem::
-    :header: Adding optimal samples to your dataset
-    :description: "What new samples should I add to my training dataset to see the largest improvement in my model?" FiftyOne provides methods for mining hard samples from your datasets, a tried and true measure of mature machine learning processes.
-    :button_text: Tutorial coming soon
-    :button_link:
+    :image: _static/images/homepage_redundant.gif
 
 .. End callouts ---------------------------------------------------------------
 
@@ -103,18 +219,18 @@ learning workflows.
 Core Concepts
 _____________
 
-The FiftyOne tool has three components: the core library, the App, and the
+The FiftyOne tool has three components: the Python library, the App, and the
 Brain.
 
-:doc:`FiftyOne Core Library <user_guide/basics>`
-------------------------------------------------
+:doc:`FiftyOne Library <user_guide/basics>`
+-------------------------------------------
 
 FiftyOne's core library provides a structured yet dynamic representation to
 explore your datasets. You can efficiently query and manipulate your dataset by
 adding custom tags, model predictions and more.
 
 .. custombutton::
-    :button_text: Explore the Core Library
+    :button_text: Explore the library
     :button_link: user_guide/basics.html
 
 .. code-block:: python
@@ -122,7 +238,7 @@ adding custom tags, model predictions and more.
 
     import fiftyone as fo
 
-    dataset = fo.Dataset(name="my_dataset")
+    dataset = fo.Dataset("my_dataset")
 
     sample = fo.Sample(filepath="/path/to/image.png")
     sample.tags.append("train")
@@ -130,7 +246,7 @@ adding custom tags, model predictions and more.
 
     dataset.add_sample(sample)
 
-    view = dataset.match_tag("train").sort_by("custom_field").limit(10)
+    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
 
     for sample in view:
         print(sample)
@@ -143,31 +259,31 @@ adding custom tags, model predictions and more.
     datasets in custom formats.
 
     Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
-    how to load your data into FiftyOne!
+    how to load your data into FiftyOne.
 
 :doc:`FiftyOne App <user_guide/app>`
 ------------------------------------
 
-The FiftyOne App is a graphical user interface (GUI) that makes it easy to
-rapidly gain intuition into your datasets. You can visualize labels, bounding
-boxes and segmentations overlayed on the samples; sort, query and slice your
-dataset into any aspect you need; and more.
+The FiftyOne App is a graphical user interface that makes it easy to explore
+and rapidly gain intuition into your datasets. You can visualize labels like
+bounding boxes and segmentations overlaid on the samples; sort, query and
+slice your dataset into any subset of interest; and more.
 
 .. custombutton::
     :button_text: See more of the App
     :button_link: user_guide/app.html
 
-.. image:: images/homepage2.png
-   :alt: App
+.. image:: images/homepage_app.png
+   :alt: fiftyone-app
    :align: center
 
 :doc:`FiftyOne Brain <user_guide/brain>`
 ----------------------------------------
 
 The FiftyOne Brain is a library of powerful machine learning-powered
-:ref:`capabilities <core-capabilities>` that provide insights into your
-datasets and recommend ways to modify your datasets that will lead to
-measurably better performance of your models.
+capabilities that provide insights into your datasets and recommend ways to
+modify your datasets that will lead to measurably better performance of your
+models.
 
 .. custombutton::
     :button_text: Learn more about the Brain
@@ -180,14 +296,6 @@ measurably better performance of your models.
 
    fob.compute_uniqueness(dataset)
    rank_view = dataset.sort_by("uniqueness")
-
-.. note::
-
-    The FiftyOne Brain is a separate Python package that is bundled with
-    FiftyOne. Although it is closed-source, it is licensed as freeware, and you
-    have permission to use it for commercial or non-commercial purposes. See
-    `the license <https://github.com/voxel51/fiftyone/blob/develop/LICENSE-BRAIN>`_
-    for more details.
 
 What's Next?
 ____________
@@ -207,7 +315,7 @@ _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
 free to
-`connect with us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_
+`connect with us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_
 or reach out to us at support@voxel51.com.
 
 .. toctree::
@@ -216,9 +324,12 @@ or reach out to us at support@voxel51.com.
 
    Overview <self>
    Installation <getting_started/install>
+   Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    User Guide <user_guide/index>
+   Integrations <integrations/index>
    Release Notes <release-notes>
    CLI Documentation <cli/index>
    API Reference <api/fiftyone>
+   FAQ <faq/index>

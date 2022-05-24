@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,6 +18,7 @@ from custom_directives import (
     CustomButtonDirective,
     CustomCalloutItemDirective,
     CustomCardItemDirective,
+    CustomImageLinkDirective,
 )
 from redirects import generate_redirects
 
@@ -25,7 +26,7 @@ import fiftyone.constants as foc
 
 
 with open("../../setup.py") as f:
-    setup_version = re.search(r'version="(.+?)"', f.read()).group(1)
+    setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)
 
 if setup_version != foc.VERSION:
     raise RuntimeError(
@@ -72,7 +73,6 @@ autodoc_default_options = {
     "inherited-members": True,
     "member-order": "bysource",
     "autosummary": True,
-    "autosummary-no-nesting": True,
 }
 autodoc_inherit_docstrings = True
 autoclass_content = "class"
@@ -100,18 +100,55 @@ rst_prolog = """
 # requires it
 nbsphinx_requirejs_path = ""
 
-# Adds a link to download the notebook to the built HTML
+# Adds helpful external links to the built HTML
+ref = "v%s" % foc.VERSION
 nbsphinx_prolog = """
 
-.. note::
+.. raw:: html
 
-    Download notebook:
-    :download:`{{ env.doc2path(env.docname, base=None) }} </{{ env.doc2path(env.docname, base=None) }}>`
+    <table class="fo-notebook-links" align="left">
+        <td>
+            <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+                <img src="../_static/images/icons/colab-logo-256px.png"> &nbsp; Run in Google Colab
+            </a>
+        </td>
+        <td>
+            <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+                <img src="../_static/images/icons/github-logo-256px.png"> &nbsp; View source on GitHub
+            </a>
+        </td>
+        <td>
+            <a target="_blank" href="https://gitcdn.link/repo/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+                <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
+            </a>
+        </td>
+    </table>
 
-"""
+""" % (
+    ref,
+    ref,
+    ref,
+)
 
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"
+
+# -- Options for intersphinx extension ---------------------------------------
+
+intersphinx_mapping = {
+    # including `python` autolinks things like (None) which is not desirable
+    # "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "plotly": ("https://plotly.com/python-api-reference/", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+    "torchvision": ("https://pytorch.org/vision/stable/", None),
+    "flash": ("https://lightning-flash.readthedocs.io/en/latest", None),
+    "pymongo": ("https://pymongo.readthedocs.io/en/stable/", None),
+    "mongoengine": ("https://docs.mongoengine.org/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "pydicom": ("https://pydicom.github.io/pydicom/stable/", None),
+    "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
+}
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -137,44 +174,31 @@ html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 # Prevent RST source files from being included in output
 html_copy_source = False
 
-# Links - copied from website config
 html_context = {
-    "address_main_line1": "410 N 4th Ave, 3rd Floor",
+    "address_main_line1": "330 E Liberty St",
     "address_main_line2": "Ann Arbor, MI 48104",
     "phone_main": "+1 734-489-1134",
     "email_info": "info@voxel51.com",
+    # Links - copied from website config
     "link_blog": "https://blog.voxel51.com/",
-    "link_careers": "https://voxel51.com/careers/",
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
-    "link_demo": "https://voxel51.com/demo/",
     "link_docs_fiftyone": "https://voxel51.com/docs/fiftyone/",
     "link_fiftyone": "https://voxel51.com/fiftyone/",
-    "link_github": "https://github.com/",
+    "link_fiftyone_tutorials": "https://voxel51.com/docs/fiftyone/tutorials/index.html",
+    "link_fiftyone_examples": "https://github.com/voxel51/fiftyone-examples",
+    "link_fiftyone_quickstart": "https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb",
     "link_home": "https://voxel51.com/",
-    "link_linkedin": "https://www.linkedin.com/in/",
     "link_ourstory": "https://voxel51.com/ourstory/",
-    "link_pdi": "https://pdi.voxel51.com/",
-    "link_platform": "https://voxel51.com/platform/",
-    "link_platform_login": "https://console.voxel51.com/login",
     "link_press": "https://voxel51.com/press/",
     "link_privacypolicy": "https://voxel51.com/privacy/",
-    "link_schedulecall": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Schedule%20a%20call",
-    "link_scheduledemo": "https://meetings.hubspot.com/michael908",
-    "link_scoop_demo": "https://demo.voxel51.com",
-    "link_scoop_login": "https://scoop.voxel51.com/",
-    "link_status": "https://status.voxel51.com/",
     "link_termsofservice": "https://voxel51.com/terms/",
-    "link_twitter": "https://twitter.com/",
-    "link_usecase_advertising": "https://voxel51.com/usecases/advertising/",
-    "link_usecase_auto": "https://voxel51.com/usecases/automotive/",
-    "link_usecase_research": "https://voxel51.com/usecases/research/",
-    "link_usecases": "https://voxel51.com/usecases/",
-    "link_usecases_entry": "https://voxel51.com/usecases/automotive/",
     "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
     "link_voxel51_github": "https://github.com/voxel51/",
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
-    "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg",
+    "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
+    "link_voxel51_medium": "https://medium.com/voxel51/",
+    "banner_link": "https://voxel51.com/docs/fiftyone/integrations/coco.html",
 }
 
 # -- Custom app setup --------------------------------------------------------
@@ -189,3 +213,4 @@ def setup(app):
     app.add_directive("custombutton", CustomButtonDirective)
     app.add_directive("customcalloutitem", CustomCalloutItemDirective)
     app.add_directive("customcarditem", CustomCardItemDirective)
+    app.add_directive("customimagelink", CustomImageLinkDirective)

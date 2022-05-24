@@ -1,0 +1,77 @@
+diff --git a/node_modules/html2canvas/dist/html2canvas.esm.js b/node_modules/html2canvas/dist/html2canvas.esm.js
+index d6a2689..b3ea97e 100644
+--- a/node_modules/html2canvas/dist/html2canvas.esm.js
++++ b/node_modules/html2canvas/dist/html2canvas.esm.js
+@@ -6191,9 +6191,13 @@ var CanvasRenderer = /** @class */ (function () {
+             });
+         });
+     };
+-    CanvasRenderer.prototype.renderTextWithLetterSpacing = function (text, letterSpacing) {
++    CanvasRenderer.prototype.renderTextWithLetterSpacing = function (text, letterSpacing, isInput) {
+         var _this = this;
+         if (letterSpacing === 0) {
++		if (navigator.userAgent.indexOf('Firefox') === -1 && !isInput){
++			// non-Firefox browser add this
++			this.ctx.textBaseline = 'ideographic';
++		}
+             this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+         }
+         else {
+@@ -6218,7 +6222,7 @@ var CanvasRenderer = /** @class */ (function () {
+             fontSize
+         ];
+     };
+-    CanvasRenderer.prototype.renderTextNode = function (text, styles) {
++    CanvasRenderer.prototype.renderTextNode = function (text, styles, isInput) {
+         return __awaiter(this, void 0, void 0, function () {
+             var _a, font, fontFamily, fontSize;
+             var _this = this;
+@@ -6227,7 +6231,7 @@ var CanvasRenderer = /** @class */ (function () {
+                 this.ctx.font = font;
+                 text.textBounds.forEach(function (text) {
+                     _this.ctx.fillStyle = asString(styles.color);
+-                    _this.renderTextWithLetterSpacing(text, styles.letterSpacing);
++                    _this.renderTextWithLetterSpacing(text, styles.letterSpacing, isInput);
+                     var textShadows = styles.textShadow;
+                     if (textShadows.length && text.text.trim().length) {
+                         textShadows
+@@ -6285,7 +6289,7 @@ var CanvasRenderer = /** @class */ (function () {
+     };
+     CanvasRenderer.prototype.renderNodeContent = function (paint) {
+         return __awaiter(this, void 0, void 0, function () {
+-            var container, curves, styles, _i, _a, child, image, e_1, image, e_2, iframeRenderer, canvas, size, bounds, x, textBounds, img, image, url, e_3, bounds;
++            var isInput, container, curves, styles, _i, _a, child, image, e_1, image, e_2, iframeRenderer, canvas, size, bounds, x, textBounds, img, image, url, e_3, bounds;
+             return __generator(this, function (_b) {
+                 switch (_b.label) {
+                     case 0:
+@@ -6295,10 +6299,11 @@ var CanvasRenderer = /** @class */ (function () {
+                         styles = container.styles;
+                         _i = 0, _a = container.textNodes;
+                         _b.label = 1;
++			isInput = container instanceof InputElementContainer;
+                     case 1:
+                         if (!(_i < _a.length)) return [3 /*break*/, 4];
+                         child = _a[_i];
+-                        return [4 /*yield*/, this.renderTextNode(child, styles)];
++                        return [4 /*yield*/, this.renderTextNode(child, styles, isInput)];
+                     case 2:
+                         _b.sent();
+                         _b.label = 3;
+@@ -6414,7 +6419,7 @@ var CanvasRenderer = /** @class */ (function () {
+                                 new Vector(bounds.left, bounds.top + bounds.height)
+                             ]);
+                             this.ctx.clip();
+-                            this.renderTextWithLetterSpacing(new TextBounds(container.value, textBounds), styles.letterSpacing);
++                            this.renderTextWithLetterSpacing(new TextBounds(container.value, textBounds), styles.letterSpacing, isInput);
+                             this.ctx.restore();
+                             this.ctx.textBaseline = 'bottom';
+                             this.ctx.textAlign = 'left';
+@@ -6445,7 +6450,7 @@ var CanvasRenderer = /** @class */ (function () {
+                             this.ctx.textBaseline = 'middle';
+                             this.ctx.textAlign = 'right';
+                             bounds = new Bounds(container.bounds.left, container.bounds.top + getAbsoluteValue(container.styles.paddingTop, container.bounds.width), container.bounds.width, computeLineHeight(styles.lineHeight, styles.fontSize.number) / 2 + 1);
+-                            this.renderTextWithLetterSpacing(new TextBounds(paint.listValue, bounds), styles.letterSpacing);
++                            this.renderTextWithLetterSpacing(new TextBounds(paint.listValue, bounds), styles.letterSpacing, isInput);
+                             this.ctx.textBaseline = 'bottom';
+                             this.ctx.textAlign = 'left';
+                         }

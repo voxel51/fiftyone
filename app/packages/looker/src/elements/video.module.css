@@ -1,0 +1,272 @@
+/**
+ * Copyright 2017-2022, Voxel51, Inc.
+ */
+
+.bufferingCircle {
+  width: 100%;
+  height: 100%;
+  -webkit-animation: rotate 2s linear infinite;
+  animation: rotate 2s linear infinite;
+  height: 100%;
+  -webkit-transform-origin: center center;
+  -ms-transform-origin: center center;
+  transform-origin: center center;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: auto;
+}
+
+.bufferingPath {
+  stroke-dasharray: 150, 200;
+  stroke-dashoffset: -10;
+  -webkit-animation: dash 1.5s ease-in-out infinite,
+    color 6s ease-in-out infinite;
+  animation: dash 1.5s ease-in-out infinite, color 6s ease-in-out infinite;
+  stroke-linecap: round;
+}
+
+.lookerPlaybackRate,
+.lookerVolume {
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.lookerPlaybackRate input,
+.lookerVolume input {
+  -webkit-transition: width 0.25s ease-in-out;
+  -moz-transition: width 0.25s ease-in-out;
+  -o-transition: width 0.25s ease-in-out;
+  transition: width 0.25s ease-in-out;
+}
+
+.lookerPlayPause {
+  width: 15%;
+  height: 80%;
+}
+
+.lookerPlaybackRate {
+  grid-area: 2 / 3 / 2 / 3;
+}
+
+.lookerPlaybackRate > input {
+  --playback: 0%;
+  margin-top: 12px;
+  width: 0;
+  display: none;
+}
+
+.lookerVolume {
+  grid-area: 2 / 4 / 2 / 4;
+}
+
+.lookerShowRange > input {
+  width: 65px;
+}
+
+.lookerVolume > input {
+  --volume: 0%;
+  width: 0;
+  margin-top: 12px;
+  display: none;
+}
+
+.lookerPlaybackRate:hover input,
+.lookerVolume:hover input {
+  width: 65px;
+  display: block;
+}
+
+.lookerSeekBar {
+  --progress: 0%;
+  --start: 0%;
+  --end: 100%;
+  --buffer-progress: 0%;
+  grid-area: 1 / 1 / 1 / 18;
+  margin-top: -5px;
+  width: 100%;
+}
+
+.lookerThumb {
+  --progress: 0%;
+  width: 0;
+  height: 0;
+  border-radius: 8px;
+  background: rgb(225, 100, 40);
+  position: absolute;
+  left: var(--progress);
+  top: -11px;
+  cursor: pointer;
+  overflow: visible;
+  -webkit-transition: width 0.1s linear;
+  -moz-transition: width 0.1s linear;
+  -o-transition: width 0.1s linear;
+  transition: width 0.1s linear;
+}
+
+.lookerThumbSeeking {
+  width: 16px;
+  height: 16px;
+}
+
+input[type="range"].lookerSeekBar::-webkit-slider-runnable-track {
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    hsla(210, 11%, 11%, 0.9) 0%,
+    hsla(210, 11%, 11%, 0.9) var(--start, 0%),
+    rgb(225, 100, 40) var(--start, 0%),
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(138, 138, 138) var(--progress, 0%),
+    rgb(138, 138, 138) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--end, 0%),
+    hsla(210, 11%, 11%, 0.9) var(--end, 100%),
+    hsla(210, 11%, 11%, 0.9) 100%
+  );
+}
+
+input[type="range"].lookerSeekBar::-moz-range-track {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    hsl(210, 11%, 11%) 0%,
+    hsl(210, 11%, 11%) var(--start, 0%),
+    rgb(225, 100, 40) var(--start, 0%),
+    rgb(225, 100, 40) var(--progress, 0%),
+    rgb(138, 138, 138) var(--progress, 0%),
+    rgb(138, 138, 138) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--buffer-progress, 0%),
+    rgb(238, 238, 238) var(--end, 0%),
+    hsl(210, 11%, 11%) var(--end, 100%),
+    hsl(210, 11%, 11%) 100%
+  );
+  overflow: hidden;
+}
+
+.lookerVolume > input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--volume, 0%),
+    rgb(238, 238, 238) var(--volume, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
+.lookerVolume > input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--volume, 0%),
+    rgb(238, 238, 238) var(--volume, 0%),
+    rgb(238, 238, 238) 100%
+  );
+  overflow: hidden;
+}
+
+.lookerPlaybackRate > input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--playback, 0%),
+    rgb(238, 238, 238) var(--playback, 0%),
+    rgb(238, 238, 238) 100%
+  );
+}
+
+.lookerPlaybackRate > input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgb(225, 100, 40) 0%,
+    rgb(225, 100, 40) var(--playback, 0%),
+    rgb(238, 238, 238) var(--playback, 0%),
+    rgb(238, 238, 238) 100%
+  );
+  overflow: hidden;
+}
+
+@-webkit-keyframes rotate {
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotate {
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+@-webkit-keyframes dash {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -124;
+  }
+}
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 89, 200;
+    stroke-dashoffset: -124;
+  }
+}
+@-webkit-keyframes color {
+  0% {
+    stroke: rgb(238, 238, 238);
+  }
+  40% {
+    stroke: rgb(238, 238, 238);
+  }
+  66% {
+    stroke: rgb(238, 238, 238);
+  }
+  80%,
+  90% {
+    stroke: rgb(238, 238, 238);
+  }
+}
+@keyframes color {
+  0% {
+    stroke: rgb(238, 238, 238);
+  }
+  40% {
+    stroke: rgb(238, 238, 238);
+  }
+  66% {
+    stroke: rgb(238, 238, 238);
+  }
+  80%,
+  90% {
+    stroke: rgb(238, 238, 238);
+  }
+}

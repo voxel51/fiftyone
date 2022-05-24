@@ -1,0 +1,61 @@
+/**
+ * Copyright 2017-2022, Voxel51, Inc.
+ */
+
+.lookerThumbnailSelector {
+  -webkit-transition: 0.2s;
+  -moz-transition: 0.2s;
+  -o-transition: 0.2s;
+  -ms-transition: 0.2s;
+  transition: 0.2s;
+  width: 100%;
+  height: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  visibility: hidden;
+  cursor: pointer;
+  display: none;
+
+  padding: 3px 3px 12px 3px;
+
+  background: linear-gradient(
+    0deg,
+    hsla(210, 11%, 11%, 0) 0%,
+    hsl(210, 11%, 11%) 100%
+  );
+}
+
+.lookerThumbnailSelector.showSelector {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+}
+
+.lookerThumbnailSelector span {
+  margin: 0.25rem !important;
+}
+
+.lookerThumbnailSelector *:hover,
+.lookerThumbnailSelector *:active,
+.lookerThumbnailSelector *:focus {
+  outline: none;
+}
+
+.lookerThumbnailSelector label {
+  display: grid;
+  justify-items: start;
+  grid-template-columns: 1fr;
+  margin: 0 0 1px;
+  line-height: 1.5;
+  cursor: unset;
+}
+
+/* Hide the browser's default checkbox */
+.lookerThumbnailSelector input {
+  position: absolute;
+  height: 0;
+  width: 0;
+  cursor: unset;
+}

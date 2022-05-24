@@ -1,3 +1,5 @@
+.. _recipes:
+
 FiftyOne Recipes
 ================
 
@@ -36,17 +38,38 @@ workflows.
 .. Add recipe cards below
 
 .. customcarditem::
-    :header: Remove duplicate images from a dataset
-    :description: Turn your data into a FiftyOne Dataset and automatically find and remove duplicate and near-duplicate images from your dataset.
+    :header: Creating views and using view expressions
+    :description: Create views to easily query and explore your datasets in FiftyOne.
+    :link: creating_views.html
+    :image: ../_static/images/recipes/creating_views.png
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
+    :header: Removing duplicate images from a dataset
+    :description: Automatically find and remove duplicate and near-duplicate images from your FiftyOne datasets.
     :link: image_deduplication.html
     :image: ../_static/images/recipes/image_deduplication.png
     :tags: Basics,Dataset-Curation
 
 .. customcarditem::
-    :header: Add model predictions to a dataset
-    :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your model's predictions.
-    :link: model_inference.html
-    :image: ../_static/images/recipes/model_inference.png
+    :header: Removing duplicate objects from a dataset
+    :description: Check out some common workflows for finding and removing duplicate objects from your FiftyOne datasets.
+    :link: remove_duplicate_annos.html
+    :image: ../_static/images/recipes/remove_duplicate_annos.png
+    :tags: Basics,Dataset-Curation
+
+.. customcarditem::
+    :header: Adding classifier predictions to a dataset
+    :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your classifier's predictions.
+    :link: adding_classifications.html
+    :image: ../_static/images/recipes/adding_classifications.png
+    :tags: Basics,Model-Training
+
+.. customcarditem::
+    :header: Adding object detections to a dataset
+    :description: Use FiftyOne to store your object detections and use the FiftyOne App to analyze them.
+    :link: adding_detections.html
+    :image: ../_static/images/recipes/adding_detections.png
     :tags: Basics,Model-Training
 
 .. customcarditem::
@@ -64,7 +87,7 @@ workflows.
     :tags: Basics,I/O
 
 .. customcarditem::
-    :header: Merge datasets
+    :header: Merging datasets
     :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
     :link: merge_datasets.html
     :image: ../_static/images/recipes/merge_datasets.png
@@ -105,15 +128,24 @@ workflows.
 
 .. End Recipe cards section ---------------------------------------------------
 
+.. note::
+
+    Check out the
+    `fiftyone-examples <https://github.com/voxel51/fiftyone-examples>`_
+    repository for more examples of using FiftyOne!
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   Remove duplicate images<image_deduplication.ipynb>
-   Add model predictions<model_inference.ipynb>
-   Draw labels on samples<draw_labels.ipynb>
-   Convert dataset formats<convert_datasets.ipynb>
-   Merge datasets<merge_datasets.ipynb>
-   Custom dataset importers<custom_importer.ipynb>
-   Custom dataset exporters<custom_exporter.ipynb>
-   Custom sample parsers<custom_parser.ipynb>
+   Creating views <creating_views.ipynb>
+   Removing duplicate images <image_deduplication.ipynb>
+   Removing duplicate objects <remove_duplicate_annos.ipynb>
+   Adding classifier predictions <adding_classifications.ipynb>
+   Adding object detections <adding_detections.ipynb>
+   Draw labels on samples <draw_labels.ipynb>
+   Convert dataset formats <convert_datasets.ipynb>
+   Merging datasets <merge_datasets.ipynb>
+   Custom dataset importers <custom_importer.ipynb>
+   Custom dataset exporters <custom_exporter.ipynb>
+   Custom sample parsers <custom_parser.ipynb>

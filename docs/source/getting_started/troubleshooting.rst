@@ -1,4 +1,3 @@
-
 .. _troubleshooting:
 
 Install Troubleshooting
@@ -10,7 +9,19 @@ This page lists common issues encountered when installing FiftyOne and possible
 solutions. If you encounter an issue that this page doesn't help you resolve,
 feel free to
 `open an issue on GitHub <https://github.com/voxel51/fiftyone/issues/new?labels=bug&template=installation_issue_template.md&title=%5BSETUP-BUG%5D>`_
-or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_.
+or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-s6936w7b-2R5eVPJoUw008wP7miJmPQ>`_.
+
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install. So, try this first before reading on:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
+
+.. _troubleshooting-pip:
 
 Python/pip incompatibilities
 ----------------------------
@@ -33,23 +44,84 @@ old, you may encounter errors like these:
 
 .. code-block:: text
 
-    fiftyone requires Python '>=3.5' but the running Python is 3.4.10
+    fiftyone requires Python '>=3.7' but the running Python is 3.4.10
 
-To resolve this, you will need to use Python 3.5 or newer, and pip 19.3 or
+To resolve this, you will need to use Python 3.7 or newer, and pip 19.3 or
 newer. See the :ref:`installation guide <installing-fiftyone>` for details. If
 you have installed a suitable version of Python in a virtual environment and
 still encounter this error, ensure that the virtual environment is activated.
 See the
 :doc:`virtual environment setup guide <virtualenv>` for more details.
 
+.. note::
+
+    FiftyOne does not support 32-bit platforms.
+
+"Package 'fiftyone' requires a different Python"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This error occurs when attempting to install FiftyOne with an unsupported Python
+version (either too old or too new). See the
+:ref:`installation guide <install-prereqs>` for details on which versions of
+Python are supported by FiftyOne.
+
+If you have multiple Python installations, you may be using `pip` from an
+incompatible Python installation. Run `pip --version` to see which Python
+version `pip` is using. If you see an unsupported or unexpected Python version
+reported, there are several possible causes, including:
+
+* You may not have activated a virtual environment in your current shell. Refer
+  to the :doc:`virtual environment setup guide <virtualenv>` for details.
+* If you are intentionally using your system Python installation instead of a
+  virtual environment, your system-wide `pip` may use an unsupported Python
+  version. For instance, on some Linux systems, `pip` uses Python 2, and `pip3`
+  uses Python 3. If this is the case, try installing FiftyOne with `pip3`
+  instead of `pip`.
+* You may not have a compatible Python version installed. See the
+  :ref:`installation guide <install-prereqs>` for details.
+
 "No module named skbuild"
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On Linux, this error can occur when attempting to install OpenCV with an old pip
-version. To fix this, upgrade pip. See the
+On Linux, this error can occur when attempting to install OpenCV with an old
+pip version. To fix this, upgrade pip. See the
 :ref:`installation guide <installing-fiftyone>` for instructions, or the
-`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
-details.
+`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for
+more details.
+
+.. _troubleshooting-video:
+
+Videos do not load in the App
+-----------------------------
+
+You need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+datasets:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
+
+Without FFmpeg installed, videos may appear in the App, but they will not be
+rendered with the correct aspect ratio and thus label overlays will not be
+positioned correctly.
+
+.. _troubleshooting-ipython:
 
 IPython installation
 --------------------
@@ -81,36 +153,74 @@ To resolve this, install IPython in your active virtual environment (see the
 
     pip install ipython
 
+.. _troubleshooting-mongodb:
+
+Import and database issues
+--------------------------
+
+FiftyOne includes a `fiftyone-db` package wheel for your operating system and
+hardware. If you have not
+:ref:`configured your own database connection <configuring-mongodb-connection>`,
+then FiftyOne's database service will attempt to start up on import using the
+MongoDB distribution provided by `fiftyone-db`. If the database fails to start,
+importing `fiftyone` will result in exceptions being raised.
+
+.. _troubleshooting-mongodb-exits
+
+Database exits
+--------------
+
+On some UNIX systems, the default open file limit setting is too small for
+FiftyOne's MongoDB connection. The database service will exit in this case.
+Running `ulimit -n 64000` should resolve the issue. 64,000 is the recommended
+open file limit.  MongoDB has full documentation on the issue
+`here <https://docs.mongodb.com/manual/reference/ulimit/>`_. 
+
 
 .. _troubleshooting-mongodb-linux:
 
-MongoDB compatibility issues on Linux
--------------------------------------
+Troubleshooting Linux imports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``fiftyone-db`` package includes a build of MongoDB that works on Ubuntu
-18.04 and several other modern distributions. If this build does not work on
-your distribution, you may encounter an error similar to:
+On Linux machines in particular, the MongoDB build works for Ubuntu
+18.04+ and several other modern distributions.
+
+However, if a suitable MongoDB build is not available or otherwise does not
+work in your environment, you may encounter a `ServerSelectionTimeoutError`.
+
+If you have output similar to the below, you may just need to install
+`libssl` packages.
 
 .. code-block:: text
 
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: failed to launch:
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
+  Subprocess ['.../site-packages/fiftyone/db/bin/mongod', ...] exited with error 127:
+  .../site-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
-.. code-block:: text
+On Ubuntu, `libssl` packages can be install with the following command:
 
-    RuntimeError: Could not find mongod >= 3.6
+.. code-block:: shell
 
-To resolve this, you can install an alternative package on some distributions,
-detailed below, or install a compatible version of MongoDB system-wide.
+  sudo apt install libssl-dev
 
-Alternative builds
-~~~~~~~~~~~~~~~~~~
+If you still face issues with imports, you can follow
+:ref:`these instructions <configuring-mongodb-connection>` to configure
+FiftyOne to use a MongoDB instance that you have installed yourself.
 
-Alternative builds of MongoDB are available as pip packages for the
+On Linux, alternative :ref:`fiftyone-db builds <alternative-builds>` are
+available as well.
+
+.. _alternative-builds:
+
+Alternative Linux builds
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Alternative builds of MongoDB are available as pip packages for the Linux
 distributions listed below, and can be installed by running the corresponding
-command. Note that these packages must be installed *after* the `fiftyone`
-package; if you install `fiftyone` afterwards, you can fix your MongoDB
+command.
+
+Note that these packages must be installed *after* installing the `fiftyone`
+package; if you (re)install `fiftyone` afterwards, you can fix your MongoDB
 installation by adding `--force-reinstall` to the commands below.
 
 .. tabs::
@@ -119,42 +229,35 @@ installation by adding `--force-reinstall` to the commands below.
 
     .. code-block:: shell
 
-      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
+      # be sure you have libcurl4 installed
+      # apt install libcurl4
+      pip install fiftyone-db-ubuntu2004
 
   .. tab:: Debian 9
 
     .. code-block:: shell
 
-      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
+      pip install fiftyone-db-debian9
 
-Manual installation
-~~~~~~~~~~~~~~~~~~~
+  .. tab:: RHEL 7
 
-FiftyOne also supports using an existing MongoDB installation (version 3.6 or
-newer). This can be installed through many distributions' package managers.
-Note that only the `mongod` (server) binary is required, so you may not need
-the complete MongoDB package. For example, Debian-based distributions make this
-available in the `mongodb-server` package.
+    .. code-block:: shell
 
-If your distribution does not provide a new-enough version of MongoDB, or if
-you would like to install a newer version, see
-`the MongoDB documentation <https://docs.mongodb.com/manual/administration/install-on-linux/>`_
-for instructions on installing MongoDB on your distribution. Note that you only
-need the `mongodb-org-server` package in this case.
+      pip install fiftyone-db-rhel7
 
-To verify the version of your MongoDB installation, run `mongod --version`,
-which should produce output that looks like this:
+.. _troubleshooting-mongodb-windows:
 
-.. code-block:: text
+Troubleshooting Windows imports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   db version v4.2.6
-   git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8
-   OpenSSL version: OpenSSL 1.1.1  11 Sep 2018
-   allocator: tcmalloc
-   modules: none
-   build environment:
-       distmod: ubuntu1804
-       distarch: x86_64
-       target_arch: x86_64
+If your encounter a `psutil.NoSuchProcessExists` exists when importing
+`fiftyone`, you are likely missing the C++ libraries MongoDB requires.
 
-Verify that the version after "db version" is at least 3.6.
+.. code-block::
+
+    psutil.NoSuchProcess: psutil.NoSuchProcess process no longer exists (pid=XXXX)
+  
+Downloading and installing the Microsoft Visual C++ Redistributable from this
+`page <https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0>`_
+should resolve the issue. Specifically, you will want to download the
+`vc_redist.x64.exe` redistributable.

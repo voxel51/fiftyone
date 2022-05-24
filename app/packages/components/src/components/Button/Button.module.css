@@ -1,0 +1,21 @@
+.button {
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 3px;
+  text-align: center;
+  padding: 0 0.5rem;
+  border: 1px solid var(--brand);
+  background: var(--brand-transparent);
+  box-shadow: 0 2px 40px var(--background-dark);
+}
+
+.button:hover {
+  background: var(--brand);
+}
+
+.button:disabled {
+  border: 1px solid var(--font-dark);
+  cursor: default;
+  background: var(--background-dark);
+}

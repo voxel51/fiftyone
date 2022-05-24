@@ -49,6 +49,9 @@ FIFTYONE_BRAIN_DIR=$(
     python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" ||
     true
 )
+# Get the last line from the output. Github workflows produce extraneous output
+FIFTYONE_BRAIN_DIR="${FIFTYONE_BRAIN_DIR##*$'\n'}"
+
 if [[ -z "${FIFTYONE_BRAIN_DIR}" ]] || [[ ! -d "${FIFTYONE_BRAIN_DIR}" ]]; then
     echo "fiftyone-brain not installed" >&2
     # workaround for https://github.com/voxel51/fiftyone/issues/583
@@ -71,7 +74,7 @@ cd "${THIS_DIR}/.."
 # Symlink to fiftyone-brain
 ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
 
-# Generate API docs
+echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
@@ -86,7 +89,10 @@ rm fiftyone/brain
 
 cd docs
 
-# Build docs
+echo "Generating model zoo listing page"
+python scripts/make_model_zoo_docs.py
+
+echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
 

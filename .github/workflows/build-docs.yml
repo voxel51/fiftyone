@@ -29,13 +29,16 @@ on:
       - docs/**
       - examples/**
       - fiftyone/**
+      - requirements/**
       - "**.py"
       - "**.md"
       - "**.rst"
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
@@ -46,37 +49,19 @@ jobs:
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          mkdir -p pip-cache
-          echo ::set-env name=PIP_CACHE_DIR::pip-cache
-      - name: Fetch pip cache
-        uses: actions/cache@v2
-        with:
-          path: pip-cache
-          key: pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-          restore-keys: |
-            pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-            pip-${{ hashFiles('setup.py') }}-
-            pip-
-      - name: Install dependencies
-        env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
+      - name: Install ETA from source
+        run: |
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          cd eta
+          python setup.py bdist_wheel
+          pip install ./dist/*.whl
+      - name: Install
         run: |
           sudo apt-get install pandoc
+          pip install -r requirements/dev.txt
+          pip install fiftyone-brain fiftyone-db
+          pip install pycocotools tensorflow torch torchvision
           pip install -e .
-          pip install -r requirements/docs.txt
-          pip install fiftyone-brain pycocotools tensorflow torch torchvision
-      - name: Install fiftyone-db
-        working-directory: package/db
-        run: |
-          python setup.py bdist_wheel
-          pip install dist/*.whl
-      - name: Upgrade ETA to pre-release
-        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
-        env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
-        run: |
-          echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
-          pip install -U "voxel51-eta>=0.dev0"
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
@@ -86,22 +71,10 @@ jobs:
           name: docs
           path: docs/build/html/
 
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Check tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
-
   publish:
-    needs: [build, check]
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish'
-    runs-on: ubuntu-18.04
+    needs: [build]
+    if: (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'rc')) || github.ref == 'refs/tags/docs-publish'
+    runs-on: ubuntu-20.04
     steps:
       - name: Clone website
         uses: actions/checkout@v2
@@ -134,5 +107,5 @@ jobs:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           author: voxel51-bot <bot@voxel51.com>
           labels: documentation
-          reviewers: jasoncorso, brimoor
+          reviewers: brimoor, benjaminpkane
           team-reviewers: developers

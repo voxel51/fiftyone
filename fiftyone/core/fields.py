@@ -1,20 +1,25 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from datetime import date, datetime
+import numbers
+
+from bson import ObjectId, SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
-import six
+import pytz
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
@@ -55,45 +60,83 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class ObjectIdField(mongoengine.ObjectIdField, Field):
+class IntField(mongoengine.fields.IntField, Field):
+    """A 32 bit integer field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return int(value)
+
+
+class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return ObjectId(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return str(value)
 
 
-class UUIDField(mongoengine.UUIDField, Field):
+class UUIDField(mongoengine.fields.UUIDField, Field):
     """A UUID field."""
 
     pass
 
 
-class BooleanField(mongoengine.BooleanField, Field):
+class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
     pass
 
 
-class IntField(mongoengine.IntField, Field):
-    """A 32 bit integer field."""
+class DateField(mongoengine.fields.DateField, Field):
+    """A date field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
 
+        return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
 
-class FrameNumberField(IntField):
-    """A video frame number field."""
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        # Explicitly converting to UTC is important here because PyMongo loads
+        # everything as `datetime`, which will respect `fo.config.timezone`,
+        # but we always need UTC here for the conversion back to `date`
+        return value.astimezone(pytz.utc).date()
 
     def validate(self, value):
-        if not isinstance(value, six.integer_types):
-            self.error("Frame numbers must be integers; found %s" % value)
-
-        if value < 1:
-            self.error(
-                "Frame numbers must be 1-based integers; found %s" % value
-            )
+        if not isinstance(value, date):
+            self.error("Date fields must have `date` values")
 
 
-class FloatField(mongoengine.FloatField, Field):
+class DateTimeField(mongoengine.fields.DateTimeField, Field):
+    """A datetime field."""
+
+    def validate(self, value):
+        if not isinstance(value, datetime):
+            self.error("Datetime fields must have `datetime` values")
+
+
+class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return float(value)
 
     def validate(self, value):
         try:
@@ -110,13 +153,13 @@ class FloatField(mongoengine.FloatField, Field):
             self.error("Float value is too large")
 
 
-class StringField(mongoengine.StringField, Field):
+class StringField(mongoengine.fields.StringField, Field):
     """A unicode string field."""
 
     pass
 
 
-class ListField(mongoengine.ListField, Field):
+class ListField(mongoengine.fields.ListField, Field):
     """A list field that wraps a standard :class:`Field`, allowing multiple
     instances of the field to be stored as a list in the database.
 
@@ -147,7 +190,33 @@ class ListField(mongoengine.ListField, Field):
         return etau.get_class_name(self)
 
 
-class DictField(mongoengine.DictField, Field):
+class HeatmapRangeField(ListField):
+    """A ``[min, max]`` range of the values in a
+    :class:`fiftyone.core.labels.Heatmap`.
+    """
+
+    def __init__(self, **kwargs):
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
+        if "field" not in kwargs:
+            kwargs["field"] = FloatField()
+
+        super().__init__(**kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not value[0] <= value[1]
+        ):
+            self.error("Heatmap range fields must contain `[min, max]` ranges")
+
+
+class DictField(mongoengine.fields.DictField, Field):
     """A dictionary field that wraps a standard Python dictionary.
 
     If this field is not set, its default value is ``{}``.
@@ -175,6 +244,249 @@ class DictField(mongoengine.DictField, Field):
             )
 
         return etau.get_class_name(self)
+
+    def validate(self, value):
+        if not all(map(lambda k: etau.is_str(k), value)):
+            self.error("Dict fields must have string keys")
+
+        if self.field is not None:
+            for _value in value.values():
+                self.field.validate(_value)
+
+        if value is not None and not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+
+class IntDictField(DictField):
+    """A :class:`DictField` whose keys are integers.
+
+    If this field is not set, its default value is ``{}``.
+
+    Args:
+        field (None): an optional :class:`Field` instance describing the type
+            of the values in the dict
+    """
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        value = {str(k): v for k, v in value.items()}
+        return super().to_mongo(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return {int(k): v for k, v in value.items()}
+
+    def validate(self, value):
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+        if not all(map(lambda k: isinstance(k, numbers.Integral), value)):
+            self.error("Int dict fields must have integer keys")
+
+        if self.field is not None:
+            for _value in value.values():
+                self.field.validate(_value)
+
+
+class KeypointsField(ListField):
+    """A list of ``(x, y)`` coordinate pairs.
+
+    If this field is not set, its default value is ``[]``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=None, **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        # Only validate value[0], for efficiency
+        if not isinstance(value, (list, tuple)) or (
+            value
+            and (not isinstance(value[0], (list, tuple)) or len(value[0]) != 2)
+        ):
+            self.error("Keypoints fields must contain a list of (x, y) pairs")
+
+
+class PolylinePointsField(ListField):
+    """A list of lists of ``(x, y)`` coordinate pairs.
+
+    If this field is not set, its default value is ``[]``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=None, **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        # Only validate value[0] and value[0][0], for efficiency
+        if (
+            not isinstance(value, (list, tuple))
+            or (value and not isinstance(value[0], (list, tuple)))
+            or (
+                value
+                and value[0]
+                and (
+                    not isinstance(value[0][0], (list, tuple))
+                    or len(value[0][0]) != 2
+                )
+            )
+        ):
+            self.error(
+                "Polyline points fields must contain a list of lists of "
+                "(x, y) pairs"
+            )
+
+
+class _GeoField(Field):
+    """Base class for GeoJSON fields."""
+
+    # The GeoJSON type of the field. Subclasses must implement this
+    _TYPE = None
+
+    def to_mongo(self, value):
+        if isinstance(value, dict):
+            return value
+
+        return SON([("type", self._TYPE), ("coordinates", value)])
+
+    def to_python(self, value):
+        if isinstance(value, dict):
+            return value["coordinates"]
+
+        return value
+
+
+class GeoPointField(_GeoField, mongoengine.fields.PointField):
+    """A GeoJSON field storing a longitude and latitude coordinate point.
+
+    The data is stored as ``[longitude, latitude]``.
+    """
+
+    _TYPE = "Point"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoLineStringField(_GeoField, mongoengine.fields.LineStringField):
+    """A GeoJSON field storing a line of longitude and latitude coordinates.
+
+    The data is stored as follow::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    _TYPE = "LineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoPolygonField(_GeoField, mongoengine.fields.PolygonField):
+    """A GeoJSON field storing a polygon of longitude and latitude coordinates.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+
+    where the first element describes the boundary of the polygon and any
+    remaining entries describe holes.
+    """
+
+    _TYPE = "Polygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiPointField(_GeoField, mongoengine.fields.MultiPointField):
+    """A GeoJSON field storing a list of points.
+
+    The data is stored as follows::
+
+        [[lon1, lat1], [lon2, lat2], ...]
+    """
+
+    _TYPE = "MultiPoint"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiLineStringField(
+    _GeoField, mongoengine.fields.MultiLineStringField
+):
+    """A GeoJSON field storing a list of lines.
+
+    The data is stored as follows::
+
+        [
+            [[lon1, lat1], [lon2, lat2], ...],
+            [[lon1, lat1], [lon2, lat2], ...],
+            ...
+        ]
+    """
+
+    _TYPE = "MultiLineString"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
+
+
+class GeoMultiPolygonField(_GeoField, mongoengine.fields.MultiPolygonField):
+    """A GeoJSON field storing a list of polygons.
+
+    The data is stored as follows::
+
+        [
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            [
+                [[lon1, lat1], [lon2, lat2], ...],
+                [[lon1, lat1], [lon2, lat2], ...],
+                ...
+            ],
+            ...
+        ]
+    """
+
+    _TYPE = "MultiPolygon"
+
+    def validate(self, value):
+        if isinstance(value, dict):
+            self.error("Geo fields expect coordinate lists, but found dict")
+
+        super().validate(value)
 
 
 class VectorField(mongoengine.fields.BinaryField, Field):
@@ -236,51 +548,68 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
-class ImageLabelsField(Field):
-    """A field that stores an ``eta.core.image.ImageLabels`` instance.
-
-    :class:`ImageLabelsField` instances accept ``eta.core.image.ImageLabels``
-    instances or serialized dict representations of them. The underlying data
-    is stored as a serialized dictionary in the dataset and always retrieved as
-    an ``eta.core.image.ImageLabels`` instance.
-    """
-
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        return value.serialize()
-
-    def to_python(self, value):
-        if value is None or isinstance(value, etai.ImageLabels):
-            return value
-
-        return etai.ImageLabels.from_dict(value)
-
-    def validate(self, value):
-        if not isinstance(value, (dict, etai.ImageLabels)):
-            self.error(
-                "Only dicts and `eta.core.image.ImageLabels` instances may be "
-                "used in an ImageLabels field"
-            )
-
-
-class FramesField(mongoengine.fields.MapField, Field):
-    def __init__(self, *args, **kwargs):
-        self._frame_doc_cls = kwargs.pop("frame_doc_cls")
-        super().__init__(
-            mongoengine.fields.ReferenceField(self._frame_doc_cls),
-            db_field="frames",
-        )
+class FrameNumberField(IntField):
+    """A video frame number field."""
 
     def validate(self, value):
         try:
-            fofu.is_frame_number(value)
+            fofu.validate_frame_number(value)
         except fofu.FrameError as e:
             self.error(str(e))
 
 
-class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
+class FrameSupportField(ListField):
+    """A ``[first, last]`` frame support in a video."""
+
+    def __init__(self, **kwargs):
+        if "field" not in kwargs:
+            kwargs["field"] = IntField()
+
+        super().__init__(**kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+    def validate(self, value):
+        if (
+            not isinstance(value, (list, tuple))
+            or len(value) != 2
+            or not (1 <= value[0] <= value[1])
+        ):
+            self.error(
+                "Frame support fields must contain `[first, last]` frame "
+                "numbers"
+            )
+
+
+class ClassesField(ListField):
+    """A :class:`ListField` that stores class label strings.
+
+    If this field is not set, its default value is ``[]``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+
+class TargetsField(IntDictField):
+    """A :class:`DictField` that stores mapping between integer keys and string
+    targets.
+
+    If this field is not set, its default value is ``{}``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+
+class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
 
@@ -290,23 +619,84 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """
 
     def __init__(self, document_type, **kwargs):
-        #
-        # @todo resolve circular import errors in `fiftyone.core.odm.sample`
-        # so that this validation can occur here
-        #
-        # import fiftyone.core.odm as foo
-        #
-        # if not issubclass(document_type, foo.BaseEmbeddedDocument):
-        #     raise ValueError(
-        #         "Invalid document type %s; must be a subclass of %s"
-        #         % (document_type, foo.BaseEmbeddedDocument)
-        #     )
-        #
-
         super().__init__(document_type, **kwargs)
+        self._parent = None
+
+        self.fields = kwargs.get("fields", [])
+        self._validation_schema = None
 
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the embedded
+        document field.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
+
+        Returns:
+             an ``OrderedDict`` mapping field names to field types
+        """
+        fields = {}
+
+        for name, field in self.document_type._fields.items():
+            if not include_private and name.startswith("_"):
+                continue
+
+            if ftype and not isinstance(field, ftype):
+                continue
+
+            if embedded_doc_type and (
+                not isinstance(field, EmbeddedDocumentField)
+                or embedded_doc_type != field.document_type
+            ):
+                continue
+
+            fields[name] = field
+
+        return fields
+
+
+class EmbeddedDocumentListField(
+    mongoengine.fields.EmbeddedDocumentListField, Field
+):
+    """A field that stores a list of a given type of
+    :class:`fiftyone.core.odm.BaseEmbeddedDocument` objects.
+
+    Args:
+        document_type: the :class:`fiftyone.core.odm.BaseEmbeddedDocument` type
+            stored in this field
+    """
+
+    def __str__(self):
+        # pylint: disable=no-member
+        return "%s(%s)" % (
+            etau.get_class_name(self),
+            etau.get_class_name(self.document_type),
+        )
+
+
+_ARRAY_FIELDS = (VectorField, ArrayField)
+
+# Fields whose values can be used without parsing when loaded from MongoDB
+_PRIMITIVE_FIELDS = (
+    BooleanField,
+    DateTimeField,
+    FloatField,
+    IntField,
+    ObjectIdField,
+    StringField,
+)

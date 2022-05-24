@@ -1,7 +1,7 @@
 """
 Base classes for documents that back dataset contents.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,14 +9,13 @@ from copy import deepcopy
 import json
 import re
 
-from bson import json_util
-from bson.objectid import ObjectId
+from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 
-import fiftyone.core.utils as fou
-
 import eta.core.serial as etas
+
+import fiftyone.core.utils as fou
 
 
 class SerializableDocument(object):
@@ -47,32 +46,92 @@ class SerializableDocument(object):
             class_name (None): optional class name to use
             select_fields (None): iterable of field names to restrict to
             exclude_fields (None): iterable of field names to exclude
+            **kwargs: additional key-value pairs to include in the string
+                representation
 
         Returns:
             a string representation of the document
         """
         d = {}
         for f in self._get_repr_fields():
-            if f.startswith("_") or (
-                f != "id"
-                and (
-                    (select_fields is not None and f not in select_fields)
-                    or (exclude_fields is not None and f in exclude_fields)
-                )
+            if (select_fields is not None and f not in select_fields) or (
+                exclude_fields is not None and f in exclude_fields
             ):
                 continue
-            if f in kwargs:
-                d[f] = kwargs[f]
-            else:
+
+            if not f.startswith("_"):
                 value = getattr(self, f)
                 if isinstance(value, ObjectId):
                     d[f] = str(value)
                 else:
                     d[f] = value
 
+        d.update(kwargs)
+
         doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)
         return "<%s: %s>" % (doc_name, doc_str)
+
+    def has_field(self, field_name):
+        """Determines whether the document has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError("Subclass must implement `has_field()`")
+
+    def get_field(self, field_name):
+        """Gets the field of the document.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            the field value
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        raise NotImplementedError("Subclass must implement `get_field()`")
+
+    def set_field(self, field_name, value, create=False):
+        """Sets the value of a field of the document.
+
+        Args:
+            field_name: the field name
+            value: the field value
+            create (False): whether to create the field if it does not exist
+
+        Raises:
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
+        """
+        raise NotImplementedError("Subclass must implement `set_field()`")
+
+    def clear_field(self, field_name):
+        """Clears the field from the document.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            ValueError: if the field does not exist
+        """
+        raise NotImplementedError("Subclass must implement `clear_field()`")
+
+    def _get_field_names(self, include_private=False):
+        """Returns an ordered tuple of field names of this document.
+
+        Args:
+            include_private (False): whether to include private fields
+
+        Returns:
+            a tuple of field names
+        """
+        raise NotImplementedError("Subclass must implement `_get_field_names`")
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
@@ -127,6 +186,9 @@ class SerializableDocument(object):
         Returns:
             a JSON string
         """
+        if not pretty_print:
+            return json_util.dumps(self.to_dict())
+
         d = self.to_dict(extended=True)
         return etas.json_to_str(d, pretty_print=pretty_print)
 
@@ -141,107 +203,85 @@ class SerializableDocument(object):
         return cls.from_dict(d, extended=False)
 
 
-class SampleDocument(SerializableDocument):
-    """Interface for sample backing documents."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def collection_name(self):
-        """The name of the MongoDB collection to which this sample belongs, or
-        ``None`` if it has not been added to a dataset.
-        """
-        return None
-
-    @property
-    def in_db(self):
-        """Whether the sample has been added to the database."""
-        return False
-
-    @property
-    def ingest_time(self):
-        """The time the sample was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return None
-
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        raise NotImplementedError("Subclass must implement `has_field()`")
-
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `get_field()`")
-
-    def set_field(self, field_name, value, create=False):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (False): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        raise NotImplementedError("Subclass must implement `set_field()`")
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `clear_field()`")
-
-
 class MongoEngineBaseDocument(SerializableDocument):
-    """Mixin for all ``mongoengine.base.BaseDocument`` subclasses that
-    implements the :class:`SerializableDocument` interface.
+    """Mixin for all :class:`mongoengine:mongoengine.base.BaseDocument`
+    subclasses that implements the :class:`SerializableDocument` interface.
     """
+
+    def __delattr__(self, name):
+        self.clear_field(name)
+
+    def __delitem__(self, name):
+        self.clear_field(name)
 
     def __deepcopy__(self, memo):
         # pylint: disable=no-member, unsubscriptable-object
         kwargs = {
-            f: deepcopy(self[f], memo)
+            f: deepcopy(self.get_field(f), memo)
             for f in self._fields_ordered
             if f not in ("_cls", "_id", "id")
         }
         return self.__class__(**kwargs)
 
+    def has_field(self, field_name):
+        # pylint: disable=no-member
+        return field_name in self._fields_ordered
+
+    def get_field(self, field_name):
+        return getattr(self, field_name)
+
+    def set_field(self, field_name, value, create=False):
+        if not create and not self.has_field(field_name):
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+        setattr(self, field_name, value)
+
+    def clear_field(self, field_name):
+        if not self.has_field(field_name):
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+        super().__delattr__(field_name)
+
+        # pylint: disable=no-member
+        if field_name not in self.__class__._fields_ordered:
+            self._fields_ordered = tuple(
+                f for f in self._fields_ordered if f != field_name
+            )
+
+    def field_to_mongo(self, field_name):
+        # pylint: disable=no-member
+        value = self.get_field(field_name)
+        return self._fields[field_name].to_mongo(value)
+
+    def field_to_python(self, field_name, value):
+        # pylint: disable=no-member
+        return self._fields[field_name].to_python(value)
+
+    def _get_field_names(self, include_private=False):
+        if not include_private:
+            return tuple(
+                f for f in self._fields_ordered if not f.startswith("_")
+            )
+
+        return self._fields_ordered
+
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return self._fields_ordered
 
-    def to_dict(
-        self, extended=False,
-    ):
-        if extended:
-            return json.loads(self._to_json())
+    def to_dict(self, extended=False):
+        # pylint: disable=no-member
+        d = self.to_mongo(use_db_field=True)
 
-        return json_util.loads(self._to_json())
+        if not extended:
+            return d
+
+        # @todo is there a way to avoid bson -> str -> json dict?
+        return json.loads(json_util.dumps(d))
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -255,14 +295,12 @@ class MongoEngineBaseDocument(SerializableDocument):
             except Exception:
                 pass
 
-        # pylint: disable=no-member
-        bson_data = json_util.loads(json_util.dumps(d))
-        return cls._from_son(bson_data)
+        # Construct any necessary extended JSON components like ObjectIds
+        # @todo is there a way to avoid json -> str -> bson?
+        d = json_util.loads(json_util.dumps(d))
 
-    def _to_json(self):
-        # @todo(Tyler) mongoengine snippet, to be replaced
         # pylint: disable=no-member
-        return json_util.dumps(self.to_mongo(use_db_field=True))
+        return cls._from_son(d)
 
 
 class BaseDocument(MongoEngineBaseDocument):
@@ -287,31 +325,28 @@ class BaseDocument(MongoEngineBaseDocument):
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
-        return ("id",) + tuple(f for f in self._fields_ordered if f != "id")
-
-    @property
-    def ingest_time(self):
-        """The time the document was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        # pylint: disable=no-member
-        return self.id.generation_time if self.in_db else None
+        return self._fields_ordered
 
     @property
     def in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
+        """Whether the document has been inserted into the database."""
         # pylint: disable=no-member
         return self.id is not None
 
 
-class BaseEmbeddedDocument(MongoEngineBaseDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
+class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
+    """Base class for dynamic documents that are stored in a MongoDB
+    collection.
+    Dynamic documents can have arbitrary fields added to them.
+    The ID of a document is automatically populated when it is added to the
+    database, and the ID of a document is ``None`` if it has not been added to
+    the database.
+    Attributes:
+        id: the ID of the document, or ``None`` if it has not been added to the
+            database
     """
 
-    pass
+    meta = {"abstract": True}
 
 
 class Document(BaseDocument, mongoengine.Document):
@@ -389,8 +424,10 @@ class Document(BaseDocument, mongoengine.Document):
                 updates, removals = self._delta()
 
                 update_doc = {}
+
                 if updates:
                     update_doc["$set"] = updates
+
                 if removals:
                     update_doc["$unset"] = removals
 
@@ -408,6 +445,7 @@ class Document(BaseDocument, mongoengine.Document):
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
             raise mongoengine.NotUniqueError(message % err)
+
         except pymongo.errors.OperationFailure as err:
             message = "Could not save document (%s)"
             if re.match("^E1100[01] duplicate key", str(err)):
@@ -415,6 +453,7 @@ class Document(BaseDocument, mongoengine.Document):
                 # E11001 - duplicate key on update
                 message = "Tried to save duplicate unique keys (%s)"
                 raise mongoengine.NotUniqueError(message % err)
+
             raise mongoengine.OperationError(message % err)
 
         # Make sure we store the PK on this document now that it's saved
@@ -444,50 +483,3 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = None
 
         return updated_existing
-
-
-class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
-    """Base class for dynamic documents that are stored in a MongoDB
-    collection.
-
-    Dynamic documents can have arbitrary fields added to them.
-
-    The ID of a document is automatically populated when it is added to the
-    database, and the ID of a document is ``None`` if it has not been added to
-    the database.
-
-    Attributes:
-        id: the ID of the document, or ``None`` if it has not been added to the
-            database
-    """
-
-    meta = {"abstract": True}
-
-
-class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
-    """Base class for documents that are embedded within other documents and
-    therefore are not stored in their own collection in the database.
-    """
-
-    meta = {"abstract": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()
-
-
-class DynamicEmbeddedDocument(
-    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
-):
-    """Base class for dynamic documents that are embedded within other
-    documents and therefore aren't stored in their own collection in the
-    database.
-
-    Dynamic documents can have arbitrary fields added to them.
-    """
-
-    meta = {"abstract": True}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validate()

@@ -1,3 +1,11 @@
+"""
+Tests related to inter-process communication (for services).
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import contextlib
 import pickle
 import random

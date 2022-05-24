@@ -1,3 +1,5 @@
+.. _fiftyone-cli:
+
 FiftyOne Command-Line Interface (CLI)
 =====================================
 
@@ -8,6 +10,8 @@ Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 useful features, including creating and inspecting datasets, visualizing
 datasets in the App, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
+
+.. _cli-quickstart:
 
 Quickstart
 ----------
@@ -50,6 +54,8 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
+.._cli-fiftyone-main:
+
 FiftyOne CLI
 ------------
 
@@ -57,7 +63,9 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {quickstart,config,constants,convert,datasets,app,zoo} ...
+    fiftyone [-h] [-v] [--all-help]
+             {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
+             ...
 
 **Arguments**
 
@@ -69,14 +77,17 @@ The FiftyOne command-line interface.
       --all-help            show help recurisvely and exit
 
     available commands:
-      {config,constants,convert,datasets,app,zoo}
+      {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
         quickstart          Launch a FiftyOne quickstart.
+        annotation          Tools for working with the FiftyOne annotation API.
+        app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        app                 Tools for working with the FiftyOne App.
-        zoo                 Tools for working with the FiftyOne Dataset Zoo.
+        migrate             Tools for migrating the FiftyOne database.
+        utils               FiftyOne utilities.
+        zoo                 Tools for working with the FiftyOne Zoo.
 
 .. _cli-fiftyone-quickstart:
 
@@ -87,15 +98,24 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h] [-v]
+    fiftyone quickstart [-h] [-v] [-p PORT] [-A ADDRESS] [-r] [-a] [-w WAIT]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help    show this help message and exit
-      -v, --video  launch the quickstart with a video dataset
+      -h, --help            show this help message and exit
+      -v, --video           launch the quickstart with a video dataset
+      -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
+      -r, --remote          whether to launch a remote App session
+      -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the process will wait forever,
+                            regardless of connections
 
 **Examples**
 
@@ -108,6 +128,11 @@ Launch a FiftyOne quickstart.
 
     # Launch the quickstart with a video dataset
     fiftyone quickstart --video
+
+.. code-block:: shell
+
+    # Launch the quickstart as a remote session
+    fiftyone quickstart --remote
 
 .. _cli-fiftyone-config:
 
@@ -145,7 +170,7 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: shell
 
-    # Print the location of your config
+    # Print the location of your config on disk (if one exists)
     fiftyone config --locate
 
 .. _cli-fiftyone-constants:
@@ -190,8 +215,11 @@ Convert datasets on disk between supported formats.
 
 .. code-block:: text
 
-    fiftyone convert [-h] [--input-dir INPUT_DIR] [--input-type INPUT_TYPE]
-                     [--output-dir OUTPUT_DIR] [--output-type OUTPUT_TYPE]
+    fiftyone convert [-h] --input-type INPUT_TYPE --output-type OUTPUT_TYPE
+                     [--input-dir INPUT_DIR]
+                     [--input-kwargs KEY=VAL [KEY=VAL ...]]
+                     [--output-dir OUTPUT_DIR]
+                     [--output-kwargs KEY=VAL [KEY=VAL ...]] [-o]
 
 **Arguments**
 
@@ -201,10 +229,19 @@ Convert datasets on disk between supported formats.
       -h, --help            show this help message and exit
       --input-dir INPUT_DIR
                             the directory containing the dataset
-      --input-type INPUT_TYPE
-                            the fiftyone.types.Dataset type of the input dataset
+      --input-kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments for
+                            `fiftyone.utils.data.convert_dataset(..., input_kwargs=)`
       --output-dir OUTPUT_DIR
                             the directory to which to write the output dataset
+      --output-kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments for
+                            `fiftyone.utils.data.convert_dataset(..., output_kwargs=)`
+      -o, --overwrite       whether to overwrite an existing output directory
+
+    required arguments:
+      --input-type INPUT_TYPE
+                            the fiftyone.types.Dataset type of the input dataset
       --output-type OUTPUT_TYPE
                             the fiftyone.types.Dataset type to output
 
@@ -227,6 +264,18 @@ Convert datasets on disk between supported formats.
         --input-type fiftyone.types.COCODetectionDataset \
         --output-dir /path/for/cvat-image-dataset \
         --output-type fiftyone.types.CVATImageDataset
+
+.. code-block:: shell
+
+    # Perform a customized conversion via optional kwargs
+    fiftyone convert \
+        --input-dir /path/to/coco-detection-dataset \
+        --input-type fiftyone.types.COCODetectionDataset \
+        --input-kwargs max_samples=100 shuffle=True \
+        --output-dir /path/for/cvat-image-dataset \
+        --output-type fiftyone.types.TFObjectDetectionDataset \
+        --output-kwargs force_rgb=True \
+        --overwrite
 
 .. _cli-fiftyone-datasets:
 
@@ -252,6 +301,7 @@ Tools for working with FiftyOne datasets.
       {list,info,create,head,tail,stream,export,delete}
         list                List FiftyOne datasets.
         info                Print information about FiftyOne datasets.
+        stats               Print stats about FiftyOne datasets on disk.
         create              Tools for creating FiftyOne datasets.
         head                Prints the first few samples in a FiftyOne dataset.
         tail                Prints the last few samples in a FiftyOne dataset.
@@ -295,24 +345,66 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] NAME
+    fiftyone datasets info [-h] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the name of the dataset
+      NAME                  the name of a dataset
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -s FIELD, --sort-by FIELD
+                            a field to sort the dataset rows by
+      -r, --reverse         whether to print the results in reverse order
 
 **Examples**
 
 .. code-block:: shell
 
-    # Print information about the given dataset
+    # Print basic information about all datasets
+    fiftyone datasets info
+    fiftyone datasets info --sort-by created_at
+    fiftyone datasets info --sort-by name --reverse
+
+.. code-block:: shell
+
+    # Print information about a specific dataset
     fiftyone datasets info <name>
+
+.. _cli-fiftyone-datasets-stats:
+
+Print dataset stats
+~~~~~~~~~~~~~~~~~~~
+
+Print stats about FiftyOne datasets on disk.
+
+.. code-block:: text
+
+    fiftyone datasets stats [-h] [-m] [-c] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the name of the dataset
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -m, --include-media  whether to include stats about the size of the raw
+                           media in the dataset
+      -c, --compressed     whether to return the sizes of collections in their
+                           compressed form on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print stats about the given dataset on disk
+    fiftyone datasets stats <name>
 
 .. _cli-fiftyone-datasets-create:
 
@@ -324,8 +416,7 @@ Tools for creating FiftyOne datasets.
 .. code-block:: text
 
     fiftyone datasets create [-h] [-n NAME] [-d DATASET_DIR] [-j JSON_PATH]
-                             [-t TYPE] [--shuffle] [--seed SEED]
-                             [--max-samples MAX_SAMPLES]
+                             [-t TYPE] [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -339,10 +430,9 @@ Tools for creating FiftyOne datasets.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.dataset.Dataset.from_dir()`
 
 **Examples**
 
@@ -357,7 +447,7 @@ Tools for creating FiftyOne datasets.
     # Create a dataset from a random subset of the data on disk
     fiftyone datasets create \
         --name <name> --dataset-dir <dataset-dir> --type <type> \
-        --shuffle --max-samples <max-samples>
+        --kwargs max_samples=50 shuffle=True
 
 .. code-block:: shell
 
@@ -471,8 +561,10 @@ Export FiftyOne datasets to disk in supported formats.
 
 .. code-block:: text
 
-    fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH] [-f LABEL_FIELD]
-                             [-t TYPE] NAME
+    fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH]
+                             [-f LABEL_FIELD] [-t TYPE]
+                             [-k KEY=VAL [KEY=VAL ...]]
+                             NAME
 
 **Arguments**
 
@@ -490,6 +582,9 @@ Export FiftyOne datasets to disk in supported formats.
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.collections.SampleCollection.export()`
 
 **Examples**
 
@@ -504,39 +599,46 @@ Export FiftyOne datasets to disk in supported formats.
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
 
+.. code-block:: shell
+
+    # Perform a customized export of a dataset
+    fiftyone datasets export <name> \
+        --type <type> \
+        --kwargs labels_path=/path/for/labels.json
+
 .. _cli-fiftyone-datasets-draw:
 
 Drawing labels on samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Writes annotated versions of samples in FiftyOne datasets to disk.
+Renders annotated versions of samples in FiftyOne datasets to disk.
 
 .. code-block:: text
 
-    fiftyone datasets draw [-h] [-d ANNO_DIR] [-f LABEL_FIELDs] NAME
+    fiftyone datasets draw [-h] [-d OUTPUT_DIR] [-f LABEL_FIELDS] NAME
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset to annotate
+      NAME                  the name of the dataset
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d ANNO_DIR, --anno-dir ANNO_DIR
-                            the directory in which to write the annotated data
-      -f LABEL_FIELDs, --label-fields LABEL_FIELDs
+      -d OUTPUT_DIR, --output-dir OUTPUT_DIR
+                            the directory to write the annotated media
+      -f LABEL_FIELDS, --label-fields LABEL_FIELDS
                             a comma-separated list of label fields to export
 
 **Examples**
 
 .. code-block:: shell
 
-    # Write annotated versions of the samples in the dataset with the
-    # specified labels overlaid to disk
+    # Write annotated versions of the media in the dataset with the
+    # specified label field(s) overlaid to disk
     fiftyone datasets draw <name> \
-        --anno-dir <anno-dir> --label-fields <label-fields>
+        --output-dir <output-dir> --label-fields <list>,<of>,<fields>
 
 .. _cli-fiftyone-datasets-rename:
 
@@ -609,16 +711,73 @@ Delete FiftyOne datasets.
     # Delete all non-persistent datasets
     fiftyone datasets delete --non-persistent
 
-.. _cli-fiftyone-app:
+.. _cli-fiftyone-migrate:
 
-FiftyOne App
-------------
+FiftyOne migrations
+-------------------
 
-Tools for working with the FiftyOne App.
+Tools for migrating the FiftyOne database.
+
+See :ref:`this page <database-migrations>` for more information about migrating
+FiftyOne deployments.
 
 .. code-block:: text
 
-    fiftyone app [-h] [--all-help] {launch,view,connect} ...
+    fiftyone migrate [-h] [-i] [-a] [-v VERSION]
+                     [-n DATASET_NAME [DATASET_NAME ...]] [--verbose]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -i, --info            whether to print info about the current revisions
+      -a, --all             whether to migrate the database and all datasets
+      -v VERSION, --version VERSION
+                            the revision to migrate to
+      -n DATASET_NAME [DATASET_NAME ...], --dataset-name DATASET_NAME [DATASET_NAME ...]
+                            the name of a specific dataset to migrate
+      --verbose             whether to log incremental migrations that are performed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about the current revisions of all datasets
+    fiftyone migrate --info
+
+.. code-block:: shell
+
+    # Migrate the database and all datasets to the current package version
+    fiftyone migrate --all
+
+.. code-block:: shell
+
+    # Migrate to a specific revision
+    fiftyone migrate --all --version <VERSION>
+
+.. code-block:: shell
+
+    # Migrate a specific dataset
+    fiftyone migrate ... --dataset-name <DATASET_NAME>
+
+.. code-block:: shell
+
+    # Update the database version without migrating any existing datasets
+    fiftyone migrate
+
+.. _cli-fiftyone-utils:
+
+FiftyOne utilities
+------------------
+
+FiftyOne utilities.
+
+.. code-block:: text
+
+    fiftyone utils [-h] [--all-help]
+                   {compute-metadata,transform-images,transform-videos} ...
 
 **Arguments**
 
@@ -629,10 +788,287 @@ Tools for working with the FiftyOne App.
       --all-help            show help recursively and exit
 
     available commands:
-      {launch,view,connect}
+      {compute-metadata,transform-images,transform-videos}
+        compute-metadata    Populates the `metadata` field of all samples in the dataset.
+        transform-images    Transforms the images in a dataset per the specified parameters.
+        transform-videos    Transforms the videos in a dataset per the specified parameters.
+
+.. _cli-fiftyone-utils-compute-metadata:
+
+Compute metadata
+~~~~~~~~~~~~~~~~
+
+Populates the `metadata` field of all samples in the dataset.
+
+.. code-block:: text
+
+    fiftyone utils compute-metadata [-h] [-o] [-n NUM_WORKERS] [-s] DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -o, --overwrite       whether to overwrite existing metadata
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default
+                            is `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if metadata cannot be computed for a sample
+
+**Examples**
+
+.. code-block:: shell
+
+    # Populate all missing `metadata` sample fields
+    fiftyone utils compute-metadata <dataset-name>
+
+.. code-block:: shell
+
+    # (Re)-populate the `metadata` field for all samples
+    fiftyone utils compute-metadata <dataset-name> --overwrite
+
+.. _cli-fiftyone-utils-transform-images:
+
+Transform images
+~~~~~~~~~~~~~~~~
+
+Transforms the images in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-images [-h] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-e EXT] [-f]
+                                    [-d] [-n NUM_WORKERS] [-s]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --size SIZE           a `width,height` for each image. A dimension can be
+                            -1 if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
+      -f, --force-reencode  whether to re-encode images whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original images after transforming
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default is
+                            `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if an image cannot be transformed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Convert the images in the dataset to PNGs
+    fiftyone utils transform-images <dataset-name> --ext .png --delete-originals
+
+.. code-block:: shell
+
+    # Ensure that no images in the dataset exceed 1920 x 1080
+    fiftyone utils transform-images <dataset-name> --max-size 1920,1080
+
+.. _cli-fiftyone-utils-transform-videos:
+
+Transform videos
+~~~~~~~~~~~~~~~~
+
+Transforms the videos in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
+                                    [--max-fps MAX_FPS] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-r] [-f] [-d]
+                                    [-s] [-v]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --fps FPS             a frame rate at which to resample the videos
+      --min-fps MIN_FPS     a minimum frame rate. Videos with frame rate below
+                            this value are upsampled
+      --max-fps MAX_FPS     a maximum frame rate. Videos with frame rate exceeding
+                            this value are downsampled
+      --size SIZE           a `width,height` for each frame. A dimension can be -1
+                            if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      -r, --reencode        whether to re-encode the videos as H.264 MP4s
+      -f, --force-reencode  whether to re-encode videos whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original videos after transforming
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if a video cannot be transformed
+      -v, --verbose         whether to log the `ffmpeg` commands that are executed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Re-encode the videos in the dataset as H.264 MP4s
+    fiftyone utils transform-videos <dataset-name> --reencode
+
+.. code-block:: shell
+
+    # Ensure that no videos in the dataset exceed 1920 x 1080 and 30fps
+    fiftyone utils transform-videos <dataset-name> \
+        --max-size 1920,1080 --max-fps 30.0
+
+.. _cli-fiftyone-annotation:
+
+FiftyOne Annotation
+-------------------
+
+Tools for working with the FiftyOne annotation API.
+
+.. code-block:: text
+
+    fiftyone annotation [-h] [--all-help] {config} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {config,launch,view,connect}
+        config              Tools for working with your FiftyOne annotation config.
+
+.. _cli-fiftyone-annotation-config:
+
+Annotation Config
+~~~~~~~~~~~~~~~~~
+
+Tools for working with your FiftyOne annotation config.
+
+.. code-block:: text
+
+    fiftyone annotation config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         an annotation config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your annotation config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire annotation config
+    fiftyone annotation config
+
+.. code-block:: shell
+
+    # Print a specific annotation config field
+    fiftyone annotation config <field>
+
+.. code-block:: shell
+
+    # Print the location of your annotation config on disk (if one exists)
+    fiftyone annotation config --locate
+
+.. _cli-fiftyone-app:
+
+FiftyOne App
+------------
+
+Tools for working with the FiftyOne App.
+
+.. code-block:: text
+
+    fiftyone app [-h] [--all-help] {config,launch,view,connect} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {config,launch,view,connect}
+        config              Tools for working with your App config.
         launch              Launch the FiftyOne App.
-        view                View datasets in the App without persisting them to the database
+        view                View datasets in the App without persisting them to the database.
         connect             Connect to a remote FiftyOne App.
+
+.. _cli-fiftyone-app-config:
+
+App Config
+~~~~~~~~~~
+
+Tools for working with your FiftyOne App config.
+
+.. code-block:: text
+
+    fiftyone app config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         an App config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your App config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire App config
+    fiftyone app config
+
+.. code-block:: shell
+
+    # Print a specific App config field
+    fiftyone app config <field>
+
+.. code-block:: shell
+
+    # Print the location of your App config on disk (if one exists)
+    fiftyone app config --locate
 
 .. _cli-fiftyone-app-launch:
 
@@ -643,31 +1079,48 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app launch [-h] [-p PORT] [-r] NAME
+    fiftyone app launch [-h] [-p PORT] [-A ADDRESS] [-r] [-a] [-w WAIT] [NAME]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset to open
+      NAME                  the name of a dataset to open
 
     optional arguments:
       -h, --help            show this help message and exit
       -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
       -r, --remote          whether to launch a remote App session
+      -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the process will wait forever,
+                            regardless of connections
 
 **Examples**
 
 .. code-block:: shell
 
-    # Launch the App with the given dataset
+    # Launch the App
+    fiftyone app launch
+
+.. code-block:: shell
+
+    # Launch the App with the given dataset loaded
     fiftyone app launch <name>
 
 .. code-block:: shell
 
     # Launch a remote App session
-    fiftyone app launch <name> --remote
+    fiftyone app launch ... --remote
+
+.. code-block:: shell
+
+    # Launch a desktop App session
+    fiftyone app launch ... --desktop
 
 .. _cli-fiftyone-app-view:
 
@@ -681,9 +1134,9 @@ View datasets in the FiftyOne App without persisting them to the database.
     fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE] [-z NAME]
                       [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
                       [--images-patt IMAGES_PATT] [--videos-dir VIDEOS_DIR]
-                      [--videos-patt VIDEOS_PATT] [-j JSON_PATH]
-                      [--shuffle] [--seed SEED] [--max-samples MAX_SAMPLES]
-                      [-p PORT] [-r]
+                      [--videos-patt VIDEOS_PATT] [-j JSON_PATH] [-p PORT]
+                      [-A ADDRESS] [-r] [-a] [-w WAIT]
+                      [-k KEY=VAL [KEY=VAL ...]]
 
 **Arguments**
 
@@ -703,14 +1156,24 @@ View datasets in the FiftyOne App without persisting them to the database.
                             the path to a directory of images
       --images-patt IMAGES_PATT
                             a glob pattern of images
+      --videos-dir VIDEOS_DIR
+                            the path to a directory of videos
+      --videos-patt VIDEOS_PATT
+                            a glob pattern of videos
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote app session
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
+      -r, --remote          whether to launch a remote App session
+      -a, --desktop         whether to launch a desktop App instance
+      -w WAIT, --wait WAIT  the number of seconds to wait for a new App
+                            connection before returning if all connections are
+                            lost. If negative, the process will wait forever,
+                            regardless of connections
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional type-specific keyword arguments for
+                            `fiftyone.core.dataset.Dataset.from_dir()`
 
 **Examples**
 
@@ -726,22 +1189,22 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: shell
 
-    # View a directory of images in the app
+    # View a directory of images in the App
     fiftyone app view --images-dir <images-dir>
 
 .. code-block:: shell
 
-    # View a glob pattern of images in the app
+    # View a glob pattern of images in the App
     fiftyone app view --images-patt <images-patt>
 
 .. code-block:: shell
 
-    # View a directory of videos in the app
+    # View a directory of videos in the App
     fiftyone app view --videos-dir <videos-dir>
 
 .. code-block:: shell
 
-    # View a glob pattern of videos in the app
+    # View a glob pattern of videos in the App
     fiftyone app view --videos-patt <videos-patt>
 
 .. code-block:: shell
@@ -751,24 +1214,30 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: shell
 
-    # View a random subset of the data stored on disk in the app
-    fiftyone app view ... --shuffle --max-samples <max-samples>
+    # View the dataset in a remote App session
+    fiftyone app view ... --remote
 
 .. code-block:: shell
 
-    # View the dataset in a remote App session
-    fiftyone app view ... --remote
+    # View the dataset using the desktop App
+    fiftyone app view ... --desktop
+
+.. code-block:: shell
+
+    # View a random subset of the data stored on disk in the App
+    fiftyone app view ... --kwargs max_samples=50 shuffle=True
 
 .. _cli-fiftyone-app-connect:
 
 Connect to remote App
 ~~~~~~~~~~~~~~~~~~~~~
 
-Connect to a remote FiftyOne App.
+Connect to a remote FiftyOne App in your web browser.
 
 .. code-block:: text
 
-    fiftyone app connect [-h] [-d DESTINATION] [-p PORT]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT] [-A ADDRESS] [-l PORT]
+                         [-i KEY]
 
 **Arguments**
 
@@ -779,6 +1248,10 @@ Connect to a remote FiftyOne App.
       -d DESTINATION, --destination DESTINATION
                             the destination to connect to, e.g., [username@]hostname
       -p PORT, --port PORT  the remote port to connect to
+      -l PORT, --local-port PORT
+                            the local port to use to serve the App
+      -i KEY, --ssh-key KEY
+                            optional ssh key to use to login
 
 **Examples**
 
@@ -792,7 +1265,41 @@ Connect to a remote FiftyOne App.
     # Connect to a remote App session
     fiftyone app connect --destination <destination> --port <port>
 
+.. code-block:: shell
+
+    # Connect to a remote App session using an ssh key
+    fiftyone app connect ... --ssh-key <path/to/key>
+
+.. code-block:: shell
+
+    # Connect to a remote App using a custom local port
+    fiftyone app connect ... --local-port <port>
+
 .. _cli-fiftyone-zoo:
+
+FiftyOne Zoo
+------------
+
+Tools for working with the FiftyOne Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo [-h] [--all-help] {datasets,models} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help         show this help message and exit
+      --all-help         show help recurisvely and exit
+
+    available commands:
+      {datasets,models}
+        datasets         Tools for working with the FiftyOne Dataset Zoo.
+        models           Tools for working with the FiftyOne Model Zoo.
+
+.. _cli-fiftyone-zoo-datasets:
 
 FiftyOne Dataset Zoo
 --------------------
@@ -801,7 +1308,8 @@ Tools for working with the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
+    fiftyone zoo datasets [-h] [--all-help]
+                          {list,find,info,download,load,delete} ...
 
 **Arguments**
 
@@ -819,7 +1327,7 @@ Tools for working with the FiftyOne Dataset Zoo.
         download            Download zoo datasets.
         load                Load zoo datasets as persistent FiftyOne datasets.
 
-.. _cli-fiftyone-zoo-list:
+.. _cli-fiftyone-zoo-datasets-list:
 
 List datasets in zoo
 ~~~~~~~~~~~~~~~~~~~~
@@ -828,7 +1336,8 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo list [-h] [-b BASE_DIR]
+    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS]
+                               [-b BASE_DIR]
 
 **Arguments**
 
@@ -836,22 +1345,44 @@ List datasets in the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -n, --names-only      only show dataset names
+      -d, --downloaded-only
+                            only show datasets that have been downloaded
+      -s SOURCE, --source SOURCE
+                            only show datasets available from the specified source
+      -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
 .. code-block:: shell
 
     # List available datasets
-    fiftyone zoo list
+    fiftyone zoo datasets list
 
 .. code-block:: shell
 
-    # List available datasets, using the specified base directory to search for downloaded datasets
-    fiftyone zoo list --base-dir <base-dir>
+    # List available datasets (names only)
+    fiftyone zoo datasets list --names-only
 
-.. _cli-fiftyone-zoo-find:
+.. code-block:: shell
+
+    # List downloaded datasets
+    fiftyone zoo datasets list --downloaded-only
+
+.. code-block:: shell
+
+    # List available datasets from the given source
+    fiftyone zoo datasets list --source <source>
+
+.. code-block:: shell
+
+    # List available datasets with the given tag
+    fiftyone zoo datasets list --tags <tag>
+
+.. _cli-fiftyone-zoo-datasets-find:
 
 Find zoo datasets on disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -860,7 +1391,7 @@ Locate the downloaded zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo find [-h] [-s SPLIT] NAME
+    fiftyone zoo datasets find [-h] [-s SPLIT] NAME
 
 **Arguments**
 
@@ -878,12 +1409,14 @@ Locate the downloaded zoo dataset on disk.
 .. code-block:: shell
 
     # Print the location of the downloaded zoo dataset on disk
-    fiftyone zoo find <name>
+    fiftyone zoo datasets find <name>
+
+.. code-block:: shell
 
     # Print the location of a specific split of the dataset
-    fiftyone zoo find <name> --split <split>
+    fiftyone zoo datasets find <name> --split <split>
 
-.. _cli-fiftyone-zoo-info:
+.. _cli-fiftyone-zoo-datasets-info:
 
 Show zoo dataset info
 ~~~~~~~~~~~~~~~~~~~~~
@@ -892,7 +1425,7 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo info [-h] [-b BASE_DIR] NAME
+    fiftyone zoo datasets info [-h] [-b BASE_DIR] NAME
 
 **Arguments**
 
@@ -904,21 +1437,17 @@ Print information about datasets in the FiftyOne Dataset Zoo.
     optional arguments:
       -h, --help            show this help message and exit
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
 .. code-block:: shell
 
-    # Print information about a downloaded zoo dataset
-    fiftyone zoo info <name>
+    # Print information about a zoo dataset
+    fiftyone zoo datasets info <name>
 
-.. code-block:: shell
-
-    # Print information about the zoo dataset downloaded to the specified base directory
-    fiftyone zoo info <name> --base-dir <base-dir>
-
-.. _cli-fiftyone-zoo-download:
+.. _cli-fiftyone-zoo-datasets-download:
 
 Download zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -927,7 +1456,10 @@ Download datasets from the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+    fiftyone zoo datasets download [-h] [-s SPLITS [SPLITS ...]]
+                                   [-d DATASET_DIR]
+                                   [-k KEY=VAL [KEY=VAL ...]]
+                                   NAME
 
 **Arguments**
 
@@ -937,30 +1469,40 @@ Download datasets from the FiftyOne Dataset Zoo.
       NAME                  the name of the dataset
 
     optional arguments:
+
       -h, --help            show this help message and exit
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to download
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory to which to download the dataset
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            optional dataset-specific keyword arguments for
+                            `fiftyone.zoo.download_zoo_dataset()`
 
 **Examples**
 
 .. code-block:: shell
 
     # Download the entire zoo dataset
-    fiftyone zoo download <name>
+    fiftyone zoo datasets download <name>
 
 .. code-block:: shell
 
     # Download the specified split(s) of the zoo dataset
-    fiftyone zoo download <name> --splits <split1> ...
+    fiftyone zoo datasets download <name> --splits <split1> ...
 
 .. code-block:: shell
 
-    # Download to the zoo dataset to a custom directory
-    fiftyone zoo download <name> --dataset-dir <dataset-dir>
+    # Download the zoo dataset to a custom directory
+    fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
 
-.. _cli-fiftyone-zoo-load:
+.. code-block:: shell
+
+    # Download a zoo dataset that requires extra keyword arguments
+    fiftyone zoo datasets download <name> \
+        --kwargs source_dir=/path/to/source/files
+
+.. _cli-fiftyone-zoo-datasets-load:
 
 Load zoo datasets
 ~~~~~~~~~~~~~~~~~
@@ -969,10 +1511,10 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-n DATASET_NAME]
-                      [-d DATASET_DIR] [--shuffle] [--seed SEED]
-                      [--max-samples MAX_SAMPLES]
-                      NAME
+    fiftyone zoo datasets load [-h] [-s SPLITS [SPLITS ...]]
+                               [-n DATASET_NAME] [-d DATASET_DIR]
+                               [-k KEY=VAL [KEY=VAL ...]]
+                               NAME
 
 **Arguments**
 
@@ -986,37 +1528,400 @@ Load zoo datasets as persistent FiftyOne datasets.
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to load
       -n DATASET_NAME, --dataset-name DATASET_NAME
-                        a custom name to give the FiftyOne dataset
+                            a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
-      --seed SEED           a random seed to use when shuffling
-      --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            additional dataset-specific keyword arguments for
+                            `fiftyone.zoo.load_zoo_dataset()`
 
 **Examples**
 
 .. code-block:: shell
 
     # Load the zoo dataset with the given name
-    fiftyone zoo load <name>
+    fiftyone zoo datasets load <name>
 
 .. code-block:: shell
 
     # Load the specified split(s) of the zoo dataset
-    fiftyone zoo load <name> --splits <split1> ...
+    fiftyone zoo datasets load <name> --splits <split1> ...
 
 .. code-block:: shell
 
     # Load the zoo dataset with a custom name
-    fiftyone zoo load <name> --dataset-name <dataset-name>
+    fiftyone zoo datasets load <name> --dataset-name <dataset-name>
 
 .. code-block:: shell
 
     # Load the zoo dataset from a custom directory
-    fiftyone zoo load <name> --dataset-dir <dataset-dir>
+    fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
 .. code-block:: shell
 
-    # Load a random subset of the zoo dataset
-    fiftyone zoo load <name> --shuffle --max-samples <max-samples>
+    # Load a zoo dataset that requires custom keyword arguments
+    fiftyone zoo datasets load <name> \
+        --kwargs source_dir=/path/to/source_files
+
+.. code-block:: shell
+
+    # Load a random subset of a zoo dataset
+    fiftyone zoo datasets load <name> \
+        --kwargs max_samples=50 shuffle=True
+
+.. _cli-fiftyone-zoo-datasets-delete:
+
+Delete zoo datasets
+~~~~~~~~~~~~~~~~~~~
+
+Deletes the local copy of the zoo dataset on disk.
+
+.. code-block:: text
+
+    fiftyone zoo datasets delete [-h] [-s SPLIT] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -s SPLIT, --split SPLIT
+                            a dataset split
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete an entire zoo dataset from disk
+    fiftyone zoo datasets delete <name>
+
+.. code-block:: shell
+
+    # Delete a specific split of a zoo dataset from disk
+    fiftyone zoo datasets delete <name> --split <split>
+
+.. _cli-fiftyone-zoo-models:
+
+FiftyOne Model Zoo
+------------------
+
+Tools for working with the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models [-h] [--all-help]
+                        {list,find,info,requirements,download,apply,embed,delete}
+                        ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recurisvely and exit
+
+    available commands:
+      {list,find,info,requirements,download,apply,embed,delete}
+        list                List datasets in the FiftyOne Model Zoo.
+        find                Locate the downloaded zoo model on disk.
+        info                Print information about models in the FiftyOne Model Zoo.
+        requirements        Handles package requirements for zoo models.
+        download            Download zoo models.
+        apply               Apply zoo models to datasets.
+        embed               Generate embeddings for datasets with zoo models.
+        delete              Deletes the local copy of the zoo model on disk.
+
+.. _cli-fiftyone-zoo-models-list:
+
+List models in zoo
+~~~~~~~~~~~~~~~~~~
+
+List datasets in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models list [-h] [-n] [-d] [-t TAG]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -n, --names-only      only show model names
+      -d, --downloaded-only
+                            only show models that have been downloaded
+      -t TAGS, --tags TAGS  only show models with the specified tag or list,of,tags
+
+**Examples**
+
+.. code-block:: shell
+
+    # List available models
+    fiftyone zoo models list
+
+.. code-block:: shell
+
+    # List available models (names only)
+    fiftyone zoo models list --names-only
+
+.. code-block:: shell
+
+    # List downloaded models
+    fiftyone zoo models list --downloaded-only
+
+.. code-block:: shell
+
+    # List available models with the given tag
+    fiftyone zoo models list --tags <tag>
+
+.. _cli-fiftyone-zoo-models-find:
+
+Find zoo models on disk
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Locate the downloaded zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone zoo models find [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print the location of the downloaded zoo model on disk
+    fiftyone zoo models find <name>
+
+.. _cli-fiftyone-zoo-models-info:
+
+Show zoo model info
+~~~~~~~~~~~~~~~~~~~
+
+Print information about models in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models info [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about a zoo model
+    fiftyone zoo models info <name>
+
+.. _cli-fiftyone-zoo-models-requirements:
+
+Zoo model requirements
+~~~~~~~~~~~~~~~~~~~~~~
+
+Handles package requirements for zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models requirements [-h] [-p] [-i] [-e]
+                                     [--error-level LEVEL]
+                                     NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the name of the model
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -p, --print          print the requirements for the zoo model
+      -i, --install        install any requirements for the zoo model
+      -e, --ensure         ensure the requirements for the zoo model are satisfied
+      --error-level LEVEL  the error level in {0, 1, 2} to use when installing
+                           or ensuring model requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print requirements for a zoo model
+    fiftyone zoo models requirements <name> --print
+
+.. code-block:: shell
+
+    # Install any requirements for the zoo model
+    fiftyone zoo models requirements <name> --install
+
+.. code-block:: shell
+
+    # Ensures that the requirements for the zoo model are satisfied
+    fiftyone zoo models requirements <name> --ensure
+
+.. _cli-fiftyone-zoo-models-download:
+
+Download zoo models
+~~~~~~~~~~~~~~~~~~~
+
+Download zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models download [-h] [-f] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the zoo model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f, --force           whether to force download the model if it is already
+                            downloaded
+
+**Examples**
+
+.. code-block:: shell
+
+    # Download the zoo model
+    fiftyone zoo models download <name>
+
+.. _cli-fiftyone-zoo-models-apply:
+
+Apply zoo models to datasets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Apply zoo models to datasets.
+
+.. code-block:: text
+
+    fiftyone zoo models apply [-h] [-b BATCH_SIZE] [-t THRESH] [-l] [-i]
+                              [--error-level LEVEL]
+                              MODEL_NAME DATASET_NAME LABEL_FIELD
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      MODEL_NAME            the name of the zoo model
+      DATASET_NAME          the name of the FiftyOne dataset to process
+      LABEL_FIELD           the name of the field in which to store the predictions
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b BATCH_SIZE, --batch-size BATCH_SIZE
+                            an optional batch size to use during inference
+      -t THRESH, --confidence-thresh THRESH
+                            an optional confidence threshold to apply to any
+                            applicable labels generated by the model
+      -l, --store-logits    store logits for the predictions
+      -i, --install         install any requirements for the zoo model
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Apply the zoo model to the dataset
+    fiftyone zoo models apply <model-name> <dataset-name> <label-field>
+
+.. code-block:: shell
+
+    # Apply a zoo classifier with some customized parameters
+    fiftyone zoo models apply \
+        <model-name> <dataset-name> <label-field> \
+        --confidence-thresh 0.7 \
+        --store-logits \
+        --batch-size 32
+
+.. _cli-fiftyone-zoo-models-embed:
+
+Generate embeddings with zoo models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generate embeddings for datasets with zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models embed [-h] [-b BATCH_SIZE] [-i]
+                              [--error-level LEVEL]
+                              MODEL_NAME DATASET_NAME EMBEDDINGS_FIELD
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      MODEL_NAME            the name of the zoo model
+      DATASET_NAME          the name of the FiftyOne dataset to process
+      EMBEDDINGS_FIELD      the name of the field in which to store the embeddings
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b BATCH_SIZE, --batch-size BATCH_SIZE
+                            an optional batch size to use during inference
+      -i, --install         install any requirements for the zoo model
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Generate embeddings for the dataset with the zoo model
+    fiftyone zoo models embed <model-name> <dataset-name> <embeddings-field>
+
+.. _cli-fiftyone-zoo-models-delete:
+
+Delete zoo models
+~~~~~~~~~~~~~~~~~
+
+Deletes the local copy of the zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone zoo models delete [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the name of the model
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete the zoo model from disk
+    fiftyone zoo models delete <name>

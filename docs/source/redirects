@@ -1,10 +1,18 @@
-# A list of page redirects that will be automatically added to the built docs
+# Page redirects that will be automatically added to the built docs.
 #
 # Syntax:
 #
-#   from/broken/page1.rst to/existing.page1.rst
-#   from/broken/page2.rst to/existing.page2.rst
+#   from/broken/page1.ext to/existing/page1.ext
+#   from/broken/page2.ext to/existing/page2.ext
 #
+
+# Introduced in v0.7.4
+tutorials/label_mistakes.html  tutorials/classification_mistakes.html
+recipes/detection_mistakenness.html  tutorials/detection_mistakes.html
+recipes/model_inference.html  recipes/adding_classifications.html
+
+# Introduced in v0.7.0
+user_guide/dataset_creation/zoo.rst  user_guide/dataset_zoo/index.rst
 
 # Introduced in v0.4
 user_guide/dataset_creation/common_datasets.rst  user_guide/dataset_creation/datasets.rst

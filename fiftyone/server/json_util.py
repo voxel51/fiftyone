@@ -1,19 +1,23 @@
 """
-FiftyOne server json utilies.
+FiftyOne Server JSON utilities.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from bson import ObjectId, json_util
-from flask.json import JSONEncoder
 from collections import OrderedDict
-
+from datetime import date, datetime
+from json import JSONEncoder
+import math
 import numpy as np
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
+
+
+_MASK_CLASSES = {"Detection", "Heatmap", "Segmentation"}
 
 
 def _handle_bytes(o):
@@ -22,36 +26,68 @@ def _handle_bytes(o):
             o[k] = str(fou.deserialize_numpy_array(v).shape)
         elif isinstance(v, dict):
             o[k] = _handle_bytes(v)
+
     return o
 
 
-def _handle_numpy_array(raw, key=None):
-    if key != "mask":
+def _handle_numpy_array(raw, _cls=None):
+    if _cls not in _MASK_CLASSES:
         return str(fou.deserialize_numpy_array(raw).shape)
-    return fou.serialize_numpy_array(
-        fou.deserialize_numpy_array(raw), ascii=True
-    )
+
+    array = fou.deserialize_numpy_array(raw)
+
+    if np.isfortran(array):
+        array = np.ascontiguousarray(array)
+
+    return fou.serialize_numpy_array(array, ascii=True)
+
+
+def _handle_date(dt):
+    return {
+        "_cls": "DateTime",
+        "datetime": fou.datetime_to_timestamp(dt),
+    }
+
+
+def _is_invalid_number(value):
+    if not isinstance(value, float):
+        return False
+
+    return math.isnan(value) or math.isinf(value)
 
 
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if k == "_eta_labels":
-                continue
-            if isinstance(v, ObjectId):
+            if isinstance(v, bytes):
+                d[k] = _handle_numpy_array(v, d.get("_cls", None))
+            elif isinstance(v, (date, datetime)):
+                d[k] = _handle_date(v)
+            elif isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
-            elif isinstance(v, bytes):
-                d[k] = _handle_numpy_array(v, k)
+            elif _is_invalid_number(v):
+                d[k] = str(v)
+
     if isinstance(d, list):
         for idx, i in enumerate(d):
-            if isinstance(i, (dict, OrderedDict, list)):
-                convert(i)
+            if isinstance(i, tuple):
+                d[idx] = list(i)
+                i = d[idx]
+
+            if isinstance(i, bytes):
+                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, (date, datetime)):
+                d[idx] = _handle_date(i)
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
-            elif isinstance(i, bytes):
-                d[idx] = _handle_numpy_array(i)
+            elif isinstance(i, (dict, OrderedDict, list)):
+                convert(i)
+            elif _is_invalid_number(i):
+                d[idx] = str(i)
+
+    return d
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
@@ -71,7 +107,7 @@ class FiftyOneJSONEncoder(JSONEncoder):
             str
         """
         if isinstance(o, (Sample, SampleView)):
-            return _handle_bytes(o.to_mongo_dict())
+            return _handle_bytes(o.to_mongo_dict(include_id=True))
         if issubclass(type(o), ViewStage):
             return o._serialize()
         if isinstance(o, ObjectId):
@@ -82,7 +118,6 @@ class FiftyOneJSONEncoder(JSONEncoder):
 
     @staticmethod
     def dumps(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
         kwargs["cls"] = FiftyOneJSONEncoder
         return json_util.dumps(
             json_util.loads(
@@ -93,5 +128,11 @@ class FiftyOneJSONEncoder(JSONEncoder):
 
     @staticmethod
     def loads(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
         return json_util.loads(*args, **kwargs)
+
+    @staticmethod
+    def process(*args, **kwargs):
+        kwargs["cls"] = FiftyOneJSONEncoder
+        return json_util.loads(
+            json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
+        )

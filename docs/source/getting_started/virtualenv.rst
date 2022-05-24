@@ -1,4 +1,3 @@
-
 .. _virtualenv-guide:
 
 Virtual Environment Setup
@@ -6,13 +5,13 @@ Virtual Environment Setup
 
 .. default-role:: code
 
-This page describes how to install FiftyOne in a
+This page describes how to create a Python
 `virtual environment <https://docs.python.org/3/tutorial/venv.html>`_.
 
 Using a virtual environment is strongly recommended because it allows
 maintaining an isolated environment in which FiftyOne and its dependencies can
-be installed. FiftyOne has many dependencies, some versions of which may
-conflict with versions already installed on your machine.
+be installed. FiftyOne has a variety of dependencies, some versions of which
+may conflict with versions already installed on your machine.
 
 Creating a virtual environment using `venv`
 -------------------------------------------
@@ -27,7 +26,7 @@ these commands:
    $ python --version
    Python 2.7.17
    $ python3 --version
-   Python 3.6.9
+   Python 3.8.9
 
 In this case, `python3` should be used in the next step.
 

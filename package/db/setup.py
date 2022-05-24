@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs the ``fiftyone-db`` package.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,7 @@ import shutil
 import tarfile
 import zipfile
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
 
 try:
@@ -24,41 +24,76 @@ except ImportError:
 
 
 MONGODB_DOWNLOAD_URLS = {
-    "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz",
-    "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz",
-    "win": "https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2012plus-4.2.6.zip",
-    "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.6.tgz",
-    "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.2.6.tgz",
+    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
+    "linux-i686": None,
+    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.4.tgz",
+    "mac-arm64": None,
+    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.4.tgz",
+    "win-32": None,
+    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip",
+    "debian9": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
+    },
+    "rhel7": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+    },
+    "ubuntu2004": {
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.4.tgz",
+    },
 }
+
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
+
+VERSION = "0.4.0"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
 
 
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
-        # not pure Python
+
         self.root_is_pure = False
-        # rewrite platform name to match what mongodb supports
-        if self.plat_name.startswith("mac"):
-            # mongodb 4.2.6 supports macOS 10.12 or later
-            # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
-            # also, we only distribute 64-bit binaries
-            self.plat_name = "macosx_10_12_x86_64"
-        elif self.plat_name.startswith("linux"):
-            # we only distribute 64-bit binaries
-            self.plat_name = "linux_x86_64"
-        elif self.plat_name.startswith("win"):
-            # we only distribute 64-bit binaries
+        self._plat_name = self.plat_name
+
+        platform = self.plat_name
+        is_platform = lambda os, isa=None: platform.startswith(os) and (
+            not isa or platform.endswith(isa)
+        )
+
+        if is_platform("linux", "i686"):
+            self.plat_name = "manylinux1_i686"
+        elif is_platform("linux", "aarch64"):
+            self.plat_name = "manylinux2014_aarch64"
+        elif is_platform("linux", "x86_64"):
+            self.plat_name = "manylinux1_x86_64"
+        elif is_platform("mac", "arm64"):
+            self.plat_name = "macosx_11_0_arm64"
+        elif is_platform("mac", "x86_64"):
+            self.plat_name = "macosx_10_13_x86_64"
+        elif is_platform("win", "amd64"):
             self.plat_name = "win_amd64"
+        elif is_platform("win", "32"):
+            self.plat_name = "win32"
         else:
             raise ValueError(
                 "Unsupported target platform: %r" % self.plat_name
             )
 
     def get_tag(self):
-        # no dependency on a specific CPython version
         impl = "py3"
         abi_tag = "none"
         return impl, abi_tag, self.plat_name
@@ -73,29 +108,41 @@ class CustomBdistWheel(bdist_wheel):
         mongo_zip_url = next(
             v
             for k, v in MONGODB_DOWNLOAD_URLS.items()
-            if self.plat_name.startswith(k)
+            if self._plat_name.startswith(k)
         )
-        if LINUX_DISTRO is not None:
-            if not self.plat_name.startswith("linux"):
+
+        if mongo_zip_url is None:
+            print(
+                "Hollow wheel, no binaries available for %s" % self.plat_name
+            )
+            return
+
+        if LINUX_DISTRO:
+            if not self.plat_name.startswith("manylinux"):
                 raise ValueError(
                     "Cannot build for distro %r on platform %r"
                     % (LINUX_DISTRO, self.plat_name)
                 )
+
             if LINUX_DISTRO not in MONGODB_DOWNLOAD_URLS:
                 raise ValueError("Unrecognized distro: %r" % LINUX_DISTRO)
-            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO]
+
+            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO][self.plat_name]
+
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "cache",
             mongo_zip_filename,
         )
+
         if not os.path.exists(mongo_zip_dest):
             print("downloading MongoDB from %s" % mongo_zip_url)
             with urlopen(mongo_zip_url) as conn, open(
                 mongo_zip_dest, "wb"
             ) as dest:
                 shutil.copyfileobj(conn, dest)
+
         print("using MongoDB from %s" % mongo_zip_dest)
         if mongo_zip_dest.endswith(".zip"):
             # Windows
@@ -131,6 +178,7 @@ class CustomBdistWheel(bdist_wheel):
                     raise IOError(
                         "Could not find %r in MongoDB archive" % filename
                     )
+
                 tar_entry = mongo_tar.getmember(tar_entry_name)
                 print("copying %r" % tar_entry_name)
                 dest_path = os.path.join(bin_dir, filename)
@@ -149,23 +197,40 @@ name_suffix = ""
 if LINUX_DISTRO:
     name_suffix = "_" + LINUX_DISTRO
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="fiftyone_db" + name_suffix,
-    version="0.1.2",
-    description="Project FiftyOne database",
+    version=get_version(),
+    description="FiftyOne DB",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
-    license="",
+    license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=["fiftyone.db"],
     package_dir={"fiftyone.db": "src"},
     classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Image Processing",
+        "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Scientific/Engineering :: Information Analysis",
+        "Topic :: Scientific/Engineering :: Visualization",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
-    python_requires=">=2.7",
+    python_requires=">=3.6",
     cmdclass=cmdclass,
 )

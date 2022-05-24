@@ -1,7 +1,7 @@
 """
 TensorFlow utilities.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,27 +9,37 @@ import contextlib
 import logging
 import multiprocessing
 import os
+import warnings
 
+import cv2
+import numpy as np
+from skimage.color import rgba2rgb
+
+import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-fou.ensure_tf()
+fou.ensure_tf(eager=True)
 import tensorflow as tf
 
 
 logger = logging.getLogger(__name__)
 
 
-def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
+def from_images_dir(
+    images_dir, recursive=True, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for the given directory of images.
 
     Args:
         images_dir: a directory of images
         recursive (True): whether to recursively traverse subdirectories
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -39,14 +49,17 @@ def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
         a ``tf.data.Dataset`` that emits decoded images
     """
     image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
-    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
+    return from_images(
+        image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
+    )
 
 
-def from_images_patt(images_patt, num_parallel_calls=None):
+def from_images_patt(images_patt, force_rgb=False, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given glob pattern of images.
 
     Args:
         images_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -56,14 +69,17 @@ def from_images_patt(images_patt, num_parallel_calls=None):
         a ``tf.data.Dataset`` that emits decoded images
     """
     image_paths = etau.get_glob_matches(images_patt)
-    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
+    return from_images(
+        image_paths, force_rgb=force_rgb, num_parallel_calls=num_parallel_calls
+    )
 
 
-def from_images(image_paths, num_parallel_calls=None):
+def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given list of images.
 
     Args:
         image_paths: an iterable of image paths
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -72,18 +88,25 @@ def from_images(image_paths, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
+
+    def parse_sample(image_path):
+        return _parse_image_tf(image_path, force_rgb=force_rgb)
+
     return tf.data.Dataset.from_tensor_slices(list(image_paths)).map(
-        _parse_image_tf, num_parallel_calls=num_parallel_calls
+        parse_sample, num_parallel_calls=num_parallel_calls
     )
 
 
-def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
+def from_image_paths_and_labels(
+    image_paths, labels, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for an image classification dataset stored
     as a list of image paths and labels.
 
     Args:
         image_paths: an iterable of image paths
         labels: an iterable of labels
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -94,7 +117,7 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     """
 
     def parse_sample(image_path, label):
-        img = _parse_image_tf(image_path)
+        img = _parse_image_tf(image_path, force_rgb=force_rgb)
         return img, label
 
     return tf.data.Dataset.from_tensor_slices(
@@ -102,7 +125,9 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
     ).map(parse_sample, num_parallel_calls=num_parallel_calls)
 
 
-def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
+def from_image_classification_dir_tree(
+    dataset_dir, force_rgb=False, num_parallel_calls=None
+):
     """Creates a ``tf.data.Dataset`` for the given image classification dataset
     directory tree.
 
@@ -120,20 +145,23 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
 
     Args:
         dataset_dir: the dataset directory
+        force_rgb (False): whether to force convert all images to RGB
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
             details
 
     Returns:
-        dataset: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
-        classes: a list of class label strings
+        a tuple of
+
+        -   **dataset**: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
+        -   **classes**: a list of class label strings
     """
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
         image_path, label = sample
-        img = _parse_image_tf(image_path)
+        img = _parse_image_tf(image_path, force_rgb=force_rgb)
         return img, label
 
     dataset = tf.data.Dataset.from_tensor_slices(samples).map(
@@ -176,7 +204,7 @@ def write_tf_records(examples, tf_records_path, num_shards=None):
     Args:
         examples: an iterable that emits ``tf.train.Example`` protos
         tf_records_path: the path to write the ``.tfrecords`` file. If sharding
-            is requested ``-%%05d-%%05d`` is automatically appended to the path
+            is requested ``-%%05d-of-%%05d`` is appended to the path
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
     """
@@ -196,7 +224,7 @@ class TFRecordsWriter(object):
 
     Args:
         tf_records_path: the path to write the ``.tfrecords`` file. If sharding
-            is requested ``-%%05d-%%05d`` is automatically appended to the path
+            is requested ``-%%05d-of-%%05d`` is appended to the path
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy). If omitted, no sharding is
             used
@@ -205,9 +233,10 @@ class TFRecordsWriter(object):
     def __init__(self, tf_records_path, num_shards=None):
         self.tf_records_path = tf_records_path
         self.num_shards = num_shards
+
+        self._idx = None
         self._num_shards = None
         self._writers = None
-        self._idx = None
         self._writers_context = None
 
     def __enter__(self):
@@ -217,7 +246,7 @@ class TFRecordsWriter(object):
 
         if self.num_shards:
             self._num_shards = self.num_shards
-            tf_records_patt = self.tf_records_path + "-%05d-%05d"
+            tf_records_patt = self.tf_records_path + "-%05d-of-%05d"
             tf_records_paths = [
                 tf_records_patt % (i, self.num_shards)
                 for i in range(1, self.num_shards + 1)
@@ -254,14 +283,20 @@ class TFRecordsWriter(object):
 class TFRecordSampleParser(foud.LabeledImageSampleParser):
     """Base class for sample parsers that ingest ``tf.train.Example`` protos
     containing labeled images.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     # Subclasses must implement this
     _FEATURES = {}
 
-    def __init__(self):
+    def __init__(self, force_rgb=False):
         super().__init__()
+        self.force_rgb = force_rgb
+
         self._current_features_cache = None
+        self._channels = 3 if force_rgb else 0
 
     def get_image(self):
         return self._parse_image(self._current_features)
@@ -298,7 +333,10 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.dataset_types.TFImageClassificationDataset`.
+    :ref:`this page <TFImageClassificationDataset-import>`.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     _FEATURES = {
@@ -328,16 +366,21 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
     def _parse_image(self, features):
         img_bytes = features["image_bytes"]
-        img = tf.image.decode_image(img_bytes)
+        img = tf.image.decode_image(img_bytes, channels=self._channels)
         return img.numpy()
 
     def _parse_image_metadata(self, features):
+        if self.force_rgb:
+            num_channels = 3
+        else:
+            num_channels = features["depth"].numpy()
+
         return fom.ImageMetadata(
             size_bytes=len(features["image_bytes"].numpy()),
             mime_type="image/" + features["format"].numpy().decode(),
             width=features["width"].numpy(),
             height=features["height"].numpy(),
-            num_channels=features["depth"].numpy(),
+            num_channels=num_channels,
         )
 
     def _parse_label(self, features):
@@ -354,7 +397,10 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset`.
+    :ref:`this page <TFObjectDetectionDataset-import>`.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     _FEATURES = {
@@ -365,7 +411,9 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True,
+            [],
+            tf.float32,
+            allow_missing=True,
         ),
         "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
@@ -401,15 +449,21 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
 
     def _parse_image(self, features):
         img_bytes = features["image/encoded"]
-        img = tf.image.decode_image(img_bytes)
+        img = tf.image.decode_image(img_bytes, channels=self._channels)
         return img.numpy()
 
     def _parse_image_metadata(self, features):
+        if self.force_rgb:
+            num_channels = 3
+        else:
+            num_channels = None
+
         return fom.ImageMetadata(
             size_bytes=len(features["image/encoded"].numpy()),
             mime_type="image/" + features["image/format"].numpy().decode(),
             width=features["image/width"].numpy(),
             height=features["image/height"].numpy(),
+            num_channels=num_channels,
         )
 
     def _parse_label(self, features):
@@ -438,7 +492,9 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         return fol.Detections(detections=detections)
 
 
-class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
+class TFRecordsLabeledImageDatasetImporter(
+    foud.LabeledImageDatasetImporter, foud.ImportPathsMixin
+):
     """Base class for
     :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
     instances that import ``tf.train.Example`` protos containing labeled
@@ -446,35 +502,65 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
 
     def __init__(
         self,
-        dataset_dir,
-        images_dir,
+        dataset_dir=None,
+        tf_records_path=None,
+        images_dir=None,
         image_format=None,
-        skip_unlabeled=False,
+        force_rgb=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
+        if dataset_dir is None and tf_records_path is None:
+            raise ValueError(
+                "Either `dataset_dir` or `tf_records_path` must be provided"
+            )
 
-        super().__init__(
-            dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
+        tf_records_path = self._parse_labels_path(
+            dataset_dir=dataset_dir,
+            labels_path=tf_records_path,
+            default="*record*",
         )
+
+        if images_dir is None:
+            images_dir = os.path.dirname(tf_records_path)
+            logger.warning(
+                "No `images_dir` provided. Images will be unpacked to '%s'",
+                images_dir,
+            )
+
+        super().__init__(dataset_dir=dataset_dir, max_samples=max_samples)
+
+        self.tf_records_path = tf_records_path
         self.images_dir = images_dir
         self.image_format = image_format
+        self.force_rgb = force_rgb
 
         self._sample_parser = self._make_sample_parser()
         self._dataset_ingestor = None
@@ -496,15 +582,11 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return self._sample_parser.has_image_metadata
 
     def setup(self):
-        tf_records_patt = os.path.join(self.dataset_dir, "*")
-        tf_dataset = from_tf_records(tf_records_patt)
-
         self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
             self.images_dir,
-            tf_dataset,
+            from_tf_records(self.tf_records_path),
             self._sample_parser,
             image_format=self.image_format,
-            skip_unlabeled=self.skip_unlabeled,
             max_samples=self.max_samples,
         )
         self._dataset_ingestor.setup()
@@ -526,19 +608,33 @@ class TFImageClassificationDatasetImporter(
 ):
     """Importer for TF image classification datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
-
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
+
+    See :ref:`this page <TFImageClassificationDataset-import>` for format
+    details.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -548,25 +644,39 @@ class TFImageClassificationDatasetImporter(
         return fol.Classification
 
     def _make_sample_parser(self):
-        return TFImageClassificationSampleParser()
+        return TFImageClassificationSampleParser(force_rgb=self.force_rgb)
 
 
 class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
     """Importer for TF detection datasets stored on disk.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
-
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
-    in-memory and written to a provided ``images_dir`` during import.
+    in-memory and written to the provided ``images_dir`` during import.
+
+    See :ref:`this page <TFObjectDetectionDataset-import>` for format
+    details.
 
     Args:
-        dataset_dir: the dataset directory
-        images_dir: the directory in which the images will be written
+        dataset_dir (None): the dataset directory. If omitted,
+            ``tf_records_path`` must be provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` or glob pattern like
+                ``"*.records-*-of-*"`` specifying the location of the records
+                in ``dataset_dir``
+            -   an absolute filepath or glob pattern for the records. In this
+                case, ``dataset_dir`` has no effect on the location of the
+                records
+
+            If None, the parameter will default to ``*record*``
+        images_dir (None): the directory in which the images will be written.
+            If not provided, the images will be unpacked into ``dataset_dir``
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
-        skip_unlabeled (False): whether to skip unlabeled images when importing
+        force_rgb (False): whether to force convert all images to RGB
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -576,25 +686,64 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         return fol.Detections
 
     def _make_sample_parser(self):
-        return TFObjectDetectionSampleParser()
+        return TFObjectDetectionSampleParser(force_rgb=self.force_rgb)
 
 
-class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
+class TFRecordsDatasetExporter(
+    foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
+):
     """Base class for
     :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
     instances that export labeled images as TFRecords datasets on disk.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. This has no
+            effect if ``tf_records_path`` is an absolute path
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
         num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        force_rgb (False): whether to force convert all images to RGB
     """
 
-    def __init__(self, export_dir, num_shards=None):
-        super().__init__(export_dir)
+    def __init__(
+        self,
+        export_dir=None,
+        tf_records_path=None,
+        num_shards=None,
+        image_format=None,
+        force_rgb=False,
+    ):
+        tf_records_path = self._parse_labels_path(
+            export_dir=export_dir,
+            labels_path=tf_records_path,
+            default="tf.records",
+        )
+
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir=export_dir)
+
+        self.tf_records_path = tf_records_path
         self.num_shards = num_shards
-        self._filename_maker = None
+        self.image_format = image_format
+        self.force_rgb = force_rgb
+
         self._example_generator = None
+        self._filename_maker = None
         self._tf_records_writer = None
 
     @property
@@ -602,17 +751,18 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         return False
 
     def setup(self):
-        tf_records_path = os.path.join(self.export_dir, "tf.records")
-        self._filename_maker = fou.UniqueFilenameMaker()
         self._example_generator = self._make_example_generator()
+        self._filename_maker = fou.UniqueFilenameMaker(
+            default_ext=self.image_format
+        )
         self._tf_records_writer = TFRecordsWriter(
-            tf_records_path, num_shards=self.num_shards
+            self.tf_records_path, num_shards=self.num_shards
         )
         self._tf_records_writer.__enter__()
 
     def export_sample(self, image_or_path, label, metadata=None):
-        if self._is_image_path(image_or_path):
-            filename = self._filename_maker.get_output_path(image_or_path)
+        if etau.is_str(image_or_path):
+            filename = image_or_path
         else:
             filename = self._filename_maker.get_output_path()
 
@@ -637,13 +787,29 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an image classification dataset to disk as
     TFRecords.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
+    details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. Can be omitted if
+            ``tf_records_path`` is provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
         num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     @property
@@ -651,38 +817,86 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
         return fol.Classification
 
     def _make_example_generator(self):
-        return TFImageClassificationExampleGenerator()
+        return TFImageClassificationExampleGenerator(force_rgb=self.force_rgb)
 
 
 class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an object detection dataset to disk as TFRecords
     in the TF Object Detection API format.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
-        export_dir: the directory to write the export
+        export_dir (None): the directory to write the export. Can be omitted if
+            ``tf_records_path`` is provided
+        tf_records_path (None): an optional parameter that enables explicit
+            control over the location of the TF records. Can be any of the
+            following:
+
+            -   a filename like ``"tf.records"`` specifying the location of
+                the records in ``export_dir``
+            -   an absolute filepath for the records. In this case,
+                ``export_dir`` has no effect on the location of the records
+
+            If None, the parameter will default to ``tf.records``
+        num_shards (None): an optional number of shards to split the records
+            into (using a round robin strategy). If specified,
+            ``-%%05d-of-%%05d`` is appended to the records path
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+        force_rgb (False): whether to force convert all images to RGB
         classes (None): the list of possible class labels. If omitted, the
             class list is dynamically generated as samples are processed
-        num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
     """
 
-    def __init__(self, export_dir, classes=None, num_shards=None):
-        super().__init__(export_dir, num_shards=num_shards)
+    def __init__(
+        self,
+        export_dir=None,
+        tf_records_path=None,
+        num_shards=None,
+        image_format=None,
+        force_rgb=False,
+        classes=None,
+    ):
+        super().__init__(
+            export_dir=export_dir,
+            tf_records_path=tf_records_path,
+            num_shards=num_shards,
+            image_format=image_format,
+            force_rgb=force_rgb,
+        )
+
         self.classes = classes
 
     @property
     def label_cls(self):
         return fol.Detections
 
+    def log_collection(self, sample_collection):
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+
     def _make_example_generator(self):
-        return TFObjectDetectionExampleGenerator(classes=self.classes)
+        return TFObjectDetectionExampleGenerator(
+            force_rgb=self.force_rgb, classes=self.classes
+        )
 
 
 class TFExampleGenerator(object):
-    """Base class for sample writers that emit ``tf.train.Example`` protos."""
+    """Base class for sample writers that emit ``tf.train.Example`` protos.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
+    """
+
+    def __init__(self, force_rgb=False):
+        self.force_rgb = force_rgb
 
     def make_tf_example(self, image_or_path, label, *args, **kwargs):
         """Makes a ``tf.train.Example`` for the given data.
@@ -700,16 +914,23 @@ class TFExampleGenerator(object):
             "subclasses must implement make_tf_example()"
         )
 
-    @staticmethod
-    def _parse_image_or_path(image_or_path, filename=None):
+    def _parse_image_or_path(self, image_or_path, filename=None):
         if etau.is_str(image_or_path):
             image_path = image_or_path
 
             if filename is None:
                 filename = os.path.basename(image_path)
 
-            img_bytes = tf.io.read_file(image_path)
-            img = tf.image.decode_image(img_bytes)
+            # pylint: disable=no-member
+            img_bytes = etau.read_file(image_path, binary=True)
+            img = etai.decode(img_bytes, flag=cv2.IMREAD_ANYCOLOR)
+
+            if img.ndim == 2:
+                img = np.expand_dims(img, 2)
+
+            if self.force_rgb and img.shape[2] == 1:
+                img = img.repeat(3, axis=2)
+                img_bytes = etai.encode(img, os.path.splitext(image_path)[1])
         else:
             img = image_or_path
 
@@ -718,6 +939,14 @@ class TFExampleGenerator(object):
                     "`filename` must be provided when `image_or_path` is an "
                     "image"
                 )
+
+            if img.ndim == 2:
+                img = np.expand_dims(img, 2)
+
+            if self.force_rgb and img.shape[2] == 1:
+                img = img.repeat(3, axis=2)
+            elif self.force_rgb and img.shape[2] == 4:
+                img = rgba2rgb(img)
 
             if filename.endswith((".jpg", ".jpeg")):
                 img_bytes = tf.image.encode_jpeg(img)
@@ -738,8 +967,11 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     image classification format.
 
-    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
-    format details.
+    See :ref:`this page <TFImageClassificationDataset-export>` for format
+    details.
+
+    Args:
+        force_rgb (False): whether to force convert all images to RGB
     """
 
     def make_tf_example(self, image_or_path, classification, filename=None):
@@ -783,15 +1015,19 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     Object Detection API format.
 
-    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
-    format details.
+    See :ref:`this page <TFObjectDetectionDataset-export>` for format details.
 
     Args:
+        force_rgb (False): whether to force convert all images to RGB
         classes (None): the list of possible class labels. If omitted, the
             class list is dynamically generated as examples are processed
     """
 
-    def __init__(self, classes=None):
+    def __init__(self, force_rgb=False, classes=None):
+        super().__init__(force_rgb=force_rgb)
+
+        self.classes = classes
+
         if classes:
             labels_map_rev = _to_labels_map_rev(classes)
             dynamic_classes = False
@@ -837,14 +1073,22 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
             for detection in detections.detections:
                 xmin, ymin, w, h = detection.bounding_box
                 text = detection.label
-                try:
-                    label = self._labels_map_rev[text]
-                except KeyError:
-                    if not self._dynamic_classes:
-                        raise
 
-                    label = len(self._labels_map_rev)
-                    self._labels_map_rev[text] = label
+                if self._dynamic_classes:
+                    if text not in self._labels_map_rev:
+                        label = len(self._labels_map_rev)
+                        self._labels_map_rev[text] = label
+                    else:
+                        label = self._labels_map_rev[text]
+                elif text not in self._labels_map_rev:
+                    msg = (
+                        "Ignoring detection with label '%s' not in provided "
+                        "classes" % text
+                    )
+                    warnings.warn(msg)
+                    continue
+                else:
+                    label = self._labels_map_rev[text]
 
                 xmins.append(xmin)
                 xmaxs.append(xmin + w)
@@ -880,9 +1124,10 @@ def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
 
-def _parse_image_tf(image_path):
+def _parse_image_tf(image_path, force_rgb=False):
+    channels = 3 if force_rgb else 0
     img_bytes = tf.io.read_file(image_path)
-    return tf.image.decode_image(img_bytes)
+    return tf.image.decode_image(img_bytes, channels=channels)
 
 
 def _bytes_feature(value):

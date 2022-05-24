@@ -1,242 +1,36 @@
-Adding Samples to Datasets
-==========================
+.. _sample-parsers:
+
+Using Sample Parsers
+====================
 
 .. default-role:: code
 
-FiftyOne datasets are composed of |Sample| instances, and FiftyOne provides a
-number of options for building datasets from individual samples.
+This page describes how to use the |SampleParser| interface to add samples to
+your FiftyOne datasets.
 
-If you have entire datasets on disk that you would like to load into a FiftyOne
-dataset, see :doc:`loading datasets from disk <datasets>`.
+The |SampleParser| interface provides native support for loading samples in a
+variety of :ref:`common formats <builtin-sample-parser>`, and it can be easily
+extended to import datasets in :ref:`custom formats <custom-sample-parser>`,
+allowing you to automate the dataset loading process.
 
-You can take a fully customized approach and
-:ref:`build your own samples <manually-building-datasets>`, or you can
-:ref:`use a built-in SampleParser <builtin-sample-parser>` to parse
-samples from a variety of common formats, or you can
-:ref:`provide your own SampleParser <custom-sample-parser>` to automatically
-load samples in your own custom formats.
+.. warning::
 
-.. _manually-building-datasets:
-
-Manually building datasets
---------------------------
-
-The most flexible way to create a FiftyOne dataset is to manually construct
-your own |Sample| instances.
-
-The following examples demonstrate how to construct datasets of various kinds
-manually.
-
-.. tabs::
-
-    .. group-tab:: Unlabeled images
-
-        .. code:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            num_samples = 3
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some image samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                sample = fo.Sample(filepath=filepath)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset(name="my-images-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Classification
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_samples = 3
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some classification samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                # Classification label
-                label = random.choice(["cat", "dog"])
-
-                sample = fo.Sample(filepath=filepath)
-
-                # Store classification in a field with name of your choice
-                sample["ground_truth"] = fo.Classification(label=label)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset(name="my-classification-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Object detection
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_samples = 3
-            num_objects_per_sample = 4
-            images_patt = "/path/to/images/%06d.jpg"
-
-            # Generate some detection samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the image on disk
-                filepath = images_patt % i
-
-                # Object detections
-                detections = []
-                for j in range(num_objects_per_sample):
-                    label = random.choice(["cat", "dog", "bird", "rabbit"])
-
-                    # Bounding box coordinates are stored as relative numbers in [0, 1]
-                    # in the following format:
-                    # [top-left-x, top-left-y, width, height]
-                    bounding_box = [
-                        0.8 * random.random(),
-                        0.8 * random.random(),
-                        0.2,
-                        0.2,
-                    ]
-                    detections.append(fo.Detection(label=label, bounding_box=bounding_box))
-
-                sample = fo.Sample(filepath=filepath)
-
-                # Store detections in a field with name of your choice
-                sample["ground_truth"] = fo.Detections(detections=detections)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset(name="my-detection-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Unlabeled videos
-
-        .. code:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            num_samples = 3
-            videos_patt = "/path/to/videos/%06d.mp4"
-
-            # Generate some video samples
-            samples = []
-            for i in range(num_samples):
-                # Path to the video on disk
-                filepath = videos_patt % i
-
-                sample = fo.Sample(filepath=filepath)
-
-                samples.append(sample)
-
-            # Create the dataset
-            dataset = fo.Dataset(name="my-videos-dataset")
-            dataset.add_samples(samples)
-
-            # View summary info about the dataset
-            print(dataset)
-
-            # Print the first few samples in the dataset
-            print(dataset.head())
-
-    .. group-tab:: Labeled videos
-
-        .. code:: python
-            :linenos:
-
-            import random
-            import fiftyone as fo
-
-            num_frames = 5
-            num_objects_per_frame = 3
-            video_path = "/path/to/video.mp4"
-
-            # Create video sample
-            sample = fo.Sample(filepath=video_path)
-
-            # Add some frame labels
-            for frame_number in range(1, num_frames + 1):
-                # Frame classification
-                weather = random.choice(["sunny", "cloudy"])
-                sample[frame_number]["weather"] = fo.Classification(label=weather)
-
-                # Object detections
-                detections = []
-                for _ in range(num_objects_per_frame):
-                    label = random.choice(["cat", "dog", "bird", "rabbit"])
-
-                    # Bounding box coordinates are stored as relative numbers in [0, 1]
-                    # in the following format:
-                    # [top-left-x, top-left-y, width, height]
-                    bounding_box = [
-                        0.8 * random.random(),
-                        0.8 * random.random(),
-                        0.2,
-                        0.2,
-                    ]
-                    detections.append(fo.Detection(label=label, bounding_box=bounding_box))
-
-                # Object detections
-                sample[frame_number]["objects"] = fo.Detections(detections=detections)
-
-            # Create dataset
-            dataset = fo.Dataset(name="my-labeled-video-dataset")
-            dataset.add_sample(sample)
+    Using the |SampleParser| interface is not recommended. You'll likely prefer
+    :ref:`adding samples manually <loading-custom-datasets>` or
+    :ref:`using dataset importers <loading-datasets-from-disk>` to load data
+    into FiftyOne.
 
 .. _adding-samples-to-datasets:
 
 Adding samples to datasets
 --------------------------
 
-FiftyOne provides native support for loading samples in a variety of
-:ref:`common formats <builtin-sample-parser>`, and it can be easily
-extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
-
 Basic recipe
 ~~~~~~~~~~~~
 
-The basic recipe for adding samples to a |Dataset| is to create a
-|SampleParser| of the appropriate type of sample that you're loading and then
-pass the parser along with an iterable of samples to the appropriate
-|Dataset| method.
+The basic recipe for using the |SampleParser| interface to add samples to a
+|Dataset| is to create a parser of the appropriate type and then pass the
+parser along with an iterable of samples to the appropriate |Dataset| method.
 
 .. tabs::
 
@@ -263,13 +57,13 @@ pass the parser along with an iterable of samples to the appropriate
             :linenos:
 
             import fiftyone as fo
-            import fiftyone.utils.bdd as foub
+            import fiftyone.utils.data as foud
 
             dataset = fo.Dataset()
 
             # An iterable of samples and a LabeledImageSampleParser to parse them
             samples = ...
-            sample_parser = foub.BDDSampleParser  # for example
+            sample_parser = foud.ImageClassificationSampleParser  # for example
 
             # Add the labeled image samples to the dataset
             dataset.add_labeled_images(samples, sample_parser)
@@ -370,7 +164,7 @@ to add an iterable of unlabeled images that can be parsed via a specified
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python
@@ -398,32 +192,30 @@ to add an iterable of samples that can be parsed via a specified
 
 **Example**
 
-FiftyOne provides a
-:class:`BDDSampleParser <fiftyone.utils.bdd.BDDSampleParser>` that handles
-samples that contain ``(image_or_path, anno_or_path)`` tuples, where:
+FiftyOne provides an
+:class:`ImageClassificationSampleParser <fiftyone.utils.data.parsers.ImageClassificationSampleParser>`
+that handles samples that contain ``(image_or_path, target)`` tuples, where:
 
 - ``image_or_path`` is either an image that can be converted to numpy
   format via ``np.asarray()`` or the path to an image on disk
 
-- ``anno_or_path`` is a dict of
-  :class:`BDD annotations <fiftyone.utils.bdd.BDDSampleParser>` or the path to
-  such a JSON file on disk
+- ``target`` is either a class ID or a label string
 
-The snippet below adds an iterable of BDD samples in the above format to a
-dataset:
+The snippet below adds an iterable of image classification data in the above
+format to a dataset:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.bdd as foub
+    import fiftyone.utils.data as foud
 
     dataset = fo.Dataset()
 
-    # An iterable of `(image_or_path, anno_or_path)` tuples and the
+    # An iterable of `(image_or_path, target)` tuples and the
     # LabeledImageSampleParser to use to parse them
     samples = ...
-    sample_parser = foub.BDDSampleParser
+    sample_parser = foud.ImageClassificationSampleParser
 
     # Add labeled images to the dataset
     dataset.add_labeled_images(samples, sample_parser)
@@ -596,14 +388,14 @@ appropriate |Dataset| method.
             :linenos:
 
             import fiftyone as fo
-            import fiftyone.utils.bdd as foub
+            import fiftyone.utils.data as foud
 
             dataset = fo.Dataset()
 
             # The iterable of samples and the LabeledImageSampleParser to use
             # to parse them
             samples = ...
-            sample_parser = foub.BDDSampleParser  # for example
+            sample_parser = foud.ImageClassificationSampleParser  # for example
 
             # A directory in which the images will be written; If `None`, a default directory
             # based on the dataset's `name` will be used
@@ -683,7 +475,7 @@ and then written to the backing directory.
 FiftyOne provides an
 :class:`ImageSampleParser <fiftyone.utils.data.parsers.ImageSampleParser>`
 that handles samples that contain either an image that can be converted to
-`NumPy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
+`numpy format <https://numpy.org>`_ via ``np.asarray()`` of the path to an
 image on disk.
 
 .. code-block:: python
@@ -724,32 +516,30 @@ and then written to the backing directory.
 
 **Example**
 
-FiftyOne provides a
-:class:`BDDSampleParser <fiftyone.utils.bdd.BDDSampleParser>` that handles
-samples that contain ``(image_or_path, anno_or_path)`` tuples, where:
+FiftyOne provides an
+:class:`ImageClassificationSampleParser <fiftyone.utils.data.parsers.ImageClassificationSampleParser>`
+that handles samples that contain ``(image_or_path, target)`` tuples, where:
 
 - ``image_or_path`` is either an image that can be converted to numpy
   format via ``np.asarray()`` or the path to an image on disk
 
-- ``anno_or_path`` is a dict of
-  :class:`BDD annotations <fiftyone.utils.bdd.BDDSampleParser>` or the path to
-  such a JSON file on disk
+- ``target`` is either a class ID or a label string
 
-The snippet below ingests an iterable of BDD samples in the above format into
-a FiftyOne dataset:
+The snippet below ingests an iterable of image classification data in the above
+format intoa a FiftyOne dataset:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.bdd as foub
+    import fiftyone.utils.data as foud
 
     dataset = fo.Dataset()
 
-    # An iterable of `(image_or_path, anno_or_path)` tuples and the
+    # An iterable of `(image_or_path, target)` tuples and the
     # LabeledImageSampleParser to use to parse them
     samples = ...
-    sample_parser = foub.BDDSampleParser  # for example
+    sample_parser = foud.ImageClassificationSampleParser  # for example
 
     # A directory in which the images will be written; If `None`, a default directory
     # based on the dataset's `name` will be used
@@ -871,8 +661,8 @@ You can use a |SampleParser| to
 | :class:`ImageDetectionSampleParser                                     | Generic parser for image detection samples whose labels are represented as |Detections| instances.              |
 | <fiftyone.utils.data.parsers.ImageDetectionSampleParser>`              |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`ImageLabelsSampleParser                                        | Generic parser for image detection samples whose labels are represented as |ImageLabels| instances.             |
-| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 |                                                                                                                 |
+| :class:`ImageLabelsSampleParser                                        | Generic parser for image detection samples whose labels are stored in                                           |
+| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.             |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageClassificationSampleParser                        | Parser for samples in FiftyOne image classification datasets. See                                               |
 | <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`   |
@@ -895,24 +685,6 @@ You can use a |SampleParser| to
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`TFObjectDetectionSampleParser                                  | Parser for image detection samples stored in                                                                    |
 | <fiftyone.utils.tf.TFObjectDetectionSampleParser>`                     | `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_. |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`COCODetectionSampleParser                                      | Parser for samples in `COCO detection format <http://cocodataset.org/#home>`_.                                  |
-| <fiftyone.utils.coco.COCODetectionSampleParser>`                       |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`VOCDetectionSampleParser                                       | Parser for samples in `VOC detection format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                         |
-| <fiftyone.utils.voc.VOCDetectionSampleParser>`                         |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`KITTIDetectionSampleParser                                     | Parser for samples in `KITTI detection format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.         |
-| <fiftyone.utils.kitti.KITTIDetectionSampleParser>`                     |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`YOLOSampleParser                                               | Parser for samples in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                                     |
-| <fiftyone.utils.kitti.YOLOSampleParser>`                               |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`CVATImageSampleParser                                          | Parser for samples in `CVAT image format <https://github.com/opencv/cvat>`_.                                    |
-| <fiftyone.utils.cvat.CVATImageSampleParser>`                           |                                                                                                                 |
-+------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`BDDSampleParser                                                | Parser for samples in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.                       |
-| <fiftyone.utils.bdd.BDDSampleParser>`                                  |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 
 .. _custom-sample-parser:
@@ -1012,9 +784,6 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples to parse and the UnlabeledImageSampleParser
-            # to use to parse them
             samples = ...
             sample_parser = CustomUnlabeledImageSampleParser(...)
 
@@ -1089,10 +858,24 @@ classification or object detections) associated with the image.
 
                 @property
                 def label_cls(self):
-                    """The :class:`fiftyone.core.labels.Label` class returned by this
-                    parser, or ``None`` if it returns a dictionary of labels.
+                    """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                    parser.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        parser is guaranteed to return labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single label field of any of
+                        these types
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the parser will return label dictionaries with keys
+                        and value-types specified by this dictionary. Not all keys need be
+                        present in the imported labels
+                    -   ``None``. In this case, the parser makes no guarantees about the
+                        labels that it may return
                     """
-                    # Return a Label subclass here
+                    # Return the appropriate value here
                     pass
 
                 def get_image(self):
@@ -1145,13 +928,9 @@ classification or object detections) associated with the image.
 
             dataset = fo.Dataset(...)
 
-            # An iterable of samples and the LabeledImageSampleParser to use
-            # to parse them
             samples = ...
             sample_parser = CustomLabeledImageSampleParser(...)
-
-            # The name of the sample field in which to store the labels
-            label_field = "ground_truth"  # for example
+            label_field = ...
 
             for sample in samples:
                 sample_parser.with_sample(sample)
@@ -1168,7 +947,9 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=image_path, metadata=metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -1191,6 +972,10 @@ classification or object detections) associated with the image.
         property that declares whether the sample parser can return an |ImageMetadata|
         for the current sample's image via
         :meth:`get_image_metadata() <fiftyone.utils.data.parsers.LabeledImageSampleParser.get_image_metadata>`.
+        Additionality, the
+        :meth:`label_cls <fiftyone.utils.data.parsers.LabeledImageSampleParser.label_cls>`
+        property of the parser declares the type of label(s) that the parser
+        will produce.
 
         By convention, all |LabeledImageSampleParser| implementations must make the
         current sample's image available via
@@ -1251,9 +1036,6 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples to parse and the UnlabeledVideoSampleParser
-            # to use to parse them
             samples = ...
             sample_parser = CustomUnlabeledVideoSampleParser(...)
 
@@ -1311,6 +1093,50 @@ classification or object detections) associated with the image.
                     # Return True or False here
                     pass
 
+                @property
+                def label_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                    parser within the sample-level labels that it produces.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        parser is guaranteed to return sample-level labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single sample-level label field
+                        of any of these types
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the parser will return sample-level label
+                        dictionaries with keys and value-types specified by this
+                        dictionary. Not all keys need be present in the imported labels
+                    -   ``None``. In this case, the parser makes no guarantees about the
+                        sample-level labels that it may return
+                    """
+                    # Return the appropriate value here
+                    pass
+
+                @property
+                def frame_labels_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                    parser within the frame labels that it produces.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        parser is guaranteed to return frame labels of this type
+                    -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+                        this case, the parser can produce a single frame label field of any
+                        of these types
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the parser will return frame label dictionaries with
+                        keys and value-types specified by this dictionary. Not all keys
+                        need be present in each frame
+                    -   ``None``. In this case, the parser makes no guarantees about the
+                        frame labels that it may return
+                    """
+                    # Return the appropriate value here
+                    pass
+
                 def get_video_path(self):
                     """Returns the video path for the current sample.
 
@@ -1330,13 +1156,24 @@ classification or object detections) associated with the image.
                     # raise an error if `has_video_metadata == False`
                     pass
 
+                def get_label(self):
+                    """Returns the sample-level labels for the current sample.
+
+                    Returns:
+                        a :class:`fiftyone.core.labels.Label` instance, or a dictionary
+                        mapping field names to :class:`fiftyone.core.labels.Label`
+                        instances, or ``None`` if the sample has no sample-level labels
+                    """
+                    # Return the sample labels for `self.current_sample` here
+                    pass
+
                 def get_frame_labels(self):
                     """Returns the frame labels for the current sample.
 
                     Returns:
-                        a dictionary mapping frame numbers to
-                        :class:`fiftyone.core.frame.Frame` instances containing the frame
-                        labels, or ``None`` if the sample is unlabeled
+                        a dictionary mapping frame numbers to dictionaries that map label
+                        fields to :class:`fiftyone.core.labels.Label` instances for each
+                        video frame, or ``None`` if the sample has no frame labels
                     """
                     # Return the frame labels for `self.current_sample` here
                     pass
@@ -1350,11 +1187,9 @@ classification or object detections) associated with the image.
             import fiftyone as fo
 
             dataset = fo.Dataset(...)
-
-            # An iterable of samples and the LabeledVideoSampleParser to use
-            # to parse them
             samples = ...
             sample_parser = CustomLabeledVideoSampleParser(...)
+            label_field = ...
 
             for sample in samples:
                 sample_parser.with_sample(sample)
@@ -1366,12 +1201,31 @@ classification or object detections) associated with the image.
                 else:
                     metadata = None
 
+                label = sample_parser.get_label()
                 frames = sample_parser.get_frame_labels()
 
                 sample = fo.Sample(filepath=video_path, metadata=metadata)
 
-                if frame is not None:
-                    sample.frames.update(frames)
+                if isinstance(label, dict):
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
+                elif label is not None:
+                    sample[label_field] = label
+
+                if frames is not None:
+                    frame_labels = {}
+
+                    for frame_number, _label in frames.items():
+                        if isinstance(_label, dict):
+                            frame_labels[frame_number] = {
+                                label_field + "_" + field_name: label
+                                for field_name, label in _label.items()
+                            }
+                        elif _label is not None:
+                            frame_labels[frame_number] = {label_field: _label}
+
+                    sample.frames.merge(frame_labels)
 
                 dataset.add_sample(sample)
 
@@ -1390,6 +1244,15 @@ classification or object detections) associated with the image.
         for the current sample's video via
         :meth:`get_video_metadata() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_video_metadata>`.
 
-        By convention, all |LabeledVideoSampleParser| implementations must make the
-        current sample's frame labels available via
+        The
+        :meth:`label_cls <fiftyone.utils.data.parsers.LabeledVideoSampleParser.label_cls>`
+        property of the parser declares the type of sample-level label(s) that
+        the parser may produce (if any). The
+        :meth:`frame_labels_cls <fiftyone.utils.data.parsers.LabeledVideoSampleParser.frame_labels_cls>`
+        property of the parser declares the type of frame-level label(s) that
+        the parser may produce (if any). By convention, all
+        |LabeledVideoSampleParser| implementations must make the current
+        sample's sample-level labels available via
+        :meth:`get_label() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_label>`
+        and its frame-level labels available via
         :meth:`get_frame_labels() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_frame_labels>`.

@@ -34,6 +34,12 @@ article.pytorch-article .wy-table-responsive table thead th {
   padding-bottom: 0rem;
 }
 
+.container-fluid.header-holder {
+  /* overrides to make banners display properly in this container */
+  display: block;
+  height: auto;
+}
+
 .pytorch-page-level-bar {
   z-index: 500;
 }
@@ -315,7 +321,7 @@ article.pytorch-article .reference.download.internal {
 }
 
 .nav__main__logo {
-  width: 300px;
+  width: 260px;
   margin-left: 30px;
   margin-right: 20px;
 }
@@ -548,7 +554,7 @@ a.with-right-arrow,
 /* social links on main page */
 
 .social-links #social-links-table {
-  width: 400px !important;
+  width: 600px !important;
   margin-bottom: 1.5rem;
 }
 
@@ -565,4 +571,68 @@ a.with-right-arrow,
   .social-links #social-links-table {
     width: 100% !important;
   }
+}
+
+.fo-notebook-links {
+  display: inline-block;
+  margin: 0 0 1rem 0 !important;
+}
+
+.fo-notebook-links tr {
+  background: 0;
+  border: 0;
+}
+
+.fo-notebook-links td {
+  padding-left: 0;
+  padding-right: 20px;
+}
+
+.fo-notebook-links a,
+.fo-notebook-links :link,
+.tfo-notebook-links :visited {
+  border-radius: 3px;
+  box-shadow: 0 1px 3px 0px #6c6c6d;
+  padding: 12px 17px;
+  transition: box-shadow 0.2s;
+}
+
+.fo-notebook-links td > a {
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  color: #6c6c6d;
+}
+
+.fo-notebook-links img {
+  height: 32px;
+  width: 32px !important;
+  margin-right: 3px;
+}
+
+.integrations-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.integrations-logos > div {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 15px 15px 15px;
+  vertical-align: middle;
+  text-align: center;
+  justify-content: center;
+  width: 140px;
+  min-height: 96px;
+}
+
+.integrations-logos img {
+  max-height: 52px;
+  max-width: 110px;
+  width: auto !important;
+  height: auto;
 }

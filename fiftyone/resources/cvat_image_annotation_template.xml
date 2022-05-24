@@ -3,8 +3,8 @@
     <version>1.1</version>
     <meta>
         <task>
-            <id>{{ id }}</id>
-            <name>{{ name }}</name>
+            <id>{{ id if id is not none else "" }}</id>
+            <name>{{ name if name is not none else "" }}</name>
             <size>{{ size }}</size>
             <mode>annotation</mode>
             <overlap></overlap>
@@ -29,7 +29,7 @@
             </labels>
             <segments>
                     <segment>
-                        <id>{{ id }}</id>
+                        <id>{{ id if id is not none else "" }}</id>
                         <start>{{ 0 }}</start>
                         <stop>{{ [size - 1, 0]|max }}</stop>
                         <url></url>
@@ -44,12 +44,40 @@
     </meta>
 {% for image in images %}
     <image id="{{ image.id }}" name="{{ image.name }}" width="{{ image.width }}" height="{{ image.height }}">
+{% for tag in image.tags %}
+        <tag label="{{ tag.label }}">
+{% for attr in tag.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </tag>
+{% endfor %}
 {% for box in image.boxes %}
-        <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}" {%endif %}>
+        <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}"{% else %} occluded="0"{%endif %}>
 {% for attr in box.attributes %}
             <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
 {% endfor %}
         </box>
+{% endfor %}
+{% for polygon in image.polygons %}
+        <polygon label="{{ polygon.label }}" points="{{ polygon.points_str }}"{% if polygon.occluded is not none %} occluded="{{ polygon.occluded }}" {% else %} occluded="0"{%endif %}>
+{% for attr in polygon.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polygon>
+{% endfor %}
+{% for polyline in image.polylines %}
+        <polyline label="{{ polyline.label }}" points="{{ polyline.points_str }}"{% if polyline.occluded is not none %} occluded="{{ polyline.occluded }}" {% else %} occluded="0"{%endif %}>
+{% for attr in polyline.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polyline>
+{% endfor %}
+{% for point in image.points %}
+        <points label="{{ point.label }}" points="{{ point.points_str }}"{% if point.occluded is not none %} occluded="{{ point.occluded }}" {% else %} occluded="0"{%endif %}>
+{% for attr in point.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </points>
 {% endfor %}
     </image>
 {% endfor %}

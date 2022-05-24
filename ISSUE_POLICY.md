@@ -43,8 +43,8 @@ Feature requests typically go through the following lifecycle:
    provide an overview of the feature's implementation as well, if possible.
 2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
    is needed from the author, give an indication of priority, and route feature
-   requests to appropriate committers.
-3. The feature request is discussed with a committer. The committer will
+   requests to appropriate maintainers.
+3. The feature request is discussed with a maintainer. The maintainer will
    provide input on the implementation overview or ask for a more detailed
    design, if applicable.
 4. After discussion & agreement on the feature request and its implementation,
@@ -61,12 +61,12 @@ Bug reports typically go through the following lifecycle:
    description of the bug and information required to reproduce it.
 2. The [bug report is triaged](ISSUE_TRIAGE.md) to identify whether more
    information is needed from the author, give an indication of priority, and
-   route to request appropriate committers.
-3. An FiftyOne committer reproduces the bug and provides feedback about how to
+   route to request appropriate maintainers.
+3. An FiftyOne maintainer reproduces the bug and provides feedback about how to
    implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
-   FiftyOne committers may choose to adopt ownership of severe bugs to ensure a
-   timely fix.
+   FiftyOne maintainers may choose to adopt ownership of severe bugs to ensure
+   a timely fix.
 5. The fix owner begins implementing the fix and ultimately files associated
    pull requests.
 
@@ -78,11 +78,11 @@ Documentation issues typically go through the following lifecycle:
    the issue and its location(s) in the FiftyOne documentation.
 2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
    is needed from the author, give an indication of priority, and route the
-   request to appropriate committers.
-3. An FiftyOne committer confirms the documentation issue and provides feedback
-   about how to implement a fix.
+   request to appropriate maintainers.
+3. An FiftyOne maintainer confirms the documentation issue and provides
+   feedback about how to implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
-   FiftyOne committers may choose to adopt ownership of severe documentation
+   FiftyOne maintainers may choose to adopt ownership of severe documentation
    issues to ensure a timely fix.
 5. The fix owner begins implementing the fix and ultimately files associated
    pull requests.
@@ -95,11 +95,12 @@ Installation issues typically go through the following lifecycle:
    the issue and the platforms its affects.
 2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
    is needed from the author, give an indication of priority, and route the
-   issue to appropriate committers.
-3. An FiftyOne committer confirms the installation issue and provides feedback
+   issue to appropriate maintainers.
+3. An FiftyOne maintainer confirms the installation issue and provides feedback
    about how to implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
-   FiftyOne committers may choose to adopt ownership of severe installation
-   issues to ensure a timely fix.
+   FiftyOne maintainers may choose to adopt ownership of severe installation
+   issues to ensure a timely fix. FiftyOne maintainers may choose to adopt
+   ownership of severe installation
 5. The fix owner begins implementing the fix and ultimately files associated
    pull requests.

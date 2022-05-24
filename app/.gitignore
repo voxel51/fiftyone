@@ -1,0 +1,12 @@
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+node_modules
+.snowpack
+build
+dist
+.yarnrc
+yarn-error.log
+tsconfig.tsbuildinfo

@@ -23,7 +23,7 @@ script will continue running in the background and keep the child process alive
 until all registered clients, including the original parent process, have
 exited.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -39,7 +39,7 @@ import traceback
 
 import psutil
 
-from fiftyone.core.service import Service
+os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.service.ipc import IPCServer
 
 
@@ -222,11 +222,18 @@ parser.add_argument(
 parser.add_argument("--multi", action="store_true")
 
 args, command = parser.parse_known_args()
+
+# Services may define additional flags beyond ``--51-service`` and ``--multi``
+# which we do not need here
+while command and command[0].startswith("--"):
+    command = command[2:]
+
 if not command:
     raise ValueError("No command given")
+
 if command[0].startswith("--"):
     raise ValueError("Unhandled service argument: %s" % command[0])
-service_class = Service.find_subclass_by_name(args.service_name)
+
 
 if args.multi:
     client_monitor = ClientMonitor()
@@ -266,6 +273,8 @@ child_stderr = ChildStreamMonitor(child.stderr)
 
 def monitor_stdin():
     """Trigger shutdown when the parent process closes this process's stdin.
+    This will occur if the :class:`fiftyone.core.service.DatabaseService`
+    singleton destroyed.
 
     This should only occur when the parent process has exited.
     """
@@ -282,13 +291,6 @@ def shutdown():
 
     Also dumps output if the main child process fails to exit cleanly.
     """
-    # attempt to call cleanup() for the running service
-    try:
-        service_class.cleanup()
-    except Exception:
-        sys.stderr.write("Error in %s.cleanup():\n" % service_class.__name__)
-        traceback.print_exc(file=sys.stderr)
-        sys.stderr.flush()
 
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first

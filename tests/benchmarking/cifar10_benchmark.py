@@ -3,7 +3,7 @@ Benchmarking CRUD operations on CIFAR10.
 
 Results are appended to `cifar10_benchmark.log`.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -80,7 +80,7 @@ delete_sample_times = []
 for _ in range(9):
     view = dataset.take(1000)
     start_time = time.time()
-    dataset.remove_samples(view)
+    dataset.delete_samples(view)
     delete_sample_times.append(time.time() - start_time)
 
 RESULT["delete_samples"] = np.median(delete_sample_times)
