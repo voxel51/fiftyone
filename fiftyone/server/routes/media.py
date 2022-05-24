@@ -18,5 +18,6 @@ class Media(HTTPEndpoint):
             path,
             headers={
                 "Accept-Ranges": "bytes",
+                "Access-Control-Allow-Origin": "*",
             },
         )
