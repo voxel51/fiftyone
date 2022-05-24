@@ -175,7 +175,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title={"FiftyOne Teams"}
         onRefresh={() => {
           refresh();
         }}
@@ -192,15 +192,6 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
-          {!teamsSubmission && (
-            <Button
-              onClick={() => {
-                setTeams(true);
-              }}
-            >
-              Have a Team?
-            </Button>
-          )}
           <SlackLink />
           <GitHubLink />
           <DocsLink />
