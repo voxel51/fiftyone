@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import backoff
 import itertools
 import logging
 import multiprocessing
@@ -26,6 +27,10 @@ import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
+
+
+def fatal_retry_code(e):
+    return 400 <= e.response.status_code < 500
 
 
 class Metadata(DynamicEmbeddedDocument):
@@ -67,11 +72,18 @@ class Metadata(DynamicEmbeddedDocument):
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=0.1,
+        max_tries=10,
+        giveup=fatal_retry_code,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
-        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
 
@@ -133,11 +145,18 @@ class ImageMetadata(Metadata):
         )
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=0.1,
+        max_tries=10,
+        giveup=fatal_retry_code,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
-        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
@@ -190,6 +209,14 @@ class VideoMetadata(Metadata):
     encoding_str = fof.StringField()
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=0.1,
+        max_tries=10,
+        giveup=fatal_retry_code,
+        logger=None,
+    )
     def build_for(cls, video_path, mime_type=None):
         """Builds an :class:`VideoMetadata` object for the given video.
 
@@ -264,7 +291,9 @@ def compute_metadata(
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite,
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
         )
 
     num_missing = len(sample_collection.exists("metadata", False))
