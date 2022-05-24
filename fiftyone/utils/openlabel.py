@@ -16,8 +16,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
-import fiftyone.core.metadata as fomt
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegmentationType(enum.Enum):
-    """The FiftyOne label type to load segmentations into"""
+    """The FiftyOne label type used to store segmentations"""
 
     INSTANCE = 1
     POLYLINE = 2
@@ -164,13 +163,13 @@ class OpenLABELImageDatasetImporter(
             else SegmentationType.INSTANCE
         )
 
-        height, width = self._annotations.get_dimensions(file_id)
+        width, height = self._annotations.get_dimensions(file_id)
 
         if height is None or width is None:
-            sample_metadata = fomt.ImageMetadata.build_for(sample_path)
+            sample_metadata = fom.ImageMetadata.build_for(sample_path)
             height, width = sample_metadata["height"], sample_metadata["width"]
         else:
-            sample_metadata = fomt.ImageMetadata(width=width, height=height)
+            sample_metadata = fom.ImageMetadata(width=width, height=height)
 
         frame_size = (width, height)
         sample_labels, frame_labels = self._annotations.get_labels(
@@ -203,17 +202,7 @@ class OpenLABELImageDatasetImporter(
 
     @property
     def label_cls(self):
-        seg_type = fol.Polylines if self.use_polylines else fol.Detections
-        types = {
-            "detections": fol.Detections,
-            "segmentations": seg_type,
-            "keypoints": fol.Keypoints,
-        }
-
-        if self._has_scalar_labels:
-            return types[self._label_types[0]]
-
-        return {k: v for k, v in types.items() if k in self._label_types}
+        return None
 
     def setup(self):
         image_paths_map = self._load_data_map(
@@ -221,7 +210,7 @@ class OpenLABELImageDatasetImporter(
         )
 
         file_ids = []
-        annotations = OpenLABELAnnotations(fom.IMAGE)
+        annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
             labels_path = fou.normpath(self.labels_path)
@@ -381,16 +370,16 @@ class OpenLABELVideoDatasetImporter(
                 _remove_ext(os.path.basename(file_id))
             ]
 
-        height, width = self._annotations.get_dimensions(file_id)
+        width, height = self._annotations.get_dimensions(file_id)
 
         if height is None or width is None:
-            sample_metadata = fomt.VideoMetadata.build_for(sample_path)
+            sample_metadata = fom.VideoMetadata.build_for(sample_path)
             height, width = (
                 sample_metadata["frame_height"],
                 sample_metadata["frame_width"],
             )
         else:
-            sample_metadata = fomt.VideoMetadata(
+            sample_metadata = fom.VideoMetadata(
                 frame_width=width, frame_height=height
             )
 
@@ -424,22 +413,8 @@ class OpenLABELVideoDatasetImporter(
         return True
 
     @property
-    def _has_scalar_labels(self):
-        return len(self._label_types) == 1
-
-    @property
     def label_cls(self):
-        seg_type = fol.Polylines if self.use_polylines else fol.Detections
-        types = {
-            "detections": fol.Detections,
-            "segmentations": seg_type,
-            "keypoints": fol.Keypoints,
-        }
-
-        if self._has_scalar_labels:
-            return types[self._label_types[0]]
-
-        return {k: v for k, v in types.items() if k in self._label_types}
+        return None
 
     def setup(self):
         video_paths_map = self._load_data_map(
@@ -447,7 +422,7 @@ class OpenLABELVideoDatasetImporter(
         )
 
         file_ids = []
-        annotations = OpenLABELAnnotations(fom.VIDEO)
+        annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
             labels_path = fou.normpath(self.labels_path)
@@ -485,15 +460,9 @@ class OpenLABELVideoDatasetImporter(
 class OpenLABELAnnotations(object):
     """Annotations parsed from OpenLABEL format able to be converted to
     FiftyOne labels.
-
-    Args:
-        media_type: whether the annotations correspond to images
-            (``fiftyone.core.media.IMAGE``) or videos
-            (``fiftyone.core.media.VIDEO``)
     """
 
-    def __init__(self, media_type):
-        self.is_video = media_type == fom.VIDEO
+    def __init__(self):
         self.objects = OpenLABELObjects()
         self.streams = OpenLABELStreams()
         self.metadata = {}
@@ -548,6 +517,14 @@ class OpenLABELAnnotations(object):
             )
 
     def get_dimensions(self, file_id):
+        """Get the width and height of a given URI or file id
+
+        Args:
+            file_id: the unique identifier to a media file
+
+        Returns:
+            (width, height) of the given file
+        """
         return self.streams.get_dimensions(file_id)
 
     def get_labels(
@@ -559,6 +536,30 @@ class OpenLABELAnnotations(object):
         skeleton=None,
         skeleton_key=None,
     ):
+        """Get the FiftyOne labels corresponding to the annotations of a given
+        URI. The results are two dictionaries, sample- and frame-level, mapping
+        field names to values and label objects.
+
+        Args:
+            uri: the unique identifier to a media file
+            label_types: a list of label types to load. The
+                supported values are
+                ``("detections", "segmentations", "keypoints")``.
+            frame_size: the (width, height) tuple for the media frame
+            seg_type: the `SegmentationType` to use for segmentation
+                annotations
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use as a
+                reference when loading keypoints
+            skeleton_key (None): the name of the field in the OpenLABEL
+                annotations containing the labels of keypoints matching the
+                labels of the given skeleton
+
+        Returns:
+            a dictionary of sample level fields and label objects and a
+            dictionary of frame numbers to frame level fields and label objects
+        """
+
         stream_infos = self.streams.get_stream_info(uri)
         sample_objects = self.objects.get_objects(stream_infos)
         return sample_objects.to_labels(
@@ -572,10 +573,21 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELStreamInfos(object):
+    """A collection of multiple `OpenLABELStreamInfo` objects"""
+
     def __init__(self, infos=None):
         self.infos = infos if infos else []
 
     def get_stream_attributes(self, frame_number=None):
+        """Aggregates attributes from all streams in this collection.
+
+        Args:
+            frame_number (None): a specific frame number for which to get
+                stream attributes
+
+        Returns:
+            a dictionary of attributes from all streams in this collection
+        """
         attributes = {}
         for info in self.infos:
             is_sample = frame_number is None and info.is_sample_level
@@ -589,6 +601,9 @@ class OpenLABELStreamInfos(object):
 
     @property
     def frame_numbers(self):
+        """All frame numbers existing in the `OpenLABELStreamInfo` objects in
+        this collection
+        """
         frame_numbers = []
         for info in self.infos:
             if info.frame_numbers:
@@ -597,6 +612,10 @@ class OpenLABELStreamInfos(object):
 
 
 class OpenLABELStreamInfo(object):
+    """Information about a stream used to gather specific objects for a media
+    file
+    """
+
     def __init__(
         self,
         frame_numbers=None,
@@ -611,9 +630,15 @@ class OpenLABELStreamInfo(object):
 
     @property
     def is_streamless(self):
+        """Whether there exists a stream corresponding to this info"""
         return self.stream is None
 
     def get_stream_attributes(self):
+        """Get a dictionary of attributes for the stream in this object
+
+        Returns:
+            a dictionary of attributes from the corresponding stream
+        """
         attributes = {}
         if self.stream:
             attributes.update(self.stream.other_attrs)
@@ -622,6 +647,8 @@ class OpenLABELStreamInfo(object):
 
 
 class OpenLABELGroup(object):
+    """A utility for parsing groups of OpenLABEL elements"""
+
     def __init__(self):
         self._element_id_to_element = {}
         self._keys_by_label_file_id = defaultdict(set)
@@ -675,14 +702,13 @@ class OpenLABELGroup(object):
 
 
 class OpenLABELObjects(OpenLABELGroup):
-    """A collection of :class:`OpenLABELObject`.
-
-    Args:
-        objects: a list of :class:`OpenLABELObject`
+    """A collection of :class:`OpenLABELObject` and corresponding utility
+    methods.
     """
 
     @property
     def streams(self):
+        """Get streams corresponding to any object in this collection"""
         _streams = []
         for obj in self.all_objects:
             _streams.extend(obj.streams)
@@ -690,11 +716,22 @@ class OpenLABELObjects(OpenLABELGroup):
 
     @property
     def all_objects(self):
+        """Get all `OpenLABELObject`s in this collection"""
         return list(self._element_id_to_element.values())
 
     def parse_objects_dict(
         self, objects_dict, label_file_id, frame_number=None
     ):
+        """Parses the OpenLABEL annotations corresponding to a specific
+        dictionary of objects
+
+        Args:
+            objects_dict: the dict of OpenLABEL object annotations
+            label_file_id: the name of the annotations file containing these
+                objects
+            frame_number (None): an optional frame that this `objects_dict` is
+                in
+        """
         self._parse_group_dict(
             objects_dict, label_file_id, frame_number=frame_number
         )
@@ -704,6 +741,14 @@ class OpenLABELObjects(OpenLABELGroup):
         return OpenLABELObject
 
     def add_object(self, obj_key, label_file_id, obj):
+        """Adds an `OpenLABELObject` to this collection
+
+        Args:
+            obj_key: the name of the object in the OpenLABEL annotations
+            label_file_id: the filename of the annotations file containing this
+                label
+            obj: the `OpenLABELObject` to add
+        """
         obj_id = self._get_element_id(obj_key, label_file_id)
         self._element_id_to_element[obj_id] = obj
 
@@ -717,6 +762,17 @@ class OpenLABELObjects(OpenLABELGroup):
         return obj.filter_stream(stream_info)
 
     def get_objects(self, stream_infos):
+        """Gets any objects that correspond to an info in the given stream
+        infos
+
+        Args:
+            stream_infos: a `OpenLABELStreamInfos` used to get corresponding
+                objects
+
+        Returns:
+            an `OpenLABELObjects` with objects that correspond to any of the
+            given stream infos
+        """
         stream_objects = OpenLABELObjects()
         for stream_info in stream_infos.infos:
             label_file_id = stream_info.label_file_id
@@ -743,12 +799,20 @@ class OpenLABELObjects(OpenLABELGroup):
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type (SegmentationType.INSTANCE): the type to use to store
-                segmentations
+            seg_type: the `SegmentationType` to use to store segmentations
+            stream_infos: the `OpenLABELStreamInfos` containing sample-level
+                attributes to parse into labels
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use when
+                loading keypoint annotations
+            skeleton_key (None): the name of the field in the OpenLABEL
+                annotations containing the labels of keypoints matching the
+                labels of the given skeleton
 
         Returns:
-            a dict mapping frame numbers to dicts mapping the specified label
-            types to FiftyOne labels
+            a dictionary of sample level fields and label objects and a
+            dictionary of frame numbers to frame level fields and label objects
+
         """
         frame_dets = defaultdict(list)
         frame_kps = defaultdict(list)
@@ -828,6 +892,9 @@ class OpenLABELStreams(OpenLABELGroup):
 
     @property
     def uris(self):
+        """All unique media file identifiers corresponding to streams in this
+        collection
+        """
         _uris = []
         for stream in self._element_id_to_element.values():
             _uris.extend(stream.uris)
@@ -836,9 +903,6 @@ class OpenLABELStreams(OpenLABELGroup):
     def parse_streams_dict(
         self, streams_dict, label_file_id, frame_number=None
     ):
-        # self._parse_group_dict(stream_dict, label_file_id,
-        #        frame_number=frame_number)
-
         for key, element_dict in streams_dict.items():
             self._add_stream_dict(
                 label_file_id,
@@ -848,13 +912,21 @@ class OpenLABELStreams(OpenLABELGroup):
             )
 
     def get_dimensions(self, uri):
+        """Get the width and height of a given URI or file id
+
+        Args:
+            file_id: the unique identifier to a media file
+
+        Returns:
+            (width, height) of the given file
+        """
         stream_ids = list(self._uri_to_stream_ids.get(uri, []))
         # All streams pointing to this URI should be the same media
         if stream_ids:
             stream_id = stream_ids[0]
             stream = self._element_id_to_element.get(stream_id, None)
             if stream:
-                return stream.height, stream.width
+                return stream.width, stream.height
 
         return None, None
 
@@ -884,6 +956,16 @@ class OpenLABELStreams(OpenLABELGroup):
                 self._uri_to_stream_ids[uri].add(stream_id)
 
     def get_stream_info(self, uri):
+        """Get all stream infos, including stream and relevant frame numbers,
+        for a given media file identifier
+
+        Args:
+            uri: the unique media file identifer for which to get all stream
+                infos
+
+        Returns:
+            the `OpenLABELStreamInfos` corresponding to the given uri
+        """
         infos = []
         if uri in self._uri_to_stream_ids:
             # Matches at least one stream at sample/frame level
@@ -912,6 +994,8 @@ class OpenLABELStreams(OpenLABELGroup):
 
 
 class AttributeParser(object):
+    """Methods used to parse attributes from OpenLABEL annotations"""
+
     _STREAM_KEYS = ["stream", "coordinate_system"]
     _IGNORE_KEYS = [
         "frame_intervals",
