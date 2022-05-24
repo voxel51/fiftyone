@@ -21,6 +21,7 @@ Custom installations:
 -m      Install MongoDB from scratch, rather than installing fiftyone-db.
 -p      Install only the core python package, not the App.
 -v      Voxel51 developer install (don't install fiftyone-brain).
+-x      Experimental: Install Apple Silicon compatible MongoDB.
 "
 }
 
@@ -31,7 +32,8 @@ SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
 VOXEL51_INSTALL=false
-while getopts "hdempv" FLAG; do
+USE_APPLE_SILICON_MONGODB=false
+while getopts "hdempvx" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         d) DEV_INSTALL=true ;;
@@ -39,6 +41,7 @@ while getopts "hdempv" FLAG; do
         m) SCRATCH_MONGODB_INSTALL=true ;;
         v) VOXEL51_INSTALL=true ;;
         p) BUILD_APP=false ;;
+        x) USE_APPLE_SILICON_MONGODB=true ;;
         *) usage ;;
     esac
 done
@@ -48,33 +51,58 @@ set -e
 NODE_VERSION=17.9.0
 OS=$(uname -s)
 
-if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
+MONGODB_SUPPORTED=true
+APPLE_SILICON=false
+if [ "${OS}" = "Darwin" ] && [ $(uname -m) = "arm64" ]; then
+    APPLE_SILICON=true
+    if [ ${USE_APPLE_SILICON_MONGODB} != true ]; then
+        MONGODB_SUPPORTED=false
+    fi
+    if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
+        echo "***** NOT INSTALLING MONGODB *****"
+        echo "Installing MongoDB from scratch is not currently supported on Apple Silicon."
+        echo "You can override this using the -x flag. See help for more info."
+        exit 1
+    fi
+fi
+
+
+
+if [ ${MONGODB_SUPPORTED} = true ] && [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     echo "***** INSTALLING MONGODB *****"
+
     mkdir -p ~/.fiftyone/bin
     cd ~/.fiftyone
     mkdir -p var/lib/mongo
     INSTALL_MONGODB=true
-    if [ -x bin/mongod ]; then
+    TARGET_MONGO_VERSION="5.0.4"
+    if [ ${USE_APPLE_SILICON_MONGODB} = true ]; then
+        TARGET_MONGO_VERSION="6.0.0"
+        MONGODB_BUILD="mongodb-macos-arm64-6.0.0-rc6"
+    else
+        MONGODB_BUILD="mongodb-macos-x86_64-5.0.4"
+    fi
+    if [ ${APPLE_SILICON} != true ] && [ -x bin/mongod ]; then
         VERSION_FULL=$(bin/mongod --version | grep 'db version')
         VERSION="${VERSION_FULL:12}"
-        if [ ${VERSION} != "5.0.4" ]; then
-            echo "Upgrading MongoDB v${VERSION} to v5.0.4"
+        if [ ${VERSION} != ${TARGET_MONGO_VERSION} ]; then
+            echo "Upgrading MongoDB v${VERSION} to ${TARGET_MONGO_VERSION}"
         else
-            echo "MongoDB v5.0.4 already installed"
+            echo "MongoDB $TARGET_MONGO_VERSION already installed"
             INSTALL_MONGODB=false
         fi
     else
-        echo "Installing MongoDB v5.0.4"
+        echo "Installing MongoDB $TARGET_MONGO_VERSION"
     fi
     if [ ${INSTALL_MONGODB} = true ]; then
         if [ "${OS}" == "Darwin" ]; then
-            MONGODB_BUILD=mongodb-macos-x86_64-5.0.4
-
             curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
-            mv ${MONGODB_BUILD}/bin/* ./bin/
+            # note: 6.0.0 does not extracts as "mongodb-macos-aarch64"
+            # instead of mongodb-macos-
+            mv mongodb-macos*/bin/* ./bin/
             rm mongodb.tgz
-            rm -rf ${MONGODB_BUILD}
+            rm -rf mongodb-macos*
         elif [ "${OS}" == "Linux" ]; then
             MONGODB_BUILD=mongodb-linux-x86_64-ubuntu2004-5.0.4
 
