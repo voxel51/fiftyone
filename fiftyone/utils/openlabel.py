@@ -182,7 +182,7 @@ class OpenLABELImageDatasetImporter(
             skeleton_key=self.skeleton_key,
         )
 
-        labels = sample_labels
+        labels = _merge_frame_labels(sample_labels, frame_labels)
 
         if self._has_scalar_labels:
             labels = next(iter(labels.values())) if labels else None
@@ -411,6 +411,8 @@ class OpenLABELVideoDatasetImporter(
             skeleton_key=self.skeleton_key,
         )
 
+        sample_labels = _remove_empty_labels(sample_labels)
+
         return sample_path, sample_metadata, sample_labels, frame_labels
 
     @property
@@ -559,8 +561,7 @@ class OpenLABELAnnotations(object):
     ):
         stream_infos = self.streams.get_stream_info(uri)
         sample_objects = self.objects.get_objects(stream_infos)
-        converter = OpenLABELLabelConverter(sample_objects)
-        return converter.to_labels(
+        return sample_objects.to_labels(
             frame_size,
             label_types,
             seg_type,
@@ -618,105 +619,6 @@ class OpenLABELStreamInfo(object):
             attributes.update(self.stream.other_attrs)
 
         return attributes
-
-
-class OpenLABELLabelConverter(object):
-    def __init__(self, objects):
-        self.objects = objects
-
-    def to_labels(
-        self,
-        frame_size,
-        label_types,
-        seg_type,
-        stream_infos,
-        skeleton=None,
-        skeleton_key=None,
-    ):
-        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
-
-        Args:
-            frame_size: the size of the image frame in pixels (width, height)
-            label_types: a list of label types to load
-            seg_type (SegmentationType.INSTANCE): the type to use to store
-                segmentations
-
-        Returns:
-            a dict mapping frame numbers to dicts mapping the specified label
-            types to FiftyOne labels
-        """
-        # No:Take in list of objects where frames have been pre-extracted if
-
-        #   necessary
-        # For images, labels from all frame numbers should be in a single label
-        # For videos, return a dict of frame number to label for that frame
-        # Either way, a label for a frame number is constructed for that frame
-        # over all objects
-        # if frame numbers is empty
-        #   return top-level of each object for images
-        #       what does that mean?
-        #           top-level objects can also have bboxes/etc, in addition to
-        #           a dict of frame-level obejcts
-        #               question is, do we just return top-level bboxes, or
-        #               also each frame?
-        #   return nothing for videos, this is only frame/image-level labels,
-        #       not video-label
-
-        # Parse each object twice, once return all labels, including frame at
-        # sample level, other keep all labels frame level
-        # (Really only need to parse once and merge frames before finalizing)
-        # Return sample-level labels, frame-level labels
-        #   Videos ignore first, images ignore second
-        frame_dets = defaultdict(list)
-        frame_kps = defaultdict(list)
-        frame_segs = defaultdict(list)
-        for obj in self.objects.all_objects:
-            if "detections" in label_types:
-                for frame_number, dets in obj.to_detections(
-                    frame_size
-                ).items():
-                    frame_dets[frame_number].extend(dets)
-
-            if "keypoints" in label_types:
-                for frame_number, kps in obj.to_keypoints(
-                    frame_size, skeleton=skeleton, skeleton_key=skeleton_key
-                ).items():
-                    frame_kps[frame_number].extend(kps)
-
-            if "segmentations" in label_types:
-                for frame_number, segs in obj.to_polylines(frame_size).items():
-                    frame_kps[frame_number].extend(segs)
-
-        sample_labels = stream_infos.get_stream_attributes()
-
-        frame_labels = defaultdict(dict)
-        for frame_number in stream_infos.frame_numbers:
-            frame_labels[frame_number] = stream_infos.get_stream_attributes(
-                frame_number=frame_number
-            )
-
-        sample_labels["detections"] = fol.Detections(detections=[])
-        sample_labels["keypoints"] = fol.Keypoints(keypoints=[])
-        sample_labels["segmentations"] = fol.Polylines(polylines=[])
-        for frame_number, dets in frame_dets.items():
-            frame_labels[frame_number]["detections"] = fol.Detections(
-                detections=dets
-            )
-            sample_labels["detections"].detections.extend(dets)
-
-        for frame_number, kps in frame_kps.items():
-            frame_labels[frame_number]["keypoints"] = fol.Keypoints(
-                keypoints=kps
-            )
-            sample_labels["keypoints"].keypoints.extend(kps)
-
-        for frame_number, segs in frame_segs.items():
-            frame_labels[frame_number]["segmentations"] = fol.Polylines(
-                polylines=segs
-            )
-            sample_labels["segmentations"].polylines.extend(segs)
-
-        return sample_labels, dict(frame_labels)
 
 
 class OpenLABELGroup(object):
@@ -826,6 +728,74 @@ class OpenLABELObjects(OpenLABELGroup):
                     stream_objects.add_object(obj_key, label_file_id, obj)
 
         return stream_objects
+
+    def to_labels(
+        self,
+        frame_size,
+        label_types,
+        seg_type,
+        stream_infos,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
+
+        Args:
+            frame_size: the size of the image frame in pixels (width, height)
+            label_types: a list of label types to load
+            seg_type (SegmentationType.INSTANCE): the type to use to store
+                segmentations
+
+        Returns:
+            a dict mapping frame numbers to dicts mapping the specified label
+            types to FiftyOne labels
+        """
+        frame_dets = defaultdict(list)
+        frame_kps = defaultdict(list)
+        frame_segs = defaultdict(list)
+        for obj in self.all_objects:
+            if "detections" in label_types:
+                for frame_number, dets in obj.to_detections(
+                    frame_size
+                ).items():
+                    frame_dets[frame_number].extend(dets)
+
+            if "keypoints" in label_types:
+                for frame_number, kps in obj.to_keypoints(
+                    frame_size, skeleton=skeleton, skeleton_key=skeleton_key
+                ).items():
+                    frame_kps[frame_number].extend(kps)
+
+            if "segmentations" in label_types:
+                for frame_number, segs in obj.to_polylines(frame_size).items():
+                    frame_segs[frame_number].extend(segs)
+
+        sample_labels = stream_infos.get_stream_attributes()
+
+        frame_labels = defaultdict(dict)
+        for frame_number in stream_infos.frame_numbers:
+            frame_labels[frame_number] = stream_infos.get_stream_attributes(
+                frame_number=frame_number
+            )
+
+        for frame_number, dets in frame_dets.items():
+            frame_labels[frame_number]["detections"] = fol.Detections(
+                detections=dets
+            )
+
+        for frame_number, kps in frame_kps.items():
+            frame_labels[frame_number]["keypoints"] = fol.Keypoints(
+                keypoints=kps
+            )
+
+        for frame_number, segs in frame_segs.items():
+            frame_labels[frame_number]["segmentations"] = fol.Polylines(
+                polylines=segs
+            )
+
+        sample_labels.update(frame_labels.pop(None, {}))
+
+        return sample_labels, dict(frame_labels)
 
 
 class OpenLABELStreams(OpenLABELGroup):
@@ -1789,7 +1759,25 @@ def _merge_frame_labels(sample_labels, frame_labels):
     # labels if they are a list field otherewise skip
     for labels in frame_labels.values():
         for name, value in labels.items():
-            if name in sample_labels:
+            if name == "detections":
+                if name not in sample_labels:
+                    sample_labels[name] = fol.Detections(detections=[])
+                else:
+                    sample_labels[name].detections.extend(value.detections)
+
+            elif name == "keypoints":
+                if name not in sample_labels:
+                    sample_labels[name] = fol.Keypoints(keypoints=[])
+                else:
+                    sample_labels[name].keypoints.extend(value.keypoints)
+
+            elif name == "segmentations":
+                if name not in sample_labels:
+                    sample_labels[name] = fol.Polylines(polylines=[])
+                else:
+                    sample_labels[name].polylines.extend(value.polylines)
+
+            elif name in sample_labels:
                 if isinstance(sample_labels[name], list):
                     if not isinstance(value, list):
                         value = [value]
@@ -1798,5 +1786,27 @@ def _merge_frame_labels(sample_labels, frame_labels):
 
             else:
                 sample_labels[name] = value
+
+    return sample_labels
+
+
+def _remove_empty_labels(sample_labels):
+    if (
+        "detections" in sample_labels
+        and not sample_labels["detections"].detections
+    ):
+        sample_labels.pop("detections", None)
+
+    if (
+        "keypoints" in sample_labels
+        and not sample_labels["keypoints"].keypoints
+    ):
+        sample_labels.pop("keypoints", None)
+
+    if (
+        "segmentations" in sample_labels
+        and not sample_labels["segmentations"].polylines
+    ):
+        sample_labels.pop("segmentations", None)
 
     return sample_labels
