@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
+import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -533,11 +534,9 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, field, _ = sample_collection._handle_id_fields(self._field)
 
-        if is_id_field:
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -545,7 +544,7 @@ class ExcludeBy(ViewStage):
         else:
             values = self._values
 
-        return [{"$match": {field_name: {"$not": {"$in": values}}}}]
+        return [{"$match": {path: {"$not": {"$in": values}}}}]
 
     def _kwargs(self):
         return [["field", self._field], ["values", self._values]]
@@ -2037,7 +2036,8 @@ def _get_trajectories_filter(sample_collection, field, filter_arg):
         filter_expr = (F("index") != None) & foe.ViewExpression(cond)
         reduce_expr = VALUE.extend(
             (F(path) != None).if_else(
-                F(path).filter(filter_expr).map(F("index")), [],
+                F(path).filter(filter_expr).map(F("index")),
+                [],
             )
         )
     elif issubclass(label_type, (fol.Detection, fol.Polyline, fol.Keypoint)):
@@ -2226,7 +2226,8 @@ class FilterKeypoints(ViewStage):
             filter_expr = (F(self._filter_field) != None).if_else(
                 F.zip(F("points"), F(self._filter_field)).map(
                     (F()[1].apply(self._filter_expr)).if_else(
-                        F()[0], [float("nan"), float("nan")],
+                        F()[0],
+                        [float("nan"), float("nan")],
                     )
                 ),
                 F("points"),
@@ -3048,7 +3049,8 @@ class LimitLabels(ViewStage):
         root, leaf = self._labels_list_field.rsplit(".", 1)
 
         expr = (F() != None).if_else(
-            F().set_field(leaf, F(leaf)[:limit]), None,
+            F().set_field(leaf, F(leaf)[:limit]),
+            None,
         )
         pipeline, _ = sample_collection._make_set_field_pipeline(root, expr)
 
@@ -4450,11 +4452,9 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, field, _ = sample_collection._handle_id_fields(self._field)
 
-        if is_id_field:
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -4463,16 +4463,10 @@ class SelectBy(ViewStage):
             values = self._values
 
         if not self._ordered:
-            return [{"$match": {field_name: {"$in": values}}}]
+            return [{"$match": {path: {"$in": values}}}]
 
         return [
-            {
-                "$set": {
-                    "_select_order": {
-                        "$indexOfArray": [values, "$" + field_name]
-                    }
-                }
-            },
+            {"$set": {"_select_order": {"$indexOfArray": [path, "$" + path]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},

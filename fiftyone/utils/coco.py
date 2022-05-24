@@ -351,7 +351,9 @@ class COCODetectionDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -2119,7 +2121,8 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
     mask = mask_utils.decode(rle).astype(bool)
 
     return mask[
-        int(round(y)) : int(round(y + h)), int(round(x)) : int(round(x + w)),
+        int(round(y)) : int(round(y + h)),
+        int(round(x)) : int(round(x + w)),
     ]
 
 

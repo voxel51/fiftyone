@@ -42,7 +42,9 @@ def test_zoo_partial():
 
 def test_coco_2017():
     dataset = foz.load_zoo_dataset(
-        "coco-2017", splits=("test", "validation"), max_samples=5,
+        "coco-2017",
+        splits=("test", "validation"),
+        max_samples=5,
     )
     schema = dataset.get_field_schema()
 
@@ -273,7 +275,9 @@ def test_open_images_v6():
     dataset.delete()
 
     dataset = foz.load_zoo_dataset(
-        "open-images-v6", split="validation", max_samples=5,
+        "open-images-v6",
+        split="validation",
+        max_samples=5,
     )
     schema = dataset.get_field_schema()
 
@@ -288,7 +292,10 @@ def test_open_images_v6():
     dataset.delete()
 
     dataset = foz.load_zoo_dataset(
-        "open-images-v6", split="validation", max_samples=5, label_field="gt",
+        "open-images-v6",
+        split="validation",
+        max_samples=5,
+        label_field="gt",
     )
     schema = dataset.get_field_schema()
 
@@ -425,7 +432,10 @@ def test_open_images_v6():
     dataset.delete()
 
     dataset = foz.load_zoo_dataset(
-        "open-images-v6", split="validation", classes="Violin", max_samples=25,
+        "open-images-v6",
+        split="validation",
+        classes="Violin",
+        max_samples=25,
     )
 
     assert (

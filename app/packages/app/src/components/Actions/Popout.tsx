@@ -1,10 +1,9 @@
 import React from "react";
-import { useSpring } from "react-spring";
-import { useWindowSize } from "../../utils/hooks";
+import { useSpring } from "@react-spring/web";
 
 import { PopoutDiv } from "../utils";
 
-const Popout = ({ modal, children, style = {}, bounds }) => {
+const Popout = ({ children, style = {}, modal }) => {
   const show = useSpring({
     opacity: 1,
     from: {
@@ -14,18 +13,13 @@ const Popout = ({ modal, children, style = {}, bounds }) => {
       duration: 100,
     },
   });
-  const { width } = useWindowSize();
-  const position =
-    modal && bounds
-      ? {
-          position: "fixed",
-          right: width - bounds.right,
-          top: bounds.bottom + 8,
-        }
-      : {};
 
   return (
-    <PopoutDiv style={{ ...show, ...position, ...style }}>{children}</PopoutDiv>
+    <PopoutDiv
+      style={{ ...show, ...style, zIndex: 100001, right: modal ? 0 : "unset" }}
+    >
+      {children}
+    </PopoutDiv>
   );
 };
 

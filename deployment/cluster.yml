@@ -1,0 +1,11 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: app-cluster
+  region: us-east-2
+
+nodeGroups:
+  - name: apps
+    instanceType: t2.micro
+    desiredCapacity: 2

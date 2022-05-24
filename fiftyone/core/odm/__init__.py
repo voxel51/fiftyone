@@ -11,11 +11,11 @@ from .database import (
     establish_db_conn,
     get_db_client,
     get_db_conn,
+    get_async_db_client,
     get_async_db_conn,
     drop_database,
     sync_database,
     list_datasets,
-    delete_non_persistent_datasets_if_allowed,
     delete_dataset,
     delete_evaluation,
     delete_evaluations,
@@ -43,11 +43,9 @@ from .dataset import (
 )
 from .document import (
     Document,
-    DynamicDocument,
-    EmbeddedDocument,
-    DynamicEmbeddedDocument,
     SerializableDocument,
 )
+from .embedded_document import DynamicEmbeddedDocument
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
@@ -55,10 +53,10 @@ from .frame import (
 from .mixins import (
     get_default_fields,
     get_field_kwargs,
-    get_implied_field_kwargs,
     validate_fields_match,
 )
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
+from .utils import get_implied_field_kwargs

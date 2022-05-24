@@ -174,32 +174,53 @@ def _make_image_labels(tmp_dir):
     labels.add_object(kp_obj)
 
     poly_obj_data = OpenLABELObjectData(
-        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+        "poly2d-0",
+        [100, 200, 200, 200, 200, 100, 100, 100],
+        "poly2d",
     )
     poly_obj_data.add_attributes(
-        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+        [
+            ("closed", True),
+            ("mode", "MODE_POLY2D_ABOSLUTE"),
+        ]
     )
     poly_obj_data.add_attributes(
-        [("is_hole", False), ("polygon_id", "0"), ("stream", "camera1"),],
+        [
+            ("is_hole", False),
+            ("polygon_id", "0"),
+            ("stream", "camera1"),
+        ],
         as_property=True,
     )
     poly_obj = OpenLABELObject(
-        "polyname", "objectlabel1", frame_interval=(0, 0),
+        "polyname",
+        "objectlabel1",
+        frame_interval=(0, 0),
     )
     poly_obj.add_object_data(poly_obj_data, is_frame=True)
     labels.add_object(poly_obj)
 
     line_obj_data = OpenLABELObjectData(
-        "poly2d-1", [100, 200, 200, 200, 200, 100], "poly2d",
+        "poly2d-1",
+        [100, 200, 200, 200, 200, 100],
+        "poly2d",
     )
     line_obj_data.add_attributes(
-        [("closed", False), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+        [
+            ("closed", False),
+            ("mode", "MODE_POLY2D_ABOSLUTE"),
+        ]
     )
     line_obj_data.add_attributes(
-        [("stream", "camera1"),], as_property=True,
+        [
+            ("stream", "camera1"),
+        ],
+        as_property=True,
     )
     line_obj = OpenLABELObject(
-        "polyname2", "objectlabel1", frame_interval=(0, 0),
+        "polyname2",
+        "objectlabel1",
+        frame_interval=(0, 0),
     )
     line_obj.add_object_data(line_obj_data, is_frame=True)
     labels.add_object(line_obj)
@@ -239,31 +260,49 @@ def _make_segmentation_labels(tmp_dir):
         }
     )
     poly_obj_data = OpenLABELObjectData(
-        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+        "poly2d-0",
+        [100, 200, 200, 200, 200, 100, 100, 100],
+        "poly2d",
     )
     poly_obj_data.add_attributes(
-        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+        [
+            ("closed", True),
+            ("mode", "MODE_POLY2D_ABOSLUTE"),
+        ]
     )
     poly_obj_data.add_attributes(
-        [("is_hole", False), ("polygon_id", "0")], as_property=True,
+        [("is_hole", False), ("polygon_id", "0")],
+        as_property=True,
     )
     poly_obj = OpenLABELObject(
-        "polyname", "objectlabel1", frame_interval=(0, 0),
+        "polyname",
+        "objectlabel1",
+        frame_interval=(0, 0),
     )
     poly_obj.add_object_data(poly_obj_data, is_frame=True)
     labels.add_object(poly_obj)
 
     line_obj_data = OpenLABELObjectData(
-        "poly2d-1", [100, 200, 200, 200, 200, 100], "poly2d",
+        "poly2d-1",
+        [100, 200, 200, 200, 200, 100],
+        "poly2d",
     )
     line_obj_data.add_attributes(
-        [("closed", False), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+        [
+            ("closed", False),
+            ("mode", "MODE_POLY2D_ABOSLUTE"),
+        ]
     )
     line_obj_data.add_attributes(
-        [("stream", "camera1"),], as_property=True,
+        [
+            ("stream", "camera1"),
+        ],
+        as_property=True,
     )
     line_obj = OpenLABELObject(
-        "polyname2", "objectlabel1", frame_interval=(0, 0),
+        "polyname2",
+        "objectlabel1",
+        frame_interval=(0, 0),
     )
     line_obj.add_object_data(line_obj_data, is_frame=True)
     labels.add_object(line_obj)
@@ -276,32 +315,50 @@ def _make_segmentation_labels(tmp_dir):
 def _make_video_labels(tmp_dir):
     labels = OpenLABELLabels()
     poly_obj_data = OpenLABELObjectData(
-        "poly2d-0", [100, 200, 200, 200, 200, 100, 100, 100], "poly2d",
+        "poly2d-0",
+        [100, 200, 200, 200, 200, 100, 100, 100],
+        "poly2d",
     )
     poly_obj_data.add_attributes(
-        [("closed", True), ("mode", "MODE_POLY2D_ABOSLUTE"),]
+        [
+            ("closed", True),
+            ("mode", "MODE_POLY2D_ABOSLUTE"),
+        ]
     )
     poly_obj_data.add_attributes(
-        [("is_hole", False), ("polygon_id", "0")], as_property=True,
+        [("is_hole", False), ("polygon_id", "0")],
+        as_property=True,
     )
     poly_obj = OpenLABELObject(
-        "polyname", "objectlabel1", frame_interval=(0, 4),
+        "polyname",
+        "objectlabel1",
+        frame_interval=(0, 4),
     )
     poly_obj.add_object_data(poly_obj_data, is_frame=True)
     labels.add_object(poly_obj)
 
-    points_obj_data = OpenLABELObjectData("points2d-0", [100, 200], "point2d",)
+    points_obj_data = OpenLABELObjectData(
+        "points2d-0",
+        [100, 200],
+        "point2d",
+    )
     points_obj = OpenLABELObject(
-        "pointsname", "objectlabel1", frame_interval=(0, 4),
+        "pointsname",
+        "objectlabel1",
+        frame_interval=(0, 4),
     )
     points_obj.add_object_data(points_obj_data, is_frame=True)
     labels.add_object(points_obj)
 
     bbox_obj_data = OpenLABELObjectData(
-        "bbox2d-0", [100, 200, 200, 100], "bbox",
+        "bbox2d-0",
+        [100, 200, 200, 100],
+        "bbox",
     )
     bbox_obj = OpenLABELObject(
-        "bboxname", "objectlabel1", frame_interval=(0, 4),
+        "bboxname",
+        "objectlabel1",
+        frame_interval=(0, 4),
     )
     bbox_obj.add_object_data(bbox_obj_data, is_frame=True)
     labels.add_object(bbox_obj)

@@ -40,7 +40,6 @@ import traceback
 import psutil
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
-from fiftyone.core.service import Service
 from fiftyone.service.ipc import IPCServer
 
 
@@ -234,6 +233,7 @@ if not command:
 
 if command[0].startswith("--"):
     raise ValueError("Unhandled service argument: %s" % command[0])
+
 
 if args.multi:
     client_monitor = ClientMonitor()

@@ -1299,7 +1299,9 @@ class FIWDataset(FiftyOneDataset):
         split = os.path.basename(dataset_dir)
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         num_samples, classes = fouf.download_fiw_dataset(
-            dataset_dir, split, scratch_dir,
+            dataset_dir,
+            split,
+            scratch_dir,
         )
 
         dataset_type = fot.FIWDataset()

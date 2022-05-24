@@ -168,7 +168,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
-            default=None,
+            default="localhost",
         )
         self.desktop_app = self.parse_bool(
             d,
@@ -507,13 +507,16 @@ class MediaCacheConfig(EnvConfig):
             d = {}
 
         self.cache_dir = self.parse_path(
-            d, "cache_dir", env_var="FIFTYONE_MEDIA_CACHE_DIR", default=None,
+            d,
+            "cache_dir",
+            env_var="FIFTYONE_MEDIA_CACHE_DIR",
+            default=None,
         )
         self.cache_size_bytes = self.parse_int(
             d,
             "cache_size_bytes",
             env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
-            default=32 * 1024 ** 3,  # 32 GB
+            default=32 * 1024**3,  # 32 GB
         )
         self.cache_app_images = self.parse_bool(
             d,
@@ -534,13 +537,16 @@ class MediaCacheConfig(EnvConfig):
             default=60,
         )
         self.gc_log = self.parse_bool(
-            d, "gc_log", env_var="FIFTYONE_MEDIA_CACHE_GC_LOG", default=False,
+            d,
+            "gc_log",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG",
+            default=False,
         )
         self.gc_log_max_bytes = self.parse_number(
             d,
             "gc_log_max_bytes",
             env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_MAX_BYTES",
-            default=512 * 1024 ** 2,  # 512 KB
+            default=512 * 1024**2,  # 512 KB
         )
         self.gc_log_backup_count = self.parse_int(
             d,
@@ -549,10 +555,16 @@ class MediaCacheConfig(EnvConfig):
             default=10,
         )
         self.aws_config_file = self.parse_path(
-            d, "aws_config_file", env_var="AWS_CONFIG_FILE", default=None,
+            d,
+            "aws_config_file",
+            env_var="AWS_CONFIG_FILE",
+            default=None,
         )
         self.aws_profile = self.parse_string(
-            d, "aws_profile", env_var="AWS_PROFILE", default=None,
+            d,
+            "aws_profile",
+            env_var="AWS_PROFILE",
+            default=None,
         )
         self.google_application_credentials = self.parse_path(
             d,
@@ -561,10 +573,16 @@ class MediaCacheConfig(EnvConfig):
             default=None,
         )
         self.minio_config_file = self.parse_path(
-            d, "minio_config_file", env_var="MINIO_CONFIG_FILE", default=None,
+            d,
+            "minio_config_file",
+            env_var="MINIO_CONFIG_FILE",
+            default=None,
         )
         self.minio_profile = self.parse_string(
-            d, "minio_profile", env_var="MINIO_PROFILE", default=None,
+            d,
+            "minio_profile",
+            env_var="MINIO_PROFILE",
+            default=None,
         )
 
         self._set_defaults()

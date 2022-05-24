@@ -96,13 +96,13 @@ def from_images(image_paths, force_rgb=False, num_parallel_calls=None):
     if image_paths:
         fos.ensure_local(image_paths[0])
 
-
     def parse_sample(image_path):
         return _parse_image_tf(image_path, force_rgb=force_rgb)
 
     return tf.data.Dataset.from_tensor_slices(image_paths).map(
         parse_sample, num_parallel_calls=num_parallel_calls
     )
+
 
 def from_image_paths_and_labels(
     image_paths, labels, force_rgb=False, num_parallel_calls=None
@@ -433,7 +433,9 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True,
+            [],
+            tf.float32,
+            allow_missing=True,
         ),
         "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
