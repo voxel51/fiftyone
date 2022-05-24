@@ -58,9 +58,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
-          pip install -r requirements/common.txt
-          pip install -r requirements/extras.txt
-          pip install -r requirements/docs.txt
+          pip install -r requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install -e .
