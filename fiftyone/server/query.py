@@ -95,8 +95,6 @@ class BrainRun(Run):
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    classwise: bool
-    error_level: int
     gt_field: str
     pred_field: str
     method: str
