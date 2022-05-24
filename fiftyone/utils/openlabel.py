@@ -182,7 +182,7 @@ class OpenLABELImageDatasetImporter(
             skeleton_key=self.skeleton_key,
         )
 
-        labels = _merge_frame_labels(sample_labels, frame_labels)
+        labels = _merge_frame_labels(sample_labels, frame_labels, seg_type)
 
         if self._has_scalar_labels:
             labels = next(iter(labels.values())) if labels else None
@@ -411,7 +411,7 @@ class OpenLABELVideoDatasetImporter(
             skeleton_key=self.skeleton_key,
         )
 
-        sample_labels = _remove_empty_labels(sample_labels)
+        sample_labels = _remove_empty_labels(sample_labels, seg_type)
 
         return sample_path, sample_metadata, sample_labels, frame_labels
 
@@ -768,7 +768,19 @@ class OpenLABELObjects(OpenLABELGroup):
 
             if "segmentations" in label_types:
                 for frame_number, segs in obj.to_polylines(frame_size).items():
-                    frame_segs[frame_number].extend(segs)
+                    if seg_type == SegmentationType.POLYLINE:
+                        _segs = segs
+                    elif seg_type == SegmentationType.INSTANCE:
+                        _segs = []
+                        for seg in segs:
+                            _segs.append(
+                                seg.to_detection(frame_size=frame_size)
+                            )
+                    else:
+                        raise NotImplementedError(
+                            "Loading semantic segmentations is not yet supported"
+                        )
+                    frame_segs[frame_number].extend(_segs)
 
         sample_labels = stream_infos.get_stream_attributes()
 
@@ -789,9 +801,18 @@ class OpenLABELObjects(OpenLABELGroup):
             )
 
         for frame_number, segs in frame_segs.items():
-            frame_labels[frame_number]["segmentations"] = fol.Polylines(
-                polylines=segs
-            )
+            if seg_type == SegmentationType.POLYLINE:
+                frame_labels[frame_number]["segmentations"] = fol.Polylines(
+                    polylines=segs
+                )
+            elif seg_type == SegmentationType.INSTANCE:
+                frame_labels[frame_number]["segmentations"] = fol.Detections(
+                    detections=segs
+                )
+            else:
+                raise NotImplementedError(
+                    "Loading semantic segmentations is not yet supported"
+                )
 
         sample_labels.update(frame_labels.pop(None, {}))
 
@@ -1754,28 +1775,38 @@ def _remove_ext(p):
     return os.path.splitext(p)[0]
 
 
-def _merge_frame_labels(sample_labels, frame_labels):
+def _merge_frame_labels(sample_labels, frame_labels, seg_type):
     # Add frame labels to sample labels, if there is a key collision, merge the
     # labels if they are a list field otherewise skip
     for labels in frame_labels.values():
         for name, value in labels.items():
             if name == "detections":
-                if name not in sample_labels:
-                    sample_labels[name] = fol.Detections(detections=[])
-                else:
-                    sample_labels[name].detections.extend(value.detections)
+                _extend_labels(
+                    sample_labels, value, name, fol.Detections, "detections"
+                )
 
             elif name == "keypoints":
-                if name not in sample_labels:
-                    sample_labels[name] = fol.Keypoints(keypoints=[])
-                else:
-                    sample_labels[name].keypoints.extend(value.keypoints)
+                _extend_labels(
+                    sample_labels, value, name, fol.Keypoints, "keypoints"
+                )
 
             elif name == "segmentations":
-                if name not in sample_labels:
-                    sample_labels[name] = fol.Polylines(polylines=[])
+                if seg_type == SegmentationType.POLYLINE:
+                    _extend_labels(
+                        sample_labels, value, name, fol.Polylines, "polylines"
+                    )
+                elif seg_type == SegmentationType.INSTANCE:
+                    _extend_labels(
+                        sample_labels,
+                        value,
+                        name,
+                        fol.Detections,
+                        "detections",
+                    )
                 else:
-                    sample_labels[name].polylines.extend(value.polylines)
+                    raise NotImplementedError(
+                        "Loading semantic segmentations is not yet supported"
+                    )
 
             elif name in sample_labels:
                 if isinstance(sample_labels[name], list):
@@ -1790,23 +1821,28 @@ def _merge_frame_labels(sample_labels, frame_labels):
     return sample_labels
 
 
-def _remove_empty_labels(sample_labels):
-    if (
-        "detections" in sample_labels
-        and not sample_labels["detections"].detections
-    ):
-        sample_labels.pop("detections", None)
+def _extend_labels(sample_labels, value, name, labels_type, label_kwarg):
+    if name not in sample_labels:
+        sample_labels[name] = labels_type(**{label_kwarg: []})
+    else:
+        sample_labels[name][label_kwarg].extend(value[label_kwarg])
 
-    if (
-        "keypoints" in sample_labels
-        and not sample_labels["keypoints"].keypoints
-    ):
-        sample_labels.pop("keypoints", None)
 
-    if (
-        "segmentations" in sample_labels
-        and not sample_labels["segmentations"].polylines
-    ):
-        sample_labels.pop("segmentations", None)
+def _remove_empty_labels(sample_labels, seg_type):
+    _remove_empty_label_type(sample_labels, "detections", "detections")
+    _remove_empty_label_type(sample_labels, "keypoints", "keypoints")
+    if seg_type == SegmentationType.POLYLINE:
+        _remove_empty_label_type(sample_labels, "segmentations", "polylines")
+    elif seg_type == SegmentationType.INSTANCE:
+        _remove_empty_label_type(sample_labels, "segmentations", "detections")
+    else:
+        raise NotImplementedError(
+            "Loading semantic segmentations is not yet supported"
+        )
 
     return sample_labels
+
+
+def _remove_empty_label_type(sample_labels, key, label_type):
+    if key in sample_labels and not sample_labels[key][label_type]:
+        sample_labels.pop(key, None)
