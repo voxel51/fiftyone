@@ -165,13 +165,13 @@ def establish_db_conn(config):
                     "connection to your own MongoDB instance or cluster "
                 )
 
-            if fou.is_arm_mac():
-                raise FiftyOneConfigError(
-                    "MongoDB is not yet supported on Apple Silicon Macs. "
-                    "Please define a `database_uri` in your "
-                    "`fiftyone.core.config.FiftyOneConfig` to define a "
-                    "connection to your own MongoDB instance or cluster"
-                )
+            # if fou.is_arm_mac():
+            #     raise FiftyOneConfigError(
+            #         "MongoDB is not yet supported on Apple Silicon Macs. "
+            #         "Please define a `database_uri` in your "
+            #         "`fiftyone.core.config.FiftyOneConfig` to define a "
+            #         "connection to your own MongoDB instance or cluster"
+            #     )
 
             raise error
 

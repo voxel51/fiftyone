@@ -55,10 +55,8 @@ MONGODB_SUPPORTED=true
 APPLE_SILICON=false
 if [ "${OS}" = "Darwin" ] && [ $(uname -m) = "arm64" ]; then
     APPLE_SILICON=true
-    if [ ${USE_APPLE_SILICON_MONGODB} != true ]; then
-        MONGODB_SUPPORTED=false
-    fi
-    if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
+
+    if [ ${SCRATCH_MONGODB_INSTALL} = true ] && [ ${USE_APPLE_SILICON_MONGODB} != true ]; then
         echo "***** NOT INSTALLING MONGODB *****"
         echo "Installing MongoDB from scratch is not currently supported on Apple Silicon."
         echo "You can override this using the -x flag. See help for more info."
