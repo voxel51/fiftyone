@@ -40,7 +40,7 @@ _web: aio.ClientSession = None
 
 async def on_startup():
     global _web
-    _web = aio.ClientSession()
+    _web = aio.ClientSession(trust_env=True)
 
     global _jwks
     _jwks = await set_jwks(_web)
