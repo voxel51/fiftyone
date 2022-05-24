@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.16.0
 ---------------
-*Released May 23, 2022*
+*Released May 24, 2022*
 
 App
 
