@@ -922,35 +922,46 @@ class OpenLABELStreams(OpenLABELGroup):
 
 class AttributeParser(object):
     _STREAM_KEYS = ["stream", "coordinate_system"]
+    _IGNORE_KEYS = [
+        "frame_intervals",
+        "val",
+        "attributes",
+        "object_data",
+        "object_data_pointers",
+        "bbox",
+        "point2d",
+        "poly2d",
+    ]
 
     @classmethod
     def _parse_attributes(cls, d):
-        _ignore_keys = [
-            "frame_intervals",
-            "val",
-            "attributes",
-            "object_data",
-            "object_data_pointers",
-            "bbox",
-            "point2d",
-            "poly2d",
-        ]
-        attributes = {k: v for k, v in d.items() if k not in _ignore_keys}
+        attributes = {k: v for k, v in d.items() if k not in cls._IGNORE_KEYS}
         attributes_dict = d.get("attributes", {})
         stream = None
         for k in cls._STREAM_KEYS:
             if k in d:
                 stream = d[k]
-        for attr_type, attrs in attributes_dict.items():
+
+        _attrs, _stream = cls._parse_name_val_attributes(attributes_dict)
+        attributes.update(_attrs)
+        if _stream:
+            stream = _stream
+
+        return attributes, stream
+
+    @classmethod
+    def _parse_name_val_attributes(cls, d):
+        attributes = {}
+        stream = None
+        for attr_type, attrs in d.items():
             for attr in attrs:
                 name = attr["name"]
                 val = attr["val"]
                 if name.lower() in cls._STREAM_KEYS:
                     stream = val
 
-                if name.lower() not in _ignore_keys:
+                if name.lower() not in cls._IGNORE_KEYS:
                     attributes[name] = val
-
         return attributes, stream
 
 
@@ -1095,19 +1106,9 @@ class OpenLABELShapes(AttributeParser):
 
         stream = None
         if attributes:
-            attributes, stream = cls._parse_attributes(attributes)
+            attributes, stream = cls._parse_name_val_attributes(attributes)
 
         return cls(shapes=shapes, attributes=attributes, stream=stream)
-
-    def add_object_data_list(self, shape_type, l, attributes=None):
-        for shape_d in l:
-            self.shapes.append(shape_type.from_shape_dict(shape_d))
-
-        if attributes:
-            _attrs, stream = self._parse_attributes(attributes)
-            self.attributes.update(_attrs)
-            if not self.stream and stream:
-                self.stream = stream
 
     def merge_shapes(self, shapes):
         if shapes:
@@ -1180,6 +1181,8 @@ class OpenLABELShapes(AttributeParser):
                 stream = shape.stream
 
         if coords:
+            _attrs = dict(_attrs)
+            _attrs.update(self.attributes)
             shape = type(self.shapes[0])(
                 coords, attributes=dict(_attrs), stream=stream
             )
@@ -1641,6 +1644,10 @@ class OpenLABELObject(AttributeParser):
         poly2d_l = cls._get_shape_list(object_data, "poly2d")
         point2d_l = cls._get_shape_list(object_data, "point2d")
 
+        name = d.pop("name", None)
+        _type = d.pop("type", None)
+        attributes, stream = cls._parse_attributes(d)
+
         bboxes = OpenLABELShapes.from_object_data_list(
             OpenLABELBBox, bbox_l, attributes=object_data
         )
@@ -1650,10 +1657,6 @@ class OpenLABELObject(AttributeParser):
         points = OpenLABELShapes.from_object_data_list(
             OpenLABELPoint, point2d_l, attributes=object_data
         )
-
-        name = d.pop("name", None)
-        _type = d.pop("type", None)
-        attributes, stream = cls._parse_attributes(d)
 
         return (
             bboxes,
