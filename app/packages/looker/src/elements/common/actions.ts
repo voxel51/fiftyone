@@ -142,6 +142,25 @@ export const previous: Control = {
   },
 };
 
+
+export const toggleOverlays: Control = {
+  title: "Show/hide overlays",
+  shortcut: "h",
+  eventKeys: "h",
+  detail: "Toggles visibility of all overlays",
+  action: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail }, options: { showOverlays } }) =>
+        thumbnail ? {} : { options: { showOverlays: !showOverlays } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", showOverlays);
+        }
+      }
+    );
+  },
+};
+
 export const rotatePrevious: Control = {
   title: "Rotate label forward",
   shortcut: "&#8595;",
@@ -398,6 +417,7 @@ export const COMMON = {
   fullscreen,
   json,
   wheel,
+  toggleOverlays
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);

@@ -15,6 +15,7 @@ import {
   zoomOut,
   cropToContent,
   json,
+  toggleOverlays
 } from "./actions";
 import cropIcon from "../../icons/crop.svg";
 import jsonIcon from "../../icons/json.svg";
@@ -223,6 +224,49 @@ export class FullscreenButtonElement<
   }
 }
 
+
+export class ToggleOverlaysButtonElement<
+  State extends BaseState
+> extends BaseElement<State, HTMLImageElement> {
+  private overlaysVisible: boolean;
+
+  getEvents(): Events<State> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleOverlays.action(update, dispatchEvent);
+      },
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("img");
+    element.classList.add(lookerClickable);
+    element.style.padding = "2px";
+    element.style.gridArea = "2 / 14 / 2 / 14";
+    return element;
+  }
+
+  renderSelf({ options: { showOverlays } }: Readonly<State>) {
+    if (this.overlaysVisible !== showOverlays) {
+      this.overlaysVisible = showOverlays;
+      
+      if (showOverlays) {
+        this.element.title = `Hide all overlays (h)`;
+        this.element.classList.remove(lookerControlActive);
+        this.element.src = ICONS.overlaysHidden;
+      } else {
+        this.element.title = `Show all overlays (h)`;
+        this.element.classList.add(lookerControlActive);
+        this.element.src = ICONS.overlaysVisible;
+      }
+    }
+
+    return this.element;
+  }
+}
+
 export class PlusElement<State extends BaseState> extends BaseElement<
   State,
   HTMLImageElement
@@ -302,7 +346,7 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
     element.style.padding = "2px";
     element.src = ICONS.help;
     element.title = "Help (?)";
-    element.style.gridArea = "2 / 14 / 2 / 14";
+    element.style.gridArea = "2 / 16 / 2 / 16";
     return element;
   }
 

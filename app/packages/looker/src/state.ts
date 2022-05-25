@@ -86,6 +86,7 @@ interface BaseOptions {
   showIndex: boolean;
   showJSON: boolean;
   showLabel: boolean;
+  showOverlays: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;

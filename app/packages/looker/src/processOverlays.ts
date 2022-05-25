@@ -18,6 +18,10 @@ const processOverlays = <State extends BaseState>(
 
   let classifications = null;
 
+  if (!state.config.thumbnail && !state.options.showOverlays) {
+    return [[], 0];
+  }
+
   for (const overlay of overlays) {
     if (overlay instanceof ClassificationsOverlay) {
       classifications = overlay;
