@@ -10,6 +10,7 @@ import { useRecoilValue } from "recoil";
 import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
 import { _activeFields } from "../../recoil/schema";
+import { similarityParameters } from "../../components/Actions/Similar";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: JSONArray) {
@@ -101,6 +102,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     update(({ reset }) => {
       reset(filters);
       reset(_activeFields({ modal: false }));
+      reset(similarityParameters);
 
       return {
         dataset: transformDataset(dataset),
