@@ -6,7 +6,10 @@ FiftyOne Teams mutations.
 |
 """
 from dacite import Config, from_dict
-from fiftyone.teams.authentication import authenticate_gql_class
+from fiftyone.teams.authentication import (
+    IsAuthenticated,
+    authenticate_gql_class,
+)
 import motor.motor_asyncio as mtr
 from pymongo import ReturnDocument
 import strawberry as gql
@@ -59,3 +62,19 @@ class Mutation(fosm.Mutation):
 
         updated_user["id"] = updated_user.pop("_id")
         return from_dict(User, updated_user, config=Config(check_types=False))
+
+    @gql.mutation(permission_classes=[IsAuthenticated])
+    async def set_view(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        view: JSONArray,
+        dataset: str,
+        info: Info,
+    ) -> fosm.ViewResponse:
+        return fosm.ViewResponse(
+            fov.DatasetView._build(
+                fo.load_dataset(dataset), view
+            )._serialize(),
+            await Dataset.resolver(dataset, view, info),
+        )

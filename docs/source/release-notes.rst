@@ -3,11 +3,45 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.1:
+
+FiftyOne 0.16.1
+---------------
+*Released May 26, 2022*
+
+App
+
+- Fixed a bug that caused label rendering to be delayed until statistics
+  were loaded `#1776 <https://github.com/voxel51/fiftyone/pull/1776>`_
+- Fixed the ``v0.16.0`` migration that prevents label lists, e.g. |Detections|
+  from showing their label filters when expanded in the sidebar
+  `#1785 <https://github.com/voxel51/fiftyone/pull/1785>`_
+- Fixed range requests for media files, e.g. mp4s, on the server
+  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
+- Fixed expanded samples in clips views which appeared to be empty
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed "Sort by similarity" with a `dist_field`
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed "Color by" for simple values (classifications, tags, etc.)
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed changing datasets when sort by similarity is set
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed mask and map coloring
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed fortran array handling for masks and maps 
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+
+Core
+
+- Fixed a formatting issue when raising an exception because unsupported
+  plotting backend was requested 
+  `#1794 <https://github.com/voxel51/fiftyone/pull/1794>`_
+
 .. _release-notes-v0.16.0:
 
 FiftyOne 0.16.0
 ---------------
-*Released May 23, 2022*
+*Released May 24, 2022*
 
 App
 

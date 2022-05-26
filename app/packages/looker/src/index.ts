@@ -214,8 +214,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
-    if (detail instanceof ErrorEvent) {
-      this.eventTarget.dispatchEvent(detail);
+    if (detail instanceof Event) {
+      this.eventTarget.dispatchEvent(
+        new detail.constructor(detail.type, detail)
+      );
       return;
     }
 
@@ -1499,10 +1501,7 @@ const shouldReloadSample = (
   let reloadSample = false;
   if (next.coloring && current.coloring.seed !== next.coloring.seed) {
     reloadSample = true;
-  } else if (
-    next.coloring &&
-    next.coloring.byLabel !== current.coloring.byLabel
-  ) {
+  } else if (next.coloring && next.coloring.by !== current.coloring.by) {
     reloadSample = true;
   }
 
