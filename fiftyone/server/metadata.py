@@ -6,6 +6,7 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
+import re
 import requests
 import shutil
 import struct
@@ -259,15 +260,18 @@ async def get_stream_info(path, session=None):
         # a nicer http error code. maybe this is temp, but this will work for
         # the purposes of retry logic
         error = stderr.decode()
-        # temp hack to appease black
-        err_start = error.find("HTTP error") + 11
-        err_end = error.find("HTTP error") + 14
-        http_code = int(error[err_start:err_end])
+
+        # grabbing the sequence: "HTTP error ###" from the stderr of ffprobe
+        http_code = re.search("HTTP error ([0-9]+)", error)
+
+        # capturing the 3 digits of the http code
+        http_code = http_code.group(1)
+
+        # raise here to be captured by the backoff library and potentially
+        # giving up based on code
         raise VideoURLRetryException(
-            "ffprobe failed when connecting to external resource", http_code
+            "ffprobe failed when retrieving external resource", http_code
         )
-        # async with session.get(path) as response:
-        # response.raise_for_status()
 
     if stderr:
         raise RuntimeError(stderr)
