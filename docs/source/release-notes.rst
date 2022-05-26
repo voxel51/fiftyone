@@ -12,17 +12,17 @@ FiftyOne 0.16.1
 App
 
 - Fixed a bug that caused label rendering to be delayed until statistics
-  loaded `#1776 <https://github.com/voxel51/fiftyone/pull/1776>`_
-- Fixed range requests for media files, e.g. mp4s, on the server
-  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
+  were loaded `#1776 <https://github.com/voxel51/fiftyone/pull/1776>`_
 - Fixed the ``v0.16.0`` migration that prevents label lists, e.g. |Detections|
   from showing their label filters when expanded in the sidebar
   `#1785 <https://github.com/voxel51/fiftyone/pull/1785>`_
+- Fixed range requests for media files, e.g. mp4s, on the server
+  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
 - Fixed expanded samples in clips views which appeared to be empty
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
-- Fixed sort by similarity with a `dist_field`
+- Fixed "Sort by similarity" with a `dist_field`
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
-- Fixed "color by" for simple values (classifications, tags, etc.)
+- Fixed "Color by" for simple values (classifications, tags, etc.)
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
 - Fixed changing datasets when sort by similarity is set
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
@@ -33,9 +33,9 @@ App
 
 Core
 
-- Fixed a formatting issue when attempting to raise an exception when asking
-  for an unsupported plotting backend 
-  `#1794 <https://github.com/voxel51/fiftyone/pull/1794>`
+- Fixed a formatting issue when raising an exception because unsupported
+  plotting backend was requested 
+  `#1794 <https://github.com/voxel51/fiftyone/pull/1794>`_
 
 .. _release-notes-v0.16.0:
 
