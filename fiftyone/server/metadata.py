@@ -30,6 +30,16 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
+class VideoURLRetryException(Exception):
+    def __init__(self, message, error_code):
+        super().__init__(message)
+        self.error_code = error_code
+
+
+def retry_error_codes():
+    return {408, 429, 500, 502, 503, 504, 509}
+
+
 async def get_metadata(session, filepath, media_type, metadata=None):
     """Gets the metadata for the given local or remote media file.
 
@@ -108,7 +118,7 @@ async def get_metadata(session, filepath, media_type, metadata=None):
     aiohttp.ClientResponseError,
     factor=0.1,
     max_tries=10,
-    giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+    giveup=lambda e: e.code not in retry_error_codes(),
     logger=None,
 )
 async def read_url_metadata(session, url, is_video):
@@ -200,6 +210,14 @@ class Reader(object):
             self._data += await self._content.read(delta)
 
 
+@backoff.on_exception(
+    backoff.expo,
+    VideoURLRetryException,
+    factor=0.1,
+    max_tries=10,
+    giveup=lambda e: e.error_code not in retry_error_codes(),
+    logger=None,
+)
 async def get_stream_info(path, session=None):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.
@@ -237,8 +255,19 @@ async def get_stream_info(path, session=None):
     # @todo how to feed `response` into subprocess above to avoid this?
     # We need a status code to determine whether the failure is retryable...
     if stderr and session is not None:
-        async with session.get(path) as response:
-            response.raise_for_status()
+        # here we're just getting back ffprobe's stderr. They don't bubble up
+        # a nicer http error code. maybe this is temp, but this will work for
+        # the purposes of retry logic
+        error = stderr.decode()
+        # temp hack to appease black
+        err_start = error.find("HTTP error") + 11
+        err_end = error.find("HTTP error") + 14
+        http_code = int(error[err_start:err_end])
+        raise VideoURLRetryException(
+            "ffprobe failed when connecting to external resource", http_code
+        )
+        # async with session.get(path) as response:
+        # response.raise_for_status()
 
     if stderr:
         raise RuntimeError(stderr)
@@ -413,7 +442,7 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass
 

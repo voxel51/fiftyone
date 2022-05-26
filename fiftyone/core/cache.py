@@ -82,6 +82,10 @@ class MediaCache(object):
     def num_workers(self):
         return self.config.num_workers
 
+    @property
+    def fatal_retry_code(self):
+        return [int(x) for x in self.config.retry_error_codes]
+
     def stats(self, filepaths=None):
         """Returns a dictionary of stats about the cache.
 
@@ -724,14 +728,16 @@ async def _do_async_download_media(arg):
     await _async_write_cache_result(remote_path, local_path, success, checksum)
 
 
-@backoff.on_exception(
-    backoff.expo,
-    aiohttp.ClientResponseError,
-    factor=0.1,
-    max_tries=10,
-    giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
-    logger=None,
-)
+# Holding off for the moment until changes can be resolved
+# with other open changes
+# @backoff.on_exception(
+#     backoff.expo,
+#     aiohttp.ClientResponseError,
+#     factor=0.1,
+#     max_tries=10,
+#     giveup=lambda e: e.code not in self.fatal_retry_code,
+#     logger=None,
+# )
 async def _do_download_file(session, url, local_path):
     async with session.get(url) as response:
         checksum = response.headers.get("Etag", None)

@@ -29,8 +29,11 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-def fatal_retry_code(e):
-    return 400 <= e.response.status_code < 500
+def fatal_retry_code():
+    # The base EnvConfig only had methods to parse an array of strings,
+    # so converting error codes back to int here in case they were loaded
+    # from a user config file as string
+    return [int(x) for x in fo.media_cache_config.retry_error_codes]
 
 
 class Metadata(DynamicEmbeddedDocument):
@@ -77,7 +80,7 @@ class Metadata(DynamicEmbeddedDocument):
         requests.exceptions.RequestException,
         factor=0.1,
         max_tries=10,
-        giveup=fatal_retry_code,
+        giveup=lambda e: e.status_code not in fatal_retry_code(),
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -150,7 +153,7 @@ class ImageMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=0.1,
         max_tries=10,
-        giveup=fatal_retry_code,
+        giveup=lambda e: e.status_code not in fatal_retry_code(),
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -214,7 +217,7 @@ class VideoMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=0.1,
         max_tries=10,
-        giveup=fatal_retry_code,
+        giveup=lambda e: e.status_code not in fatal_retry_code(),
         logger=None,
     )
     def build_for(cls, video_path, mime_type=None):
