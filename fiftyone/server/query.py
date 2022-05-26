@@ -275,12 +275,13 @@ class Query:
         return foc.VERSION
 
 
-def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
+def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> Dataset:
     doc = dataset._doc.to_dict()
     Dataset.modifier(doc)
     data = from_dict(Dataset, doc, config=Config(check_types=False))
+    data.view_cls = None
 
-    if view._dataset != dataset:
+    if view is not None and view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
         data.id = ObjectId()
@@ -293,7 +294,7 @@ def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
             for s in _flatten_fields([], d["frame_fields"])
         ]
 
-    data.view_cls = etau.get_class_name(view)
+        data.view_cls = etau.get_class_name(view)
 
     return asdict(data)
 

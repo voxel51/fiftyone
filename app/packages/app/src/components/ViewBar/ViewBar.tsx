@@ -56,6 +56,7 @@ const IconsContainer = styled.div`
   );
   column-gap: 0.5rem;
   padding: 0 0.5rem;
+  z-index: 801;
 `;
 
 const viewBarKeyMap = {
