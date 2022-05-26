@@ -1,6 +1,10 @@
 """
 FiftyOne v0.16.1 revision.
 
+This revision is identical to v0.16.0 except it does not affect
+app sidebar groups and it fixes label list fields, e.g. Detections,
+which were skipped in v0.16.0
+
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -61,8 +65,6 @@ def up(db, dataset_name):
                 field["fields"] = []
         else:
             field["fields"] = []
-
-    dataset_dict["app_sidebar_groups"] = None
 
     db.datasets.replace_one(match_d, dataset_dict)
 
