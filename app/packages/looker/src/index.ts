@@ -1501,10 +1501,7 @@ const shouldReloadSample = (
   let reloadSample = false;
   if (next.coloring && current.coloring.seed !== next.coloring.seed) {
     reloadSample = true;
-  } else if (
-    next.coloring &&
-    next.coloring.byLabel !== current.coloring.byLabel
-  ) {
+  } else if (next.coloring && next.coloring.by !== current.coloring.by) {
     reloadSample = true;
   }
 
