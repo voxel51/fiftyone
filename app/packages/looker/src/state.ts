@@ -58,13 +58,19 @@ export type Action<State extends BaseState> = (
   shiftKey?: boolean
 ) => void;
 
+export enum ControlEventKeyType {
+  HOLD,
+  KEY_DOWN,
+}
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];
+  eventKeyType?: ControlEventKeyType;
   filter?: (config: Readonly<State["config"]>) => boolean;
   title: string;
   shortcut: string;
   detail: string;
   action: Action<State>;
+  afterAction?: Action<State>;
 }
 
 export interface ControlMap<State extends BaseState> {

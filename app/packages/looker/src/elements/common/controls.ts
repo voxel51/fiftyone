@@ -15,7 +15,7 @@ import {
   zoomOut,
   cropToContent,
   json,
-  toggleOverlays
+  toggleOverlays,
 } from "./actions";
 import cropIcon from "../../icons/crop.svg";
 import jsonIcon from "../../icons/json.svg";
@@ -139,9 +139,9 @@ export class PreviousElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class ControlsElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class ControlsElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private showControls: boolean = false;
 
   getEvents(): Events<State> {
@@ -224,7 +224,6 @@ export class FullscreenButtonElement<
   }
 }
 
-
 export class ToggleOverlaysButtonElement<
   State extends BaseState
 > extends BaseElement<State, HTMLImageElement> {
@@ -232,10 +231,15 @@ export class ToggleOverlaysButtonElement<
 
   getEvents(): Events<State> {
     return {
-      click: ({ event, update, dispatchEvent }) => {
+      mousedown: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         toggleOverlays.action(update, dispatchEvent);
+      },
+      mouseup: ({ event, update, dispatchEvent }) => {
+        event.stopPropagation();
+        event.preventDefault();
+        toggleOverlays.afterAction(update, dispatchEvent);
       },
     };
   }
@@ -251,7 +255,7 @@ export class ToggleOverlaysButtonElement<
   renderSelf({ options: { showOverlays } }: Readonly<State>) {
     if (this.overlaysVisible !== showOverlays) {
       this.overlaysVisible = showOverlays;
-      
+
       if (showOverlays) {
         this.element.title = `Hide all overlays (h)`;
         this.element.classList.remove(lookerControlActive);
@@ -325,9 +329,9 @@ export class MinusElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class HelpButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class HelpButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private active: boolean;
 
   getEvents(): Events<State> {
@@ -362,9 +366,9 @@ export class HelpButtonElement<State extends BaseState> extends BaseElement<
   }
 }
 
-export class OptionsButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class OptionsButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private active: boolean;
 
   getEvents(): Events<State> {
@@ -434,9 +438,9 @@ export class CropToContentButtonElement<
   }
 }
 
-export class JSONButtonElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class JSONButtonElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private disabled: boolean;
   private active: boolean;
 
