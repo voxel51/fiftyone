@@ -422,6 +422,7 @@ def make_frames_dataset(
     skip_failures=True,
     verbose=False,
     name=None,
+    output_dir=None,
 ):
     """Creates a dataset that contains one sample per frame in the video
     collection.
@@ -437,9 +438,9 @@ def make_frames_dataset(
 
     When ``sample_frames`` is True, this method samples each video in the
     collection into a directory of per-frame images with the same basename as
-    the input video with frame numbers/format specified by ``frames_patt``, and
-    stores the resulting frame paths in a ``filepath`` field of the input
-    collection.
+    the input video, or the specified ``output_dir``, using the frame numbers/format
+    specified by ``frames_patt``, and stores the resulting frame paths in a
+    ``filepath`` field of the input collection.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -512,6 +513,9 @@ def make_frames_dataset(
         verbose (False): whether to log information about the frames that will
             be sampled, if any
         name (None): a name for the dataset
+        output_dir (None): an optional output directory to use as the basename
+            of the sampled frames.  When not specified the basename will
+            be the same as the input video
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -574,6 +578,10 @@ def make_frames_dataset(
         to_sample_view = sample_collection._root_dataset.select(
             ids_to_sample, ordered=True
         )
+
+        if output_dir:
+            output_dir = fou.normalize_path(output_dir)
+
         fouv.sample_videos(
             to_sample_view,
             frames_patt=frames_patt,
@@ -585,6 +593,7 @@ def make_frames_dataset(
             force_sample=True,
             save_filepaths=True,
             skip_failures=skip_failures,
+            output_dir=output_dir,
         )
 
     # Merge frame data

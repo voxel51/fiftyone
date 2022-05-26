@@ -90,7 +90,7 @@ def reencode_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
@@ -132,7 +132,7 @@ def reencode_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -149,7 +149,7 @@ def transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
@@ -218,7 +218,7 @@ def transform_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -237,13 +237,15 @@ def sample_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    **kwargs
+    output_dir=None,
+    **kwargs,
 ):
     """Samples the videos in the sample collection into directories of
     per-frame images according to the provided parameters using ``ffmpeg``.
 
     The frames for each sample are stored in a directory with the same basename
-    as the input video with frame numbers/format specified by ``frames_patt``.
+    as the input video or the specified ``output_dir`` with frame numbers/format
+    specified by ``frames_patt``.
 
     For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
     following paths::
@@ -299,6 +301,9 @@ def sample_videos(
             an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        output_dir (None): an optional output directory to use as the basename
+            of the sampled frames.  When not specified the basename will
+            be the same as the input video
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -319,7 +324,8 @@ def sample_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
-        **kwargs
+        output_dir=output_dir,
+        **kwargs,
     )
 
 
@@ -350,7 +356,7 @@ def reencode_video(input_path, output_path, verbose=False, **kwargs):
         reencode=True,
         force_reencode=True,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -365,7 +371,7 @@ def transform_video(
     max_size=None,
     reencode=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Transforms the video according to the provided parameters using
     ``ffmpeg``.
@@ -412,7 +418,7 @@ def transform_video(
         max_size=max_size,
         reencode=reencode,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -427,7 +433,7 @@ def sample_video(
     max_size=None,
     original_frame_numbers=True,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     """Samples the video into a directory of per-frame images according to the
     provided parameters using ``ffmpeg``.
@@ -470,7 +476,7 @@ def sample_video(
         original_frame_numbers=original_frame_numbers,
         force_reencode=True,
         verbose=verbose,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -584,7 +590,8 @@ def _transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    **kwargs
+    output_dir=None,
+    **kwargs,
 ):
     if sample_frames:
         reencode = True
@@ -603,7 +610,7 @@ def _transform_videos(
             inpath = sample.filepath
 
             if sample_frames:
-                outdir = os.path.splitext(inpath)[0]
+                outdir = output_dir or os.path.splitext(inpath)[0]
                 outpath = os.path.join(outdir, frames_patt)
 
                 # If sampling was not forced and the first frame exists, assume
@@ -636,7 +643,7 @@ def _transform_videos(
                 delete_original=delete_originals,
                 skip_failures=skip_failures,
                 verbose=verbose,
-                **kwargs
+                **kwargs,
             )
 
             if save_filepaths and sample_frames:
@@ -684,7 +691,7 @@ def _transform_video(
     delete_original=False,
     skip_failures=False,
     verbose=False,
-    **kwargs
+    **kwargs,
 ):
     inpath = fou.normalize_path(inpath)
     outpath = fou.normalize_path(outpath)
