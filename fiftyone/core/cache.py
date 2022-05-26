@@ -84,7 +84,7 @@ class MediaCache(object):
 
     @property
     def fatal_retry_code(self):
-        return [int(x) for x in self.config.retry_error_codes]
+        return set(map(int, self.config.retry_error_codes))
 
     def stats(self, filepaths=None):
         """Returns a dictionary of stats about the cache.
