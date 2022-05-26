@@ -214,8 +214,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
-    if (detail instanceof ErrorEvent) {
-      this.eventTarget.dispatchEvent(detail);
+    if (detail instanceof Event) {
+      this.eventTarget.dispatchEvent(
+        new detail.constructor(detail.type, detail)
+      );
       return;
     }
 
