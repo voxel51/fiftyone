@@ -4,6 +4,8 @@
 
 import { Overlay } from "./overlays/base";
 
+import { Schema } from "@fiftyone/utilities";
+
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
@@ -33,10 +35,10 @@ export interface Sample {
 }
 
 export interface LabelData {
-  label_id: string;
+  labelId: string;
   field: string;
-  frame_number?: number;
-  sample_id: string;
+  frameNumber?: number;
+  sampleId: string;
   index?: number;
 }
 
@@ -76,15 +78,11 @@ export interface KeypointSkeleton {
 
 interface BaseOptions {
   activePaths: string[];
-  filter: {
-    [fieldName: string]: (label: {
-      label?: string;
-      confidence?: number;
-    }) => boolean;
-  };
+  filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
+  showControls: boolean;
   showIndex: boolean;
   showJSON: boolean;
   showLabel: boolean;
@@ -96,7 +94,6 @@ interface BaseOptions {
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
-  fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
@@ -112,18 +109,6 @@ export type BoundingBox = [number, number, number, number];
 export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
-
-interface SchemaEntry {
-  name: string;
-  ftype: string;
-  subfield?: string;
-  embedded_doc_type?: string;
-  db_field: string;
-}
-
-interface Schema {
-  [name: string]: SchemaEntry;
-}
 
 interface BaseConfig {
   thumbnail: boolean;
@@ -160,7 +145,6 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
-  frameFieldsMap?: { [key: string]: string };
 }
 
 export interface TooltipOverlay {
@@ -185,7 +169,6 @@ export interface BaseState {
   loaded: boolean;
   hovering: boolean;
   hoveringControls: boolean;
-  showControls: boolean;
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
@@ -274,6 +257,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,
+  showControls: true,
   showIndex: false,
   showJSON: false,
   showLabel: false,
@@ -294,9 +278,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasNext: false,
   hasPrevious: false,
   fullscreen: false,
-  zoomPad: 0.1,
+  zoomPad: 0.2,
   selected: false,
-  fieldsMap: {},
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",
@@ -325,7 +308,6 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
-  frameFieldsMap: {},
 };
 
 export interface FrameSample {

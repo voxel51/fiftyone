@@ -98,14 +98,15 @@ export const controls: Control = {
   title: "Show controls",
   shortcut: "c",
   detail: "Show the conrols bar and navigation arrows",
-  action: (update) => {
-    update(({ config: { thumbnail }, showControls }) => {
+  action: (update, dispatchEvent) => {
+    update(({ config: { thumbnail }, options: { showControls } }) => {
       if (thumbnail) {
         return {};
       }
 
+      dispatchEvent("options", { showControls: !showControls });
+
       return {
-        showControls: !showControls,
         disableControls: showControls,
         showOptions: false,
       };
@@ -294,23 +295,25 @@ export const settings: Control = {
   title: "Settings",
   shortcut: "s",
   detail: "Toggle the settings panel",
-  action: (update) => {
-    update(({ showOptions, config: { thumbnail } }) => {
-      if (thumbnail) {
-        return {};
-      } else if (showOptions) {
-        return {
-          showOptions: false,
-          disableControls: false,
-        };
-      } else {
-        return {
-          disableControls: false,
-          showControls: true,
-          showOptions: true,
-        };
+  action: (update, dispatchEvent) => {
+    update(
+      ({ showOptions, config: { thumbnail }, options: { showControls } }) => {
+        if (thumbnail) {
+          return {};
+        } else if (showOptions) {
+          return {
+            showOptions: false,
+            disableControls: false,
+          };
+        } else {
+          !showControls && dispatchEvent("options", { showControls: true });
+          return {
+            disableControls: false,
+            showOptions: true,
+          };
+        }
       }
-    });
+    );
   },
 };
 
@@ -318,19 +321,19 @@ export const controlsToggle: Control = {
   title: "Controls",
   shortcut: "c",
   detail: "Toggle controls",
-  action: (update) => {
-    update(({ config: { thumbnail }, showControls }) => {
+  action: (update, dispatchEvent) => {
+    update(({ config: { thumbnail }, options: { showControls } }) => {
       if (thumbnail) {
         return {};
       } else if (showControls) {
+        dispatchEvent("options", { showControls: false });
         return {
-          showControls: false,
           disableControls: false,
         };
       } else {
+        dispatchEvent("options", { showControls: true });
         return {
           disableControls: false,
-          showControls: true,
         };
       }
     });

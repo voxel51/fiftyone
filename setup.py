@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.15.1"
+VERSION = "0.16.0"
 
 
 def get_version():
@@ -33,9 +33,11 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "argcomplete",
     "boto3",
+    "dacite>=1.6.0",
     "Deprecated",
     "eventlet",
     "future",
+    "hypercorn>=0.13.2",
     "Jinja2>=3",
     "kaleido",
     "matplotlib",
@@ -56,14 +58,17 @@ INSTALL_REQUIRES = [
     "scikit-learn",
     "scikit-image",
     "setuptools",
+    "sseclient-py>=1.7.2,<2",
+    "sse-starlette>=0.10.3,<1",
+    "starlette==0.16.0",
+    "strawberry-graphql==0.96.0",
     "tabulate",
-    "tornado>=5.1.1,<7",
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
     "fiftyone-brain>=0.8,<0.9",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.6.6,<0.7",
+    "voxel51-eta>=0.7.0,<0.8",
 ]
 
 
@@ -100,7 +105,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.20.1,<0.21"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.21.0,<0.22"]}
 
 
 with open("README.md", "r") as fh:
@@ -147,11 +152,11 @@ setup(
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

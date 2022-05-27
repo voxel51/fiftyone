@@ -287,7 +287,7 @@ dataset:
         id:         fiftyone.core.fields.ObjectIdField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         coco_id:    fiftyone.core.fields.IntField
 

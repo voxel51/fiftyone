@@ -7,7 +7,9 @@ Video frames.
 """
 import itertools
 
+from bson import ObjectId
 from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
+
 
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame_utils as fofu
@@ -133,7 +135,7 @@ class Frames(object):
     @property
     def _sample_id(self):
         if self._dataset._is_clips:
-            return self._sample._doc.sample_id
+            return ObjectId(self._sample._doc.sample_id)
 
         return self._sample._id
 
@@ -938,8 +940,12 @@ class Frame(Document, metaclass=FrameSingleton):
     _NO_DATASET_DOC_CLS = foo.NoDatasetFrameDocument
 
     @property
-    def _sample_id(self):
+    def sample_id(self):
         return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        return ObjectId(self._doc._sample_id)
 
     def save(self):
         """Saves the frame to the database."""

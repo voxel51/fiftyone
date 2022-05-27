@@ -21,6 +21,10 @@ export default class KeypointOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.points || !this.label.points.length) {
+      return CONTAINS.NONE;
+    }
+
     const result = this.getDistanceAndMaybePoint(state);
     if (result && result[0] <= state.pointRadius) {
       return CONTAINS.BORDER;
@@ -229,7 +233,7 @@ const getSkeleton = (
   const defaultSkeleton = state.options.defaultSkeleton;
 
   const namedSkeleton = state.options.skeletons
-    ? state.options.skeletons[name]
+    ? state.options.skeletons[name.split(".").slice(-1)[0]]
     : null;
 
   return namedSkeleton || defaultSkeleton || null;

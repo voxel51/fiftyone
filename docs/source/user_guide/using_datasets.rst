@@ -635,10 +635,10 @@ By default, all |Sample| instances have the following fields:
     | `filepath`   | string                             | **REQUIRED**  | The path to the source data on disk. Must be      |
     |              |                                    |               | provided at sample creation time                  |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
+    | `tags`       | list                               | `[]`          | A list of string tags for the sample              |
+    +--------------+------------------------------------+---------------+---------------------------------------------------+
     | `metadata`   | :class:`Metadata                   | `None`        | Type-specific metadata about the source data      |
     |              | <fiftyone.core.metadata.Metadata>` |               |                                                   |
-    +--------------+------------------------------------+---------------+---------------------------------------------------+
-    | `tags`       | list                               | `[]`          | A list of string tags for the sample              |
     +--------------+------------------------------------+---------------+---------------------------------------------------+
 
 .. code-block:: python
@@ -677,12 +677,15 @@ You can retrieve detailed information about the schema of the samples in a
 .. code-block:: python
     :linenos:
 
+    dataset = fo.Dataset("a_dataset")
+    dataset.add_sample(sample)
+
     dataset.get_field_schema()
 
 .. code-block:: text
 
     OrderedDict([
-        ('media_type', <fiftyone.core.fields.StringField at 0x11c77add8>),
+        ('id', <fiftyone.core.fields.ObjectIdField at 0x7fbaa862b358>),
         ('filepath', <fiftyone.core.fields.StringField at 0x11c77ae10>),
         ('tags', <fiftyone.core.fields.ListField at 0x11c790828>),
         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField at 0x11c7907b8>)
@@ -700,15 +703,14 @@ printing it:
 
     Name:           a_dataset
     Media type:     image
-    Num samples:    0
+    Num samples:    1
     Persistent:     False
     Tags:           []
     Sample fields:
         id:         fiftyone.core.fields.ObjectIdField
-        media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
 
 The value of a |Field| for a given |Sample| can be accessed either by either
 attribute or item access:
@@ -744,15 +746,14 @@ updated to reflect the new field:
 
     Name:           a_dataset
     Media type:     image
-    Num samples:    0
+    Num samples:    1
     Persistent:     False
     Tags:           []
     Sample fields:
         id:            fiftyone.core.fields.ObjectIdField
-        media_type:    fiftyone.core.fields.StringField
         filepath:      fiftyone.core.fields.StringField
         tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
@@ -2836,7 +2837,7 @@ Video samples can be added to datasets just like image samples:
         id:       fiftyone.core.fields.ObjectIdField
         filepath: fiftyone.core.fields.StringField
         tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField

@@ -45,7 +45,7 @@ done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 set -e
-NODE_VERSION=16.4.2
+NODE_VERSION=17.9.0
 OS=$(uname -s)
 
 if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
@@ -57,18 +57,18 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
     if [ -x bin/mongod ]; then
         VERSION_FULL=$(bin/mongod --version | grep 'db version')
         VERSION="${VERSION_FULL:12}"
-        if [ ${VERSION} != "4.4.2" ]; then
-            echo "Upgrading MongoDB v${VERSION} to v4.4.2"
+        if [ ${VERSION} != "5.0.4" ]; then
+            echo "Upgrading MongoDB v${VERSION} to v5.0.4"
         else
-            echo "MongoDB v4.4.2 already installed"
+            echo "MongoDB v5.0.4 already installed"
             INSTALL_MONGODB=false
         fi
     else
-        echo "Installing MongoDB v4.4.2"
+        echo "Installing MongoDB v5.0.4"
     fi
     if [ ${INSTALL_MONGODB} = true ]; then
         if [ "${OS}" == "Darwin" ]; then
-            MONGODB_BUILD=mongodb-macos-x86_64-4.4.2
+            MONGODB_BUILD=mongodb-macos-x86_64-5.0.4
 
             curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz
@@ -76,7 +76,7 @@ if [ ${SCRATCH_MONGODB_INSTALL} = true ]; then
             rm mongodb.tgz
             rm -rf ${MONGODB_BUILD}
         elif [ "${OS}" == "Linux" ]; then
-            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu1804-4.4.2
+            MONGODB_BUILD=mongodb-linux-x86_64-ubuntu2004-5.0.4
 
             curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
             tar -zxvf mongodb.tgz

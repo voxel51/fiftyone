@@ -58,7 +58,6 @@ class PlotManager(object):
     """
 
     _MIN_UPDATE_DELTA_SECONDS = 1
-    _LISTENER_NAME = "plots"
 
     def __init__(self, session):
         self._session = None
@@ -315,8 +314,8 @@ class PlotManager(object):
         for name in self._plots:
             self._connect_plot(name)
 
-        self._session.add_listener(
-            self._LISTENER_NAME, self._on_session_update
+        self._session._client.add_event_listener(
+            "state_update", self._on_session_update
         )
 
         self._connected = True
@@ -351,9 +350,7 @@ class PlotManager(object):
         if not self.is_connected:
             return
 
-        key = self._LISTENER_NAME
-        if self._session.has_listener(key):
-            self._session.delete_listener(key)
+        self._session.remove_event_listener("update", self._on_session_update)
 
         for name in self._plots:
             self._disconnect_plot(name)
