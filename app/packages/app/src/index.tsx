@@ -51,9 +51,10 @@ const App: React.FC = withErrorBoundary(({}) => {
   const refreshRouter = useRecoilValue(refresher);
 
   const getView = useRecoilCallback(
-    ({ snapshot }) => () => {
-      return snapshot.getLoadable(viewAtoms.view).contents;
-    },
+    ({ snapshot }) =>
+      () => {
+        return snapshot.getLoadable(viewAtoms.view).contents;
+      },
     []
   );
 
@@ -110,6 +111,7 @@ const App: React.FC = withErrorBoundary(({}) => {
               break;
             case Events.STATE_UPDATE: {
               const data = JSON.parse(msg.data).state;
+              const datasetData = JSON.parse(msg.data).dataset;
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
@@ -135,7 +137,7 @@ const App: React.FC = withErrorBoundary(({}) => {
                 contextRef.current.history.push(path);
               }
 
-              setState({ state });
+              setState({ state, dataset: datasetData });
               break;
             }
           }

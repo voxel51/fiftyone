@@ -24,6 +24,8 @@ from fiftyone.core.session.events import (
     StateUpdate,
 )
 import fiftyone.core.state as fos
+from fiftyone.core.view import DatasetView
+from fiftyone.server.query import serialize_dataset
 
 
 @dataclass(frozen=True)
@@ -105,11 +107,20 @@ async def add_event_listener(
             events = sorted(events, key=lambda event: event[0])
 
             for (_, event) in events:
+                d = asdict(event, dict_factory=dict_factory)
+
+                if (
+                    data.is_app
+                    and isinstance(event, StateUpdate)
+                    and event.state.dataset is not None
+                ):
+                    d["dataset"] = serialize_dataset(
+                        event.state.dataset, event.state.view
+                    )
+
                 yield ServerSentEvent(
                     event=event.get_event_name(),
-                    data=FiftyOneJSONEncoder.dumps(
-                        asdict(event, dict_factory=dict_factory)
-                    ),
+                    data=FiftyOneJSONEncoder.dumps(d),
                 )
 
             await asyncio.sleep(0.2)

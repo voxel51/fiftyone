@@ -275,7 +275,7 @@ class Query:
         return foc.VERSION
 
 
-def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> Dataset:
+def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     doc = dataset._doc.to_dict()
     Dataset.modifier(doc)
     data = from_dict(Dataset, doc, config=Config(check_types=False))

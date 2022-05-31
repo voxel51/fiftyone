@@ -112,10 +112,8 @@ export const useFollow = (leaderRef, followerRef, set) => {
       return;
     }
     const { x, y } = followerRef.current.getBoundingClientRect();
-    const {
-      x: leaderX,
-      width: leaderWidth,
-    } = leaderRef.current.getBoundingClientRect();
+    const { x: leaderX, width: leaderWidth } =
+      leaderRef.current.getBoundingClientRect();
 
     set({
       left: x,
@@ -276,9 +274,10 @@ export const useScreenshot = (
 
 export type StateResolver =
   | { dataset?: State.Dataset; state?: Partial<State.Description> }
-  | ((
-      t: TransactionInterface_UNSTABLE
-    ) => { dataset?: State.Dataset; state?: Partial<State.Description> });
+  | ((t: TransactionInterface_UNSTABLE) => {
+      dataset?: State.Dataset;
+      state?: Partial<State.Description>;
+    });
 
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
@@ -305,7 +304,7 @@ export const useStateUpdate = () => {
 
       const { get, set } = t;
 
-      if (state?.view) {
+      if (state) {
         const view = get(viewAtoms.view);
 
         if (!viewsAreEqual(view, state.view || [])) {
@@ -456,14 +455,15 @@ export const useSelectSample = () => {
   const setSelected = useSetSelected();
 
   return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) => async (sampleId: string) => {
-      const selected = new Set(get(atoms.selectedSamples));
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
-      set(atoms.selectedSamples, selected);
-      setSelected([...selected]);
-    },
+    ({ set, get }) =>
+      async (sampleId: string) => {
+        const selected = new Set(get(atoms.selectedSamples));
+        selected.has(sampleId)
+          ? selected.delete(sampleId)
+          : selected.add(sampleId);
+        set(atoms.selectedSamples, selected);
+        setSelected([...selected]);
+      },
     []
   );
 };
