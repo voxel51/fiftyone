@@ -573,7 +573,7 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELStreamInfos(object):
-    """A collection of multiple `OpenLABELStreamInfo` objects"""
+    """A collection of multiple `OpenLABELStreamInfo` objects."""
 
     def __init__(self, infos=None):
         self.infos = infos if infos else []
@@ -602,7 +602,7 @@ class OpenLABELStreamInfos(object):
     @property
     def frame_numbers(self):
         """All frame numbers existing in the `OpenLABELStreamInfo` objects in
-        this collection
+        this collection.
         """
         frame_numbers = []
         for info in self.infos:
@@ -613,7 +613,14 @@ class OpenLABELStreamInfos(object):
 
 class OpenLABELStreamInfo(object):
     """Information about a stream used to gather specific objects for a media
-    file
+    file.
+
+    Args:
+        frame_numbers (None): frame numbers related to this stream info
+        stream (None): an :class:`OpenLABELStream`
+        label_file_id (None): a label file id related to this stream info
+        is_sample_level (None): whether this stream info corresponds to
+            sample-level or frame-level
     """
 
     def __init__(
@@ -630,11 +637,11 @@ class OpenLABELStreamInfo(object):
 
     @property
     def is_streamless(self):
-        """Whether there exists a stream corresponding to this info"""
+        """Whether there exists a stream corresponding to this info."""
         return self.stream is None
 
     def get_stream_attributes(self):
-        """Get a dictionary of attributes for the stream in this object
+        """Get a dictionary of attributes for the stream in this object.
 
         Returns:
             a dictionary of attributes from the corresponding stream
@@ -708,7 +715,7 @@ class OpenLABELObjects(OpenLABELGroup):
 
     @property
     def streams(self):
-        """Get streams corresponding to any object in this collection"""
+        """Get streams corresponding to any object in this collection."""
         _streams = []
         for obj in self.all_objects:
             _streams.extend(obj.streams)
@@ -716,14 +723,14 @@ class OpenLABELObjects(OpenLABELGroup):
 
     @property
     def all_objects(self):
-        """Get all `OpenLABELObject`s in this collection"""
+        """Get all `OpenLABELObject`s in this collection."""
         return list(self._element_id_to_element.values())
 
     def parse_objects_dict(
         self, objects_dict, label_file_id, frame_number=None
     ):
         """Parses the OpenLABEL annotations corresponding to a specific
-        dictionary of objects
+        dictionary of objects.
 
         Args:
             objects_dict: the dict of OpenLABEL object annotations
@@ -741,7 +748,7 @@ class OpenLABELObjects(OpenLABELGroup):
         return OpenLABELObject
 
     def add_object(self, obj_key, label_file_id, obj):
-        """Adds an `OpenLABELObject` to this collection
+        """Adds an `OpenLABELObject` to this collection.
 
         Args:
             obj_key: the name of the object in the OpenLABEL annotations
@@ -763,7 +770,7 @@ class OpenLABELObjects(OpenLABELGroup):
 
     def get_objects(self, stream_infos):
         """Gets any objects that correspond to an info in the given stream
-        infos
+        infos.
 
         Args:
             stream_infos: a `OpenLABELStreamInfos` used to get corresponding
@@ -794,7 +801,7 @@ class OpenLABELObjects(OpenLABELGroup):
         skeleton=None,
         skeleton_key=None,
     ):
-        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
+        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels.
 
         Args:
             frame_size: the size of the image frame in pixels (width, height)
@@ -893,7 +900,7 @@ class OpenLABELStreams(OpenLABELGroup):
     @property
     def uris(self):
         """All unique media file identifiers corresponding to streams in this
-        collection
+        collection.
         """
         _uris = []
         for stream in self._element_id_to_element.values():
@@ -912,7 +919,7 @@ class OpenLABELStreams(OpenLABELGroup):
             )
 
     def get_dimensions(self, uri):
-        """Get the width and height of a given URI or file id
+        """Get the width and height of a given URI or file id.
 
         Args:
             file_id: the unique identifier to a media file
@@ -957,7 +964,7 @@ class OpenLABELStreams(OpenLABELGroup):
 
     def get_stream_info(self, uri):
         """Get all stream infos, including stream and relevant frame numbers,
-        for a given media file identifier
+        for a given media file identifier.
 
         Args:
             uri: the unique media file identifer for which to get all stream
@@ -994,7 +1001,7 @@ class OpenLABELStreams(OpenLABELGroup):
 
 
 class AttributeParser(object):
-    """Methods used to parse attributes from OpenLABEL annotations"""
+    """Methods used to parse attributes from OpenLABEL annotations."""
 
     _STREAM_KEYS = ["stream", "coordinate_system"]
     _IGNORE_KEYS = [
@@ -1041,6 +1048,8 @@ class AttributeParser(object):
 
 
 class OpenLABELShape(AttributeParser):
+    """A single OpenLABEL shape like a bounding box or polygon."""
+
     def __init__(self, coords, attributes=None, stream=None):
         self.coords = coords
         self.attributes = attributes if attributes else {}
@@ -1048,13 +1057,33 @@ class OpenLABELShape(AttributeParser):
 
     @classmethod
     def from_shape_dict(cls, d):
+        """Constructs a shape from a dictionary of information.
+
+        Args:
+            d: a dictionary containing information about a shape
+        Returns:
+            an :class:`OpenLABELShape`
+        """
         coords = d.pop("val", None)
         attributes, stream = cls._parse_attributes(d)
         return cls(coords, attributes=attributes, stream=stream)
 
 
 class OpenLABELBBox(OpenLABELShape):
+    """An OpenLABEL bounding box."""
+
     def to_label(self, label, attributes, width, height):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+
+        Return:
+            an :class:`fiftyone.core.labels.Detection`
+        """
         num_coords = len(self.coords)
         if num_coords != 4:
             raise ValueError(
@@ -1078,7 +1107,20 @@ class OpenLABELBBox(OpenLABELShape):
 
 
 class OpenLABELPoly2D(OpenLABELShape):
+    """An OpenLABEL polyline."""
+
     def to_label(self, label, attributes, width, height):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+
+        Return:
+            an :class:`fiftyone.core.labels.Polyline`
+        """
         rel_points = [
             [(x / width, y / height) for x, y, in _pairwise(self.coords)]
         ]
@@ -1102,6 +1144,8 @@ class OpenLABELPoly2D(OpenLABELShape):
 
 
 class OpenLABELPoint(OpenLABELShape):
+    """An OpenLABEL keypoint."""
+
     @classmethod
     def _sort_by_skeleton(cls, points, attrs, label_order, skeleton_order):
         if len(points) != len(label_order):
@@ -1142,6 +1186,25 @@ class OpenLABELPoint(OpenLABELShape):
         skeleton=None,
         skeleton_key=None,
     ):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
+                sort list attributes based on the labels in the skeleton. Used
+                only if `skeleton_key` is provided
+            skeleton_key (None): the string key into the attributes dictionary
+                containing the label of each point, used to sort list attribute
+                fields based on the labels in the skeleton. Used only if
+                `skeleton` is provided
+
+        Return:
+            an :class:`fiftyone.core.labels.Keypoint`
+        """
         rel_points = [(x / width, y / height) for x, y, in self.coords]
         _attrs = deepcopy(attributes)
         _attrs.update(self.attributes)
@@ -1155,6 +1218,8 @@ class OpenLABELPoint(OpenLABELShape):
 
 
 class OpenLABELShapes(AttributeParser):
+    """A collection of OpenLABEL shapes."""
+
     def __init__(self, shapes=None, attributes=None, stream=None):
         self.shapes = shapes if shapes else []
         self.attributes = attributes if attributes else {}
@@ -1162,6 +1227,7 @@ class OpenLABELShapes(AttributeParser):
 
     @property
     def streams(self):
+        """A list of streams corresponding to any object in this collection."""
         streams = []
         if self.stream:
             streams.append(self.stream)
@@ -1175,6 +1241,21 @@ class OpenLABELShapes(AttributeParser):
 
     @classmethod
     def from_object_data_list(cls, shape_type, l, attributes=None):
+        """Construct an :class:`OpenLABELShapes` from a list of shape
+        dictionaries.
+
+        Args:
+            shape_type: the type of the shape being loaded. Options are
+                (:class:`OpenLABELBBox`, :class:`OpenLABELPoly2D`,
+                :class:`OpenLABELPoint`)
+            l: a list of shape dictionaries parsed from OpenLABEL object
+                annotations
+            attributes (None): a dictionary of attributes corresponding to all
+                shapes in this collection
+
+        Returns:
+            a :class:`OpenLABELShapes`
+        """
         shapes = []
         for shape_d in l:
             shapes.append(shape_type.from_shape_dict(shape_d))
@@ -1186,6 +1267,12 @@ class OpenLABELShapes(AttributeParser):
         return cls(shapes=shapes, attributes=attributes, stream=stream)
 
     def merge_shapes(self, shapes):
+        """Merges another :class:`OpenLABELShapes` into this one.
+
+        Args:
+            shapes: another :class:`OpenLABELShapes` to merge into this
+                object
+        """
         if shapes:
             self.shapes.extend(shapes.shapes)
             self.attributes.update(shapes.attributes)
@@ -1200,6 +1287,26 @@ class OpenLABELShapes(AttributeParser):
         skeleton=None,
         skeleton_key=None,
     ):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+            is_points (False): whether the labels being converted are keypoints
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
+                sort list attributes based on the labels in the skeleton. Used
+                only if `is_points` and `skeleton_key` is provided
+            skeleton_key (None): the string key into the attributes dictionary
+                containing the label of each point, used to sort list attribute
+                fields based on the labels in the skeleton. Used only if
+                `is_points` and `skeleton` is provided
+
+        Return:
+            an :class:`fiftyone.core.labels.Keypoint`
+        """
         if is_points:
             return self._to_point_labels(
                 label,
@@ -1291,9 +1398,11 @@ class OpenLABELStream(object):
         name (None): the name of the stream
         type (None): the type of the stream
         description (None): a string description for this stream
+        properties (None): a dict of properties for this stream
         uri (None): the uri or file_id of the media corresponding to this
             stream
-        properties (None): a dict of properties for this stream
+        other_attrs (None): a dictionary of other attributes corresponding to
+            this stream
     """
 
     _HEIGHT_KEYS = ["height", "height_px"]
@@ -1373,6 +1482,7 @@ class OpenLABELStream(object):
 
     @property
     def uris(self):
+        """Get uris corresponding to any stream in this collection."""
         _uris = deepcopy(self._uris)
         for _stream in self.frame_streams.values():
             _uris.extend(_stream.uris)
@@ -1380,6 +1490,7 @@ class OpenLABELStream(object):
         return sorted(set(_uris))
 
     def get_frame_numbers(self, uri):
+        """Get frame numbers corresponding to the given uri."""
         is_sample_level = False
         if uri in self._uris:
             # URI corresponds to all frames in this stream
@@ -1405,9 +1516,12 @@ class OpenLABELStream(object):
         Args:
             stream_name: the name of the stream
             d: a dict containing information about this stream
+            frame_number: the frame number from which this stream
+                information dict was parsed, 'None' if from the top-level
+                streams
 
         Returns:
-            An `OpenLABELStream`
+            An :class:`OpenLABELStream`
         """
         if frame_number is not None:
             stream = cls(stream_name)
@@ -1479,16 +1593,18 @@ class OpenLABELObject(AttributeParser):
     """An object parsed from OpenLABEL labels.
 
     Args:
-        key (None): the OpenLABEL key string for this object
+        key: the OpenLABEL key string for this object
         name (None): the name string of the object
         type (None): the type string of the object
-        bboxes ([]): a list of absolute bounding box coordinates for this
+        bboxes (None): an :class`OpenLABELShapes` of bounding boxes for this
             object
-        segmentations ([]): a list of aboslute polygon segmentations for this
-            object
-        keyponts ([]): a list of absolute keypoint coordinates for this object
-        stream (None): the `OpenLABELStream` this object corresponds to
-        attributes ({}): a dict of attributes and their values for this object
+        segmentations (None): an :class`OpenLABELShapes` of polygon
+            segmentations for this object
+        keyponts (None): an :class:`OpenLABELShapes` of keypoints for this object
+        stream (None): the :class:`OpenLABELStream` this object corresponds to
+        other_attrs (None): a dict of attributes and their values for this object
+        is_frame_level (False): whether this object is sample-level or
+            frame-level
     """
 
     _STREAM_KEYS = ["stream", "coordinate_system"]
@@ -1531,7 +1647,10 @@ class OpenLABELObject(AttributeParser):
 
     @property
     def _sample_level_streams(self):
-        _streams = [self.stream]
+        _streams = []
+        if self.stream:
+            _streams.append(self.stream)
+
         for _shapes in self.shapes.values():
             _streams.extend(_shapes.streams)
 
@@ -1539,6 +1658,7 @@ class OpenLABELObject(AttributeParser):
 
     @property
     def streams(self):
+        """Get streams corresponding to this object."""
         _streams = deepcopy(self._sample_level_streams)
 
         for _object in self.frame_objects.values():
@@ -1548,9 +1668,23 @@ class OpenLABELObject(AttributeParser):
 
     @property
     def is_streamless(self):
+        """Whether any streams are connected to this object or corresponding
+        frame-level objects.
+        """
         return bool(self._sample_level_streams)
 
     def filter_stream(self, stream_info):
+        """Filters this object to contain only frame labels specified in the
+        given stream info
+
+        Args:
+            stream_info: the :class:`OpenLABELStreamInfo` to use to filter this
+                object
+
+        Returns:
+            an :class:`OpenLABELObject` containing only frames related to the
+            given stream info
+        """
         # if obj is top level and stream info is sample level
         if stream_info.is_streamless:
             if self.is_frame_level or not self.is_streamless:
@@ -1562,9 +1696,9 @@ class OpenLABELObject(AttributeParser):
         if stream_info.is_sample_level:
             return self
 
-        return self.keep_frames(stream_info.frame_numbers)
+        return self._keep_frames(stream_info.frame_numbers)
 
-    def keep_frames(self, frame_numbers):
+    def _keep_frames(self, frame_numbers):
         _obj = deepcopy(self)
         numbers_to_remove = set(_obj.frame_objects.keys()) - set(frame_numbers)
         for frame_number in numbers_to_remove:
