@@ -64,7 +64,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-          @refetchable(queryName: "DatasetsPaginationQuery") {
+        @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -109,7 +109,6 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
 };
 
 export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
-  const [gaInitialized, setGAInitialized] = useState(false);
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
   const info = useFragment(
@@ -148,7 +147,7 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
       [gaConfig.dimensions.context]:
         info.context + (isElectron() ? "-DESKTOP" : ""),
     });
-    setGAInitialized(true);
+    ReactGA.pageview("/");
   }, []);
 };
 
