@@ -51,8 +51,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "TeamsStoreTeamsSubmissionMutation",
       operationKind: "mutation",
-      text:
-        "mutation TeamsStoreTeamsSubmissionMutation {\n  storeTeamsSubmission\n}\n",
+      text: "mutation TeamsStoreTeamsSubmissionMutation {\n  storeTeamsSubmission\n}\n",
     },
   };
 })();
