@@ -6,6 +6,11 @@ Core utilities.
 |
 """
 import atexit
+from base64 import b64encode, b64decode
+from collections import defaultdict
+from contextlib import contextmanager
+from copy import deepcopy
+from datetime import date, datetime
 import hashlib
 import importlib
 import inspect
@@ -14,23 +19,15 @@ import itertools
 import logging
 import ntpath
 import os
-import platform
 import posixpath
+import platform
 import signal
 import struct
 import subprocess
 import timeit
 import types
-import zlib
-
-from base64 import b64decode
-from base64 import b64encode
-from collections import defaultdict
-from contextlib import contextmanager
-from copy import deepcopy
-from datetime import date
-from datetime import datetime
 from xml.parsers.expat import ExpatError
+import zlib
 
 try:
     import pprintpp as _pprint
@@ -670,8 +667,7 @@ def load_xml_as_json_dict(xml_path):
         with open(xml_path, "rb") as f:
             return xmltodict.parse(f.read())
     except ExpatError as ex:
-        logger.error(f"Failed to read {xml_path}: {ex}")
-        raise
+        raise ExpatError(f"Failed to read {xml_path}: {ex}")
 
 
 def parse_serializable(obj, cls):
