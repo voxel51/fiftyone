@@ -132,6 +132,7 @@ export const aggregations = selectorFamily<
     }
 
     const dataset = get(selectors.datasetName);
+    get(aggregationsTick);
 
     if (!dataset) {
       return null;

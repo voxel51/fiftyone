@@ -42,8 +42,9 @@ import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graph
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { useSetDataset, useStateUpdate } from "../utils/hooks";
-import { isElectron } from "@fiftyone/utilities";
+import { clone, isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
+import { RGB } from "@fiftyone/looker";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
@@ -256,7 +257,9 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
 
   const update = useStateUpdate();
   useEffect(() => {
-    update({ state: { config, colorscale } });
+    update({
+      state: { config: clone(config), colorscale: clone(colorscale) as RGB[] },
+    });
   }, []);
 
   return (
