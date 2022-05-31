@@ -59,16 +59,7 @@ async def get_metadata(filepath, metadata=None):
                 d["height"] = height
                 return d
 
-    try:
-        # Retrieve media metadata from disk
-        metadata = await read_metadata(filepath, is_video)
-    except:
-        # Something went wrong (ie non-existent file), so we gracefully return
-        # some placeholder metadata so the App grid can be rendered
-        if is_video:
-            metadata = {"width": 512, "height": 512, "frame_rate": 30}
-        else:
-            metadata = {"width": 512, "height": 512}
+    metadata = await read_metadata(filepath, is_video)
 
     d.update(metadata)
 
