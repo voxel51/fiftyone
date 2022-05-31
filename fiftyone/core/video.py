@@ -417,12 +417,12 @@ def make_frames_dataset(
     min_size=None,
     max_size=None,
     sparse=False,
+    output_dir=None,
     frames_patt=None,
     force_sample=False,
     skip_failures=True,
     verbose=False,
     name=None,
-    output_dir=None,
 ):
     """Creates a dataset that contains one sample per frame in the video
     collection.
@@ -502,6 +502,9 @@ def make_frames_dataset(
             input collection. This parameter has no effect when
             ``sample_frames==False`` since frames must always exist in order to
             have ``filepath`` information use
+        output_dir (None): an optional output directory to use as the basename
+            of the sampled frames.  When not specified the basename will
+            be the same as the input video
         frames_patt (None): a pattern specifying the filename/format to use to
             write or check or existing sampled frames, e.g., ``"%%06d.jpg"``.
             The default value is
@@ -513,9 +516,6 @@ def make_frames_dataset(
         verbose (False): whether to log information about the frames that will
             be sampled, if any
         name (None): a name for the dataset
-        output_dir (None): an optional output directory to use as the basename
-            of the sampled frames.  When not specified the basename will
-            be the same as the input video
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -579,11 +579,9 @@ def make_frames_dataset(
             ids_to_sample, ordered=True
         )
 
-        if output_dir:
-            output_dir = fou.normalize_path(output_dir)
-
         fouv.sample_videos(
             to_sample_view,
+            output_dir=output_dir,
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -593,7 +591,6 @@ def make_frames_dataset(
             force_sample=True,
             save_filepaths=True,
             skip_failures=skip_failures,
-            output_dir=output_dir,
         )
 
     # Merge frame data

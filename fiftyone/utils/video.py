@@ -224,6 +224,7 @@ def transform_videos(
 
 def sample_videos(
     sample_collection,
+    output_dir=None,
     frames_patt=None,
     frames=None,
     fps=None,
@@ -237,7 +238,6 @@ def sample_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    output_dir=None,
     **kwargs,
 ):
     """Samples the videos in the sample collection into directories of
@@ -268,6 +268,9 @@ def sample_videos(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
+        output_dir (None): an optional output directory to use as the basename
+            of the sampled frames.  When not specified the basename will
+            be the same as the input video
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
@@ -301,9 +304,6 @@ def sample_videos(
             an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
-        output_dir (None): an optional output directory to use as the basename
-            of the sampled frames.  When not specified the basename will
-            be the same as the input video
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -318,13 +318,13 @@ def sample_videos(
         max_size=max_size,
         sample_frames=True,
         original_frame_numbers=original_frame_numbers,
+        output_dir=output_dir,
         frames_patt=frames_patt,
         force_reencode=force_sample,
         save_filepaths=save_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
-        output_dir=output_dir,
         **kwargs,
     )
 
@@ -582,6 +582,7 @@ def _transform_videos(
     min_size=None,
     max_size=None,
     sample_frames=False,
+    output_dir=None,
     frames_patt=None,
     original_frame_numbers=True,
     reencode=False,
@@ -590,7 +591,6 @@ def _transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
-    output_dir=None,
     **kwargs,
 ):
     if sample_frames:
