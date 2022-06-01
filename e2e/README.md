@@ -12,20 +12,14 @@ For the app, it will be useful to mock the backend for some tests. In order to a
 
 This is a WIP and there a few things that need to be setup in order for its initial version to be viable:
 
- - [ ] initial setup cypress
- - [ ] define tests approach (see below)
- - [ ] verify approach works in a couple cases
- - [ ] run python from cypress
+ - [x] initial setup cypress
+ - [x] define tests approach (see below)
+ - [x] verify approach works in a couple cases
+ - [x] run python from cypress
  - [ ] setup on CI / github actions
  - [ ] modify install.bash to setup cypress for dev installs
  - [ ] update this readme once more fleshed out
 
  **Approach**
 
- Below are a few concepts/ideas for how the tests might work.
-
- The directory structure will need to follow cypress, as that isn't very configurable:
-
- ```
- /fiftyone
-   /e2e
+See e2e/cypress/integration/quickstart/smoke.spec.ts
