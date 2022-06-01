@@ -83,6 +83,11 @@ class OpenLABELImageDatasetImporter(
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load
+        skeleton (None): a :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+            to reference when loading keypoints
+        skeleton_key (None): the key in the OpenLABEL annotations pointing to
+            the label of each keypoint matching the labels defined in the given
+            ``skeleton``
     """
 
     def __init__(
@@ -296,6 +301,11 @@ class OpenLABELVideoDatasetImporter(
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load
+        skeleton (None): a :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+            to reference when loading keypoints
+        skeleton_key (None): the key in the OpenLABEL annotations pointing to
+            the label of each keypoint matching the labels defined in the given
+            ``skeleton``
     """
 
     def __init__(
@@ -546,7 +556,7 @@ class OpenLABELAnnotations(object):
                 supported values are
                 ``("detections", "segmentations", "keypoints")``.
             frame_size: the (width, height) tuple for the media frame
-            seg_type: the `SegmentationType` to use for segmentation
+            seg_type: the :class:`SegmentationType` to use for segmentation
                 annotations
             skeleton (None): a
                 :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use as a
@@ -572,7 +582,7 @@ class OpenLABELAnnotations(object):
 
 
 class OpenLABELStreamInfos(object):
-    """A collection of multiple `OpenLABELStreamInfo` objects."""
+    """A collection of multiple :class:`OpenLABELStreamInfo` objects."""
 
     def __init__(self, infos=None):
         self.infos = infos if infos else []
@@ -600,7 +610,7 @@ class OpenLABELStreamInfos(object):
 
     @property
     def frame_numbers(self):
-        """All frame numbers existing in the `OpenLABELStreamInfo` objects in
+        """All frame numbers existing in the :class:`OpenLABELStreamInfo` objects in
         this collection.
         """
         frame_numbers = []
@@ -722,7 +732,7 @@ class OpenLABELObjects(OpenLABELGroup):
 
     @property
     def all_objects(self):
-        """Get all `OpenLABELObject`s in this collection."""
+        """Get all :class:`OpenLABELObject`s in this collection."""
         return list(self._element_id_to_element.values())
 
     def parse_objects_dict(
@@ -735,7 +745,7 @@ class OpenLABELObjects(OpenLABELGroup):
             objects_dict: the dict of OpenLABEL object annotations
             label_file_id: the name of the annotations file containing these
                 objects
-            frame_number (None): an optional frame that this `objects_dict` is
+            frame_number (None): an optional frame that this ``objects_dict`` is
                 in
         """
         self._parse_group_dict(
@@ -747,13 +757,13 @@ class OpenLABELObjects(OpenLABELGroup):
         return OpenLABELObject
 
     def add_object(self, obj_key, label_file_id, obj):
-        """Adds an `OpenLABELObject` to this collection.
+        """Adds an :class:`OpenLABELObject` to this collection.
 
         Args:
             obj_key: the name of the object in the OpenLABEL annotations
             label_file_id: the filename of the annotations file containing this
                 label
-            obj: the `OpenLABELObject` to add
+            obj: the :class:`OpenLABELObject` to add
         """
         obj_id = self._get_element_id(obj_key, label_file_id)
         self._element_id_to_element[obj_id] = obj
@@ -772,11 +782,11 @@ class OpenLABELObjects(OpenLABELGroup):
         infos.
 
         Args:
-            stream_infos: a `OpenLABELStreamInfos` used to get corresponding
+            stream_infos: a :class:`OpenLABELStreamInfos` used to get corresponding
                 objects
 
         Returns:
-            an `OpenLABELObjects` with objects that correspond to any of the
+            an :class:`OpenLABELObjects` with objects that correspond to any of the
             given stream infos
         """
         stream_objects = OpenLABELObjects()
@@ -805,8 +815,8 @@ class OpenLABELObjects(OpenLABELGroup):
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type: the `SegmentationType` to use to store segmentations
-            stream_infos: the `OpenLABELStreamInfos` containing sample-level
+            seg_type: the :class:`SegmentationType` to use to store segmentations
+            stream_infos: the :class:`OpenLABELStreamInfos` containing sample-level
                 attributes to parse into labels
             skeleton (None): a
                 :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use when
@@ -917,7 +927,7 @@ class OpenLABELStreams(OpenLABELGroup):
             streams_dict: the dict of OpenLABEL stream annotations
             label_file_id: the name of the annotations file containing these
                 streams
-            frame_number (None): an optional frame that this `streams_dict` is
+            frame_number (None): an optional frame that this ``streams_dict`` is
                 in
         """
 
@@ -984,7 +994,7 @@ class OpenLABELStreams(OpenLABELGroup):
                 infos
 
         Returns:
-            the `OpenLABELStreamInfos` corresponding to the given uri
+            the :class:`OpenLABELStreamInfos` corresponding to the given uri
         """
         infos = []
         if uri in self._uri_to_stream_ids:
@@ -1209,11 +1219,11 @@ class OpenLABELPoint(OpenLABELShape):
             skeleton (None): a
                 :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
                 sort list attributes based on the labels in the skeleton. Used
-                only if `skeleton_key` is provided
+                only if ``skeleton_key`` is provided
             skeleton_key (None): the string key into the attributes dictionary
                 containing the label of each point, used to sort list attribute
                 fields based on the labels in the skeleton. Used only if
-                `skeleton` is provided
+                ``skeleton`` is provided
 
         Return:
             an :class:`fiftyone.core.labels.Keypoint`
@@ -1311,11 +1321,11 @@ class OpenLABELShapes(AttributeParser):
             skeleton (None): a
                 :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
                 sort list attributes based on the labels in the skeleton. Used
-                only if `is_points` and `skeleton_key` is provided
+                only if ``is_points`` and ``skeleton_key`` is provided
             skeleton_key (None): the string key into the attributes dictionary
                 containing the label of each point, used to sort list attribute
                 fields based on the labels in the skeleton. Used only if
-                `is_points` and `skeleton` is provided
+                ``is_points`` and ``skeleton`` is provided
 
         Return:
             an :class:`fiftyone.core.labels.Keypoint`
