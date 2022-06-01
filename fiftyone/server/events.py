@@ -84,9 +84,11 @@ async def add_event_listener(
                 StateUpdate(state=data.state),
                 dict_factory=dict_factory,
             )
-            d["dataset"] = serialize_dataset(
-                data.state.dataset, data.state.view
-            )
+            if data.state.dataset is not None:
+                d["dataset"] = serialize_dataset(
+                    data.state.dataset, data.state.view
+                )
+
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
                 data=FiftyOneJSONEncoder.dumps(d),

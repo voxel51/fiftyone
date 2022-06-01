@@ -181,7 +181,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         datasetSelectorProps={{
           component: DatasetLink,
           onSelect: (name) => {
-            setDataset(name);
+            name !== dataset && setDataset(name);
           },
           placeholder: "Select dataset",
           useSearch,

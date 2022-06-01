@@ -439,8 +439,8 @@ export const useSetView = () => {
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
 
-  return (view) =>
-    send((session) =>
+  return (view) => {
+    send((session) => {
       commit({
         variables: {
           subscription,
@@ -455,11 +455,14 @@ export const useSetView = () => {
             state: {
               view,
               viewCls: dataset.viewCls,
+              selected: [],
+              selectedLabels: [],
             },
           });
         },
-      })
-    );
+      });
+    });
+  };
 };
 
 export const useSelectSample = () => {
