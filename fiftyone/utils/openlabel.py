@@ -1671,7 +1671,7 @@ class OpenLABELObject(AttributeParser):
         """Whether any streams are connected to this object or corresponding
         frame-level objects.
         """
-        return bool(self._sample_level_streams)
+        return not bool(self._sample_level_streams)
 
     def filter_stream(self, stream_info):
         """Filters this object to contain only frame labels specified in the
