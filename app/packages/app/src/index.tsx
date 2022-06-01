@@ -1,28 +1,15 @@
-import {
-  useRouter,
-  withErrorBoundary,
-  Loading,
-  EventsContext,
-  Theme,
-} from "@fiftyone/components";
+import { useRouter, Loading, EventsContext, Theme } from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { useErrorHandler } from "react-error-boundary";
-import { Environment } from "react-relay";
-import { atom, RecoilRoot, useRecoilCallback, useRecoilValue } from "recoil";
+import { RecoilRoot, useRecoilValue } from "recoil";
 
 import Setup from "./components/Setup";
 
-import {
-  useReset,
-  useScreenshot,
-  useUnprocessedStateUpdate,
-} from "./utils/hooks";
+import { useReset, useScreenshot } from "./utils/hooks";
 
 import "./index.css";
 import { State } from "./recoil/types";
-import * as viewAtoms from "./recoil/view";
 import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
@@ -41,12 +28,11 @@ enum Events {
   STATE_UPDATE = "state_update",
 }
 
-const App: React.FC = withErrorBoundary(({}) => {
+const App: React.FC = ({}) => {
   const [readyState, setReadyState] = useState(AppReadyState.CONNECTING);
   const readyStateRef = useRef<AppReadyState>();
   readyStateRef.current = readyState;
   const subscription = useRecoilValue(stateSubscription);
-  const handleError = useErrorHandler();
   const refresh = useRefresh();
   const refreshRouter = useRecoilValue(refresher);
 
@@ -54,8 +40,6 @@ const App: React.FC = withErrorBoundary(({}) => {
     readyState === AppReadyState.CLOSED,
     refreshRouter,
   ]);
-
-  const setState = useUnprocessedStateUpdate();
 
   const contextRef = useRef(context);
   contextRef.current = context;
@@ -102,7 +86,6 @@ const App: React.FC = withErrorBoundary(({}) => {
               const { colorscale, config, ...data } = JSON.parse(
                 msg.data
               ).state;
-              const datasetData = JSON.parse(msg.data).dataset;
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
@@ -124,21 +107,19 @@ const App: React.FC = withErrorBoundary(({}) => {
                   }`
                 : `/${window.location.search}`;
 
-              contextRef.current.history.replace(
-                path,
-                dataset ? { view: state.view || null } : undefined
-              );
+              contextRef.current.history.replace(path, {
+                state,
+                colorscale,
+                config,
+                variables: dataset ? { view: state.view || null } : undefined,
+              });
 
-              setState({ colorscale, config, dataset: datasetData, state });
               break;
             }
           }
         },
         onclose: () => {
           setReadyState(AppReadyState.CLOSED);
-        },
-        onerror: (err) => {
-          handleError(err);
         },
       },
       controller.signal,
@@ -164,7 +145,7 @@ const App: React.FC = withErrorBoundary(({}) => {
     default:
       return <Setup />;
   }
-});
+};
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>

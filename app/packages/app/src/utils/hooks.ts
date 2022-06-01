@@ -20,7 +20,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { matchPath, useSendEvent, useTo } from "@fiftyone/components";
+import { useSendEvent, useTo } from "@fiftyone/components";
 import { useMutation } from "react-relay";
 import {
   setDataset,
@@ -380,7 +380,10 @@ export const useStateUpdate = () => {
 };
 
 export const useSetDataset = () => {
-  const { to } = useTo<DatasetQuery>({ view: [] });
+  const { to } = useTo({
+    state: { selected: [], selectedLabels: [], view: [], viewCls: null },
+    variables: { view: [] },
+  });
   const send = useSendEvent();
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);

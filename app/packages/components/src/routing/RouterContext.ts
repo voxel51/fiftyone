@@ -25,6 +25,7 @@ export interface RouteData<
 
 export interface Entry<T extends OperationType | undefined = OperationType> {
   pathname: string;
+  state: any;
   entries: {
     component: Resource<Route<T>>;
     prepared?: Resource<PreloadedQuery<T extends undefined ? never : T>>;
@@ -38,6 +39,7 @@ export interface RoutingContext<
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
   pathname: string;
+  state: any;
   subscribe: (cb: (entry: Entry<T>) => void) => () => void;
 }
 
@@ -69,18 +71,20 @@ export const createRouter = (
   const subscribers = new Map();
 
   const cleanup = history.listen(({ location }) => {
-    if (!currentEntry || location.pathname === currentEntry.pathname) {
+    if (!currentEntry) {
       return;
     }
+
     const matches = matchRoute(
       routes,
       location.pathname,
       errors,
-      location.state as Partial<VariablesOf<any>>
+      location.state?.variables as Partial<VariablesOf<any>>
     );
     const entries = prepareMatches(environment, matches);
     const nextEntry: Entry<any> = {
       pathname: location.pathname,
+      state: location.state,
       entries,
     };
     currentEntry = nextEntry;
@@ -93,13 +97,14 @@ export const createRouter = (
       if (!currentEntry) {
         currentEntry = {
           pathname: history.location.pathname,
+          state: history.location.state,
           entries: prepareMatches(
             environment,
             matchRoute(
               routes,
               history.location.pathname,
               errors,
-              history.location.state as Partial<VariablesOf<any>>
+              history.location.state?.variables as Partial<VariablesOf<any>>
             )
           ),
         };
@@ -108,6 +113,9 @@ export const createRouter = (
     },
     get pathname() {
       return history.location.pathname;
+    },
+    get state() {
+      return history.location.state;
     },
     subscribe(cb) {
       const id = nextId++;
