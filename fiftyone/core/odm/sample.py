@@ -82,7 +82,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
     _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
-    filepath = fof.StringField(required=True)
+    filepath = fof.MediaField(required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 

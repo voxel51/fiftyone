@@ -71,6 +71,7 @@ from .core.fields import (
     StringField,
     TargetsField,
     VectorField,
+    MediaField,
 )
 from .core.frame import Frame
 from .core.labels import (

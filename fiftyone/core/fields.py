@@ -689,6 +689,17 @@ class EmbeddedDocumentListField(
         )
 
 
+class MediaField(StringField):
+    """A field to source media files by file path."""
+
+    # def validate(self, value):
+    # try:
+    # validate path?
+    # fofu.validate_frame_number(value)
+    # except fofu.FrameError as e:
+    # self.error(str(e))
+
+
 _ARRAY_FIELDS = (VectorField, ArrayField)
 
 # Fields whose values can be used without parsing when loaded from MongoDB
