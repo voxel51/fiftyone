@@ -50,21 +50,10 @@ const App: React.FC = withErrorBoundary(({}) => {
   const refresh = useRefresh();
   const refreshRouter = useRecoilValue(refresher);
 
-  const getView = useRecoilCallback(
-    ({ snapshot }) =>
-      () => {
-        return snapshot.getLoadable(viewAtoms.view).contents;
-      },
-    []
-  );
-
-  const { context, environment } = useRouter(
-    (environment: Environment) =>
-      makeRoutes(environment, {
-        view: getView,
-      }),
-    [readyState === AppReadyState.CLOSED, refreshRouter]
-  );
+  const { context, environment } = useRouter(makeRoutes, [
+    readyState === AppReadyState.CLOSED,
+    refreshRouter,
+  ]);
 
   const setState = useUnprocessedStateUpdate();
 
@@ -135,11 +124,10 @@ const App: React.FC = withErrorBoundary(({}) => {
                   }`
                 : `/${window.location.search}`;
 
-              if (path !== contextRef.current.pathname) {
-                contextRef.current.history.push(path, "hello");
-              } else {
-                contextRef.current.history.replace(path, "hello");
-              }
+              contextRef.current.history.replace(
+                path,
+                dataset ? { view: state.view || null } : undefined
+              );
 
               setState({ colorscale, config, dataset: datasetData, state });
               break;

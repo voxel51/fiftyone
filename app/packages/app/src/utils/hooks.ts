@@ -37,6 +37,7 @@ import { transformDataset } from "../Root/Datasets";
 import { getDatasetName } from "./generic";
 import { RouterContext } from "@fiftyone/components";
 import { RGB } from "@fiftyone/looker";
+import { DatasetQuery } from "../Root/Datasets/__generated__/DatasetQuery.graphql";
 
 export const useEventHandler = (
   target,
@@ -296,7 +297,7 @@ export const useUnprocessedStateUpdate = () => {
         dataset: dataset
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
-        config: toCamelCase(config) as State.Config,
+        config: config ? (toCamelCase(config) as State.Config) : undefined,
         state: { ...toCamelCase(state), view: state.view } as State.Description,
       };
     });
@@ -379,27 +380,19 @@ export const useStateUpdate = () => {
 };
 
 export const useSetDataset = () => {
-  const { to } = useTo();
+  const { to } = useTo<DatasetQuery>({ view: [] });
   const send = useSendEvent();
-  const t = useRecoilTransaction_UNSTABLE(
-    ({ set }) =>
-      () => {
-        set(viewAtoms.view, []);
-      },
-    []
-  );
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
   const onError = useErrorHandler();
 
   return (name?: string) => {
+    to(name ? `/datasets/${encodeURI(name)}` : "/");
+
     send((session) =>
       commit({
         onError,
         variables: { subscription, session, name },
-        onCompleted: () => {
-          to(name ? `/datasets/${encodeURI(name)}` : "/");
-        },
       })
     );
   };

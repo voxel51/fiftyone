@@ -82,13 +82,15 @@ const Query = graphql`
         edges
       }
       version
+      viewCls
     }
   }
 `;
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
-  const { dataset } = usePreloadedQuery(Query, prepared);
+  const { dataset, ...e } = usePreloadedQuery(Query, prepared);
   const name = useRecoilValue(datasetName);
+
   const setDataset = useSetDataset();
 
   const update = useStateUpdate();
@@ -106,9 +108,13 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
 
       return {
         dataset: transformDataset(dataset),
+        state: {
+          view: prepared.variables.view || [],
+          viewCls: dataset.viewCls,
+        },
       };
     });
-  }, [dataset]);
+  }, [dataset, prepared]);
 
   if (!name) {
     return null;
