@@ -80,14 +80,16 @@ async def add_event_listener(
     data = await _initialize_listener(payload)
     try:
         if data.is_app:
+            d = asdict(
+                StateUpdate(state=data.state),
+                dict_factory=dict_factory,
+            )
+            d["dataset"] = serialize_dataset(
+                data.state.dataset, data.state.view
+            )
             yield ServerSentEvent(
                 event=StateUpdate.get_event_name(),
-                data=FiftyOneJSONEncoder.dumps(
-                    asdict(
-                        StateUpdate(state=data.state),
-                        dict_factory=dict_factory,
-                    )
-                ),
+                data=FiftyOneJSONEncoder.dumps(d),
             )
 
         while True:

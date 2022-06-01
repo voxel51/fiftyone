@@ -70,6 +70,7 @@ export const createRouter = (
   const subscribers = new Map();
 
   const cleanup = history.listen(({ location }) => {
+    console.log(location.state);
     if (!currentEntry || location.pathname === currentEntry.pathname) {
       return;
     }

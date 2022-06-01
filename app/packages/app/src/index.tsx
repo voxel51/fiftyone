@@ -110,7 +110,9 @@ const App: React.FC = withErrorBoundary(({}) => {
               refresh();
               break;
             case Events.STATE_UPDATE: {
-              const data = JSON.parse(msg.data).state;
+              const { colorscale, config, ...data } = JSON.parse(
+                msg.data
+              ).state;
               const datasetData = JSON.parse(msg.data).dataset;
               const state = {
                 ...toCamelCase(data),
@@ -134,10 +136,12 @@ const App: React.FC = withErrorBoundary(({}) => {
                 : `/${window.location.search}`;
 
               if (path !== contextRef.current.pathname) {
-                contextRef.current.history.push(path);
+                contextRef.current.history.push(path, "hello");
+              } else {
+                contextRef.current.history.replace(path, "hello");
               }
 
-              setState({ state, dataset: datasetData });
+              setState({ colorscale, config, dataset: datasetData, state });
               break;
             }
           }

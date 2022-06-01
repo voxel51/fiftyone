@@ -36,6 +36,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { transformDataset } from "../Root/Datasets";
 import { getDatasetName } from "./generic";
 import { RouterContext } from "@fiftyone/components";
+import { RGB } from "@fiftyone/looker";
 
 export const useEventHandler = (
   target,
@@ -272,25 +273,31 @@ export const useScreenshot = (
   return run;
 };
 
+interface StateUpdate {
+  colorscale?: RGB[];
+  config?: State.Config;
+  dataset?: State.Dataset;
+  state?: Partial<State.Description>;
+}
+
 export type StateResolver =
-  | { dataset?: State.Dataset; state?: Partial<State.Description> }
-  | ((t: TransactionInterface_UNSTABLE) => {
-      dataset?: State.Dataset;
-      state?: Partial<State.Description>;
-    });
+  | StateUpdate
+  | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
   return (resolve: StateResolver) => {
     update((t) => {
-      const { dataset, state } =
+      const { colorscale, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       return {
-        state: { ...toCamelCase(state), view: state.view } as State.Description,
+        colorscale,
         dataset: dataset
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
+        config: toCamelCase(config) as State.Config,
+        state: { ...toCamelCase(state), view: state.view } as State.Description,
       };
     });
   };
@@ -299,7 +306,7 @@ export const useUnprocessedStateUpdate = () => {
 export const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { state, dataset } =
+      const { colorscale, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       const { get, set } = t;
@@ -313,10 +320,9 @@ export const useStateUpdate = () => {
         }
       }
 
-      state?.colorscale !== undefined &&
-        set(atoms.colorscale, state.colorscale);
+      colorscale !== undefined && set(atoms.colorscale, colorscale);
 
-      state?.config !== undefined && set(atoms.appConfig, state.config);
+      config !== undefined && set(atoms.appConfig, config);
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
 
       state?.selected && set(atoms.selectedSamples, new Set(state.selected));
@@ -333,10 +339,10 @@ export const useStateUpdate = () => {
 
       const colorPool = get(atoms.colorPool);
       if (
-        state?.config &&
-        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+        config &&
+        JSON.stringify(config.colorPool) !== JSON.stringify(colorPool)
       ) {
-        set(atoms.colorPool, state.config.colorPool);
+        set(atoms.colorPool, config.colorPool);
       }
 
       if (dataset) {
@@ -375,16 +381,25 @@ export const useStateUpdate = () => {
 export const useSetDataset = () => {
   const { to } = useTo();
   const send = useSendEvent();
+  const t = useRecoilTransaction_UNSTABLE(
+    ({ set }) =>
+      () => {
+        set(viewAtoms.view, []);
+      },
+    []
+  );
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
   const onError = useErrorHandler();
 
   return (name?: string) => {
-    to(name ? `/datasets/${encodeURI(name)}` : "/");
     send((session) =>
       commit({
         onError,
         variables: { subscription, session, name },
+        onCompleted: () => {
+          to(name ? `/datasets/${encodeURI(name)}` : "/");
+        },
       })
     );
   };

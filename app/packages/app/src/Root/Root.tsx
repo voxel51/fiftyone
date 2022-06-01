@@ -231,7 +231,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
-  const { config, colorscale } = useFragment(
+  const data = useFragment(
     graphql`
       fragment RootConfig_query on Query {
         config {
@@ -257,9 +257,10 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
   const update = useStateUpdate();
   useEffect(() => {
     update({
-      state: { config: clone(config), colorscale: clone(colorscale) as RGB[] },
+      colorscale: clone(data.colorscale) as RGB[],
+      config: clone(data.config),
     });
-  }, []);
+  }, [data]);
 
   return (
     <>
