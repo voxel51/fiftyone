@@ -2010,6 +2010,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
         self.assertEqual(
             view.first().ground_truth.keypoints[0].name[0], "pose_point1"
         )
+        self.assertEqual(len(view.first().ground_truth.keypoints[0].points), 3)
 
     @drop_datasets
     def test_openlabel_segmentation_dataset(self):

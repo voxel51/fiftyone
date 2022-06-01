@@ -176,8 +176,8 @@ def _merge_object_datas(object_datas, object_type=None):
 
 def _make_skeleton():
     skeleton = fod.KeypointSkeleton(
-        labels=["point1", "point2"],
-        edges=[[0, 1]],
+        labels=["point1", "point2", "nanpoint"],
+        edges=[[0, 1], [1, 2]],
     )
 
     skeleton_key = "skeleton_key"
