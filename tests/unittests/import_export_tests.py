@@ -21,6 +21,7 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.yolo as fouy
+from fiftyone.core.expressions import ViewField as F
 
 from decorators import drop_datasets
 
@@ -1981,6 +1982,33 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
         self.assertTrue(
             isinstance(dataset.first().ground_truth, fo.Detections)
+        )
+
+    @drop_datasets
+    def test_openlabel_skeleton_dataset(self):
+        import utils.openlabel as ol
+
+        labels_path = ol._make_image_labels(self._tmp_dir)
+        img_filepath = self._new_image(name="openlabel_test")
+
+        skeleton, skeleton_key = ol._make_skeleton()
+        dataset = fo.Dataset.from_dir(
+            data_path=self.images_dir,
+            labels_path=labels_path,
+            dataset_type=fo.types.OpenLABELImageDataset,
+            label_types="keypoints",
+            skeleton_key=skeleton_key,
+            skeleton=skeleton,
+        )
+        dataset.default_skeleton = skeleton
+
+        self.assertTrue(isinstance(dataset.first().ground_truth, fo.Keypoints))
+        view = dataset.filter_labels(
+            "ground_truth",
+            F("points").length() > 1,
+        )
+        self.assertEqual(
+            view.first().ground_truth.keypoints[0].name[0], "pose_point1"
         )
 
     @drop_datasets
