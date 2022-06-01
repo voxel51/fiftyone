@@ -615,16 +615,16 @@ const videoEscape: Control<VideoState> = {
           };
         }
 
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
         if (frameNumber !== 1) {
           return {
             frameNumber: 1,
             playing: false,
-          };
-        }
-
-        if (!hasDefaultZoom) {
-          return {
-            setZoom: true,
           };
         }
 
@@ -658,9 +658,9 @@ export const VIDEO = {
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
 
-export class HelpPanelElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class HelpPanelElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private showHelp?: boolean;
   protected items?: HTMLDivElement;
 
@@ -774,22 +774,22 @@ export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
   }
 }
 
-const addItem = <State extends BaseState>(items: HTMLDivElement) => (
-  value: Control<State>
-) => {
-  const shortcut = document.createElement("div");
-  shortcut.classList.add(lookerShortcutValue);
-  shortcut.innerHTML = value.shortcut;
+const addItem =
+  <State extends BaseState>(items: HTMLDivElement) =>
+  (value: Control<State>) => {
+    const shortcut = document.createElement("div");
+    shortcut.classList.add(lookerShortcutValue);
+    shortcut.innerHTML = value.shortcut;
 
-  const title = document.createElement("div");
-  title.classList.add(lookerShortcutTitle);
-  title.innerText = value.title;
+    const title = document.createElement("div");
+    title.classList.add(lookerShortcutTitle);
+    title.innerText = value.title;
 
-  const detail = document.createElement("div");
-  detail.classList.add(lookerShortcutDetail);
-  detail.innerText = value.detail;
+    const detail = document.createElement("div");
+    detail.classList.add(lookerShortcutDetail);
+    detail.innerText = value.detail;
 
-  items.appendChild(shortcut);
-  items.appendChild(title);
-  items.appendChild(detail);
-};
+    items.appendChild(shortcut);
+    items.appendChild(title);
+    items.appendChild(detail);
+  };
