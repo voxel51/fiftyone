@@ -1964,7 +1964,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
         self.assertEqual(dataset.count("detections.detections.label"), 1)
         self.assertEqual(dataset.count("segmentations.detections.label"), 2)
-        self.assertEqual(dataset.count("keypoints.keypoints.label"), 1)
+        self.assertEqual(dataset.count("keypoints.keypoints.label"), 2)
 
     @drop_datasets
     def test_openlabel_single_type_dataset(self):
