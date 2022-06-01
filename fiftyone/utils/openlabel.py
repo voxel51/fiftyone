@@ -559,7 +559,6 @@ class OpenLABELAnnotations(object):
             a dictionary of sample level fields and label objects and a
             dictionary of frame numbers to frame level fields and label objects
         """
-
         stream_infos = self.streams.get_stream_info(uri)
         sample_objects = self.objects.get_objects(stream_infos)
         return sample_objects.to_labels(
@@ -849,7 +848,8 @@ class OpenLABELObjects(OpenLABELGroup):
                             )
                     else:
                         raise NotImplementedError(
-                            "Loading semantic segmentations is not yet supported"
+                            "Loading semantic segmentations is not yet "
+                            "supported"
                         )
                     frame_segs[frame_number].extend(_segs)
 
@@ -910,6 +910,17 @@ class OpenLABELStreams(OpenLABELGroup):
     def parse_streams_dict(
         self, streams_dict, label_file_id, frame_number=None
     ):
+        """Parses the OpenLABEL annotations corresponding to a specific
+        dictionary of streams.
+
+        Args:
+            streams_dict: the dict of OpenLABEL stream annotations
+            label_file_id: the name of the annotations file containing these
+                streams
+            frame_number (None): an optional frame that this `streams_dict` is
+                in
+        """
+
         for key, element_dict in streams_dict.items():
             self._add_stream_dict(
                 label_file_id,
@@ -947,6 +958,8 @@ class OpenLABELStreams(OpenLABELGroup):
         """Parses the given raw stream dictionary.
 
         Args:
+            label_file_id: the filename of the annotations file from which
+                these labels are parsed
             stream_name: the name of the stream being parsed
             stream_d: a dict containing stream information to parse
             frame_number (None): the frame number from which this stream
@@ -1167,7 +1180,7 @@ class OpenLABELPoint(OpenLABELShape):
         for label in skeleton_order:
             if label not in label_order:
                 sorted_points.append([float("nan"), float("nan")])
-                for k in attrs_to_sort.keys():
+                for k in attrs_to_sort:
                     sorted_attrs[k].append(None)
             else:
                 ind = label_order.index(label)
@@ -1600,9 +1613,11 @@ class OpenLABELObject(AttributeParser):
             object
         segmentations (None): an :class`OpenLABELShapes` of polygon
             segmentations for this object
-        keyponts (None): an :class:`OpenLABELShapes` of keypoints for this object
+        keyponts (None): an :class:`OpenLABELShapes` of keypoints for this
+            object
         stream (None): the :class:`OpenLABELStream` this object corresponds to
-        other_attrs (None): a dict of attributes and their values for this object
+        other_attrs (None): a dict of attributes and their values for this
+            object
         is_frame_level (False): whether this object is sample-level or
             frame-level
     """
