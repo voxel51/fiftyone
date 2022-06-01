@@ -26,6 +26,7 @@ import struct
 import subprocess
 import timeit
 import types
+from xml.parsers.expat import ExpatError
 import zlib
 
 try:
@@ -662,8 +663,11 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with open(xml_path, "rb") as f:
-        return xmltodict.parse(f.read())
+    try:
+        with open(xml_path, "rb") as f:
+            return xmltodict.parse(f.read())
+    except ExpatError as ex:
+        raise ExpatError(f"Failed to read {xml_path}: {ex}")
 
 
 def parse_serializable(obj, cls):

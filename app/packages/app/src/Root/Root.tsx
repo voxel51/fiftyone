@@ -42,8 +42,9 @@ import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graph
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { useSetDataset, useStateUpdate } from "../utils/hooks";
-import { isElectron } from "@fiftyone/utilities";
+import { clone, isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
+import { RGB } from "@fiftyone/looker";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
@@ -63,7 +64,7 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
     const { data, refetch } = usePaginationFragment(
       graphql`
         fragment RootDatasets_query on Query
-          @refetchable(queryName: "DatasetsPaginationQuery") {
+        @refetchable(queryName: "DatasetsPaginationQuery") {
           datasets(search: $search, first: $count, after: $cursor)
             @connection(key: "DatasetsList_query_datasets") {
             total
@@ -108,7 +109,6 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
 };
 
 export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
-  const [gaInitialized, setGAInitialized] = useState(false);
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
   const info = useFragment(
@@ -147,7 +147,7 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
       [gaConfig.dimensions.context]:
         info.context + (isElectron() ? "-DESKTOP" : ""),
     });
-    setGAInitialized(true);
+    ReactGA.pageview("/");
   }, []);
 };
 
@@ -256,7 +256,9 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
 
   const update = useStateUpdate();
   useEffect(() => {
-    update({ state: { config, colorscale } });
+    update({
+      state: { config: clone(config), colorscale: clone(colorscale) as RGB[] },
+    });
   }, []);
 
   return (
