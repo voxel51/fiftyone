@@ -230,17 +230,19 @@ export class ToggleOverlaysButtonElement<
   private overlaysVisible: boolean;
 
   getEvents(): Events<State> {
+    const afterAction = ({ event, update, dispatchEvent }) => {
+      event.stopPropagation();
+      event.preventDefault();
+      toggleOverlays.afterAction(update, dispatchEvent);
+    };
     return {
       mousedown: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
         event.preventDefault();
         toggleOverlays.action(update, dispatchEvent);
       },
-      mouseup: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        toggleOverlays.afterAction(update, dispatchEvent);
-      },
+      mouseup: afterAction,
+      mouseout: afterAction,
     };
   }
 
@@ -256,13 +258,12 @@ export class ToggleOverlaysButtonElement<
     if (this.overlaysVisible !== showOverlays) {
       this.overlaysVisible = showOverlays;
 
+      this.element.title = `Hold down to hide all overlays (shift)`;
+      this.element.classList.remove(lookerControlActive);
+
       if (showOverlays) {
-        this.element.title = `Hide all overlays (h)`;
-        this.element.classList.remove(lookerControlActive);
         this.element.src = ICONS.overlaysHidden;
       } else {
-        this.element.title = `Show all overlays (h)`;
-        this.element.classList.add(lookerControlActive);
         this.element.src = ICONS.overlaysVisible;
       }
     }
