@@ -3,8 +3,9 @@ import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
+import { Field } from "@fiftyone/utilities";
 
-interface AppSample extends Sample {
+export interface AppSample extends Sample {
   _id: string;
 }
 
@@ -28,9 +29,10 @@ export const refresher = atom<boolean>({
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => () => {
-      set(refresher, !get(refresher));
-    },
+    ({ get, set }) =>
+      () => {
+        set(refresher, !get(refresher));
+      },
     []
   );
 };
@@ -111,6 +113,11 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
 
 export const dataset = atom<State.Dataset>({
   key: "dataset",
+  default: null,
+});
+
+export const selectedMediaField = atom<Field>({
+  key: "selectedMediaField",
   default: null,
 });
 

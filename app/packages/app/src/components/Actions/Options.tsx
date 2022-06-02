@@ -3,6 +3,7 @@ import { Autorenew, Check } from "@material-ui/icons";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../../recoil/atoms";
+import * as schemaAtoms from "../../recoil/schema";
 import * as selectors from "../../recoil/selectors";
 import * as viewAtoms from "../../recoil/view";
 
@@ -13,6 +14,8 @@ import { Button } from "../utils";
 import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
+import { Field } from "@fiftyone/utilities";
+import { State } from "../../recoil/types";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -61,6 +64,41 @@ const ColorBy = ({ modal }) => {
             text: value,
             title: `Color by ${value}`,
             onClick: () => colorBy !== value && setColorBy(value),
+          };
+        })}
+      />
+    </>
+  );
+};
+
+const MediaFields = ({ modal }) => {
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+  let [selectedField, setSelectedField] = useRecoilState<Field>(
+    atoms.selectedMediaField
+  );
+
+  if (!selectedField) selectedField = fieldSchema.filepath;
+  const fields = Object.values(fieldSchema).filter((field) =>
+    field.ftype.includes("MediaField")
+  );
+
+  if (fields.length === 0) return null;
+
+  return (
+    <>
+      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+
+      <TabOption
+        active={selectedField.name}
+        options={fields.map((value: Field) => {
+          return {
+            text: value.name,
+            title: `View Media with "${selectedField.name}"`,
+            onClick: () => {
+              selectedField.name !== value.name && setSelectedField(value);
+            },
           };
         })}
       />
@@ -231,6 +269,7 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
+      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />

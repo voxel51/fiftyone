@@ -1,10 +1,11 @@
-import { getFetchOrigin } from "@fiftyone/utilities";
+import { Field, getFetchOrigin, Schema } from "@fiftyone/utilities";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { selector, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as atoms from "./atoms";
 import * as viewAtoms from "./view";
 import { useUnprocessedStateUpdate } from "../utils/hooks";
+import { Sample } from "@fiftyone/looker/src/state";
 
 type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
@@ -16,6 +17,13 @@ export const getSampleSrc = (filepath: string, id: string, url?: string) => {
   return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
     filepath
   )}&id=${id}`;
+};
+
+export const getSelectedMediaFieldSrc = (
+  field: Field,
+  sample: atoms.AppSample
+) => {
+  return getSampleSrc(sample[field.name], sample._id);
 };
 
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
@@ -40,17 +48,18 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 
 export const useClearModal = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) => () => {
-      const fullscreen = get(atoms.fullscreen);
-      if (fullscreen) {
-        return;
-      }
-      const currentOptions = get(atoms.savedLookerOptions);
-      set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
-      set(atoms.selectedLabels, {});
-      set(atoms.hiddenLabels, {});
-      set(atoms.modal, null);
-    },
+    ({ set, get }) =>
+      () => {
+        const fullscreen = get(atoms.fullscreen);
+        if (fullscreen) {
+          return;
+        }
+        const currentOptions = get(atoms.savedLookerOptions);
+        set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
+        set(atoms.selectedLabels, {});
+        set(atoms.hiddenLabels, {});
+        set(atoms.modal, null);
+      },
     []
   );
 };
