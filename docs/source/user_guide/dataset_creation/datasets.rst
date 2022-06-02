@@ -3283,6 +3283,13 @@ following this format:
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELImageDatasetImporter <fiftyone.utils.openlabel.OpenLABELImageDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
+
 You can create a FiftyOne dataset from a OpenLABEL image dataset stored in the
 above format as follows:
 
@@ -3566,6 +3573,13 @@ following this format:
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
+
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELVideoDatasetImporter <fiftyone.utils.openlabel.OpenLABELVideoDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
 
 You can create a FiftyOne dataset from a OpenLABEL video dataset stored in the
 above format as follows:
