@@ -37,8 +37,8 @@ enum ColorBy {
 type Dataset {
   id: ID!
   name: String!
-  createdAt: Date!
-  lastLoadedAt: DateTime!
+  createdAt: Date
+  lastLoadedAt: DateTime
   persistent: Boolean!
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
@@ -48,7 +48,7 @@ type Dataset {
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   appSidebarGroups: [SidebarGroup!]
-  version: String!
+  version: String
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
@@ -85,8 +85,6 @@ type EvaluationRun implements Run {
 
 type EvaluationRunConfig implements RunConfig {
   cls: String!
-  classwise: Boolean!
-  errorLevel: Int!
   gtField: String!
   predField: String!
   method: String!

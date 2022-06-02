@@ -1,10 +1,4 @@
-import React, {
-  Suspense,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import ReactGA from "react-ga";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,10 +35,15 @@ import { RootConfig_query$key } from "./__generated__/RootConfig_query.graphql";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
-import { useSetDataset, useStateUpdate } from "../utils/hooks";
+import {
+  useSetDataset,
+  useStateUpdate,
+  useUnprocessedStateUpdate,
+} from "../utils/hooks";
 import { clone, isElectron } from "@fiftyone/utilities";
 import { getDatasetName } from "../utils/generic";
 import { RGB } from "@fiftyone/looker";
+import { State } from "../recoil/types";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
@@ -109,7 +108,6 @@ const DatasetLink: React.FC<{ value: string; className: string }> = ({
 };
 
 export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
-  const [gaInitialized, setGAInitialized] = useState(false);
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
 
   const info = useFragment(
@@ -148,7 +146,7 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
       [gaConfig.dimensions.context]:
         info.context + (isElectron() ? "-DESKTOP" : ""),
     });
-    setGAInitialized(true);
+    ReactGA.pageview("/");
   }, []);
 };
 
@@ -183,7 +181,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         datasetSelectorProps={{
           component: DatasetLink,
           onSelect: (name) => {
-            setDataset(name);
+            name !== dataset && setDataset(name);
           },
           placeholder: "Select dataset",
           useSearch,
@@ -223,7 +221,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
 
 const Root: Route<RootQuery> = ({ children, prepared }) => {
   const query = usePreloadedQuery<RootQuery>(rootQuery, prepared);
-  const { config, colorscale } = useFragment(
+  const data = useFragment(
     graphql`
       fragment RootConfig_query on Query {
         config {
@@ -249,9 +247,10 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
   const update = useStateUpdate();
   useEffect(() => {
     update({
-      state: { config: clone(config), colorscale: clone(colorscale) as RGB[] },
+      colorscale: clone(data.colorscale) as RGB[],
+      config: clone(data.config),
     });
-  }, []);
+  }, [data]);
 
   return (
     <>
