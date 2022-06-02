@@ -41,38 +41,26 @@ const compilePath = (
   return result;
 };
 
-interface MatchPathOptions<T extends OperationType | undefined> {
+interface MatchPathOptions {
   exact?: boolean;
   strict?: boolean;
   sensitive?: false;
   path?: string;
-  defaultParams: T extends OperationType
-    ? {
-        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
-      }
-    : {};
 }
 
 export interface MatchPathResult<T extends OperationType | undefined> {
   path: string;
   url: string;
   isExact: boolean;
-  params: T extends OperationType
-    ? { [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property] }
-    : {};
+  variables: T extends OperationType ? VariablesOf<T> : undefined;
 }
 
 export const matchPath = <T extends OperationType | undefined>(
   pathname: string,
-  options: MatchPathOptions<T>
+  options: MatchPathOptions,
+  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined
 ): MatchPathResult<T> | null => {
-  const {
-    path,
-    exact = false,
-    strict = false,
-    sensitive = false,
-    defaultParams,
-  } = options;
+  const { path, exact = false, strict = false, sensitive = false } = options;
 
   if (!path && path !== "") return null;
 
@@ -90,28 +78,15 @@ export const matchPath = <T extends OperationType | undefined>(
 
   if (exact && !isExact) return null;
 
+  variables && (variables = { ...variables });
+  variables &&
+    keys.forEach((key, i) => variables && (variables[key.name] = values[i]));
+
   return {
     path,
     url: path === "/" && url === "" ? "/" : url,
     isExact,
-    params: keys.reduce(
-      (
-        memo: T extends OperationType
-          ? {
-              [Property in keyof VariablesOf<T>]: () => VariablesOf<
-                T
-              >[Property];
-            }
-          : {},
-        key: Key,
-        index: number
-      ) => {
-        // @ts-ignore
-        memo[key.name] = () => values[index];
-        return memo;
-      },
-      { ...defaultParams }
-    ),
+    variables,
   };
 };
 

@@ -3,6 +3,33 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.2:
+
+FiftyOne 0.16.2
+---------------
+*Released June 2, 2022*
+
+App
+
+- Added explicit error handling when ``FFmpeg`` is installed so it is made
+  clear to the user that it must be installed to use video datasets in the App
+  `#1801 <https://github.com/voxel51/fiftyone/pull/1801>`_
+- Fixed range requests for media files, e.g. mp4s, on the server
+  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
+- Fixed tag rendering in the grid
+  `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
+- Fixed tagging selected labels in the expanded view
+  `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
+- Fixed ``session.view = None``
+  `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
+- Fixed issues with patches views
+  `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
+
+Core
+
+- Fixed errors related session-attached plots
+  `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
+
 .. _release-notes-v0.16.1:
 
 FiftyOne 0.16.1
@@ -16,8 +43,6 @@ App
 - Fixed the ``v0.16.0`` migration that prevents label lists, e.g. |Detections|
   from showing their label filters when expanded in the sidebar
   `#1785 <https://github.com/voxel51/fiftyone/pull/1785>`_
-- Fixed range requests for media files, e.g. mp4s, on the server
-  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
 - Fixed expanded samples in clips views which appeared to be empty
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
 - Fixed "Sort by similarity" with a `dist_field`
@@ -45,8 +70,6 @@ FiftyOne 0.16.0
 
 App
 
-- Added Server-Sent Events (SSE) in lieu of WebSockets
-  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
 - Added routing, e.g. `/datasets/:dataset-name`
   `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
 - Redesigned the sidebar to support custom grouping and sorting of fields and
