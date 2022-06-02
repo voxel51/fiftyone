@@ -1,4 +1,5 @@
 import {
+  ErrorBoundary,
   Loading,
   RouterContext,
   RouteRenderer,
@@ -28,7 +29,9 @@ const Network: React.FC<{
   return (
     <RelayEnvironmentProvider environment={environment}>
       <RouterContext.Provider value={context}>
-        <Renderer />
+        <ErrorBoundary>
+          <Renderer />
+        </ErrorBoundary>
       </RouterContext.Provider>
     </RelayEnvironmentProvider>
   );

@@ -1,16 +1,18 @@
-import { Route } from "@fiftyone/components";
-import React, { useEffect } from "react";
+import { Route, RouterContext } from "@fiftyone/components";
+import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 
 import DatasetComponent from "../../components/Dataset";
-import { useSetDataset, useStateUpdate } from "../../utils/hooks";
+import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
 import { useRecoilValue } from "recoil";
 import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
 import { _activeFields } from "../../recoil/schema";
+import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
+import { toCamelCase } from "@fiftyone/utilities";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: JSONArray) {
@@ -82,33 +84,34 @@ const Query = graphql`
         edges
       }
       version
+      viewCls
     }
   }
 `;
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
+  const router = useContext(RouterContext);
   const name = useRecoilValue(datasetName);
-  const setDataset = useSetDataset();
 
   const update = useStateUpdate();
 
   useEffect(() => {
-    if (!dataset) {
-      setDataset();
-      return;
-    }
-
     update(({ reset }) => {
       reset(filters);
       reset(_activeFields({ modal: false }));
       reset(similarityParameters);
 
       return {
+        colorscale: router.state.colorscale,
+        config: router.state.config
+          ? (toCamelCase(router.state.config) as State.Config)
+          : undefined,
         dataset: transformDataset(dataset),
+        state: router.state.state,
       };
     });
-  }, [dataset]);
+  }, [dataset, prepared, router]);
 
   if (!name) {
     return null;

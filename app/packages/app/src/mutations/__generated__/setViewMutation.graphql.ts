@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cc56560ff186274f79ee961c13fe8449>>
+ * @generated SignedSource<<b9167d3bfa672c004783b76cd9334f3b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -74,9 +74,9 @@ export type setViewMutation$data = {
           readonly patchesField: string | null;
         };
       }>;
-      readonly lastLoadedAt: string;
-      readonly createdAt: string;
-      readonly version: string;
+      readonly lastLoadedAt: string | null;
+      readonly createdAt: string | null;
+      readonly version: string | null;
       readonly viewCls: string | null;
       readonly skeletons: ReadonlyArray<{
         readonly name: string;
@@ -528,8 +528,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "setViewMutation",
       operationKind: "mutation",
-      text:
-        "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: JSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      appSidebarGroups {\n        name\n        paths\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n    }\n    view\n  }\n}\n",
+      text: "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: JSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      appSidebarGroups {\n        name\n        paths\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n    }\n    view\n  }\n}\n",
     },
   };
 })();

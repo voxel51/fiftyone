@@ -45,7 +45,7 @@ from .document import (
     Document,
     SerializableDocument,
 )
-from .embedded_document import DynamicEmbeddedDocument
+from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
