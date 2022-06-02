@@ -47,7 +47,7 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
             results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "labels":
@@ -60,7 +60,7 @@ class Distributions(HTTPEndpoint):
 
                 return path
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
             results = await _gather_results(aggs, fields, paths, view)
 
         elif group == "sample tags":
@@ -84,7 +84,7 @@ class Distributions(HTTPEndpoint):
 
                 return None
 
-            aggs, fields, paths = _count_values(filter, view)
+            aggs, fields, paths = _count_values(filter, view, limit)
 
             (
                 hist_aggs,
@@ -224,7 +224,7 @@ async def _gather_results(aggs, fields, paths, view, ticks=None):
     return results
 
 
-def _count_values(f, view):
+def _count_values(f, view, limit):
     aggregations = []
     fields = []
     schemas = [(view.get_field_schema(), "")]
@@ -242,7 +242,7 @@ def _count_values(f, view):
             paths.append(prefix + path)
             aggregations.append(
                 foa.CountValues(
-                    "%s%s" % (prefix, path), _first=LIST_LIMIT, _asc=False
+                    "%s%s" % (prefix, path), _first=limit, _asc=False
                 )
             )
 
