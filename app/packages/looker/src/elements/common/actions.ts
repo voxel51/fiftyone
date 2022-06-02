@@ -6,6 +6,7 @@ import { SCALE_FACTOR } from "../../constants";
 import {
   BaseState,
   Control,
+  ControlEventKeyType,
   ControlMap,
   StateUpdate,
   VideoState,
@@ -139,6 +140,37 @@ export const previous: Control = {
   detail: "Go to the previous sample",
   action: (_, dispatchEvent) => {
     dispatchEvent("previous");
+  },
+};
+
+export const toggleOverlays: Control = {
+  title: "Show/hide overlays",
+  shortcut: "shift",
+  eventKeys: "Shift",
+  eventKeyType: ControlEventKeyType.HOLD,
+  detail: "Toggles visibility of all overlays",
+  action: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: false } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", false);
+          dispatchEvent("tooltip", null);
+        }
+      }
+    );
+  },
+  afterAction: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: true } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", true);
+        }
+      }
+    );
   },
 };
 
@@ -398,6 +430,7 @@ export const COMMON = {
   fullscreen,
   json,
   wheel,
+  toggleOverlays,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
