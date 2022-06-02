@@ -159,7 +159,10 @@ def validate_collection_label_fields(
 
     if sample_fields:
         _validate_fields(
-            sample_collection, sample_fields, allowed_label_types, same_type,
+            sample_collection,
+            sample_fields,
+            allowed_label_types,
+            same_type,
         )
 
 

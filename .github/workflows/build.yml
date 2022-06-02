@@ -66,13 +66,11 @@ jobs:
           - ubuntu-20.04
           - windows-latest
         python:
-          - 3.6
-          - 3.8
+          - 3.7
+          - 3.9
         exclude:
           - os: windows-latest
-            python: 3.6
-          - os: ubuntu-20.04
-            python: 3.6
+            python: 3.7
     defaults:
       run:
         shell: bash
@@ -121,8 +119,8 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install -r requirements/extras.txt
-          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta["storage"]
-          pip install -e .
+          pip install downloads/*.whl
+          pip install -U --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |
@@ -187,7 +185,7 @@ jobs:
       - run: sh -c ${{ needs.test.result == 'success' }}
 
   publish:
-    needs: [build, test]
+    needs: [build]
     if: startsWith(github.ref, 'refs/tags/teams-v')
     runs-on: ubuntu-20.04
     steps:

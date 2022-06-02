@@ -22,7 +22,7 @@ import eta.core.video as etav
 import fiftyone as fo
 import fiftyone.core.cache as foc
 from fiftyone.core.config import HttpRetryConfig
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos

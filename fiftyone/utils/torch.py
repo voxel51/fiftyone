@@ -699,7 +699,8 @@ class ClassifierOutputProcessor(OutputProcessor):
                 classification = None
             else:
                 classification = fol.Classification(
-                    label=self.classes[prediction], confidence=score,
+                    label=self.classes[prediction],
+                    confidence=score,
                 )
                 if self.store_logits:
                     classification.logits = _logits

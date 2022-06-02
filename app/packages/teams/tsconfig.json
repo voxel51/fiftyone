@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "lib": ["esnext", "dom", "dom.iterable"],
+        "sourceMap": true,
+        "outDir": "dist",
+        "jsx": "preserve",
+        "types": ["vite/client"],
+        "strict": true,
+        "plugins": [{ "name": "typescript-plugin-css-modules" }],
+        "moduleResolution": "Node",
+        "isolatedModules": true,
+        "noImplicitAny": false,
+        "useDefineForClassFields": false,
+        "allowSyntheticDefaultImports": true
+    },
+    "references": [
+        { "path": "../app" },
+        { "path": "../components" },
+        { "path": "../looker" },
+        { "path": "../flashlight" },
+        { "path": "../utilities" }
+    ],
+    "include": ["./src"]
+}

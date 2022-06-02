@@ -1380,7 +1380,8 @@ def _embed_frame_patches(
 
                         if embeddings_field is not None:
                             sample.add_labels(
-                                {frame_number: embeddings}, embeddings_field,
+                                {frame_number: embeddings},
+                                embeddings_field,
                             )
                         else:
                             frame_embeddings_dict[frame_number] = embeddings

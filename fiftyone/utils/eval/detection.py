@@ -15,9 +15,9 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.iou as foui
 
 from .base import BaseEvaluationResults
-from .utils import compute_ious
 
 
 logger = logging.getLogger(__name__)
@@ -181,13 +181,13 @@ def evaluate_detections(
         # note: fields are manually declared so they'll exist even when
         # `samples` is empty
         dataset = samples._dataset
-        dataset._add_sample_field_if_necessary(tp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fp_field, fof.IntField)
-        dataset._add_sample_field_if_necessary(fn_field, fof.IntField)
+        dataset.add_sample_field(tp_field, fof.IntField)
+        dataset.add_sample_field(fp_field, fof.IntField)
+        dataset.add_sample_field(fn_field, fof.IntField)
         if processing_frames:
-            dataset._add_frame_field_if_necessary(tp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fp_field, fof.IntField)
-            dataset._add_frame_field_if_necessary(fn_field, fof.IntField)
+            dataset.add_frame_field(tp_field, fof.IntField)
+            dataset.add_frame_field(fp_field, fof.IntField)
+            dataset.add_frame_field(fn_field, fof.IntField)
 
     matches = []
     logger.info("Evaluating detections...")
@@ -225,62 +225,6 @@ def evaluate_detections(
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
-
-
-def compute_max_ious(
-    sample_collection, label_field, attr_name="max_iou", **kwargs
-):
-    """Populates an attribute on each label in the given spatial field that
-    records the max IoU between the object and another object in the same
-    sample/frame.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        label_field: a label field of type
-            :class:`fiftyone.core.labels.Detections` or
-            :class:`fiftyone.core.labels.Polylines`
-        attr_name ("max_iou"): the name of the label attribute to populate
-        **kwargs: optional keyword arguments for
-            :meth:`fiftyone.utils.eval.utils.compute_ious`
-    """
-    fov.validate_collection_label_fields(
-        sample_collection, label_field, (fol.Detections, fol.Polylines)
-    )
-
-    is_frame_field = sample_collection._is_frame_field(label_field)
-    _, labels_path = sample_collection._get_label_field_path(label_field)
-    _, iou_path = sample_collection._get_label_field_path(
-        label_field, attr_name
-    )
-
-    all_labels = sample_collection.values(labels_path)
-
-    max_ious = []
-    with fou.ProgressBar(total=len(all_labels)) as pb:
-        for labels in pb(all_labels):
-            if labels is None:
-                sample_ious = None
-            elif is_frame_field:
-                sample_ious = [_compute_max_ious(l, **kwargs) for l in labels]
-            else:
-                sample_ious = _compute_max_ious(labels, **kwargs)
-
-            max_ious.append(sample_ious)
-
-    sample_collection.set_values(iou_path, max_ious)
-
-
-def _compute_max_ious(labels, **kwargs):
-    if labels is None:
-        return None
-
-    if len(labels) < 2:
-        return [0] * len(labels)
-
-    all_ious = compute_ious(labels, labels, **kwargs)
-    np.fill_diagonal(all_ious, 0)  # exclude self
-    return list(all_ious.max(axis=1))
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):

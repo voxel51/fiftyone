@@ -4,6 +4,6 @@
 
 ipython==7.16.3
 pre-commit==2.18.1
-pylint==2.3.1
+pylint==2.13.9
 pytest==5.4.3
 twine>=3

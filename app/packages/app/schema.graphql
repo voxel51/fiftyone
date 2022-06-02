@@ -1,0 +1,201 @@
+type AppConfig {
+  colorBy: ColorBy!
+  colorPool: [String!]!
+  colorscale: String!
+  gridZoom: Int!
+  loopVideos: Boolean!
+  notebookHeight: Int!
+  showConfidence: Boolean!
+  showIndex: Boolean!
+  showLabel: Boolean!
+  showTooltip: Boolean!
+  timezone: String
+  useFrameNumber: Boolean!
+}
+
+type BrainRun implements Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: BrainRunConfig!
+  viewStages: [String!]!
+}
+
+type BrainRunConfig implements RunConfig {
+  cls: String!
+  embeddingsField: String
+  method: String!
+  patchesField: String
+}
+
+enum ColorBy {
+  field
+  instance
+  label
+}
+
+type Dataset {
+  id: ID!
+  name: String!
+  createdAt: Date
+  lastLoadedAt: DateTime
+  persistent: Boolean!
+  mediaType: MediaType
+  maskTargets: [NamedTargets!]!
+  defaultMaskTargets: [Target!]
+  sampleFields: [SampleField!]!
+  frameFields: [SampleField!]!
+  brainMethods: [BrainRun!]!
+  evaluations: [EvaluationRun!]!
+  appSidebarGroups: [SidebarGroup!]
+  version: String
+  viewCls: String
+  defaultSkeleton: KeypointSkeleton
+  skeletons: [NamedKeypointSkeleton!]!
+}
+
+type DatasetConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetEdge!]!
+  total: Int!
+}
+
+type DatasetEdge {
+  node: Dataset!
+  cursor: String!
+}
+
+"""
+Date (isoformat)
+"""
+scalar Date
+
+"""
+Date with time (isoformat)
+"""
+scalar DateTime
+
+type EvaluationRun implements Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: EvaluationRunConfig!
+  viewStages: [String!]!
+}
+
+type EvaluationRunConfig implements RunConfig {
+  cls: String!
+  gtField: String!
+  predField: String!
+  method: String!
+}
+
+scalar JSONArray
+
+type KeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+}
+
+enum MediaType {
+  image
+  video
+}
+
+type Mutation {
+  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    view: JSONArray!
+    dataset: String!
+  ): ViewResponse!
+  storeTeamsSubmission: Boolean!
+}
+
+type NamedKeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+  name: String!
+}
+
+type NamedTargets {
+  name: String!
+  targets: [Target!]!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Query {
+  datasets(
+    search: String
+    first: Int = 10
+    after: String = null
+  ): DatasetConnection!
+  colorscale: [[Int!]!]
+  config: AppConfig!
+  context: String!
+  dev: Boolean!
+  doNotTrack: Boolean!
+  dataset(name: String!, view: JSONArray): Dataset
+  teamsSubmission: Boolean!
+  uid: String!
+  version: String!
+}
+
+interface Run {
+  key: String!
+  version: String!
+  timestamp: DateTime!
+  config: RunConfig!
+  viewStages: [String!]!
+}
+
+interface RunConfig {
+  cls: String!
+}
+
+type SampleField {
+  ftype: String!
+  path: String!
+  subfield: String
+  embeddedDocType: String
+  dbField: String
+}
+
+input SelectedLabel {
+  field: String!
+  labelId: String!
+  sampleId: String!
+  frameNumber: Int = null
+}
+
+type SidebarGroup {
+  name: String!
+  paths: [String!]!
+}
+
+type Target {
+  target: Int!
+  value: String!
+}
+
+type ViewResponse {
+  view: JSONArray!
+  dataset: Dataset!
+}

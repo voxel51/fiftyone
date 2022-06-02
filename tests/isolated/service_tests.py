@@ -17,6 +17,8 @@ import requests
 import retrying
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
+os.environ["FIFTYONE_DATABASE_ADMIN"] = "true"
+os.environ["FIFTYONE_DO_NOT_TRACK"] = "true"
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.service as fos
@@ -186,7 +188,7 @@ def test_server():
         p = wait_for_subprocess(lambda p: "main.py" in p.cmdline())
         assert p.is_running()
         res = get_json_retry("http://127.0.0.1:5151/fiftyone")
-        assert res["version"] == foc.TEAMS_VERSION
+        assert res["version"] == foc.VERSION
         server.stop()
         assert not p.is_running()
 

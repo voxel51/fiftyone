@@ -35,7 +35,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.15.1"  # open source compatibility version
+VERSION = "0.16.2"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -82,7 +82,7 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-MONGODB_VERSION_RANGE = (Version("4.4"), Version("4.5"))  # [min, max)
+MIN_MONGODB_VERSION = Version("4.4")
 DATABASE_APPNAME = "fiftyone"
 
 # Server setup

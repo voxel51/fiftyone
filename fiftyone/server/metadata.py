@@ -42,7 +42,7 @@ async def get_metadata(session, filepath, media_type, metadata=None):
     Args:
         session: an ``aiohttp.ClientSession`` to use if necessary
         filepath: the path to the file
-        media_type: the media type of the collection
+        media_type: the media type
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
@@ -96,7 +96,11 @@ async def get_metadata(session, filepath, media_type, metadata=None):
         else:
             # Retrieve metadata from remote source
             metadata = await read_url_metadata(session, url, is_video)
-    except:
+    except Exception as exc:
+        # Immediately fail so the user knows they should install FFmpeg
+        if isinstance(exc, FFprobeNotFoundException):
+            raise exc
+
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
         if is_video:
@@ -228,7 +232,7 @@ async def get_stream_info(path, session=None):
         a :class:`eta.core.video.VideoStreamInfo`
     """
     if _FFPROBE_BINARY_PATH is None:
-        raise RuntimeError(
+        raise FFprobeNotFoundException(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"
         )
@@ -249,9 +253,6 @@ async def get_stream_info(path, session=None):
 
     stdout, stderr = await proc.communicate()
 
-    # @todo how to feed `response` into subprocess above to avoid this?
-    # We need a status code to determine whether the failure is retryable...
-
     # TODO: refactor inbound
     # if stderr and session is not None:
     #     # here we're just getting back ffprobe's stderr. They don't bubble up
@@ -270,6 +271,12 @@ async def get_stream_info(path, session=None):
     #     raise VideoURLRetryException(
     #         "ffprobe failed when retrieving external resource", http_code
     #     )
+
+    # Something went wrong; if we get a retryable code when pinging the URL,
+    # trigger a retry
+    if stderr and session is not None:
+        async with session.get(path) as response:
+            response.raise_for_status()
 
     if stderr:
         raise RuntimeError(stderr)
@@ -444,11 +451,12 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """ "Exception raised when metadata for a media file cannot be computed."""
+    """Exception raised when metadata for a media file cannot be computed."""
 
     pass
 
 
-def _is_video(filepath):
-    mime_type = etau.guess_mime_type(filepath)
-    return mime_type and mime_type.startswith("video/")
+class FFprobeNotFoundException(MetadataException):
+    """Exception raised when FFprobe cannot be found."""
+
+    pass

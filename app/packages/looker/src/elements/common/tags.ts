@@ -2,25 +2,34 @@
  * Copyright 2017-2022, Voxel51, Inc.
  */
 
-import { getColor } from "../../color";
 import {
   BOOLEAN_FIELD,
+  CLASSIFICATION,
+  CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  Field,
   FLOAT_FIELD,
+  formatDate,
+  formatDateTime,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
-  LABEL_LISTS,
-  LABEL_TAGS_CLASSES,
-  MOMENT_CLASSIFICATIONS,
+  LABELS_PATH,
+  LIST_FIELD,
   OBJECT_ID_FIELD,
   REGRESSION,
+  Schema,
   STRING_FIELD,
-} from "../../constants";
-import { BaseState, Sample } from "../../state";
-import { formatDate, formatDateTime } from "../../util";
+  withPath,
+} from "@fiftyone/utilities";
+
+import { getColor } from "../../color";
+import { Classification, Regression } from "../../overlays/classifications";
+import { BaseState, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
+
+import { prettify } from "./util";
 
 import { lookerTags } from "./tags.module.css";
 
@@ -48,170 +57,267 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema },
-      options: { filter, activePaths, coloring, fieldsMap, mimetype, timeZone },
+      options: { activePaths, coloring, timeZone },
     }: Readonly<State>,
     sample: Readonly<Sample>
   ) {
     if (
       arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === coloring.byLabel &&
+      this.colorByValue === (coloring.by === "label") &&
       this.colorSeed === coloring.seed
     ) {
       return this.element;
     }
 
-    const elements = activePaths.reduce<TagData[]>((elements, path) => {
-      if (
-        path.startsWith("tags.") &&
-        Array.isArray(sample.tags) &&
-        sample.tags.includes(path.slice(5))
-      ) {
-        const tag = path.slice(5);
-        elements.push({
-          color: getColor(coloring.pool, coloring.seed, path),
-          title: tag,
-          value: tag,
-        });
+    const elements: TagData[] = [];
+
+    const PRIMITIVE_RENDERERS: {
+      [key: string]: (
+        path: string,
+        value: unknown
+      ) => { color: string; value: string; title: string };
+    } = {
+      [BOOLEAN_FIELD]: (path, value: boolean) => {
+        const v = value ? "True" : "False";
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+      [INT_FIELD]: (path, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+      [DATE_FIELD]: (path, value: { datetime: number }) => {
+        const v = formatDate(value.datetime);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value.datetime : path
+          ),
+        };
+      },
+      [DATE_TIME_FIELD]: (path, value: { datetime: number }) => {
+        const v = formatDateTime(value.datetime, timeZone);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value.datetime : path
+          ),
+        };
+      },
+      [FLOAT_FIELD]: (path: string, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${value}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+      [FRAME_NUMBER_FIELD]: (path, value: number) => {
+        const v = prettyNumber(value);
+
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+      [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
+        const v = `[${value.join(", ")}]`;
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? v : path
+          ),
+        };
+      },
+      [OBJECT_ID_FIELD]: (path, value: string) => {
+        return {
+          value,
+          title: `${path}: ${value}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+      [STRING_FIELD]: (path, value: string) => ({
+        value,
+        title: `${path}: ${value}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.by === "label" ? value : path
+        ),
+      }),
+    };
+
+    const LABEL_RENDERERS: {
+      [key: string]: (
+        path: string,
+        value: unknown
+      ) => { color: string; value: string; title: string };
+    } = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+        path,
+        { label }: Classification
+      ) => ({
+        value: label,
+        title: `${path}: ${label}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.by === "label" ? label : path
+        ),
+      }),
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
+        path,
+        { label }: Classification
+      ) => ({
+        value: label,
+        title: `${path}: ${label}`,
+        color: getColor(
+          coloring.pool,
+          coloring.seed,
+          coloring.by === "label" ? label : path
+        ),
+      }),
+      [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
+        const v = prettyNumber(value);
+        return {
+          value: v,
+          title: `${path}: ${v}`,
+          color: getColor(
+            coloring.pool,
+            coloring.seed,
+            coloring.by === "label" ? value : path
+          ),
+        };
+      },
+    };
+
+    for (let index = 0; index < activePaths.length; index++) {
+      const path = activePaths[index];
+      if (path.startsWith("tags.")) {
+        if (Array.isArray(sample.tags) && sample.tags.includes(path.slice(5))) {
+          const tag = path.slice(5);
+          elements.push({
+            color: getColor(coloring.pool, coloring.seed, path),
+            title: tag,
+            value: tag,
+          });
+        }
       } else if (path.startsWith("_label_tags.")) {
         const tag = path.slice("_label_tags.".length);
         const count = sample._label_tags[tag] || 0;
         if (count > 0) {
           const value = `${tag}: ${count}`;
-          elements = [
-            ...elements,
-            {
-              color: getColor(coloring.pool, coloring.seed, path),
-              title: value,
-              value,
-            },
-          ];
+          elements.push({
+            color: getColor(coloring.pool, coloring.seed, path),
+            title: value,
+            value,
+          });
         }
-      } else if (
-        sample[path] &&
-        LABEL_TAGS_CLASSES.includes(sample[path]._cls)
-      ) {
-        const cls = sample[path]._cls;
+      } else if (path !== "tags") {
+        const [field, value, list] = getFieldAndValue(
+          sample,
+          fieldSchema,
+          path
+        );
 
-        const isList = cls in LABEL_LISTS;
-        const labels = isList ? sample[path][LABEL_LISTS[cls]] : [sample[path]];
-
-        let show = labels
-          .filter(
-            (label) =>
-              filter[path](label) &&
-              (mimetype.includes("video") ||
-                MOMENT_CLASSIFICATIONS.includes(label._cls))
-          )
-          .map((label) =>
-            label._cls === REGRESSION ? label.value : label.label
-          );
-
-        if (cls !== REGRESSION) {
-          show = Object.entries(
-            show.reduce((acc, cur) => {
-              if (!acc[cur]) {
-                acc[cur] = 0;
-              }
-              acc[cur] += 1;
-              return acc;
-            }, {})
-          );
-          elements = [
-            ...elements,
-            ...show.map(([label, count]) => ({
-              color: getColor(
-                coloring.pool,
-                coloring.seed,
-                coloring.byLabel ? label : path
-              ),
-              title: `${path}: ${label}`,
-              value: isList
-                ? `${prettify(label)}: ${count.toLocaleString()}`
-                : prettify(label),
-            })),
-          ];
-        } else {
-          elements = [
-            ...elements,
-            ...show.map((label) => ({
-              color: getColor(coloring.pool, coloring.seed, path),
-              title: `${path}: ${label}`,
-              value: prettify(label),
-            })),
-          ];
-        }
-      } else if (isRendered(fieldSchema[path])) {
-        let valuePath = path;
-        if (!sample[path] && fieldsMap && fieldsMap[path]) {
-          valuePath = fieldsMap[path];
-        }
-
-        let value = sample[valuePath];
-        const entry = fieldSchema[path];
-        const isDate = isOfTypes(entry, [DATE_FIELD]);
-        const isDateTime = isOfTypes(entry, [DATE_TIME_FIELD]);
-        const isSupport = isOfTypes(entry, [FRAME_SUPPORT_FIELD]);
-
-        if ([undefined, null].includes(value)) {
-          return elements;
-        }
-
-        const appendElement = (value) => {
-          if (isDateTime && value) {
-            value = formatDateTime(value, timeZone);
-          } else if (isDate && value) {
-            value = formatDate(value);
-          } else if (isSupport && Array.isArray(value)) {
-            value = `[${value.map(prettify).join(", ")}]`;
+        const pushList = (ftype: string, value) => {
+          let count = 0;
+          let rest = 0;
+          for (
+            let index = 0;
+            index < (value as Array<unknown>).length;
+            index++
+          ) {
+            if (PRIMITIVE_RENDERERS[ftype](path, value[index]) && count < 3) {
+              count++;
+              elements.push(PRIMITIVE_RENDERERS[ftype](path, value[index]));
+            } else {
+              rest++;
+            }
           }
 
-          const pretty = prettify(value);
-          elements = [
-            ...elements,
-            {
-              color: getColor(
-                coloring.pool,
-                coloring.seed,
-                coloring.byLabel ? value : path
-              ),
-              title: value,
-              value: pretty,
-            },
-          ];
+          if (rest > 0) {
+            elements.push({
+              color: getColor(coloring.pool, coloring.seed, path),
+              title: `${path}: and ${rest} more`,
+              value: `and ${rest} more`,
+            });
+          }
         };
 
-        if (!Array.isArray(value) || isSupport) {
-          if (!isSupport || typeof value[0] === "number") {
-            value = [value];
-          }
+        if (value === undefined) continue;
+
+        if (LABEL_RENDERERS[field.embeddedDocType]) {
+          elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+          continue;
         }
 
-        if (isDateTime || isDate) {
-          value = value.map((d) => d.datetime);
+        if (PRIMITIVE_RENDERERS[field.ftype]) {
+          list
+            ? pushList(field.ftype, value)
+            : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+          continue;
         }
 
-        const filtered =
-          filter[path] && !isSupport && !isDateTime && !isDate
-            ? value.filter((v) => filter[path](v))
-            : value;
-
-        const shown = [...filtered].sort().slice(0, 3);
-        shown.forEach((v) => appendElement(v));
-
-        const more = filtered.length - shown.length;
-        more > 0 && appendElement(`+${more} more`);
+        if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
+          pushList(field.subfield, value);
+          continue;
+        }
       }
-      return elements;
-    }, []);
+    }
 
-    this.colorByValue = coloring.byLabel;
+    this.colorByValue = coloring.by === "label";
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
 
     elements.forEach(({ value, color, title }) => {
       const div = document.createElement("div");
-      div.innerHTML = value;
+      const child = prettify(value);
+      child instanceof HTMLElement
+        ? div.appendChild(child)
+        : (div.innerHTML = child);
       div.title = title;
       div.style.backgroundColor = color;
       this.element.appendChild(div);
@@ -232,47 +338,49 @@ const arraysAreEqual = (a: any[], b: any[]): boolean => {
   return true;
 };
 
-const prettify = (v: boolean | string | null | undefined | number): string => {
-  if (typeof v === "string") {
-    return v;
-  } else if (typeof v === "number") {
-    if (v % 1 === 0) {
-      v = v.toFixed(0);
-    } else if (v < 0.001) {
-      v = v.toFixed(6);
-    } else {
-      v = v.toFixed(3);
-    }
-    return Number(v).toLocaleString();
-  } else if (v === true) {
-    return "True";
-  } else if (v === false) {
-    return "False";
-  } else if ([undefined, null].includes(v)) {
-    return "None";
+const prettyNumber = (value: number | NONFINITE): string => {
+  if (typeof value === "string") {
+    return value;
   }
-  return null;
+
+  let string = null;
+  if (value % 1 === 0) {
+    string = value.toFixed(0);
+  } else if (value < 0.001) {
+    string = value.toFixed(6);
+  } else {
+    string = value.toFixed(3);
+  }
+  return Number(string).toLocaleString();
 };
 
-const RENDERED_TYPES = new Set([
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  FRAME_SUPPORT_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-]);
+const unwind = (name: string, value: unknown) => {
+  if (Array.isArray(value)) {
+    return value.map((val) => unwind(name, val));
+  }
 
-const isRendered = (field) =>
-  field &&
-  (RENDERED_TYPES.has(field.ftype) || RENDERED_TYPES.has(field.subfield));
+  return value[name];
+};
 
-const isOfTypes = (
-  field: { ftype: string; subfield?: string },
-  types: string[]
-) =>
-  field &&
-  types.some((type) => type === field.ftype || type === field.subfield);
+const getFieldAndValue = (
+  sample: Sample,
+  schema: Schema,
+  path: string
+): [Field, unknown, boolean] => {
+  let value: unknown = sample;
+  let field: Field = null;
+  let list = false;
+
+  for (const key of path.split(".")) {
+    field = schema[key];
+
+    if (![undefined, null].includes(value)) {
+      value = unwind(field.name !== "id" ? field.dbField || key : "id", value);
+      list = list || field.ftype === LIST_FIELD;
+    }
+
+    schema = field.fields;
+  }
+
+  return [field, value, list];
+};
