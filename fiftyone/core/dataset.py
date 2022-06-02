@@ -1385,7 +1385,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
-    def iter_samples(self, progress=False, autosave=False):
+    def iter_samples(
+        self, progress=False, autosave=False, autosave_batch_size=10
+    ):
         """Returns an iterator over the samples in the collection.
 
          Args:
@@ -1395,12 +1397,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             autosave (False): whether to automatically save :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` during iteration
 
+            autosave_batch_size (int, optional): Btachsize of samples for autosaving. Defaults to 10
+
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample`
         """
         pipeline = self._pipeline(detach_frames=True)
 
-        autosave_batch_size = 10
         with contextlib.ExitStack() as iter_ctx:
             samples = self._iter_samples(pipeline)
 
