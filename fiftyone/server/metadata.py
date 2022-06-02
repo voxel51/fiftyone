@@ -116,10 +116,12 @@ async def get_metadata(session, filepath, media_type, metadata=None):
 )
 async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
+
     Args:
         session: an ``aiohttp.ClientSession`` to use
         url: a file URL
         is_video: whether the file is a video
+
     Returns:
         metadata dict
     """
@@ -154,9 +156,11 @@ async def read_url_metadata(session, url, is_video):
 
 async def read_local_metadata(local_path, is_video):
     """Calculates the metadata for the given local media path.
+
     Args:
         local_path: a local filepath
         is_video: whether the file is a video
+
     Returns:
         dict
     """
@@ -175,6 +179,7 @@ async def read_local_metadata(local_path, is_video):
 
 class Reader(object):
     """Asynchronous file-like reader.
+
     Args:
         content: a :class:`aiohttp.StreamReader`
     """
@@ -232,8 +237,8 @@ async def get_stream_info(path, session=None):
 
     stdout, stderr = await proc.communicate()
 
-    # @todo how to feed `response` into subprocess above to avoid this?
-    # We need a status code to determine whether the failure is retryable...
+    # Something went wrong; if we get a retryable code when pinging the # URL,
+    # trigger a retry
     if stderr and session is not None:
         async with session.get(path) as response:
             response.raise_for_status()
@@ -269,8 +274,10 @@ def _get_image_dimensions(url):
 async def get_image_dimensions(input):
     """Gets the dimensions of an image from its file-like asynchronous byte
     stream.
+
     Args:
         input: file-like object with async read and seek methods
+
     Returns:
         the ``(width, height)``
     """
