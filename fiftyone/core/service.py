@@ -344,6 +344,7 @@ class ServerService(Service):
             super().start()
             self._wait_for_child_port(port=port)
         else:
+            self._disabled = True
             logger.info(
                 "Connected to FiftyOne on port %i at %s.\nIf you are not "
                 "connecting to a remote session, you may need to start a new "
@@ -433,10 +434,6 @@ class AppService(Service):
         env = {}
         if self.server_port is not None:
             env["FIFTYONE_SERVER_PORT"] = str(self.server_port)
-            if foc.DEV_INSTALL:
-                # override port 1212 used by "yarn dev" for hot-reloading
-                # (specifying port 0 doesn't work here)
-                env["PORT"] = str(self.server_port + 1)
 
         if self.server_address:
             env["FIFTYONE_SERVER_ADDRESS"] = str(self.server_address)

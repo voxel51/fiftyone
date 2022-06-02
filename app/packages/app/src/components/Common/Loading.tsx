@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
-import { useTheme } from "../../utils/hooks";
 import { CircularProgress } from "@material-ui/core";
+import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
   position: absolute;

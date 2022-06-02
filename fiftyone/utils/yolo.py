@@ -508,8 +508,11 @@ class YOLOv5DatasetImporter(
         classes = d.get("names", None)
 
         if etau.is_str(data) and data.endswith(".txt"):
-            txt_path = _parse_yolo_v5_data_path(data, self.yaml_path)
-            image_paths = _read_file_lines(txt_path)
+            txt_path = _parse_yolo_v5_path(data, self.yaml_path)
+            image_paths = [
+                _parse_yolo_v5_path(fos.normpath(p), txt_path)
+                for p in _read_file_lines(txt_path)
+            ]
         else:
             if etau.is_str(data):
                 data_dirs = [data]
@@ -518,7 +521,9 @@ class YOLOv5DatasetImporter(
 
             image_paths = []
             for data_dir in data_dirs:
-                data_dir = _parse_yolo_v5_data_path(data_dir, self.yaml_path)
+                data_dir = fos.normpath(
+                    _parse_yolo_v5_path(data_dir, self.yaml_path)
+                )
                 image_paths.extend(
                     fos.list_files(data_dir, abs_paths=True, recursive=True)
                 )
@@ -993,7 +998,7 @@ class YOLOv5DatasetExporter(
         else:
             classes = self.classes
 
-        d[self.split] = _make_yolo_v5_data_path(self.data_path, self.yaml_path)
+        d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
         d["nc"] = len(classes)
         d["names"] = list(classes)
 
@@ -1085,24 +1090,24 @@ def load_yolo_annotations(txt_path, classes):
     return fol.Detections(detections=detections)
 
 
-def _parse_yolo_v5_data_path(data_path, yaml_path):
-    if fos.isabs(data_path):
-        return data_path
+def _parse_yolo_v5_path(filepath, yaml_path):
+    if fos.isabs(filepath):
+        return filepath
 
     # Interpret relative to YAML file
     root_dir = os.path.dirname(yaml_path)
-    return fos.normpath(fos.join(root_dir, data_path))
+    return fos.normpath(fos.join(root_dir, filepath))
 
 
-def _make_yolo_v5_data_path(data_path, yaml_path):
+def _make_yolo_v5_path(filepath, yaml_path):
     # Save path relative to YAML file
-    sep = fos.sep(data_path)
+    sep = fos.sep(filepath)
     root_dir = os.path.dirname(yaml_path)
-    data_path = os.path.relpath(data_path, root_dir) + sep
-    if not data_path.startswith("."):
-        data_path = "." + sep + data_path
+    filepath = os.path.relpath(filepath, root_dir) + sep
+    if not filepath.startswith("."):
+        filepath = "." + sep + filepath
 
-    return data_path
+    return filepath
 
 
 def _get_yolo_v5_labels_path(image_path):
@@ -1111,14 +1116,19 @@ def _get_yolo_v5_labels_path(image_path):
     new = sep + "labels" + sep
 
     chunks = image_path.rsplit(old, 1)
-    if len(chunks) == 1:
+
+    if len(chunks) > 1:
+        labels_path = new.join(chunks)
+    elif image_path.startswith("images" + os.path.sep):
+        labels_path = "labels" + image_path[len("images") :]
+    else:
         raise ValueError(
             "Invalid image path '%s'. YOLOv5 image paths must contain '%s', "
             "which is replaced with '%s' to locate the corresponding labels"
             % (image_path, old, new)
         )
 
-    root, ext = os.path.splitext(new.join(chunks))
+    root, ext = os.path.splitext(labels_path)
 
     if ext:
         ext = ".txt"

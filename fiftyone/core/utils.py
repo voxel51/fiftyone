@@ -804,7 +804,9 @@ class DynamicBatcher(object):
         total = int(1e7)
         elements = range(total)
 
-        batches = fou.DynamicBatcher(elements, 0.1, max_batch_beta=2.0)
+        batches = fou.DynamicBatcher(
+            elements, target_latency=0.1, max_batch_beta=2.0
+        )
 
         with fou.ProgressBar(total) as pb:
             for batch in batches:
@@ -814,41 +816,86 @@ class DynamicBatcher(object):
 
     Args:
         iterable: an iterable
-        target_latency_seconds: the target latency between ``next()`` calls,
-            in seconds
+        target_latency (0.2): the target latency between ``next()``
+            calls, in seconds
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
         max_batch_size (None): an optional maximum allowed batch size
         max_batch_beta (None): an optional lower/upper bound on the ratio
             between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
     """
 
     def __init__(
         self,
         iterable,
-        target_latency_seconds,
+        target_latency=0.2,
         init_batch_size=1,
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        return_views=False,
     ):
+        import fiftyone.core.collections as foc
+
+        if not isinstance(iterable, foc.SampleCollection):
+            return_views = False
+
         self.iterable = iterable
-        self.target_latency_seconds = target_latency_seconds
+        self.target_latency = target_latency
         self.init_batch_size = init_batch_size
         self.min_batch_size = min_batch_size
         self.max_batch_size = max_batch_size
         self.max_batch_beta = max_batch_beta
+        self.return_views = return_views
 
         self._iter = None
         self._last_time = None
         self._last_batch_size = None
 
+        self._last_offset = None
+        self._num_samples = None
+
     def __iter__(self):
-        self._iter = iter(self.iterable)
+        if self.return_views:
+            self._last_offset = 0
+            self._num_samples = len(self.iterable)
+        else:
+            self._iter = iter(self.iterable)
+
         self._last_batch_size = None
+
         return self
 
     def __next__(self):
+        batch_size = self._compute_batch_size()
+
+        if self.return_views:
+            if self._last_offset >= self._num_samples:
+                raise StopIteration
+
+            offset = self._last_offset
+            self._last_offset += batch_size
+
+            return self.iterable[offset : (offset + batch_size)]
+
+        batch = []
+
+        try:
+            idx = 0
+            while idx < batch_size:
+                batch.append(next(self._iter))
+                idx += 1
+
+        except StopIteration:
+            if not batch:
+                raise StopIteration
+
+        return batch
+
+    def _compute_batch_size(self):
         current_time = timeit.default_timer()
 
         if self._last_batch_size is None:
@@ -856,9 +903,7 @@ class DynamicBatcher(object):
         else:
             # Compute optimal batch size
             try:
-                beta = self.target_latency_seconds / (
-                    current_time - self._last_time
-                )
+                beta = self.target_latency / (current_time - self._last_time)
             except ZeroDivisionError:
                 beta = 1e6
 
@@ -879,19 +924,7 @@ class DynamicBatcher(object):
         self._last_batch_size = batch_size
         self._last_time = current_time
 
-        batch = []
-
-        try:
-            idx = 0
-            while idx < batch_size:
-                batch.append(next(self._iter))
-                idx += 1
-
-        except StopIteration:
-            if not batch:
-                raise StopIteration
-
-        return batch
+        return batch_size
 
 
 @contextmanager

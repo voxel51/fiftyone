@@ -7,6 +7,8 @@ Patches views.
 """
 from copy import deepcopy
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
@@ -14,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.odm.mixins import get_field_kwargs
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
@@ -29,11 +32,11 @@ _NO_MATCH_ID = ""
 class _PatchView(fos.SampleView):
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     @property
     def _frame_id(self):
-        return self._doc.frame_id
+        return ObjectId(self._doc.frame_id)
 
     def save(self):
         super().save()
@@ -497,7 +500,11 @@ def make_patches_dataset(
         field_type = _get_single_label_field_type(sample_collection, field)
 
     dataset = fod.Dataset(name=name, _patches=True)
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.IMAGE
+    dataset._set_metadata(sample_collection.media_type)
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
@@ -636,6 +643,9 @@ def make_evaluation_patches_dataset(
 
     # Setup dataset with correct schema
     dataset = fod.Dataset(name=name, _patches=True)
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"

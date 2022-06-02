@@ -217,7 +217,7 @@ class PatchesTests(unittest.TestCase):
 
         sample = view.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(view.count_values("ground_truth.hello")["world"], 1)

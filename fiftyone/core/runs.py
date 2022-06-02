@@ -431,7 +431,8 @@ class Run(Configurable):
             run_doc.results = None
         else:
             # Write run result to GridFS
-            results_bytes = run_results.to_str().encode()
+            # We use `json_util.dumps` so that run results may contain BSON
+            results_bytes = json_util.dumps(run_results.serialize()).encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
         # Cache the results for future use in this session
@@ -473,10 +474,10 @@ class Run(Configurable):
         # Load run result from GridFS
         view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
-        results_str = run_doc.results.read().decode()
+        d = json_util.loads(run_doc.results.read().decode())
 
         try:
-            run_results = RunResults.from_str(results_str, view, config)
+            run_results = RunResults.from_dict(d, view, config)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e

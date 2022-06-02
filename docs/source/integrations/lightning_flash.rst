@@ -54,16 +54,6 @@ to install some package extras:
 You can always proceed without these initially, as you'll be prompted to
 install the appropriate extras when you use a feature that requires them.
 
-.. note::
-
-    Flash video tasks require Python 3.7 or later, due to their dependence on
-    `pytorchvideo <https://github.com/facebookresearch/pytorchvideo>`_.
-
-    In addition, it is currently recommended that you use Python 3.7 or later
-    for image tasks as well, as you may
-    `encounter issues <https://github.com/PyTorchLightning/lightning-flash/issues/451>`_
-    trying to use Flash image tasks on Python 3.6.
-
 .. _flash-model-training:
 
 Model training

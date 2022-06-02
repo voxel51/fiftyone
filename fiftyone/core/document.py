@@ -82,19 +82,12 @@ class _Document(object):
         return self.copy()
 
     @property
-    def id(self):
-        """The ID of the document, or ``None`` if it has not been added to the
-        database.
-        """
-        _id = self._doc.id
-        return str(_id) if _id is not None else None
-
-    @property
     def _id(self):
         """The ObjectId of the document, or ``None`` if it has not been added
         to the database.
         """
-        return self._doc.id
+        _id = self._doc.id
+        return ObjectId(_id) if _id is not None else None
 
     @property
     def in_dataset(self):

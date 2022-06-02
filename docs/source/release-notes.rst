@@ -3,6 +3,90 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.1:
+
+FiftyOne 0.16.1
+---------------
+*Released May 26, 2022*
+
+App
+
+- Fixed a bug that caused label rendering to be delayed until statistics
+  were loaded `#1776 <https://github.com/voxel51/fiftyone/pull/1776>`_
+- Fixed the ``v0.16.0`` migration that prevents label lists, e.g. |Detections|
+  from showing their label filters when expanded in the sidebar
+  `#1785 <https://github.com/voxel51/fiftyone/pull/1785>`_
+- Fixed range requests for media files, e.g. mp4s, on the server
+  `#1786 <https://github.com/voxel51/fiftyone/pull/1786>`_
+- Fixed expanded samples in clips views which appeared to be empty
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed "Sort by similarity" with a `dist_field`
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed "Color by" for simple values (classifications, tags, etc.)
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed changing datasets when sort by similarity is set
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed mask and map coloring
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+- Fixed fortran array handling for masks and maps 
+  `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
+
+Core
+
+- Fixed a formatting issue when raising an exception because unsupported
+  plotting backend was requested 
+  `#1794 <https://github.com/voxel51/fiftyone/pull/1794>`_
+
+.. _release-notes-v0.16.0:
+
+FiftyOne 0.16.0
+---------------
+*Released May 24, 2022*
+
+App
+
+- Added Server-Sent Events (SSE) in lieu of WebSockets
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Added routing, e.g. `/datasets/:dataset-name`
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Redesigned the sidebar to support custom grouping and sorting of fields and
+  tags `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Added graceful handling of deleted datasets in the App
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Fixed epoch rendering
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Fixed empty heatmap rendering
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Added stack traces to the new error page
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Fixed ``ESC`` when viewing single frame clips
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Fixed handling of unsupported videos
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Added support for opening the expanded view while sample(s) are selected
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+- Fixed keypoint skeleton rendering for named skeletons of frame fields
+  `#1713 <https://github.com/voxel51/fiftyone/pull/1713>`_
+
+Core
+
+- Fixed edge cases in
+  :meth:`SampleCollection.clone_frame_field() <fiftyone.core.collections.SampleCollection.clone_frame_field>`,
+  :meth:`SampleCollection.merge_samples() <fiftyone.core.collections.SampleCollection.merge_samples>`,
+  and
+  :meth:`SampleCollection.rename_frame_field() <fiftyone.core.collections.SampleCollection.rename_frame_field>`
+  `#1749 <https://github.com/voxel51/fiftyone/pull/1749>`_
+- Fixed a bug that would cause non-persistent datasets to be prematurely
+  deleted `#1747 <https://github.com/voxel51/fiftyone/pull/1747>`_
+- Fixed loading relative paths in :ref:`YOLOv5 <YOLOv5Dataset-import>` format
+  `#1721 <https://github.com/voxel51/fiftyone/pull/1721>`_
+- Fixed image lists for the `image_path` parameter when importing
+  :ref:`GeoTIFF datasets <GeoTIFFDataset-import>`
+  `#1728 <https://github.com/voxel51/fiftyone/pull/1728>`_
+- Added a :func:`find_duplicates() <fiftyone.utils.iou.find_duplicates>`
+  utility to automatically find duplicate objects based on IoU
+  `#1714 <https://github.com/voxel51/fiftyone/pull/1714>`_
+
 .. _release-notes-v0.15.1:
 
 FiftyOne 0.15.1

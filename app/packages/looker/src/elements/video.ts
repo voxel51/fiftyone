@@ -1,7 +1,6 @@
 /**
  * Copyright 2017-2022, Voxel51, Inc.
  */
-
 import { Optional, StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {
@@ -182,7 +181,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     config: { frameRate, support },
   }: Readonly<VideoState>) {
     let updatePlay = false;
-    if (this.singleFrame === null && loaded) {
+    if (loaded) {
       if (this.locked !== lockedToSupport) {
         this.singleFrame = lockedToSupport
           ? support[0] === support[1]
@@ -533,6 +532,8 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.canvas.width = dimensions[0];
         this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
+
+        let canvas = this.canvas;
         acquireThumbnailer().then(([video, release]) => {
           const error = (event) => {
             // Chrome v60
@@ -554,19 +555,17 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           const seeked = () => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                setTimeout(() => {
-                  const ctx = this.canvas.getContext("2d");
-                  ctx.imageSmoothingEnabled = false;
-                  ctx.drawImage(video, 0, 0);
-                  release();
-                  video.removeEventListener("seeked", seeked);
-                  video.removeEventListener("error", error);
-                  this.update({
-                    hasPoster: true,
-                    duration: video.duration,
-                    loaded: true,
-                  });
-                }, 20);
+                const ctx = canvas.getContext("2d");
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(video, 0, 0);
+                release();
+                video.removeEventListener("seeked", seeked);
+                video.removeEventListener("error", error);
+                this.update({
+                  hasPoster: true,
+                  duration: video.duration,
+                  loaded: true,
+                });
               });
             });
           };

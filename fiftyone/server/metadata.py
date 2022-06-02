@@ -1,6 +1,5 @@
 """
 FiftyOne Server JIT metadata utilities.
-
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -36,7 +35,7 @@ async def get_metadata(session, filepath, media_type, metadata=None):
     Args:
         session: an ``aiohttp.ClientSession`` to use if necessary
         filepath: the path to the file
-        media_type: the media type of the collection
+        media_type: the media type
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
@@ -113,12 +112,10 @@ async def get_metadata(session, filepath, media_type, metadata=None):
 )
 async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
-
     Args:
         session: an ``aiohttp.ClientSession`` to use
         url: a file URL
         is_video: whether the file is a video
-
     Returns:
         metadata dict
     """
@@ -153,11 +150,9 @@ async def read_url_metadata(session, url, is_video):
 
 async def read_local_metadata(local_path, is_video):
     """Calculates the metadata for the given local media path.
-
     Args:
         local_path: a local filepath
         is_video: whether the file is a video
-
     Returns:
         dict
     """
@@ -176,7 +171,6 @@ async def read_local_metadata(local_path, is_video):
 
 class Reader(object):
     """Asynchronous file-like reader.
-
     Args:
         content: a :class:`aiohttp.StreamReader`
     """
@@ -271,10 +265,8 @@ def _get_image_dimensions(url):
 async def get_image_dimensions(input):
     """Gets the dimensions of an image from its file-like asynchronous byte
     stream.
-
     Args:
         input: file-like object with async read and seek methods
-
     Returns:
         the ``(width, height)``
     """
@@ -413,11 +405,6 @@ async def get_image_dimensions(input):
 
 
 class MetadataException(Exception):
-    """"Exception raised when metadata for a media file cannot be computed."""
+    """ "Exception raised when metadata for a media file cannot be computed."""
 
     pass
-
-
-def _is_video(filepath):
-    mime_type = etau.guess_mime_type(filepath)
-    return mime_type and mime_type.startswith("video/")

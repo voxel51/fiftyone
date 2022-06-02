@@ -1,0 +1,43 @@
+{
+    "name": "@fiftyone/teams",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "vite",
+        "relay": "relay-compiler relay.config.json",
+        "build": "yarn build-bare && yarn copy-to-python",
+        "build-bare": "vite build",
+        "copy-to-python": "rm -rf ../../../package/teams/fiftyone/teams/static && cp -r ./dist ../../../package/teams/fiftyone/teams/static"
+    },
+    "dependencies": {
+        "@auth0/auth0-react": "^1.9.0",
+        "@fiftyone/app": "*",
+        "@fiftyone/components": "*",
+        "@fiftyone/utilities": "*",
+        "@material-ui/icons": "^4.11.2",
+        "@react-spring/web": "^9.4.2",
+        "history": "^5.3.0",
+        "re-resizable": "^6.9.1",
+        "react": "^18.1.0",
+        "react-dom": "^18.1.0",
+        "react-error-boundary": "^3.1.4",
+        "react-relay": "^13.2.0",
+        "react-use": "^17.3.2",
+        "recoil": "0.7.2"
+    },
+    "devDependencies": {
+        "@types/react": "^18.0.9",
+        "@types/react-dom": "^18.0.3",
+        "@types/react-relay": "^13.0.0",
+        "@types/relay-compiler": "^8.0.2",
+        "@vitejs/plugin-react": "^1.2.0",
+        "react-icons": "^4.3.1",
+        "relay-compiler": "^13.0.2",
+        "relay-compiler-language-typescript": "^15.0.1",
+        "relay-config": "^12.0.1",
+        "rollup-plugin-commonjs": "^10.1.0",
+        "typescript": "4.2.4",
+        "vite": "2.4.2",
+        "vite-plugin-relay": "^1.0.7"
+    }
+}

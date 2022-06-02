@@ -46,7 +46,6 @@ from decorators import drop_datasets
 
 
 basedir = None
-
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
@@ -187,10 +186,12 @@ class ImageExportCoersionTests(ImageDatasetTests):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     ),
                     fo.Detection(
-                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
                     ),
                 ]
             ),
@@ -206,7 +207,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
         )
 
         #
@@ -219,7 +221,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
         )
 
     @drop_datasets
@@ -229,10 +232,12 @@ class ImageExportCoersionTests(ImageDatasetTests):
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     ),
                     fo.Detection(
-                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
                     ),
                 ]
             ),
@@ -248,7 +253,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.ImageDirectory,
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
         )
 
         #
@@ -265,7 +271,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.ImageDirectory,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
         )
 
         self.assertEqual(
@@ -299,7 +306,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
         sample = fo.Sample(
             filepath=self._new_image(),
             ground_truth=fo.Detection(
-                label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                label="cat",
+                bounding_box=[0.1, 0.1, 0.4, 0.4],
             ),
         )
 
@@ -323,7 +331,8 @@ class ImageExportCoersionTests(ImageDatasetTests):
     @drop_datasets
     def test_classification_as_detections(self):
         sample = fo.Sample(
-            filepath=self._new_image(), animal=fo.Classification(label="cat"),
+            filepath=self._new_image(),
+            animal=fo.Classification(label="cat"),
         )
 
         dataset = fo.Dataset()
@@ -366,11 +375,13 @@ class UnlabeledImageDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.ImageDirectory,
+            export_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.ImageDirectory,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.ImageDirectory,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -462,10 +473,12 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
-            dataset.count("predictions"), dataset2.count("predictions"),
+            dataset.count("predictions"),
+            dataset2.count("predictions"),
         )
 
     @drop_datasets
@@ -725,10 +738,12 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
                 predictions=fo.Detections(
                     detections=[
                         fo.Detection(
-                            label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
                         ),
                         fo.Detection(
-                            label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
                         ),
                     ]
                 ),
@@ -824,7 +839,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("predictions.detections"),
@@ -892,7 +908,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -962,7 +979,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("predictions.detections"),
@@ -979,7 +997,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         view = dataset.limit(2)
         view.export(
-            export_dir=export_dir, dataset_type=fo.types.VOCDetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1011,7 +1030,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.VOCDetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.VOCDetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1029,7 +1049,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
-            dataset_type=fo.types.VOCDetectionDataset, labels_path=labels_path,
+            dataset_type=fo.types.VOCDetectionDataset,
+            labels_path=labels_path,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1042,7 +1063,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("predictions.detections"),
@@ -1059,7 +1081,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         view = dataset.limit(2)
         view.export(
-            export_dir=export_dir, dataset_type=fo.types.KITTIDetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1083,7 +1106,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.KITTIDetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.KITTIDetectionDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1115,7 +1139,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("predictions.detections"),
@@ -1178,7 +1203,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
-            dataset_type=fo.types.YOLOv4Dataset, labels_path=labels_path,
+            dataset_type=fo.types.YOLOv4Dataset,
+            labels_path=labels_path,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1206,7 +1232,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.YOLOv5Dataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1250,7 +1277,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         export_dir = self._new_dir()
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.YOLOv5Dataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLOv5Dataset,
         )
         yolo_labels_path = os.path.join(export_dir, "labels", "val")
 
@@ -1288,7 +1316,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         export_dir = self._new_dir()
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.COCODetectionDataset,
         )
         coco_labels_path = os.path.join(export_dir, "labels.json")
 
@@ -1511,7 +1540,8 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("segmentations.mask"),
@@ -1629,7 +1659,8 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
-            labels_path=labels_path, dataset_type=fo.types.GeoJSONDataset,
+            labels_path=labels_path,
+            dataset_type=fo.types.GeoJSONDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1641,7 +1672,8 @@ class GeoLocationDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertSetEqual(
-            set(dataset.values("filepath")), set(dataset2.values("filepath")),
+            set(dataset.values("filepath")),
+            set(dataset2.values("filepath")),
         )
         self.assertEqual(
             dataset.count("coordinates"), dataset2.count("coordinates")
@@ -1657,10 +1689,12 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
                 predictions=fo.Detections(
                     detections=[
                         fo.Detection(
-                            label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
                         ),
                         fo.Detection(
-                            label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
                         ),
                     ]
                 ),
@@ -1717,7 +1751,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertEqual(
-            dataset.count("weather"), dataset2.count("attributes"),
+            dataset.count("weather"),
+            dataset2.count("attributes"),
         )
         self.assertEqual(
             dataset.distinct("weather.confidence"),
@@ -1742,16 +1777,19 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         view = dataset.limit(2)
         view.export(
-            export_dir=export_dir, dataset_type=fo.types.BDDDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.BDDDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.BDDDataset,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.BDDDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
         self.assertEqual(
-            view.count("weather"), dataset2.count("attributes"),
+            view.count("weather"),
+            dataset2.count("attributes"),
         )
         self.assertEqual(
             view.count("predictions.detections"),
@@ -1763,7 +1801,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.BDDDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.BDDDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1780,7 +1819,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
-            labels_path=labels_path, dataset_type=fo.types.BDDDataset,
+            labels_path=labels_path,
+            dataset_type=fo.types.BDDDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1792,7 +1832,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         self.assertEqual(len(dataset), len(dataset2))
         self.assertEqual(
-            dataset.count("weather"), dataset2.count("attributes"),
+            dataset.count("weather"),
+            dataset2.count("attributes"),
         )
         self.assertEqual(
             dataset.count("predictions.detections"),
@@ -1809,11 +1850,13 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         view = dataset.limit(2)
         view.export(
-            export_dir=export_dir, dataset_type=fo.types.CVATImageDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.CVATImageDataset,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
@@ -1827,7 +1870,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.CVATImageDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATImageDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1844,7 +1888,8 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
-            labels_path=labels_path, dataset_type=fo.types.CVATImageDataset,
+            labels_path=labels_path,
+            dataset_type=fo.types.CVATImageDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -1870,11 +1915,13 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -1902,11 +1949,13 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.FiftyOneDataset,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
         )
 
         self.assertTrue("test" in dataset.list_evaluations())
@@ -2004,7 +2053,6 @@ class VideoDatasetTests(unittest.TestCase):
     def tearDown(self):
         self._temp_dir.__exit__()
 
-
     def _new_video(self, filename=None):
         if filename is None:
             filename = self._new_name()
@@ -2068,10 +2116,12 @@ class VideoExportCoersionTests(VideoDatasetTests):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     ),
                     fo.Detection(
-                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
                     ),
                 ]
             ),
@@ -2105,10 +2155,14 @@ class VideoExportCoersionTests(VideoDatasetTests):
             predictions=fo.TemporalDetections(
                 detections=[
                     fo.TemporalDetection(
-                        label="cat", support=[1, 4], confidence=0.95,
+                        label="cat",
+                        support=[1, 4],
+                        confidence=0.95,
                     ),
                     fo.TemporalDetection(
-                        label="dog", support=[2, 5], confidence=0.95,
+                        label="dog",
+                        support=[2, 5],
+                        confidence=0.95,
                     ),
                 ]
             ),
@@ -2130,7 +2184,8 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.VideoDirectory,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
         )
 
         self.assertEqual(
@@ -2248,11 +2303,13 @@ class UnlabeledVideoDatasetTests(VideoDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.VideoDirectory,
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.VideoDirectory,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
         )
 
         self.assertEqual(len(dataset), len(dataset2))
@@ -2320,10 +2377,14 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
                 predictions=fo.TemporalDetections(
                     detections=[
                         fo.TemporalDetection(
-                            label="cat", support=[1, 4], confidence=0.95,
+                            label="cat",
+                            support=[1, 4],
+                            confidence=0.95,
                         ),
                         fo.TemporalDetection(
-                            label="dog", support=[2, 5], confidence=0.95,
+                            label="dog",
+                            support=[2, 5],
+                            confidence=0.95,
                         ),
                     ]
                 ),
@@ -2402,10 +2463,12 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
-                        label="cat", bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
                     ),
                     fo.Detection(
-                        label="dog", bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
                     ),
                 ]
             ),
@@ -2490,11 +2553,13 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
 
         view = dataset.limit(1)
         view.export(
-            export_dir=export_dir, dataset_type=fo.types.CVATVideoDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
-            dataset_dir=export_dir, dataset_type=fo.types.CVATVideoDataset,
+            dataset_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
         )
 
         self.assertEqual(len(view), len(dataset2))
@@ -2508,7 +2573,8 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         export_dir = self._new_dir()
 
         dataset.export(
-            export_dir=export_dir, dataset_type=fo.types.CVATVideoDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -2525,7 +2591,8 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
-            labels_path=labels_path, dataset_type=fo.types.CVATVideoDataset,
+            labels_path=labels_path,
+            dataset_type=fo.types.CVATVideoDataset,
         )
 
         dataset2 = fo.Dataset.from_dir(
