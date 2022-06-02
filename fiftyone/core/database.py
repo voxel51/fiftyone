@@ -184,8 +184,6 @@ def establish_db_conn(config: FiftyOneConfig) -> None:
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-    _connect(config.database_name, **_connection_kwargs)
-
     config = get_db_config()
     if foc.CLIENT_TYPE != config.type:
         raise ConnectionError(

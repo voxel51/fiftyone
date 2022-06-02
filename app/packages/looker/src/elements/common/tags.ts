@@ -63,7 +63,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   ) {
     if (
       arraysAreEqual(activePaths, this.activePaths) &&
-      this.colorByValue === coloring.byLabel &&
+      this.colorByValue === (coloring.by === "label") &&
       this.colorSeed === coloring.seed
     ) {
       return this.element;
@@ -85,7 +85,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -98,7 +98,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -111,7 +111,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value.datetime : path
+            coloring.by === "label" ? value.datetime : path
           ),
         };
       },
@@ -124,7 +124,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value.datetime : path
+            coloring.by === "label" ? value.datetime : path
           ),
         };
       },
@@ -137,7 +137,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -150,7 +150,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -162,7 +162,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? v : path
+            coloring.by === "label" ? v : path
           ),
         };
       },
@@ -173,7 +173,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -183,7 +183,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         color: getColor(
           coloring.pool,
           coloring.seed,
-          coloring.byLabel ? value : path
+          coloring.by === "label" ? value : path
         ),
       }),
     };
@@ -203,7 +203,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         color: getColor(
           coloring.pool,
           coloring.seed,
-          coloring.byLabel ? label : path
+          coloring.by === "label" ? label : path
         ),
       }),
       [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
@@ -215,7 +215,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         color: getColor(
           coloring.pool,
           coloring.seed,
-          coloring.byLabel ? label : path
+          coloring.by === "label" ? label : path
         ),
       }),
       [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
@@ -226,7 +226,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.byLabel ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },
@@ -234,22 +234,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     for (let index = 0; index < activePaths.length; index++) {
       const path = activePaths[index];
-      if (
-        path.startsWith("tags.") &&
-        Array.isArray(sample.tags) &&
-        sample.tags.includes(path.slice(5))
-      ) {
-        const tag = path.slice(5);
-        elements.push({
-          color: getColor(coloring.pool, coloring.seed, path),
-          title: tag,
-          value: tag,
-        });
-
-        continue;
-      }
-
-      if (path.startsWith("_label_tags.")) {
+      if (path.startsWith("tags.")) {
+        if (Array.isArray(sample.tags) && sample.tags.includes(path.slice(5))) {
+          const tag = path.slice(5);
+          elements.push({
+            color: getColor(coloring.pool, coloring.seed, path),
+            title: tag,
+            value: tag,
+          });
+        }
+      } else if (path.startsWith("_label_tags.")) {
         const tag = path.slice("_label_tags.".length);
         const count = sample._label_tags[tag] || 0;
         if (count > 0) {
@@ -260,54 +254,60 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             value,
           });
         }
+      } else if (path !== "tags") {
+        const [field, value, list] = getFieldAndValue(
+          sample,
+          fieldSchema,
+          path
+        );
 
-        continue;
-      }
-
-      const [field, value, list] = getFieldAndValue(sample, fieldSchema, path);
-
-      const pushList = (ftype: string, value) => {
-        let count = 0;
-        let rest = 0;
-        for (let index = 0; index < (value as Array<unknown>).length; index++) {
-          if (PRIMITIVE_RENDERERS[ftype](path, value[index]) && count < 3) {
-            count++;
-            elements.push(PRIMITIVE_RENDERERS[ftype](path, value[index]));
-          } else {
-            rest++;
+        const pushList = (ftype: string, value) => {
+          let count = 0;
+          let rest = 0;
+          for (
+            let index = 0;
+            index < (value as Array<unknown>).length;
+            index++
+          ) {
+            if (PRIMITIVE_RENDERERS[ftype](path, value[index]) && count < 3) {
+              count++;
+              elements.push(PRIMITIVE_RENDERERS[ftype](path, value[index]));
+            } else {
+              rest++;
+            }
           }
+
+          if (rest > 0) {
+            elements.push({
+              color: getColor(coloring.pool, coloring.seed, path),
+              title: `${path}: and ${rest} more`,
+              value: `and ${rest} more`,
+            });
+          }
+        };
+
+        if (value === undefined) continue;
+
+        if (LABEL_RENDERERS[field.embeddedDocType]) {
+          elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+          continue;
         }
 
-        if (rest > 0) {
-          elements.push({
-            color: getColor(coloring.pool, coloring.seed, path),
-            title: `${path}: and ${rest} more`,
-            value: `and ${rest} more`,
-          });
+        if (PRIMITIVE_RENDERERS[field.ftype]) {
+          list
+            ? pushList(field.ftype, value)
+            : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+          continue;
         }
-      };
 
-      if (value === undefined) continue;
-
-      if (LABEL_RENDERERS[field.embeddedDocType]) {
-        elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
-        continue;
-      }
-
-      if (PRIMITIVE_RENDERERS[field.ftype]) {
-        list
-          ? pushList(field.ftype, value)
-          : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
-        continue;
-      }
-
-      if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
-        pushList(field.subfield, value);
-        continue;
+        if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
+          pushList(field.subfield, value);
+          continue;
+        }
       }
     }
 
-    this.colorByValue = coloring.byLabel;
+    this.colorByValue = coloring.by === "label";
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
@@ -370,12 +370,15 @@ const getFieldAndValue = (
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
+
   for (const key of path.split(".")) {
     field = schema[key];
+
     if (![undefined, null].includes(value)) {
-      value = unwind(field.dbField || key, value);
+      value = unwind(field.name !== "id" ? field.dbField || key : "id", value);
       list = list || field.ftype === LIST_FIELD;
     }
+
     schema = field.fields;
   }
 

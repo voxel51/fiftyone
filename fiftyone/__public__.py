@@ -6,7 +6,7 @@ FiftyOne's public interface.
 |
 """
 import fiftyone.core.config as _foc
-import fiftyone.core.data as _fod
+import fiftyone.core.database as _fod
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()

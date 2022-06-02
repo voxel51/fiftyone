@@ -615,8 +615,7 @@ def _parse_backend(backend):
     if backend not in available_backends:
         raise ValueError(
             "Unsupported plotting backend '%s'; supported values are %s"
-            % backend,
-            available_backends,
+            % (backend, available_backends)
         )
 
     return backend

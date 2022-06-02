@@ -32,7 +32,6 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.core.collections as foc
 import fiftyone.core.data as fod
-from fiftyone.core.data import reference
 from fiftyone.core.data.definitions import MediaType
 from fiftyone.core.database import get_db_conn
 import fiftyone.core.evaluation as foe

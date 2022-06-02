@@ -1,19 +1,21 @@
 import { useCallback, useContext, useEffect, useTransition } from "react";
-import { OperationType } from "relay-runtime";
+import { OperationType, VariablesOf } from "relay-runtime";
 import { Entry, RouterContext, RoutingContext } from "./RouterContext";
 
-export const goTo = (router: RoutingContext, path: string) => {
-  router.history.push(path);
+export const goTo = (router: RoutingContext, path: string, state: any) => {
+  router.history.push(path, state);
 };
 
-export const useTo = () => {
+export const useTo = (state: any) => {
   const router = useContext(RouterContext);
   const [pending, start] = useTransition();
 
   return {
     pending,
-    start: useCallback((to: string) => () => router.preload(to), [router]),
-    to: useCallback((to: string) => start(() => goTo(router, to)), [router]),
+    to: useCallback(
+      (to: string) => start(() => goTo(router, to, state)),
+      [router, state]
+    ),
   };
 };
 

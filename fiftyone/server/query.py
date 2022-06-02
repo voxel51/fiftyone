@@ -95,8 +95,6 @@ class BrainRun(Run):
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    classwise: bool
-    error_level: int
     gt_field: str
     pred_field: str
     method: str
@@ -128,8 +126,8 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class Dataset(HasCollection):
     id: gql.ID
     name: str
-    created_at: date
-    last_loaded_at: datetime
+    created_at: t.Optional[date]
+    last_loaded_at: t.Optional[datetime]
     persistent: bool
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
@@ -139,7 +137,7 @@ class Dataset(HasCollection):
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
     app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
-    version: str
+    version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
@@ -277,12 +275,13 @@ class Query:
         return foc.VERSION
 
 
-def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
+def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     doc = dataset._doc.to_dict()
     Dataset.modifier(doc)
     data = from_dict(Dataset, doc, config=Config(check_types=False))
+    data.view_cls = None
 
-    if view._dataset != dataset:
+    if view is not None and view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
         data.id = ObjectId()
@@ -295,7 +294,7 @@ def serialize_dataset(dataset: fod.Dataset, view: JSONArray) -> Dataset:
             for s in _flatten_fields([], d["frame_fields"])
         ]
 
-    data.view_cls = etau.get_class_name(view)
+        data.view_cls = etau.get_class_name(view)
 
     return asdict(data)
 

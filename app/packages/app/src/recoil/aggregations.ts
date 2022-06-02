@@ -121,41 +121,45 @@ export const aggregations = selectorFamily<
   { modal: boolean; extended: boolean }
 >({
   key: "aggregations",
-  get: ({ modal, extended }) => async ({ get }) => {
-    let filters = null;
-    get(atoms.refresher);
+  get:
+    ({ modal, extended }) =>
+    async ({ get }) => {
+      let filters = null;
+      get(atoms.refresher);
 
-    if (extended && get(filterAtoms.hasFilters(modal))) {
-      filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
-    } else if (extended) {
-      return get(aggregations({ extended: false, modal })) as AggregationsData;
-    }
-
-    const dataset = get(selectors.datasetName);
-
-    if (!dataset) {
-      return null;
-    }
-
-    const { aggregations: data } = (await getFetchFunction()(
-      "POST",
-      "/aggregations",
-      {
-        filters,
-        sample_ids: modal ? get(atoms.modal).sample._id : null,
-        dataset,
-        view: get(viewAtoms.view),
-        hidden_labels:
-          modal && extended
-            ? toSnakeCase(get(selectors.hiddenLabelsArray))
-            : null,
+      if (extended && get(filterAtoms.hasFilters(modal))) {
+        filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
+      } else if (extended) {
+        return get(
+          aggregations({ extended: false, modal })
+        ) as AggregationsData;
       }
-    )) as { aggregations: AggregationsData };
 
-    data && addNoneCounts(data, get(selectors.isVideoDataset));
+      const dataset = get(selectors.datasetName);
 
-    return data;
-  },
+      if (!dataset) {
+        return null;
+      }
+
+      const { aggregations: data } = (await getFetchFunction()(
+        "POST",
+        "/aggregations",
+        {
+          filters,
+          sample_ids: modal ? get(atoms.modal).sample._id : null,
+          dataset,
+          view: get(viewAtoms.view),
+          hidden_labels:
+            modal && extended
+              ? toSnakeCase(get(selectors.hiddenLabelsArray))
+              : null,
+        }
+      )) as { aggregations: AggregationsData };
+
+      data && addNoneCounts(data, get(selectors.isVideoDataset));
+
+      return data;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -169,9 +173,11 @@ export const noneCount = selectorFamily<
   { path: string; modal: boolean; extended: boolean }
 >({
   key: "noneCount",
-  get: ({ extended, path, modal }) => ({ get }) => {
-    return get(aggregations({ modal, extended }))[path].None;
-  },
+  get:
+    ({ extended, path, modal }) =>
+    ({ get }) => {
+      return get(aggregations({ modal, extended }))[path].None;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -182,24 +188,28 @@ export const labelTagCounts = selectorFamily<
   { modal: boolean; extended: boolean }
 >({
   key: "labelTagCounts",
-  get: ({ modal, extended }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }));
-    const paths = get(schemaAtoms.labelPaths({})).map((path) => `${path}.tags`);
-    const result = {};
+  get:
+    ({ modal, extended }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }));
+      const paths = get(schemaAtoms.labelPaths({})).map(
+        (path) => `${path}.tags`
+      );
+      const result = {};
 
-    for (const path of paths) {
-      const pathData = data[path] as CategoricalAggregations<string>;
-      for (const [tag, count] of pathData.CountValues[1]) {
-        if (!result[tag]) {
-          result[tag] = 0;
+      for (const path of paths) {
+        const pathData = data[path] as CategoricalAggregations<string>;
+        for (const [tag, count] of pathData.CountValues[1]) {
+          if (!result[tag]) {
+            result[tag] = 0;
+          }
+
+          result[tag] += count;
         }
-
-        result[tag] += count;
       }
-    }
 
-    return result;
-  },
+      return result;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -210,11 +220,13 @@ export const sampleTagCounts = selectorFamily<
   { modal: boolean; extended: boolean }
 >({
   key: "sampleTagCounts",
-  get: ({ modal, extended }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }))
-      .tags as CategoricalAggregations;
-    return Object.fromEntries(data.CountValues[1]);
-  },
+  get:
+    ({ modal, extended }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }))
+        .tags as CategoricalAggregations;
+      return Object.fromEntries(data.CountValues[1]);
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -226,51 +238,53 @@ const makeCountResults = <T extends string | null | boolean>(key) =>
     { path: string; modal: boolean; extended: boolean }
   >({
     key,
-    get: ({ extended, path, modal }) => ({ get }) => {
-      const { CountValues, None } = get(aggregations({ modal, extended }))[
-        path
-      ] as CategoricalAggregations<T>;
+    get:
+      ({ extended, path, modal }) =>
+      ({ get }) => {
+        const { CountValues, None } = get(aggregations({ modal, extended }))[
+          path
+        ] as CategoricalAggregations<T>;
 
-      if (!CountValues) {
-        const keys = path.split(".");
-        let parent = keys[0];
+        if (!CountValues) {
+          const keys = path.split(".");
+          let parent = keys[0];
 
-        let field = get(schemaAtoms.field(parent));
-        if (!field && parent === "frames") {
-          parent = `frames.${keys[1]}`;
-          field = get(schemaAtoms.field(parent));
+          let field = get(schemaAtoms.field(parent));
+          if (!field && parent === "frames") {
+            parent = `frames.${keys[1]}`;
+            field = get(schemaAtoms.field(parent));
+          }
+
+          if (
+            VALID_KEYPOINTS.includes(
+              get(schemaAtoms.field(parent)).embeddedDocType
+            )
+          ) {
+            const skeleton = get(selectors.skeleton(parent));
+
+            return {
+              count: skeleton.labels.length,
+              results: skeleton.labels.map((label) => [
+                label as unknown as T,
+                -1,
+              ]),
+            };
+          }
         }
 
-        if (
-          VALID_KEYPOINTS.includes(
-            get(schemaAtoms.field(parent)).embeddedDocType
-          )
-        ) {
-          const skeleton = get(selectors.skeleton(parent));
+        const results = [...CountValues[1]];
 
-          return {
-            count: skeleton.labels.length,
-            results: skeleton.labels.map((label) => [
-              (label as unknown) as T,
-              -1,
-            ]),
-          };
+        let count = CountValues[0];
+        if (None) {
+          results.push([null, None]);
+          count++;
         }
-      }
 
-      const results = [...CountValues[1]];
-
-      let count = CountValues[0];
-      if (None) {
-        results.push([null, None]);
-        count++;
-      }
-
-      return {
-        count,
-        results,
-      };
-    },
+        return {
+          count,
+          results,
+        };
+      },
     cachePolicy_UNSTABLE: {
       eviction: "most-recent",
     },
@@ -289,16 +303,18 @@ export const labelCount = selectorFamily<
   { modal: boolean; extended: boolean }
 >({
   key: "labelCount",
-  get: ({ modal, extended }) => ({ get }) => {
-    let sum = 0;
-    const data = get(aggregations({ modal, extended }));
+  get:
+    ({ modal, extended }) =>
+    ({ get }) => {
+      let sum = 0;
+      const data = get(aggregations({ modal, extended }));
 
-    for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
-      sum += data[label].Count;
-    }
+      for (const label of get(schemaAtoms.activeLabelPaths({ modal }))) {
+        sum += data[label].Count;
+      }
 
-    return sum;
-  },
+      return sum;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -308,16 +324,18 @@ export const values = selectorFamily<
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "values",
-  get: ({ extended, path, modal }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }));
+  get:
+    ({ extended, path, modal }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }));
 
-    if (data) {
-      const agg = data[path] as CategoricalAggregations<string>;
-      return agg.CountValues[1].map(([value]) => value).sort();
-    }
+      if (data) {
+        const agg = data[path] as CategoricalAggregations<string>;
+        return agg.CountValues[1].map(([value]) => value).sort();
+      }
 
-    return [];
-  },
+      return [];
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -333,39 +351,41 @@ export const count = selectorFamily<
   }
 >({
   key: "count",
-  get: ({ extended, path, modal, value }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }));
-    if (!data) {
-      return null;
-    }
-
-    const result = data[path];
-    if (!result) {
-      const split = path.split(".");
-
-      if (split.length < 2) {
-        throw new Error(`invalid path ${path}`);
+  get:
+    ({ extended, path, modal, value }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }));
+      if (!data) {
+        return null;
       }
 
-      const parent = split.slice(0, split.length - 1).join(".");
+      const result = data[path];
+      if (!result) {
+        const split = path.split(".");
 
-      if (data[parent]) {
-        return get(counts({ extended, path: parent, modal }))[
-          split[split.length - 1]
-        ];
+        if (split.length < 2) {
+          throw new Error(`invalid path ${path}`);
+        }
+
+        const parent = split.slice(0, split.length - 1).join(".");
+
+        if (data[parent]) {
+          return get(counts({ extended, path: parent, modal }))[
+            split[split.length - 1]
+          ];
+        }
       }
-    }
 
-    if (value === null) {
-      return result.None;
-    }
+      if (value === null) {
+        return result.None;
+      }
 
-    if (value !== undefined) {
-      return get(counts({ extended, path, modal }))[value] || 0;
-    }
+      if (value !== undefined) {
+        return get(counts({ extended, path, modal }))[value] || 0;
+      }
 
-    return data[path].Count;
-  },
+      return data[path].Count;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -376,28 +396,32 @@ export const counts = selectorFamily<
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "counts",
-  get: ({ extended, modal, path }) => ({ get }) => {
-    const { CountValues } = get(aggregations({ modal, extended }))[
-      path
-    ] as CategoricalAggregations;
+  get:
+    ({ extended, modal, path }) =>
+    ({ get }) => {
+      const { CountValues } = get(aggregations({ modal, extended }))[
+        path
+      ] as CategoricalAggregations;
 
-    if (!CountValues) {
-      const parent = path.split(".")[0];
+      if (!CountValues) {
+        const parent = path.split(".")[0];
 
-      if (
-        VALID_KEYPOINTS.includes(get(schemaAtoms.field(parent)).embeddedDocType)
-      ) {
-        const skeleton = get(selectors.skeleton(parent));
+        if (
+          VALID_KEYPOINTS.includes(
+            get(schemaAtoms.field(parent)).embeddedDocType
+          )
+        ) {
+          const skeleton = get(selectors.skeleton(parent));
 
-        return skeleton.labels.reduce((acc, cur) => {
-          acc[cur] = -1;
-          return acc;
-        }, {});
+          return skeleton.labels.reduce((acc, cur) => {
+            acc[cur] = -1;
+            return acc;
+          }, {});
+        }
       }
-    }
 
-    return CountValues ? Object.fromEntries(CountValues[1]) : null;
-  },
+      return CountValues ? Object.fromEntries(CountValues[1]) : null;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -438,18 +462,20 @@ export const cumulativeCounts = selectorFamily<
   }
 >({
   key: "cumulativeCounts",
-  get: ({ extended, path: key, modal, ftype, embeddedDocType }) => ({ get }) =>
-    gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
-      const data = get(counts({ extended, modal, path: `${path}.${key}` }));
-      for (const value in data) {
-        if (!result[value]) {
-          result[value] = 0;
-        }
+  get:
+    ({ extended, path: key, modal, ftype, embeddedDocType }) =>
+    ({ get }) =>
+      gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
+        const data = get(counts({ extended, modal, path: `${path}.${key}` }));
+        for (const value in data) {
+          if (!result[value]) {
+            result[value] = 0;
+          }
 
-        result[value] += data[value];
-      }
-      return result;
-    }, {}),
+          result[value] += data[value];
+        }
+        return result;
+      }, {}),
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -466,21 +492,21 @@ export const cumulativeValues = selectorFamily<
   }
 >({
   key: "cumulativeValues",
-  get: ({ extended, path: key, modal, ftype, embeddedDocType }) => ({
-    get,
-  }) => {
-    return Array.from(
-      new Set<string>(
-        gatherPaths(get, ftype, embeddedDocType).reduce(
-          (result, path) => [
-            ...result,
-            ...get(values({ extended, modal, path: `${path}.${key}` })),
-          ],
-          []
+  get:
+    ({ extended, path: key, modal, ftype, embeddedDocType }) =>
+    ({ get }) => {
+      return Array.from(
+        new Set<string>(
+          gatherPaths(get, ftype, embeddedDocType).reduce(
+            (result, path) => [
+              ...result,
+              ...get(values({ extended, modal, path: `${path}.${key}` })),
+            ],
+            []
+          )
         )
-      )
-    ).sort();
-  },
+      ).sort();
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -491,31 +517,33 @@ export const bounds = selectorFamily<
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "bounds",
-  get: ({ extended, modal, path }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }))[
-      path
-    ] as NumericAggregations;
+  get:
+    ({ extended, modal, path }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }))[
+        path
+      ] as NumericAggregations;
 
-    const isDateOrDateTime = get(
-      schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
-    );
+      const isDateOrDateTime = get(
+        schemaAtoms.meetsType({ path, ftype: [DATE_FIELD, DATE_TIME_FIELD] })
+      );
 
-    if (isDateOrDateTime) {
-      const [lower, upper] = data.Bounds as DateTimeBounds;
+      if (isDateOrDateTime) {
+        const [lower, upper] = data.Bounds as DateTimeBounds;
 
-      return [lower.datetime, upper.datetime] as [Bound, Bound];
-    }
+        return [lower.datetime, upper.datetime] as [Bound, Bound];
+      }
 
-    const isFloatField = get(
-      schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
-    );
+      const isFloatField = get(
+        schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
+      );
 
-    if (isFloatField) {
-      return (data.Bounds as FloatBounds).bounds;
-    }
+      if (isFloatField) {
+        return (data.Bounds as FloatBounds).bounds;
+      }
 
-    return data.Bounds as [Bound, Bound];
-  },
+      return data.Bounds as [Bound, Bound];
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -535,29 +563,31 @@ export const nonfiniteCounts = selectorFamily<
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "nonfiniteCounts",
-  get: ({ extended, modal, path }) => ({ get }) => {
-    const data = get(aggregations({ modal, extended }))[
-      path
-    ] as NumericAggregations;
+  get:
+    ({ extended, modal, path }) =>
+    ({ get }) => {
+      const data = get(aggregations({ modal, extended }))[
+        path
+      ] as NumericAggregations;
 
-    const isFloatField = get(
-      schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
-    );
+      const isFloatField = get(
+        schemaAtoms.meetsType({ path, ftype: FLOAT_FIELD })
+      );
 
-    const result = { none: data.None };
+      const result = { none: data.None };
 
-    if (isFloatField) {
-      const bounds = data.Bounds as FloatBounds;
-      return {
-        ...result,
-        nan: bounds.nan,
-        ninf: bounds["-inf"],
-        inf: bounds.inf,
-      };
-    }
+      if (isFloatField) {
+        const bounds = data.Bounds as FloatBounds;
+        return {
+          ...result,
+          nan: bounds.nan,
+          ninf: bounds["-inf"],
+          inf: bounds.inf,
+        };
+      }
 
-    return result;
-  },
+      return result;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -568,7 +598,10 @@ export const nonfiniteCount = selectorFamily<
   { extended: boolean; path: string; modal: boolean; key: Nonfinite }
 >({
   key: "nonfiniteCount",
-  get: ({ key, ...params }) => ({ get }) => get(nonfiniteCounts(params))[key],
+  get:
+    ({ key, ...params }) =>
+    ({ get }) =>
+      get(nonfiniteCounts(params))[key],
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -579,14 +612,16 @@ export const boundedCount = selectorFamily<
   { extended: boolean; path: string; modal: boolean }
 >({
   key: "boundedCount",
-  get: (params) => ({ get }) => {
-    const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
-      (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
-      0
-    );
+  get:
+    (params) =>
+    ({ get }) => {
+      const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
+        (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
+        0
+      );
 
-    return get(count(params)) - nonfinites;
-  },
+      return get(count(params)) - nonfinites;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
