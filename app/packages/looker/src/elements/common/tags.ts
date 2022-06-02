@@ -137,7 +137,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           color: getColor(
             coloring.pool,
             coloring.seed,
-            coloring.by ? value : path
+            coloring.by === "label" ? value : path
           ),
         };
       },

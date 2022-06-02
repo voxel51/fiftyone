@@ -485,7 +485,7 @@ export const useSelectSample = () => {
 export const useReset = () => {
   return useRecoilTransaction_UNSTABLE(({ set }) => () => {
     set(atoms.selectedSamples, new Set());
-    set(atoms.selectedLabels, new Array());
+    set(atoms.selectedLabels, {});
     set(viewAtoms.view, []);
   });
 };
