@@ -1,5 +1,5 @@
 """
-FiftyOne Server main
+FiftyOne Server main.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,6 +22,7 @@ import fiftyone as fo
 import fiftyone.constants as foc
 
 from fiftyone.server.app import app
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

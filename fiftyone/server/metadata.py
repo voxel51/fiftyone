@@ -1,5 +1,6 @@
 """
 FiftyOne Server JIT metadata utilities.
+
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -237,7 +238,7 @@ async def get_stream_info(path, session=None):
 
     stdout, stderr = await proc.communicate()
 
-    # Something went wrong; if we get a retryable code when pinging the # URL,
+    # Something went wrong; if we get a retryable code when pinging the URL,
     # trigger a retry
     if stderr and session is not None:
         async with session.get(path) as response:

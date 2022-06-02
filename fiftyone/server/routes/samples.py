@@ -1,5 +1,5 @@
 """
-FiftyOne Server /samples route
+FiftyOne Server /samples route.
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
