@@ -350,7 +350,9 @@ class PlotManager(object):
         if not self.is_connected:
             return
 
-        self._session.remove_event_listener("update", self._on_session_update)
+        self._session._client.remove_event_listener(
+            "state_update", self._on_session_update
+        )
 
         for name in self._plots:
             self._disconnect_plot(name)
