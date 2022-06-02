@@ -21,6 +21,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
+from fiftyone.core.config import HttpRetryConfig
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -29,29 +30,6 @@ import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
-
-
-def fatal_retry_code():
-    """
-    Capturing the group of http error codes that should
-    result in a "giveup" state on the backoff retry.
-    Set from the media cache config
-    """
-    # The base EnvConfig only had methods to parse an array of strings,
-    # so converting error codes back to int here in case they were loaded
-    # from a user config file as string
-    return set(map(int, fo.media_cache_config.retry_error_codes))
-
-
-class VideoURLRetryException(Exception):
-    """
-    Custom Exception for handling backoff retry logic
-    when the http request is being made by ffprobe
-    """
-
-    def __init__(self, message, error_code):
-        super().__init__(message)
-        self.error_code = error_code
 
 
 class Metadata(DynamicEmbeddedDocument):
@@ -96,9 +74,9 @@ class Metadata(DynamicEmbeddedDocument):
     @backoff.on_exception(
         backoff.expo,
         requests.exceptions.RequestException,
-        factor=0.1,
-        max_tries=10,
-        giveup=lambda e: e.status_code not in fatal_retry_code(),
+        factor=HttpRetryConfig.FACTOR,
+        max_tries=HttpRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.status_code not in HttpRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -169,9 +147,9 @@ class ImageMetadata(Metadata):
     @backoff.on_exception(
         backoff.expo,
         requests.exceptions.RequestException,
-        factor=0.1,
-        max_tries=10,
-        giveup=lambda e: e.status_code not in fatal_retry_code(),
+        factor=HttpRetryConfig.FACTOR,
+        max_tries=HttpRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.status_code not in HttpRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -232,10 +210,11 @@ class VideoMetadata(Metadata):
     @classmethod
     @backoff.on_exception(
         backoff.expo,
-        VideoURLRetryException,
-        factor=0.1,
-        max_tries=10,
-        giveup=lambda e: e.error_code not in fatal_retry_code(),
+        # TODO: update to appriate exception (aiohttp/request)
+        requests.exceptions.RequestException,
+        factor=HttpRetryConfig.FACTOR,
+        max_tries=HttpRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.error_code not in HttpRetryConfig.RETRY_CODES,
         logger=None,
     )
     def build_for(cls, video_path, mime_type=None):
@@ -254,19 +233,21 @@ class VideoMetadata(Metadata):
 
         # @todo need retries for URLs
         # need to read from the underyling call using ffprobe
+        # TODO: refactor inbound
+
         try:
             stream_info = etav.VideoStreamInfo.build_for(
                 video_path, mime_type=mime_type
             )
         except etau.ExecutableNotFoundError as err:
             # grabbing the sequence: "HTTP error ###" from the stderr of ffprobe
-            http_code = re.search("HTTP error ([0-9]+)", err)
+            pass
 
-            # capturing the 3 digits of the http code
-            http_code = http_code.group(1)
-            raise VideoURLRetryException(
-                "ffprobe failed when retrieving external resource", http_code
-            )
+        #     # capturing the 3 digits of the http code
+        #     http_code = http_code.group(1)
+        #     raise VideoURLRetryException(
+        #         "ffprobe failed when retrieving external resource", http_code
+        #     )
 
         return cls(
             size_bytes=stream_info.size_bytes,

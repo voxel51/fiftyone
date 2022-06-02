@@ -20,6 +20,7 @@ import yarl
 import eta.core.utils as etau
 
 from fiftyone.core.service import MediaCacheService
+from fiftyone.core.config import HttpRetryConfig
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
@@ -728,16 +729,14 @@ async def _do_async_download_media(arg):
     await _async_write_cache_result(remote_path, local_path, success, checksum)
 
 
-# Holding off for the moment until changes can be resolved
-# with other open changes
-# @backoff.on_exception(
-#     backoff.expo,
-#     aiohttp.ClientResponseError,
-#     factor=0.1,
-#     max_tries=10,
-#     giveup=lambda e: e.code not in self.fatal_retry_code,
-#     logger=None,
-# )
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=HttpRetryConfig.FACTOR,
+    max_tries=HttpRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.code not in HttpRetryConfig.RETRY_CODES,
+    logger=None,
+)
 async def _do_download_file(session, url, local_path):
     async with session.get(url) as response:
         checksum = response.headers.get("Etag", None)

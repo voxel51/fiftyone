@@ -584,12 +584,6 @@ class MediaCacheConfig(EnvConfig):
             env_var="MINIO_PROFILE",
             default=None,
         )
-        self.retry_error_codes = self.parse_string_array(
-            d,
-            "retry_error_codes",
-            env_var="RETRY_ERROR_CODES",
-            default=[408, 429, 500, 502, 503, 504, 509],
-        )
 
         self._set_defaults()
 
@@ -796,3 +790,24 @@ def _get_installed_packages():
     except:
         logger.debug("Failed to get installed packages")
         return set()
+
+
+class HttpRetryConfig:
+    """
+    Values used to configure the behavior of the retry logic
+    of HTTP calls made throughout the app
+    NOTE: calls made directly through storage clients (GCS, S3) use their
+    own internal retry logic implementation and may not perfectly match this
+    configuration. This configuration is for direct HTTP requests
+    """
+
+    # HTTP codes that should trigger a retry
+    RETRY_CODES = {408, 429, 500, 502, 503, 504, 509}
+
+    # Exponential backoff factor.
+    # See https://github.com/litl/backoff/blob/master/backoff/_wait_gen.py#L17
+    FACTOR = 0.1
+
+    # Maximum number of times to execute a retry
+    # before throwing an exception
+    MAX_TRIES = 10

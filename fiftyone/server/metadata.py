@@ -24,17 +24,12 @@ import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
+from fiftyone.core.config import HttpRetryConfig
 
 
 logger = logging.getLogger(__name__)
 
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
-
-
-class VideoURLRetryException(Exception):
-    def __init__(self, message, error_code):
-        super().__init__(message)
-        self.error_code = error_code
 
 
 def retry_error_codes():
@@ -213,10 +208,11 @@ class Reader(object):
 
 @backoff.on_exception(
     backoff.expo,
-    VideoURLRetryException,
-    factor=0.1,
-    max_tries=10,
-    giveup=lambda e: e.error_code not in retry_error_codes(),
+    # TODO: update to appriate exception (aiohttp/request)
+    requests.exceptions.RequestException,
+    factor=HttpRetryConfig.FACTOR,
+    max_tries=HttpRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.error_code not in HttpRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def get_stream_info(path, session=None):
@@ -255,23 +251,25 @@ async def get_stream_info(path, session=None):
 
     # @todo how to feed `response` into subprocess above to avoid this?
     # We need a status code to determine whether the failure is retryable...
-    if stderr and session is not None:
-        # here we're just getting back ffprobe's stderr. They don't bubble up
-        # a nicer http error code. maybe this is temp, but this will work for
-        # the purposes of retry logic
-        error = stderr.decode()
 
-        # grabbing the sequence: "HTTP error ###" from the stderr of ffprobe
-        http_code = re.search("HTTP error ([0-9]+)", error)
+    # TODO: refactor inbound
+    # if stderr and session is not None:
+    #     # here we're just getting back ffprobe's stderr. They don't bubble up
+    #     # a nicer http error code. maybe this is temp, but this will work for
+    #     # the purposes of retry logic
+    #     error = stderr.decode()
 
-        # capturing the 3 digits of the http code
-        http_code = http_code.group(1)
+    #     # grabbing the sequence: "HTTP error ###" from the stderr of ffprobe
+    #     http_code = re.search("HTTP error ([0-9]+)", error)
 
-        # raise here to be captured by the backoff library and potentially
-        # giving up based on code
-        raise VideoURLRetryException(
-            "ffprobe failed when retrieving external resource", http_code
-        )
+    #     # capturing the 3 digits of the http code
+    #     http_code = http_code.group(1)
+
+    #     # raise here to be captured by the backoff library and potentially
+    #     # giving up based on code
+    #     raise VideoURLRetryException(
+    #         "ffprobe failed when retrieving external resource", http_code
+    #     )
 
     if stderr:
         raise RuntimeError(stderr)
