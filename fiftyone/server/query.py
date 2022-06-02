@@ -126,8 +126,8 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class Dataset(HasCollection):
     id: gql.ID
     name: str
-    created_at: date
-    last_loaded_at: datetime
+    created_at: t.Optional[date]
+    last_loaded_at: t.Optional[datetime]
     persistent: bool
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
@@ -137,7 +137,7 @@ class Dataset(HasCollection):
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
     app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
-    version: str
+    version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
@@ -276,7 +276,7 @@ class Query:
         return foc.VERSION
 
 
-def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> Dataset:
+def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     doc = dataset._doc.to_dict()
     Dataset.modifier(doc)
     data = from_dict(Dataset, doc, config=Config(check_types=False))

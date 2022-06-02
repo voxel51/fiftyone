@@ -37,6 +37,7 @@ import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
+from fiftyone.core.odm.dataset import SampleFieldDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -4880,6 +4881,10 @@ def _load_dataset(name, virtual=False):
 
         sample_doc_cls._declare_field(sample_field)
 
+    dataset_doc.sample_fields = [
+        SampleFieldDocument.from_field(f)
+        for f in sample_doc_cls._fields.values()
+    ]
     frame_collection_name = dataset_doc.frame_collection_name
 
     if not virtual:
@@ -4910,6 +4915,12 @@ def _load_dataset(name, virtual=False):
 
                 frame_doc_cls._declare_field(frame_field)
 
+            dataset_doc.frame_fields = [
+                SampleFieldDocument.from_field(f)
+                for f in frame_doc_cls._fields.values()
+            ]
+
+    dataset_doc.save()
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 

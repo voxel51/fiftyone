@@ -354,65 +354,68 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   );
 
   return useRecoilCallback(
-    ({ snapshot, set }) => async ({ changes }) => {
-      const activeLabels = await snapshot.getPromise(
-        schemaAtoms.labelPaths({ expanded: false })
-      );
-      const f = await snapshot.getPromise(modal ? modalFilters : filters);
-      const view = await snapshot.getPromise(viewAtoms.view);
-      const dataset = await snapshot.getPromise(selectors.datasetName);
-      const selectedLabels =
-        modal && targetLabels
-          ? await snapshot.getPromise(atoms.selectedLabels)
-          : null;
-      const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-      const hiddenLabels =
-        modal && targetLabels
-          ? await snapshot.getPromise(selectors.hiddenLabelsArray)
-          : null;
+    ({ snapshot, set }) =>
+      async ({ changes }) => {
+        const activeLabels = await snapshot.getPromise(
+          schemaAtoms.labelPaths({ expanded: false })
+        );
+        const f = await snapshot.getPromise(modal ? modalFilters : filters);
+        const view = await snapshot.getPromise(viewAtoms.view);
+        const dataset = await snapshot.getPromise(selectors.datasetName);
+        const selectedLabels =
+          modal && targetLabels
+            ? await snapshot.getPromise(selectors.selectedLabelList)
+            : null;
+        const selectedSamples = await snapshot.getPromise(
+          atoms.selectedSamples
+        );
+        const hiddenLabels =
+          modal && targetLabels
+            ? await snapshot.getPromise(selectors.hiddenLabelsArray)
+            : null;
 
-      const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
+        const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
 
-      const { samples } = await getFetchFunction()("POST", "/tag", {
-        filters: f,
-        view,
-        dataset,
-        active_label_fields: activeLabels,
-        target_labels: targetLabels,
-        changes,
-        modal: modal ? modalData.sample._id : null,
-        sample_ids: modal
-          ? null
-          : selectedSamples.size
-          ? [...selectedSamples]
-          : null,
-        labels:
-          selectedLabels && selectedLabels.length
-            ? toSnakeCase(selectedLabels)
+        const { samples } = await getFetchFunction()("POST", "/tag", {
+          filters: f,
+          view,
+          dataset,
+          active_label_fields: activeLabels,
+          target_labels: targetLabels,
+          changes,
+          modal: modal ? modalData.sample._id : null,
+          sample_ids: modal
+            ? null
+            : selectedSamples.size
+            ? [...selectedSamples]
             : null,
-        hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
-      });
-
-      samples &&
-        samples.forEach((sample) => {
-          if (modalData.sample._id === sample._id) {
-            set(atoms.modal, { ...modalData, sample });
-            lookerRef.current.updateSample(sample);
-          }
-
-          store.samples.set(sample._id, {
-            ...store.samples.get(sample._id),
-            sample,
-          });
-          store.lookers.has(sample._id) &&
-            store.lookers.get(sample._id).updateSample(sample);
+          labels:
+            selectedLabels && selectedLabels.length
+              ? toSnakeCase(selectedLabels)
+              : null,
+          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
         });
 
-      set(selectors.anyTagging, false);
+        samples &&
+          samples.forEach((sample) => {
+            if (modalData.sample._id === sample._id) {
+              set(atoms.modal, { ...modalData, sample });
+              lookerRef.current.updateSample(sample);
+            }
 
-      refreshers.forEach((r) => r());
-      set(atoms.tagging({ modal, labels: targetLabels }), false);
-    },
+            store.samples.set(sample._id, {
+              ...store.samples.get(sample._id),
+              sample,
+            });
+            store.lookers.has(sample._id) &&
+              store.lookers.get(sample._id).updateSample(sample);
+          });
+
+        set(selectors.anyTagging, false);
+
+        refreshers.forEach((r) => r());
+        set(atoms.tagging({ modal, labels: targetLabels }), false);
+      },
     [modal, targetLabels, lookerRef]
   );
 };
