@@ -1,15 +1,7 @@
 import { makeRouteDefinitions, RouteDefinition } from "@fiftyone/components";
-import { Stage } from "@fiftyone/utilities";
 import { Environment } from "react-relay";
 
-interface Globals {
-  view: () => Stage[];
-}
-
-const makeRoutes = (
-  environment: Environment,
-  globals: Globals
-): RouteDefinition<any>[] => {
+const makeRoutes = (environment: Environment): RouteDefinition<any>[] => {
   return makeRouteDefinitions(environment, [
     {
       path: "",
@@ -24,7 +16,6 @@ const makeRoutes = (
             (query) => query.default
           ),
       },
-      defaultParams: {},
       children: [
         {
           path: "/",
@@ -35,7 +26,6 @@ const makeRoutes = (
           },
           query: undefined,
           exact: true,
-          defaultParams: {},
         },
         {
           path: "/datasets/:name",
@@ -52,9 +42,6 @@ const makeRoutes = (
               ),
           },
           exact: true,
-          defaultParams: {
-            view: globals.view,
-          },
         },
       ],
     },

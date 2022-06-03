@@ -190,14 +190,17 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
 })();
 
 export const getDatasetName = (context: RoutingContext<any>): string => {
-  const result = matchPath(context.pathname, {
-    path: "/datasets/:name",
-    exact: true,
-    defaultParams: {},
-  });
+  const result = matchPath(
+    context.pathname,
+    {
+      path: "/datasets/:name",
+      exact: true,
+    },
+    {}
+  );
 
   if (result) {
-    return result.params.name();
+    return result.variables.name;
   }
 
   return null;

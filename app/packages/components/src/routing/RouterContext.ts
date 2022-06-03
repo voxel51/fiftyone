@@ -18,13 +18,14 @@ export interface RouteData<
   T extends OperationType | undefined = OperationType
 > {
   isExact: boolean;
-  params?: VariablesOf<T extends undefined ? never : T>;
   path: string;
   url: string;
+  variables: T extends OperationType ? VariablesOf<T> : undefined;
 }
 
 export interface Entry<T extends OperationType | undefined = OperationType> {
   pathname: string;
+  state: any;
   entries: {
     component: Resource<Route<T>>;
     prepared?: Resource<PreloadedQuery<T extends undefined ? never : T>>;
@@ -38,7 +39,7 @@ export interface RoutingContext<
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
   pathname: string;
-  preload: (pathname: string) => void;
+  state: any;
   subscribe: (cb: (entry: Entry<T>) => void) => () => void;
 }
 
@@ -70,13 +71,20 @@ export const createRouter = (
   const subscribers = new Map();
 
   const cleanup = history.listen(({ location }) => {
-    if (!currentEntry || location.pathname === currentEntry.pathname) {
+    if (!currentEntry) {
       return;
     }
-    const matches = matchRoute(routes, location.pathname, errors);
+
+    const matches = matchRoute(
+      routes,
+      location.pathname,
+      errors,
+      location.state?.variables as Partial<VariablesOf<any>>
+    );
     const entries = prepareMatches(environment, matches);
     const nextEntry: Entry<any> = {
       pathname: location.pathname,
+      state: location.state,
       entries,
     };
     currentEntry = nextEntry;
@@ -89,9 +97,15 @@ export const createRouter = (
       if (!currentEntry) {
         currentEntry = {
           pathname: history.location.pathname,
+          state: history.location.state,
           entries: prepareMatches(
             environment,
-            matchRoute(routes, history.location.pathname, errors)
+            matchRoute(
+              routes,
+              history.location.pathname,
+              errors,
+              history.location.state?.variables as Partial<VariablesOf<any>>
+            )
           ),
         };
       }
@@ -100,10 +114,8 @@ export const createRouter = (
     get pathname() {
       return history.location.pathname;
     },
-    preload(pathname) {
-      if (currentEntry.pathname !== pathname) {
-        prepareMatches(environment, matchRoutes(routes, pathname));
-      }
+    get state() {
+      return history.location.state;
     },
     subscribe(cb) {
       const id = nextId++;
@@ -126,17 +138,18 @@ export const matchRoutes = <
 >(
   routes: RouteBase<T>[],
   pathname: string,
+  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined,
   branch: { route: RouteBase<T>; match: MatchPathResult<T> }[] = []
 ): { route: RouteBase<T>; match: MatchPathResult<T> }[] => {
   routes.some((route) => {
     const match = route.path
-      ? matchPath(pathname, route)
+      ? matchPath(pathname, route, variables)
       : branch.length
       ? branch[branch.length - 1].match
       : ({
           path: "/",
           url: "/",
-          params: {},
+          variables,
           isExact: pathname === "/",
         } as MatchPathResult<T>);
 
@@ -144,7 +157,7 @@ export const matchRoutes = <
       branch.push({ route, match });
 
       if (route.children) {
-        matchRoutes(route.children, pathname, branch);
+        matchRoutes(route.children, pathname, variables, branch);
       }
     }
 
@@ -157,9 +170,10 @@ export const matchRoutes = <
 const matchRoute = <T extends OperationType | undefined = OperationType>(
   routes: RouteDefinition<T>[],
   pathname: string,
-  errors: boolean
+  errors: boolean,
+  variables: T extends OperationType ? Partial<VariablesOf<T>> : undefined
 ): Match<T>[] => {
-  const matchedRoutes = matchRoutes(routes, pathname);
+  const matchedRoutes = matchRoutes(routes, pathname, variables);
 
   if (
     errors &&
@@ -194,25 +208,9 @@ const prepareMatches = <T extends OperationType | undefined = OperationType>(
         if (routeQuery !== undefined) {
           const prepared = new Resource(() =>
             routeQuery.load().then((q) => {
-              return loadQuery(
-                environment,
-                q,
-                matchData.params
-                  ? Object.keys(matchData.params).reduce(
-                      (p: VariablesOf<any>, key) => {
-                        p[key] = matchData.params
-                          ? matchData.params[key]()
-                          : null;
-
-                        return p;
-                      },
-                      {}
-                    )
-                  : {},
-                {
-                  fetchPolicy: "network-only",
-                }
-              );
+              return loadQuery(environment, q, matchData.variables || {}, {
+                fetchPolicy: "network-only",
+              });
             })
           );
 
