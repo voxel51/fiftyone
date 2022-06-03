@@ -116,8 +116,13 @@ export const dataset = atom<State.Dataset>({
   default: null,
 });
 
-export const selectedMediaField = atom<Field>({
-  key: "selectedMediaField",
+export const selectedGridMediaField = atom<Field>({
+  key: "selectedGridMediaField",
+  default: null,
+});
+
+export const selectedModalMediaField = atom<Field>({
+  key: "selectedModalMediaField",
   default: null,
 });
 

@@ -359,7 +359,7 @@ export default React.memo(() => {
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
   );
-  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
+  const selectedMediaField = useRecoilValue(atoms.selectedGridMediaField);
   const tagging = taggingLabels || taggingSamples;
   lookerGeneratorRef.current = ({
     sample,
@@ -456,6 +456,7 @@ export default React.memo(() => {
     tagging,
     useRecoilValue(pageParameters),
     useRecoilValue(atoms.refresher),
+    selectedMediaField,
   ]);
 
   useLayoutEffect(() => {

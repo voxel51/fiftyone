@@ -22,7 +22,11 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
-import { getSampleSrc, lookerType } from "../recoil/utils";
+import {
+  getSampleSrc,
+  getSelectedMediaFieldSrc,
+  lookerType,
+} from "../recoil/utils";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
 import { Field, LIST_FIELD } from "@fiftyone/utilities";
@@ -421,12 +425,13 @@ const lookerOptions = selector({
 3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (event: CustomEvent) => {
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
-      set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
-    }
+    ({ snapshot, set }) =>
+      async (event: CustomEvent) => {
+        const currentOptions = await snapshot.getPromise(
+          atoms.savedLookerOptions
+        );
+        set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+      }
   );
 };
 
@@ -438,7 +443,9 @@ const useFullscreen = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(atoms.selectedLabels, {}),
+    ({ set }) =>
+      async () =>
+        set(atoms.selectedLabels, {}),
     []
   );
 };
@@ -467,7 +474,6 @@ const Looker = ({
   );
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);
@@ -480,6 +486,11 @@ const Looker = ({
   );
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(selectors.datasetName);
+  const selectedModalMediaField = useRecoilValue(atoms.selectedModalMediaField);
+  const sampleSrc = getSelectedMediaFieldSrc(
+    selectedModalMediaField || fieldSchema.filepath,
+    sample
+  );
 
   const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
 

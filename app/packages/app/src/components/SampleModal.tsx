@@ -17,7 +17,11 @@ import Looker from "../components/Looker";
 import * as atoms from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
-import { getSampleSrc, useClearModal } from "../recoil/utils";
+import {
+  getSampleSrc,
+  getSelectedMediaFieldSrc,
+  useClearModal,
+} from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
 
 const ModalWrapper = styled.div`
@@ -60,37 +64,45 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
+    ({ get, set }) =>
+      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+        const { sample } = get(atoms.modal);
+        let labels = {
+          ...get(atoms.selectedLabels),
         };
-      }
+        if (labels[id]) {
+          delete labels[id];
+        } else {
+          labels[id] = {
+            field,
+            sampleId: sample._id,
+            frameNumber,
+          };
+        }
 
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
-      );
-    },
+        set(atoms.selectedLabels, labels);
+        send(
+          Object.entries(labels).map(([labelId, data]) => ({
+            ...data,
+            labelId,
+          }))
+        );
+      },
     []
   );
 };
 
 const SampleModal = () => {
-  const {
-    sample: { filepath, _id },
-    index,
-    getIndex,
-  } = useRecoilValue(atoms.modal);
-  const sampleSrc = getSampleSrc(filepath, _id);
+  const { sample, index, getIndex } = useRecoilValue(atoms.modal);
+  const fieldSchema = useRecoilValue(
+    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+
+  const selectedModalMediaField = useRecoilValue(atoms.selectedModalMediaField);
+  const sampleSrc = getSelectedMediaFieldSrc(
+    selectedModalMediaField || fieldSchema.filepath,
+    sample
+  );
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
   const tagText = useTagText(true);

@@ -76,7 +76,7 @@ const MediaFields = ({ modal }) => {
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
   );
   let [selectedField, setSelectedField] = useRecoilState<Field>(
-    atoms.selectedMediaField
+    modal ? atoms.selectedModalMediaField : atoms.selectedGridMediaField
   );
 
   if (!selectedField) selectedField = fieldSchema.filepath;
@@ -92,6 +92,7 @@ const MediaFields = ({ modal }) => {
 
       <TabOption
         active={selectedField.name}
+        rows={true}
         options={fields.map((value: Field) => {
           return {
             text: value.name,
