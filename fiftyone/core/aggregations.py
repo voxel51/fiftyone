@@ -1344,15 +1344,15 @@ class Schema(Aggregation):
         raw_schema = defaultdict(set)
         for name_and_type in d["schema"]:
             name, _type = name_and_type.split(".", 1)
+
+            if _type == "objectId" and name.startswith("_"):
+                name = name[1:]  # "_id" -> "id"
+
             if self.dynamic_only and name in doc_fields:
                 continue
 
             if name in doc_fields:
                 field = doc_fields[name]
-                if isinstance(field, fof.ObjectIdField) and name.startswith(
-                    "_"
-                ):
-                    name = name[1:]  # "_id" -> "id"
             else:
                 field_cls = _MONGO_TO_FIFTYONE_TYPES.get(_type, None)
                 field = field_cls() if field_cls is not None else None
