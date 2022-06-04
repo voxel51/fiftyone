@@ -1101,7 +1101,7 @@ def _get_db_field(field, new_field_name):
         return None
 
     # This is hacky, but we must account for the fact that ObjectIdField often
-    # uses `db_field = "_<field_name>"
+    # uses db_field = "_<field_name>"
     if field.db_field == "_" + field.name:
         return "_" + new_field_name
 
