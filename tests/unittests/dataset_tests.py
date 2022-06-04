@@ -1006,6 +1006,7 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse("field" in dataset.get_field_schema())
         self.assertTrue("new_field" in dataset.get_field_schema())
         self.assertEqual(sample["new_field"], 1)
+        self.assertListEqual(dataset.values("new_field"), [1])
         with self.assertRaises(KeyError):
             sample["field"]
 
@@ -1023,7 +1024,13 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.field",
             "predictions.detections.new_field",
         )
-        self.assertIsNotNone(sample.predictions.detections[0].new_field)
+        self.assertEqual(sample.predictions.detections[0].new_field, 1)
+        self.assertListEqual(
+            dataset.values("predictions.detections.new_field", unwind=True),
+            [1],
+        )
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].field
 
         dataset.clear_sample_field("predictions.detections.field")
         self.assertIsNone(sample.predictions.detections[0].field)
