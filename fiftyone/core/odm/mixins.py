@@ -270,6 +270,7 @@ class DatasetMixin(object):
         for field_name in add_fields:
             field = schema[field_name]
             kwargs = get_field_kwargs(field)
+            kwargs["db_field"] = _get_db_field(field, field_name)
             cls._add_field_schema(field_name, **kwargs)
 
     @classmethod
