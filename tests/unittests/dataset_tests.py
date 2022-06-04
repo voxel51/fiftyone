@@ -1044,7 +1044,11 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.new_field",
             "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.detections[0].field)
+        self.assertEqual(sample.predictions.detections[0].field, 1)
+        self.assertListEqual(
+            dataset.values("predictions.detections.field", unwind=True),
+            [1],
+        )
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
