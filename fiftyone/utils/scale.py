@@ -2,7 +2,7 @@
 Utilities for working with annotations in
 `Scale AI format <https://docs.scale.com/reference#annotation>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -30,7 +30,10 @@ logger = logging.getLogger(__name__)
 
 
 def import_from_scale(
-    dataset, labels_dir_or_json, label_prefix=None, scale_id_field="scale_id",
+    dataset,
+    labels_dir_or_json,
+    label_prefix=None,
+    scale_id_field="scale_id",
 ):
     """Imports the Scale AI labels into the FiftyOne dataset.
 
@@ -392,7 +395,10 @@ def export_to_scale(
 
     # Get label fields to export
     label_fields = sample_collection._parse_label_field(
-        label_field, allow_coercion=False, force_dict=True, required=False,
+        label_field,
+        allow_coercion=False,
+        force_dict=True,
+        required=False,
     )
 
     # Get frame label fields to export

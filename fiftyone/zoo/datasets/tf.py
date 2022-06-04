@@ -1,7 +1,7 @@
 """
 FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -81,14 +81,14 @@ class MNISTDataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_classes_fcn = lambda info: info.features["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -138,14 +138,14 @@ class FashionMNISTDataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_classes_fcn = lambda info: info.features["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -196,14 +196,14 @@ class CIFAR10Dataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_classes_fcn = lambda info: info.features["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -254,14 +254,14 @@ class CIFAR100Dataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_classes_fcn = lambda info: info.features["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -358,14 +358,14 @@ class ImageNet2012Dataset(TFDSDataset):
                 download_and_prepare_kwargs={"download_dir": scratch_dir},
             )
 
-        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_classes_fcn = lambda info: info.features["label"].names
         get_num_samples_fcn = lambda info: info.splits[_split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             dataset_dir,
             None,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -420,9 +420,7 @@ class VOC2007Dataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["objects"][
-            "label"
-        ].names
+        get_classes_fcn = lambda info: info.features["objects"]["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
             bounding_box_field="bbox"
@@ -431,7 +429,7 @@ class VOC2007Dataset(TFDSDataset):
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -486,9 +484,7 @@ class VOC2012Dataset(TFDSDataset):
                 with_info=True,
             )
 
-        get_class_labels_fcn = lambda info: info.features["objects"][
-            "label"
-        ].names
+        get_classes_fcn = lambda info: info.features["objects"]["label"].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
             bounding_box_field="bbox"
@@ -497,7 +493,7 @@ class VOC2012Dataset(TFDSDataset):
             dataset_dir,
             scratch_dir,
             download_fcn,
-            get_class_labels_fcn,
+            get_classes_fcn,
             get_num_samples_fcn,
             sample_parser,
         )
@@ -587,7 +583,7 @@ def _download_and_prepare(
     dataset_dir,
     scratch_dir,
     download_fcn,
-    get_class_labels_fcn,
+    get_classes_fcn,
     get_num_samples_fcn,
     sample_parser,
 ):
@@ -600,23 +596,26 @@ def _download_and_prepare(
     with fou.ResourceLimit("RLIMIT_NOFILE", soft=4096, warn_on_failure=True):
         dataset, info = download_fcn(scratch_dir)
 
-    classes = get_class_labels_fcn(info)
+    classes = get_classes_fcn(info)
     num_samples = get_num_samples_fcn(info)
     sample_parser.classes = classes
     label_cls = sample_parser.label_cls
 
-    if label_cls is fol.Classification:
+    if not isinstance(label_cls, (list, tuple)):
+        label_cls = [label_cls]
+
+    if fol.Classification in label_cls:
         dataset_type = fot.FiftyOneImageClassificationDataset()
         dataset_exporter = foud.FiftyOneImageClassificationDatasetExporter(
             dataset_dir, classes=classes
         )
-    elif label_cls is fol.Detections:
+    elif fol.Detections in label_cls:
         dataset_type = fot.FiftyOneImageDetectionDataset()
         dataset_exporter = foud.FiftyOneImageDetectionDatasetExporter(
             dataset_dir, classes=classes
         )
     else:
-        raise ValueError("Unsupported label class %s" % label_cls)
+        raise ValueError("Unsupported sample parser %s" % type(sample_parser))
 
     try:
         samples = dataset.as_numpy_iterator()

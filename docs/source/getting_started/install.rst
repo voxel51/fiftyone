@@ -21,7 +21,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.6 - 3.9**.
+**Python 3.7 - 3.10**.
 
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -57,6 +57,29 @@ environment by importing the `fiftyone` package:
 A successful installation of FiftyOne should result in no output when
 `fiftyone` is imported. See :ref:`this section <install-troubleshooting>` for
 install troubleshooting tips.
+
+If you want to work with video datasets, you'll also need to install
+`FFmpeg <https://ffmpeg.org>`_:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
 
 .. _fiftyone-quickstart:
 
@@ -219,6 +242,13 @@ your current FiftyOne version.
   will be **automatically** performed on a per-dataset basis whenever you load
   a dataset for the first time in a newer version of FiftyOne.
 
+.. note::
+
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to upgrade your FiftyOne deployment.
+
 .. _downgrading-fiftyone:
 
 Downgrading FiftyOne
@@ -237,7 +267,7 @@ Here's the workflow for downgrading to an older version of FiftyOne:
 .. code-block:: shell
 
     # The version that you wish to downgrade to
-    VERSION=0.9.4  # for example
+    VERSION=0.14.4  # for example
 
     # Migrate the database
     fiftyone migrate --all -v $VERSION
@@ -252,6 +282,13 @@ If you are reading this after encountering an error resulting from downgrading
 your ``fiftyone`` package without first running
 :ref:`fiftyone migrate <cli-fiftyone-migrate>`, don't worry, you simply need to
 reinstall the newer version of FiftyOne and then follow these instructions.
+
+.. note::
+
+  If you are working with a
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  can use :ref:`database admin privileges <database-migrations>` to control
+  which clients are allowed to downgrade your FiftyOne deployment.
 
 .. note::
 

@@ -1,36 +1,31 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
-import ExternalLink from "../ExternalLink";
+import * as schemaAtoms from "../../recoil/schema";
+import * as viewAtoms from "../../recoil/view";
+import { useOutsideClick, useSetView } from "../../utils/hooks";
+import { ExternalLink } from "../../utils/generic";
+
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
-import * as selectors from "../../recoil/selectors";
-import { http } from "../../shared/connection";
-import { useOutsideClick } from "../../utils/hooks";
-
-const ViewBarContainer = styled.div`
-  display: block;
-  position: relative;
-  width: 100%;
-  background-color: ${({ theme }) => theme.background};
-  padding: 1rem 0;
-`;
+import { useSetState } from "../../recoil/utils";
 
 const ViewBarDiv = styled.div`
+  position: relative;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
   height: 52px;
   width: 100%;
-  padding: 0 0.25rem;
   display: flex;
   overflow-x: scroll;
   scrollbar-width: none;
+  min-width: 200px;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -44,30 +39,24 @@ const ViewBarDiv = styled.div`
 `;
 
 const IconsContainer = styled.div`
+  display: flex;
+  align-items: center;
   position: absolute;
-  z-index: 904;
-  top: 1rem;
-  padding: 14px 0.5rem;
-  height: 52px;
+  z-index: 1;
+  height: 100%;
   border-radius: 3px;
+  top 0;
+  height: 52px;
   right: 0;
   background-image: linear-gradient(
     to right,
     rgba(0, 0, 0, 0),
-    5%,
+    30%,
     ${({ theme }) => theme.backgroundDark}
   );
-
-  & > * {
-    height: 100%;
-  }
-
-  & > * > {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    flex-direction: column;
-  }
+  column-gap: 0.5rem;
+  padding: 0 0.5rem;
+  z-index: 801;
 `;
 
 const viewBarKeyMap = {
@@ -81,18 +70,19 @@ const viewBarKeyMap = {
 
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
-  const [view, setView] = useRecoilState(selectors.view);
-  const fieldPaths = useRecoilValue(selectors.fieldPaths);
+  const view = useRecoilValue(viewAtoms.view);
+  const setView = useSetView();
+
+  const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
 
   useEffect(() => {
     send({
       type: "UPDATE",
-      http,
       view,
       setView,
       fieldNames: fieldPaths,
     });
-  }, [http, view]);
+  }, [view]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
@@ -115,72 +105,79 @@ const ViewBar = React.memo(() => {
   );
 
   return (
-    <div style={{ padding: "0 1rem" }}>
-      <ViewBarContainer>
-        <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-        <ViewBarDiv
-          onClick={() =>
-            state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
-          }
-          ref={barRef}
-        >
-          {state.matches("running")
-            ? stages.map((stage, i) => {
-                return (
-                  <React.Fragment key={stage.id}>
-                    {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
-                      <AddViewStage
-                        key={`insert-button-${stage.id}`}
-                        send={send}
-                        index={i}
-                        active={
-                          activeStage === i - 0.5 &&
-                          state.matches("running.focus.focused")
-                        }
-                      />
-                    ) : null}
-                    <ViewStage
-                      key={stage.id}
-                      stageRef={stage.ref}
-                      barRef={barRef}
+    <div
+      style={{
+        position: "relative",
+        flex: "1",
+        marginRight: "0.5rem",
+        overflow: "hidden",
+      }}
+    >
+      <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
+      <ViewBarDiv
+        onClick={() =>
+          state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
+        }
+        ref={barRef}
+      >
+        {state.matches("running")
+          ? stages.map((stage, i) => {
+              return (
+                <React.Fragment key={stage.id}>
+                  {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
+                    <AddViewStage
+                      key={`insert-button-${stage.id}`}
+                      send={send}
+                      index={i}
+                      active={
+                        activeStage === i - 0.5 &&
+                        state.matches("running.focus.focused")
+                      }
                     />
-                  </React.Fragment>
-                );
-              })
-            : null}
-          {state.matches("running") && stages[stages.length - 1].submitted ? (
-            <AddViewStage
-              key={`insert-button-tail`}
-              send={send}
-              index={stages.length}
-              active={
-                activeStage === stages.length - 0.5 &&
-                state.matches("running.focus.focused")
-              }
-            />
-          ) : null}
-          <div
-            style={{
-              display: "block",
-              minWidth: 64,
-              maxWidth: 64,
-              height: "100%",
-            }}
-          ></div>
-        </ViewBarDiv>
-
-        <IconsContainer>
-          <Close
-            onClick={() => send("CLEAR")}
-            style={{
-              cursor: "pointer",
-            }}
+                  ) : null}
+                  <ViewStage
+                    key={stage.id}
+                    stageRef={stage.ref}
+                    barRef={barRef}
+                  />
+                </React.Fragment>
+              );
+            })
+          : null}
+        {state.matches("running") && stages[stages.length - 1].submitted ? (
+          <AddViewStage
+            key={`insert-button-tail`}
+            send={send}
+            index={stages.length}
+            active={
+              activeStage === stages.length - 0.5 &&
+              state.matches("running.focus.focused")
+            }
           />
-          <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar">
-            <Help />
-          </ExternalLink>
-        </IconsContainer>
-      </ViewBarContainer>
+        ) : null}
+        <div
+          style={{
+            display: "block",
+            minWidth: 64,
+            maxWidth: 64,
+            height: "100%",
+          }}
+        ></div>
+      </ViewBarDiv>
+      <IconsContainer>
+        <Close
+          onClick={() => send("CLEAR")}
+          style={{
+            cursor: "pointer",
+          }}
+        />
+        <ExternalLink
+          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar"
+          style={{ display: "flex" }}
+        >
+          <Help />
+        </ExternalLink>
+      </IconsContainer>
     </div>
   );
 });

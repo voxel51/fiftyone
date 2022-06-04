@@ -1,7 +1,7 @@
 """
 `Apache Beam <https://beam.apache.org>`_ utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -307,7 +307,9 @@ def beam_export(
         view_stages = None
 
     export_batch = ExportBatch(
-        dataset_name, view_stages=view_stages, render_kwargs=render_kwargs,
+        dataset_name,
+        view_stages=view_stages,
+        render_kwargs=render_kwargs,
     )
 
     n = len(sample_collection)

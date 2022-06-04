@@ -1,7 +1,7 @@
 """
 Web socket client mixins.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -195,17 +195,6 @@ class HasClient(object):
 
     def _reload(self):
         raise NotImplementedError("subclasses must implement _reload()")
-
-    def on_notification(self, data):
-        if not _is_leader(self):
-            return
-
-        print(data["kind"])
-        print()
-        print(data["message"])
-        print()
-        for value in data["session_items"]:
-            print(value)
 
     @property
     def has_listeners(self):

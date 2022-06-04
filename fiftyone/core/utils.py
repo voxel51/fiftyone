@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,12 +17,16 @@ import inspect
 import io
 import itertools
 import logging
+import ntpath
 import os
+import posixpath
 import platform
 import signal
+import struct
 import subprocess
 import timeit
 import types
+from xml.parsers.expat import ExpatError
 import zlib
 
 try:
@@ -288,6 +292,38 @@ def fill_patterns(string):
         a copy of string with any patterns replaced
     """
     return etau.fill_patterns(string, available_patterns())
+
+
+def normpath(path):
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if os.name == "nt":
+        return ntpath.normpath(path)
+
+    return posixpath.normpath(path.replace("\\", "/"))
+
+
+def normalize_path(path):
+    """Normalizes the given path by converting it to an absolute path and
+    expanding the user directory, if necessary.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    return os.path.abspath(os.path.expanduser(path))
 
 
 def ensure_package(
@@ -627,8 +663,11 @@ def load_xml_as_json_dict(xml_path):
     Returns:
         a JSON dict
     """
-    with open(xml_path, "rb") as f:
-        return xmltodict.parse(f.read())
+    try:
+        with open(xml_path, "rb") as f:
+            return xmltodict.parse(f.read())
+    except ExpatError as ex:
+        raise ExpatError(f"Failed to read {xml_path}: {ex}")
 
 
 def parse_serializable(obj, cls):
@@ -768,6 +807,8 @@ class ResourceLimit(object):
 
 
 class ProgressBar(etau.ProgressBar):
+    """.. autoclass:: eta.core.utils.ProgressBar"""
+
     def __init__(self, *args, **kwargs):
         if "quiet" not in kwargs:
             kwargs["quiet"] = not fo.config.show_progress_bars
@@ -801,7 +842,9 @@ class DynamicBatcher(object):
         total = int(1e7)
         elements = range(total)
 
-        batches = fou.DynamicBatcher(elements, 0.1, max_batch_beta=2.0)
+        batches = fou.DynamicBatcher(
+            elements, target_latency=0.1, max_batch_beta=2.0
+        )
 
         with fou.ProgressBar(total) as pb:
             for batch in batches:
@@ -811,41 +854,86 @@ class DynamicBatcher(object):
 
     Args:
         iterable: an iterable
-        target_latency_seconds: the target latency between ``next()`` calls,
-            in seconds
+        target_latency (0.2): the target latency between ``next()``
+            calls, in seconds
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
         max_batch_size (None): an optional maximum allowed batch size
         max_batch_beta (None): an optional lower/upper bound on the ratio
             between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
     """
 
     def __init__(
         self,
         iterable,
-        target_latency_seconds,
+        target_latency=0.2,
         init_batch_size=1,
         min_batch_size=1,
         max_batch_size=None,
         max_batch_beta=None,
+        return_views=False,
     ):
+        import fiftyone.core.collections as foc
+
+        if not isinstance(iterable, foc.SampleCollection):
+            return_views = False
+
         self.iterable = iterable
-        self.target_latency_seconds = target_latency_seconds
+        self.target_latency = target_latency
         self.init_batch_size = init_batch_size
         self.min_batch_size = min_batch_size
         self.max_batch_size = max_batch_size
         self.max_batch_beta = max_batch_beta
+        self.return_views = return_views
 
         self._iter = None
         self._last_time = None
         self._last_batch_size = None
 
+        self._last_offset = None
+        self._num_samples = None
+
     def __iter__(self):
-        self._iter = iter(self.iterable)
+        if self.return_views:
+            self._last_offset = 0
+            self._num_samples = len(self.iterable)
+        else:
+            self._iter = iter(self.iterable)
+
         self._last_batch_size = None
+
         return self
 
     def __next__(self):
+        batch_size = self._compute_batch_size()
+
+        if self.return_views:
+            if self._last_offset >= self._num_samples:
+                raise StopIteration
+
+            offset = self._last_offset
+            self._last_offset += batch_size
+
+            return self.iterable[offset : (offset + batch_size)]
+
+        batch = []
+
+        try:
+            idx = 0
+            while idx < batch_size:
+                batch.append(next(self._iter))
+                idx += 1
+
+        except StopIteration:
+            if not batch:
+                raise StopIteration
+
+        return batch
+
+    def _compute_batch_size(self):
         current_time = timeit.default_timer()
 
         if self._last_batch_size is None:
@@ -853,9 +941,7 @@ class DynamicBatcher(object):
         else:
             # Compute optimal batch size
             try:
-                beta = self.target_latency_seconds / (
-                    current_time - self._last_time
-                )
+                beta = self.target_latency / (current_time - self._last_time)
             except ZeroDivisionError:
                 beta = 1e6
 
@@ -876,19 +962,7 @@ class DynamicBatcher(object):
         self._last_batch_size = batch_size
         self._last_time = current_time
 
-        batch = []
-
-        try:
-            idx = 0
-            while idx < batch_size:
-                batch.append(next(self._iter))
-                idx += 1
-
-        except StopIteration:
-            if not batch:
-                raise StopIteration
-
-        return batch
+        return batch_size
 
 
 @contextmanager
@@ -908,9 +982,9 @@ class UniqueFilenameMaker(object):
     This class provides a :meth:`get_output_path` method that generates unique
     filenames in the specified output directory.
 
-    If an input filename is provided, the filename is maintained, unless a
-    name conflict in ``output_dir`` would occur, in which case an index of the
-    form ``"-%d" % count`` is appended to the base filename.
+    If an input path is provided, its filename is maintained, unless a name
+    conflict in ``output_dir`` would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the filename.
 
     If no input filename is provided, an output filename of the form
     ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
@@ -919,45 +993,57 @@ class UniqueFilenameMaker(object):
     If no ``output_dir`` is provided, then unique filenames with no base
     directory are generated.
 
+    If a ``rel_dir`` is provided, then this path will be stripped from each
+    input path to generate the identifier of each file (rather than just its
+    basename). This argument allows for populating nested subdirectories in
+    ``output_dir`` that match the shape of the input paths.
+
     Args:
         output_dir (None): a directory in which to generate output paths
+        rel_dir (None): an optional relative directory to strip from each path
         default_ext (None): the file extension to use when generating default
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
     """
 
-    def __init__(self, output_dir=None, default_ext=None, ignore_exts=False):
-        if output_dir is None:
-            output_dir = ""
-
-        if default_ext is None:
-            default_ext = ""
-
+    def __init__(
+        self,
+        output_dir=None,
+        rel_dir=None,
+        default_ext=None,
+        ignore_exts=False,
+    ):
         self.output_dir = output_dir
+        self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
-        self._default_filename_patt = (
-            fo.config.default_sequence_idx + default_ext
+        self._default_filename_patt = fo.config.default_sequence_idx + (
+            default_ext or ""
         )
         self._idx = 0
 
-        if output_dir:
-            etau.ensure_dir(output_dir)
-            filenames = etau.list_files(output_dir)
-            self._idx = len(filenames)
-            for filename in filenames:
-                self._filename_counts[filename] += 1
+        self._setup()
+
+    def _setup(self):
+        if not self.output_dir:
+            return
+
+        etau.ensure_dir(self.output_dir)
+        filenames = etau.list_files(self.output_dir)
+
+        self._idx = len(filenames)
+        for filename in filenames:
+            self._filename_counts[filename] += 1
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
 
         Args:
-            input_path (None): an input path from which to derive the output
-                path
+            input_path (None): an input path
             output_ext (None): an optional output extension to use
 
         Returns:
@@ -971,9 +1057,12 @@ class UniqueFilenameMaker(object):
         self._idx += 1
 
         if not found_input:
-            input_path = self._default_filename_patt % self._idx
+            filename = self._default_filename_patt % self._idx
+        elif self.rel_dir:
+            filename = os.path.relpath(input_path, self.rel_dir)
+        else:
+            filename = os.path.basename(input_path)
 
-        filename = os.path.basename(input_path)
         name, ext = os.path.splitext(filename)
 
         # URL handling
@@ -993,7 +1082,10 @@ class UniqueFilenameMaker(object):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        output_path = os.path.join(self.output_dir, filename)
+        if self.output_dir:
+            output_path = os.path.join(self.output_dir, filename)
+        else:
+            output_path = filename
 
         if found_input:
             self._filepath_map[input_path] = output_path
@@ -1238,6 +1330,15 @@ def is_arm_mac():
     )
 
 
+def is_32_bit():
+    """Determines whether the system is 32-bit.
+
+    Returns:
+        True/False
+    """
+    return struct.calcsize("P") * 8 == 32
+
+
 def datetime_to_timestamp(dt):
     """Converts a `datetime.date` or `datetime.datetime` to milliseconds since
     epoch.
@@ -1246,7 +1347,7 @@ def datetime_to_timestamp(dt):
         dt: a `datetime.date` or `datetime.datetime`
 
     Returns:
-        the number of milliseconds since epoch
+        the float number of milliseconds since epoch
     """
     if type(dt) is date:
         dt = datetime(dt.year, dt.month, dt.day)
@@ -1254,7 +1355,7 @@ def datetime_to_timestamp(dt):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
 
-    return int(1000 * dt.timestamp())
+    return 1000.0 * dt.timestamp()
 
 
 def timestamp_to_datetime(ts):
@@ -1267,7 +1368,7 @@ def timestamp_to_datetime(ts):
     Returns:
         a `datetime.datetime`
     """
-    dt = datetime.utcfromtimestamp(ts / 1000)
+    dt = datetime.utcfromtimestamp(ts / 1000.0)
 
     if fo.config.timezone is None:
         return dt
@@ -1283,8 +1384,59 @@ def timedelta_to_ms(td):
         td: a `datetime.timedelta`
 
     Returns:
-        the number of milliseconds
+        the float number of milliseconds
     """
-    return int(
-        86400000 * td.days + 1000 * td.seconds + td.microseconds // 1000
+    return (
+        86400000.0 * td.days + 1000.0 * td.seconds + td.microseconds / 1000.0
     )
+
+
+class ResponseStream(object):
+    """Wrapper around a ``requests.Response`` that provides a file-like object
+    interface with ``read()``, ``seek()``, and ``tell()`` methods.
+
+    Source:
+        https://gist.github.com/obskyr/b9d4b4223e7eaf4eedcd9defabb34f13
+
+    Args:
+        response: a ``requests.Response``
+        chunk_size (64): the chunk size to use to read the response's content
+    """
+
+    def __init__(self, response, chunk_size=64):
+        self._response = response
+        self._iterator = response.iter_content(chunk_size)
+        self._bytes = io.BytesIO()
+
+    def read(self, size=None):
+        left_off_at = self._bytes.tell()
+        if size is None:
+            self._load_all()
+        else:
+            goal_position = left_off_at + size
+            self._load_until(goal_position)
+
+        self._bytes.seek(left_off_at)
+        return self._bytes.read(size)
+
+    def seek(self, position, whence=io.SEEK_SET):
+        if whence == io.SEEK_END:
+            self._load_all()
+        else:
+            self._bytes.seek(position, whence)
+
+    def tell(self):
+        return self._bytes.tell()
+
+    def _load_all(self):
+        self._bytes.seek(0, io.SEEK_END)
+        for chunk in self._iterator:
+            self._bytes.write(chunk)
+
+    def _load_until(self, goal_position):
+        current_position = self._bytes.seek(0, io.SEEK_END)
+        while current_position < goal_position:
+            try:
+                current_position += self._bytes.write(next(self._iterator))
+            except StopIteration:
+                break

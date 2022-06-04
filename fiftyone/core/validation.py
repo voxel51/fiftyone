@@ -1,7 +1,7 @@
 """
 Validation utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -159,7 +159,10 @@ def validate_collection_label_fields(
 
     if sample_fields:
         _validate_fields(
-            sample_collection, sample_fields, allowed_label_types, same_type,
+            sample_collection,
+            sample_fields,
+            allowed_label_types,
+            same_type,
         )
 
 

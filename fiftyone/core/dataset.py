@@ -1,7 +1,7 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 import fnmatch
+import itertools
 import logging
 import numbers
 import os
@@ -18,8 +19,7 @@ import string
 from bson import ObjectId
 from deprecated import deprecated
 import mongoengine.errors as moe
-import numpy as np
-from pymongo import InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
@@ -31,11 +31,14 @@ import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
+from fiftyone.core.odm.dataset import SampleFieldDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -178,7 +181,9 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    for name in _list_datasets(include_private=True):
+    conn = foo.get_db_conn()
+
+    for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
         except:
@@ -256,10 +261,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs, filepaths, or slices instead"
+                "Use sample IDs, filepaths, slices, boolean arrays, or a "
+                "boolean ViewExpression instead"
             )
 
         if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
+
+        if isinstance(id_filepath_slice, foex.ViewExpression):
+            return self.view()[id_filepath_slice]
+
+        if etau.is_container(id_filepath_slice):
             return self.view()[id_filepath_slice]
 
         try:
@@ -311,6 +323,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
+    def _is_generated(self):
+        return self._is_patches or self._is_frames or self._is_clips
+
+    @property
     def _is_patches(self):
         return self._sample_collection_name.startswith("patches.")
 
@@ -338,7 +354,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (media_type, fom.MEDIA_TYPES)
             )
 
+        if media_type == self._doc.media_type:
+            return
+
         self._doc.media_type = media_type
+        self._set_metadata(media_type)
+
+    def _set_metadata(self, media_type):
+        idx = None
+        for i, field in enumerate(self._doc.sample_fields):
+            if field.name == "metadata":
+                idx = i
+
+        if idx is not None:
+            if media_type == fom.IMAGE:
+                doc_type = fome.ImageMetadata
+            elif media_type == fom.VIDEO:
+                doc_type = fome.VideoMetadata
+            else:
+                doc_type = fome.Metadata
+
+            field = foo.create_field(
+                "metadata",
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=doc_type,
+            )
+            field_doc = foo.SampleFieldDocument.from_field(field)
+            self._doc.sample_fields[idx] = field_doc
 
         if media_type == fom.VIDEO:
             # pylint: disable=no-member
@@ -348,6 +390,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
 
         self._doc.save()
+        self.reload()
 
     @property
     def version(self):
@@ -377,6 +420,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.name = _name
             raise
+
+        # Update singleton
+        self._instances.pop(_name, None)
+        self._instances[name] = self
 
     @property
     def created_at(self):
@@ -547,6 +594,75 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @default_mask_targets.setter
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
+        self.save()
+
+    @property
+    def skeletons(self):
+        """A dict mapping field names to
+        :class:`fiftyone.core.odm.dataset.KeypointSkeleton` instances, each of
+        which defines the semantic labels and point connectivity for the
+        :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
+        field of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set keypoint skeleton for the `ground_truth` field
+            dataset.skeletons = {
+                "ground_truth": fo.KeypointSkeleton(
+                    labels=[
+                        "left hand" "left shoulder", "right shoulder", "right hand",
+                        "left eye", "right eye", "mouth",
+                    ],
+                    edges=[[0, 1, 2, 3], [4, 5, 6]],
+                )
+            }
+
+            # Edit an existing skeleton
+            dataset.skeletons["ground_truth"].labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.skeletons
+
+    @skeletons.setter
+    def skeletons(self, skeletons):
+        self._doc.skeletons = skeletons
+        self.save()
+
+    @property
+    def default_skeleton(self):
+        """A default :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+        defining the semantic labels and point connectivity for all
+        :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
+        not have customized skeletons defined in :meth:`skeleton`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default keypoint skeleton
+            dataset.default_skeleton = fo.KeypointSkeleton(
+                labels=[
+                    "left hand" "left shoulder", "right shoulder", "right hand",
+                    "left eye", "right eye", "mouth",
+                ],
+                edges=[[0, 1, 2, 3], [4, 5, 6]],
+            )
+
+            # Edit the default skeleton
+            dataset.default_skeleton.labels[-1] = "lips"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_skeleton
+
+    @default_skeleton.setter
+    def default_skeleton(self, skeleton):
+        self._doc.default_skeleton = skeleton
         self.save()
 
     @property
@@ -1360,9 +1476,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         sample_ids = []
@@ -1432,7 +1547,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
-
             if self.media_type == fom.VIDEO:
                 sample.frames.save()
 
@@ -1449,9 +1563,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        target_latency = 0.2  # in seconds
         batcher = fou.DynamicBatcher(
-            samples, target_latency, init_batch_size=1, max_batch_beta=2.0
+            samples, target_latency=0.2, init_batch_size=1, max_batch_beta=2.0
         )
 
         with fou.ProgressBar(total=num_samples) as pb:
@@ -1736,13 +1849,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         sample_ids = _get_sample_ids(samples_or_ids)
         self._clear(sample_ids=sample_ids)
+
+    def delete_frames(self, frames_or_ids):
+        """Deletes the given frames(s) from the dataset.
+
+        If reference to a frame exists in memory, the frame will be updated
+        such that ``frame.in_dataset`` is False.
+
+        Args:
+            frames_or_ids: the frame(s) to delete. Can be any of the following:
+
+                -   a frame ID
+                -   an iterable of frame IDs
+                -   a :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView`
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` whose frames to
+                    delete
+                -   an iterable of :class:`fiftyone.core.frame.Frame` or
+                    :class:`fiftyone.core.frame.FrameView` instances
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances whose
+                    frames to delete
+                -   a :class:`fiftyone.core.collections.SampleCollection` whose
+                    frames to delete
+        """
+        frame_ids = _get_frame_ids(frames_or_ids)
+        self._clear_frames(frame_ids=frame_ids)
 
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
@@ -2054,10 +2193,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 -   an iterable of sample IDs
                 -   a :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView`
-                -   an iterable of sample IDs
-                -   a :class:`fiftyone.core.collections.SampleCollection`
                 -   an iterable of :class:`fiftyone.core.sample.Sample` or
                     :class:`fiftyone.core.sample.SampleView` instances
+                -   a :class:`fiftyone.core.collections.SampleCollection`
         """
         self.delete_samples(samples_or_ids)
 
@@ -2071,7 +2209,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _save(self, view=None, fields=None):
         if view is not None:
-            _save_view(view, fields)
+            _save_view(view, fields=fields)
 
         self._doc.save()
 
@@ -2114,7 +2252,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         else:
-            sample_ids = None
             d = {}
 
         self._sample_collection.delete_many(d)
@@ -2124,6 +2261,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._clear_frames(sample_ids=sample_ids)
 
+    def _keep(self, view=None, sample_ids=None):
+        if view is not None:
+            clear_view = self.exclude(view)
+        else:
+            clear_view = self.exclude(sample_ids)
+
+        self._clear(view=clear_view)
+
+    def _keep_fields(self, view=None):
+        if view is None:
+            return
+
+        del_sample_fields = view._get_missing_fields()
+        if del_sample_fields:
+            self.delete_sample_fields(del_sample_fields)
+
+        if self.media_type == fom.VIDEO:
+            del_frame_fields = view._get_missing_fields(frames=True)
+            if del_frame_fields:
+                self.delete_frame_fields(del_frame_fields)
+
     def clear_frames(self):
         """Removes all frame labels from the video dataset.
 
@@ -2132,13 +2290,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_frames()
 
-    def _clear_frames(self, view=None, sample_ids=None):
+    def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
         if self.media_type != fom.VIDEO:
             return
 
-        # Clips datasets directly use their source dataset's frame collection,
-        # so don't delete frames
         if self._is_clips:
+            if sample_ids is not None:
+                view = self.select(sample_ids)
+            elif frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
+
+        if frame_ids is not None:
+            self._frame_collection.delete_many(
+                {"_id": {"$in": [ObjectId(_id) for _id in frame_ids]}}
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids
+            )
             return
 
         if view is not None:
@@ -2153,6 +2324,55 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reset_docs(
             self._frame_collection_name, sample_ids=sample_ids
         )
+
+    def _keep_frames(self, view=None, frame_ids=None):
+        if self.media_type != fom.VIDEO:
+            return
+
+        if self._is_clips:
+            if frame_ids is None and view is None:
+                view = self
+
+            if view is not None:
+                frame_ids = view.values("frames.id", unwind=True)
+
+        if frame_ids is not None:
+            self._frame_collection.delete_many(
+                {
+                    "_id": {
+                        "$not": {"$in": [ObjectId(_id) for _id in frame_ids]}
+                    }
+                }
+            )
+            fofr.Frame._reset_docs_by_frame_id(
+                self._frame_collection_name, frame_ids, keep=True
+            )
+            return
+
+        if view is None:
+            return
+
+        sample_ids, frame_numbers = view.values(["id", "frames.frame_number"])
+
+        ops = []
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            ops.append(
+                DeleteMany(
+                    {
+                        "_sample_id": ObjectId(sample_id),
+                        "frame_number": {"$not": {"$in": fns}},
+                    }
+                )
+            )
+
+        if not ops:
+            return
+
+        foo.bulk_write(ops, self._frame_collection)
+        for sample_id, fns in zip(sample_ids, frame_numbers):
+            fofr.Frame._reset_docs_for_sample(
+                self._frame_collection_name, sample_id, fns, keep=True
+            )
 
     def ensure_frames(self):
         """Ensures that the video dataset contains frame instances for every
@@ -2212,7 +2432,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
-        self.clear()
+        self._sample_collection.drop()
+        fos.Sample._reset_docs(self._sample_collection_name)
+
+        # Clips datasets directly inherit frames from source dataset
+        if not self._is_clips:
+            self._frame_collection.drop()
+            fofr.Frame._reset_docs(self._frame_collection_name)
+
+        # Update singleton
+        self._instances.pop(self._doc.name, None)
+
         _delete_dataset_doc(self._doc)
         self._deleted = True
 
@@ -2258,8 +2488,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2273,6 +2503,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2414,8 +2645,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2429,6 +2660,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -2566,8 +2798,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2581,6 +2813,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -2715,8 +2948,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -2730,6 +2963,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -3220,7 +3454,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -3475,8 +3712,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3490,6 +3727,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``dataset_dir`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``dataset_dir`` for the dataset type
@@ -3582,8 +3820,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``archive_path``
             data_path (None): an optional parameter that enables explicit
-                control over the location of the exported media for certain
-                dataset types. Can be any of the following:
+                control over the location of the media for certain dataset
+                types. Can be any of the following:
 
                 -   a folder name like ``"data"`` or ``"data/"`` specifying a
                     subfolder of ``dataset_dir`` in which the media lies
@@ -3597,6 +3835,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     :meth:`fiftyone.core.collections.SampleCollection.export`
                 -   an absolute filepath to a JSON manifest file. In this case,
                     ``archive_path`` has no effect on the location of the data
+                -   a dict mapping filenames to absolute filepaths
 
                 By default, it is assumed that the data can be located in the
                 default location within ``archive_path`` for the dataset type
@@ -3731,7 +3970,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def from_labeled_images(
-        cls, samples, sample_parser, name=None, label_field=None, tags=None,
+        cls,
+        samples,
+        sample_parser,
+        name=None,
+        label_field=None,
+        tags=None,
     ):
         """Creates a :class:`Dataset` from the given labeled images.
 
@@ -3767,7 +4011,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_labeled_images(
-            samples, sample_parser, label_field=label_field, tags=tags,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
         )
         return dataset
 
@@ -3948,8 +4195,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -3962,7 +4208,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = d["name"]
 
         if rel_dir is not None:
-            rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+            rel_dir = fou.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name)
@@ -3987,8 +4233,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_mask_targets", {})
         )
 
+        dataset.skeletons = dataset._parse_skeletons(d.get("skeletons", {}))
+        dataset.default_skeleton = dataset._parse_default_skeleton(
+            d.get("default_skeleton", None)
+        )
+
         def parse_sample(sd):
-            if rel_dir and not sd["filepath"].startswith(os.path.sep):
+            if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
             if media_type == fom.VIDEO:
@@ -4009,6 +4260,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         samples = d["samples"]
         num_samples = len(samples)
+
         _samples = map(parse_sample, samples)
         dataset.add_samples(
             _samples, expand_schema=False, num_samples=num_samples
@@ -4035,8 +4287,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via
-                ``os.path.abspath(os.path.expanduser(rel_dir))``
+                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -4374,15 +4625,16 @@ def _list_datasets(include_private=False):
     conn = foo.get_db_conn()
 
     if include_private:
-        return sorted(conn.datasets.distinct("name"))
+        query = {}
+    else:
+        # Datasets whose sample collections don't start with `samples.` are
+        # private e.g., patches or frames datasets
+        query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
-    # Datasets whose sample collections don't start with `samples.` are private
-    # e.g., patches or frames datasets
-    return sorted(
-        conn.datasets.find(
-            {"sample_collection_name": {"$regex": "^samples\\."}}
-        ).distinct("name")
-    )
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
 
 
 def _list_dataset_info():
@@ -4498,6 +4750,20 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
+            field._set_parent(doc_cls)
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field, field.name)
+
+
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4524,12 +4790,29 @@ def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(sample_collection_name):
-    return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+def _create_sample_document_cls(sample_collection_name, field_docs=None):
+    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+    _declare_fields(cls, field_docs=field_docs)
+    return cls
 
 
-def _create_frame_document_cls(frame_collection_name):
-    return type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+def _create_frame_document_cls(frame_collection_name, field_docs=None):
+    cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
+    _declare_fields(cls, field_docs=field_docs)
+    return cls
+
+
+def _declare_fields(doc_cls, field_docs=None):
+    for field_name, field in doc_cls._fields.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
+            doc_cls._fields[field_name] = field
+            setattr(doc_cls, field_name, field)
+
+    if field_docs is not None:
+        for field_doc in field_docs:
+            field = field_doc.to_field()
+            doc_cls._declare_field(field)
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -4585,7 +4868,9 @@ def _load_dataset(name, virtual=False):
         raise ValueError("Dataset '%s' not found" % name)
 
     sample_collection_name = dataset_doc.sample_collection_name
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(
+        sample_collection_name, dataset_doc.sample_fields
+    )
 
     default_sample_fields = fos.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
@@ -4594,6 +4879,10 @@ def _load_dataset(name, virtual=False):
 
         sample_doc_cls._declare_field(sample_field)
 
+    dataset_doc.sample_fields = [
+        SampleFieldDocument.from_field(f)
+        for f in sample_doc_cls._fields.values()
+    ]
     frame_collection_name = dataset_doc.frame_collection_name
 
     if not virtual:
@@ -4610,7 +4899,9 @@ def _load_dataset(name, virtual=False):
         frame_doc_cls = _src_dataset._frame_doc_cls
         dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
-        frame_doc_cls = _create_frame_document_cls(frame_collection_name)
+        frame_doc_cls = _create_frame_document_cls(
+            frame_collection_name, dataset_doc.frame_fields
+        )
 
         if dataset_doc.media_type == fom.VIDEO:
             default_frame_fields = fofr.get_default_frame_fields(
@@ -4622,6 +4913,12 @@ def _load_dataset(name, virtual=False):
 
                 frame_doc_cls._declare_field(frame_field)
 
+            dataset_doc.frame_fields = [
+                SampleFieldDocument.from_field(f)
+                for f in frame_doc_cls._fields.values()
+            ]
+
+    dataset_doc.save()
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
@@ -4715,8 +5012,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     clone_dataset = load_dataset(name)
 
-    # Clone run results
-    if (
+    # Clone run results (full datasets only)
+    if view is None and (
         dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
@@ -4764,25 +5061,26 @@ def _get_frames_pipeline(sample_collection):
     return coll, pipeline
 
 
-def _save_view(view, fields):
+def _save_view(view, fields=None):
     dataset = view._dataset
 
-    merge = fields is not None
+    is_video = dataset.media_type == fom.VIDEO
+    all_fields = fields is None
+
     if fields is None:
         fields = []
 
-    if dataset.media_type == fom.VIDEO:
-        sample_fields = []
-        frame_fields = []
-        for field in fields:
-            field, is_frame_field = view._handle_frame_field(field)
-            if is_frame_field:
-                frame_fields.append(field)
-            else:
-                sample_fields.append(field)
+    if etau.is_str(fields):
+        fields = [fields]
+
+    if is_video:
+        sample_fields, frame_fields = fou.split_frame_fields(fields)
     else:
         sample_fields = fields
         frame_fields = []
+
+    save_samples = sample_fields or all_fields
+    save_frames = frame_fields or all_fields
 
     #
     # Save samples
@@ -4790,31 +5088,31 @@ def _save_view(view, fields):
 
     pipeline = view._pipeline(detach_frames=True)
 
-    if merge:
-        if sample_fields:
-            # @todo if `view` omits samples, shouldn't we set their field
-            # values to None here, for consistency with the fact that $out
-            # will delete samples that don't appear in `view`?
-            pipeline.append({"$project": {f: True for f in sample_fields}})
-            pipeline.append({"$merge": dataset._sample_collection_name})
-            foo.aggregate(dataset._sample_collection, pipeline)
-    else:
-        pipeline.append({"$out": dataset._sample_collection_name})
+    if sample_fields:
+        pipeline.append({"$project": {f: True for f in sample_fields}})
+        pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
-
-        for field_name in view._get_missing_fields():
-            dataset._sample_doc_cls._delete_field_schema(field_name)
+    elif save_samples:
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "replace",
+                }
+            }
+        )
+        foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Save frames
     #
 
-    if dataset.media_type == fom.VIDEO:
+    if is_video:
         # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
 
-        # Clips views may contain overlapping clips, so we must select only
+        # Clips datasets may contain overlapping clips, so we must select only
         # the first occurrance of each frame
         if dataset._is_clips:
             pipeline.extend(
@@ -4824,33 +5122,36 @@ def _save_view(view, fields):
                 ]
             )
 
-        if merge:
-            if frame_fields:
-                # @todo if `view` omits samples, shouldn't we set their field
-                # values to None here, for consistency with the fact that $out
-                # will delete samples that don't appear in `view`?
-                pipeline.append({"$project": {f: True for f in frame_fields}})
-                pipeline.append({"$merge": dataset._frame_collection_name})
-                foo.aggregate(dataset._sample_collection, pipeline)
-        else:
-            pipeline.append({"$out": dataset._frame_collection_name})
+        if frame_fields:
+            pipeline.append({"$project": {f: True for f in frame_fields}})
+            pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
-
-            for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name)
+        elif save_frames:
+            pipeline.append(
+                {
+                    "$merge": {
+                        "into": dataset._frame_collection_name,
+                        "whenMatched": "replace",
+                    }
+                }
+            )
+            foo.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Reload in-memory documents
     #
 
-    # The samples now in the collection
-    sample_ids = dataset.values("id")
+    sample_ids = view.values("id")
 
-    if dataset.media_type == fom.VIDEO:
-        # pylint: disable=unexpected-keyword-arg
-        fofr.Frame._sync_docs(dataset._frame_collection_name, sample_ids)
+    if save_samples:
+        fos.Sample._reload_docs(
+            dataset._sample_collection_name, sample_ids=sample_ids
+        )
 
-    fos.Sample._sync_docs(dataset._sample_collection_name, sample_ids)
+    if is_video and save_frames:
+        fofr.Frame._reload_docs(
+            dataset._frame_collection_name, sample_ids=sample_ids
+        )
 
 
 def _merge_dataset_doc(
@@ -4927,6 +5228,7 @@ def _merge_dataset_doc(
     dataset._sample_doc_cls.merge_field_schema(
         schema, expand_schema=expand_schema
     )
+
     if is_video and frame_schema is not None:
         dataset._frame_doc_cls.merge_field_schema(
             frame_schema, expand_schema=expand_schema
@@ -4944,22 +5246,30 @@ def _merge_dataset_doc(
         curr_doc.info.update(doc.info)
         curr_doc.classes.update(doc.classes)
         curr_doc.mask_targets.update(doc.mask_targets)
+        curr_doc.skeletons.update(doc.skeletons)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
     else:
         _update_no_overwrite(curr_doc.info, doc.info)
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
+        _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
         if doc.default_mask_targets and not curr_doc.default_mask_targets:
             curr_doc.default_mask_targets = doc.default_mask_targets
+
+        if doc.default_skeleton and not curr_doc.default_skeleton:
+            curr_doc.default_skeleton = doc.default_skeleton
 
     curr_doc.save()
 
@@ -5127,13 +5437,13 @@ def _merge_samples_python(
             pass
 
     if key_fcn is None:
-        id_map = {k: v for k, v in zip(*dataset.values([key_field, "id"]))}
+        id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
     else:
         id_map = {}
         logger.info("Indexing dataset...")
         for sample in dataset.iter_samples(progress=True):
-            id_map[key_fcn(sample)] = sample.id
+            id_map[key_fcn(sample)] = sample._id
 
     _samples = _make_merge_samples_generator(
         dataset,
@@ -5318,7 +5628,8 @@ def _merge_samples_pipeline(
     sample_pipeline = src_collection._pipeline(detach_frames=True)
 
     if fields is not None:
-        project = {}
+        project = {key_field: True}
+
         for k, v in fields.items():
             k = db_fields_map.get(k, k)
             v = db_fields_map.get(v, v)
@@ -5786,26 +6097,62 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     foo.bulk_write(ops, frame_coll)
 
 
-def _get_sample_ids(samples_or_ids):
-    if etau.is_str(samples_or_ids):
-        return [samples_or_ids]
+def _get_sample_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
 
-    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
-        return [samples_or_ids.id]
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return [arg.id]
 
-    if isinstance(samples_or_ids, foc.SampleCollection):
-        return samples_or_ids.values("id")
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("id")
 
-    if isinstance(samples_or_ids, np.ndarray):
-        return list(samples_or_ids)
+    arg = list(arg)
 
-    if not samples_or_ids:
+    if not arg:
         return []
 
-    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
-        return [s.id for s in samples_or_ids]
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return [sample.id for sample in arg]
 
-    return list(samples_or_ids)
+    return arg
+
+
+def _get_frame_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (fofr.Frame, fofr.FrameView)):
+        return [arg.id]
+
+    if isinstance(arg, (fos.Sample, fos.SampleView)):
+        return _get_frame_ids_for_sample(arg)
+
+    if isinstance(arg, foc.SampleCollection):
+        return arg.values("frames.id", unwind=True)
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (fofr.Frame, fofr.FrameView)):
+        return [frame.id for frame in arg]
+
+    if isinstance(arg[0], (fos.Sample, fos.SampleView)):
+        return itertools.chain.from_iterable(
+            _get_frame_ids_for_sample(a) for a in arg
+        )
+
+    return arg
+
+
+def _get_frame_ids_for_sample(sample):
+    if sample.in_dataset:
+        view = sample._collection.select(sample.id)
+        return view.values("frames.id", unwind=True)
+
+    return [frame.id for frame in sample.frames.values()]
 
 
 def _parse_fields(field_names):
@@ -5837,10 +6184,7 @@ def _extract_archive_if_necessary(archive_path, cleanup):
     dataset_dir = etau.split_archive(archive_path)[0]
 
     if not os.path.isdir(dataset_dir):
-        outdir = os.path.dirname(dataset_dir)
-        etau.extract_archive(
-            archive_path, outdir=outdir, delete_archive=cleanup
-        )
+        etau.extract_archive(archive_path, delete_archive=cleanup)
 
         if not os.path.isdir(dataset_dir):
             raise ValueError(

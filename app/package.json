@@ -1,7 +1,7 @@
 {
     "name": "@fiftyone/fiftyone",
+    "version": "0.0.0",
     "productName": "FiftyOne",
-    "version": "0.18.0",
     "license": "Apache-2.0",
     "private": true,
     "main": "index.js",
@@ -14,8 +14,8 @@
     },
     "devDependencies": {
         "patch-package": "^6.4.7",
-        "tsc-silent": "^1.2.1",
-        "typescript": "4.2.4"
+        "typescript": "4.2.4",
+        "typescript-plugin-css-modules": "^3.4.0"
     },
     "workspaces": [
         "packages/*"

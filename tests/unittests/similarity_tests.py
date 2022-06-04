@@ -1,7 +1,7 @@
 """
 FiftyOne visual similarity-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -36,7 +36,9 @@ class SimilarityTests(unittest.TestCase):
         embeddings = np.random.randn(9, 4)
 
         fob.compute_similarity(
-            dataset, embeddings=embeddings, brain_key="image_similarity",
+            dataset,
+            embeddings=embeddings,
+            brain_key="image_similarity",
         )
 
         query_id = dataset.first().id

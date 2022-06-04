@@ -1,6 +1,8 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
+
+import { prettify as pretty, useExternalLink } from "@fiftyone/utilities";
 
 import { Overlay } from "../../overlays/base";
 import { BaseState } from "../../state";
@@ -15,6 +17,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
   return (state: Readonly<State>, overlays: Readonly<Overlay<State>[]>) => {
     if (
       (!state.options.showTooltip ||
+        !state.options.showOverlays ||
         state.config.thumbnail ||
         state.disableOverlays) &&
       !nullify
@@ -61,4 +64,23 @@ export const makeCheckboxRow = function (
   label.appendChild(span);
 
   return [label, checkbox];
+};
+
+export const prettify = (
+  v: boolean | string | null | undefined | number | number[]
+): string | HTMLAnchorElement => {
+  const result = pretty(v);
+
+  if (result instanceof URL) {
+    const url = result.toString();
+    const onClick = useExternalLink(url);
+
+    const a = document.createElement("a");
+    a.onclick = onClick;
+    a.href = url;
+    a.innerHTML = url;
+    return a;
+  }
+
+  return result;
 };

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { Optional, StateUpdate, VideoState } from "../state";
@@ -182,7 +182,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     config: { frameRate, support },
   }: Readonly<VideoState>) {
     let updatePlay = false;
-    if (this.singleFrame === null && loaded) {
+    if (loaded) {
       if (this.locked !== lockedToSupport) {
         this.singleFrame = lockedToSupport
           ? support[0] === support[1]

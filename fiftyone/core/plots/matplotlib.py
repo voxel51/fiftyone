@@ -1,7 +1,7 @@
 """
 Matplotlib plots.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -28,7 +28,9 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
+import fiftyone.core.video as fov
 
 from .base import InteractivePlot
 from .utils import load_button_icon
@@ -37,12 +39,18 @@ from .utils import load_button_icon
 logger = logging.getLogger(__name__)
 
 
+_DEFAULT_STYLE = "seaborn-ticks"
+_DEFAULT_LINE_COLOR = "#FF6D04"
+_DEFAULT_CONTINUOUS_COLORSCALE = "viridis"
+
+
 def plot_confusion_matrix(
     confusion_matrix,
     labels,
     show_values=True,
     show_colorbar=True,
-    cmap="viridis",
+    cmap=None,
+    title=None,
     xticks_rotation=45.0,
     values_format=None,
     ax=None,
@@ -52,18 +60,18 @@ def plot_confusion_matrix(
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
+        labels: a ``max(num_true, num_preds)`` array-like of class labels
         show_values (True): whether to show counts in the confusion matrix
             cells
         show_colorbar (True): whether to show a colorbar
-        cmap ("viridis"): a colormap recognized by ``matplotlib``
+        cmap (None): a colormap recognized by ``matplotlib``
+        title (None): a title for the plot
         xticks_rotation (45.0): a rotation for the x-tick labels. Can be
             numeric degrees, "vertical", "horizontal", or None
-        values_format (None): an optional format string like ``".2g"`` or
-            ``"d"`` to use to format the cell counts
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
+        values_format (None): a format string like ``".2g"`` or ``"d"`` to use
+            to format the cell counts
+        ax (None): a matplotlib axis to plot in
+        figsize (None): a ``(width, height)`` for the figure, in inches
 
     Returns:
         a matplotlib figure
@@ -76,6 +84,9 @@ def plot_confusion_matrix(
     confusion_matrix = np.asarray(confusion_matrix)
     nrows = confusion_matrix.shape[0]
     ncols = confusion_matrix.shape[1]
+
+    if cmap is None:
+        cmap = _DEFAULT_CONTINUOUS_COLORSCALE
 
     im = ax.imshow(confusion_matrix, interpolation="nearest", cmap=cmap)
 
@@ -120,6 +131,9 @@ def plot_confusion_matrix(
     if figsize is not None:
         fig.set_size_inches(*figsize)
 
+    if title is not None:
+        fig.suptitle(title)
+
     plt.tight_layout()
 
     return fig
@@ -138,19 +152,20 @@ def plot_regressions(
     best_fit_label=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     **kwargs,
 ):
     """Plots the given regression results.
 
     Args:
-        ytrue: an array of ground truth values
-        ypred: an array of predicted values
+        ytrue: an array-like of ground truth values
+        ypred: an array-like of predicted values
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of sample or frame IDs corresponding to the
+        ids (None): an array-like of sample or frame IDs corresponding to the
             regressions. If not provided but ``samples`` are provided, the
             appropriate IDs will be extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -161,9 +176,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric or string values
+            -   a list of array-lies of numeric or string values, if
+                ``link_field`` refers to frames
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -172,21 +187,21 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         best_fit_label (None): a custom legend label for the best fit line
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
@@ -220,6 +235,9 @@ def plot_regressions(
     xlabel = gt_field if gt_field is not None else "Ground truth"
     ylabel = pred_field if pred_field is not None else "Predictions"
 
+    if style is None:
+        style = _DEFAULT_STYLE
+
     with plt.style.context(style):
         ax.plot(xline, yline, color="k", label=best_fit_label)
         ax.set(xlabel=xlabel, ylabel=ylabel)
@@ -244,6 +262,7 @@ def plot_regressions(
         sizes=sizes,
         marker_size=marker_size,
         cmap=cmap,
+        title=title,
         ax=ax,
         ax_equal=True,
         figsize=figsize,
@@ -256,58 +275,71 @@ def plot_pr_curve(
     precision,
     recall,
     label=None,
+    title=None,
     ax=None,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     **kwargs,
 ):
     """Plots a precision-recall (PR) curve.
 
     Args:
-        precision: an array of precision values
-        recall: an array of recall values
+        precision: an array-like of precision values
+        recall: an array-like of recall values
         label (None): a label for the curve
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
+    if style is None:
+        style = _DEFAULT_STYLE
+
+    if "color" not in kwargs:
+        kwargs["color"] = _DEFAULT_LINE_COLOR
+
     with plt.style.context(style):
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
         )
         display.plot(ax=ax, label=label, **kwargs)
 
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
+    fig = display.figure_
 
-    return display.figure_
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
 
 
 def plot_pr_curves(
     precisions,
     recall,
     classes,
+    title=None,
     ax=None,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     **kwargs,
 ):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
+        precisions: a ``num_classes x num_recalls`` array-like of per-class
             precision values
-        recall: an array of recall values
+        recall: an array-like of recall values
         classes: the list of classes
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
@@ -316,6 +348,9 @@ def plot_pr_curves(
     # Plot in descending order of AP
     avg_precisions = np.mean(precisions, axis=1)
     inds = np.argsort(-avg_precisions)  # negative for descending order
+
+    if style is None:
+        style = _DEFAULT_STYLE
 
     with plt.style.context(style):
         for idx in inds:
@@ -332,44 +367,285 @@ def plot_pr_curves(
     if ax is None:
         ax = plt.gca()
 
-    if figsize is not None:
-        ax.figure.set_size_inches(*figsize)
+    fig = ax.figure
 
-    return ax.figure
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
 
 
 def plot_roc_curve(
     fpr,
     tpr,
     roc_auc=None,
+    title=None,
     ax=None,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     **kwargs,
 ):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array of false postive rates
-        tpr: an array of true postive rates
+        fpr: an array-like of false postive rates
+        tpr: an array-like of true postive rates
         roc_auc (None): the area under the ROC curve
-        ax (None): an optional matplotlib axis to plot in
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
     Returns:
         a matplotlib figure
     """
+    if style is None:
+        style = _DEFAULT_STYLE
+
+    if "color" not in kwargs:
+        kwargs["color"] = _DEFAULT_LINE_COLOR
+
     with plt.style.context(style):
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
 
-    if figsize is not None:
-        display.figure_.set_size_inches(*figsize)
+    fig = display.figure_
 
-    return display.figure_
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if title is not None:
+        fig.suptitle(title)
+
+    return fig
+
+
+def lines(
+    x=None,
+    y=None,
+    samples=None,
+    ids=None,
+    link_field=None,
+    sizes=None,
+    labels=None,
+    colors=None,
+    marker_size=None,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+    ax=None,
+    ax_equal=False,
+    figsize=None,
+    style=None,
+    buttons=None,
+    **kwargs,
+):
+    """Plots the given lines(s) data.
+
+    You can attach plots generated by this method to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot. To enable this functionality, you must pass ``samples`` to this
+    method.
+
+    You can use the ``sizes`` parameter to scale the sizes of the points.
+
+    Args:
+        x (None): the x data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        y (None): the y data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        ids (None): an array-like of IDs of same shape as ``y``. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
+        link_field (None): a field of ``samples`` whose data corresponds to
+            ``y``. Can be any of the following:
+
+            -   ``None``, if the line data correspond to samples (single trace)
+                or frames (multiple traces)
+            -   ``"frames"``, if the line data correspond to frames (multiple
+                traces). This option exists only for consistency with other
+                plotting methods; in practice, it will be automatically
+                inferred whenever multiple traces are being plotted
+            -   the name of a :class:`fiftyone.core.labels.Label` field, if the
+                line data correspond to the labels in this field
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   an array-like of numeric values of same shape as ``y``
+            -   the name of a sample field (single trace) or frame field
+                (multiple traces) from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                sample-level (single trace) or frame-level (multiple traces)
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        labels (None): a label or list of labels for the line traces
+        colors (None): a list of colors recognized by ``matplotlib`` to use for
+            the line traces. See
+            https://matplotlib.org/stable/tutorials/colors/colormaps.html for
+            more information
+        marker_size (None): the marker size to use. If ``sizes`` are provided,
+            this value is used as a reference to scale the sizes of all points
+        title (None): a title for the plot
+        xlabel (None): an x-axis label
+        ylabel (None): a y-axis label
+        ax (None): a matplotlib axis to plot in
+        ax_equal (False): whether to set ``axis("equal")``
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
+        **kwargs: optional keyword arguments for matplotlib's ``plot()`` and
+            ``scatter()``
+
+    Returns:
+        one of the following
+
+        -   an :class:`InteractiveCollection`, when IDs are available
+        -   a matplotlib figure, otherwise
+    """
+    if y is None:
+        raise ValueError("You must provide 'y' values")
+
+    if etau.is_str(y) or isinstance(y, foe.ViewExpression):
+        if samples is not None and samples.media_type == fom.VIDEO:
+            is_frames = foe.is_frames_expr(y)
+        else:
+            is_frames = False
+    else:
+        is_frames = y and etau.is_container(y[0])
+
+    if is_frames and link_field is None:
+        link_field = "frames"
+
+    y = _parse_values(y, "y", samples=samples, is_frames=is_frames)
+
+    if x is None:
+        if is_frames:
+            x = [np.arange(1, len(yi) + 1) for yi in y]
+        else:
+            x = np.arange(1, len(y) + 1)
+    else:
+        x = _parse_values(x, "x", samples=samples, ref=y, is_frames=is_frames)
+
+    if is_frames and x and not etau.is_container(x[0]):
+        x = [x] * len(y)
+
+    sizes = _parse_values(
+        sizes, "sizes", samples=samples, ref=y, is_frames=is_frames
+    )
+
+    if is_frames:
+        if sizes is None:
+            sizes = itertools.repeat(None)
+
+        if labels is None:
+            labels = [str(i) for i in range(1, len(y) + 1)]
+        elif etau.is_str(labels):
+            labels = _parse_values(labels, "labels", samples=samples)
+
+        show_legend = True
+    else:
+        x = [x]
+        y = [y]
+        sizes = [sizes]
+        labels = [labels]
+        show_legend = labels[0] is not None
+
+    if ids is None and samples is not None:
+        ref = list(itertools.chain.from_iterable(y))
+        ids = _get_ids(samples, link_field=link_field, ref=ref)
+
+    if style is None:
+        style = _DEFAULT_STYLE
+
+    with plt.style.context(style):
+        collection = _plot_lines(
+            x,
+            y,
+            sizes=sizes,
+            labels=labels,
+            colors=colors,
+            marker_size=marker_size,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            ax=ax,
+            ax_equal=ax_equal,
+            figsize=figsize,
+            show_legend=show_legend,
+            **kwargs,
+        )
+
+        if title is not None:
+            collection.axes.figure.suptitle(title)
+
+        if samples is None:
+            fig = collection.axes.figure
+            plt.tight_layout()
+            return fig
+
+        selection_mode = None
+        init_fcn = None
+
+        if link_field is None:
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            elif isinstance(samples, fop.PatchesView):
+                link_type = "labels"
+                link_field = samples._label_fields
+            else:
+                link_type = "samples"
+        elif link_field == "frames":
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            else:
+                link_type = "frames"
+                init_fcn = lambda view: view.to_frames()
+        else:
+            link_type = "labels"
+            selection_mode = "patches"
+            init_fcn = lambda view: view.to_patches(link_field)
+
+        return InteractiveCollection(
+            collection,
+            ids=ids,
+            buttons=buttons,
+            link_type=link_type,
+            init_view=samples,
+            label_fields=link_field,
+            selection_mode=selection_mode,
+            init_fcn=init_fcn,
+        )
 
 
 def scatterplot(
@@ -382,10 +658,11 @@ def scatterplot(
     classes=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     ax_equal=False,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     buttons=None,
     **kwargs,
 ):
@@ -404,10 +681,10 @@ def scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        points: a ``num_points x num_dims`` array of points
+        points: a ``num_points x num_dims`` array-like of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the points. If not
+        ids (None): an array-like of IDs corresponding to the points. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
@@ -425,9 +702,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
@@ -437,29 +714,29 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames and/or a label list field like
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames and/or a label list field like
                 :class:`fiftyone.core.labels.Detections`
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
-        ax (None): an optional matplotlib axis to plot in
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveCollection`, for 2D points when ``samples``
-            are provided
+        -   an :class:`InteractiveCollection`, for 2D points and when IDs are
+            available
         -   a matplotlib figure, otherwise
     """
     points = np.asarray(points)
@@ -468,8 +745,8 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    labels = _get_data_for_points(points, samples, labels, "labels")
-    sizes = _get_data_for_points(points, samples, sizes, "sizes")
+    labels = _parse_values(labels, "labels", samples=samples, ref=points)
+    sizes = _parse_values(sizes, "sizes", samples=samples, ref=points)
 
     if ids is not None:
         ids = np.asarray(ids)
@@ -478,7 +755,10 @@ def scatterplot(
             msg = "Interactive selection is only supported in 2D"
             warnings.warn(msg)
         else:
-            ids = _get_ids_for_points(points, samples, link_field=link_field)
+            ids = _get_ids(samples, link_field=link_field, ref=points)
+
+    if style is None:
+        style = _DEFAULT_STYLE
 
     with plt.style.context(style):
         collection, inds = _plot_scatter(
@@ -494,6 +774,9 @@ def scatterplot(
             **kwargs,
         )
 
+        if title is not None:
+            collection.axes.figure.suptitle(title)
+
         if samples is None or num_dims != 2:
             fig = collection.axes.figure
             plt.tight_layout()
@@ -502,18 +785,27 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
+        selection_mode = None
+        init_fcn = None
+
         if link_field is None:
-            link_type = "samples"
-            selection_mode = None
-            init_patches_fcn = None
-        elif link_field == "frames" and samples.media_type == fom.VIDEO:
-            link_type = "frames"
-            selection_mode = None
-            init_patches_fcn = None
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            elif isinstance(samples, fop.PatchesView):
+                link_type = "labels"
+                link_field = samples._label_fields
+            else:
+                link_type = "samples"
+        elif link_field == "frames":
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            else:
+                link_type = "frames"
+                init_fcn = lambda view: view.to_frames()
         else:
             link_type = "labels"
             selection_mode = "patches"
-            init_patches_fcn = lambda view: view.to_patches(link_field)
+            init_fcn = lambda view: view.to_patches(link_field)
 
         return InteractiveCollection(
             collection,
@@ -523,11 +815,11 @@ def scatterplot(
             init_view=samples,
             label_fields=link_field,
             selection_mode=selection_mode,
-            init_patches_fcn=init_patches_fcn,
+            init_fcn=init_fcn,
         )
 
 
-def _get_data_for_points(points, samples, values, parameter):
+def _parse_values(values, parameter, samples=None, ref=None, is_frames=False):
     if values is None:
         return None
 
@@ -538,18 +830,41 @@ def _get_data_for_points(points, samples, values, parameter):
                 "for the `%s` parameter" % parameter
             )
 
-        values = samples.values(values, unwind=True)
+        values = samples.values(values)
+
+    if is_frames:
+        values = [_unwind_values(v) for v in values]
     else:
         values = _unwind_values(values)
 
-    if len(values) != len(points):
-        raise ValueError(
-            "Number of %s (%d) does not match number of points (%d). You "
-            "may have missing data/labels that you need to omit from your "
-            "view" % (parameter, len(values), len(points))
-        )
+    if ref is not None:
+        _validate_values(values, ref, parameter, is_frames=is_frames)
 
     return values
+
+
+def _get_ids(samples, link_field=None, ref=None, is_frames=False):
+    if link_field is None:
+        ids = samples.values("id")
+        ptype = "sample"
+    elif link_field == "frames":
+        ids = samples.values("frames.id")
+        ptype = "frame"
+    else:
+        _, id_path = samples._get_label_field_path(link_field, "id")
+        ids = samples.values(id_path)
+        ptype = "label"
+
+    if is_frames:
+        ids = [_unwind_values(_ids) for _ids in ids]
+    else:
+        ids = _unwind_values(ids)
+
+    if ref is not None:
+        values_type = "%s IDs" % ptype
+        _validate_values(ids, ref, values_type, is_frames=is_frames)
+
+    return ids
 
 
 def _unwind_values(values):
@@ -559,26 +874,31 @@ def _unwind_values(values):
     return values
 
 
-def _get_ids_for_points(points, samples, link_field=None):
-    if link_field is None:
-        ids = samples.values("id")
-        ptype = "sample"
-    elif link_field == "frames" and samples.media_type == fom.VIDEO:
-        ids = samples.values("frames.id", unwind=True)
-        ptype = "frame"
-    else:
-        ids = samples._get_label_ids(fields=link_field)
-        ptype = "label"
+def _validate_values(values, ref, values_type, is_frames=False):
+    if not is_frames:
+        if len(values) != len(ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d). You may have missing "
+                "data/labels that you need to omit from your view"
+                % (values_type, len(values), len(ref))
+            )
 
-    if len(ids) != len(points):
+        return
+
+    if len(values) != len(ref):
         raise ValueError(
-            "Number of %s IDs (%d) does not match number of points "
-            "(%d). You may have missing data/labels that you need to omit "
-            "from your view before visualizing"
-            % (ptype, len(ids), len(points))
+            "Inconsistent number of %s traces (%d != %d). You may have "
+            "missing data/labels that you need to omit from your view"
+            % (values_type, len(values), len(ref))
         )
 
-    return np.array(ids)
+    for idx, (_values, _ref) in enumerate(zip(values, ref), 1):
+        if len(_values) != len(_ref):
+            raise ValueError(
+                "Inconsistent number of %s (%d != %d) in trace %d/%d. You may "
+                "have missing data/labels that you need to omit from your view"
+                % (values_type, len(_values), len(_ref), idx, len(values))
+            )
 
 
 def location_scatterplot(
@@ -593,10 +913,11 @@ def location_scatterplot(
     api_key=None,
     marker_size=None,
     cmap=None,
+    title=None,
     ax=None,
     ax_equal=False,
     figsize=None,
-    style="seaborn-ticks",
+    style=None,
     buttons=None,
     **kwargs,
 ):
@@ -621,14 +942,14 @@ def location_scatterplot(
             -   None, in which case ``samples`` must have a single
                 :class:`fiftyone.core.labels.GeoLocation` field whose ``point``
                 attribute contains location data
-            -   a ``num_locations x 2`` array of ``(longitude, latitude)``
+            -   a ``num_locations x 2`` array-like of ``(longitude, latitude)``
                 coordinates
             -   the name of a :class:`fiftyone.core.labels.GeoLocation` field
                 of ``samples`` with ``(longitude, latitude)`` coordinates in
                 its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the locations. If not
+        ids (None): an array-like of IDs corresponding to the locations. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -639,7 +960,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
+            -   an array-like of numeric or string values
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -648,9 +969,9 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            -   an array-like of numeric values
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings
         map_type ("satellite"): the map type to render. Supported values are
             ``("roadmap", "satellite", "hybrid", "terrain")``
         show_scale_bar (False): whether to render a scale bar on the plot
@@ -658,19 +979,19 @@ def location_scatterplot(
         marker_size (None): the marker size to use. If ``sizes`` are provided,
             this value is used as a reference to scale the sizes of all points
         cmap (None): a colormap recognized by ``matplotlib``
-        ax (None): an optional matplotlib axis to plot in
+        title (None): a title for the plot
+        ax (None): a matplotlib axis to plot in
         ax_equal (False): whether to set ``axis("equal")``
-        figsize (None): an optional ``(width, height)`` for the figure, in
-            inches
-        style ("seaborn-ticks"): a style to use for the plot
+        figsize (None): a ``(width, height)`` for the figure, in inches
+        style (None): a style to use for the plot
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         **kwargs: optional keyword arguments for matplotlib's ``scatter()``
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`InteractiveCollection`, if ``samples`` are provided
+        -   an :class:`InteractiveCollection`, if IDs are available
         -   a matplotlib figure, otherwise
     """
     locations = _parse_locations(locations, samples)
@@ -707,6 +1028,7 @@ def location_scatterplot(
         classes=classes,
         marker_size=marker_size,
         cmap=cmap,
+        title=title,
         ax=ax,
         ax_equal=ax_equal,
         figsize=figsize,
@@ -764,6 +1086,23 @@ class InteractiveMatplotlibPlot(InteractivePlot):
         """Shows this plot."""
         super().show()
 
+    def save(self, path, dpi=None, **kwargs):
+        """Saves the plot as an image.
+
+        Args:
+            path: the path to write the image
+            dpi (None): a resolution in dots per inch
+            **kwargs: keyword arguments for ``matplotlib.pyplot.savefig``
+        """
+        if "bbox_inches" not in kwargs:
+            kwargs["bbox_inches"] = "tight"
+
+        if dpi is not None:
+            kwargs["dpi"] = dpi
+
+        etau.ensure_basedir(path)
+        self._figure.savefig(path, **kwargs)
+
     def _show(self, **_):
         plt.show(block=False)
 
@@ -808,7 +1147,8 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
     Args:
         collection: a ``matplotlib.collections.Collection`` to select points
             from
-        ids (None): a list of IDs corresponding to the points in ``collection``
+        ids (None): an array-like of IDs corresponding to the points in
+            ``collection``
         buttons (None): a list of ``(label, icon_image, callback)`` tuples
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
@@ -1146,6 +1486,80 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
             self._ms = np.tile(self._ms[0], self._num_pts)
 
 
+def _plot_lines(
+    x,
+    y,
+    sizes=None,
+    labels=None,
+    colors=None,
+    marker_size=None,
+    xlabel=None,
+    ylabel=None,
+    ax=None,
+    ax_equal=False,
+    figsize=None,
+    show_legend=False,
+    **kwargs,
+):
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+    else:
+        fig = ax.figure
+
+    if marker_size is None:
+        # Choose a reasonable marker size based on number of points
+        num_points = sum(len(xi) for xi in x)
+        marker_size = 2.0 * (10 ** (4 - np.log10(num_points)))
+        marker_size = max(1, min(marker_size, 50))
+
+    if sizes is None:
+        sizes = itertools.repeat(None)
+
+    if labels is None:
+        labels = itertools.repeat(None)
+
+    colors = _get_qualitative_colors(len(y), colors=colors)
+
+    xs = []
+    ys = []
+    cs = []
+    ss = []
+    for _x, _y, _s, _l, _c in zip(x, y, sizes, labels, colors):
+        ax.plot(_x, _y, linestyle="-", label=_l, color=_c, **kwargs)
+
+        xs.extend(_x)
+        ys.extend(_y)
+        cs.extend([_c] * len(_y))
+        if _s is not None:
+            # Scale sizes so that 0.5 * max(sizes) corresponds to `marker_size`
+            min_marker_size = min(0.1, marker_size)
+            sizeref = 0.5 * max(_s) / marker_size
+            ss.extend(max(s / sizeref, min_marker_size) for s in _s)
+
+    if not ss:
+        ss = marker_size
+
+    collection = ax.scatter(xs, ys, c=cs, s=ss, **kwargs)
+
+    if show_legend:
+        ax.legend()
+
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    if ax_equal:
+        ax.axis("equal")
+
+    if xlabel is not None:
+        ax.set(xlabel=xlabel)
+
+    if ylabel is not None:
+        ax.set(ylabel=ylabel)
+
+    return collection
+
+
 def _plot_scatter(
     points,
     labels=None,
@@ -1172,7 +1586,7 @@ def _plot_scatter(
         fig = ax.figure
 
     if cmap is None:
-        cmap = "Spectral" if categorical else "viridis"
+        cmap = "Spectral" if categorical else _DEFAULT_CONTINUOUS_COLORSCALE
 
     cmap = plt.get_cmap(cmap)
 
@@ -1203,7 +1617,12 @@ def _plot_scatter(
         args.append(points[:, 2])
 
     collection = ax.scatter(
-        *args, c=values, s=sizes, cmap=cmap, norm=norm, **kwargs,
+        *args,
+        c=values,
+        s=sizes,
+        cmap=cmap,
+        norm=norm,
+        **kwargs,
     )
 
     if values is not None:
@@ -1235,6 +1654,20 @@ def _plot_scatter(
         collection.axes.axis("equal")
 
     return collection, inds
+
+
+def _get_qualitative_colors(num_classes, colors=None):
+    if colors is None:
+        if num_classes == 1:
+            colors = [_DEFAULT_LINE_COLOR]
+        elif num_classes <= 10:
+            colors = list(plt.cm.Paired.colors)  # pylint: disable=no-member
+        else:
+            colors = list(plt.cm.tab20.colors)  # pylint: disable=no-member
+
+    # @todo can we blend when there are more classes than colors?
+    colors = list(colors)
+    return [colors[i % len(colors)] for i in range(num_classes)]
 
 
 def _parse_scatter_inputs(points, labels, sizes, classes):

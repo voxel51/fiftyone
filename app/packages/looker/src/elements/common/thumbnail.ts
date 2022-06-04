@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { SELECTION_TEXT } from "../../constants";
@@ -21,13 +21,13 @@ export class ThumbnailSelectorElement<
     return {
       click: ({ event, update, dispatchEvent }) => {
         update(({ options: { selected, inSelectionMode } }) => {
-          if (inSelectionMode && event.shiftKey) {
+          if (inSelectionMode && (event.shiftKey || event.ctrlKey)) {
             return {};
           }
           event.stopPropagation();
           event.preventDefault();
 
-          dispatchEvent("selectthumbnail");
+          dispatchEvent("selectthumbnail", event.shiftKey);
 
           return { options: { selected: !selected } };
         });

@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -46,6 +47,7 @@ class BDDDatasetImporter(
             -   an absolute filepath specifying the location of the JSON data
                 manifest. In this case, ``dataset_dir`` has no effect on the
                 location of the data
+            -   a dict mapping filenames to absolute filepaths
 
             If None, this parameter will default to whichever of ``data/`` or
             ``data.json`` exists in the dataset directory
@@ -92,7 +94,9 @@ class BDDDatasetImporter(
             )
 
         data_path = self._parse_data_path(
-            dataset_dir=dataset_dir, data_path=data_path, default="data/",
+            dataset_dir=dataset_dir,
+            data_path=data_path,
+            default="data/",
         )
 
         labels_path = self._parse_labels_path(
@@ -166,22 +170,27 @@ class BDDDatasetImporter(
         }
 
     def setup(self):
-        self._image_paths_map = self._load_data_map(
-            self.data_path, recursive=True
-        )
+        image_paths_map = self._load_data_map(self.data_path, recursive=True)
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
-            self._anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = {
+                fou.normpath(k): v for k, v in anno_dict_map.items()
+            }
         else:
-            self._anno_dict_map = {}
+            anno_dict_map = {}
 
-        filenames = set(self._anno_dict_map.keys())
+        filenames = set(anno_dict_map.keys())
 
         if self.include_all_data:
-            filenames.update(self._image_paths_map.keys())
+            filenames.update(image_paths_map.keys())
 
-        self._filenames = self._preprocess_list(sorted(filenames))
-        self._num_samples = len(self._filenames)
+        filenames = self._preprocess_list(sorted(filenames))
+
+        self._image_paths_map = image_paths_map
+        self._anno_dict_map = anno_dict_map
+        self._filenames = filenames
+        self._num_samples = len(filenames)
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -694,7 +703,11 @@ def _polyline_to_bdd(polyline, frame_size, extra_attrs):
             (round(width * x, 1), round(height * y, 1)) for (x, y) in points
         ]
         poly2d.append(
-            {"types": types, "closed": polyline.closed, "vertices": vertices,}
+            {
+                "types": types,
+                "closed": polyline.closed,
+                "vertices": vertices,
+            }
         )
 
     d = {

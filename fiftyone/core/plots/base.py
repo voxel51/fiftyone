@@ -1,7 +1,7 @@
 """
 Base plotting definitions.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -35,13 +35,11 @@ def plot_confusion_matrix(
 
     Args:
         confusion_matrix: a ``num_true x num_preds`` confusion matrix
-        labels: a ``max(num_true, num_preds)`` array of class labels
-        ids (None): an optional array of same shape as ``confusion_matrix``
-            containing lists of IDs corresponding to each cell. Only used by
-            the "plotly" backend
+        labels: a ``max(num_true, num_preds)`` array-like of class labels
+        ids (None): an array-like of same shape as ``confusion_matrix``
+            containing lists of IDs corresponding to each cell
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the confusion matrix was generated. Only used by the
-            "plotly" backend when ``ids`` are provided
+            for which the confusion matrix was generated
         eval_key (None): the evaluation key of the evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -53,13 +51,13 @@ def plot_confusion_matrix(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if
-            ``ids`` are provided and the plotly backend is used
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            ``ids`` are provided but you are working in a Jupyter notebook with
-            the plotly backend
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveHeatmap`, if IDs
+            are available and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no IDs
+            are available but you are working in a Jupyter notebook with the
+            plotly backend
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -105,12 +103,12 @@ def plot_regressions(
     currently selected points in the plot.
 
     Args:
-        ytrue: an array of ground truth values
-        ypred: an array of predicted values
+        ytrue: an array-like of ground truth values
+        ypred: an array-like of predicted values
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             for which the results were generated. Only used by the "plotly"
             backend when IDs are provided
-        ids (None): an array of sample or frame IDs corresponding to the
+        ids (None): an array-like of sample or frame IDs corresponding to the
             regressions. If not provided but ``samples`` are provided, the
             appropriate IDs will be extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -121,9 +119,9 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -132,11 +130,11 @@ def plot_regressions(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to frames
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to frames
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -147,13 +145,13 @@ def plot_regressions(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_confusion_matrix`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if
-            IDs are provided and the plotly backend is used
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no
-            IDs are provided but you are working in a Jupyter notebook with
-            the plotly backend
+        -   a :class:`fiftyone.core.plots.plotly.InteractiveScatter`, if IDs
+            are available and the plotly backend is used
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if no IDs
+            are available but you are working in a Jupyter notebook with the
+            plotly backend
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -177,12 +175,15 @@ def plot_regressions(
     )
 
 
-def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
+def plot_pr_curve(
+    precision, recall, thresholds=None, label=None, backend="plotly", **kwargs
+):
     """Plots a precision-recall (PR) curve.
 
     Args:
-        precision: an array of precision values
-        recall: an array of recall values
+        precision: an array-like of precision values
+        recall: an array-like of recall values
+        thresholds (None): an array-like of decision thresholds
         label (None): a label for the curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -192,7 +193,7 @@ def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curve`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -202,20 +203,32 @@ def plot_pr_curve(precision, recall, label=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curve as _plot_pr_curve
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_pr_curve as _plot_pr_curve
+
+        kwargs.update(dict(thresholds=thresholds))
 
     return _plot_pr_curve(precision, recall, label=label, **kwargs)
 
 
-def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
+def plot_pr_curves(
+    precisions, recall, classes, thresholds=None, backend="plotly", **kwargs
+):
     """Plots a set of per-class precision-recall (PR) curves.
 
     Args:
-        precisions: a ``num_classes x num_recalls`` array of per-class
+        precisions: a ``num_classes x num_recalls`` array-like of per-class
             precision values
-        recall: an array of recall values
+        recall: an array-like of recall values
         classes: the list of classes
+        thresholds (None): an ``num_classes x num_recalls`` array-like of
+            decision thresholds
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -224,7 +237,7 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_pr_curves`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -234,18 +247,29 @@ def plot_pr_curves(precisions, recall, classes, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_pr_curves as _plot_pr_curves
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_pr_curves as _plot_pr_curves
+
+        kwargs.update(dict(thresholds=thresholds))
 
     return _plot_pr_curves(precisions, recall, classes, **kwargs)
 
 
-def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
+def plot_roc_curve(
+    fpr, tpr, thresholds=None, roc_auc=None, backend="plotly", **kwargs
+):
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array of false postive rates
-        tpr: an array of true postive rates
+        fpr: an array-like of false postive rates
+        tpr: an array-like of true postive rates
+        thresholds (None): an array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
@@ -255,7 +279,7 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.plot_roc_curve`
 
     Returns:
-        one of the following:
+        one of the following
 
         -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if you
             are working in a Jupyter notebook and the plotly backend is used
@@ -265,10 +289,127 @@ def plot_roc_curve(fpr, tpr, roc_auc=None, backend="plotly", **kwargs):
 
     if backend == "matplotlib":
         from .matplotlib import plot_roc_curve as _plot_roc_curve
+
+        if thresholds is not None:
+            logger.warning(
+                "Ignoring unsupported argument `thresholds` for the "
+                "'matplotlib' backend"
+            )
     else:
         from .plotly import plot_roc_curve as _plot_roc_curve
 
+        kwargs.update(dict(thresholds=thresholds))
+
     return _plot_roc_curve(fpr, tpr, roc_auc=roc_auc, **kwargs)
+
+
+def lines(
+    x=None,
+    y=None,
+    samples=None,
+    ids=None,
+    link_field=None,
+    sizes=None,
+    backend="plotly",
+    **kwargs,
+):
+    """Plots the given lines(s) data.
+
+    You can attach plots generated by this method to an App session via its
+    :attr:`fiftyone.core.session.Session.plots` attribute, which will
+    automatically sync the session's view with the currently selected points in
+    the plot. To enable this functionality, you must pass ``samples`` to this
+    method.
+
+    You can use the ``sizes`` parameter to scale the sizes of the points.
+
+    Args:
+        x (None): the x data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        y (None): the y data to plot. Can be any of the following:
+
+            -   an array-like of values
+            -   a ``num_lines x n`` array-like or list of length ``num_lines``
+                of array-likes of values for multiple line traces
+            -   the name of a sample field or ``embedded.field.name`` of
+                ``samples`` from which to extract values for a single line
+            -   the name of a frame field or ``frames.embbeded.field.name`` of
+                ``samples`` from which to extract values for per-sample line
+                traces
+            -   a :class:`fiftyone.core.expressions.ViewExpression` that
+                resolves to a list (one line plot) or list of lists (muliple
+                line plots) of numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
+            whose data is being visualized
+        ids (None): an array-like of IDs of same shape as ``y``. If not
+            provided but ``samples`` are provided, the appropriate IDs will be
+            extracted from the samples
+        link_field (None): a field of ``samples`` whose data corresponds to
+            ``y``. Can be any of the following:
+
+            -   ``None``, if the line data correspond to samples (single trace)
+                or frames (multiple traces)
+            -   ``"frames"``, if the line data correspond to frames (multiple
+                traces). This option exists only for consistency with other
+                plotting methods; in practice, it will be automatically
+                inferred whenever multiple traces are being plotted
+            -   the name of a :class:`fiftyone.core.labels.Label` field, if the
+                line data correspond to the labels in this field
+        sizes (None): data to use to scale the sizes of the points. Can be any
+            of the following:
+
+            -   an array-like of numeric values of same shape as ``y``
+            -   the name of a sample field (single trace) or frame field
+                (multiple traces) from which to extract numeric values
+            -   a :class:`fiftyone.core.expressions.ViewExpression` defining
+                sample-level (single trace) or frame-level (multiple traces)
+                numeric values to compute from ``samples`` via
+                :meth:`fiftyone.core.collections.SampleCollection.values`
+        backend ("plotly"): the plotting backend to use. Supported values are
+            ``("plotly", "matplotlib")``
+        **kwargs: keyword arguments for the backend plotting method:
+
+            -   "plotly" backend: :meth:`fiftyone.core.plots.plotly.lines`
+            -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.lines`
+
+    Returns:
+        one of the following
+
+        -   an :class:`InteractivePlot`, if IDs are available
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if IDs
+            are not available but you are working with the plotly backend in a
+            Jupyter notebook
+        -   a plotly or matplotlib figure, otherwise
+    """
+    backend = _parse_backend(backend)
+
+    if backend == "matplotlib":
+        from .matplotlib import lines as _lines
+    else:
+        from .plotly import lines as _lines
+
+    return _lines(
+        x=x,
+        y=y,
+        samples=samples,
+        ids=ids,
+        link_field=link_field,
+        sizes=sizes,
+        **kwargs,
+    )
 
 
 def scatterplot(
@@ -297,10 +438,10 @@ def scatterplot(
     and you can use the ``sizes`` parameter to scale the sizes of the points.
 
     Args:
-        points: a ``num_points x num_dims`` array of points
+        points: a ``num_points x num_dims`` array-like of points
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the points. If not
+        ids (None): an array-like of IDs corresponding to the points. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         link_field (None): a field of ``samples`` whose data corresponds to
@@ -318,9 +459,9 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+            -   an array-like of numeric or string values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
@@ -330,12 +471,12 @@ def scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-            -   a list of lists of numeric or string values, if ``link_field``
-                refers to a label list field like
+            -   an array-like of numeric values
+            -   a list of array-likes of numeric or string values, if
+                ``link_field`` refers to a label list field like
                 :class:`fiftyone.core.labels.Detections`
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+        classes (None): an list of classes whose points to plot. Only
+            applicable when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -344,13 +485,12 @@ def scatterplot(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.scatterplot`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
-            ``samples`` are not provided but you are working with the plotly
-            backend in a Jupyter notebook
+        -   an :class:`InteractivePlot`, if IDs are available
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if IDs
+            are not available but you are working with the plotly backend in a
+            Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -410,7 +550,7 @@ def location_scatterplot(
                 its ``point`` attribute
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
-        ids (None): an array of IDs corresponding to the locations. If not
+        ids (None): an array-like of IDs corresponding to the locations. If not
             provided but ``samples`` are provided, the appropriate IDs will be
             extracted from the samples
         labels (None): data to use to color the points. Can be any of the
@@ -421,7 +561,7 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric or string values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric or string values
+            -   an array-like of numeric or string values
         sizes (None): data to use to scale the sizes of the points. Can be any
             of the following:
 
@@ -430,9 +570,9 @@ def location_scatterplot(
             -   a :class:`fiftyone.core.expressions.ViewExpression` defining
                 numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
-            -   a list or array-like of numeric values
-        classes (None): an optional list of classes whose points to plot.
-            Only applicable when ``labels`` contains strings
+            -   an array-like of numeric values
+        classes (None): a list of classes whose points to plot. Only applicable
+            when ``labels`` contains strings
         backend ("plotly"): the plotting backend to use. Supported values are
             ``("plotly", "matplotlib")``
         **kwargs: keyword arguments for the backend plotting method:
@@ -441,13 +581,12 @@ def location_scatterplot(
             -   "matplotlib" backend: :meth:`fiftyone.core.plots.matplotlib.location_scatterplot`
 
     Returns:
-        one of the following:
+        one of the following
 
-        -   an :class:`fiftyone.core.plots.base.InteractivePlot`, if
-            ``samples`` are provided
-        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if
-            ``samples`` are not provided but you are working with the plotly
-            backend in a Jupyter notebook
+        -   an :class:`InteractivePlot`, if IDs are available
+        -   a :class:`fiftyone.core.plots.plotly.PlotlyNotebookPlot`, if IDs
+            are not available but you are working with the plotly backend in a
+            Jupyter notebook
         -   a plotly or matplotlib figure, otherwise
     """
     backend = _parse_backend(backend)
@@ -476,8 +615,7 @@ def _parse_backend(backend):
     if backend not in available_backends:
         raise ValueError(
             "Unsupported plotting backend '%s'; supported values are %s"
-            % backend,
-            available_backends,
+            % (backend, available_backends)
         )
 
     return backend
@@ -502,6 +640,15 @@ class Plot(object):
             **kwargs: subclass-specific keyword arguments
         """
         raise NotImplementedError("Subclass must implement show()")
+
+    def save(self, path, **kwargs):
+        """Saves the plot.
+
+        Args:
+            path: the path to write the plot
+            **kwargs: subclass-specific keyword arguments
+        """
+        raise NotImplementedError("Subclass must implement save()")
 
     def freeze(self):
         """Freezes the plot, replacing it with a static image.
@@ -633,7 +780,7 @@ class ViewPlot(ResponsivePlot):
     parties by calling its :meth:`update_view` method.
 
     Args:
-        init_view (None): an optional initial
+        init_view (None): an initial
             :class:`fiftyone.core.collections.SampleCollection` to load
     """
 
@@ -667,8 +814,7 @@ class ViewPlot(ResponsivePlot):
 
         Args:
             view: a :class:`fiftyone.core.collections.SampleCollection`
-            agg_results (None): an optional list of pre-computed aggregation
-                results
+            agg_results (None): a list of pre-computed aggregation results
         """
         if not self.is_connected:
             return
@@ -700,18 +846,17 @@ class InteractivePlot(ResponsivePlot):
             defining an initial view from which to derive selection views when
             points are selected in the plot. This view will also be shown when
             the plot is in its default state (no selection)
-        label_fields (None): an optional label field or list of label fields to
-            which points in this plot correspond. Only applicable when
+        label_fields (None): a label field or list of label fields to which
+            points in this plot correspond. Only applicable when
             ``link_type == "labels"``
-        selection_mode (None): the mode to use when updating connected sessions
-            in response to selections in this plot. Only applicable when
-            ``link_type == "labels"``. See :meth:`selection_mode` for details
-        init_patches_fcn (None): an optional function that can be called with
-            ``init_view`` as its argument and returns a
+        selection_mode (None): the initial selection mode to use when updating
+            connected sessions in response to selections in this plot. See
+            :meth:`selection_mode` for details
+        init_fcn (None): a function that can be called with ``init_view`` as
+            its argument that returns a
             :class:`fiftyone.core.collections.SampleCollection` defining an
-            initial view from which to dervie selection views when cells are
-            selected in the plot when :meth:`selection_mode` is ``"patches"``.
-            Only applicable when ``link_type == "labels"``
+            initial view from which to derive certain types of selection views.
+            See :meth:`selection_mode` for details
     """
 
     def __init__(
@@ -720,7 +865,7 @@ class InteractivePlot(ResponsivePlot):
         init_view=None,
         label_fields=None,
         selection_mode=None,
-        init_patches_fcn=None,
+        init_fcn=None,
     ):
         supported_link_types = ("samples", "frames", "labels")
         if link_type not in supported_link_types:
@@ -729,7 +874,7 @@ class InteractivePlot(ResponsivePlot):
                 % (link_type, supported_link_types)
             )
 
-        if selection_mode is None and link_type == "labels":
+        if selection_mode is None and link_type in ("frames", "labels"):
             selection_mode = "select"
 
         super().__init__(link_type)
@@ -737,8 +882,8 @@ class InteractivePlot(ResponsivePlot):
         self.label_fields = label_fields
 
         self._init_view = init_view
-        self._init_patches_fcn = init_patches_fcn
-        self._init_patches_view = None
+        self._init_fcn = init_fcn
+        self._init_fcn_view = None
 
         self._selection_callback = None
         self._sync_callback = None
@@ -751,38 +896,61 @@ class InteractivePlot(ResponsivePlot):
     def selection_mode(self):
         """The current selection mode of the plot.
 
-        Only applicable when ``link_type == "labels"``.
-
         This property controls how the current view is updated in response to
         updates from :class:`InteractivePlot` instances that are linked to
-        labels:
+        labels or frames.
+
+        When ``link_type`` is ``"frames"``, the supported values are:
+
+        -   ``"select"``: show video samples with labels only for the selected
+            frames
+        -   ``"match"``: show unfiltered video samples containing at least one
+            selected frame
+        -   ``"frames"``: show only the selected frames in a frames view
+
+        When ``link_type`` is ``"labels"``, the supported values are:
 
         -   ``"select"``: show only the selected labels
-        -   ``"match"``: show unfiltered samples containing the selected labels
+        -   ``"match"``: show unfiltered samples containing at least one
+            selected label
         -   ``"patches"``: show the selected labels in a patches view
 
         .. note::
 
-            ``"patches"`` mode is only supported if an ``init_patches_fcn`` was
-            provided when constructing this plot.
+            In order to use ``"patches"`` selection mode, you must have
+            provided an ``init_fcn`` when constructing this plot that defines
+            how to create the base patches view. This usually involves
+            :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
+            or
+            :meth:`to_evaluation_patches() <fiftyone.core.collections.SampleCollection.to_evaluation_patches>`
+
+        .. note::
+
+            In order to use ``"frames"`` selection mode, you must have
+            provided an ``init_fcn`` when constructing this plot that defines
+            how to create the base frames view. This usually involves
+            :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
         """
         return self._selection_mode
 
     @selection_mode.setter
     def selection_mode(self, mode):
-        if self.link_type != "labels":
+        if self.link_type not in ("frames", "labels"):
             if mode is not None:
                 logger.warning(
                     "Ignoring `selection_mode` parameter, which is only "
-                    "applicable for plots linked to labels"
+                    "applicable for plots linked to frames or labels"
                 )
 
             return
 
-        if self._init_patches_fcn is not None:
-            supported_modes = ("select", "match", "patches")
-        else:
-            supported_modes = ("select", "match")
+        supported_modes = ["select", "match"]
+
+        if self._init_fcn is not None:
+            if self.link_type == "frames":
+                supported_modes.append("frames")
+            elif self.link_type == "labels":
+                supported_modes.append("patches")
 
         if mode not in supported_modes:
             raise ValueError(
@@ -804,13 +972,13 @@ class InteractivePlot(ResponsivePlot):
         This view will also be shown when the plot is in its default state (no
         selection).
         """
-        if self.selection_mode != "patches":
+        if self.selection_mode not in ("frames", "patches"):
             return self._init_view
 
-        if self._init_patches_view is None:
-            self._init_patches_view = self._init_patches_fcn(self._init_view)
+        if self._init_fcn_view is None:
+            self._init_fcn_view = self._init_fcn(self._init_view)
 
-        return self._init_patches_view
+        return self._init_fcn_view
 
     @property
     def selected_ids(self):

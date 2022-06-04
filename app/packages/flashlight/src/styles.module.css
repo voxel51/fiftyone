@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 @keyframes animatedBackground {
@@ -109,7 +109,7 @@
 .flashlightSection > div {
   position: absolute;
   contain: size layout paint;
-  background-color: hsl(210, 11%, 15%);
+  background-color: hsl(214, 7%, 19%);
   overflow: hidden;
 }
 

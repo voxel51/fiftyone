@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 .lookerTags {
@@ -29,18 +29,22 @@
   box-sizing: content-box;
   height: 1em;
   margin: 0 2px 0;
-  padding: 3px 12px 3px 12px;
+  padding: 3px;
   color: white;
   font-size: 14px;
   line-height: 12px;
-  border-radius: 10px;
+  border-radius: 3px;
   font-weight: bold;
   text-align: center;
   vertical-align: bottom;
   white-space: nowrap;
   pointer-events: auto;
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 8px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.lookerTags > div > a {
+  color: white;
 }

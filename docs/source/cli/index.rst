@@ -215,8 +215,11 @@ Convert datasets on disk between supported formats.
 
 .. code-block:: text
 
-    fiftyone convert [-h] [--input-dir INPUT_DIR] [--input-type INPUT_TYPE]
-                     [--output-dir OUTPUT_DIR] [--output-type OUTPUT_TYPE]
+    fiftyone convert [-h] --input-type INPUT_TYPE --output-type OUTPUT_TYPE
+                     [--input-dir INPUT_DIR]
+                     [--input-kwargs KEY=VAL [KEY=VAL ...]]
+                     [--output-dir OUTPUT_DIR]
+                     [--output-kwargs KEY=VAL [KEY=VAL ...]] [-o]
 
 **Arguments**
 
@@ -226,10 +229,19 @@ Convert datasets on disk between supported formats.
       -h, --help            show this help message and exit
       --input-dir INPUT_DIR
                             the directory containing the dataset
-      --input-type INPUT_TYPE
-                            the fiftyone.types.Dataset type of the input dataset
+      --input-kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments for
+                            `fiftyone.utils.data.convert_dataset(..., input_kwargs=)`
       --output-dir OUTPUT_DIR
                             the directory to which to write the output dataset
+      --output-kwargs KEY=VAL [KEY=VAL ...]
+                            additional keyword arguments for
+                            `fiftyone.utils.data.convert_dataset(..., output_kwargs=)`
+      -o, --overwrite       whether to overwrite an existing output directory
+
+    required arguments:
+      --input-type INPUT_TYPE
+                            the fiftyone.types.Dataset type of the input dataset
       --output-type OUTPUT_TYPE
                             the fiftyone.types.Dataset type to output
 
@@ -252,6 +264,18 @@ Convert datasets on disk between supported formats.
         --input-type fiftyone.types.COCODetectionDataset \
         --output-dir /path/for/cvat-image-dataset \
         --output-type fiftyone.types.CVATImageDataset
+
+.. code-block:: shell
+
+    # Perform a customized conversion via optional kwargs
+    fiftyone convert \
+        --input-dir /path/to/coco-detection-dataset \
+        --input-type fiftyone.types.COCODetectionDataset \
+        --input-kwargs max_samples=100 shuffle=True \
+        --output-dir /path/for/cvat-image-dataset \
+        --output-type fiftyone.types.TFObjectDetectionDataset \
+        --output-kwargs force_rgb=True \
+        --overwrite
 
 .. _cli-fiftyone-datasets:
 
@@ -694,6 +718,9 @@ FiftyOne migrations
 
 Tools for migrating the FiftyOne database.
 
+See :ref:`this page <database-migrations>` for more information about migrating
+FiftyOne deployments.
+
 .. code-block:: text
 
     fiftyone migrate [-h] [-i] [-a] [-v VERSION]
@@ -775,7 +802,7 @@ Populates the `metadata` field of all samples in the dataset.
 
 .. code-block:: text
 
-    fiftyone utils compute-metadata [-h] [-o] DATASET_NAME
+    fiftyone utils compute-metadata [-h] [-o] [-n NUM_WORKERS] [-s] DATASET_NAME
 
 **Arguments**
 
@@ -785,8 +812,13 @@ Populates the `metadata` field of all samples in the dataset.
       NAME                  the name of the dataset
 
     optional arguments:
-      -h, --help       show this help message and exit
-      -o, --overwrite  whether to overwrite existing metadata
+      -h, --help            show this help message and exit
+      -o, --overwrite       whether to overwrite existing metadata
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default
+                            is `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if metadata cannot be computed for a sample
 
 **Examples**
 
@@ -812,7 +844,7 @@ Transforms the images in a dataset per the specified parameters.
     fiftyone utils transform-images [-h] [--size SIZE]
                                     [--min-size MIN_SIZE]
                                     [--max-size MAX_SIZE] [-e EXT] [-f]
-                                    [-d] [-n NUM_WORKERS]
+                                    [-d] [-n NUM_WORKERS] [-s]
                                     DATASET_NAME
 
 **Arguments**
@@ -838,6 +870,8 @@ Transforms the images in a dataset per the specified parameters.
       -n NUM_WORKERS, --num-workers NUM_WORKERS
                             the number of worker processes to use. The default is
                             `multiprocessing.cpu_count()`
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if an image cannot be transformed
 
 **Examples**
 
@@ -864,7 +898,7 @@ Transforms the videos in a dataset per the specified parameters.
                                     [--max-fps MAX_FPS] [--size SIZE]
                                     [--min-size MIN_SIZE]
                                     [--max-size MAX_SIZE] [-r] [-f] [-d]
-                                    [-v]
+                                    [-s] [-v]
                                     DATASET_NAME
 
 **Arguments**
@@ -892,6 +926,8 @@ Transforms the videos in a dataset per the specified parameters.
                             meet the specified values
       -d, --delete-originals
                             whether to delete the original videos after transforming
+      -s, --skip-failures   whether to gracefully continue without raising an
+                            error if a video cannot be transformed
       -v, --verbose         whether to log the `ffmpeg` commands that are executed
 
 **Examples**

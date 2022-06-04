@@ -1,7 +1,7 @@
 """
 Regression evaluation.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -80,6 +80,8 @@ def evaluate_regressions(
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
+    eval_method.ensure_requirements()
+
     eval_method.register_run(samples, eval_key)
 
     results = eval_method.evaluate_samples(
@@ -265,17 +267,17 @@ class SimpleEvaluation(RegressionEvaluation):
             eval_frame = samples._FRAMES_PREFIX + eval_key
 
             # Sample-level errors
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, sample_errors)
 
             # Per-frame errors
-            dataset._add_frame_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_frame_field(eval_key, fof.FloatField)
             samples.set_values(eval_frame, frame_errors)
         else:
             errors = list(map(compute_error, ypred, ytrue))
 
             # Per-sample errors
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, errors)
 
         return results

@@ -1,14 +1,16 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { Overlay } from "./overlays/base";
+
+import { Schema } from "@fiftyone/utilities";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 
 export interface Coloring {
-  byLabel: boolean;
+  by: "field" | "instance" | "label";
   pool: string[];
   scale: RGB[];
   seed: number;
@@ -16,6 +18,7 @@ export interface Coloring {
   maskTargets: {
     [field: string]: MaskTargets;
   };
+  points: boolean;
   targets: string[];
 }
 
@@ -32,10 +35,10 @@ export interface Sample {
 }
 
 export interface LabelData {
-  label_id: string;
+  labelId: string;
   field: string;
-  frame_number?: number;
-  sample_id: string;
+  frameNumber?: number;
+  sampleId: string;
   index?: number;
 }
 
@@ -55,33 +58,41 @@ export type Action<State extends BaseState> = (
   shiftKey?: boolean
 ) => void;
 
+export enum ControlEventKeyType {
+  HOLD,
+  KEY_DOWN,
+}
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];
+  eventKeyType?: ControlEventKeyType;
   filter?: (config: Readonly<State["config"]>) => boolean;
   title: string;
   shortcut: string;
   detail: string;
   action: Action<State>;
+  afterAction?: Action<State>;
 }
 
 export interface ControlMap<State extends BaseState> {
   [key: string]: Control<State>;
 }
 
+export interface KeypointSkeleton {
+  labels: string[];
+  edges: number[][];
+}
+
 interface BaseOptions {
   activePaths: string[];
-  filter: {
-    [fieldName: string]: (label: {
-      label?: string;
-      confidence?: number;
-    }) => boolean;
-  };
+  filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   selectedLabels: string[];
   showConfidence: boolean;
+  showControls: boolean;
   showIndex: boolean;
   showJSON: boolean;
   showLabel: boolean;
+  showOverlays: boolean;
   showTooltip: boolean;
   onlyShowHoveredLabel: boolean;
   smoothMasks: boolean;
@@ -90,11 +101,14 @@ interface BaseOptions {
   fullscreen: boolean;
   zoomPad: number;
   selected: boolean;
-  fieldsMap?: { [key: string]: string };
   inSelectionMode: boolean;
   timeZone: string;
   mimetype: string;
   alpha: number;
+  defaultSkeleton?: KeypointSkeleton;
+  skeletons: { [key: string]: KeypointSkeleton };
+  showSkeletons: boolean;
+  pointFilter: (path: string, point: Point) => boolean;
 }
 
 export type BoundingBox = [number, number, number, number];
@@ -102,18 +116,6 @@ export type BoundingBox = [number, number, number, number];
 export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
-
-interface SchemaEntry {
-  name: string;
-  ftype: string;
-  subfield?: string;
-  embedded_doc_type?: string;
-  db_field: string;
-}
-
-interface Schema {
-  [name: string]: SchemaEntry;
-}
 
 interface BaseConfig {
   thumbnail: boolean;
@@ -150,7 +152,6 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
-  frameFieldsMap?: { [key: string]: string };
 }
 
 export interface TooltipOverlay {
@@ -175,7 +176,6 @@ export interface BaseState {
   loaded: boolean;
   hovering: boolean;
   hoveringControls: boolean;
-  showControls: boolean;
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
@@ -242,6 +242,12 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
+interface Point {
+  point: [number | NONFINITE, number | NONFINITE];
+  label: string;
+  [key: string]: any;
+}
+
 export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
@@ -258,6 +264,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,
+  showControls: true,
   showIndex: false,
   showJSON: false,
   showLabel: false,
@@ -265,7 +272,8 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   onlyShowHoveredLabel: false,
   filter: null,
   coloring: {
-    byLabel: false,
+    by: "field",
+    points: true,
     pool: ["#000000"],
     scale: null,
     seed: 0,
@@ -277,13 +285,16 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   hasNext: false,
   hasPrevious: false,
   fullscreen: false,
-  zoomPad: 0.1,
+  zoomPad: 0.2,
   selected: false,
-  fieldsMap: {},
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",
   alpha: 0.7,
+  defaultSkeleton: null,
+  skeletons: {},
+  showSkeletons: true,
+  pointFilter: (path: string, point: Point) => true,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
@@ -304,7 +315,6 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   playbackRate: 1,
   useFrameNumber: false,
   volume: 0,
-  frameFieldsMap: {},
 };
 
 export interface FrameSample {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { CONTAINS, Overlay } from "./overlays/base";
@@ -15,7 +15,12 @@ const processOverlays = <State extends BaseState>(
   const bins = Object.fromEntries(
     activePaths.map<[string, Overlay<State>[]]>((l) => [l, []])
   );
+
   let classifications = null;
+
+  if (!state.config.thumbnail && !state.options.showOverlays) {
+    return [[], 0];
+  }
 
   for (const overlay of overlays) {
     if (overlay instanceof ClassificationsOverlay) {

@@ -40,7 +40,7 @@ You can explicitly create a view that contains an entire dataset via
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         uniqueness:   fiftyone.core.fields.FloatField
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
@@ -96,6 +96,8 @@ Or, you can access individual samples in a view by their ID or filepath:
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
 
+.. _view-stages:
+
 View stages
 ___________
 
@@ -137,6 +139,123 @@ The sections below discuss some interesting view stages in more detail. You can
 also refer to the :mod:`fiftyone.core.stages` module documentation for examples
 of using each stage.
 
+.. _view-slicing:
+
+Slicing
+_______
+
+You can extract a range of |Sample| instances from a |Dataset| using
+:meth:`skip() <fiftyone.core.collections.SampleCollection.skip>` and
+:meth:`limit() <fiftyone.core.collections.SampleCollection.limit>` or,
+equivalently, by using array slicing:
+
+.. code-block:: python
+    :linenos:
+
+    # Skip the first 2 samples and take the next 3
+    range_view1 = dataset.skip(2).limit(3)
+
+    # Equivalently, using array slicing
+    range_view2 = dataset[2:5]
+
+Samples can be accessed from views in
+:ref:`all the same ways <accessing-samples-in-a-dataset>` as for datasets.
+This includes using :meth:`first() <fiftyone.core.view.DatasetView.first>` and
+:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
+last samples in a view, respectively, or accessing a sample directly from a
+|DatasetView| by its ID or filepath:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset[10:100]
+
+    sample10 = view.first()
+    sample100 = view.last()
+
+    also_sample10 = view[sample10.id]
+    print(also_sample10.filepath == sample10.filepath)
+    # True
+
+    also_sample100 = view[sample100.filepath]
+    print(sample100.id == also_sample100.id)
+    # True
+
+Note that, :ref:`unlike datasets <accessing-samples-in-a-dataset>`,
+|SampleView| objects are not singletons, since there are an infinite number of
+possible views into a particular |Sample|:
+
+.. code-block:: python
+    :linenos:
+
+    print(sample10 is also_sample10)
+    # False
+
+.. note::
+
+    Accessing a sample by its integer index in a |DatasetView| is not allowed.
+    The best practice is to lookup individual samples by ID or filepath, or use
+    array slicing to extract a range of samples, and iterate over samples in a
+    view.
+
+    .. code-block:: python
+
+        view[0]
+        # KeyError: Accessing samples by numeric index is not supported.
+        # Use sample IDs, filepaths, slices, boolean arrays, or a boolean ViewExpression instead
+
+You can also use boolean array indexing to create a |DatasetView| into a
+dataset or view given an array-like of bools defining the samples you wish to
+extract:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    # A boolean array encoding the samples to extract
+    bool_array = np.array(dataset.values("uniqueness")) > 0.7
+
+    view = dataset[bool_array]
+    print(len(view))
+    # 17
+
+The above syntax is equivalent to the following
+:meth:`select() <fiftyone.core.collections.SampleCollection.select>` statement:
+
+.. code-block:: python
+    :linenos:
+
+    import itertools
+
+    ids = itertools.compress(dataset.values("id"), bool_array)
+    view = dataset.select(ids)
+    print(len(view))
+    # 17
+
+Note that, whenever possible, the above operations are more elegantly
+implemented using :ref:`match filters <querying-samples>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # ViewExpression defining the samples to match
+    expr = F("uniqueness") > 0.7
+
+    # Use a match() expression to define the view
+    view = dataset.match(expr)
+    print(len(view))
+    # 17
+
+    # Equivalent: using boolean expression indexing is allowed too
+    view = dataset[expr]
+    print(len(view))
+    # 17
+
+.. _view-sorting:
+
 Sorting
 _______
 
@@ -165,42 +284,7 @@ You can also sort by :ref:`expressions <querying-samples>`!
     print(len(view.first().ground_truth.detections))  # 39
     print(len(view.last().ground_truth.detections))  # 0
 
-Slicing
-_______
-
-You can extract a range of |Sample| instances from a |Dataset| using
-:meth:`skip() <fiftyone.core.collections.SampleCollection.skip>` and
-:meth:`limit() <fiftyone.core.collections.SampleCollection.limit>` or,
-equivalently, by using array slicing:
-
-.. code-block:: python
-    :linenos:
-
-    # Skip the first 2 samples and take the next 3
-    range_view1 = dataset.skip(2).limit(3)
-
-    # Equivalently, using array slicing
-    range_view2 = dataset[2:5]
-
-Samples can be accessed from views in
-:ref:`all the same ways <accessing-samples-in-a-dataset>` as for datasets.
-This includes using :meth:`first() <fiftyone.core.view.DatasetView.first>` and
-:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
-last samples in a view, respectively, or accessing a sample directly from a
-|DatasetView| by its ID or filepath.
-
-.. note::
-
-    Accessing a sample by its integer index in a |DatasetView| is not allowed.
-    The best practice is to lookup individual samples by ID or filepath, or use
-    array slicing to extract a range of samples, and iterate over samples in a
-    view.
-
-    .. code-block:: python
-
-        view[0]
-        # KeyError: "Accessing samples by numeric index is not supported.
-        # Use sample IDs, filepaths, or slices"
+.. _view-shuffling:
 
 Shuffling
 _________
@@ -229,6 +313,8 @@ An optional ``seed`` can be provided to make the shuffle deterministic:
     print(also_view2.first().id)
     # 5f31bbfcd0d78c13abe159b1
 
+.. _view-sampling:
+
 Random sampling
 _______________
 
@@ -255,6 +341,8 @@ An optional ``seed`` can be provided to make the sampling deterministic:
     also_view2 = dataset.take(5, seed=51)
     print(also_view2.first().id)
     # 5f31bbfcd0d78c13abe159b1
+
+.. _view-filtering:
 
 Filtering
 _________
@@ -418,6 +506,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("imagenet-sample")
 
@@ -435,6 +524,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -460,6 +550,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             # The path to the source files that you manually downloaded
             source_dir = "/path/to/dir-with-bdd100k-files"
@@ -487,6 +578,7 @@ Here are some self-contained examples for each task:
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
@@ -556,6 +648,113 @@ stage to filter the contents of arbitrarily-typed fields:
             # Existing detections in the `predictions` field of the samples
             # are deleted
             sample.save()
+
+.. _concatenating-views:
+
+Concatenating views
+___________________
+
+You can use
+:meth:`concat() <fiftyone.core.collections.SampleCollection.concat>` to
+concatenate views into the same dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    view1 = dataset.match(F("uniqueness") < 0.2)
+    view2 = dataset.match(F("uniqueness") > 0.7)
+
+    view = view1.concat(view2)
+
+    print(len(view) == len(view1) + len(view2))  # True
+
+or you can use the equivalent `+` syntax sugar:
+
+.. code-block:: python
+    :linenos:
+
+    view = view1 + view2
+
+    print(len(view) == len(view1) + len(view2))  # True
+
+Concatenating *generated views* such as :ref:`patches <object-patches-views>`
+and :ref:`frames <frame-views>` is also allowed:
+
+.. code-block:: python
+    :linenos:
+
+    gt_patches = dataset.to_patches("ground_truth")
+
+    patches1 = gt_patches[:10]
+    patches2 = gt_patches[-10:]
+
+    patches = patches1 + patches2
+
+    print(len(patches) == len(patches1) + len(patches2))  # True
+
+as long as each view is derived from the same root generated view:
+
+.. code-block:: python
+    :linenos:
+
+    patches1 = dataset[:10].to_patches("ground_truth")
+    patches2 = dataset[-10:].to_patches("ground_truth")
+
+    patches = patches1 + patches2  # ERROR: not allowed
+
+If you concatenate views that use
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+or
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+to manipulate the schema of individual views, the concatenated view will
+respect the schema of the *first view* in the chain:
+
+.. code-block:: python
+    :linenos:
+
+    view1 = dataset[:10].select_fields()
+    view2 = dataset[-10:]
+
+    view = view1 + view2
+
+    # Fields are omitted from `view2` to match schema of `view1`
+    print(view.last())
+
+.. code-block:: python
+    :linenos:
+
+    view1 = dataset[:10]
+    view2 = dataset[-10:].select_fields()
+
+    view = view1 + view2
+
+    # Missing fields from `view2` appear as `None` to match schema of `view1`
+    print(view.last())
+
+Note that :meth:`concat() <fiftyone.core.collections.SampleCollection.concat>`
+will not prevent you from creating concatenated views that contain multiple
+(possibly filtered) versions of the same |Sample|, which results in views that
+contains duplicate sample IDs:
+
+.. code-block:: python
+    :linenos:
+
+    sample_id = dataset.first().id
+    view = (dataset + dataset).shuffle()
+
+    selected_view = view.select(sample_id)
+    print(len(selected_view))  # two samples have the same ID
+
+.. warning::
+
+    The :ref:`FiftyOne App <fiftyone-app>` is not designed to display views
+    with duplicate sample IDs.
 
 .. _date-views:
 
@@ -657,7 +856,7 @@ detection dataset:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
@@ -705,14 +904,16 @@ in the sense that:
     :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
     and :meth:`untag_labels() <fiftyone.core.collections.SampleCollection.untag_labels>`
     will be reflected on the source dataset
--   Any modifications to the |Label| elements in the patches view that you make
-    by iterating over the contents of the view or calling
+-   Any modifications to the patch labels that you make by iterating over the
+    contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>` on an
-    object patches view (typically one that contains additional view stages
-    that filter or modify its contents) will sync any |Label| edits or
-    deletions with the source dataset
+-   Calling :meth:`save() <fiftyone.core.patches.PatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.PatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.PatchesView.keep_fields>` on a
+    patches view (typically one that contains additional view stages that
+    filter or modify its contents) will sync any edits or deletions to the
+    patch labels with the source dataset
 
 However, because object patches views only contain a subset of the contents of
 a |Sample| from the source dataset, there are some differences compared to
@@ -780,7 +981,7 @@ respectively.
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField
@@ -821,10 +1022,12 @@ Evaluation patches views are just like any other
     calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`
+-   Calling :meth:`save() <fiftyone.core.patches.EvaluationPatchesView.save>`,
+    :meth:`keep() <fiftyone.core.patches.EvaluationPatchesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.patches.EvaluationPatchesView.keep_fields>`
     on an evaluation patches view (typically one that contains additional view
-    stages that filter or modify its contents) will sync any |Label| edits or
-    deletions with the source dataset
+    stages that filter or modify its contents) will sync any predicted or
+    ground truth |Label| edits or deletions with the source dataset
 
 However, because evaluation patches views only contain a subset of the contents
 of a |Sample| from the source dataset, there are some differences compared to
@@ -929,7 +1132,7 @@ temporal segment by simply passing the name of the temporal detection field to
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
         events:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
@@ -1032,7 +1235,7 @@ that contains at least one person:
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -1116,10 +1319,12 @@ sense that:
     by iterating over the contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>` on a clips view
-    (typically one that contains additional view stages that filter or modify
-    its contents) will sync any frame-level edits or deletions with the source
-    dataset
+-   Calling :meth:`save() <fiftyone.core.clips.ClipsView.save>`,
+    :meth:`keep() <fiftyone.core.clips.ClipsView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.clips.ClipsView.keep_fields>` on a
+    clips view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any frame-level edits or deletions with
+    the source dataset
 
 However, because clip views represent only a subset of a |Sample| from the
 source dataset, there are some differences compared to non-clip views:
@@ -1136,9 +1341,10 @@ source dataset, there are some differences compared to non-clip views:
 Frame views
 -----------
 
-Use :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-to create **image views** into your video datasets that contain one sample per
-video frame in the dataset.
+You can use
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
+to create image views into your video datasets that contain one sample per
+frame in the dataset.
 
 .. note::
 
@@ -1163,7 +1369,7 @@ frame of the videos in a |Dataset| or |DatasetView|:
     session = fo.launch_app(dataset)
 
     # Create a frames view for the entire dataset
-    frames = dataset.to_frames()
+    frames = dataset.to_frames(sample_frames=True)
     print(frames)
 
     # Verify that one sample per frame was created
@@ -1183,29 +1389,49 @@ frame of the videos in a |Dataset| or |DatasetView|:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
     View stages:
         1. ToFrames(config=None)
 
+The above example passes the `sample_frames=True` option to
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`,
+which causes the necessary frames of the input video collection to be sampled
+into directories of per-frame images on disk when the view is created.
+**For large video datasets, this may take some time and require substantial
+disk space.** The paths to each frame image will also be stored in a `filepath`
+field of each |Frame| of the source collection.
+
+Note that, when using the `sample_frames=True` option, frames that have
+previously been sampled will not be resampled, so creating frame views into the
+same dataset will become faster after the frames have been sampled.
+
 .. note::
 
-    Unless you have configured otherwise,
+    The recommended way to use
     :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
-    will sample the necessary frames from the input video collection into
-    directories of per-frame images when the view is created. **For large video
-    datasets, this may take some time and require substantial disk space.**
+    is to first populate the `filepath` field of each |Frame| of your dataset
+    offline, either by running it once with the `sample_frames=True` option or
+    by manually sampling the frames yourself and populating the `filepath`
+    frame field.
 
-    Frames that have previously been sampled will not be resampled, so creating
-    frame views into the same dataset will become faster after the frames have
-    been sampled.
+    Then you can work with frame views efficiently via the default syntax:
+
+    .. code-block:: python
+
+        # Creates a view with one sample per frame whose `filepath` is set
+        frames = dataset.to_frames()
 
 More generally,
 :meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>`
 exposes a variety of parameters that you can use to configure the behavior of
-the video-to-image conversion process.
+the video-to-image conversion process. You can also combine
+:meth:`to_frames() <fiftyone.core.collections.SampleCollection.to_frames>` with
+view stages like
+:meth:`match_frames() <fiftyone.core.collections.SampleCollection.match_frames>`
+to achieve fine-grained control over the specific frames you want to study.
 
 For example, the snippet below creates a frames view that only contains samples
 for frames with at least 10 objects, sampling at most one frame per second:
@@ -1223,7 +1449,7 @@ for frames with at least 10 objects, sampling at most one frame per second:
     num_objects = F("detections.detections").length()
     view = dataset.match_frames(num_objects > 10)
 
-    frames = view.to_frames(max_fps=1, sparse=True)
+    frames = view.to_frames(max_fps=1)
     print(frames)
 
     # Compare the number of frames in each step
@@ -1253,10 +1479,12 @@ Frame views are just like any other image collection view in the sense that:
     contents of the view or calling
     :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
     will be reflected on the source dataset
--   Calling :meth:`save() <fiftyone.core.video.FramesView.save>` on a frames
-    view (typically one that contains additional view stages that filter or
-    modify its contents) will sync any changes to the frames of the underlying
-    video  dataset
+-   Calling :meth:`save() <fiftyone.core.video.FramesView.save>`,
+    :meth:`keep() <fiftyone.core.video.FramesView.keep>`, or
+    :meth:`keep_fields() <fiftyone.core.video.FramesView.keep_fields>` on a
+    frames view (typically one that contains additional view stages that filter
+    or modify its contents) will sync any changes to the frames of the
+    underlying video dataset
 
 The only way in which frames views differ from regular image collections is
 that changes to the ``tags`` or ``metadata`` fields of frame samples will not
@@ -1284,8 +1512,11 @@ sample per object patch in the frames of the dataset!
 
     session = fo.launch_app(dataset)
 
+    # Create a frames view
+    frames = dataset.to_frames(sample_frames=True)
+
     # Create a frame patches view
-    frame_patches = dataset.to_frames().to_patches("detections")
+    frame_patches = frames.to_patches("detections")
     print(frame_patches)
 
     # Verify that one sample per object was created
@@ -1305,7 +1536,7 @@ sample per object patch in the frames of the dataset!
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_id:     fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -1549,6 +1780,7 @@ view:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.untag_samples("validation") # remove pre-existing tags
@@ -1791,8 +2023,8 @@ __________________
 
 Ordinarily, when you define a |DatasetView| that extracts a specific subset of
 a dataset and its fields, the underlying |Dataset| is not modified. However,
-you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to overwrite
-the underlying dataset with the contents of a view you've created:
+you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to save the
+contents of a view you've created to the underlying dataset:
 
 .. code-block:: python
     :linenos:
@@ -1803,16 +2035,65 @@ the underlying dataset with the contents of a view you've created:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
+    # Capitalize some labels
+    rename_view = dataset.map_labels("predictions", {"cat": "CAT", "dog": "DOG"})
+    rename_view.save()
+
+    print(dataset.count_values("predictions.detections.label"))
+    # {'CAT': 35, 'DOG': 49, ...}
+
     # Discard all predictions with confidence below 0.3
-    high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
+    high_conf_view = dataset.filter_labels(
+        "predictions", F("confidence") > 0.3, only_matches=False
+    )
     high_conf_view.save()
 
     print(dataset.bounds("predictions.detections.confidence"))
     # (0.3001, 0.9999)
 
-Alternatively, you can create a new |Dataset| that contains only the contents
-of a |DatasetView| using
-:meth:`clone() <fiftyone.core.view.DatasetView.clone>`:
+Note that calling :meth:`save() <fiftyone.core.view.DatasetView.save>` on a
+|DatasetView| will only save modifications to samples that are in the view; all
+other samples are left unchanged.
+
+You can use :meth:`keep() <fiftyone.core.view.DatasetView.keep>` to delete
+samples from the underlying dataset that do not appear in a view you created:
+
+.. code-block:: python
+    :linenos:
+
+    print(len(dataset))
+    # 200
+
+    # Discard all samples with no people
+    people_view = dataset.filter_labels("ground_truth", F("label") == "person")
+    people_view.keep()
+
+    print(len(dataset))
+    # 94
+
+and you can use
+:meth:`keep_fields() <fiftyone.core.view.DatasetView.keep_fields>`
+to delete any sample/frame fields from the underlying dataset that you have
+excluded from a view you created:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the `predictions` field
+    view = dataset.exclude_fields("predictions")
+    view.keep_fields()
+
+    print(dataset)
+
+    # Delete all non-default fields
+    view = dataset.select_fields()
+    view.keep_fields()
+
+    print(dataset)
+
+Alternatively, you can use
+:meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new
+|Dataset| that contains only the contents of a |DatasetView|:
 
 .. code-block:: python
     :linenos:
@@ -1942,15 +2223,16 @@ Let's say you have a dataset that looks like this:
 
 .. code-block:: bash
 
-    Name:           open-images-v4-test
-    Num samples:    1000
-    Persistent:     True
-    Tags:           []
+    Name:        open-images-v4-test
+    Media type:  image
+    Num samples: 1000
+    Persistent:  True
+    Tags:        []
     Sample fields:
         id:                       fiftyone.core.fields.ObjectIdField
         filepath:                 fiftyone.core.fields.StringField
         tags:                     fiftyone.core.fields.ListField(StringField)
-        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         open_images_id:           fiftyone.core.fields.StringField
         groundtruth_image_labels: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classifications)
         groundtruth_detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)

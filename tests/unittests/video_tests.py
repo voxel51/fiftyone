@@ -1,7 +1,7 @@
 """
 FiftyOne video-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -776,7 +776,7 @@ class VideoTests(unittest.TestCase):
 
         ref = sample12.frames[3].ground_truth.detections[2]
         common = ref.copy()
-        common._id = ref._id
+        common.id = ref.id
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="video2.mp4")
@@ -1188,15 +1188,7 @@ class VideoTests(unittest.TestCase):
 
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
-            {
-                "id",
-                "sample_id",
-                "filepath",
-                "support",
-                "metadata",
-                "tags",
-                "events",
-            },
+            {"id", "sample_id", "filepath", "support", "metadata", "tags"},
         )
 
         with self.assertRaises(ValueError):
@@ -1204,9 +1196,6 @@ class VideoTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             view.exclude_fields("support")  # can't exclude default field
-
-        with self.assertRaises(ValueError):
-            view.exclude_fields("events")  # can't exclude default field
 
         index_info = view.get_index_information()
         indexes = view.list_indexes()
@@ -1313,6 +1302,19 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
+        self.assertEqual(len(view), 4)
+        self.assertEqual(dataset.count("events.detections"), 4)
+        self.assertIn("MEETING", view.count_values("events.label"))
+        self.assertIn("PARTY", view.count_values("events.label"))
+        self.assertIn(
+            "MEETING", dataset.count_values("events.detections.label")
+        )
+        self.assertIn("PARTY", dataset.count_values("events.detections.label"))
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().id)
+
+        view2.keep()
+
         self.assertEqual(len(view), 2)
         self.assertEqual(dataset.count("events.detections"), 2)
         self.assertDictEqual(
@@ -1347,6 +1349,32 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
 
+        view.exclude_fields("frames.hello").keep_fields()
+
+        self.assertNotIn("hello", view.get_frame_field_schema())
+        self.assertNotIn("hello", dataset.get_frame_field_schema())
+
+        frame_view = view.first().frames.first()
+        with self.assertRaises(KeyError):
+            frame_view["hello"]
+
+        frame = dataset.first().frames.first()
+        with self.assertRaises(KeyError):
+            frame["hello"]
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("events", view.get_field_schema())
+        self.assertNotIn("events", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["events"]
+
+        sample = dataset.first()
+        with self.assertRaises(KeyError):
+            sample["events"]
+
     @drop_datasets
     def test_to_clips_expr(self):
         dataset = fo.Dataset()
@@ -1354,6 +1382,7 @@ class VideoTests(unittest.TestCase):
         sample1 = fo.Sample(
             filepath="video1.mp4",
             metadata=fo.VideoMetadata(total_frame_count=4),
+            hello="world",
         )
         sample1.frames[1] = fo.Frame(
             detections=fo.Detections(detections=[fo.Detection(label="cat")])
@@ -1373,6 +1402,7 @@ class VideoTests(unittest.TestCase):
         sample2 = fo.Sample(
             filepath="video2.mp4",
             metadata=fo.VideoMetadata(total_frame_count=5),
+            hello="there",
         )
         sample2.frames[2] = fo.Frame(
             detections=fo.Detections(
@@ -1419,6 +1449,29 @@ class VideoTests(unittest.TestCase):
         )
         self.assertListEqual(view.values("support"), [[2, 3]])
 
+        view = dataset.to_clips("frames.detections", other_fields=["hello"])
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("detections", view.get_frame_field_schema())
+        self.assertNotIn("detections", dataset.get_frame_field_schema())
+
+        self.assertNotIn("hello", view.get_field_schema())
+        self.assertIn("hello", dataset.get_field_schema())
+
+        sample_view = view.first()
+        with self.assertRaises(KeyError):
+            sample_view["hello"]
+
+        frame_view = sample_view.frames.first()
+        with self.assertRaises(KeyError):
+            frame_view["detections"]
+
+        sample = dataset.first()
+        frame = sample.frames.first()
+        self.assertEqual(sample["hello"], "world")
+        with self.assertRaises(KeyError):
+            frame["detections"]
+
     @drop_datasets
     def test_to_frames(self):
         dataset = fo.Dataset()
@@ -1429,16 +1482,17 @@ class VideoTests(unittest.TestCase):
             tags=["test"],
             weather="sunny",
         )
-        sample1.frames[1] = fo.Frame(hello="world")
+        sample1.frames[1] = fo.Frame(filepath="frame11.jpg", hello="world")
         sample1.frames[2] = fo.Frame(
+            filepath="frame12.jpg",
             ground_truth=fo.Detections(
                 detections=[
                     fo.Detection(label="cat"),
                     fo.Detection(label="dog"),
                 ]
-            )
+            ),
         )
-        sample1.frames[3] = fo.Frame(hello="goodbye")
+        sample1.frames[3] = fo.Frame(filepath="frame13.jpg", hello="goodbye")
 
         sample2 = fo.Sample(
             filepath="video2.mp4",
@@ -1447,6 +1501,7 @@ class VideoTests(unittest.TestCase):
             weather="cloudy",
         )
         sample2.frames[1] = fo.Frame(
+            filepath="frame21.jpg",
             hello="goodbye",
             ground_truth=fo.Detections(
                 detections=[
@@ -1455,12 +1510,12 @@ class VideoTests(unittest.TestCase):
                 ]
             ),
         )
-        sample2.frames[3] = fo.Frame()
-        sample2.frames[5] = fo.Frame(hello="there")
+        sample2.frames[3] = fo.Frame(filepath="frame23.jpg")
+        sample2.frames[5] = fo.Frame(filepath="frame25.jpg", hello="there")
 
         dataset.add_samples([sample1, sample2])
 
-        view = dataset.to_frames(sample_frames=False)
+        view = dataset.to_frames()
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
@@ -1515,7 +1570,7 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             view.drop_index("sample_id")  # can't drop default index
 
-        self.assertEqual(len(view), 9)
+        self.assertEqual(len(view), 6)
 
         frame = view.first()
         self.assertIsInstance(frame.id, str)
@@ -1536,11 +1591,11 @@ class VideoTests(unittest.TestCase):
             self.assertIsInstance(oid, ObjectId)
 
         self.assertDictEqual(dataset.count_sample_tags(), {"test": 2})
-        self.assertDictEqual(view.count_sample_tags(), {"test": 9})
+        self.assertDictEqual(view.count_sample_tags(), {"test": 6})
 
         view.tag_samples("foo")
 
-        self.assertEqual(view.count_sample_tags()["foo"], 9)
+        self.assertEqual(view.count_sample_tags()["foo"], 6)
         self.assertNotIn("foo", dataset.count_sample_tags())
         self.assertNotIn("tags", dataset.get_frame_field_schema())
 
@@ -1558,7 +1613,7 @@ class VideoTests(unittest.TestCase):
         self.assertDictEqual(view.count_label_tags(), {})
         self.assertDictEqual(dataset.count_label_tags(), {})
 
-        view2 = view.skip(4).set_field(
+        view2 = view.skip(3).set_field(
             "ground_truth.detections.label", F("label").upper()
         )
 
@@ -1577,8 +1632,28 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
-        self.assertEqual(len(view), 5)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertEqual(len(view), 6)
+        self.assertEqual(dataset.values(F("frames").length()), [3, 3])
+        self.assertIn(
+            "DOG", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "DOG", dataset.count_values("frames.ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        view2.keep()
+
+        self.assertEqual(len(view), 3)
+        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
@@ -1616,6 +1691,28 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
 
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("hello", view.get_field_schema())
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("hello", dataset.get_frame_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_frame_field_schema())
+
+        sample_view = view.last()
+        with self.assertRaises(KeyError):
+            sample_view["hello"]
+
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        sample = dataset.last()
+        frame = sample.frames.last()
+        with self.assertRaises(KeyError):
+            frame["hello"]
+
+        with self.assertRaises(KeyError):
+            frame["ground_truth"]
+
     @drop_datasets
     def test_to_frames_sparse(self):
         dataset = fo.Dataset()
@@ -1652,12 +1749,12 @@ class VideoTests(unittest.TestCase):
 
         dataset.add_samples([sample1, sample2])
 
-        frames = dataset.to_frames(sparse=True, sample_frames=False)
+        frames = dataset.to_frames(sample_frames="dynamic", sparse=True)
 
         self.assertEqual(len(frames), 6)
 
         view = dataset.match_frames(F("ground_truth.detections").length() > 0)
-        frames = view.to_frames(sparse=True, sample_frames=False)
+        frames = view.to_frames(sample_frames="dynamic", sparse=True)
 
         self.assertEqual(len(frames), 2)
 
@@ -1717,7 +1814,7 @@ class VideoTests(unittest.TestCase):
         # Note that frame views into overlapping clips are designed to NOT
         # produce duplicate frames
         clips = dataset.to_clips("events")
-        view = clips.to_frames(sample_frames=False)
+        view = clips.to_frames(sample_frames="dynamic")
 
         self.assertSetEqual(
             set(view.get_field_schema().keys()),
@@ -1834,8 +1931,28 @@ class VideoTests(unittest.TestCase):
 
         view2.save()
 
+        self.assertEqual(len(view), 9)
+        self.assertEqual(dataset.values(F("frames").length()), [3, 3])
+        self.assertIn(
+            "DOG", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT", view.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "DOG", dataset.count_values("frames.ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+        self.assertIsNotNone(view.first().id)
+        self.assertIsNotNone(dataset.last().frames.first().id)
+
+        view2.keep()
+
         self.assertEqual(len(view), 5)
-        self.assertEqual(dataset.values(F("frames").length()), [0, 5])
+        self.assertEqual(dataset.values(F("frames").length()), [0, 3])
         self.assertDictEqual(
             view.count_values("ground_truth.detections.label"),
             {"DOG": 1, "RABBIT": 1},
@@ -1872,6 +1989,24 @@ class VideoTests(unittest.TestCase):
 
         self.assertEqual(dataset.count_sample_tags(), {})
         self.assertEqual(view.count_sample_tags(), {})
+
+        view.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", view.get_field_schema())
+        self.assertNotIn("ground_truth", clips.get_frame_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_frame_field_schema())
+
+        sample_view = view.last()
+        with self.assertRaises(KeyError):
+            sample_view["ground_truth"]
+
+        frame_view = clips.last().frames.last()
+        with self.assertRaises(KeyError):
+            frame_view["ground_truth"]
+
+        frame = dataset.last().frames.last()
+        with self.assertRaises(KeyError):
+            frame["ground_truth"]
 
     @drop_datasets
     def test_to_frame_patches(self):
@@ -1918,7 +2053,7 @@ class VideoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.to_patches("frames.ground_truth")
 
-        frames = dataset.to_frames(sample_frames=False)
+        frames = dataset.to_frames(sample_frames="dynamic")
         patches = frames.to_patches("ground_truth")
 
         self.assertSetEqual(
@@ -2089,6 +2224,24 @@ class VideoTests(unittest.TestCase):
 
         view3.save()
 
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(frames.count(), 9)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(frames.count("ground_truth.detections"), 4)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertIn(
+            "RABBIT", frames.count_values("ground_truth.detections.label")
+        )
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.keep()
+
         self.assertEqual(patches.count(), 2)
         self.assertEqual(frames.count(), 9)
         self.assertEqual(dataset.count(), 2)
@@ -2099,7 +2252,7 @@ class VideoTests(unittest.TestCase):
 
         sample = patches.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(
@@ -2143,6 +2296,24 @@ class VideoTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("frames.ground_truth.detections.tags"), {}
         )
+
+        patches.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", patches.get_field_schema())
+        self.assertNotIn("ground_truth", frames.get_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_frame_field_schema())
+
+        patch_view = patches.first()
+        with self.assertRaises(KeyError):
+            patch_view["ground_truth"]
+
+        frame_view = frames.first()
+        with self.assertRaises(KeyError):
+            frame_view["ground_truth"]
+
+        frame = dataset.first().frames.first()
+        with self.assertRaises(KeyError):
+            frame["ground_truth"]
 
     @drop_datasets
     def test_to_clip_frame_patches(self):
@@ -2200,7 +2371,7 @@ class VideoTests(unittest.TestCase):
         # Note that frame views into overlapping clips are designed to NOT
         # produce duplicate frames
         clips = dataset.to_clips("events")
-        frames = clips.to_frames(sample_frames=False)
+        frames = clips.to_frames(sample_frames="dynamic")
         patches = frames.to_patches("ground_truth")
 
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
@@ -2273,6 +2444,19 @@ class VideoTests(unittest.TestCase):
 
         view3.save()
 
+        self.assertEqual(patches.count(), 4)
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(patches.count("ground_truth"), 4)
+        self.assertEqual(dataset.count("frames"), 6)
+        self.assertEqual(dataset.count("frames.ground_truth.detections"), 4)
+        self.assertIn("RABBIT", patches.count_values("ground_truth.label"))
+        self.assertIn(
+            "RABBIT",
+            dataset.count_values("frames.ground_truth.detections.label"),
+        )
+
+        view3.keep()
+
         self.assertEqual(patches.count(), 2)
         self.assertEqual(dataset.count(), 2)
         self.assertEqual(patches.count("ground_truth"), 2)
@@ -2281,7 +2465,7 @@ class VideoTests(unittest.TestCase):
 
         sample = patches.first()
 
-        sample.ground_truth.hello = "world"
+        sample.ground_truth["hello"] = "world"
         sample.save()
 
         self.assertEqual(
@@ -2315,6 +2499,29 @@ class VideoTests(unittest.TestCase):
         self.assertDictEqual(
             dataset.count_values("frames.ground_truth.detections.tags"), {}
         )
+
+        patches.select_fields().keep_fields()
+
+        self.assertNotIn("ground_truth", patches.get_field_schema())
+        self.assertNotIn("ground_truth", frames.get_field_schema())
+        self.assertNotIn("ground_truth", clips.get_frame_field_schema())
+        self.assertNotIn("ground_truth", dataset.get_frame_field_schema())
+
+        patch_view = patches.first()
+        with self.assertRaises(KeyError):
+            patch_view["ground_truth"]
+
+        frame_view = frames.first()
+        with self.assertRaises(KeyError):
+            frame_view["ground_truth"]
+
+        clip_frame_view = clips.first().frames.first()
+        with self.assertRaises(KeyError):
+            clip_frame_view["ground_truth"]
+
+        frame = dataset.first().frames.first()
+        with self.assertRaises(KeyError):
+            frame["ground_truth"]
 
 
 if __name__ == "__main__":

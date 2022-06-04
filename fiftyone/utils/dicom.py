@@ -1,7 +1,7 @@
 """
 DICOM utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,8 +13,8 @@ import numpy as np
 
 import eta.core.utils as etau
 
-import fiftyone.utils.data as foud
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 
 fou.ensure_package("pydicom")
 import pydicom
@@ -112,7 +112,8 @@ class DICOMSampleParser(foud.LabeledImageSampleParser):
             if isinstance(self.current_sample, FileInstance):
                 self._ds = self.current_sample.load()
             else:
-                self._ds = pydicom.dcmread(self.current_sample)
+                with open(self.current_sample, "rb") as f:
+                    self._ds = pydicom.dcmread(f)
 
 
 class DICOMDatasetImporter(
@@ -171,11 +172,13 @@ class DICOMDatasetImporter(
             )
 
         dicom_path = self._parse_labels_path(
-            dataset_dir=dataset_dir, labels_path=dicom_path, default="*.dcm",
+            dataset_dir=dataset_dir,
+            labels_path=dicom_path,
+            default="*.dcm",
         )
 
         if images_dir is None:
-            images_dir = os.path.abspath(os.path.dirname(dicom_path))
+            images_dir = os.path.dirname(dicom_path)
             logger.warning(
                 "No `images_dir` provided. Images will be unpacked to '%s'",
                 images_dir,
@@ -227,7 +230,9 @@ class DICOMDatasetImporter(
         if os.path.isfile(self.dicom_path):
             if not os.path.splitext(self.dicom_path)[1]:
                 # DICOMDIR file
-                ds = pydicom.dcmread(self.dicom_path)
+                with open(self.dicom_path, "rb") as f:
+                    ds = pydicom.dcmread(f)
+
                 samples = list(FileSet(ds))
             else:
                 # Single DICOM file

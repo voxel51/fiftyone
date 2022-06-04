@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -300,19 +300,48 @@ class ConvertCommand(Command):
             --input-type fiftyone.types.COCODetectionDataset \\
             --output-dir /path/for/cvat-image-dataset \\
             --output-type fiftyone.types.CVATImageDataset
+
+        # Perform a customized conversion via optional kwargs
+        fiftyone convert \\
+            --input-dir /path/to/coco-detection-dataset \\
+            --input-type fiftyone.types.COCODetectionDataset \\
+            --input-kwargs max_samples=100 shuffle=True \\
+            --output-dir /path/for/cvat-image-dataset \\
+            --output-type fiftyone.types.TFObjectDetectionDataset \\
+            --output-kwargs force_rgb=True \\
+            --overwrite
     """
 
     @staticmethod
     def setup(parser):
+        required = parser.add_argument_group("required arguments")
+        required.add_argument(
+            "--input-type",
+            metavar="INPUT_TYPE",
+            help="the fiftyone.types.Dataset type of the input dataset",
+            required=True,
+        )
+        required.add_argument(
+            "--output-type",
+            metavar="OUTPUT_TYPE",
+            help="the fiftyone.types.Dataset type to output",
+            required=True,
+        )
+
         parser.add_argument(
             "--input-dir",
             metavar="INPUT_DIR",
             help="the directory containing the dataset",
         )
         parser.add_argument(
-            "--input-type",
-            metavar="INPUT_TYPE",
-            help="the fiftyone.types.Dataset type of the input dataset",
+            "--input-kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments for "
+                "`fiftyone.utils.data.convert_dataset(..., input_kwargs=)`"
+            ),
         )
         parser.add_argument(
             "--output-dir",
@@ -320,24 +349,32 @@ class ConvertCommand(Command):
             help="the directory to which to write the output dataset",
         )
         parser.add_argument(
-            "--output-type",
-            metavar="OUTPUT_TYPE",
-            help="the fiftyone.types.Dataset type to output",
+            "--output-kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "additional keyword arguments for "
+                "`fiftyone.utils.data.convert_dataset(..., output_kwargs=)`"
+            ),
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite an existing output directory",
         )
 
     @staticmethod
     def execute(parser, args):
-        input_dir = args.input_dir
-        input_type = etau.get_class(args.input_type)
-
-        output_dir = args.output_dir
-        output_type = etau.get_class(args.output_type)
-
         foud.convert_dataset(
-            input_dir=input_dir,
-            input_type=input_type,
-            output_dir=output_dir,
-            output_type=output_type,
+            input_dir=args.input_dir,
+            input_type=etau.get_class(args.input_type),
+            input_kwargs=args.input_kwargs,
+            output_dir=args.output_dir,
+            output_type=etau.get_class(args.output_type),
+            output_kwargs=args.output_kwargs,
+            overwrite=args.overwrite,
         )
 
 
@@ -405,7 +442,10 @@ class DatasetsInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", nargs="?", metavar="NAME", help="the name of a dataset",
+            "name",
+            nargs="?",
+            metavar="NAME",
+            help="the name of a dataset",
         )
         parser.add_argument(
             "-s",
@@ -487,7 +527,9 @@ class DatasetsStatsCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-m",
@@ -538,7 +580,10 @@ class DatasetsCreateCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n", "--name", metavar="NAME", help="a name for the dataset",
+            "-n",
+            "--name",
+            metavar="NAME",
+            help="a name for the dataset",
         )
         parser.add_argument(
             "-d",
@@ -707,7 +752,9 @@ class DatasetsExportCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset to export",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset to export",
         )
         parser.add_argument(
             "-d",
@@ -787,7 +834,9 @@ class DatasetsDrawCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
             "-d",
@@ -829,10 +878,14 @@ class DatasetsRenameCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            help="the name of the dataset",
         )
         parser.add_argument(
-            "new_name", metavar="NEW_NAME", help="a new name for the dataset",
+            "new_name",
+            metavar="NEW_NAME",
+            help="a new name for the dataset",
         )
 
     @staticmethod
@@ -1701,7 +1754,10 @@ class DatasetZooFindCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -1931,7 +1987,10 @@ class DatasetZooDeleteCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "-s", "--split", metavar="SPLIT", help="a dataset split",
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="a dataset split",
         )
 
     @staticmethod
@@ -2438,6 +2497,9 @@ class ModelZooDeleteCommand(Command):
 class MigrateCommand(Command):
     """Tools for migrating the FiftyOne database.
 
+    See :ref:`this page <database-migrations>` for more information about
+    migrating FiftyOne deployments.
+
     Examples::
 
         # Print information about the current revisions of all datasets
@@ -2576,11 +2638,34 @@ class ComputeMetadataCommand(Command):
             action="store_true",
             help="whether to overwrite existing metadata",
         )
+        parser.add_argument(
+            "-n",
+            "--num-workers",
+            default=None,
+            type=int,
+            help=(
+                "the number of worker processes to use. The default is "
+                "`multiprocessing.cpu_count()`"
+            ),
+        )
+        parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "metadata cannot be computed for a sample"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        dataset.compute_metadata(overwrite=args.overwrite)
+        dataset.compute_metadata(
+            overwrite=args.overwrite,
+            num_workers=args.num_workers,
+            skip_failures=args.skip_failures,
+        )
 
 
 class TransformImagesCommand(Command):
@@ -2658,6 +2743,15 @@ class TransformImagesCommand(Command):
                 "`multiprocessing.cpu_count()`"
             ),
         )
+        parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "an image cannot be transformed"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2671,6 +2765,7 @@ class TransformImagesCommand(Command):
             force_reencode=args.force_reencode,
             delete_originals=args.delete_originals,
             num_workers=args.num_workers,
+            skip_failures=args.skip_failures,
         )
 
 
@@ -2768,6 +2863,15 @@ class TransformVideosCommand(Command):
             help="whether to delete the original videos after transforming",
         )
         parser.add_argument(
+            "-s",
+            "--skip-failures",
+            action="store_true",
+            help=(
+                "whether to gracefully continue without raising an error if "
+                "a video cannot be transformed"
+            ),
+        )
+        parser.add_argument(
             "-v",
             "--verbose",
             action="store_true",
@@ -2788,6 +2892,7 @@ class TransformVideosCommand(Command):
             reencode=args.reencode,
             force_reencode=args.force_reencode,
             delete_originals=args.delete_originals,
+            skip_failures=args.skip_failures,
             verbose=args.verbose,
         )
 
@@ -2861,13 +2966,13 @@ def _parse_kwargs_value(value):
     except:
         pass
 
-    if value in {"True", "true"}:
+    if value in ("True", "true"):
         return True
 
-    if value in {"False", "false"}:
+    if value in ("False", "false"):
         return False
 
-    if value == "None":
+    if value in ("None", ""):
         return None
 
     if "," in value:

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { BaseState } from "../../state";
@@ -21,6 +21,7 @@ export class JSONPanelElement<State extends BaseState> extends BaseElement<
   private json?: boolean;
   getEvents(): Events<State> {
     return {
+      mousemove: ({ event }) => event.stopPropagation(),
       click: ({ event, update }) => {
         event.stopPropagation();
         event.preventDefault();

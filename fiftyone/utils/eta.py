@@ -2,7 +2,7 @@
 Utilities for interfacing with the
 `ETA library <https://github.com/voxel51/eta>`_.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -462,7 +462,9 @@ def from_video_labels(
     return label, frames
 
 
-def to_video_labels(label=None, frames=None, warn_unsupported=True):
+def to_video_labels(
+    label=None, frames=None, support=None, warn_unsupported=True
+):
     """Converts the given labels to ``eta.core.video.VideoLabels`` format.
 
     Args:
@@ -472,13 +474,18 @@ def to_video_labels(label=None, frames=None, warn_unsupported=True):
         frames (None): frame-level labels provided as a dict mapping frame
             numbers to dicts mapping field names to
             :class:`fiftyone.core.labels.Label` instances
+        support (None): an optional ``[first, last]`` support to store on the
+            returned labels
         warn_unsupported (True): whether to issue warnings if unsupported label
             values are encountered
 
     Returns:
         a ``eta.core.video.VideoLabels``
     """
-    video_labels = etav.VideoLabels()
+    if support is not None:
+        support = etafu.FrameRanges.build_simple(*support)
+
+    video_labels = etav.VideoLabels(support=support)
 
     # Video labels
     if label is not None:
@@ -567,13 +574,15 @@ def from_attributes(attrs, skip_non_categorical=False):
     return fol.Classifications(classifications=classifications)
 
 
-def to_detected_object(detection, name=None):
+def to_detected_object(detection, name=None, extra_attrs=True):
     """Returns an ``eta.core.objects.DetectedObject`` representation of the
     given :class:`fiftyone.core.labels.Detection`.
 
     Args:
         detection: a :class:`fiftyone.core.labels.Detection`
         name (None): the name of the label field
+        extra_attrs (True): whether to include custom attributes in the
+            conversion
 
     Returns:
         an ``eta.core.objects.DetectedObject``
@@ -590,7 +599,7 @@ def to_detected_object(detection, name=None):
     mask = detection.mask
     confidence = detection.confidence
 
-    attrs = _to_eta_attributes(detection)
+    attrs = _to_eta_attributes(detection, extra_attrs=extra_attrs)
 
     return etao.DetectedObject(
         label=label,
@@ -645,18 +654,20 @@ def from_detected_objects(objects):
     )
 
 
-def to_polyline(polyline, name=None):
+def to_polyline(polyline, name=None, extra_attrs=True):
     """Returns an ``eta.core.polylines.Polyline`` representation of the given
     :class:`fiftyone.core.labels.Polyline`.
 
     Args:
         polyline: a :class:`fiftyone.core.labels.Polyline`
         name (None): the name of the label field
+        extra_attrs (True): whether to include custom attributes in the
+            conversion
 
     Returns:
         an ``eta.core.polylines.Polyline``
     """
-    attrs = _to_eta_attributes(polyline)
+    attrs = _to_eta_attributes(polyline, extra_attrs=extra_attrs)
 
     return etap.Polyline(
         label=polyline.label,
@@ -708,25 +719,27 @@ def from_polylines(polylines):
     return fol.Polylines(polylines=[from_polyline(p) for p in polylines])
 
 
-def to_keypoints(keypoint, name=None):
+def to_keypoints(keypoint, name=None, extra_attrs=True):
     """Returns an ``eta.core.keypoints.Keypoints`` representation of the given
     :class:`fiftyone.core.labels.Keypoint`.
 
     Args:
         keypoint: a :class:`fiftyone.core.labels.Keypoint`
         name (None): the name of the label field
+        extra_attrs (True): whether to include custom attributes in the
+            conversion
 
     Returns:
         an ``eta.core.keypoints.Keypoints``
     """
-    attrs = _to_eta_attributes(keypoint)
+    attrs = _to_eta_attributes(keypoint, extra_attrs=extra_attrs)
 
     return etak.Keypoints(
         name=name,
         label=keypoint.label,
-        confidence=keypoint.confidence,
         index=keypoint.index,
         points=keypoint.points,
+        confidence=keypoint.confidence,
         attrs=attrs,
         tags=keypoint.tags,
     )
@@ -767,30 +780,30 @@ def from_keypoints(keypoints):
     return fol.Keypoints(keypoints=[from_keypoint(k) for k in keypoints])
 
 
-def to_video_event(temporal_detection, name=None):
+def to_video_event(temporal_detection, name=None, extra_attrs=True):
     """Returns an ``eta.core.events.VideoEvent`` representation of the given
     :class:`fiftyone.core.labels.TemporalDetection`.
 
     Args:
         temporal_detection: a :class:`fiftyone.core.labels.TemporalDetection`
         name (None): the name of the label field
+        extra_attrs (True): whether to include custom attributes in the
+            conversion
 
     Returns:
         an ``eta.core.events.VideoEvent``
     """
     support = etafu.FrameRanges.build_simple(*temporal_detection.support)
-    event = etae.VideoEvent(support=support)
+    attrs = _to_eta_attributes(temporal_detection, extra_attrs=extra_attrs)
 
-    event.add_event_attribute(
-        etad.CategoricalAttribute(
-            name,
-            temporal_detection.label,
-            confidence=temporal_detection.confidence,
-            tags=temporal_detection.tags,
-        )
+    return etae.VideoEvent(
+        label=temporal_detection.label,
+        confidence=temporal_detection.confidence,
+        name=name,
+        support=support,
+        attrs=attrs,
+        tags=temporal_detection.tags,
     )
-
-    return event
 
 
 def from_video_event(video_event):
@@ -808,17 +821,15 @@ def from_video_event(video_event):
     else:
         support = None
 
-    detection = fol.TemporalDetection(support=support)
+    attributes = _from_eta_attributes(video_event.attrs)
 
-    try:
-        attr = video_event.attrs[0]
-        detection.label = attr.label
-        detection.confidence = attr.confidence
-        detection.tags = attr.tags
-    except:
-        pass
-
-    return detection
+    return fol.TemporalDetection(
+        label=video_event.label,
+        support=support,
+        confidence=video_event.confidence,
+        tags=video_event.tags,
+        **attributes,
+    )
 
 
 def from_video_events(video_events):
@@ -932,8 +943,12 @@ def _from_eta_attributes(attrs):
     return {a.name: a.value for a in attrs}
 
 
-def _to_eta_attributes(label, warn_unsupported=True):
+def _to_eta_attributes(label, extra_attrs=True, warn_unsupported=True):
     attrs = etad.AttributeContainer()
+
+    if not extra_attrs:
+        return attrs
+
     for name, value in label.iter_attributes():
         if etau.is_str(value):
             attrs.add(etad.CategoricalAttribute(name, value))

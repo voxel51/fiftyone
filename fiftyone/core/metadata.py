@@ -1,7 +1,7 @@
 """
 Metadata stored in dataset samples.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,12 +9,14 @@ import itertools
 import logging
 import multiprocessing
 import os
+import requests
 
-import eta.core.image as etai
+from PIL import Image
+
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -31,25 +33,44 @@ class Metadata(DynamicEmbeddedDocument):
         mime_type (None): the MIME type of the media
     """
 
-    meta = {"allow_inheritance": True}
-
     size_bytes = fof.IntField()
     mime_type = fof.StringField()
 
     @classmethod
-    def build_for(cls, filepath):
-        """Builds a :class:`Metadata` object for the given filepath.
+    def build_for(cls, path_or_url, mime_type=None):
+        """Builds a :class:`Metadata` object for the given file.
 
         Args:
-            filepath: the path to the data on disk
+            path_or_url: the path to the data on disk or a URL
+            mime_type (None): the MIME type of the file. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`Metadata`
         """
-        return cls(
-            size_bytes=os.path.getsize(filepath),
-            mime_type=etau.guess_mime_type(filepath),
-        )
+        if path_or_url.startswith("http"):
+            return cls._build_for_url(path_or_url, mime_type=mime_type)
+
+        return cls._build_for_local(path_or_url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, filepath, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(filepath)
+
+        size_bytes = os.path.getsize(filepath)
+
+        return cls(size_bytes=size_bytes, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_url(cls, url, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(url)
+
+        with requests.get(url, stream=True) as r:
+            size_bytes = int(r.headers["Content-Length"])
+
+        return cls(size_bytes=size_bytes, mime_type=mime_type)
 
 
 class ImageMetadata(Metadata):
@@ -68,34 +89,76 @@ class ImageMetadata(Metadata):
     num_channels = fof.IntField()
 
     @classmethod
-    def build_for(cls, image_or_path):
+    def build_for(cls, img_or_path_or_url, mime_type=None):
         """Builds an :class:`ImageMetadata` object for the given image.
 
         Args:
-            image_or_path: an image or the path to the image on disk
+            img_or_path_or_url: an image, an image path on disk, or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
 
         Returns:
             an :class:`ImageMetadata`
         """
-        if etau.is_str(image_or_path):
-            # From image on disk
-            m = etai.ImageMetadata.build_for(image_or_path)
-            return cls(
-                size_bytes=m.size_bytes,
-                mime_type=m.mime_type,
-                width=m.frame_size[0],
-                height=m.frame_size[1],
-                num_channels=m.num_channels,
-            )
+        if not etau.is_str(img_or_path_or_url):
+            return cls._build_for_img(img_or_path_or_url, mime_type=mime_type)
 
-        # From in-memory image
-        height, width = image_or_path.shape[:2]
+        if img_or_path_or_url.startswith("http"):
+            return cls._build_for_url(img_or_path_or_url, mime_type=mime_type)
+
+        return cls._build_for_local(img_or_path_or_url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, path, mime_type=None):
+        size_bytes = os.path.getsize(path)
+
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(path)
+
+        with open(path, "rb") as f:
+            width, height, num_channels = get_image_info(f)
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=num_channels,
+        )
+
+    @classmethod
+    def _build_for_url(cls, url, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(url)
+
+        with requests.get(url, stream=True) as r:
+            size_bytes = int(r.headers["Content-Length"])
+            width, height, num_channels = get_image_info(fou.ResponseStream(r))
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=num_channels,
+        )
+
+    @classmethod
+    def _build_for_img(cls, img, mime_type=None):
+        size_bytes = img.nbytes
+        height, width = img.shape[:2]
         try:
-            num_channels = image_or_path.shape[2]
+            num_channels = img.shape[2]
         except IndexError:
             num_channels = 1
 
-        return cls(width=width, height=height, num_channels=num_channels)
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            width=width,
+            height=height,
+            num_channels=num_channels,
+        )
 
 
 class VideoMetadata(Metadata):
@@ -120,36 +183,44 @@ class VideoMetadata(Metadata):
     encoding_str = fof.StringField()
 
     @classmethod
-    def build_for(cls, video_path):
+    def build_for(cls, video_path_or_url, mime_type=None):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path: the path to a video on disk
+            video_path_or_url: the path to a video on disk or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
 
         Returns:
             a :class:`VideoMetadata`
         """
-        m = etav.VideoMetadata.build_for(video_path)
+        stream_info = etav.VideoStreamInfo.build_for(
+            video_path_or_url, mime_type=mime_type
+        )
         return cls(
-            size_bytes=m.size_bytes,
-            mime_type=m.mime_type,
-            frame_width=m.frame_size[0],
-            frame_height=m.frame_size[1],
-            frame_rate=m.frame_rate,
-            total_frame_count=m.total_frame_count,
-            duration=m.duration,
-            encoding_str=m.encoding_str,
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            frame_width=stream_info.frame_size[0],
+            frame_height=stream_info.frame_size[1],
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            encoding_str=stream_info.encoding_str,
         )
 
 
-def compute_sample_metadata(sample, skip_failures=False):
+def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     """Populates the ``metadata`` field of the sample.
 
     Args:
         sample: a :class:`fiftyone.core.sample.Sample`
+        overwrite (False): whether to overwrite existing metadata
         skip_failures (False): whether to gracefully continue without raising
             an error if metadata cannot be computed
     """
+    if not overwrite and sample.metadata is not None:
+        return
+
     sample.metadata = _compute_sample_metadata(
         sample.filepath, sample.media_type, skip_failures=skip_failures
     )
@@ -177,11 +248,13 @@ def compute_metadata(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
-    if num_workers == 1:
+    if num_workers <= 1:
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite,
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
         )
 
     num_missing = len(sample_collection.exists("metadata", False))
@@ -195,6 +268,20 @@ def compute_metadata(
             logger.warning(msg)
         else:
             raise ValueError(msg)
+
+
+def get_image_info(f):
+    """Retrieves the dimensions and number of channels of the given image from
+    a file-like object that is streaming its contents.
+
+    Args:
+        f: a file-like object that supports ``read()``, ``seek()``, ``tell()``
+
+    Returns:
+        ``(width, height, num_channels)``
+    """
+    img = Image.open(f)
+    return (img.width, img.height, len(img.getbands()))
 
 
 def _compute_metadata(sample_collection, overwrite=False):
@@ -215,8 +302,9 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
+    media_type = sample_collection.media_type
     ids, filepaths = sample_collection.values(["id", "filepath"])
-    media_types = itertools.repeat(sample_collection.media_type)
+    media_types = itertools.repeat(media_type)
 
     inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
@@ -224,13 +312,15 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", sample_collection.media_type)
+    logger.info("Computing %s metadata...", media_type)
+
+    view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
         with multiprocessing.Pool(processes=num_workers) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):
-                sample = sample_collection[sample_id]
+                sample = view[sample_id]
                 sample.metadata = metadata
                 sample.save()
 

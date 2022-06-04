@@ -1,7 +1,7 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -284,6 +284,17 @@ class DatasetTests(unittest.TestCase):
         common12 = common12_view.first()
         self.assertEqual(common12.field, common2.field)
 
+        # Merge specific fields, no new samples
+
+        dataset1c = dataset1.clone()
+        dataset1c.merge_samples(dataset2, fields=["field"], insert_new=False)
+        self.assertEqual(len(dataset1c), 2)
+        common12_view = dataset1c.match(F("filepath") == common_filepath)
+        self.assertEqual(len(common12_view), 1)
+
+        common12 = common12_view.first()
+        self.assertEqual(common12.field, common2.field)
+
         # Merge a view with excluded fields
 
         dataset21 = dataset1.clone()
@@ -317,7 +328,9 @@ class DatasetTests(unittest.TestCase):
 
         sample11 = fo.Sample(filepath="image1.jpg", field=1)
         sample12 = fo.Sample(
-            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+            filepath="image2.jpg",
+            field=1,
+            gt=fo.Classification(label="cat"),
         )
 
         sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
@@ -414,7 +427,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample15 = fo.Sample(
-            filepath="image5.png", ground_truth=None, hello=None,
+            filepath="image5.png",
+            ground_truth=None,
+            hello=None,
         )
 
         dataset1 = fo.Dataset()
@@ -424,7 +439,7 @@ class DatasetTests(unittest.TestCase):
 
         ref = sample13.ground_truth.detections[2]
         common = ref.copy()
-        common._id = ref._id
+        common.id = ref.id
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="image2.png")
@@ -449,7 +464,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         sample24 = fo.Sample(
-            filepath="image4.png", ground_truth=None, hello=None,
+            filepath="image4.png",
+            ground_truth=None,
+            hello=None,
         )
 
         sample25 = fo.Sample(
@@ -559,7 +576,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "world", "world", "bar", None],
             )
             self.assertListEqual(
-                d4.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d4.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d4.values("ground_truth.detections.label"),
@@ -601,7 +619,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d5.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d5.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d5.values("ground_truth.detections.label"),
@@ -632,7 +651,8 @@ class DatasetTests(unittest.TestCase):
                 [None, "world", "bar", "world", "bar", None],
             )
             self.assertListEqual(
-                d6.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d6.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d6.values("ground_truth.detections.label"),
@@ -761,14 +781,16 @@ class DatasetTests(unittest.TestCase):
             self.assertNotIn("predictions2", d10_schema)
 
             self.assertListEqual(
-                d10.values("tags"), [[], ["hello"], ["world"], [], [], []],
+                d10.values("tags"),
+                [[], ["hello"], ["world"], [], [], []],
             )
             self.assertListEqual(
                 d10.values("hello"),
                 [None, "world", "world", "world", None, None],
             )
             self.assertListEqual(
-                d10.values("hello2"), [None, None, "bar", None, "bar", None],
+                d10.values("hello2"),
+                [None, None, "bar", None, "bar", None],
             )
             self.assertListEqual(
                 d10.values("predictions1.detections.label"),
@@ -871,6 +893,110 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(schema["array_field"], fo.ArrayField)
 
     @drop_datasets
+    def test_numeric_type_coercions(self):
+        sample = fo.Sample(
+            filepath="image.png",
+            float1=1.0,
+            float2=np.float32(1.0),
+            float3=np.float64(1.0),
+            int1=1,
+            int2=np.uint8(1),
+            int3=np.int64(1),
+            list_float1=[1.0],
+            list_float2=[np.float32(1.0)],
+            list_float3=[np.float64(1.0)],
+            list_int1=[1],
+            list_int2=[np.uint8(1)],
+            list_int3=[np.int64(1)],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.float1, float)
+        self.assertIsInstance(sample.float2, float)
+        self.assertIsInstance(sample.float3, float)
+        self.assertIsInstance(sample.int1, int)
+        self.assertIsInstance(sample.int2, int)
+        self.assertIsInstance(sample.int3, int)
+
+        self.assertIsInstance(sample.list_float1[0], float)
+        self.assertIsInstance(sample.list_float2[0], float)
+        self.assertIsInstance(sample.list_float3[0], float)
+        self.assertIsInstance(sample.list_int1[0], int)
+        self.assertIsInstance(sample.list_int2[0], int)
+        self.assertIsInstance(sample.list_int3[0], int)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIsInstance(schema["float1"], fo.FloatField)
+        self.assertIsInstance(schema["float2"], fo.FloatField)
+        self.assertIsInstance(schema["float3"], fo.FloatField)
+        self.assertIsInstance(schema["int1"], fo.IntField)
+        self.assertIsInstance(schema["int2"], fo.IntField)
+        self.assertIsInstance(schema["int3"], fo.IntField)
+
+        self.assertIsInstance(schema["list_float1"], fo.ListField)
+        self.assertIsInstance(schema["list_float2"], fo.ListField)
+        self.assertIsInstance(schema["list_float3"], fo.ListField)
+        self.assertIsInstance(schema["list_int1"], fo.ListField)
+        self.assertIsInstance(schema["list_int2"], fo.ListField)
+        self.assertIsInstance(schema["list_int3"], fo.ListField)
+
+        sample["float1"] = 2.0
+        sample["float2"] = np.float32(2.0)
+        sample["float3"] = np.float64(2.0)
+        sample["int1"] = 2
+        sample["int2"] = np.uint8(2)
+        sample["int3"] = np.int64(2)
+
+        sample["list_float1"][0] = 2.0
+        sample["list_float2"][0] = np.float32(2.0)
+        sample["list_float3"][0] = np.float64(2.0)
+        sample["list_int1"][0] = 2
+        sample["list_int2"][0] = np.uint8(2)
+        sample["list_int3"][0] = np.int64(2)
+
+        sample.save()
+
+        dataset.set_values("float1", [3.0])
+        dataset.set_values("float2", [np.float32(3.0)])
+        dataset.set_values("float3", [np.float64(3.0)])
+        dataset.set_values("list_float1", [[3.0]])
+        dataset.set_values("list_float2", [[np.float32(3.0)]])
+        dataset.set_values("list_float3", [[np.float64(3.0)]])
+        dataset.set_values("int1", [3])
+        dataset.set_values("int2", [np.uint8(3)])
+        dataset.set_values("int3", [np.int64(3)])
+        dataset.set_values("list_int1", [[3]])
+        dataset.set_values("list_int2", [[np.uint8(3)]])
+        dataset.set_values("list_int3", [[np.int64(3)]])
+
+        self.assertAlmostEqual(sample["float1"], 3.0)
+        self.assertAlmostEqual(sample["float2"], 3.0)
+        self.assertAlmostEqual(sample["float3"], 3.0)
+        self.assertEqual(sample["int1"], 3)
+        self.assertEqual(sample["int2"], 3)
+        self.assertEqual(sample["int3"], 3)
+
+        self.assertAlmostEqual(sample["list_float1"][0], 3.0)
+        self.assertAlmostEqual(sample["list_float2"][0], 3.0)
+        self.assertAlmostEqual(sample["list_float3"][0], 3.0)
+        self.assertEqual(sample["list_int1"][0], 3)
+        self.assertEqual(sample["list_int2"][0], 3)
+        self.assertEqual(sample["list_int3"][0], 3)
+
+        dataset.set_values("float1", [None])
+        dataset.set_values("list_float1", [None])
+        dataset.set_values("int1", [None])
+        dataset.set_values("list_int1", [None])
+
+        self.assertIsNone(sample["float1"])
+        self.assertIsNone(sample["list_float1"])
+        self.assertIsNone(sample["int1"])
+        self.assertIsNone(sample["list_int1"])
+
+    @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="/path/to/image.jpg", field=1)
@@ -889,61 +1015,61 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
-            predictions=fo.Classification(label="friend", field=1),
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
         dataset.add_sample(sample)
 
         dataset.rename_sample_field(
-            "predictions.field", "predictions.new_field"
+            "predictions.detections.field",
+            "predictions.detections.new_field",
         )
-        self.assertIsNotNone(sample.predictions.new_field)
+        self.assertIsNotNone(sample.predictions.detections[0].new_field)
 
-        dataset.clear_sample_field("predictions.field")
-        self.assertIsNone(sample.predictions.field)
+        dataset.clear_sample_field("predictions.detections.field")
+        self.assertIsNone(sample.predictions.detections[0].field)
 
-        dataset.delete_sample_field("predictions.field")
-        self.assertIsNotNone(sample.predictions.new_field)
+        dataset.delete_sample_field("predictions.detections.field")
+        self.assertIsNotNone(sample.predictions.detections[0].new_field)
         with self.assertRaises(AttributeError):
-            sample.predictions.field
+            sample.predictions.detections[0].field
 
         dataset.rename_sample_field(
-            "predictions.new_field", "predictions.field"
+            "predictions.detections.new_field",
+            "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.field)
+        self.assertIsNotNone(sample.predictions.detections[0].field)
         with self.assertRaises(AttributeError):
-            sample.predictions.new_field
+            sample.predictions.detections[0].new_field
 
     @drop_datasets
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
-        sample = fo.Sample(
-            filepath="image.jpg", predictions=fo.Classification(label="friend")
-        )
+        sample = fo.Sample(filepath="image.jpg", field=1)
         dataset.add_sample(sample)
 
-        dataset.clone_sample_field("predictions", "predictions_copy")
+        dataset.clone_sample_field("field", "field_copy")
         schema = dataset.get_field_schema()
-        self.assertIn("predictions", schema)
-        self.assertIn("predictions_copy", schema)
-        self.assertIsNotNone(sample.predictions)
-        self.assertIsNotNone(sample.predictions_copy)
+        self.assertIn("field", schema)
+        self.assertIn("field_copy", schema)
+        self.assertIsNotNone(sample.field)
+        self.assertIsNotNone(sample.field_copy)
 
-        dataset.clear_sample_field("predictions")
+        dataset.clear_sample_field("field")
         schema = dataset.get_field_schema()
-        self.assertIn("predictions", schema)
-        self.assertIsNone(sample.predictions)
-        self.assertIsNotNone(sample.predictions_copy)
+        self.assertIn("field", schema)
+        self.assertIsNone(sample.field)
+        self.assertIsNotNone(sample.field_copy)
 
-        dataset.delete_sample_field("predictions")
-        self.assertIsNotNone(sample.predictions_copy)
+        dataset.delete_sample_field("field")
+        self.assertIsNotNone(sample.field_copy)
         with self.assertRaises(AttributeError):
-            sample.predictions
+            sample.field
 
-        dataset.rename_sample_field("predictions_copy", "predictions")
-        self.assertIsNotNone(sample.predictions)
+        dataset.rename_sample_field("field_copy", "field")
+        self.assertIsNotNone(sample.field)
         with self.assertRaises(AttributeError):
-            sample.predictions_copy
+            sample.field_copy
 
     @drop_datasets
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
@@ -951,37 +1077,105 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         sample = fo.Sample(
             filepath="image.jpg",
-            predictions=fo.Classification(label="friend", field=1),
+            predictions=fo.Detections(detections=[fo.Detection(field=1)]),
         )
         dataset.add_sample(sample)
 
         dataset.clone_sample_field(
-            "predictions.field", "predictions.new_field"
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
         )
-        self.assertIsNotNone(sample.predictions.new_field)
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
 
-        dataset.clear_sample_field("predictions.field")
-        self.assertIsNone(sample.predictions.field)
+        dataset.clear_sample_field("predictions.detections.field")
+        self.assertIsNone(sample.predictions.detections[0].field)
 
-        dataset.delete_sample_field("predictions.field")
-        self.assertIsNotNone(sample.predictions.new_field)
+        dataset.delete_sample_field("predictions.detections.field")
+        self.assertIsNotNone(sample.predictions.detections[0].field_copy)
         with self.assertRaises(AttributeError):
-            sample.predictions.field
+            sample.predictions.detections[0].field
 
         dataset.rename_sample_field(
-            "predictions.new_field", "predictions.field"
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.field)
+        self.assertIsNotNone(sample.predictions.detections[0].field)
         with self.assertRaises(AttributeError):
-            sample.predictions.new_field
+            sample.predictions.detections[0].field_copy
+
+    @drop_datasets
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_clone_frame_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame(field=1)
+        sample.frames[1] = frame
+        dataset.add_sample(sample)
+
+        dataset.clone_frame_field("field", "field_copy")
+        schema = dataset.get_frame_field_schema()
+        self.assertIn("field", schema)
+        self.assertIn("field_copy", schema)
+        self.assertIsNotNone(frame.field)
+        self.assertIsNotNone(frame.field_copy)
+
+        dataset.clear_frame_field("field")
+        schema = dataset.get_frame_field_schema()
+        self.assertIn("field", schema)
+        self.assertIsNone(frame.field)
+        self.assertIsNotNone(frame.field_copy)
+
+        dataset.delete_frame_field("field")
+        self.assertIsNotNone(frame.field_copy)
+        with self.assertRaises(AttributeError):
+            frame.field
+
+        dataset.rename_frame_field("field_copy", "field")
+        self.assertIsNotNone(frame.field)
+        with self.assertRaises(AttributeError):
+            frame.field_copy
+
+    @drop_datasets
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_clone_embedded_frame_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame(
+            predictions=fo.Detections(detections=[fo.Detection(field=1)])
+        )
+        sample.frames[1] = frame
+        dataset.add_sample(sample)
+
+        dataset.clone_frame_field(
+            "predictions.detections.field",
+            "predictions.detections.field_copy",
+        )
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+
+        dataset.clear_frame_field("predictions.detections.field")
+        self.assertIsNone(frame.predictions.detections[0].field)
+
+        dataset.delete_frame_field("predictions.detections.field")
+        self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field
+
+        dataset.rename_frame_field(
+            "predictions.detections.field_copy",
+            "predictions.detections.field",
+        )
+        self.assertIsNotNone(frame.predictions.detections[0].field)
+        with self.assertRaises(AttributeError):
+            frame.predictions.detections[0].field_copy
 
     @drop_datasets
     def test_classes(self):
         dataset = fo.Dataset()
 
         default_classes = ["cat", "dog"]
-
         dataset.default_classes = default_classes
+
+        dataset.reload()
         self.assertListEqual(dataset.default_classes, default_classes)
 
         with self.assertRaises(Exception):
@@ -994,6 +1188,8 @@ class DatasetTests(unittest.TestCase):
         classes = {"ground_truth": ["cat", "dog"]}
 
         dataset.classes = classes
+
+        dataset.reload()
         self.assertDictEqual(dataset.classes, classes)
 
         with self.assertRaises(Exception):
@@ -1015,8 +1211,9 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         default_mask_targets = {1: "cat", 2: "dog"}
-
         dataset.default_mask_targets = default_mask_targets
+
+        dataset.reload()
         self.assertDictEqual(
             dataset.default_mask_targets, default_mask_targets
         )
@@ -1029,8 +1226,9 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
         mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
-
         dataset.mask_targets = mask_targets
+
+        dataset.reload()
         self.assertDictEqual(dataset.mask_targets, mask_targets)
 
         with self.assertRaises(Exception):
@@ -1038,13 +1236,13 @@ class DatasetTests(unittest.TestCase):
             dataset.save()  # error
 
         dataset.mask_targets.pop("hi")
+        dataset.save()  # success
 
         with self.assertRaises(Exception):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
         dataset.mask_targets.pop(1)
-
         dataset.save()  # success
 
         with self.assertRaises(Exception):
@@ -1062,6 +1260,78 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
     @drop_datasets
+    def test_skeletons(self):
+        dataset = fo.Dataset()
+
+        default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+        dataset.default_skeleton = default_skeleton
+
+        dataset.reload()
+        self.assertEqual(dataset.default_skeleton, default_skeleton)
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.labels = [1]
+            dataset.save()  # error
+
+        dataset.default_skeleton.labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.default_skeleton.edges = "hello"
+            dataset.save()  # error
+
+        dataset.default_skeleton.edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.default_skeleton.labels = None
+        dataset.save()  # success
+
+        skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.skeletons = skeletons
+
+        dataset.reload()
+        self.assertDictEqual(dataset.skeletons, skeletons)
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["hi"] = "there"
+            dataset.save()  # error
+
+        dataset.skeletons.pop("hi")
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons[1] = fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+            dataset.save()  # error
+
+        dataset.skeletons.pop(1)
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].labels = [1]
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].labels = ["left eye", "right eye"]
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.skeletons["ground_truth"].edges = "hello"
+            dataset.save()  # error
+
+        dataset.skeletons["ground_truth"].edges = [[0, 1]]
+        dataset.save()  # success
+
+        dataset.skeletons["ground_truth"].labels = None
+        dataset.save()  # success
+
+    @drop_datasets
     def test_dataset_info_import_export(self):
         dataset = fo.Dataset()
 
@@ -1073,6 +1343,15 @@ class DatasetTests(unittest.TestCase):
         dataset.mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
         dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
+        dataset.skeletons = {
+            "ground_truth": fo.KeypointSkeleton(
+                labels=["left eye", "right eye"], edges=[[0, 1]]
+            )
+        }
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["left eye", "right eye"], edges=[[0, 1]]
+        )
+
         with etau.TempDir() as tmp_dir:
             json_path = os.path.join(tmp_dir, "dataset.json")
 
@@ -1082,13 +1361,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset2.info, dataset.info)
 
             self.assertDictEqual(dataset2.classes, dataset.classes)
-            self.assertListEqual(
-                dataset2.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset2.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset2.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset2.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset2.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset2.default_skeleton, dataset.default_skeleton
             )
 
         with etau.TempDir() as tmp_dir:
@@ -1102,13 +1384,16 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset3.info, dataset.info)
 
             self.assertDictEqual(dataset3.classes, dataset.classes)
-            self.assertListEqual(
-                dataset3.default_classes, dataset.default_classes
-            )
+            self.assertEqual(dataset3.default_classes, dataset.default_classes)
 
             self.assertDictEqual(dataset3.mask_targets, dataset.mask_targets)
-            self.assertDictEqual(
+            self.assertEqual(
                 dataset3.default_mask_targets, dataset.default_mask_targets
+            )
+
+            self.assertDictEqual(dataset3.skeletons, dataset.skeletons)
+            self.assertEqual(
+                dataset3.default_skeleton, dataset.default_skeleton
             )
 
 
@@ -1119,7 +1404,8 @@ class DatasetDeletionTests(unittest.TestCase):
 
     def _setUp_classification(self):
         sample1 = fo.Sample(
-            filepath="image1.png", ground_truth=fo.Classification(label="cat"),
+            filepath="image1.png",
+            ground_truth=fo.Classification(label="cat"),
         )
 
         sample2 = sample1.copy()
@@ -1152,9 +1438,13 @@ class DatasetDeletionTests(unittest.TestCase):
             filepath="image1.png",
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",
@@ -1180,9 +1470,13 @@ class DatasetDeletionTests(unittest.TestCase):
             frame_number=1,
             ground_truth=fo.Detections(
                 detections=[
-                    fo.Detection(label="cat", bounding_box=[0, 0, 0.5, 0.5],),
                     fo.Detection(
-                        label="dog", bounding_box=[0.25, 0, 0.5, 0.1],
+                        label="cat",
+                        bounding_box=[0, 0, 0.5, 0.5],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.25, 0, 0.5, 0.1],
                     ),
                     fo.Detection(
                         label="rabbit",
@@ -1266,6 +1560,64 @@ class DatasetDeletionTests(unittest.TestCase):
         num_samples_after = len(self.dataset)
 
         self.assertEqual(num_samples_after, num_samples - num_view)
+
+    def test_delete_frames(self):
+        self._setUp_video_classification()
+
+        frames = [
+            self.dataset.first().frames.first(),
+            self.dataset.last().frames.last(),
+        ]
+
+        num_frames = self.dataset.count("frames")
+        num_del = len(frames)
+
+        self.dataset.delete_frames(frames)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
+
+    def test_delete_frames_ids(self):
+        self._setUp_video_classification()
+
+        frame_ids = [
+            self.dataset.first().frames.first().id,
+            self.dataset.last().frames.last().id,
+        ]
+
+        num_frames = self.dataset.count("frames")
+        num_del = len(frame_ids)
+
+        self.dataset.delete_frames(frame_ids)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
+
+    def test_delete_frames_samples(self):
+        self._setUp_video_classification()
+
+        samples = list(self.dataset)
+        self.dataset.delete_frames(samples)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, 0)
+
+    def test_delete_frames_view(self):
+        self._setUp_video_classification()
+
+        view = self.dataset.match_frames(F("frame_number") == 1)
+
+        num_frames = self.dataset.count("frames")
+        num_del = view.count("frames")
+
+        self.dataset.delete_frames(view)
+
+        num_frames_after = self.dataset.count("frames")
+
+        self.assertEqual(num_frames_after, num_frames - num_del)
 
     def test_delete_classification_ids(self):
         self._setUp_classification()

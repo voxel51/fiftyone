@@ -1,0 +1,36 @@
+.container {
+  font-size: 1.2rem;
+  display: flex;
+  border-bottom: 1px var(--brand) solid;
+  overflow: visible;
+}
+
+.input {
+  overflow: hidden;
+  width: 100%;
+}
+
+.input input {
+  background-color: transparent;
+  text-decoration: none !important;
+  outline: none;
+  border: none;
+  color: var(--font);
+  font-size: 1.2rem;
+  border: none;
+  align-items: center;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.input input:focus {
+  border: none;
+  outline: none;
+  font-weight: bold;
+}
+
+.input input::placeholder {
+  color: var(--font-dark);
+  font-weight: bold;
+}

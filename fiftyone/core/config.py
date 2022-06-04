@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -76,34 +76,52 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DATABASE_VALIDATION",
             default=True,
         )
-        self.database_dir = self.parse_string(
+        self.database_admin = self.parse_bool(
+            d,
+            "database_admin",
+            env_var="FIFTYONE_DATABASE_ADMIN",
+            default=True,
+        )
+        self.database_dir = self.parse_path(
             d,
             "database_dir",
             env_var="FIFTYONE_DATABASE_DIR",
             default=foc.DEFAULT_DB_DIR,
         )
-        self.dataset_zoo_dir = self.parse_string(
+        self.database_name = self.parse_string(
+            d,
+            "database_name",
+            env_var="FIFTYONE_DATABASE_NAME",
+            default="fiftyone",
+        )
+        self.dataset_zoo_dir = self.parse_path(
             d,
             "dataset_zoo_dir",
             env_var="FIFTYONE_DATASET_ZOO_DIR",
             default=None,
         )
-        self.model_zoo_dir = self.parse_string(
+        self.model_zoo_dir = self.parse_path(
             d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None
         )
-        self.dataset_zoo_manifest_paths = self.parse_string_array(
+        self.module_path = self.parse_string_array(
+            d,
+            "module_path",
+            env_var="FIFTYONE_MODULE_PATH",
+            default=None,
+        )
+        self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
             env_var="FIFTYONE_DATASET_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.model_zoo_manifest_paths = self.parse_string_array(
+        self.model_zoo_manifest_paths = self.parse_path_array(
             d,
             "model_zoo_manifest_paths",
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.default_dataset_dir = self.parse_string(
+        self.default_dataset_dir = self.parse_path(
             d,
             "default_dataset_dir",
             env_var="FIFTYONE_DEFAULT_DATASET_DIR",
@@ -149,10 +167,13 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_app_address",
             env_var="FIFTYONE_DEFAULT_APP_ADDRESS",
-            default=None,
+            default="localhost",
         )
         self.desktop_app = self.parse_bool(
-            d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
+            d,
+            "desktop_app",
+            env_var="FIFTYONE_DESKTOP_APP",
+            default=False,
         )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
@@ -162,7 +183,10 @@ class FiftyOneConfig(EnvConfig):
             default=True,
         )
         self.do_not_track = self.parse_bool(
-            d, "do_not_track", env_var="FIFTYONE_DO_NOT_TRACK", default=False,
+            d,
+            "do_not_track",
+            env_var="FIFTYONE_DO_NOT_TRACK",
+            default=False,
         )
         self.requirement_error_level = self.parse_int(
             d,
@@ -174,8 +198,7 @@ class FiftyOneConfig(EnvConfig):
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
 
-        self._set_defaults()
-        self._validate()
+        self._init()
 
     @property
     def show_progress_bars(self):
@@ -194,7 +217,7 @@ class FiftyOneConfig(EnvConfig):
         # Includes `show_progress_bars`
         return super().custom_attributes(dynamic=True)
 
-    def _set_defaults(self):
+    def _init(self):
         if self.default_dataset_dir is None:
             self.default_dataset_dir = os.path.join(
                 os.path.expanduser("~"), "fiftyone"
@@ -216,9 +239,19 @@ class FiftyOneConfig(EnvConfig):
             elif "tensorflow" in installed_packages:
                 self.default_ml_backend = "tensorflow"
 
-    def _validate(self):
         if self.default_ml_backend is not None:
             self.default_ml_backend = self.default_ml_backend.lower()
+
+        if self.module_path is not None:
+            for idx, module_name in enumerate(self.module_path):
+                try:
+                    __import__(module_name)
+                except ImportError as e:
+                    logger.warning(
+                        "Failed to import fiftyone.config.module_path[%d]: %s",
+                        idx,
+                        e,
+                    )
 
         if self.timezone and self.timezone.lower() not in {"local", "utc"}:
             try:
@@ -241,6 +274,12 @@ class AppConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.color_by = self.parse_string(
+            d,
+            "color_by",
+            env_var="FIFTYONE_APP_COLOR_BY",
+            default="field",
+        )
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
@@ -262,6 +301,12 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_LOOP_VIDEOS",
             default=False,
         )
+        self.multicolor_keypoints = self.parse_bool(
+            d,
+            "multicolor_keypoints",
+            env_var="FIFTYONE_APP_MULTICOLOR_KEYPOINTS",
+            default=False,
+        )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
@@ -275,10 +320,22 @@ class AppConfig(EnvConfig):
             default=True,
         )
         self.show_index = self.parse_bool(
-            d, "show_index", env_var="FIFTYONE_APP_SHOW_INDEX", default=True,
+            d,
+            "show_index",
+            env_var="FIFTYONE_APP_SHOW_INDEX",
+            default=True,
         )
         self.show_label = self.parse_bool(
-            d, "show_label", env_var="FIFTYONE_APP_SHOW_LABEL", default=True,
+            d,
+            "show_label",
+            env_var="FIFTYONE_APP_SHOW_LABEL",
+            default=True,
+        )
+        self.show_skeletons = self.parse_bool(
+            d,
+            "show_skeletons",
+            env_var="FIFTYONE_APP_SHOW_SKELETONS",
+            default=True,
         )
         self.show_tooltip = self.parse_bool(
             d,
@@ -293,7 +350,7 @@ class AppConfig(EnvConfig):
             default=False,
         )
 
-        self._validate()
+        self._init()
 
     def get_colormap(self, colorscale=None, n=256, hex_strs=False):
         """Generates a continuous colormap with the specified number of colors
@@ -338,11 +395,20 @@ class AppConfig(EnvConfig):
 
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
-    def _validate(self):
-        if self.grid_zoom < 0 or self.grid_zoom > 10:
-            raise AppConfigError(
-                "`grid_zoom` must be in [0, 10]; found %d" % self.grid_zoom
+    def _init(self):
+        if self.color_by not in {"field", "instance", "label"}:
+            logger.warning(
+                "Invalid `color_by` option '%s'. Must be one of 'field', "
+                "'instance' or 'label'. Defaulting to 'field'",
+                self.color_by,
             )
+            self.color_by = "field"
+
+        if self.grid_zoom < 0 or self.grid_zoom > 10:
+            logger.warning(
+                "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
+            )
+            self.grid_zoom = 5
 
 
 class AppConfigError(etac.EnvConfigError):
@@ -360,7 +426,11 @@ class AnnotationConfig(EnvConfig):
         "cvat": {
             "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
             "url": "https://cvat.org",
-        }
+        },
+        "labelbox": {
+            "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
+            "url": "https://labelbox.com",
+        },
     }
 
     def __init__(self, d=None):
@@ -558,13 +628,13 @@ def _parse_env_value(value):
     except:
         pass
 
-    if value in {"True", "true"}:
+    if value in ("True", "true"):
         return True
 
-    if value in {"False", "false"}:
+    if value in ("False", "false"):
         return False
 
-    if value == "None":
+    if value in ("None", ""):
         return None
 
     if "," in value:

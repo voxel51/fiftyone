@@ -6,7 +6,7 @@ COCO Integration
 .. default-role:: code
 
 With support from the team behind the `COCO dataset <https://cocodataset.org>`_,
-we've made it easy to dowload, visualize, and evaluate on the COCO dataset
+we've made it easy to download, visualize, and evaluate on the COCO dataset
 natively in FiftyOne!
 
 .. note::
@@ -287,7 +287,7 @@ dataset:
         id:         fiftyone.core.fields.ObjectIdField
         filepath:   fiftyone.core.fields.StringField
         tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         detections: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         coco_id:    fiftyone.core.fields.IntField
 

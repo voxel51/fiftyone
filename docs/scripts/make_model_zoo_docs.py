@@ -2,7 +2,7 @@
 Script for generating the model zoo docs page contents
 ``docs/source/user_guide/model_zoo/models.rst``.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -299,7 +299,9 @@ def main():
     # Render model sections
 
     environment = Environment(
-        loader=BaseLoader, trim_blocks=True, lstrip_blocks=True,
+        loader=BaseLoader,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
 
     section_template = environment.from_string(_SECTION_TEMPLATE)

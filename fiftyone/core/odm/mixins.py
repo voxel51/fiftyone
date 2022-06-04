@@ -1,7 +1,7 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -22,7 +22,8 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
-from .document import Document, BaseEmbeddedDocument
+from .document import Document
+from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -108,112 +109,6 @@ def validate_fields_match(
             )
 
 
-def get_field_kwargs(field):
-    """Constructs the field keyword arguments dictionary for the given
-    :class:`fiftyone.core.fields.Field` instance.
-
-    Args:
-        field: a :class:`fiftyone.core.fields.Field`
-
-    Returns:
-        a field specification dict
-    """
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
-
-    return kwargs
-
-
-def get_implied_field_kwargs(value):
-    """Infers the field keyword arguments dictionary for a field that can hold
-    values of the given type.
-
-    Args:
-        value: a value
-
-    Returns:
-        a field specification dict
-    """
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    if isinstance(value, bool):
-        return {"ftype": fof.BooleanField}
-
-    if isinstance(value, six.integer_types):
-        return {"ftype": fof.IntField}
-
-    if isinstance(value, numbers.Number):
-        return {"ftype": fof.FloatField}
-
-    if isinstance(value, six.string_types):
-        return {"ftype": fof.StringField}
-
-    if isinstance(value, datetime):
-        return {"ftype": fof.DateTimeField}
-
-    if isinstance(value, date):
-        return {"ftype": fof.DateField}
-
-    if isinstance(value, (list, tuple)):
-        kwargs = {"ftype": fof.ListField}
-
-        value_types = set(_get_list_value_type(v) for v in value)
-
-        if value_types == {fof.IntField, fof.FloatField}:
-            kwargs["subfield"] = fof.FloatField
-        elif len(value_types) == 1:
-            value_type = next(iter(value_types))
-            if value_type is not None:
-                kwargs["subfield"] = value_type
-
-        return kwargs
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError(
-        "Cannot infer an appropriate field type for value '%s'" % value
-    )
-
-
-def _get_list_value_type(value):
-    if isinstance(value, bool):
-        return fof.BooleanField
-
-    if isinstance(value, six.integer_types):
-        return fof.IntField
-
-    if isinstance(value, numbers.Number):
-        return fof.FloatField
-
-    if isinstance(value, six.string_types):
-        return fof.StringField
-
-    if isinstance(value, datetime):
-        return fof.DateTimeField
-
-    if isinstance(value, date):
-        return fof.DateField
-
-    return None
-
-
 class DatasetMixin(object):
     """Mixin interface for :class:`fiftyone.core.odm.document.Document`
     subclasses that are backed by a dataset.
@@ -251,6 +146,40 @@ class DatasetMixin(object):
 
     def _get_field_names(self, include_private=False):
         return self._get_fields_ordered(include_private=include_private)
+
+    def has_field(self, field_name):
+        # pylint: disable=no-member
+        return field_name in self._fields
+
+    def get_field(self, field_name):
+        if not self.has_field(field_name):
+            raise AttributeError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
+        return super().get_field(field_name)
+
+    def set_field(self, field_name, value, create=False):
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
+        if not self.has_field(field_name):
+            if create:
+                self.add_implied_field(field_name, value)
+            else:
+                raise ValueError(
+                    "%s has no field '%s'" % (self._doc_name(), field_name)
+                )
+        elif value is not None:
+            self._fields[field_name].validate(value)
+
+        super().__setattr__(field_name, value)
+
+    def clear_field(self, field_name):
+        self.set_field(field_name, None)
 
     @classmethod
     def get_field_schema(
@@ -310,12 +239,10 @@ class DatasetMixin(object):
     @classmethod
     def merge_field_schema(cls, schema, expand_schema=True):
         """Merges the field schema into this document.
-
         Args:
             schema: a dictionary mapping field names to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
-
         Raises:
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name or a new field is found but
@@ -340,23 +267,19 @@ class DatasetMixin(object):
 
         for field_name in add_fields:
             field = schema[field_name]
-            cls._add_field_schema(field_name, **get_field_kwargs(field))
-
-    def has_field(self, field_name):
-        # pylint: disable=no-member
-        return field_name in self._fields
-
-    def get_field(self, field_name):
-        if not self.has_field(field_name):
-            raise AttributeError(
-                "%s has no field '%s'" % (self._doc_name(), field_name)
-            )
-
-        return getattr(self, field_name)
+            kwargs = get_field_kwargs(field)
+            kwargs.pop("db_field")
+            cls._add_field_schema(field_name, **kwargs)
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        fields=None,
+        **kwargs,
     ):
         """Adds a new field to the document.
 
@@ -372,12 +295,17 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): the field definitions of the
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+                Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
         """
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            fields=fields,
             **kwargs,
         )
 
@@ -390,36 +318,9 @@ class DatasetMixin(object):
             field_name: the field name
             value: the field value
         """
-        kwargs = get_implied_field_kwargs(value)
+        field = create_field(field_name, **get_implied_field_kwargs(value))
 
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            validate_fields_match(field_name, kwargs, cls._fields[field_name])
-        else:
-            cls.add_field(field_name, **kwargs)
-
-    def set_field(self, field_name, value, create=False):
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                self.add_implied_field(field_name, value)
-            else:
-                raise ValueError(
-                    "%s has no field '%s'" % (self._doc_name(), field_name)
-                )
-
-        self.__setattr__(field_name, value)
-
-    def clear_field(self, field_name):
-        self.set_field(field_name, None)
+        cls.merge_field_schema({field_name: field})
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -634,24 +535,34 @@ class DatasetMixin(object):
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
 
-        field_roots = set()
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name, new_field_name in zip(field_names, new_field_names):
-            field_roots.add(field_name.split(".", 1)[0])
-            field_roots.add(new_field_name.split(".", 1)[0])
-
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
             else:
                 base, leaf = field_name, ""
 
-            expr = F(leaf) if new_base == base else F("$" + field_name)
+            if new_base == base:
+                expr = F(leaf)
+            else:
+                expr = F("$" + field_name)
+
             view = view.set_field(new_field_name, expr)
 
         view = view.mongo([{"$unset": field_names}])
 
-        view.save(list(field_roots))
+        #
+        # Ideally only the embedded field would be saved, but the `$merge`
+        # operator will always overwrite top-level fields of each document, so
+        # we limit the damage by projecting onto the modified fields
+        #
+        field_roots = list(set(root(f) for f in field_names + new_field_names))
+        view.save(field_roots)
 
     @classmethod
     def _clone_fields_simple(cls, field_names, new_field_names):
@@ -672,18 +583,23 @@ class DatasetMixin(object):
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
 
-        new_field_roots = set()
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name, new_field_name in zip(field_names, new_field_names):
-            new_field_roots.add(new_field_name.split(".", 1)[0])
-
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
             else:
                 base, leaf = field_name, ""
 
-            expr = F(leaf) if new_base == base else F("$" + field_name)
+            if new_base == base:
+                expr = F(leaf)
+            else:
+                expr = F("$" + field_name)
+
             view = view.set_field(new_field_name, expr)
 
         #
@@ -691,7 +607,8 @@ class DatasetMixin(object):
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        view.save(list(new_field_roots))
+        field_roots = list(set(root(f) for f in new_field_names))
+        view.save(field_roots)
 
     @classmethod
     def _clear_fields_simple(cls, field_names):
@@ -701,10 +618,16 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_fields_collection(cls, field_names, sample_collection):
-        field_roots = set()
+        if cls._is_frames_doc:
+            prefix = sample_collection._FRAMES_PREFIX
+            field_names = [prefix + f for f in field_names]
+
+            root = lambda f: ".".join(f.split(".", 2)[:2])
+        else:
+            root = lambda f: f.split(".", 1)[0]
+
         view = sample_collection.view()
         for field_name in field_names:
-            field_roots.add(field_name.split(".", 1)[0])
             view = view.set_field(field_name, None)
 
         #
@@ -712,7 +635,8 @@ class DatasetMixin(object):
         # operator will always overwrite top-level fields of each document, so
         # we limit the damage by projecting onto the modified fields
         #
-        view.save(list(field_roots))
+        field_roots = list(set(root(f) for f in field_names))
+        view.save(field_roots)
 
     @classmethod
     def _delete_fields_simple(cls, field_names):
@@ -727,8 +651,14 @@ class DatasetMixin(object):
         else:
             field = field_or_doc
 
+        prev = cls._fields.get(field.name, None)
+
         cls._fields[field.name] = field
-        cls._fields_ordered += (field.name,)
+        if prev is None:
+            cls._fields_ordered += (field.name,)
+        else:
+            field.required = prev.required
+            field.null = prev.null
         setattr(cls, field.name, field)
 
     @classmethod
@@ -740,6 +670,7 @@ class DatasetMixin(object):
         subfield=None,
         **kwargs,
     ):
+
         # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError(
@@ -970,16 +901,13 @@ class NoDatasetMixin(object):
         except AttributeError:
             pass
 
-        try:
-            return self._data[name]
-        except KeyError as e:
-            raise AttributeError(e.args[0])
+        return self.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
             super().__setattr__(name, value)
         else:
-            self._data[name] = value
+            self.set_field(name, value)
 
     def _get_field_names(self, include_private=False):
         if include_private:
@@ -1036,33 +964,26 @@ class NoDatasetMixin(object):
             return False
 
     def get_field(self, field_name):
-        if not self.has_field(field_name):
+        try:
+            return self._data[field_name]
+        except KeyError:
             raise AttributeError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
 
-        return getattr(self, field_name)
-
     def set_field(self, field_name, value, create=False):
+        if not create and not self.has_field(field_name):
+            raise ValueError(
+                "%s has no field '%s'" % (self._doc_name(), field_name)
+            )
+
         if field_name.startswith("_"):
             raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
+                "Invalid field name '%s'. Field names cannot start with '_'"
                 % field_name
             )
 
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                # dummy value so that it is identified by __setattr__
-                self._data[field_name] = None
-            else:
-                raise ValueError(
-                    "%s has no field '%s'" % (self._doc_name(), field_name)
-                )
-
-        self.__setattr__(field_name, value)
+        self._data[field_name] = value
 
     def clear_field(self, field_name):
         if field_name in self.default_fields:
@@ -1070,7 +991,7 @@ class NoDatasetMixin(object):
             self.set_field(field_name, default_value)
             return
 
-        if field_name not in self._data:
+        if not self.has_field(field_name):
             raise ValueError(
                 "%s has no field '%s'" % (self._doc_name(), field_name)
             )
@@ -1111,9 +1032,17 @@ class NoDatasetMixin(object):
 
 
 def _serialize_value(value, extended=False):
-    if hasattr(value, "to_dict"):
+    if hasattr(value, "to_dict") and callable(value.to_dict):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
+
+    if isinstance(value, numbers.Integral):
+        # IntField
+        return int(value)
+
+    if isinstance(value, numbers.Number):
+        # FloatField
+        return float(value)
 
     if type(value) is date:
         # DateField
@@ -1129,9 +1058,11 @@ def _serialize_value(value, extended=False):
         return json.loads(json_util.dumps(Binary(binary)))
 
     if isinstance(value, (list, tuple)):
+        # ListField
         return [_serialize_value(v, extended=extended) for v in value]
 
     if isinstance(value, dict):
+        # DictField
         return {
             k: _serialize_value(v, extended=extended) for k, v in value.items()
         }

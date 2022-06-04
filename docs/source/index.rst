@@ -82,6 +82,11 @@ learn how:
     :image_title: TensorFlow
 
 .. customimagelink::
+    :image_link: integrations/activitynet.html
+    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
+    :image_title: ActivityNet
+
+.. customimagelink::
     :image_link: integrations/coco.html
     :image_src: https://voxel51.com/images/integrations/coco-128.png
     :image_title: COCO
@@ -112,7 +117,7 @@ learn how:
     :image_title: CVAT
 
 .. customimagelink::
-    :image_link: api/fiftyone.utils.labelbox.html
+    :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
 

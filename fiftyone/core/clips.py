@@ -1,12 +1,14 @@
 """
 Clips views.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from copy import deepcopy
 from collections import defaultdict
+
+from bson import ObjectId
 
 import eta.core.utils as etau
 
@@ -40,7 +42,7 @@ class ClipView(fos.SampleView):
 
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     def save(self):
         """Saves the clip to the database."""
@@ -104,7 +106,9 @@ class ClipsView(fov.DatasetView):
     @property
     def _base_view(self):
         return self.__class__(
-            self._source_collection, self._clips_stage, self._clips_dataset,
+            self._source_collection,
+            self._clips_stage,
+            self._clips_dataset,
         )
 
     @property
@@ -150,15 +154,10 @@ class ClipsView(fov.DatasetView):
             include_private=include_private, use_db_fields=use_db_fields
         )
 
-        if self._classification_field:
-            clips_fields = ("support", self._classification_field)
-        else:
-            clips_fields = ("support",)
-
         if use_db_fields:
-            return fields + ("_sample_id",) + clips_fields
+            return fields + ("_sample_id", "support")
 
-        return fields + ("sample_id",) + clips_fields
+        return fields + ("sample_id", "support")
 
     def _get_default_indexes(self, frames=False):
         if frames:
@@ -180,13 +179,18 @@ class ClipsView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
 
     def save(self, fields=None):
-        """Overwrites the frames in the source dataset with the contents of the
-        view.
+        """Saves the clips in this view to the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
 
         .. warning::
 
             This will permanently delete any omitted or filtered contents from
-            the source dataset.
+            the frames of the underlying dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -195,9 +199,37 @@ class ClipsView(fov.DatasetView):
         if etau.is_str(fields):
             fields = [fields]
 
-        self._sync_source(fields=fields, delete=True)
+        self._sync_source(fields=fields)
 
         super().save(fields=fields)
+
+    def keep(self):
+        """Deletes all clips that are **not** in this view from the underlying
+        dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source(update=False, delete=True)
+
+        super().keep()
+
+    def keep_fields(self):
+        """Deletes any frame fields that have been excluded in this view from
+        the frames of the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_fields()
+
+        super().keep_fields()
 
     def reload(self):
         """Reloads this view from the source collection in the database.
@@ -237,7 +269,7 @@ class ClipsView(fov.DatasetView):
 
         self._source_collection._set_labels(field, [sample.sample_id], [doc])
 
-    def _sync_source(self, fields=None, ids=None, delete=False):
+    def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         if not self._classification_field:
             return
 
@@ -253,9 +285,9 @@ class ClipsView(fov.DatasetView):
         else:
             sync_view = self
 
-        del_ids = set()
         update_ids = []
         update_docs = []
+        del_ids = set()
         for label_id, sample_id, support, doc in zip(
             *sync_view.values(["id", "sample_id", "support", field], _raw=True)
         ):
@@ -275,12 +307,31 @@ class ClipsView(fov.DatasetView):
                 if sample_id not in observed_ids:
                     del_ids.add(label_id)
 
+        if update:
+            self._source_collection._set_labels(field, update_ids, update_docs)
+
         if del_ids:
             # @todo can we optimize this? we know exactly which samples each
             # label to be deleted came from
             self._source_collection._delete_labels(del_ids, fields=[field])
 
-        self._source_collection._set_labels(field, update_ids, update_docs)
+    def _sync_source_keep_fields(self):
+        # If the source TemporalDetection field is excluded, delete it from
+        # this collection and the source collection
+        cls_field = self._classification_field
+        if cls_field and cls_field not in self.get_field_schema():
+            self._source_collection.exclude_fields(cls_field).keep_fields()
+
+        # Delete any excluded frame fields from this collection and the source
+        # collection
+        schema = self.get_frame_field_schema()
+        src_schema = self._source_collection.get_frame_field_schema()
+
+        del_fields = set(src_schema.keys()) - set(schema.keys())
+        if del_fields:
+            prefix = self._source_collection._FRAMES_PREFIX
+            _del_fields = [prefix + f for f in del_fields]
+            self._source_collection.exclude_fields(_del_fields).keep_fields()
 
 
 def make_clips_dataset(
@@ -290,6 +341,7 @@ def make_clips_dataset(
     tol=0,
     min_len=0,
     trajectories=False,
+    name=None,
 ):
     """Creates a dataset that contains one sample per clip defined by the
     given field or expression in the collection.
@@ -353,6 +405,7 @@ def make_clips_dataset(
         trajectories (False): whether to create clips for each unique object
             trajectory defined by their ``(label, index)``. Only applicable
             when ``field_or_expr`` is a frame-level field
+        name (None): a name for the dataset
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -378,7 +431,12 @@ def make_clips_dataset(
     else:
         clips_type = "manual"
 
-    dataset = fod.Dataset(_clips=True, _src_collection=sample_collection)
+    dataset = fod.Dataset(
+        name=name, _clips=True, _src_collection=sample_collection
+    )
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
@@ -456,11 +514,11 @@ def make_clips_dataset(
     return dataset
 
 
-def _is_frame_support_field(sample_collection, field):
-    field_type = sample_collection._get_field_type(field)
-    return isinstance(field_type, fof.FrameSupportField) or (
-        isinstance(field_type, fof.ListField)
-        and isinstance(field_type.field, fof.FrameSupportField)
+def _is_frame_support_field(sample_collection, field_path):
+    field = sample_collection.get_field(field_path)
+    return isinstance(field, fof.FrameSupportField) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, fof.FrameSupportField)
     )
 
 
@@ -471,10 +529,12 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _write_support_clips(dataset, src_collection, field, other_fields=None):
-    field_type = src_collection._get_field_type(field)
-    is_list = isinstance(field_type, fof.ListField) and not isinstance(
-        field_type, fof.FrameSupportField
+def _write_support_clips(
+    dataset, src_collection, field_path, other_fields=None
+):
+    field = src_collection.get_field(field_path)
+    is_list = isinstance(field, fof.ListField) and not isinstance(
+        field, fof.FrameSupportField
     )
 
     src_dataset = src_collection._dataset
@@ -488,7 +548,7 @@ def _write_support_clips(dataset, src_collection, field, other_fields=None):
         "filepath": True,
         "metadata": True,
         "tags": True,
-        "support": "$" + field,
+        "support": "$" + field.name,
     }
 
     if other_fields:
@@ -581,7 +641,10 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
 
     trajs = _get_trajectories(src_collection, field)
     src_collection.set_values(
-        _tmp_field, trajs, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        trajs,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -660,7 +723,10 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     _tmp_field = "_support"
 
     src_collection.set_values(
-        _tmp_field, clips, expand_schema=False, _allow_missing=True,
+        _tmp_field,
+        clips,
+        expand_schema=False,
+        _allow_missing=True,
     )
 
     src_collection = fod._always_select_field(src_collection, _tmp_field)
@@ -705,7 +771,11 @@ def _get_trajectories(sample_collection, frame_field):
         raise ValueError(
             "Frame field '%s' has type %s, but trajectories can only be "
             "extracted for label list fields %s"
-            % (frame_field, label_type, fol._LABEL_LIST_FIELDS,)
+            % (
+                frame_field,
+                label_type,
+                fol._LABEL_LIST_FIELDS,
+            )
         )
 
     fn_expr = F("frames").map(F("frame_number"))

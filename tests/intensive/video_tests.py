@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     pytest tests/intensive/video_tests.py -s -k <test_case>
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -120,7 +120,7 @@ def test_to_frames():
 
     dataset.tag_samples("test")
 
-    frames = dataset.to_frames()
+    frames = dataset.to_frames(sample_frames=True)
 
     # Frames inherit sample tags
     print(dataset.count_sample_tags())
@@ -219,7 +219,7 @@ def test_to_clip_frames():
         "frames.detections", F("label") == "person"
     ).to_clips("frames.detections")
 
-    frames = clips.to_frames(fps=1)
+    frames = clips.to_frames(sample_frames=True, fps=1)
 
     print("\nClips view")
     for filepath, support in zip(*clips.values(["filepath", "support"])):
@@ -321,7 +321,7 @@ def test_to_frame_patches():
 
     dataset.tag_samples("test")
 
-    frames = dataset.to_frames()
+    frames = dataset.to_frames(sample_frames=True)
     patches = frames.to_patches("detections")
 
     # Frames and patches inherit sample tags
@@ -439,7 +439,9 @@ def test_to_frame_eval_patches():
         sample.save()
 
     dataset.evaluate_detections(
-        "frames.predictions", gt_field="frames.detections", eval_key="eval",
+        "frames.predictions",
+        gt_field="frames.detections",
+        eval_key="eval",
     )
 
     try:
@@ -448,7 +450,8 @@ def test_to_frame_eval_patches():
     except ValueError:
         pass
 
-    patches = dataset.to_frames().to_evaluation_patches("eval")
+    frames = dataset.to_frames(sample_frames=True)
+    patches = frames.to_evaluation_patches("eval")
 
     print(patches)
     print(patches.first())

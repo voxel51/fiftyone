@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import * as common from "./common";
@@ -56,6 +56,7 @@ export const getFrameElements: GetElements<FrameState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
@@ -123,6 +124,7 @@ export const getImageElements: GetElements<ImageState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },
@@ -199,6 +201,7 @@ export const getVideoElements: GetElements<VideoState> = (
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },
           { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
           { node: common.JSONButtonElement },
           { node: common.OptionsButtonElement },
           { node: common.HelpButtonElement },

@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     pytest tests/intensive/evaluation_tests.py -s -k <test_case>
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -566,7 +566,9 @@ def test_evaluate_detections_frames():
     EVAL_KEY = "eval_coco"
 
     results = dataset.evaluate_detections(
-        "frames.predictions", gt_field="frames.detections", eval_key=EVAL_KEY,
+        "frames.predictions",
+        gt_field="frames.detections",
+        eval_key=EVAL_KEY,
     )
 
     results.print_report()
@@ -590,7 +592,10 @@ def test_evaluate_detections_frames():
 
 def test_evaluate_segmentations():
     dataset = foz.load_zoo_dataset(
-        "coco-2017", split="validation", max_samples=10, shuffle=True,
+        "coco-2017",
+        split="validation",
+        max_samples=10,
+        shuffle=True,
     ).clone()
 
     # These are the VOC classes

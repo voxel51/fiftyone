@@ -1,14 +1,14 @@
 """
 FiftyOne migrations runner.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import bisect
 import logging
 import os
-from packaging.version import Version
+from packaging.version import Version as V
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -25,6 +25,11 @@ DOWN = "down"
 UP = "up"
 
 
+def Version(version: str) -> V:
+    """Version proxy to ensure only base versions are used (strip rc versions)"""
+    return V(V(version).base_version)
+
+
 def _migrations_disabled():
     return os.environ.get("FIFTYONE_DISABLE_MIGRATIONS", "0") != "0"
 
@@ -35,7 +40,7 @@ def get_database_revision():
     Returns:
         the database revision string
     """
-    config = _get_database_config()
+    config = foo.get_db_config()
     return config.version
 
 
@@ -88,17 +93,32 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if _migrations_disabled():
         return
 
-    if destination is None:
+    use_client_version = destination is None
+    if use_client_version:
         destination = foc.VERSION
 
-    config = _get_database_config()
+    config = foo.get_db_config()
 
     head = config.version
-    if head is None:
-        head = "0.0"  # < v0.7.1
 
     if head == destination:
         return
+
+    if not fo.config.database_admin:
+        if use_client_version:
+            raise EnvironmentError(
+                "Cannot connect to database v%s with client v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
+        else:
+            raise EnvironmentError(
+                "Cannot migrate database from v%s to v%s when database_admin=%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (head, destination, fo.config.database_admin)
+            )
 
     if _database_exists():
         runner = MigrationRunner(head=head, destination=destination)
@@ -106,13 +126,8 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             logger.info("Migrating database to v%s", destination)
             runner.run_admin(verbose=verbose)
 
-    config_path = _get_database_config_path()
-    if Version(destination) >= Version("0.7.1"):
-        config.version = destination
-        config.write_json(config_path)
-    elif os.path.isfile(config_path):
-        # Old version of FiftyOne that didn't have DB config files
-        os.remove(config_path)
+    config.version = destination
+    config.save()
 
 
 def needs_migration(name=None, head=None, destination=None):
@@ -135,7 +150,7 @@ def needs_migration(name=None, head=None, destination=None):
         head = get_dataset_revision(name)
 
     if head is None:
-        head = "0.0"  # < v0.6.2
+        head = "0.0"
 
     if destination is None:
         destination = foc.VERSION
@@ -164,11 +179,21 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         destination = foc.VERSION
 
     head = get_dataset_revision(name)
+
     if head is None:
-        head = "0.0"  # < v0.6.2
+        head = "0.0"
 
     if head == destination:
         return
+
+    if not fo.config.database_admin and destination != foc.VERSION:
+        raise EnvironmentError(
+            "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
+            "be migrated to the current revision (v%s) when database_admin=%s."
+            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+            "for more information"
+            % (name, head, destination, foc.VERSION, fo.config.database_admin)
+        )
 
     runner = MigrationRunner(head=head, destination=destination)
     if runner.has_revisions:
@@ -265,8 +290,7 @@ class MigrationRunner(object):
 
     @property
     def admin_revisions(self):
-        """The list of admin revisions that will be run by :meth:`run_admin`.
-        """
+        """The list of admin revisions that will be run by :meth:`run_admin`."""
         return [r[0] for r in self._admin_revisions]
 
     def run(self, dataset_name, verbose=False):
@@ -319,21 +343,7 @@ class DatabaseConfig(etas.Serializable):
 
 def _database_exists():
     client = foo.get_db_client()
-    return foc.DEFAULT_DATABASE in client.list_database_names()
-
-
-def _get_database_config():
-    try:
-        config_path = _get_database_config_path()
-        config = DatabaseConfig.from_json(config_path)
-    except FileNotFoundError:
-        config = DatabaseConfig()
-
-    return config
-
-
-def _get_database_config_path():
-    return os.path.join(fo.config.database_dir, "config.json")
+    return fo.config.database_name in client.list_database_names()
 
 
 def _get_revisions_to_run(head, dest, revisions):

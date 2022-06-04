@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
@@ -24,7 +24,7 @@
   height: 100%;
   font-family: "Palanquin", sans-serif;
   font-weight: bold;
-  background-color: hsl(210, 11%, 15%);
+  background: transparent;
   outline: none;
   border: none;
 }

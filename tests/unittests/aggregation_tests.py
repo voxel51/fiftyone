@@ -1,7 +1,7 @@
 """
 FiftyOne aggregation-related unit tests.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -53,10 +53,12 @@ class DatasetTests(unittest.TestCase):
         )
         s.save()
         self.assertEqual(
-            d.bounds("detections.detections.confidence"), (0, 1),
+            d.bounds("detections.detections.confidence"),
+            (0, 1),
         )
         self.assertEqual(
-            d.bounds(1 + F("detections.detections.confidence")), (1, 2),
+            d.bounds(1 + F("detections.detections.confidence")),
+            (1, 2),
         )
 
         d = fo.Dataset()
@@ -64,7 +66,8 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.bounds("frames.detection.confidence"), (1, 1),
+            d.bounds("frames.detection.confidence"),
+            (1, 1),
         )
 
     @drop_datasets
@@ -320,7 +323,8 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            d.values(F("predictions.detections").length()), [2, 3, 2, 0, 0],
+            d.values(F("predictions.detections").length()),
+            [2, 3, 2, 0, 0],
         )
 
         self.assertListEqual(
@@ -764,6 +768,98 @@ class DatasetTests(unittest.TestCase):
 
         results = dataset.values(fields)
         self.assertEqual(len(fields), len(results))
+
+    @drop_datasets
+    def test_video_frames(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample.frames[2] = fo.Frame()
+        sample.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        num_objs = F("frames").map(F("detections.detections").length())
+
+        values = dataset.values(num_objs)
+        self.assertListEqual(values, [[2, 0, 3]])
+
+        counts = dataset.count_values(num_objs)
+        self.assertDictEqual(counts, {2: 1, 3: 1, 0: 1})
+
+        max_objs = F("frames").map(F("detections.detections").length()).max()
+
+        values = dataset.values(max_objs)
+        self.assertListEqual(values, [3])
+
+        counts = dataset.count_values(max_objs)
+        self.assertDictEqual(counts, {3: 1})
+
+    @drop_datasets
+    def test_needs_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4", int=1)
+        sample1.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample1.frames[2] = fo.Frame()
+        sample1.frames[3] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="rabbit"),
+                    fo.Detection(label="squirrel"),
+                    fo.Detection(label="fox"),
+                ]
+            )
+        )
+
+        sample2 = fo.Sample(filepath="video2.mp4", int=2)
+        sample2.frames[1] = fo.Frame(
+            detections=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            )
+        )
+        sample2.frames[2] = fo.Frame()
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        expr1 = F("int") > 1.5
+        expr2 = F("frames").length() > 2
+
+        values = dataset.values(expr1)
+        self.assertListEqual(values, [False, True])
+
+        values = dataset.values(expr2)
+        self.assertListEqual(values, [True, False])
+
+        values = dataset.values(expr1 | expr2)
+        self.assertListEqual(values, [True, True])
+
+        values = dataset.values(expr1 & expr2)
+        self.assertListEqual(values, [False, False])
 
 
 if __name__ == "__main__":

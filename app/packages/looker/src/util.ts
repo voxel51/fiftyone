@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 import mime from "mime";
 import { mergeWith } from "immutable";
@@ -12,10 +12,12 @@ import {
   Buffers,
   Coordinates,
   Dimensions,
+  DispatchEvent,
   Optional,
 } from "./state";
 
 import LookerWorker from "./worker.ts?worker&inline";
+import { getFetchParameters } from "@fiftyone/utilities";
 
 /**
  * Shallow data-object comparison for equality
@@ -34,6 +36,13 @@ export function compareData(a: object, b: object): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Elementwise vector multiplication
+ */
+export function multiply<T extends number[]>(one: T, two: T): T {
+  return one.map((i, j) => i * two[j]) as T;
 }
 
 /**
@@ -395,7 +404,7 @@ export const mergeUpdates = <State extends BaseState>(
     if (typeof n !== "object") {
       return n === undefined ? o : n;
     }
-    if (n === null) {
+    if (n === null || o === null) {
       return n;
     }
     return mergeWith(merger, o, n);
@@ -403,10 +412,27 @@ export const mergeUpdates = <State extends BaseState>(
   return mergeWith(merger, state, updates);
 };
 
-export const createWorker = (listeners?: {
-  [key: string]: ((worker: Worker, args: any) => void)[];
-}): Worker => {
+export const createWorker = (
+  listeners?: {
+    [key: string]: ((worker: Worker, args: any) => void)[];
+  },
+  dispatchEvent?: DispatchEvent
+): Worker => {
   const worker = new LookerWorker();
+
+  worker.onerror = (error) => {
+    dispatchEvent("error", error);
+  };
+  worker.addEventListener("message", ({ data }) => {
+    if (data.error) {
+      dispatchEvent("error", new ErrorEvent("error", { error: data.error }));
+    }
+  });
+
+  worker.postMessage({
+    method: "init",
+    ...getFetchParameters(),
+  });
 
   if (!listeners) {
     return worker;
@@ -483,81 +509,12 @@ export const getDPR = (() => {
   };
 })();
 
-const isElectron = (): boolean => {
-  return (
-    window.process &&
-    window.process.versions &&
-    Boolean(window.process.versions.electron)
-  );
-};
-
-const host = import.meta.env.DEV ? "localhost:5151" : window.location.host;
-
-export const port = isElectron()
-  ? parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151
-  : parseInt(window.location.port);
-
-export const getURL = () => {
-  return isElectron()
-    ? `http://localhost:${port}`
-    : window.location.protocol + "//" + host;
-};
-
 export const getMimeType = (sample: any) => {
   return (
     (sample.metadata && sample.metadata.mime_type) ||
     mime.getType(sample.filepath) ||
     "image/jpg"
   );
-};
-
-export const formatDateTime = (timeStamp: number, timeZone: string): string => {
-  const twoDigit = "2-digit";
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone,
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-    hour: twoDigit,
-    minute: twoDigit,
-    second: twoDigit,
-  };
-
-  if (!(timeStamp % S)) {
-    delete options.second;
-  }
-
-  if (!(timeStamp % M)) {
-    delete options.minute;
-  }
-
-  if (!(timeStamp % H)) {
-    delete options.hour;
-  }
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
-};
-
-export const formatDate = (timeStamp: number): string => {
-  const twoDigit = "2-digit";
-
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone: "UTC",
-    year: "numeric",
-    day: twoDigit,
-    month: twoDigit,
-  };
-
-  return new Intl.DateTimeFormat("en-ZA", options)
-    .format(timeStamp)
-    .replaceAll("/", "-");
 };
 
 export const isFloatArray = (arr) =>

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import { MARGIN } from "./constants";
@@ -42,11 +42,17 @@ export default class SectionElement implements Section {
         { aspectRatio, extraMargins },
         items.map((itemData) => {
           const itemElement = document.createElement("div");
-          onItemClick &&
+
+          if (onItemClick) {
             itemElement.addEventListener("click", (event) => {
               event.preventDefault();
               onItemClick(event, itemData.id);
             });
+            itemElement.addEventListener("contextmenu", (event) => {
+              onItemClick(event, itemData.id);
+            });
+          }
+
           this.section.appendChild(itemElement);
           return [itemElement, itemData];
         }),

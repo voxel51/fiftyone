@@ -1,25 +1,22 @@
 """
 Open Images-style detection evaluation.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import defaultdict
-import copy
+from copy import deepcopy
 
 import numpy as np
 
 import fiftyone.core.plots as fop
+import fiftyone.utils.iou as foui
 
 from .detection import (
     DetectionEvaluation,
     DetectionEvaluationConfig,
     DetectionResults,
-)
-from .utils import (
-    compute_ious,
-    make_iscrowd_fcn,
 )
 
 
@@ -154,7 +151,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 "Open Images evaluation"
             )
 
-    def evaluate_image(self, sample_or_frame, eval_key=None):
+    def evaluate(self, sample_or_frame, eval_key=None):
         """Performs Open Images-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
@@ -170,7 +167,7 @@ class OpenImagesEvaluation(DetectionEvaluation):
         it.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
+            sample_or_frame: a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.frame.Frame`
             eval_key (None): the evaluation key for this evaluation
 
@@ -211,7 +208,12 @@ class OpenImagesEvaluation(DetectionEvaluation):
             preds = _copy_labels(preds)
 
         return _open_images_evaluation_single_iou(
-            gts, preds, eval_key, self.config, pos_labs, neg_labs,
+            gts,
+            preds,
+            eval_key,
+            self.config,
+            pos_labs,
+            neg_labs,
         )
 
     def generate_results(
@@ -241,81 +243,16 @@ class OpenImagesEvaluation(DetectionEvaluation):
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
 
-        class_matches = {}
-
-        if classes is None:
-            _classes = set()
-        else:
-            _classes = None
-
-        # For crowds, GTs are only counted once
-        counted_gts = []
-
-        # Sort matches
-        for m in matches:
-            # m = (gt_label, pred_label, iou, confidence, gt.id, pred.id)
-            if _classes is not None:
-                _classes.add(m[0])
-                _classes.add(m[1])
-
-            c = m[0] if m[0] is not None else m[1]
-
-            if c not in class_matches:
-                class_matches[c] = {
-                    "tp": [],
-                    "fp": [],
-                    "num_gt": 0,
-                }
-
-            if m[0] == m[1]:
-                class_matches[c]["tp"].append(m)
-            elif m[1]:
-                class_matches[c]["fp"].append(m)
-
-            if m[0] and m[4] not in counted_gts:
-                class_matches[c]["num_gt"] += 1
-                counted_gts.append(m[4])
-
-        if _classes is not None:
-            _classes.discard(None)
-            classes = sorted(_classes)
-
-        # Compute precision-recall array
-        precision = {}
-        recall = {}
-        for c in class_matches.keys():
-            tp = class_matches[c]["tp"]
-            fp = class_matches[c]["fp"]
-            num_gt = class_matches[c]["num_gt"]
-            if num_gt == 0:
-                continue
-
-            tp_fp = [1] * len(tp) + [0] * len(fp)
-            confs = [p[3] for p in tp] + [p[3] for p in fp]
-            inds = np.argsort(confs)[::-1]
-            tp_fp = np.array(tp_fp)[inds]
-            tp_sum = np.cumsum(tp_fp).astype(dtype=float)
-            total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
-
-            pre = tp_sum / total
-            rec = tp_sum / num_gt
-
-            rec = np.concatenate([[0], rec, [1]])
-            pre = np.concatenate([[0], pre, [0]])
-
-            # Ensure precision is non decreasing
-            for i in range(len(pre) - 1, 0, -1):
-                if pre[i] > pre[i - 1]:
-                    pre[i - 1] = pre[i]
-
-            precision[c] = pre
-            recall[c] = rec
+        precision, recall, thresholds, classes = _compute_pr_curves(
+            matches, classes=classes
+        )
 
         return OpenImagesDetectionResults(
             matches,
             precision,
             recall,
             classes,
+            thresholds=thresholds,
             eval_key=eval_key,
             missing=missing,
             gt_field=gt_field,
@@ -332,9 +269,10 @@ class OpenImagesDetectionResults(DetectionResults):
             ``(gt_label, pred_label, iou, pred_confidence, gt_id, pred_id)``
             matches. Either label can be ``None`` to indicate an unmatched
             object
-        precision: a dict of precision values per class
-        recall: a dict of recall values per class
+        precision: a dict of per-class precision values
+        recall: a dict of per-class recall values
         classes: the list of possible classes
+        thresholds (None): an optional dict of per-class decision thresholds
         eval_key (None): the evaluation key for this evaluation
         gt_field (None): the name of the ground truth field
         pred_field (None): the name of the predictions field
@@ -350,6 +288,7 @@ class OpenImagesDetectionResults(DetectionResults):
         precision,
         recall,
         classes,
+        thresholds=None,
         eval_key=None,
         gt_field=None,
         pred_field=None,
@@ -368,31 +307,27 @@ class OpenImagesDetectionResults(DetectionResults):
 
         self.precision = precision
         self.recall = recall
+        self.thresholds = thresholds
+
         self._classwise_AP = {}
         for c in classes:
             if c in precision and c in recall:
-                r = recall[c]
-                p = precision[c]
-                ap = self._compute_class_AP(p, r)
+                ap = _compute_AP(precision[c], recall[c])
             else:
                 ap = -1
+
             self._classwise_AP[c] = ap
 
-    def _compute_class_AP(self, precision, recall):
-        recall = np.array(recall)
-        precision = np.array(precision)
-        indices = np.where(recall[1:] != recall[:-1])[0] + 1
-        average_precision = np.sum(
-            (recall[indices] - recall[indices - 1]) * precision[indices]
-        )
-        return average_precision
-
-    def plot_pr_curves(self, classes=None, backend="plotly", **kwargs):
+    def plot_pr_curves(
+        self, classes=None, num_points=101, backend="plotly", **kwargs
+    ):
         """Plots precision-recall (PR) curves for the detection results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
-                default, top 3 AP classes will be plotted
+                default, the top 3 AP classes will be plotted
+            num_points (101): the number of linearly spaced recall values to
+                plot
             backend ("plotly"): the plotting backend to use. Supported values
                 are ``("plotly", "matplotlib")``
             **kwargs: keyword arguments for the backend plotting method:
@@ -408,44 +343,46 @@ class OpenImagesDetectionResults(DetectionResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        if not classes:
-            c_ap = [(ap, c) for c, ap in self._classwise_AP.items()]
-            classes = [c for ap, c in sorted(c_ap)[-3:]]
+        if classes is not None:
+            self._validate_classes(classes)
+        else:
+            classwise_AP = [(ap, c) for c, ap in self._classwise_AP.items()]
+            classes = [c for ap, c in sorted(classwise_AP)[-3:]]
 
         precisions = []
         recall = None
-        _classes = []
-        for c in classes:
-            if c in self.recall and c in self.precision:
-                r = self.recall[c]
-                p = self.precision[c]
-                pre, rec = self._interpolate_pr(p, r)
-                precisions.append(pre)
-                if recall is None:
-                    recall = rec
 
-                _classes.append(c)
+        has_thresholds = self.thresholds is not None
+        thresholds = [] if has_thresholds else None
+
+        for c in classes:
+            p = self.precision.get(c, None)
+            r = self.recall.get(c, None)
+            if has_thresholds:
+                t = self.thresholds.get(c, None)
+            else:
+                t = None
+
+            pre, rec, thr = _interpolate_pr(
+                p, r, thresholds=t, num_points=num_points
+            )
+
+            precisions.append(pre)
+
+            if recall is None:
+                recall = rec
+
+            if has_thresholds:
+                thresholds.append(thr)
 
         return fop.plot_pr_curves(
-            precisions, recall, _classes, backend=backend, **kwargs
+            precisions,
+            recall,
+            classes,
+            thresholds=thresholds,
+            backend=backend,
+            **kwargs,
         )
-
-    def _interpolate_pr(self, precision, recall, npts=101):
-        interp_pre = copy.deepcopy(precision)
-        rec = np.linspace(0, 1, npts)
-        q = np.zeros(101)
-        for i in range(len(interp_pre) - 1, 0, -1):
-            if interp_pre[i] > interp_pre[i - 1]:
-                interp_pre[i - 1] = interp_pre[i]
-
-        inds = np.searchsorted(recall, rec, side="left")
-        try:
-            for ri, pi in enumerate(inds):
-                q[ri] = interp_pre[pi]
-        except:
-            pass
-
-        return q, rec
 
     def mAP(self, classes=None):
         """Computes Open Images-style mean average precision (mAP) for the
@@ -461,10 +398,8 @@ class OpenImagesDetectionResults(DetectionResults):
             the mAP in ``[0, 1]``
         """
         if classes is not None:
-            classwise_AP = []
-            for c in classes:
-                if c in self._classwise_AP:
-                    classwise_AP.append(self._classwise_AP[c])
+            self._validate_classes(classes)
+            classwise_AP = [self._classwise_AP[c] for c in classes]
         else:
             classwise_AP = list(self._classwise_AP.values())
 
@@ -475,14 +410,23 @@ class OpenImagesDetectionResults(DetectionResults):
 
         return np.mean(classwise_AP)
 
+    def _validate_classes(self, classes):
+        missing_classes = set(classes) - set(self.classes)
+        if missing_classes:
+            raise ValueError("Classes %s not found" % missing_classes)
+
     @classmethod
     def _from_dict(cls, d, samples, config, **kwargs):
+        precision = d["precision"]
+        recall = d["recall"]
+        thresholds = d.get("thresholds", None)
         return super()._from_dict(
             d,
             samples,
             config,
-            precision=d["precision"],
-            recall=d["recall"],
+            precision=precision,
+            recall=recall,
+            thresholds=thresholds,
             **kwargs,
         )
 
@@ -508,7 +452,7 @@ def _expand_detection_hierarchy(cats, obj, config, label_type):
     keyed_children = config._hierarchy_keyed_child
     for parent in keyed_children[obj.label]:
         new_obj = obj.copy()
-        new_obj._id = obj._id  # we need ID to stay the same
+        new_obj.id = obj.id  # we need ID to stay the same
         new_obj.label = parent
         cats[parent][label_type].append(new_obj)
 
@@ -554,7 +498,7 @@ def _open_images_evaluation_setup(
     else:
         relevant_labs = list(set(pos_labs + neg_labs))
 
-    iscrowd = make_iscrowd_fcn(config.iscrowd)
+    iscrowd = lambda l: bool(l.get_attribute_value(config.iscrowd, False))
     classwise = config.classwise
 
     iou_kwargs = dict(iscrowd=iscrowd, error_level=config.error_level)
@@ -611,7 +555,7 @@ def _open_images_evaluation_setup(
         gts = sorted(gts, key=iscrowd)
 
         # Compute ``num_preds x num_gts`` IoUs
-        ious = compute_ious(preds, gts, **iou_kwargs)
+        ious = foui.compute_ious(preds, gts, **iou_kwargs)
 
         gt_ids = [g.id for g in gts]
         for pred, gt_ious in zip(preds, ious):
@@ -626,7 +570,7 @@ def _compute_matches(
     matches = []
 
     # For efficient rounding
-    p_round = 10 ** 10
+    p_round = 10**10
 
     # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
@@ -750,6 +694,123 @@ def _compute_matches(
     return matches
 
 
+def _compute_pr_curves(matches, classes=None):
+    if classes is None:
+        _classes = set()
+
+    class_matches = {}
+
+    # For crowds, GTs are only counted once
+    counted_gts = []
+
+    # Sort matches
+    for m in matches:
+        # m = (gt_label, pred_label, iou, confidence, gt.id, pred.id)
+        if classes is None:
+            _classes.add(m[0])
+            _classes.add(m[1])
+
+        c = m[0] if m[0] is not None else m[1]
+
+        if c not in class_matches:
+            class_matches[c] = {
+                "tp": [],
+                "fp": [],
+                "num_gt": 0,
+            }
+
+        if m[0] == m[1]:
+            class_matches[c]["tp"].append(m)
+        elif m[1]:
+            class_matches[c]["fp"].append(m)
+
+        if m[0] and m[4] not in counted_gts:
+            class_matches[c]["num_gt"] += 1
+            counted_gts.append(m[4])
+
+    if classes is None:
+        _classes.discard(None)
+        classes = sorted(_classes)
+
+    # Compute precision-recall array
+    precision = {}
+    recall = {}
+    thresholds = {}
+    for c in class_matches.keys():
+        tp = class_matches[c]["tp"]
+        fp = class_matches[c]["fp"]
+        num_gt = class_matches[c]["num_gt"]
+        if num_gt == 0:
+            continue
+
+        tp_fp = np.array([1] * len(tp) + [0] * len(fp))
+        confs = np.array([p[3] for p in tp] + [p[3] for p in fp])
+
+        inds = np.argsort(-confs)
+        tp_fp = tp_fp[inds]
+        confs = confs[inds]
+
+        tp_sum = np.cumsum(tp_fp).astype(dtype=float)
+        total = np.arange(1, len(tp_fp) + 1).astype(dtype=float)
+
+        pre = tp_sum / total
+        rec = tp_sum / num_gt
+
+        pre0 = pre[0] if pre.size > 0 else 1
+        conf0 = max(1, confs[0]) if confs.size > 0 else 1
+
+        pre = np.concatenate([[pre0], pre, [0]])
+        confs = np.concatenate([[conf0], confs, [0]])
+        rec = np.concatenate([[0], rec, [1]])
+
+        # Ensure precision is nondecreasing
+        for i in range(len(pre) - 1, 0, -1):
+            if pre[i] > pre[i - 1]:
+                pre[i - 1] = pre[i]
+
+        precision[c] = pre
+        recall[c] = rec
+        thresholds[c] = confs
+
+    return precision, recall, thresholds, classes
+
+
+def _compute_AP(precision, recall):
+    recall = np.asarray(recall)
+    precision = np.asarray(precision)
+    inds = np.where(recall[1:] != recall[:-1])[0] + 1
+    return np.sum((recall[inds] - recall[inds - 1]) * precision[inds])
+
+
+def _interpolate_pr(precision, recall, thresholds=None, num_points=101):
+    has_thresholds = thresholds is not None
+
+    pre = np.zeros(num_points)
+    thr = np.zeros(num_points) if has_thresholds else None
+    rec = np.linspace(0, 1, num_points)
+
+    if precision is None or recall is None:
+        return pre, rec, thr
+
+    # Ensure precision is nondecreasing
+    precision = precision.copy()
+    for i in range(len(precision) - 1, 0, -1):
+        if precision[i] > precision[i - 1]:
+            precision[i - 1] = precision[i]
+
+    inds = np.searchsorted(recall, rec, side="left")
+
+    try:
+        for ri, pi in enumerate(inds):
+            pre[ri] = precision[pi]
+            if has_thresholds:
+                thr[ri] = thresholds[pi]
+    except:
+        pass
+
+    return pre, rec, thr
+
+
 def _copy_labels(labels):
     if labels is None:
         return None
@@ -759,7 +820,7 @@ def _copy_labels(labels):
 
     # We need the IDs to stay the same
     for _label, label in zip(_labels[field], labels[field]):
-        _label._id = label._id
+        _label.id = label.id
 
     return _labels
 
@@ -810,7 +871,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
             all_children.update(children)
 
     if not skip_root:
-        all_keyed_parent[hierarchy["LabelName"]] = copy.deepcopy(all_children)
+        all_keyed_parent[hierarchy["LabelName"]] = deepcopy(all_children)
         all_children.add(hierarchy["LabelName"])
         for child, _ in all_keyed_child.items():
             all_keyed_child[child].add(hierarchy["LabelName"])

@@ -1,7 +1,7 @@
 """
 Aggregations.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -145,12 +145,16 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if self._field_name is not None:
-            return _is_frame_path(sample_collection, self._field_name)
+        if sample_collection.media_type != fom.VIDEO:
+            return False
 
-        if self._expr is not None:
-            field_name, _ = _extract_prefix_from_expr(self._expr)
-            return _is_frame_path(sample_collection, field_name)
+        if self._field_name is not None:
+            expr = F(self._field_name)
+        else:
+            expr = self._expr
+
+        if expr is not None:
+            return foe.is_frames_expr(expr)
 
         return False
 
@@ -414,8 +418,11 @@ class Count(Aggregation):
             floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None, safe=False):
+    def __init__(
+        self, field_or_expr=None, expr=None, safe=False, _unwind=True
+    ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._unwind = _unwind
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -445,6 +452,7 @@ class Count(Aggregation):
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            unwind=self._unwind,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
@@ -552,6 +560,8 @@ class CountValues(Aggregation):
         _sort_by="count",
         _asc=True,
         _include=None,
+        _search="",
+        _selected=[],
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
@@ -559,6 +569,8 @@ class CountValues(Aggregation):
         self._order = 1 if _asc else -1
         self._include = _include
         self._field_type = None
+        self._search = _search
+        self._selected = _selected
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -586,11 +598,15 @@ class CountValues(Aggregation):
             p = lambda x: x
 
         if self._first is not None:
+            count = d["count"]
+            if not count:
+                return (0, [])
+
             return (
-                d["count"],
+                count[0]["count"],
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"]
+                    for i in d["result"][0]["result"]
                     if i["k"] is not None
                 ],
             )
@@ -616,33 +632,62 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first is not None:
-            sort = OrderedDict()
-            limit = self._first
+        if self._first is None:
+            return pipeline + [
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    }
+                }
+            ]
 
-            if self._include is not None:
-                limit = max(limit, len(self._include))
-                pipeline += [
-                    {"$set": {"included": {"$in": ["$_id", self._include]}}},
-                ]
-                sort["included"] = -1
+        if self._search or self._selected:
+            pipeline += [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$not": {"$in": ["$_id", self._selected]}},
+                                {
+                                    "$regexMatch": {
+                                        "input": "$_id",
+                                        "regex": self._search,
+                                        "options": None,
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                }
+            ]
 
-            sort[self._sort_by] = self._order
-            sort["count" if self._sort_by != "count" else "_id"] = self._order
+        sort = OrderedDict()
+        limit = self._first
 
-            pipeline += [{"$sort": sort}, {"$limit": limit}]
+        if self._include is not None:
+            limit = max(limit, len(self._include))
+            pipeline += [
+                {"$set": {"included": {"$in": ["$_id", self._include]}}},
+            ]
+            sort["included"] = -1
 
-        pipeline += [
+        sort[self._sort_by] = self._order
+        sort["count" if self._sort_by != "count" else "_id"] = self._order
+        result = [
+            {"$sort": sort},
+            {"$limit": limit},
             {
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
-                    "count": {"$sum": 1},
                 }
             },
         ]
 
-        return pipeline
+        return pipeline + [
+            {"$facet": {"count": [{"$count": "count"}], "result": result}}
+        ]
 
 
 class Distinct(Aggregation):
@@ -1344,7 +1389,7 @@ class Schema(Aggregation):
                 except:
                     pass
 
-            field_type = sample_collection._get_field_type(field_name)
+            field_type = _get_field_type(sample_collection, field_name)
             if isinstance(field_type, fof.ListField):
                 field_type = field_type.field
 
@@ -1779,9 +1824,10 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._field_type is not None:
-            fcn = self._field_type.to_python
+        if self._field is not None:
+            fcn = self._field.to_python
             level = 1 + self._num_list_fields
+
             return _transform_values(values, fcn, level=level)
 
         return values
@@ -1792,7 +1838,7 @@ class Values(Aggregation):
             pipeline,
             list_fields,
             id_to_str,
-            field_type,
+            field,
         ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
@@ -1802,7 +1848,7 @@ class Values(Aggregation):
         )
 
         self._big_field = big_field
-        self._field_type = field_type
+        self._field = field
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -1830,16 +1876,6 @@ _MONGO_TO_FIFTYONE_TYPES = {
     "object": fof.DictField,
     "objectId": fof.ObjectIdField,
 }
-
-
-def _is_frame_path(sample_collection, field_name):
-    if not field_name:
-        return False
-
-    # Remove array references
-    path = "".join(field_name.split("[]"))
-
-    return sample_collection._is_frame_field(path)
 
 
 def _transform_values(values, fcn, level=1):
@@ -1917,11 +1953,16 @@ def _parse_field_and_expr(
     if field_name is None:
         field_name, expr = _extract_prefix_from_expr(expr)
 
-    found_expr = expr is not None
+    if field_name is None:
+        root = True
+        field_type = None
+    else:
+        root = "." not in field_name
+        field_type = _get_field_type(
+            sample_collection, field_name, unwind=auto_unwind
+        )
 
-    field_type = _get_field_type(
-        sample_collection, field_name, unwind=auto_unwind
-    )
+    found_expr = expr is not None
 
     if safe:
         expr = _to_safe_expr(expr, field_type)
@@ -1967,9 +2008,12 @@ def _parse_field_and_expr(
 
     if keep_top_level:
         if is_frame_field:
-            path = "frames." + path
-            unwind_list_fields = ["frames." + f for f in unwind_list_fields]
-            other_list_fields = ["frames." + f for f in other_list_fields]
+            if not root:
+                prefix = "frames."
+                path = prefix + path
+                unwind_list_fields = [prefix + f for f in unwind_list_fields]
+                other_list_fields = [prefix + f for f in other_list_fields]
+
             other_list_fields.insert(0, "frames")
         elif unwind_list_fields:
             first_field = unwind_list_fields.pop(0)
@@ -1978,13 +2022,14 @@ def _parse_field_and_expr(
         pipeline.append({"$project": {path: True}})
     elif auto_unwind:
         if is_frame_field:
-            pipeline.extend(
-                [
-                    {"$unwind": "$frames"},
-                    {"$project": {"frames." + path: True}},
-                    {"$replaceRoot": {"newRoot": "$frames"}},
-                ]
-            )
+            pipeline.append({"$unwind": "$frames"})
+            if not root:
+                pipeline.extend(
+                    [
+                        {"$project": {"frames." + path: True}},
+                        {"$replaceRoot": {"newRoot": "$frames"}},
+                    ]
+                )
         else:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
@@ -2163,7 +2208,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(field_name)
+    field_type = sample_collection.get_field(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):

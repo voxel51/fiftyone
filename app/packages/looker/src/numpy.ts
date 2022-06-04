@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2021, Voxel51, Inc.
+ * Copyright 2017-2022, Voxel51, Inc.
  */
 
 import pako from "./pako.js";
@@ -135,6 +135,10 @@ function parse(array: Uint8Array): NumpyResult {
       .replace(/,}/, "}")
       .replace(/,\]/, "]")
   );
+
+  if (header.fortran_order) {
+    throw new Error(`Fortran order arrays are not supported"`);
+  }
 
   const ArrayType = DATA_TYPES[header.descr];
 

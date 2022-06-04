@@ -1,22 +1,28 @@
-import { selector, useRecoilCallback } from "recoil";
+import { getFetchOrigin } from "@fiftyone/utilities";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { selector, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as atoms from "./atoms";
-import * as selectors from "./selectors";
+import * as viewAtoms from "./view";
+import { useUnprocessedStateUpdate } from "../utils/hooks";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { http } from "../shared/connection";
+type LookerTypes = typeof FrameLooker | typeof ImageLooker | typeof VideoLooker;
 
-type LookerTypes = typeof FrameLooker & typeof ImageLooker & typeof VideoLooker;
+export const getSampleSrc = (filepath: string, id: string, url?: string) => {
+  if (url) {
+    return url;
+  }
 
-export const getSampleSrc = (filepath: string, id: string) => {
-  return `${http}/filepath/${encodeURI(filepath)}?id=${id}`;
+  return `${getFetchOrigin()}/media?filepath=${encodeURIComponent(
+    filepath
+  )}&id=${id}`;
 };
 
 export const lookerType = selector<(mimetype: string) => LookerTypes>({
   key: "lookerType",
   get: ({ get }) => {
-    const isFrame = get(selectors.isFramesView);
-    const isPatch = get(selectors.isPatchesView);
+    const isFrame = get(viewAtoms.isFramesView);
+    const isPatch = get(viewAtoms.isPatchesView);
 
     return (mimetype) => {
       const video = mimetype.startsWith("video/");
@@ -33,19 +39,17 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
 });
 
 export const useClearModal = () => {
-  return useRecoilCallback(
-    ({ set, snapshot }) => async () => {
-      const fullscreen = await snapshot.getPromise(atoms.fullscreen);
+  return useRecoilTransaction_UNSTABLE(
+    ({ set, get }) => () => {
+      const fullscreen = get(atoms.fullscreen);
       if (fullscreen) {
         return;
       }
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
+      const currentOptions = get(atoms.savedLookerOptions);
       set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
-      set(atoms.modal, null);
-      set(selectors.selectedLabels, {});
+      set(atoms.selectedLabels, {});
       set(atoms.hiddenLabels, {});
+      set(atoms.modal, null);
     },
     []
   );

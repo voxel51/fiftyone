@@ -1,147 +1,8 @@
-import { atom, selector, selectorFamily } from "recoil";
-
-import * as selectors from "../../recoil/selectors";
-import { isLabelField } from "./LabelFieldFilters.state";
-import { isBooleanField } from "./BooleanFieldFilter.state";
-import { isNumericField } from "./NumericFieldFilter.state";
-import { isStringField } from "./StringFieldFilter.state";
-
-export const unsupportedFields = selector<string[]>({
-  key: "unsupportedFields",
-  get: ({ get }) => {
-    const fields = get(selectors.fieldPaths);
-    return fields.filter(
-      (f) =>
-        !f.startsWith("frames.") &&
-        !get(isLabelField(f)) &&
-        !get(isNumericField(f)) &&
-        !get(isStringField(f)) &&
-        !get(isBooleanField(f)) &&
-        !["metadata", "tags"].includes(f) &&
-        !get(selectors.primitiveNames("sample")).includes(f)
-    );
-  },
-});
-
-export const activeFields = atom<string[]>({
-  key: "activeFields",
-  default: selectors.labelPaths,
-});
-
-export const activeModalFields = atom<string[]>({
-  key: "activeModalFields",
-  default: [],
-});
-
-export const activeLabels = selectorFamily<
-  string[],
-  { modal: boolean; frames: boolean }
->({
-  key: "activeLabels",
-  get: ({ modal, frames }) => ({ get }) => {
-    const paths = get(selectors.labelPaths);
-    return get(modal ? activeModalFields : activeFields)
-      .filter((v) => paths.includes(v))
-      .filter((v) =>
-        frames ? v.startsWith("frames.") : !v.startsWith("frames.")
-      );
-  },
-  set: ({ modal, frames }) => ({ get, set }, value) => {
-    if (Array.isArray(value)) {
-      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
-        get(isLabelField(v)) &&
-        (frames ? v.startsWith("frames.") : !v.startsWith("frames."))
-          ? value.includes(v)
-          : true
-      );
-
-      if (value.length) {
-        active = [value[0], ...active.filter((v) => v !== value[0])];
-      }
-      set(modal ? activeModalFields : activeFields, active);
-    }
-  },
-});
-
-export const activeLabelPaths = selectorFamily<string[], boolean>({
-  key: "activeLabelPaths",
-  get: (modal) => ({ get }) => {
-    const sample = get(activeLabels({ modal, frames: false }));
-    const frames = get(activeLabels({ modal, frames: true }));
-
-    return [...sample, ...frames];
-  },
-});
-
-export const activeScalars = selectorFamily<string[], boolean>({
-  key: "activeScalars",
-  get: (modal) => ({ get }) => {
-    const scalars = get(selectors.primitiveNames("sample"));
-    return get(modal ? activeModalFields : activeFields).filter((v) =>
-      scalars.includes(v)
-    );
-  },
-  set: (modal) => ({ get, set }, value) => {
-    if (modal) {
-      return [];
-    }
-    if (Array.isArray(value)) {
-      const scalars = get(selectors.primitiveNames("sample"));
-      const prevActiveScalars = get(activeScalars(modal));
-      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
-        scalars.includes(v) ? value.includes(v) : true
-      );
-      if (value.length && prevActiveScalars.length < value.length) {
-        active = [value[0], ...active.filter((v) => v !== value[0])];
-      }
-      set(modal ? activeModalFields : activeFields, active);
-    }
-  },
-});
-
-export const activeTags = selectorFamily<string[], boolean>({
-  key: "activeTags",
-  get: (modal) => ({ get }) => {
-    return get(modal ? activeModalFields : activeFields)
-      .filter((t) => t.startsWith("tags."))
-      .map((t) => t.slice(5));
-  },
-  set: (modal) => ({ get, set }, value) => {
-    if (Array.isArray(value)) {
-      const tags = value.map((v) => "tags." + v);
-      const prevActiveTags = get(activeTags(modal));
-      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
-        v.startsWith("tags.") ? tags.includes(v) : true
-      );
-      if (tags.length && prevActiveTags.length < tags.length) {
-        active = [tags[0], ...active.filter((v) => v !== tags[0])];
-      }
-      set(modal ? activeModalFields : activeFields, active);
-    }
-  },
-});
-
-export const activeLabelTags = selectorFamily<string[], boolean>({
-  key: "activeLabelTags",
-  get: (modal) => ({ get }) => {
-    return get(modal ? activeModalFields : activeFields)
-      .filter((t) => t.startsWith("_label_tags."))
-      .map((t) => t.slice("_label_tags.".length));
-  },
-  set: (modal) => ({ get, set }, value) => {
-    if (Array.isArray(value)) {
-      const tags = value.map((v) => "_label_tags." + v);
-      const prevActiveTags = get(activeLabelTags(modal));
-      let active = get(modal ? activeModalFields : activeFields).filter((v) =>
-        v.startsWith("_label_tags.") ? tags.includes(v) : true
-      );
-      if (tags.length && prevActiveTags.length < tags.length) {
-        active = [tags[0], ...active.filter((v) => v !== tags[0])];
-      }
-      set(modal ? activeModalFields : activeFields, active);
-    }
-  },
-});
+import { selectorFamily } from "recoil";
+import { Nonfinite } from "../../recoil/aggregations";
+import { filters, modalFilters } from "../../recoil/filters";
+import { expandPath } from "../../recoil/schema";
+import { Range } from "../Common/RangeSlider";
 
 const NONSTRING_VALUES: any[] = [false, true, null];
 const STRING_VALUES = ["False", "True", "None"];
@@ -165,3 +26,80 @@ export const getValueString = (value): [string, boolean] => {
 
   return [value as string, false];
 };
+
+export interface NumericFilter {
+  range: Range;
+  none: boolean;
+  nan: boolean;
+  ninf: boolean;
+  inf: boolean;
+  exclude: boolean;
+  _CLS: string;
+}
+
+interface Point {
+  points: [number | Nonfinite, number | Nonfinite];
+  label: string;
+  confidence?: number | Nonfinite;
+  [key: string]: any;
+}
+
+export interface StringFilter {
+  values: string[];
+  exclude: boolean;
+  _CLS: "str";
+}
+
+export const skeletonFilter = selectorFamily<
+  (path: string, value: Point) => boolean,
+  boolean
+>({
+  key: "skeletonFilter",
+  get: (modal) => ({ get, getCallback }) => {
+    const f = get(modal ? modalFilters : filters);
+    return getCallback(({ snapshot }) => (path: string, value: Point) => {
+      path = snapshot.getLoadable(expandPath(path)).contents;
+      const labels = f[`${path}.points`] as StringFilter;
+
+      if (labels && labels.values.length && value.label) {
+        const included = labels.values.includes(value.label);
+        if (labels.exclude) {
+          if (included) {
+            return false;
+          }
+        } else if (!labels.exclude) {
+          if (!included) {
+            return false;
+          }
+        }
+      }
+
+      const confidence = f[`${path}.confidence`] as NumericFilter;
+
+      if (confidence) {
+        if (typeof value.confidence !== "number") {
+          switch (value.confidence) {
+            case "inf":
+              return confidence.inf ? !confidence.exclude : confidence.exclude;
+            case "ninf":
+              return confidence.ninf ? !confidence.exclude : confidence.exclude;
+            case "nan":
+              return confidence.nan ? !confidence.exclude : confidence.exclude;
+            case null:
+              return confidence.none ? !confidence.exclude : confidence.exclude;
+            case undefined:
+              return confidence.none ? !confidence.exclude : confidence.exclude;
+          }
+        }
+
+        const includes =
+          value.confidence >= confidence.range[0] &&
+          value.confidence <= confidence.range[1];
+
+        return includes ? !confidence.exclude : confidence.exclude;
+      }
+
+      return true;
+    });
+  },
+});

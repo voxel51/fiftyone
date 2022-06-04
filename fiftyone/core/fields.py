@@ -1,23 +1,25 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from datetime import date, datetime
+import numbers
 
-from bson import SON
+from bson import ObjectId, SON
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
 import pytz
-import six
 
 import eta.core.utils as etau
 
-import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
@@ -61,13 +63,27 @@ class Field(mongoengine.fields.BaseField):
 class IntField(mongoengine.fields.IntField, Field):
     """A 32 bit integer field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return int(value)
 
 
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return ObjectId(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return str(value)
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
@@ -115,6 +131,12 @@ class DateTimeField(mongoengine.fields.DateTimeField, Field):
 
 class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
+
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return float(value)
 
     def validate(self, value):
         try:
@@ -174,7 +196,13 @@ class HeatmapRangeField(ListField):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(field=FloatField(), null=True, **kwargs)
+        if "null" not in kwargs:
+            kwargs["null"] = True
+
+        if "field" not in kwargs:
+            kwargs["field"] = FloatField()
+
+        super().__init__(**kwargs)
 
     def __str__(self):
         return etau.get_class_name(self)
@@ -218,15 +246,15 @@ class DictField(mongoengine.fields.DictField, Field):
         return etau.get_class_name(self)
 
     def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Value must be a dict")
-
         if not all(map(lambda k: etau.is_str(k), value)):
             self.error("Dict fields must have string keys")
 
         if self.field is not None:
             for _value in value.values():
                 self.field.validate(_value)
+
+        if value is not None and not isinstance(value, dict):
+            self.error("Value must be a dict")
 
 
 class IntDictField(DictField):
@@ -256,7 +284,7 @@ class IntDictField(DictField):
         if not isinstance(value, dict):
             self.error("Value must be a dict")
 
-        if not all(map(lambda k: isinstance(k, six.integer_types), value)):
+        if not all(map(lambda k: isinstance(k, numbers.Integral), value)):
             self.error("Int dict fields must have integer keys")
 
         if self.field is not None:
@@ -557,7 +585,7 @@ class FrameSupportField(ListField):
 class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
 
-    If this field is not set, its default value is ``{}``.
+    If this field is not set, its default value is ``[]``.
     """
 
     def __init__(self, **kwargs):
@@ -590,11 +618,56 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             stored in this field
     """
 
+    def __init__(self, document_type, **kwargs):
+        super().__init__(document_type, **kwargs)
+        self._parent = None
+
+        self.fields = kwargs.get("fields", [])
+        self._validation_schema = None
+
     def __str__(self):
         return "%s(%s)" % (
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the embedded
+        document field.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                ``_`` in the returned schema
+
+        Returns:
+             an ``OrderedDict`` mapping field names to field types
+        """
+        fields = {}
+
+        for name, field in self.document_type._fields.items():
+            if not include_private and name.startswith("_"):
+                continue
+
+            if ftype and not isinstance(field, ftype):
+                continue
+
+            if embedded_doc_type and (
+                not isinstance(field, EmbeddedDocumentField)
+                or embedded_doc_type != field.document_type
+            ):
+                continue
+
+            fields[name] = field
+
+        return fields
 
 
 class EmbeddedDocumentListField(

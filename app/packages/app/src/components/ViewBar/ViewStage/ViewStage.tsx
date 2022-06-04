@@ -1,13 +1,13 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { animated, useSpring, config } from "react-spring";
+import { animated, useSpring, config } from "@react-spring/web";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";
-import ExternalLink from "../../ExternalLink";
+import { ExternalLink } from "../../../utils/generic";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import { getMatch } from "./utils";

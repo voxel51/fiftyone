@@ -1,7 +1,7 @@
 """
 Sphinx custom directives.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -57,7 +57,10 @@ class CustomCardItemDirective(Directive):
             )
 
             card_rst = template.format(
-                header=header, description=description, link=link, tags=tags,
+                header=header,
+                description=description,
+                link=link,
+                tags=tags,
             )
 
         card_list = StringList(card_rst.split("\n"))

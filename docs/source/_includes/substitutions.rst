@@ -58,6 +58,8 @@
 .. |CategoricalAttribute| replace:: :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>`
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
+.. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`
 
@@ -113,6 +115,7 @@
 .. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
 .. |COCOEvaluationConfig| replace:: :class:`COCOEvaluationConfig <fiftyone.utils.eval.coco.COCOEvaluationConfig>`
 .. |OpenImagesEvaluationConfig| replace:: :class:`OpenImagesEvaluationConfig <fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig>`
+.. |ActivityNetEvaluationConfig| replace:: :class:`ActivityNetEvaluationConfig <fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig>`
 
 .. |Plot| replace:: :class:`Plot <fiftyone.core.plots.base.Plot>`
 .. |ResponsivePlot| replace:: :class:`ResponsivePlot <fiftyone.core.plots.base.ResponsivePlot>`
@@ -126,3 +129,9 @@
 
 .. |InteractiveScatter| replace:: :class:`InteractiveScatter <fiftyone.core.plots.plotly.InteractiveScatter>`
 .. |InteractiveHeatmap| replace:: :class:`InteractiveHeatmap <fiftyone.core.plots.plotly.InteractiveHeatmap>`
+
+.. |AnnotationBackend| replace:: :class:`AnnotationBackend <fiftyone.utils.annotations.AnnotationBackend>`
+.. |AnnotationBackendConfig| replace:: :class:`AnnotationBackendConfig <fiftyone.utils.annotations.AnnotationBackendConfig>`
+
+.. |EmbeddedDocument| replace:: :class:`EmbeddedDocument <fiftyone.core.odm.document.EmbeddedDocument>`
+.. |DynamicEmbeddedDocument| replace:: :class:`DynamicEmbeddedDocument <fiftyone.core.odm.document.DynamicEmbeddedDocument>`

@@ -1,7 +1,7 @@
 """
 Label utilities.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -31,7 +31,7 @@ def objects_to_segmentations(
             :class:`fiftyone.core.labels.Polylines`
         out_field: the name of the :class:`fiftyone.core.labels.Segmentation`
             field to populate
-        frame_size (None): the ``(width, height)`` at which to render the
+        mask_size (None): the ``(width, height)`` at which to render the
             segmentation masks. If not provided, masks will be rendered to
             match the resolution of each input image
         mask_targets (None): a dict mapping integer pixel values in
@@ -41,49 +41,64 @@ def objects_to_segmentations(
         thickness (1): the thickness, in pixels, at which to render
             (non-filled) polylines
     """
-    fov.validate_image_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
         (fol.Detection, fol.Detections, fol.Polyline, fol.Polylines),
     )
 
-    for sample in sample_collection.iter_samples(progress=True):
+    if mask_size is None:
+        sample_collection.compute_metadata()
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
+
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
         if mask_size is not None:
             frame_size = mask_size
+        elif processing_frames:
+            frame_size = (
+                sample.metadata.frame_width,
+                sample.metadata.frame_height,
+            )
         else:
-            if sample.metadata is None:
-                sample.compute_metadata()
-
             frame_size = (sample.metadata.width, sample.metadata.height)
 
-        label = sample[in_field]
-        if label is None:
-            continue
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
 
-        segmentation = None
+            segmentation = None
 
-        if isinstance(label, fol.Polyline):
-            label = fol.Polylines(polylines=[label])
+            if isinstance(label, fol.Polyline):
+                label = fol.Polylines(polylines=[label])
 
-        if isinstance(label, fol.Detection):
-            label = fol.Detections(detections=[label])
+            if isinstance(label, fol.Detection):
+                label = fol.Detections(detections=[label])
 
-        if isinstance(label, fol.Polylines):
-            segmentation = label.to_segmentation(
-                frame_size=frame_size,
-                mask_targets=mask_targets,
-                thickness=thickness,
-            )
+            if isinstance(label, fol.Polylines):
+                segmentation = label.to_segmentation(
+                    frame_size=frame_size,
+                    mask_targets=mask_targets,
+                    thickness=thickness,
+                )
 
-        if isinstance(label, fol.Detections):
-            segmentation = label.to_segmentation(
-                frame_size=frame_size, mask_targets=mask_targets,
-            )
+            if isinstance(label, fol.Detections):
+                segmentation = label.to_segmentation(
+                    frame_size=frame_size,
+                    mask_targets=mask_targets,
+                )
 
-        if segmentation is not None:
-            sample[out_field] = segmentation
-            sample.save()
+            image[out_field] = segmentation
+
+        sample.save()
 
     if mask_targets is not None:
         if not sample_collection.default_mask_targets:
@@ -132,9 +147,10 @@ def segmentations_to_detections(
             -   a dict mapping pixel values to ``"stuff"`` or ``"thing"``
                 for each class
     """
-    fov.validate_image_collection(sample_collection)
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Segmentation,
+        sample_collection,
+        in_field,
+        fol.Segmentation,
     )
 
     if mask_targets is None:
@@ -143,14 +159,74 @@ def segmentations_to_detections(
         elif sample_collection.default_mask_targets:
             mask_targets = sample_collection.default_mask_targets
 
-    for sample in sample_collection.iter_samples(progress=True):
-        label = sample[in_field]
-        if label is None:
-            continue
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
 
-        sample[out_field] = label.to_detections(
-            mask_targets=mask_targets, mask_types=mask_types
-        )
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            image[out_field] = label.to_detections(
+                mask_targets=mask_targets, mask_types=mask_types
+            )
+
+        sample.save()
+
+
+def instances_to_polylines(
+    sample_collection, in_field, out_field, tolerance=2, filled=True
+):
+    """Converts the instance segmentations in the specified field of the
+    collection into :class:`fiftyone.core.labels.Polylines` instances.
+
+    For detections with masks, the returned polylines will trace the boundaries
+    of the masks; otherwise, the polylines will trace the bounding boxes
+    themselves.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field to convert
+        out_field: the name of the :class:`fiftyone.core.labels.Polylines`
+            field to populate
+        tolerance (2): a tolerance, in pixels, when generating approximate
+            polylines for each region. Typical values are 1-3 pixels
+        filled (True): whether the polylines should be filled
+    """
+    fov.validate_collection_label_fields(
+        sample_collection,
+        in_field,
+        fol.Detections,
+    )
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
+
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            image[out_field] = label.to_polylines(
+                tolerance=tolerance, filled=filled
+            )
+
         sample.save()
 
 
@@ -196,9 +272,10 @@ def segmentations_to_polylines(
         tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
     """
-    fov.validate_image_collection(sample_collection)
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Segmentation,
+        sample_collection,
+        in_field,
+        fol.Segmentation,
     )
 
     if mask_targets is None:
@@ -207,16 +284,27 @@ def segmentations_to_polylines(
         elif sample_collection.default_mask_targets:
             mask_targets = sample_collection.default_mask_targets
 
-    for sample in sample_collection.iter_samples(progress=True):
-        label = sample[in_field]
-        if label is None:
-            continue
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
 
-        sample[out_field] = label.to_polylines(
-            mask_targets=mask_targets,
-            mask_types=mask_types,
-            tolerance=tolerance,
-        )
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            image[out_field] = label.to_polylines(
+                mask_targets=mask_targets,
+                mask_types=mask_types,
+                tolerance=tolerance,
+            )
+
         sample.save()
 
 
@@ -233,21 +321,30 @@ def classification_to_detections(sample_collection, in_field, out_field):
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
     """
-    fov.validate_image_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
     )
 
     samples = sample_collection.select_fields(in_field)
-    for sample in samples.iter_samples(progress=True):
-        classification = sample[in_field]
-        if classification is None:
-            continue
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
 
-        detection = fol.Detection(
-            label=classification.label,
-            bounding_box=[0, 0, 1, 1],  # entire image
-            confidence=classification.confidence,
-        )
-        sample[out_field] = fol.Detections(detections=[detection])
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            label = image[in_field]
+            if label is None:
+                continue
+
+            detection = fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],  # entire image
+                confidence=label.confidence,
+            )
+            image[out_field] = fol.Detections(detections=[detection])
+
         sample.save()

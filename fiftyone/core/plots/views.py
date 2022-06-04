@@ -1,7 +1,7 @@
 """
 Plotly-powered view plots.
 
-| Copyright 2017-2021, Voxel51, Inc.
+| Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -305,7 +305,10 @@ class CategoricalHistogram(PlotlyViewPlot):
                 counts = agg_results[0]
             else:
                 counts = view.aggregate(self._aggregations[0])
+        else:
+            counts = None
 
+        if counts:
             keys, values = zip(
                 *sorted(counts.items(), key=self._order, reverse=self._reverse)
             )
