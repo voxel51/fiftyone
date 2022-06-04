@@ -239,10 +239,12 @@ class DatasetMixin(object):
     @classmethod
     def merge_field_schema(cls, schema, expand_schema=True):
         """Merges the field schema into this document.
+
         Args:
             schema: a dictionary mapping field names to
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
+
         Raises:
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name or a new field is found but
@@ -268,7 +270,6 @@ class DatasetMixin(object):
         for field_name in add_fields:
             field = schema[field_name]
             kwargs = get_field_kwargs(field)
-            kwargs.pop("db_field")
             cls._add_field_schema(field_name, **kwargs)
 
     @classmethod
@@ -670,7 +671,6 @@ class DatasetMixin(object):
         subfield=None,
         **kwargs,
     ):
-
         # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError(
@@ -697,12 +697,12 @@ class DatasetMixin(object):
     def _rename_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields.pop(field_name)
+        new_db_field = _get_db_field(field, new_field_name)
 
-        field.db_field = new_field_name
         field.name = new_field_name
+        field.db_field = new_db_field
 
         cls._fields[new_field_name] = field
-
         cls._fields_ordered = tuple(
             (fn if fn != field_name else new_field_name)
             for fn in cls._fields_ordered
@@ -721,7 +721,7 @@ class DatasetMixin(object):
         for f in fields:
             if f.name == field_name:
                 f.name = new_field_name
-                f.db_field = new_field_name
+                f.db_field = new_db_field
 
         dataset_doc.save()
 
@@ -729,7 +729,11 @@ class DatasetMixin(object):
     def _clone_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields[field_name]
-        cls._add_field_schema(new_field_name, **get_field_kwargs(field))
+
+        kwargs = get_field_kwargs(field)
+        kwargs["db_field"] = _get_db_field(field, new_field_name)
+
+        cls._add_field_schema(new_field_name, **kwargs)
 
     @classmethod
     def _delete_field_schema(cls, field_name):
@@ -1089,3 +1093,15 @@ def _deserialize_value(value):
         return fou.deserialize_numpy_array(value)
 
     return value
+
+
+def _get_db_field(field, new_field_name):
+    if field.db_field is None:
+        return None
+
+    # This is hacky, but we must account for the fact that ObjectIdField often
+    # uses `db_field = "_<field_name>"
+    if field.db_field == "_" + field.name:
+        return "_" + new_field_name
+
+    return new_field_name
