@@ -4,13 +4,13 @@
 
 import { getColor } from "../color";
 import { INFO_COLOR, TOLERANCE } from "../constants";
-import { BaseState, Coordinates, KeypointSkeleton } from "../state";
+import { BaseState, Coordinates, KeypointSkeleton, NONFINITE } from "../state";
 import { distance, distanceFromLineSegment, multiply } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
 
 interface KeypointLabel extends RegularLabel {
-  points: Coordinates[];
+  points: [NONFINITE, NONFINITE][];
 }
 
 export default class KeypointOverlay<
@@ -26,6 +26,7 @@ export default class KeypointOverlay<
     }
 
     const result = this.getDistanceAndMaybePoint(state);
+
     if (result && result[0] <= state.pointRadius) {
       return CONTAINS.BORDER;
     }
@@ -139,13 +140,14 @@ export default class KeypointOverlay<
     const skeleton = getSkeleton(this.field, state);
 
     const points = this.label.points.map((p, i) => {
-      return state.options.pointFilter(
-        this.field,
-        Object.fromEntries(getAttributes(skeleton, this.label, i))
-      )
+      return p.every((c) => typeof c === "number") &&
+        state.options.pointFilter(
+          this.field,
+          Object.fromEntries(getAttributes(skeleton, this.label, i))
+        )
         ? p
         : null;
-    });
+    }) as unknown as (Coordinates | null)[];
 
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
