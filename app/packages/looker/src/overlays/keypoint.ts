@@ -39,15 +39,7 @@ export default class KeypointOverlay<
     ctx.lineWidth = 0;
 
     const skeleton = getSkeleton(this.field, state);
-
-    const points = this.label.points.map((p, i) => {
-      return state.options.pointFilter(
-        this.field,
-        Object.fromEntries(getAttributes(skeleton, this.label, i))
-      )
-        ? p
-        : null;
-    });
+    const points = this.getFilteredPoints(state, skeleton);
 
     if (skeleton && state.options.showSkeletons) {
       for (let i = 0; i < skeleton.edges.length; i++) {
@@ -138,16 +130,7 @@ export default class KeypointOverlay<
     pointRadius = this.isSelected(state) ? pointRadius * 2 : pointRadius;
 
     const skeleton = getSkeleton(this.field, state);
-
-    const points = this.label.points.map((p, i) => {
-      return p.every((c) => typeof c === "number") &&
-        state.options.pointFilter(
-          this.field,
-          Object.fromEntries(getAttributes(skeleton, this.label, i))
-        )
-        ? p
-        : null;
-    }) as unknown as (Coordinates | null)[];
+    const points = this.getFilteredPoints(state, skeleton);
 
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
@@ -192,6 +175,20 @@ export default class KeypointOverlay<
     }
 
     return distances.sort((a, b) => a[0] - b[0])[0];
+  }
+
+  private getFilteredPoints(
+    state: Readonly<State>,
+    skeleton?: KeypointSkeleton
+  ): (Coordinates | null)[] {
+    return this.label.points.map((p, i) => {
+      return state.options.pointFilter(
+        this.field,
+        Object.fromEntries(getAttributes(skeleton, this.label, i))
+      )
+        ? p
+        : null;
+    }) as unknown as (Coordinates | null)[];
   }
 
   private strokePath(

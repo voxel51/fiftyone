@@ -214,6 +214,7 @@ class AppConfig:
     show_confidence: bool
     show_index: bool
     show_label: bool
+    show_skeletons: bool
     show_tooltip: bool
     timezone: t.Optional[str]
     use_frame_number: bool
