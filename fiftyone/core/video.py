@@ -536,10 +536,11 @@ def make_frames_dataset(
     #
 
     dataset = fod.Dataset(name=name, _frames=True)
+    dataset.media_type = fom.IMAGE
     dataset._doc.app_sidebar_groups = (
         sample_collection._dataset._doc.app_sidebar_groups
     )
-    dataset.media_type = fom.IMAGE
+
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
     )
@@ -796,7 +797,7 @@ def _init_frames(
             "on disk but are not recorded on the dataset",
             len(missing_filepaths),
         )
-        src_dataset._add_frame_field_if_necessary("filepath", fof.StringField)
+        src_dataset.add_frame_field("filepath", fof.StringField)
         ops = [
             UpdateOne(
                 {"_sample_id": _sample_id, "frame_number": fn},

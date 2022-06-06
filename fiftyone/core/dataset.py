@@ -358,9 +358,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         self._doc.media_type = media_type
-        self._set_metadata(media_type)
 
-    def _set_metadata(self, media_type):
         idx = None
         for i, field in enumerate(self._doc.sample_fields):
             if field.name == "metadata":
@@ -4708,20 +4706,6 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
-def _declare_fields(doc_cls, field_docs=None):
-    for field_name, field in doc_cls._fields.items():
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
-            field._set_parent(doc_cls)
-            doc_cls._fields[field_name] = field
-            setattr(doc_cls, field_name, field)
-
-    if field_docs is not None:
-        for field_doc in field_docs:
-            field = field_doc.to_field()
-            doc_cls._declare_field(field, field.name)
-
-
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
     conn = foo.get_db_conn()
     now = datetime.now()
@@ -4769,8 +4753,7 @@ def _declare_fields(doc_cls, field_docs=None):
 
     if field_docs is not None:
         for field_doc in field_docs:
-            field = field_doc.to_field()
-            doc_cls._declare_field(field)
+            doc_cls._declare_field(field_doc)
 
 
 def _get_dataset_doc(collection_name, frames=False):
@@ -4827,7 +4810,7 @@ def _load_dataset(name, virtual=False):
 
     sample_collection_name = dataset_doc.sample_collection_name
     sample_doc_cls = _create_sample_document_cls(
-        sample_collection_name, dataset_doc.sample_fields
+        sample_collection_name, field_docs=dataset_doc.sample_fields
     )
 
     default_sample_fields = fos.get_default_sample_fields(include_private=True)
@@ -4858,7 +4841,7 @@ def _load_dataset(name, virtual=False):
         dataset_doc.frame_fields = _src_dataset._doc.frame_fields
     else:
         frame_doc_cls = _create_frame_document_cls(
-            frame_collection_name, dataset_doc.frame_fields
+            frame_collection_name, field_docs=dataset_doc.frame_fields
         )
 
         if dataset_doc.media_type == fom.VIDEO:

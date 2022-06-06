@@ -38,7 +38,6 @@ def create_field(
     subfield=None,
     db_field=None,
     fields=None,
-    parent=None,
     **field_kwargs
 ):
     """Creates the :class:`fiftyone.core.fields.Field` instance defined by the
@@ -69,7 +68,6 @@ def create_field(
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
             Only applicable when ``ftype`` is
             :class:`fiftyone.core.fields.EmbeddedDocumentField`
-        parent (None): a parent
         **field_kwargs: mongoengine field kwargs
 
     Returns:
@@ -98,9 +96,7 @@ def create_field(
                         subfield,
                         embedded_doc_type=embedded_doc_type,
                         fields=fields or [],
-                        parent=parent,
                     )
-
                 else:
                     subfield = subfield()
 
@@ -123,9 +119,8 @@ def create_field(
                 % (embedded_doc_type, BaseEmbeddedDocument)
             )
 
-        kwargs.update(
-            {"document_type": embedded_doc_type, "fields": fields or []}
-        )
+        kwargs["document_type"] = embedded_doc_type
+        kwargs["fields"] = fields or []
 
     field = ftype(**kwargs)
     field.name = name

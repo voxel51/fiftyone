@@ -50,7 +50,6 @@ def get_field_kwargs(field):
         for f in getattr(field, "fields", []) + list(
             field.document_type._fields.values()
         ):
-
             fkwargs = get_field_kwargs(f)
             fkwargs["name"] = f.name
             kwargs["fields"].append(fkwargs)
