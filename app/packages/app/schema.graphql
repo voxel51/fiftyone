@@ -15,16 +15,16 @@ type AppConfig {
 
 type BrainRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: BrainRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: BrainRunConfig
+  viewStages: [String!]
 }
 
 type BrainRunConfig implements RunConfig {
   cls: String!
   embeddingsField: String
-  method: String!
+  method: String
   patchesField: String
 }
 
@@ -77,17 +77,17 @@ scalar DateTime
 
 type EvaluationRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: EvaluationRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: EvaluationRunConfig
+  viewStages: [String!]
 }
 
 type EvaluationRunConfig implements RunConfig {
   cls: String!
-  gtField: String!
-  predField: String!
-  method: String!
+  gtField: String
+  predField: String
+  method: String
 }
 
 scalar JSONArray
@@ -160,10 +160,10 @@ type Query {
 
 interface Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: RunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: RunConfig
+  viewStages: [String!]
 }
 
 interface RunConfig {

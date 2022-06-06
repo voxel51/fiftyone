@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<da89de60d56aea872f6230c84ef74b71>>
+ * @generated SignedSource<<506e8e1dd0e39db875b0a0b42282170f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -50,26 +50,26 @@ export type DatasetQuery$data = {
     }> | null;
     readonly evaluations: ReadonlyArray<{
       readonly key: string;
-      readonly version: string;
-      readonly timestamp: string;
-      readonly viewStages: ReadonlyArray<string>;
+      readonly version: string | null;
+      readonly timestamp: string | null;
+      readonly viewStages: ReadonlyArray<string> | null;
       readonly config: {
         readonly cls: string;
-        readonly predField: string;
-        readonly gtField: string;
-      };
+        readonly predField: string | null;
+        readonly gtField: string | null;
+      } | null;
     }>;
     readonly brainMethods: ReadonlyArray<{
       readonly key: string;
-      readonly version: string;
-      readonly timestamp: string;
-      readonly viewStages: ReadonlyArray<string>;
+      readonly version: string | null;
+      readonly timestamp: string | null;
+      readonly viewStages: ReadonlyArray<string> | null;
       readonly config: {
         readonly cls: string;
         readonly embeddingsField: string | null;
-        readonly method: string;
+        readonly method: string | null;
         readonly patchesField: string | null;
-      };
+      } | null;
     }>;
     readonly lastLoadedAt: string | null;
     readonly createdAt: string | null;
