@@ -4490,6 +4490,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, samples):
         expanded = False
+        fields = self.get_field_schema(include_private=True)
         for sample in samples:
             self._validate_media_type(sample)
 
@@ -4497,30 +4498,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 expanded |= self._expand_frame_schema(sample.frames)
 
             for field_name in sample._get_field_names(include_private=True):
+                if field_name == "_id":
+                    continue
+
+                if field_name in fields:
+                    continue
+
                 value = sample[field_name]
 
                 if value is None:
                     continue
 
-                expanded |= self._sample_doc_cls.add_implied_field(
-                    field_name, value
-                )
+                self._sample_doc_cls.add_implied_field(field_name, value)
+                fields = self.get_field_schema(include_private=True)
+                expanded = True
 
         if expanded:
             self._reload()
 
     def _expand_frame_schema(self, frames):
         expanded = False
+        fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
+                if field_name == "_id":
+                    continue
+
+                if field_name in fields:
+                    continue
+
                 value = frame[field_name]
 
                 if value is None:
                     continue
 
-                expanded |= self._frame_doc_cls.add_implied_field(
-                    field_name, value
-                )
+                self._frame_doc_cls.add_implied_field(field_name, value)
+                fields = self.get_frame_field_schema(include_private=True)
+                expanded = True
 
         return expanded
 
