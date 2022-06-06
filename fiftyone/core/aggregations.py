@@ -1394,9 +1394,8 @@ class Schema(Aggregation):
                 field_type = field_type.field
 
             if isinstance(field_type, fof.EmbeddedDocumentField):
-                doc_type = field_type.document_type
-
-        self._doc_type = doc_type
+                # self._doc_type = field_type.document_type
+                self._doc_type = field_type
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
             sample_collection, field_name, expr=self._expr

@@ -917,6 +917,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if added:
             self._reload()
 
+    def add_dynamic_sample_fields(self, fields=None):
+        """Adds all dynamic sample fields to the dataset's schema.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                add dynamic fields. By default, all fields are considered
+        """
+        schema = self.get_dynamic_field_schema(fields=fields)
+
+        for path, field in schema.items():
+            if isinstance(field, fof.Field):
+                self._sample_doc_cls._add_field_schema(path, field=field)
+
+        if schema:
+            self._reload()
+
     def add_frame_field(
         self,
         field_name,
@@ -967,6 +986,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         added = self._frame_doc_cls.add_implied_field(field_name, value)
         if added:
+            self._reload()
+
+    def add_dynamic_frame_fields(self, fields=None):
+        """Adds all dynamic frame fields to the dataset's schema.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                add dynamic fields. By default, all fields are considered
+        """
+        schema = self.get_dynamic_frame_field_schema(fields=fields)
+
+        for path, field in schema.items():
+            if isinstance(field, fof.Field):
+                self._frame_doc_cls._add_field_schema(path, field=field)
+
+        if schema:
             self._reload()
 
     def rename_sample_field(self, field_name, new_field_name):

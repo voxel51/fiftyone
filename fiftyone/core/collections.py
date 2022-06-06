@@ -642,6 +642,76 @@ class SampleCollection(object):
             "Subclass must implement get_frame_field_schema()"
         )
 
+    def get_dynamic_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the dynamic fields of the
+        samples in the collection.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return dynamic fields. By default, all fields are considered
+
+        Returns:
+            a dictionary mapping field paths to field types
+        """
+        schema = self.get_field_schema()
+        return self._get_dynamic_field_schema(schema, "", fields=fields)
+
+    def get_dynamic_frame_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the dynamic fields of the
+        frames of the samples in the collection.
+
+        Dynamic fields are embedded document fields with at least one non-None
+        value that have not been declared on the dataset's schema.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return dynamic fields. By default, all fields are considered
+
+        Returns:
+            a dictionary mapping field paths to field types, or ``None`` if
+            the collection is not a video collection
+        """
+        if self.media_type != fom.VIDEO:
+            return None
+
+        schema = self.get_frame_field_schema()
+        prefix = self._FRAMES_PREFIX
+        return self._get_dynamic_field_schema(schema, prefix, fields=fields)
+
+    def _get_dynamic_field_schema(self, schema, prefix, fields=None):
+        if fields is not None:
+            if etau.is_str(fields):
+                fields = {fields}
+            else:
+                fields = set(fields)
+
+            schema = {k: v for k, v in schema.items() if k in fields}
+
+        aggs = []
+        paths = []
+        for name, field in schema.items():
+            if isinstance(field, fof.EmbeddedDocumentField):
+                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
+                    path = name + "." + field.document_type._LABEL_LIST_FIELD
+                else:
+                    path = name
+
+                aggs.append(foa.Schema(prefix + name, dynamic_only=True))
+                paths.append(path)
+
+        fields = {}
+
+        if aggs:
+            results = self.aggregate(aggs)
+            for path, schema in zip(paths, results):
+                for name, field in schema.items():
+                    fields[path + "." + name] = field
+
+        return fields
+
     def make_unique_field_name(self, root=""):
         """Makes a unique field name with the given root name for the
         collection.
