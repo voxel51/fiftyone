@@ -20,7 +20,7 @@ import yarl
 import eta.core.utils as etau
 
 from fiftyone.core.service import MediaCacheService
-from fiftyone.core.config import HttpRetryConfig
+from fiftyone.core.config import HTTPRetryConfig
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
@@ -82,10 +82,6 @@ class MediaCache(object):
     @property
     def num_workers(self):
         return self.config.num_workers
-
-    @property
-    def fatal_retry_code(self):
-        return set(map(int, self.config.retry_error_codes))
 
     def stats(self, filepaths=None):
         """Returns a dictionary of stats about the cache.
@@ -732,9 +728,9 @@ async def _do_async_download_media(arg):
 @backoff.on_exception(
     backoff.expo,
     aiohttp.ClientResponseError,
-    factor=HttpRetryConfig.FACTOR,
-    max_tries=HttpRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.code not in HttpRetryConfig.RETRY_CODES,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def _do_download_file(session, url, local_path):

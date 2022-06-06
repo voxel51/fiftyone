@@ -792,10 +792,10 @@ def _get_installed_packages():
         return set()
 
 
-class HttpRetryConfig:
-    """
-    Values used to configure the behavior of the retry logic
+class HTTPRetryConfig(object):
+    """Values used to configure the behavior of the retry logic
     of HTTP calls made throughout the app
+
     NOTE: calls made directly through storage clients (GCS, S3) use their
     own internal retry logic implementation and may not perfectly match this
     configuration. This configuration is for direct HTTP requests
