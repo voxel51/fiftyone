@@ -291,13 +291,15 @@ class Data(metaclass=DataMetaclass):
 
         return __value
 
-    def __setattr__(self, __name: str, __value: t.Any) -> None:
+    def __setattr__(
+        self, __name: str, __value: t.Any, __create: bool = False
+    ) -> None:
         if __name.startswith("__"):
             return super().__setattr__(__name, __value)
 
         field, _ = self.__fiftyone_validate__(__name, __value, False)
 
-        if field is None:
+        if field is None and not __create:
             raise ValueError("cannot set undefined field")
 
         if __value is None:
@@ -316,6 +318,9 @@ class Data(metaclass=DataMetaclass):
             __value = field.dump(__value)
 
         self.__dict__[__name] = __value
+
+    def __setitem__(self, __name: str, __value: t.Any) -> None:
+        self.__setattr__(__name, __value, True)
 
     def __fiftyone_child_path__(self, __name: str) -> str:
         if self.__fiftyone_path__:
@@ -502,7 +507,10 @@ def inherit_data(
 
     merge_schema(
         ref.schema,
-        {".".join([prefix, k]): v for k, v in _extract_schema(data).items()},
+        {
+            ".".join([prefix, k]) if prefix else k: v
+            for k, v in _extract_schema(data).items()
+        },
     )
 
     data_schema = data.__fiftyone_ref__.schema
@@ -526,7 +534,9 @@ def merge_schema(
     for path in paths:
         if path in schema and path in other:
             # todo _merge_field()?
-            assert schema[path].type == other[path].type
+            assert schema[path].type == other[path].type or issubclass(
+                schema[path].type, other[path].type
+            )
             continue
 
         if path not in schema:

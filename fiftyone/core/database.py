@@ -8,6 +8,7 @@ Database utilities.
 import asyncio
 import atexit
 from datetime import datetime
+from dataclasses import asdict
 import logging
 import os
 import typing as t
@@ -19,7 +20,7 @@ import pytz
 from bson import json_util
 from bson.codec_options import CodecOptions
 from dacite import from_dict
-
+import motor.motor_asyncio as mtr
 from packaging.version import Version
 from pymongo.database import Database
 from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
@@ -68,20 +69,26 @@ class DatabaseConfig:
     version: str
 
 
-def get_db_config():
-    """Retrieves the database config.
-
-    Returns:
-        a :class:`fiftyone.core.data.types.DatabaseConfigDocument`
-    """
+def get_db_config(
+    config: t.Optional[FiftyOneConfig],
+    client: t.Optional[pymongo.MongoClient] = None,
+) -> DatabaseConfig:
+    """Retrieves the database config."""
     save = False
 
-    conn = get_db_conn()
-    try:
-        data = conn.config.find_one({})
-    except:
-        conn.config.insert_one({"version": fo.__version__})
-        data = conn.config.find_one({})
+    if config is None:
+        config = fo.config
+
+    if client is None:
+        client = get_db_client()
+
+    conn = _apply_options(client[config.database_name], config)
+
+    data = conn.config.find_one()
+
+    if data is None:
+        conn.config.insert_one({"version": "0.14.4", "type": foc.CLIENT_TYPE})
+        data = conn.config.find_one()
         save = True
 
     config = from_dict(DatabaseConfig, data=data)
@@ -113,7 +120,7 @@ def get_db_config():
         save = True
 
     if save:
-        config.save()
+        conn.config.replace_one({}, asdict(config))
 
     return config
 
@@ -184,7 +191,7 @@ def establish_db_conn(config: FiftyOneConfig) -> None:
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-    config = get_db_config()
+    config = get_db_config(config, _client)
     if foc.CLIENT_TYPE != config.type:
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
@@ -366,8 +373,13 @@ def get_async_db_conn():
     return _apply_options(db)
 
 
-def _apply_options(db: Database) -> Database:
-    timezone = fo.config.timezone
+def _apply_options(
+    db: Database, config: t.Optional[FiftyOneConfig] = None
+) -> Database:
+    if config is None:
+        config = fo.config
+
+    timezone = config.timezone
 
     if not timezone or timezone.lower() == "utc":
         return db

@@ -38,6 +38,7 @@ class FiftyOneReference:
     bson_schemas: t.Optional[t.Dict[str, BSONSchemaObjectProperty]] = None
     collections: t.Optional[t.Dict[str, str]] = None
     definition: t.Optional[DatasetDefinition] = None
+    deleted: bool = False
     schema: t.Dict[str, Field] = field(default_factory=dict)
 
     @property
@@ -75,7 +76,7 @@ class FiftyOneReference:
                 del latest.schema[path]
 
             collections, field_definitions, bson_schemas = _set_collections(
-                latest.schema
+                latest.schema, latest.collections
             )
             self.collections = collections
             self.definition.fields = field_definitions
@@ -88,7 +89,7 @@ class FiftyOneReference:
 
     def delete(self) -> None:
         if not self.definition or not self.collections:
-            raise FiftyOneDataError("reference has not dataset")
+            raise FiftyOneDataError("reference has no dataset")
 
         db = fod.get_db_conn()
         for collection in self.collections.values():
@@ -98,6 +99,7 @@ class FiftyOneReference:
         self.bson_schemas = None
         self.collections = None
         self.definition = None
+        self.deleted = True
 
     def clone(self) -> "FiftyOneReference":
         pass
@@ -163,6 +165,7 @@ class FiftyOneReference:
 
         db = fod.get_db_conn()
         filter = {"name" if isinstance(name_or_id, str) else "_id": name_or_id}
+
         definition = from_dict(
             DatasetDefinition,
             db.datasets.find_one(filter),
@@ -197,7 +200,8 @@ class FiftyOneReference:
 
 
 def as_field_definitions(
-    schema: t.Dict[str, Field]
+    schema: t.Dict[str, Field],
+    collections: t.Optional[t.Dict[str, str]] = None,
 ) -> t.List[t.Union[DocumentFieldDefinition, FieldDefinition]]:
     from .document import Document
 
@@ -212,9 +216,17 @@ def as_field_definitions(
         cls = get_leaf_cls(type_definition)
 
         if issubclass(cls, Document):
-            d = DocumentFieldDefinition(path, type_definition)
+            d = DocumentFieldDefinition(
+                path,
+                type_definition,
+                field.link,
+                collections[path]
+                if collections and path in collections
+                else str(ObjectId()),
+            )
+
         else:
-            d = FieldDefinition(path, type_definition)
+            d = FieldDefinition(path, type_definition, field.link)
 
         fields.append(d)
 
@@ -222,19 +234,20 @@ def as_field_definitions(
 
 
 def _set_collections(
-    schema: t.Dict[str, Field]
+    schema: t.Dict[str, Field],
+    collections: t.Optional[t.Dict[str, str]] = None,
 ) -> t.Tuple[
     t.Dict[str, str],
     t.List[t.Union[DocumentFieldDefinition, FieldDefinition]],
     t.Dict[str, BSONSchemaObjectProperty],
 ]:
-    field_definitions = as_field_definitions(schema)
+    field_definitions = as_field_definitions(schema, collections)
     documents = {
         d.path: get_leaf_cls(d.type)
         for d in field_definitions
         if isinstance(d, DocumentFieldDefinition)
     }
-    collections: t.Dict[str, str] = {
+    collections = {
         d.path: d.collection
         for d in field_definitions
         if isinstance(d, DocumentFieldDefinition)

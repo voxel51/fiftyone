@@ -33,7 +33,7 @@ import fiftyone.core.brain as fob
 import fiftyone.core.collections as foc
 import fiftyone.core.data as fod
 from fiftyone.core.data.definitions import MediaType
-from fiftyone.core.database import get_db_conn
+import fiftyone.core.database as fodb
 import fiftyone.core.evaluation as foe
 import fiftyone.core.expressions as foex
 import fiftyone.core.frame as fofr
@@ -86,7 +86,7 @@ def dataset_exists(name: str) -> bool:
     Returns:
         True/False
     """
-    db = fod.get_db_conn()
+    db = fodb.get_db_conn()
     return bool(db.datasets.find_one({"name": name}, {"_id": 1}))
 
 
@@ -189,7 +189,7 @@ def delete_non_persistent_datasets(verbose: bool = False) -> None:
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
-    conn = foo.get_db_conn()
+    conn = fodb.get_db_conn()
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
@@ -451,28 +451,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
     @property
     def created_at(self) -> datetime:
         """The datetime that the dataset was created."""
-        return self.__fiftyone_ref__.created_at
+        return self.__fiftyone_ref__.definition.created_at
 
     @property
     def last_loaded_at(self) -> datetime:
         """The datetime that the dataset was last loaded."""
-        return self.__fiftyone_ref__.last_loaded_at
+        return self.__fiftyone_ref__.definition.last_loaded_at
 
     @property
     def persistent(self) -> bool:
         """Whether the dataset persists in the database after a session is
         terminated.
         """
-        return self.__fiftyone_ref__.persistent
+        return self.__fiftyone_ref__.definition.persistent
 
     @persistent.setter
     def persistent(self, value: bool) -> None:
-        _value = self.__fiftyone_definition__.persistent
+        _value = self.__fiftyone_ref__.definition.persistent
         try:
-            self.__fiftyone_ref__.persistent = value
+            self.__fiftyone_ref__.definition.persistent = value
             self.__fiftyone_ref__.commit()
         except:
-            self.__fiftyone_ref__.persistent = _value
+            self.__fiftyone_ref__.definition.persistent = _value
             raise
 
     @property
@@ -522,11 +522,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             dataset.classes["ground_truth"].append("other")
             dataset.save()  # must save after edits
         """
-        return etas.load_json(self.__fiftyone_definition__.classes)
+        return etas.load_json(self.__fiftyone_ref__.definition.classes)
 
     @classes.setter
     def classes(self, classes):
-        self.__fiftyone_definition__.classes = etas.json_to_str(
+        self.__fiftyone_ref__.definition.classes = etas.json_to_str(
             classes, pretty_print=False
         )
         self.save()
@@ -689,13 +689,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
 
     @default_skeleton.setter
     def default_skeleton(self, skeleton):
-        self._doc.default_skeleton = skeleton
+        self.__fiftyone_ref__.definition.default_skeleton = skeleton
         self.save()
 
     @property
     def deleted(self):
         """Whether the dataset is deleted."""
-        return self._deleted
+        return self.__fiftyone_ref__.deleted
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -753,7 +753,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         """
         stats = {}
 
-        conn = fod.get_db_conn()
+        conn = fodb.get_db_conn()
 
         cs = conn.command("collstats", self._sample_collection_name)
         samples_bytes = cs["storageSize"] if compressed else cs["size"]
@@ -1379,9 +1379,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         index = 0
 
         try:
-            for d in fod.aggregate(self._sample_collection, pipeline):
-                doc = self._sample_dict_to_doc(d)
-                sample = fos.Sample.from_doc(doc, dataset=self)
+            for data in fodb.aggregate(
+                fodb.get_db_conn()[self.__fiftyone_ref__.collections[""]],
+                pipeline,
+            ):
+                sample = fos.Sample.__fiftyone_construct__(
+                    self.__fiftyone_ref__, "", data
+                )
                 index += 1
                 yield sample
 
@@ -1393,7 +1397,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             for sample in self._iter_samples(pipeline):
                 yield sample
 
-    def add_sample(self, sample, expand_schema=True, validate=True):
+    def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
 
         If the sample instance does not belong to a dataset, it is updated
@@ -1405,13 +1409,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if the sample's schema is not a subset of the dataset schema
-            validate (True): whether to validate that the fields of the sample
-                are compliant with the dataset schema before adding it
 
         Returns:
             the ID of the sample in the dataset
         """
-        return self._add_samples_batch([sample], expand_schema, validate)[0]
+        return self._add_samples_batch([sample], expand_schema)[0]
 
     def add_samples(
         self, samples, expand_schema=True, validate=True, num_samples=None
@@ -1509,13 +1511,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         for sample in samples:
             fod.inherit_data(None, self.__fiftyone_ref__, "", sample)
 
+        if self.__fiftyone_ref__.expanded:
+            self.__fiftyone_ref__.commit()
+
         dicts = [
             fod.asdict(sample, dict_factory=dict, links=False)
             for sample in samples
         ]
 
         try:
-            db = get_db_conn()
+            db = fodb.get_db_conn()
             db[self.__fiftyone_ref__.collections[""]].insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
@@ -2365,7 +2370,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
         such that ``sample.in_dataset`` is False.
         """
         self.__fiftyone_ref__.delete()
-        self._deleted = True
 
     def add_dir(
         self,
@@ -4339,7 +4343,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetMetaclass):
             frames_only=frames_only,
         )
 
-        return foo.aggregate(self._sample_collection, _pipeline)
+        return fodb.aggregate(self._sample_collection, _pipeline)
 
     def _apply_field_schema(self, new_fields):
         curr_fields = self.get_field_schema()
@@ -4522,9 +4526,8 @@ def _get_random_characters(n):
 
 
 def _list_datasets(include_private=False):
-    conn = fod.get_db_conn()
+    conn = fodb.get_db_conn()
 
-    print("TODO")
     if include_private:
         return sorted(conn.datasets.distinct("name"))
 
@@ -4633,7 +4636,7 @@ def _save_view(view, fields=None):
     if sample_fields:
         pipeline.append({"$project": {f: True for f in sample_fields}})
         pipeline.append({"$merge": dataset._sample_collection_name})
-        foo.aggregate(dataset._sample_collection, pipeline)
+        fodb.aggregate(dataset._sample_collection, pipeline)
     elif save_samples:
         pipeline.append(
             {
@@ -4643,7 +4646,7 @@ def _save_view(view, fields=None):
                 }
             }
         )
-        fod.aggregate(dataset._sample_collection, pipeline)
+        fodb.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Save frames
@@ -4667,7 +4670,7 @@ def _save_view(view, fields=None):
         if frame_fields:
             pipeline.append({"$project": {f: True for f in frame_fields}})
             pipeline.append({"$merge": dataset._frame_collection_name})
-            foo.aggregate(dataset._sample_collection, pipeline)
+            fodb.aggregate(dataset._sample_collection, pipeline)
         elif save_frames:
             pipeline.append(
                 {
@@ -4677,7 +4680,7 @@ def _save_view(view, fields=None):
                     }
                 }
             )
-            foo.aggregate(dataset._sample_collection, pipeline)
+            fodb.aggregate(dataset._sample_collection, pipeline)
 
     #
     # Reload in-memory documents

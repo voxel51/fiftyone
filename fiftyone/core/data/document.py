@@ -12,6 +12,7 @@ import eta.core.serial as etas
 from bson import ObjectId
 
 from fiftyone.core.database import get_db_conn
+import fiftyone.core.labels as fol
 
 from .data import (
     __dataclass_transform__,
@@ -198,7 +199,7 @@ def save(document: Document) -> None:
         )
 
     if document.__fiftyone_ref__.expanded:
-        commit_schema(document.__fiftyone_ref__)
+        document.__fiftyone_ref__.commit()
 
     collection = db[
         document.__fiftyone_ref__.collections[document.__fiftyone_path__ or ""]

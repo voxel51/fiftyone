@@ -3,7 +3,7 @@ from abc import ABC
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from enum import Enum
-from dacite import from_dict
+from dacite import Config, from_dict
 
 from pymongo.database import Database
 import eta.core.utils as etau
@@ -46,6 +46,7 @@ class BSONSchemaProperty(ABC):
 
 @dataclass
 class BSONSchemaArrayProperty(BSONSchemaProperty):
+    bsonType: t.Literal[BSONTypes.ARRAY] = BSONTypes.ARRAY
     items: t.Optional[
         t.Union[t.List["BSONSchemaProperties"], "BSONSchemaProperties"]
     ] = None
@@ -79,16 +80,10 @@ class BSONSchemaDecimalProperty(BSONSchemaProperty):
 
 @dataclass
 class BSONSchemaDoubleProperty(BSONSchemaProperty):
-    bson_type: t.Literal[BSONTypes.DOUBLE] = BSONTypes.DOUBLE
+    bsonType: t.Literal[BSONTypes.DOUBLE] = BSONTypes.DOUBLE
     maximum: t.Optional[float] = None
     minimum: t.Optional[float] = None
     multipleOf: t.Optional[float] = None
-
-
-@dataclass
-class BSONSchemaEnumProperty(BSONSchemaProperty):
-    bsonType: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
-    enum: t.List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -127,6 +122,7 @@ class BSONSchemaObjectIdProperty(BSONSchemaProperty):
 @dataclass
 class BSONSchemaStringProperty(BSONSchemaProperty):
     bsonType: t.Literal[BSONTypes.STRING] = BSONTypes.STRING
+    enum: t.Optional[t.List[str]] = None
     maxLength: t.Optional[int] = None
     minLength: t.Optional[int] = None
     pattern: t.Optional[str] = None
@@ -138,14 +134,15 @@ class BSONSchemaTimestampProperty(BSONSchemaProperty):
 
 
 BSONSchemaProperties = t.Union[
-    BSONSchemaIntProperty,
-    BSONSchemaDoubleProperty,
-    BSONSchemaLongProperty,
+    BSONSchemaArrayProperty,
     BSONSchemaDecimalProperty,
-    BSONSchemaStringProperty,
-    BSONSchemaEnumProperty,
+    BSONSchemaDoubleProperty,
+    BSONSchemaBoolProperty,
+    BSONSchemaIntProperty,
+    BSONSchemaLongProperty,
     BSONSchemaObjectProperty,
-    "BSONSchemaArrayProperty",
+    BSONSchemaObjectIdProperty,
+    BSONSchemaStringProperty,
 ]
 
 
@@ -154,7 +151,6 @@ BSON_TYPE_MAP = {
     datetime: BSONSchemaTimestampProperty,
     bool: BSONSchemaBoolProperty,
     bytes: BSONSchemaBinaryProperty,
-    Enum: BSONSchemaEnumProperty,
     float: BSONSchemaDoubleProperty,
     int: BSONSchemaIntProperty,
     ObjectId: BSONSchemaObjectIdProperty,
@@ -183,10 +179,6 @@ def _get_path_property(
             property, (BSONSchemaArrayProperty, BSONSchemaObjectProperty)
         ):
             property = _unwind_to_object_property(property)
-
-    if path:
-        print(len(names), names)
-        assert property != bson_schemas[""]
 
     return property
 
@@ -232,6 +224,9 @@ def as_bson_schemas(
 
     for path in paths:
         if path in bson_schemas:
+            continue
+
+        if schema[path].link is not None:
             continue
 
         names = path.split(".")
@@ -316,6 +311,7 @@ def as_schema(
         definition.path: Field(
             name=definition.path.split(".")[-1],
             type=get_type(definition.type),
+            link=definition.link,
         )
         for definition in field_definitions
     }
@@ -328,7 +324,6 @@ def as_schema(
         property = _get_path_property(parent, bson_schemas)
 
         if not isinstance(property, BSONSchemaObjectProperty):
-            print(property)
             raise FiftyOneDataError("unexpected")
 
         if property.required and name in property.required:
@@ -367,6 +362,7 @@ def load_bson_schemas(
         reverse[result["name"]]: from_dict(
             BSONSchemaObjectProperty,
             result["options"]["validator"]["$jsonSchema"],
+            config=Config(strict_unions_match=True),
         )
         for result in db.command(
             {

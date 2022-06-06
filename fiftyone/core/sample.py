@@ -204,7 +204,7 @@ class Sample(Document):
         super().reload(hard=hard)
 
     def save(self):
-        if not self._in_db:
+        if not self.__fiftyone_ref__.in_db:
             raise ValueError(
                 "Cannot save a sample that has not been added to a dataset"
             )

@@ -60,11 +60,12 @@ class TupleDefinition:
 class FieldDefinition:
     path: str
     type: t.Union["DictDefinition", "ListDefinition", "str", "TupleDefinition"]
+    link: t.Optional[str]
 
 
 @gql.type
 class DocumentFieldDefinition(FieldDefinition):
-    collection: str = gql.field(default_factory=lambda: str(ObjectId()))
+    collection: str
 
 
 @gql.enum
