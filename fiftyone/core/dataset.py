@@ -883,10 +883,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         **kwargs,
     ):
-        """Adds a new sample field to the dataset.
+        """Adds a new sample field or embedded field to the dataset, if
+        necessary.
 
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -897,42 +898,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+
+        Raises:
+            ValueError: if a field of the same name already exists and it is
+                not compliant with the specified values
         """
-        self._sample_doc_cls.add_field(
+        added = self._sample_doc_cls.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             **kwargs,
         )
-        self._reload()
 
-    def _add_sample_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-
-        schema = self.get_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
-            )
-        else:
-            self.add_sample_field(field_name, **field_kwargs)
+        if added:
+            self._reload()
 
     def _add_implied_sample_field(self, field_name, value):
-        self._sample_doc_cls.add_implied_field(field_name, value)
-        self._reload()
+        added = self._sample_doc_cls.add_implied_field(field_name, value)
+        if added:
+            self._reload()
 
     def add_frame_field(
         self,
@@ -942,12 +927,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         **kwargs,
     ):
-        """Adds a new frame-level field to the dataset.
+        """Adds a new frame-level field or embedded field to the dataset, if
+        necessary.
 
         Only applicable to video datasets.
 
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
@@ -958,48 +944,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+
+        Raises:
+            ValueError: if a field of the same name already exists and it is
+                not compliant with the specified values
         """
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        self._frame_doc_cls.add_field(
+        added = self._frame_doc_cls.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             **kwargs,
         )
-        self._reload()
 
-    def _add_frame_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-
-        schema = self.get_frame_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
-            )
-        else:
-            self.add_frame_field(field_name, **field_kwargs)
+        if added:
+            self._reload()
 
     def _add_implied_frame_field(self, field_name, value):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        self._frame_doc_cls.add_implied_field(field_name, value)
-        self._reload()
+        added = self._frame_doc_cls.add_implied_field(field_name, value)
+        if added:
+            self._reload()
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -4484,7 +4454,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, samples):
         expanded = False
-        fields = self.get_field_schema(include_private=True)
         for sample in samples:
             self._validate_media_type(sample)
 
@@ -4492,41 +4461,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 expanded |= self._expand_frame_schema(sample.frames)
 
             for field_name in sample._get_field_names(include_private=True):
-                if field_name == "_id":
-                    continue
-
-                if field_name in fields:
-                    continue
-
                 value = sample[field_name]
+
                 if value is None:
                     continue
 
-                self._sample_doc_cls.add_implied_field(field_name, value)
-                fields = self.get_field_schema(include_private=True)
-                expanded = True
+                expanded |= self._sample_doc_cls.add_implied_field(
+                    field_name, value
+                )
 
         if expanded:
             self._reload()
 
     def _expand_frame_schema(self, frames):
         expanded = False
-        fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame._get_field_names(include_private=True):
-                if field_name == "_id":
-                    continue
-
-                if field_name in fields:
-                    continue
-
                 value = frame[field_name]
+
                 if value is None:
                     continue
 
-                self._frame_doc_cls.add_implied_field(field_name, value)
-                fields = self.get_frame_field_schema(include_private=True)
-                expanded = True
+                expanded |= self._frame_doc_cls.add_implied_field(
+                    field_name, value
+                )
 
         return expanded
 

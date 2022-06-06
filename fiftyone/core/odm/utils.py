@@ -154,6 +154,50 @@ def get_implied_field_kwargs(value):
     )
 
 
+def validate_fields_match(name, field, existing_field):
+    """Validates that the types of the given fields match.
+
+    Embedded document fields are not validated, if applicable.
+
+    Args:
+        name: the field name or ``embedded.field.name``
+        field: a :class:`fiftyone.core.fields.Field`
+        existing_field: the reference :class:`fiftyone.core.fields.Field`
+
+    Raises:
+        ValueError: if the fields do not match
+    """
+    if type(field) is not type(existing_field):
+        raise ValueError(
+            "Field '%s' type %s does not match existing field type %s"
+            % (name, field, existing_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(field.document_type, existing_field.document_type):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (name, field.document_type, existing_field.document_type)
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if (
+            field.field is not None
+            and existing_field.field is not None
+            and not isinstance(field.field, type(existing_field.field))
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing field type %s"
+                % (
+                    field.__class__.__name__,
+                    name,
+                    field.field,
+                    existing_field.field,
+                )
+            )
+
+
 def _get_list_value_type(value):
     if isinstance(value, bool):
         return fof.BooleanField
