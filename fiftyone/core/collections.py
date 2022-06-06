@@ -5763,6 +5763,101 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
+    def schema(
+        self,
+        field_or_expr,
+        expr=None,
+        dynamic_only=False,
+        _include_private=False,
+        _raw=False,
+    ):
+        """Extracts the names and types of the attributes of a specified
+        embedded document field across all samples in the collection.
+
+        Schema aggregations are useful for detecting the presence and types of
+        dynamic attributes of :class:`fiftyone.core.labels.Label` fields in
+        across a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            sample1 = fo.Sample(
+                filepath="image1.png",
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="cat",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            foo="bar",
+                            hello=True,
+                        ),
+                        fo.Detection(
+                            label="dog",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            hello=None,
+                        )
+                    ]
+                )
+            )
+
+            sample2 = fo.Sample(
+                filepath="image2.png",
+                ground_truth=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="rabbit",
+                            bounding_box=[0.1, 0.1, 0.4, 0.4],
+                            foo=None,
+                        ),
+                        fo.Detection(
+                            label="squirrel",
+                            bounding_box=[0.5, 0.5, 0.4, 0.4],
+                            hello="there",
+                        ),
+                    ]
+                )
+            )
+
+            dataset.add_samples([sample1, sample2])
+
+            #
+            # Get schema of all dynamic attributes on the detections in a
+            # `Detections` field
+            #
+
+            print(dataset.schema("ground_truth", dynamic_only=True))
+            # {'foo': StringField, 'hello': [BooleanField, StringField]}
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            dynamic_only (False): whether to only include dynamically added
+                attributes
+
+        Returns:
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances. If a field's values takes multiple non-None types, the
+            list of observed types will be returned
+        """
+        make = lambda field_or_expr: foa.Schema(
+            field_or_expr,
+            expr=expr,
+            dynamic_only=dynamic_only,
+            _include_private=_include_private,
+            _raw=_raw,
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
     def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
@@ -7534,6 +7629,41 @@ class SampleCollection(object):
             )
 
         return next(iter(geo_schema.keys()))
+
+    def _get_label_attributes_schema(self, label_field):
+        label_type, attrs_path = self._get_label_field_path(
+            label_field, "attributes"
+        )
+
+        # We're implicitly dealing with nested list fields where possible
+        label_type = fol._LABEL_LIST_TO_SINGLE_MAP.get(label_type, label_type)
+
+        if not issubclass(label_type, fol._HasAttributesDict):
+            return self.schema(label_field, dynamic_only=True)
+
+        #
+        # We must merge dynamic attributes with those in `attributes` dict
+        #
+
+        dynamic = foa.Schema(label_field, dynamic_only=True)
+        attrs = foa.Schema(attrs_path)
+
+        schema, attrs_map = self.aggregate([dynamic, attrs])
+
+        names = []
+        aggs = []
+        for name in attrs_map.keys():
+            if name not in schema:  # precedence goes to dynamic attributes
+                names.append(name)
+                aggs.append(foa.Schema(attrs_path + "." + name))
+
+        if not aggs:
+            return schema
+
+        for name, attr_schema in zip(names, self.aggregate(aggs)):
+            schema[name] = attr_schema.get("value", None)
+
+        return schema
 
     def _unwind_values(self, field_name, values, keep_top_level=False):
         if values is None:

@@ -21,6 +21,7 @@ from .core.aggregations import (
     Distinct,
     HistogramValues,
     Mean,
+    Schema,
     Std,
     Sum,
     Values,
