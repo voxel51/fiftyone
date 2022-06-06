@@ -684,7 +684,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
             )
 
         for k, v in self._fields.items():
-            val = value[k]
+            try:
+                val = value[k]
+            except KeyError:
+                val = None
+
             if val is not None:
                 v.validate(val)
 
