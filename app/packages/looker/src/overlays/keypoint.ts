@@ -182,10 +182,11 @@ export default class KeypointOverlay<
     skeleton?: KeypointSkeleton
   ): (Coordinates | null)[] {
     return this.label.points.map((p, i) => {
-      return state.options.pointFilter(
-        this.field,
-        Object.fromEntries(getAttributes(skeleton, this.label, i))
-      )
+      return p.every((c) => typeof c === "number") &&
+        state.options.pointFilter(
+          this.field,
+          Object.fromEntries(getAttributes(skeleton, this.label, i))
+        )
         ? p
         : null;
     }) as unknown as (Coordinates | null)[];
