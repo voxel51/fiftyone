@@ -8,6 +8,7 @@ type AppConfig {
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!
+  showSkeletons: Boolean!
   showTooltip: Boolean!
   timezone: String
   useFrameNumber: Boolean!

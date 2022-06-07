@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7f8e8497095b9097d76934dacf9af779>>
+ * @generated SignedSource<<20b8469496d8ab0169d905141092d33e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type RootConfig_query$data = {
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;
+    readonly showSkeletons: boolean;
     readonly showTooltip: boolean;
     readonly timezone: string | null;
     readonly useFrameNumber: boolean;
@@ -117,6 +118,13 @@ const node: ReaderFragment = (function () {
             alias: null,
             args: null,
             kind: "ScalarField",
+            name: "showSkeletons",
+            storageKey: null,
+          },
+          {
+            alias: null,
+            args: null,
+            kind: "ScalarField",
             name: "showTooltip",
             storageKey: null,
           },
@@ -144,6 +152,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "85f4c6bc30144f4727c2654f762bc73b";
+(node as any).hash = "28b47d8c7639326428a23be097cd357e";
 
 export default node;
