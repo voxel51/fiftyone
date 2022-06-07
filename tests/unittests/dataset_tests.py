@@ -1006,6 +1006,7 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse("field" in dataset.get_field_schema())
         self.assertTrue("new_field" in dataset.get_field_schema())
         self.assertEqual(sample["new_field"], 1)
+        self.assertListEqual(dataset.values("new_field"), [1])
         with self.assertRaises(KeyError):
             sample["field"]
 
@@ -1023,7 +1024,13 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.field",
             "predictions.detections.new_field",
         )
-        self.assertIsNotNone(sample.predictions.detections[0].new_field)
+        self.assertEqual(sample.predictions.detections[0].new_field, 1)
+        self.assertListEqual(
+            dataset.values("predictions.detections.new_field", unwind=True),
+            [1],
+        )
+        with self.assertRaises(AttributeError):
+            sample.predictions.detections[0].field
 
         dataset.clear_sample_field("predictions.detections.field")
         self.assertIsNone(sample.predictions.detections[0].field)
@@ -1037,7 +1044,11 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.new_field",
             "predictions.detections.field",
         )
-        self.assertIsNotNone(sample.predictions.detections[0].field)
+        self.assertEqual(sample.predictions.detections[0].field, 1)
+        self.assertListEqual(
+            dataset.values("predictions.detections.field", unwind=True),
+            [1],
+        )
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
@@ -1054,6 +1065,10 @@ class DatasetTests(unittest.TestCase):
         self.assertIn("field_copy", schema)
         self.assertIsNotNone(sample.field)
         self.assertIsNotNone(sample.field_copy)
+        self.assertEqual(sample.field, 1)
+        self.assertEqual(sample.field_copy, 1)
+        self.assertListEqual(dataset.values("field"), [1])
+        self.assertListEqual(dataset.values("field_copy"), [1])
 
         dataset.clear_sample_field("field")
         schema = dataset.get_field_schema()
@@ -1085,7 +1100,16 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.field",
             "predictions.detections.field_copy",
         )
+        self.assertIsNotNone(sample.predictions.detections[0].field)
         self.assertIsNotNone(sample.predictions.detections[0].field_copy)
+        self.assertListEqual(
+            dataset.values("predictions.detections.field", unwind=True),
+            [1],
+        )
+        self.assertListEqual(
+            dataset.values("predictions.detections.field_copy", unwind=True),
+            [1],
+        )
 
         dataset.clear_sample_field("predictions.detections.field")
         self.assertIsNone(sample.predictions.detections[0].field)
@@ -1116,8 +1140,12 @@ class DatasetTests(unittest.TestCase):
         schema = dataset.get_frame_field_schema()
         self.assertIn("field", schema)
         self.assertIn("field_copy", schema)
-        self.assertIsNotNone(frame.field)
-        self.assertIsNotNone(frame.field_copy)
+        self.assertEqual(frame.field, 1)
+        self.assertEqual(frame.field_copy, 1)
+        self.assertListEqual(dataset.values("frames.field", unwind=True), [1])
+        self.assertListEqual(
+            dataset.values("frames.field_copy", unwind=True), [1]
+        )
 
         dataset.clear_frame_field("field")
         schema = dataset.get_frame_field_schema()
@@ -1150,7 +1178,18 @@ class DatasetTests(unittest.TestCase):
             "predictions.detections.field",
             "predictions.detections.field_copy",
         )
+        self.assertIsNotNone(frame.predictions.detections[0].field)
         self.assertIsNotNone(frame.predictions.detections[0].field_copy)
+        self.assertListEqual(
+            dataset.values("frames.predictions.detections.field", unwind=True),
+            [1],
+        )
+        self.assertListEqual(
+            dataset.values(
+                "frames.predictions.detections.field_copy", unwind=True
+            ),
+            [1],
+        )
 
         dataset.clear_frame_field("predictions.detections.field")
         self.assertIsNone(frame.predictions.detections[0].field)
