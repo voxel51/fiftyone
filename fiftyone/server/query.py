@@ -172,6 +172,7 @@ class Dataset(HasCollection):
             return dataset
 
         ds = fo.load_dataset(name)
+        ds.reload()
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
