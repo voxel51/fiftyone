@@ -184,32 +184,7 @@ export const colorscale = atom<RGB[]>({
   default: null,
 });
 
-export const paginateGroupQueryRef = atom<
-  PreloadedQuery<paginateGroupQuery, {}>
->({
-  key: "paginateGroupQueryRef",
-  default: null,
-  dangerouslyAllowMutability: true,
-});
-
-export const patching = atom<boolean>({
-  key: "patching",
-  default: false,
-});
-
-export const savingFilters = atom<boolean>({
-  key: "savingFilters",
-  default: false,
-});
-
-export const similaritySorting = atom<boolean>({
-  key: "similaritySorting",
-  default: false,
-});
-
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
-  key: "sortBySimilarityParameters",
-  default: null,
+export const selectedMediaField = atom<State.MediaFieldSelection>({
+  key: "selectedGridMediaField",
+  default: { grid: "filepath", modal: null },
 });

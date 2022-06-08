@@ -220,16 +220,53 @@ const Patches = ({ modal }) => {
   );
 };
 
+const MediaFields = ({ modal }) => {
+  const [selectedField, setSelectedField] =
+    useRecoilState<State.MediaFieldSelection>(atoms.selectedMediaField);
+  const { appConfig } = useRecoilValue(atoms.dataset);
+  const selectedFieldName = modal
+    ? selectedField.modal || selectedField.grid
+    : selectedField.grid;
+  const fields = appConfig?.mediaFields || [];
+
+  if (fields.length <= 1) return null;
+
+  return (
+    <>
+      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+
+      <TabOption
+        active={selectedFieldName}
+        rows={true}
+        options={fields.map((value: Field) => {
+          return {
+            text: value,
+            title: `View Media with "${selectedFieldName}"`,
+            onClick: () => {
+              selectedFieldName !== value &&
+                setSelectedField((current) => {
+                  if (modal) {
+                    return { ...current, modal: value };
+                  }
+                  return { modal: null, grid: value };
+                });
+            },
+          };
+        })}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
-  const dataset = useRecoilValue(atoms.dataset);
-  console.log(dataset);
   return (
     <Popout modal={modal} bounds={bounds}>
+      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />
