@@ -6,6 +6,7 @@ FiftyOne Server JIT metadata utilities.
 |
 """
 import logging
+import re
 import requests
 import shutil
 import struct
@@ -23,6 +24,7 @@ import fiftyone.core.cache as foc
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
+from fiftyone.core.config import HTTPRetryConfig
 
 
 logger = logging.getLogger(__name__)
@@ -110,9 +112,9 @@ async def get_metadata(session, filepath, media_type, metadata=None):
 @backoff.on_exception(
     backoff.expo,
     aiohttp.ClientResponseError,
-    factor=0.1,
-    max_tries=10,
-    giveup=lambda e: e.code not in {408, 429, 500, 502, 503, 504, 509},
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def read_url_metadata(session, url, is_video):
@@ -204,6 +206,14 @@ class Reader(object):
             self._data += await self._content.read(delta)
 
 
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
 async def get_stream_info(path, session=None):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.

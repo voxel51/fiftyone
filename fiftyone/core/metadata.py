@@ -5,10 +5,12 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import backoff
 import itertools
 import logging
 import multiprocessing
 import os
+import re
 import requests
 
 from PIL import Image
@@ -18,6 +20,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
+from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -67,11 +70,18 @@ class Metadata(DynamicEmbeddedDocument):
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
-        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
 
@@ -133,11 +143,18 @@ class ImageMetadata(Metadata):
         )
 
     @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _build_for_url(cls, url, mime_type=None):
         if mime_type is None:
             mime_type = etau.guess_mime_type(url)
 
-        # @todo need retries
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
@@ -194,20 +211,79 @@ class VideoMetadata(Metadata):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path: the path to a video
+            video_path: the path to a video (local path or url)
             mime_type (None): the MIME type of the image. If not provided, it
                 will be guessed
 
         Returns:
             a :class:`VideoMetadata`
         """
-        if not fos.is_local(video_path):
-            video_path = fos.get_url(video_path)
+        if fos.is_local(video_path):
+            return cls._build_for_local(video_path, mime_type=mime_type)
 
-        # @todo need retries for URLs
+        url = fos.get_url(video_path)
+        return cls._build_for_url(url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, video_path, mime_type=None):
+        """Capture the metadata from the local file
+
+        Args:
+            video_path: local path to the video
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
+
+        Returns:
+            a :class: `VideoMetadata
+        """
         stream_info = etav.VideoStreamInfo.build_for(
             video_path, mime_type=mime_type
         )
+
+        return cls(
+            size_bytes=stream_info.size_bytes,
+            mime_type=stream_info.mime_type,
+            frame_width=stream_info.frame_size[0],
+            frame_height=stream_info.frame_size[1],
+            frame_rate=stream_info.frame_rate,
+            total_frame_count=stream_info.total_frame_count,
+            duration=stream_info.duration,
+            encoding_str=stream_info.encoding_str,
+        )
+
+    @classmethod
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.error_code not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
+    def _build_for_url(cls, url, mime_type=None):
+        """Builds an :class:`VideoMetadata` object for the given external video.
+
+        Args:
+            url: url to the external video resource
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
+
+        Returns:
+            a :class:`VideoMetadata`
+        """
+        try:
+            stream_info = etav.VideoStreamInfo.build_for(
+                url, mime_type=mime_type
+            )
+        except Exception as err:
+            # A failure occured when getting the metadata.
+            # Test to see if it's a retryable HTTP error
+            # before raising
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+
+            # if it's not retryable or we hit the max retry, bail
+            raise err
 
         return cls(
             size_bytes=stream_info.size_bytes,
