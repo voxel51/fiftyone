@@ -229,6 +229,8 @@ type OptionsProps = {
 };
 
 const Options = ({ modal, bounds }: OptionsProps) => {
+  const dataset = useRecoilValue(atoms.dataset);
+  console.log(dataset);
   return (
     <Popout modal={modal} bounds={bounds}>
       <ColorBy modal={modal} />

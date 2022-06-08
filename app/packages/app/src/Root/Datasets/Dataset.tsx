@@ -21,6 +21,7 @@ const Query = graphql`
       id
       name
       mediaType
+      mediaFields
       sampleFields {
         ftype
         subfield
