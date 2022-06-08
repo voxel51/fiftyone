@@ -13,6 +13,7 @@ from mongoengine.fields import StringField as MongoStringField
 
 from fiftyone.core.fields import (
     Field,
+    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
@@ -394,3 +395,4 @@ class DatasetDocument(Document):
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
+    media_fields = ListField(StringField())
