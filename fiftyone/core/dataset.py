@@ -360,6 +360,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.media_type = media_type
         self._set_metadata(media_type)
 
+    @property
+    def media_fields(self):
+        return set(self._doc.media_fields)
+
+    @media_fields.setter
+    def media_fields(self, fields):
+        if fields == self._doc.media_fields:
+            return
+        # should we check for field validity?
+        self._doc.media_fields = list(fields)
+
     def _set_metadata(self, media_type):
         idx = None
         for i, field in enumerate(self._doc.sample_fields):

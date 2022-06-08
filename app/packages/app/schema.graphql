@@ -53,6 +53,7 @@ type Dataset {
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
+  mediaFields: [String]
 }
 
 type DatasetConnection {
