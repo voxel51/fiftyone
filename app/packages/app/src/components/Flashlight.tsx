@@ -114,25 +114,27 @@ const flashlightOptions = selector<FlashlightOptions>({
 
 const flashlightLookerOptions = selectorFamily<any, boolean>({
   key: "flashlightLookerOptions",
-  get: (withFilter) => ({ get }) => {
-    return {
-      coloring: get(colorAtoms.coloring(false)),
-      filter: withFilter ? get(pathFilter(false)) : null,
-      activePaths: get(schemaAtoms.activeFields({ modal: false })),
-      zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
-      loop: true,
-      timeZone: get(selectors.timeZone),
-      alpha: get(atoms.alpha(false)),
-      showSkeletons: get(
-        selectors.appConfigOption({ key: "showSkeletons", modal: false })
-      ),
-      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: Object.fromEntries(
-        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
-      ),
-      pointFilter: get(skeletonFilter(false)),
-    };
-  },
+  get:
+    (withFilter) =>
+    ({ get }) => {
+      return {
+        coloring: get(colorAtoms.coloring(false)),
+        filter: withFilter ? get(pathFilter(false)) : null,
+        activePaths: get(schemaAtoms.activeFields({ modal: false })),
+        zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
+        loop: true,
+        timeZone: get(selectors.timeZone),
+        alpha: get(atoms.alpha(false)),
+        showSkeletons: get(
+          selectors.appConfigOption({ key: "showSkeletons", modal: false })
+        ),
+        defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+        skeletons: Object.fromEntries(
+          get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+        ),
+        pointFilter: get(skeletonFilter(false)),
+      };
+    },
 });
 
 const useLookerOptions = () => {
@@ -164,85 +166,92 @@ const useThumbnailClick = (
   const setSelected = useSetSelected();
 
   return useRecoilCallback(
-    ({ set, snapshot }) => async ({
-      shiftKey,
-      sampleId,
-    }: {
-      shiftKey: boolean;
-      sampleId: string;
-    }) => {
-      const itemIndexMap = flashlight.current.itemIndexes;
-      const clickedIndex = itemIndexMap[sampleId];
-      const reverse = Object.fromEntries(
-        Object.entries(itemIndexMap).map(([k, v]) => [v, k])
-      );
-      let selected = new Set(await snapshot.getPromise(atoms.selectedSamples));
-      const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
-      set(sidebarGroupsDefinition(true), groups);
-
-      const addRange = () => {
-        const closeIndex =
-          itemIndexMap[
-            array[
-              argMin(
-                array.map((id) => Math.abs(itemIndexMap[id] - clickedIndex))
-              )
-            ]
-          ];
-
-        const [start, end] =
-          clickedIndex < closeIndex
-            ? [clickedIndex, closeIndex]
-            : [closeIndex, clickedIndex];
-
-        const added = new Array(end - start + 1)
-          .fill(0)
-          .map((_, i) => reverse[i + start]);
-
-        selected = new Set([...array, ...added]);
-      };
-
-      const removeRange = () => {
-        let before = clickedIndex;
-        while (selected.has(reverse[before])) {
-          before--;
-        }
-        before += 1;
-
-        let after = clickedIndex;
-        while (selected.has(reverse[after])) {
-          after++;
-        }
-        after -= 1;
-
-        const [start, end] =
-          clickedIndex - before <= after - clickedIndex
-            ? clickedIndex - before === 0
-              ? [clickedIndex, after]
-              : [before, clickedIndex]
-            : after - clickedIndex === 0
-            ? [before, clickedIndex]
-            : [clickedIndex, after];
-
-        selected = new Set(
-          array.filter((s) => itemIndexMap[s] < start || itemIndexMap[s] > end)
+    ({ set, snapshot }) =>
+      async ({
+        shiftKey,
+        sampleId,
+      }: {
+        shiftKey: boolean;
+        sampleId: string;
+      }) => {
+        const itemIndexMap = flashlight.current.itemIndexes;
+        const clickedIndex = itemIndexMap[sampleId];
+        const reverse = Object.fromEntries(
+          Object.entries(itemIndexMap).map(([k, v]) => [v, k])
         );
-      };
+        let selected = new Set(
+          await snapshot.getPromise(atoms.selectedSamples)
+        );
+        const groups = await snapshot.getPromise(
+          sidebarGroupsDefinition(false)
+        );
+        set(sidebarGroupsDefinition(true), groups);
 
-      const array = [...selected];
-      if (shiftKey && !selected.has(sampleId)) {
-        addRange();
-      } else if (shiftKey) {
-        removeRange();
-      } else {
-        selected.has(sampleId)
-          ? selected.delete(sampleId)
-          : selected.add(sampleId);
-      }
+        const addRange = () => {
+          const closeIndex =
+            itemIndexMap[
+              array[
+                argMin(
+                  array.map((id) => Math.abs(itemIndexMap[id] - clickedIndex))
+                )
+              ]
+            ];
 
-      set(atoms.selectedSamples, selected);
-      setSelected([...selected]);
-    },
+          const [start, end] =
+            clickedIndex < closeIndex
+              ? [clickedIndex, closeIndex]
+              : [closeIndex, clickedIndex];
+
+          const added = new Array(end - start + 1)
+            .fill(0)
+            .map((_, i) => reverse[i + start]);
+
+          selected = new Set([...array, ...added]);
+        };
+
+        const removeRange = () => {
+          let before = clickedIndex;
+          while (selected.has(reverse[before])) {
+            before--;
+          }
+          before += 1;
+
+          let after = clickedIndex;
+          while (selected.has(reverse[after])) {
+            after++;
+          }
+          after -= 1;
+
+          const [start, end] =
+            clickedIndex - before <= after - clickedIndex
+              ? clickedIndex - before === 0
+                ? [clickedIndex, after]
+                : [before, clickedIndex]
+              : after - clickedIndex === 0
+              ? [before, clickedIndex]
+              : [clickedIndex, after];
+
+          selected = new Set(
+            array.filter(
+              (s) => itemIndexMap[s] < start || itemIndexMap[s] > end
+            )
+          );
+        };
+
+        const array = [...selected];
+        if (shiftKey && !selected.has(sampleId)) {
+          addRange();
+        } else if (shiftKey) {
+          removeRange();
+        } else {
+          selected.has(sampleId)
+            ? selected.delete(sampleId)
+            : selected.add(sampleId);
+        }
+
+        set(atoms.selectedSamples, selected);
+        setSelected([...selected]);
+      },
     []
   );
 };
@@ -250,39 +259,42 @@ const useThumbnailClick = (
 const useOpenModal = (flashlight: MutableRefObject<Flashlight<number>>) => {
   const clearModal = useClearModal();
   return useRecoilCallback(
-    ({ set, snapshot }) => async (
-      event: MouseEvent,
-      sampleId: string,
-      itemIndexMap: { [key: string]: number }
-    ) => {
-      const clickedIndex = itemIndexMap[sampleId];
-      const groups = await snapshot.getPromise(sidebarGroupsDefinition(false));
-      set(sidebarGroupsDefinition(true), groups);
+    ({ set, snapshot }) =>
+      async (
+        event: MouseEvent,
+        sampleId: string,
+        itemIndexMap: { [key: string]: number }
+      ) => {
+        const clickedIndex = itemIndexMap[sampleId];
+        const groups = await snapshot.getPromise(
+          sidebarGroupsDefinition(false)
+        );
+        set(sidebarGroupsDefinition(true), groups);
 
-      const getIndex = (index) => {
-        const promise = store.indices.has(index)
-          ? Promise.resolve(store.samples.get(store.indices.get(index)))
-          : flashlight.current.get()?.then(() => {
-              return store.indices.has(index)
-                ? store.samples.get(store.indices.get(index))
-                : null;
-            });
+        const getIndex = (index) => {
+          const promise = store.indices.has(index)
+            ? Promise.resolve(store.samples.get(store.indices.get(index)))
+            : flashlight.current.get()?.then(() => {
+                return store.indices.has(index)
+                  ? store.samples.get(store.indices.get(index))
+                  : null;
+              });
 
-        promise
-          ? promise.then((sample) => {
-              sample
-                ? set(atoms.modal, { ...sample, index, getIndex })
-                : clearModal();
-            })
-          : clearModal();
-      };
-      set(atoms.modal, {
-        ...store.samples.get(sampleId),
-        index: clickedIndex,
-        getIndex,
-      });
-      setModal(snapshot, set);
-    }
+          promise
+            ? promise.then((sample) => {
+                sample
+                  ? set(atoms.modal, { ...sample, index, getIndex })
+                  : clearModal();
+              })
+            : clearModal();
+        };
+        set(atoms.modal, {
+          ...store.samples.get(sampleId),
+          index: clickedIndex,
+          getIndex,
+        });
+        setModal(snapshot, set);
+      }
   );
 };
 
@@ -338,6 +350,8 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
+  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
+  const selectedMediaFieldName = selectedMediaField.grid || "filepath";
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -353,7 +367,7 @@ export default React.memo(() => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
     const config = {
-      src: getSampleSrc(sample.filepath, sample._id, url),
+      src: getSampleSrc(sample[selectedMediaFieldName], sample._id, url),
       thumbnail: true,
       dimensions,
       sampleId: sample._id,
@@ -399,17 +413,18 @@ export default React.memo(() => {
     document,
     "keydown",
     useRecoilCallback(
-      ({ snapshot, set }) => async (event: KeyboardEvent) => {
-        if (event.key !== "Escape") {
-          return;
-        }
+      ({ snapshot, set }) =>
+        async (event: KeyboardEvent) => {
+          if (event.key !== "Escape") {
+            return;
+          }
 
-        const modal = await snapshot.getPromise(atoms.modal);
+          const modal = await snapshot.getPromise(atoms.modal);
 
-        if (!modal) {
-          set(atoms.selectedSamples, new Set());
-        }
-      },
+          if (!modal) {
+            set(atoms.selectedSamples, new Set());
+          }
+        },
       []
     )
   );
@@ -432,6 +447,7 @@ export default React.memo(() => {
     tagging,
     useRecoilValue(pageParameters),
     useRecoilValue(atoms.refresher),
+    selectedMediaFieldName,
   ]);
 
   useLayoutEffect(() => {
