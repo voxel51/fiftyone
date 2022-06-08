@@ -57,7 +57,10 @@ const SampleModal = () => {
     navigation: { index, getIndex },
   } = data;
 
-  const sampleSrc = fos.getSampleSrc(filepath, _id);
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = getSampleSrc(sample[selectedMediaFieldName], sample._id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = fos.useOnSelectLabel();
   const tagText = fos.useTagText(true);
