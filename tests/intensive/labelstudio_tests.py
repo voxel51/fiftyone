@@ -1,5 +1,6 @@
+"""Test Label Studio integration.
+"""
 import os
-import random
 
 import numpy as np
 import pytest
@@ -7,6 +8,7 @@ import pytest
 import fiftyone as fo
 import fiftyone.zoo as foz
 import fiftyone.utils.labelstudio as fouls
+import fiftyone.core.labels as fol
 
 
 @pytest.fixture()
@@ -16,6 +18,7 @@ def backend_config():
         "url": os.getenv("LABELSTUDIO_URL", "http://localhost:8080"),
         "api_key": os.getenv("LABELSTUDIO_TOKEN"),
     }
+import random
 
 
 @pytest.fixture()
@@ -24,15 +27,30 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "polylines",
-                "labels": ["Airplane", "Car"],
+                "label_type": "classification",
+                "labels": ["Adult content", "Weapons", "Violence"],
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <PolygonLabels name="label" toName="image">
-    <Label value="Airplane"/>
-    <Label value="Car"/>
-  </PolygonLabels>
+  <Choices name="choice" toName="image" choice="single-radio">
+    <Choice value="Adult content"/>
+    <Choice value="Weapons"/>
+    <Choice value="Violence"/>
+  </Choices>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_type": "classifications",
+                "labels": ["Boeing", "Airbus"],
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <Choices name="choice" toName="image" choice="multiple">
+    <Choice value="Boeing"/>
+    <Choice value="Airbus"/>
+  </Choices>
 </View>""",
         },
         {
@@ -52,38 +70,96 @@ def label_configs():
         {
             "input": {
                 "media": "image",
-                "label_type": "classification",
-                "labels": ["Adult content", "Weapons", "Violence"],
+                "label_type": "instances",
+                "labels": ["Airplane", "Car"],
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Choices name="choice" toName="image">
-    <Choice value="Adult content"/>
-    <Choice value="Weapons"/>
-    <Choice value="Violence"/>
-  </Choices>
+  <RectangleLabels name="label" toName="image">
+    <Label value="Airplane"/>
+    <Label value="Car"/>
+  </RectangleLabels>
 </View>""",
         },
         {
             "input": {
-                "media": "video",
-                "label_type": "classification",
-                "labels": ["Blurry", "Sharp"],
+                "media": "image",
+                "label_type": "polylines",
+                "labels": ["Airplane", "Car"],
             },
             "output": """<View>
-  <Video name="video" value="$video"/>
-  <Choices name="choice" toName="video">
-    <Choice value="Blurry"/>
-    <Choice value="Sharp"/>
-  </Choices>
+  <Image name="image" value="$image"/>
+  <PolygonLabels name="label" toName="image">
+    <Label value="Airplane"/>
+    <Label value="Car"/>
+  </PolygonLabels>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_type": "polygons",
+                "labels": ["Airplane", "Car"],
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <PolygonLabels name="label" toName="image">
+    <Label value="Airplane"/>
+    <Label value="Car"/>
+  </PolygonLabels>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_type": "keypoints",
+                "labels": ["Engine", "Tail"],
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <KeyPointLabels name="label" toName="image">
+    <Label value="Engine"/>
+    <Label value="Tail"/>
+  </KeyPointLabels>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_type": "segmentation",
+                "labels": ["Planet", "Moonwalker"],
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <BrushLabels name="label" toName="image">
+    <Label value="Planet"/>
+    <Label value="Moonwalker"/>
+  </BrushLabels>
+</View>""",
+        },
+        {
+            "input": {
+                "media": "image",
+                "label_type": "scalar",
+            },
+            "output": """<View>
+  <Image name="image" value="$image"/>
+  <Number name="number" toName="image"/>
 </View>""",
         },
     ]
     return cases
 
 
+def test_labelling_config(label_configs):
+    for case in label_configs:
+        generated = fouls.generate_labelling_config(**case["input"])
+        assert generated.strip() == case["output"].strip()
+
+
 @pytest.fixture()
 def label_mappings():
+    # TODO add a segmentation test by loading rle values
     cases = [
         {
             "labelstudio": {
@@ -92,6 +168,17 @@ def label_mappings():
                 "type": "choices",
             },
             "fiftyone": fo.Classification(label="Airbus"),
+        },
+        {
+            "labelstudio": {
+                "value": {"choices": ["Airbus", "Boeing"]},
+                "from_name": "choice",
+                "type": "choices",
+            },
+            "fiftyone": [
+                fo.Classification(label="Airbus"),
+                fo.Classification(label="Boeing"),
+            ]
         },
         {
             "labelstudio": {
@@ -108,28 +195,6 @@ def label_mappings():
             },
             "fiftyone": fo.Detection(
                 label="Airplane", bounding_box=[0.05, 0.15, 0.32, 0.39]
-            ),
-        },
-        {
-            "labelstudio": {
-                "original_width": 600,
-                "original_height": 403,
-                "image_rotation": 0,
-                "value": {
-                    "x": 67.0,
-                    "y": 17.0,
-                    "width": 29.0,
-                    "height": 49.0,
-                    "rotation": 0,
-                    "rectanglelabels": ["Car"],
-                },
-                "id": "inPz4zB84L",
-                "from_name": "label",
-                "to_name": "image",
-                "type": "rectanglelabels",
-            },
-            "fiftyone": fo.Detection(
-                label="Car", bounding_box=[0.67, 0.17, 0.29, 0.49]
             ),
         },
         {
@@ -155,17 +220,120 @@ def label_mappings():
             "fiftyone": fo.Polyline(
                 label="Car",
                 points=[
-                    [[0.29, 0.56], [0.33, 0.8]],
-                    [[0.33, 0.8], [0.43, 0.91]],
-                    [[0.43, 0.91], [0.6, 0.9]],
-                    [[0.6, 0.9], [0.59, 0.45]],
+                    [[0.29, 0.56], [0.33, 0.8],
+                     [0.43, 0.91], [0.6, 0.9],
+                     [0.59, 0.45]],
                 ],
                 filled=True,
                 closed=True,
             ),
         },
+        {
+            "labelstudio": [
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 39.,
+                        "y": 81.,
+                        "width": 0.346,
+                        "keypointlabels": [
+                            "Tail"
+                        ]
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels"
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 33.3,
+                        "y": 77.1,
+                        "width": 0.346,
+                        "keypointlabels": [
+                            "Tail"
+                        ]
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels"
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 42.4,
+                        "y": 89.4,
+                        "width": 0.346,
+                        "keypointlabels": [
+                            "Tail"
+                        ]
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels"
+                },
+                {
+                    "original_width": 600,
+                    "original_height": 403,
+                    "image_rotation": 0,
+                    "value": {
+                        "x": 42.4,
+                        "y": 74.5,
+                        "width": 0.346,
+                        "keypointlabels": [
+                            "Tail"
+                        ]
+                    },
+                    "from_name": "label",
+                    "type": "keypointlabels"
+                }
+            ],
+            "fiftyone": [
+                fol.Keypoint(
+                    label="Tail",
+                    points=[(0.39, 0.81), (0.333, 0.771),
+                            (0.424, 0.894), (0.424, 0.745)]),
+            ]
+        },
+        {
+            "labelstudio": {
+                  "value": {
+                    "number": 100
+                  },
+                  "from_name": "number",
+                  "type": "number",
+                },
+            "fiftyone": fo.Regression(value=100)
+        }
     ]
     return cases
+
+
+def test_import_labels(label_mappings):
+    for case in label_mappings:
+        label = fouls.import_labelstudio_annotation(case["labelstudio"])
+        expected = case["fiftyone"]
+
+        if isinstance(expected, (list, tuple)):
+            for pair in zip(label, expected):
+                _assert_labels_equal(*pair)
+        else:
+            _assert_labels_equal(label, expected)
+
+
+def test_export_labels(label_mappings):
+    for case in label_mappings:
+        ls_prediction = fouls.export_label_to_labelstudio(case["fiftyone"])
+        expected = case["labelstudio"]
+
+        if isinstance(expected, (list, tuple)):
+            for pred, exp in zip(ls_prediction, expected):
+                _assert_predictions_equal(pred, exp["value"])
+        else:
+            _assert_predictions_equal(ls_prediction, expected["value"])
 
 
 @pytest.fixture()
@@ -180,27 +348,9 @@ def setup(backend_config):
     fo.delete_dataset(dataset.name)
 
 
-def test_labelling_config(label_configs):
-    for case in label_configs:
-        generated = fouls.generate_labelling_config(**case["input"])
-        assert generated.strip() == case["output"].strip()
-
-
-def test_import_labels(label_mappings):
-    for case in label_mappings:
-        converted = fouls.import_labelstudio_annotation(case["labelstudio"])
-        expected = case["fiftyone"]
-        _assert_labels_equal(converted, expected)
-
-
-def test_export_labels(label_mappings):
-    for case in label_mappings:
-        converted = fouls.export_label_to_labelstudio(case["fiftyone"])
-        _assert_predictions_equal(converted, case["labelstudio"]["value"])
-
-
 @pytest.mark.parametrize("label_type",
-                         ["classification", "detections", "polylines"])
+                         ["classification", "detections", "polylines",
+                          "keypoints", "scalar"])
 def test_annotate_simple(backend_config, setup, label_type):
     dataset, anno_key, label_field, labels = setup
     label_field += f"-{label_type}"
@@ -209,7 +359,7 @@ def test_annotate_simple(backend_config, setup, label_type):
         label_field=label_field,
         project_name=f"labelstudio_{label_type}_tests",
         label_type=label_type,
-        classes=labels,
+        classes=labels if label_type != "scalar" else None,
         **backend_config
     )
 
@@ -228,7 +378,9 @@ def test_annotate_simple(backend_config, setup, label_type):
 
 def _assert_labels_equal(converted, expected):
     assert converted._cls == expected._cls
-    assert converted.label == expected.label
+    if hasattr(expected, "label"):
+        assert converted.label == expected.label
+
     if expected._cls == "Classification":
         assert True
     elif expected._cls == "Detection":
@@ -241,6 +393,12 @@ def _assert_labels_equal(converted, expected):
         )
         assert converted.closed == expected.closed
         assert converted.filled == expected.filled
+    elif expected._cls == "Keypoint":
+        np.testing.assert_allclose(
+            converted.points, expected.points, atol=0.01, rtol=0.01
+        )
+    elif expected._cls == "Regression":
+        assert expected.value == converted.value
     else:
         raise NotImplementedError()
 
@@ -250,7 +408,7 @@ def _assert_predictions_equal(converted, expected):
         if isinstance(v, (int, float)):
             assert converted[k] - v <= (0.01 + v * 0.01)
         elif isinstance(v, (list, tuple)):
-            if len(v) == 1:
+            if len(v) == 1 or isinstance(v[0], str):
                 assert converted[k] == v
             else:
                 np.testing.assert_allclose(
@@ -289,5 +447,26 @@ def _generate_dummy_predictions(label_type, labels, n):
             "points": (np.random.randn(4, 2, ) * 100).tolist(),
             "polygonlabels": [random.choice(labels)]
         } for _ in range(n)]
-    else:
+    elif label_type == "keypoints":
+        def generate_keypoint():
+            label = random.choice(labels)
+            return [{
+                "type": "keypointlabels",
+                "from_name": "label",
+                "to_name": "image",
+                "value": {
+                    "x": random.randint(0, 50),
+                    "y": random.randint(0, 50),
+                    "width": 0.34,
+                    "keypointlabels": [label]
+                }} for _ in range(5)]
+
+        return [generate_keypoint() for _ in range(n)]
+    elif label_type == "segmentation":
         raise NotImplementedError()
+    elif label_type == "scalar":
+        return [{
+            "number": random.randint(0, 100)
+        } for _ in range(n)]
+    else:
+        raise ValueError("Unknown label type")
