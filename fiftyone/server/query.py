@@ -136,7 +136,13 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
-class Dataset:
+class DatasetAppConfig:
+    grid_media_field: str
+    media_fields: t.List[str]
+
+
+@gql.type
+class Dataset(HasCollection):
     id: gql.ID
     name: str
     created_at: t.Optional[date]
@@ -155,6 +161,7 @@ class Dataset:
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
+    app_config: t.Optional[DatasetAppConfig]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
