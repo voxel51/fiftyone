@@ -24,7 +24,10 @@ const Query = graphql`
         }
         defaultGroup
       }
-      mediaFields
+      appConfig {
+        gridMediaField
+        mediaFields
+      }
       sampleFields {
         ftype
         subfield

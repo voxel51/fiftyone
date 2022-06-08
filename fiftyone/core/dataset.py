@@ -39,6 +39,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 from fiftyone.core.odm.dataset import SampleFieldDocument
+from fiftyone.core.odm.dataset import DatasetAppConfigDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -245,6 +246,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
+        if self._doc.app_config == None:
+            self._doc.app_config = DatasetAppConfigDocument(
+                grid_media_field="filepath", media_fields=["filepath"]
+            )
+
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
         self._group_field = _get_group_field(self)
@@ -362,15 +368,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._set_metadata(media_type)
 
     @property
-    def media_fields(self):
-        return set(self._doc.media_fields)
+    def app_config(self):
+        return self._doc.app_config
 
-    @media_fields.setter
-    def media_fields(self, fields):
-        if fields == self._doc.media_fields:
-            return
-        # should we check for field validity?
-        self._doc.media_fields = list(fields)
+    @app_config.setter
+    def app_config(self, config):
+        self._doc.app_config = config
 
     def _set_metadata(self, media_type):
         idx = None
