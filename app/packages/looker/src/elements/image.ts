@@ -16,8 +16,8 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
         update({ loaded: true });
       },
-      error: ({ event, dispatchEvent }) => {
-        dispatchEvent("error", { event });
+      error: ({ update }) => {
+        update({ error: true });
       },
     };
   }
