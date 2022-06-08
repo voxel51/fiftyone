@@ -24,6 +24,7 @@ const Query = graphql`
         }
         defaultGroup
       }
+      mediaFields
       sampleFields {
         ftype
         subfield
