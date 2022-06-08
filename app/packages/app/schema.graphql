@@ -37,6 +37,11 @@ enum ColorBy {
   label
 }
 
+type DataSetAppConfig {
+  gridMediaField: String!
+  mediaFields: [String!]!
+}
+
 type Dataset {
   id: ID!
   name: String!
@@ -55,7 +60,7 @@ type Dataset {
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
-  mediaFields: [String]
+  appConfig: DataSetAppConfig!
 }
 
 type DatasetConnection {

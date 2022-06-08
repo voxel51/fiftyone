@@ -21,7 +21,10 @@ const Query = graphql`
       id
       name
       mediaType
-      mediaFields
+      appConfig {
+        gridMediaField
+        mediaFields
+      }
       sampleFields {
         ftype
         subfield
