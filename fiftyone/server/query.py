@@ -123,6 +123,12 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
+class DatasetAppConfig:
+    grid_media_field: str
+    media_fields: t.List[str]
+
+
+@gql.type
 class Dataset(HasCollection):
     id: gql.ID
     name: str
@@ -141,6 +147,7 @@ class Dataset(HasCollection):
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
+    app_config: t.Optional[DatasetAppConfig]
 
     @staticmethod
     def get_collection_name() -> str:

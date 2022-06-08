@@ -358,6 +358,12 @@ class KeypointSkeleton(EmbeddedDocument):
     edges = ListField(ListField(IntField()))
 
 
+class DatasetAppConfigDocument(EmbeddedDocument):
+
+    grid_media_field = StringField()
+    media_fields = ListField(StringField())
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -392,4 +398,4 @@ class DatasetDocument(Document):
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
-    media_fields = ListField(StringField())
+    app_config = EmbeddedDocumentField(document_type=DatasetAppConfigDocument)
