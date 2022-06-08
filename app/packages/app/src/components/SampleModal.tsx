@@ -60,37 +60,41 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
+    ({ get, set }) =>
+      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+        const { sample } = get(atoms.modal);
+        let labels = {
+          ...get(atoms.selectedLabels),
         };
-      }
+        if (labels[id]) {
+          delete labels[id];
+        } else {
+          labels[id] = {
+            field,
+            sampleId: sample._id,
+            frameNumber,
+          };
+        }
 
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
-      );
-    },
+        set(atoms.selectedLabels, labels);
+        send(
+          Object.entries(labels).map(([labelId, data]) => ({
+            ...data,
+            labelId,
+          }))
+        );
+      },
     []
   );
 };
 
 const SampleModal = () => {
-  const {
-    sample: { filepath, _id },
-    index,
-    getIndex,
-  } = useRecoilValue(atoms.modal);
-  const sampleSrc = getSampleSrc(filepath, _id);
+  const { sample, index, getIndex } = useRecoilValue(atoms.modal);
+
+  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = getSampleSrc(sample[selectedMediaFieldName], sample._id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
   const tagText = useTagText(true);

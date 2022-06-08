@@ -422,12 +422,13 @@ const lookerOptions = selector({
 3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (event: CustomEvent) => {
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
-      set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
-    }
+    ({ snapshot, set }) =>
+      async (event: CustomEvent) => {
+        const currentOptions = await snapshot.getPromise(
+          atoms.savedLookerOptions
+        );
+        set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+      }
   );
 };
 
@@ -445,7 +446,9 @@ const useShowOverlays = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(atoms.selectedLabels, {}),
+    ({ set }) =>
+      async () =>
+        set(atoms.selectedLabels, {}),
     []
   );
 };
@@ -474,7 +477,14 @@ const Looker = ({
   );
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
+  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = getSampleSrc(
+    sample[selectedMediaFieldName],
+    sample._id,
+    url
+  );
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);

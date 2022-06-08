@@ -73,6 +73,10 @@ export namespace State {
     name: string;
   }
 
+  export interface DatasetAppConfig {
+    gridMediaField?: string;
+    mediaFields?: string[];
+  }
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
@@ -91,6 +95,7 @@ export namespace State {
     appSidebarGroups?: { name: string; paths: string[] }[];
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
+    appConfig: DatasetAppConfig;
   }
 
   export interface Filter {}
@@ -139,5 +144,10 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
+  }
+
+  export interface MediaFieldSelection {
+    grid?: string;
+    modal?: string;
   }
 }

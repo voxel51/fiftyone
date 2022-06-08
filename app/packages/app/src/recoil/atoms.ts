@@ -28,9 +28,10 @@ export const refresher = atom<boolean>({
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => () => {
-      set(refresher, !get(refresher));
-    },
+    ({ get, set }) =>
+      () => {
+        set(refresher, !get(refresher));
+      },
     []
   );
 };
@@ -184,4 +185,9 @@ export const appConfig = atom<State.Config>({
 export const colorscale = atom<RGB[]>({
   key: "colorscale",
   default: null,
+});
+
+export const selectedMediaField = atom<State.MediaFieldSelection>({
+  key: "selectedGridMediaField",
+  default: { grid: "filepath", modal: null },
 });
