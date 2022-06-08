@@ -7,11 +7,13 @@
   width: auto;
   overflow: visible;
   position: absolute;
+  max-height: 200px;
+  overflow: auto;
 }
 
 .result {
   display: flex;
-  padding: 0 0.5rem;
+  padding: 0 1rem;
   justify-content: space-between;
   flex: 1;
   min-width: 0;

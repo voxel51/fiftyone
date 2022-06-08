@@ -70,7 +70,7 @@ const Results = <T extends unknown>({
   toKey = (value: T) => String(value),
 }: ResultsProps<T>) => {
   return (
-    <>
+    <div>
       {results.map((result, i) => (
         <Result
           active={i === active}
@@ -83,12 +83,13 @@ const Results = <T extends unknown>({
       <div className={style.footer}>
         {Boolean(total) && (
           <>
-            {total.toLocaleString()} result{total > 1 ? "s" : ""}
+            {results.length} of {total.toLocaleString()} result
+            {total > 1 ? "s" : ""}
           </>
         )}
         {!Boolean(total) && <>No results</>}
       </div>
-    </>
+    </div>
   );
 };
 
