@@ -353,8 +353,8 @@ def classification_to_detections(sample_collection, in_field, out_field):
 def classifications_to_detections(sample_collection, in_field, out_field):
     """Converts the :class:`fiftyone.core.labels.Classifications` field of the
     collection into a :class:`fiftyone.core.labels.Detections` field containing
-    detections whose bounding boxes span the entire image with on detection for
-    each classification.
+    detections whose bounding boxes span the entire image with one detection
+    for each classification.
 
     Args:
         sample_collection: a
