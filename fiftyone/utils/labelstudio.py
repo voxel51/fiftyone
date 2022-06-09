@@ -103,6 +103,8 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
 
 
 class LabelStudioBackend(foua.AnnotationBackend):
+    """Base class to connect to Label Studio API and handle annotations."""
+
     @property
     def supported_label_types(self):
         return [
@@ -184,7 +186,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             samples: a sample collection object
 
         Returns:
-            a tuple of label_studio_sdk.Project and label type
+            a label_studio_sdk.Project object
         """
         project_name = deepcopy(config.project_name)
         label_schema = deepcopy(config.label_schema)
@@ -203,7 +205,7 @@ class LabelStudioAnnotationSDK(ls.Client):
 
         # generate label config
         assert len(label_schema) == 1
-        label_field, label_info = label_schema.popitem()
+        _, label_info = label_schema.popitem()
         label_config = generate_labelling_config(
             media=samples.media_type,
             label_type=label_info["type"],
@@ -213,7 +215,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         project = self.start_project(
             title=project_name, label_config=label_config
         )
-        return project, label_info["type"]
+        return project
 
     def _prepare_tasks(self, samples, label_schema):
         """Extract sample data and existing labels if any"""
@@ -228,7 +230,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             for one in samples.select_fields("filepath")
         ]
 
-        predictions = {}
+        predictions, id_map = {}, {}
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
                 predictions[label_field] = {
@@ -244,8 +246,12 @@ class LabelStudioAnnotationSDK(ls.Client):
                     )
                     for smp in samples.select_fields(label_field)
                 }
+                id_map[label_field] = {
+                    smp.id: _get_label_ids(smp[label_field])
+                    for smp in samples.select_fields(label_field)
+                }
 
-        return tasks, predictions
+        return tasks, predictions, id_map
 
     def _import_tasks(self, project, tasks, predictions=None):
         """Upload files to Label Studio and register them as tasks.
@@ -290,15 +296,16 @@ class LabelStudioAnnotationSDK(ls.Client):
             "POST", f"/api/projects/{project.id}/reimport", data=payload
         )
 
-        # get
+        # get uploaded task ids
         uploaded_ids = project.get_tasks(only_ids=True)[-len(files) :]
         uploaded_tasks = {
             i: t["source_id"] for i, t in zip(uploaded_ids, tasks)
         }
 
+        # upload predictions if given
         if predictions:
             source2task = {v: k for k, v in uploaded_tasks.items()}
-            for label_field, label_predictions in predictions.items():
+            for _, label_predictions in predictions.items():
                 ls_predictions = [
                     {
                         "task": source2task[smp_id],
@@ -352,16 +359,16 @@ class LabelStudioAnnotationSDK(ls.Client):
     def _export_to_labelstudio(self, labels, label_type):
         if _LABEL_TYPES[label_type]["multiple"] is None:
             return export_label_to_labelstudio(labels)
-        else:
-            return [export_label_to_labelstudio(l) for l in labels]
+        return [export_label_to_labelstudio(l) for l in labels]
 
     def upload_tasks(self, samples, backend):
         """Create a Label Studio project and upload samples"""
         config = backend.config
-        project, label_type = self._init_project(config, samples)
-        tasks, predictions = self._prepare_tasks(samples, config.label_schema)
+        project = self._init_project(config, samples)
+        tasks, predictions, id_map = self._prepare_tasks(
+            samples, config.label_schema
+        )
         uploaded_tasks = self._import_tasks(project, tasks, predictions)
-        id_map = {}  # TODO change when uploading predictions
         return LabelStudioAnnotationResults(
             samples,
             config,
@@ -428,6 +435,8 @@ class LabelStudioAnnotationSDK(ls.Client):
 
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
+    """Base class for storing intermediate annotation results"""
+
     def __init__(
         self, samples, config, id_map, project_id, uploaded_tasks, backend=None
     ):
@@ -508,8 +517,6 @@ def import_labelstudio_annotation(result: dict):
     Returns:
         fo.Label instance.
     """
-    # TODO handle confidences
-    # TODO save image rotation
     # TODO link keypoints by parent id
     # TODO handle multiple classes for segmentation
     if isinstance(result, dict):
@@ -541,7 +548,7 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_labelstudio(label, full_result={}):
+def export_label_to_labelstudio(label, full_result=None):
     """Export a label to the Label Studio format
 
     Args:
@@ -551,6 +558,7 @@ def export_label_to_labelstudio(label, full_result={}):
     Returns:
         a dictionary or a list with the Label Studio format
     """
+    # TODO model version and model score
     if _check_type(label, fol.Classification, fol.Classifications):
         result_value, ls_type = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
@@ -677,7 +685,9 @@ def _from_rectanglelabels(result):
     ]
     label_values = result["value"][result["type"]]
     return fol.Detection(
-        label=label_values[0], bounding_box=_normalize_values(ls_box)
+        label=label_values[0],
+        bounding_box=_normalize_values(ls_box),
+        rotation=result["value"].get("rotation", 0),
     )
 
 
@@ -748,7 +758,7 @@ def _tag_from_label(label_cls):
     if label_cls in _LABEL2TYPE:
         label_type = _LABEL2TYPE[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
-    elif label_cls in foua._RETURN_TYPES_MAP:
+    if label_cls in foua._RETURN_TYPES_MAP:
         label_type = foua._RETURN_TYPES_MAP[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
     else:
@@ -763,6 +773,24 @@ def _normalize_values(values: List[float]) -> List[float]:
 def _denormalize_values(values: List[float]) -> List[float]:
     values = np.array(values) * 100
     return values.tolist()
+
+
+def _get_label_ids(label):
+    if isinstance(
+        label, (fol.Classification, fol.Segmentation, fol.Regression)
+    ):
+        ids = label.id
+    elif isinstance(label, fol.Classifications):
+        ids = [l.id for l in label.classifications]
+    elif isinstance(label, fol.Detections):
+        ids = [l.id for l in label.detections]
+    elif isinstance(label, fol.Polylines):
+        ids = [l.id for l in label.polylines]
+    elif isinstance(label, fol.Keypoints):
+        ids = [l.id for l in label.keypoints]
+    else:
+        raise ValueError(f"Unsupported label type: {type(label)}")
+    return ids
 
 
 _LABEL_TYPES = {
