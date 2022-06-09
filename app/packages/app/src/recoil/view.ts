@@ -123,3 +123,17 @@ export const isFramesView = selector<boolean>({
     eviction: "most-recent",
   },
 });
+
+export const isGroupView = selector<boolean>({
+  key: "isGroupView",
+  get: ({ get }) => {
+    const v = get(view);
+
+    if (v.length) {
+      const final = v.slice(-1)[0];
+      return final._cls === "fiftyone.core.stages.GroupBy";
+    }
+
+    return false;
+  },
+});

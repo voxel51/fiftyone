@@ -15,7 +15,7 @@ from strawberry.arguments import UNSET
 
 import fiftyone.core.odm as foo
 
-from fiftyone.server.data import Info, HasCollectionType
+from fiftyone.server.data import Info, T
 
 
 @gql.type
@@ -27,16 +27,16 @@ class PageInfo:
 
 
 @gql.type
-class Edge(t.Generic[HasCollectionType]):
-    node: HasCollectionType
+class Edge(t.Generic[T]):
+    node: T
     cursor: str
 
 
 @gql.type
-class Connection(t.Generic[HasCollectionType]):
+class Connection(t.Generic[T]):
     page_info: PageInfo
-    edges: t.List[Edge[HasCollectionType]]
-    total: int
+    edges: t.List[Edge[T]]
+    total: t.Optional[int] = None
 
 
 Cursor = str
@@ -45,13 +45,13 @@ Cursor = str
 async def get_items(
     collection: mtr.AsyncIOMotorCollection,
     session: mtr.AsyncIOMotorClientSession,
-    from_db: t.Callable[[dict], HasCollectionType],
+    from_db: t.Callable[[dict], T],
     key: str,
     filters: t.List[dict],
     search: str,
     first: int = 10,
     after: t.Optional[Cursor] = UNSET,
-) -> Connection[HasCollectionType]:
+) -> Connection[T]:
     start = list(filters)
     if search:
         start += [{"$match": {"name": {"$regex": search}}}]
@@ -61,8 +61,6 @@ async def get_items(
     if after:
         start += [{"$match": {"_id": {"$gt": ObjectId(after)}}}]
 
-    edges = []
-
     pipelines = [
         start + [{"$limit": first + 1}],
         start + [{"$count": "total"}],
@@ -70,6 +68,8 @@ async def get_items(
 
     data = await foo.aggregate(collection, pipelines)
     results, total = data
+    edges = []
+
     for doc in results:
         _id = doc["_id"]
         edges.append(Edge(node=from_db(doc), cursor=str(_id)))
@@ -92,23 +92,20 @@ async def get_items(
 
 
 def get_paginator_resolver(
-    cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
-) -> t.Callable[
-    [t.Optional[int], t.Optional[Cursor], Info],
-    Connection[HasCollectionType],
-]:
+    cls: t.Type[T], key: str, filters: t.List[dict], collection: str
+) -> t.Callable[[t.Optional[int], t.Optional[Cursor], Info], Connection[T],]:
     async def paginate(
         search: t.Optional[str],
         first: t.Optional[int] = 10,
         after: t.Optional[Cursor] = None,
         info: Info = None,
     ):
-        def from_db(doc: dict) -> t.Optional[HasCollectionType]:
+        def from_db(doc: dict) -> t.Optional[T]:
             doc = cls.modifier(doc)
             return from_dict(cls, doc, config=Config(check_types=False))
 
         return await get_items(
-            info.context.db[cls.get_collection_name()],
+            info.context.db[collection],
             info.context.session,
             from_db,
             key,

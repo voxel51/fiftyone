@@ -27,8 +27,9 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-from fiftyone.server.mixins import HasCollection
+from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
+from fiftyone.server.samples import ImageSample, VideoSample, paginate_samples
 from fiftyone.server.scalars import JSONArray
 
 ID = gql.scalar(
@@ -38,12 +39,6 @@ ID = gql.scalar(
 )
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
-
-
-@gql.enum
-class MediaType(Enum):
-    image = "image"
-    video = "video"
 
 
 @gql.type
@@ -123,7 +118,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
-class Dataset(HasCollection):
+class Dataset:
     id: gql.ID
     name: str
     created_at: t.Optional[date]
@@ -141,10 +136,6 @@ class Dataset(HasCollection):
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
-
-    @staticmethod
-    def get_collection_name() -> str:
-        return "datasets"
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -193,7 +184,9 @@ class Dataset(HasCollection):
         return dataset
 
 
-dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
+dataset_dataloader = get_dataloader_resolver(
+    Dataset, "datasets", "name", DATASET_FILTER
+)
 
 
 @gql.enum
@@ -250,11 +243,19 @@ class Query:
     dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset] = gql.field(
         resolver=get_paginator_resolver(
-            Dataset,
-            "created_at",
-            DATASET_FILTER_STAGE,
+            Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
         )
     )
+
+    @gql.field
+    async def samples(
+        self,
+        dataset: str,
+        view: JSONArray,
+        first: t.Optional[int] = 20,
+        after: t.Optional[int] = 0,
+    ) -> Connection[gql.union("SampleItem", types=(ImageSample, VideoSample))]:
+        return await paginate_samples(dataset, view, None, None, first, after)
 
     @gql.field
     def teams_submission(self) -> bool:

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f621e01f71aa29cb86382fcc3e872716>>
+ * @generated SignedSource<<7c6ec27894e1aac69b5d25002e2d181b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,26 +10,62 @@
 
 import { ReaderFragment, RefetchableFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
-export type RootDatasets_query$data = {
-  readonly datasets: {
-    readonly total: number | null;
+export type paginateGroup_query$data = {
+  readonly samples: {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
-      readonly node: {
-        readonly name: string;
-      };
+      readonly node:
+        | {
+            readonly __typename: "ImageSample";
+            readonly height: number;
+            readonly sample: object;
+            readonly width: number;
+          }
+        | {
+            readonly __typename: "VideoSample";
+            readonly frameRate: number;
+            readonly height: number;
+            readonly sample: object;
+            readonly width: number;
+          }
+        | {
+            // This will never be '%other', but we need some
+            // value in case none of the concrete values match.
+            readonly __typename: "%other";
+          };
     }>;
   };
-  readonly " $fragmentType": "RootDatasets_query";
+  readonly " $fragmentType": "paginateGroup_query";
 };
-export type RootDatasets_query$key = {
-  readonly " $data"?: RootDatasets_query$data;
-  readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
+export type paginateGroup_query$key = {
+  readonly " $data"?: paginateGroup_query$data;
+  readonly " $fragmentSpreads": FragmentRefs<"paginateGroup_query">;
 };
 
-import DatasetsPaginationQuery_graphql from "./DatasetsPaginationQuery.graphql";
+import paginateGroupPageQuery_graphql from "./paginateGroupPageQuery.graphql";
 const node: ReaderFragment = (function () {
-  var v0 = ["datasets"];
+  var v0 = ["samples"],
+    v1 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "height",
+      storageKey: null,
+    },
+    v2 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "sample",
+      storageKey: null,
+    },
+    v3 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "width",
+      storageKey: null,
+    };
   return {
     argumentDefinitions: [
       {
@@ -42,7 +78,11 @@ const node: ReaderFragment = (function () {
       },
       {
         kind: "RootArgument",
-        name: "search",
+        name: "dataset",
+      },
+      {
+        kind: "RootArgument",
+        name: "view",
       },
     ],
     kind: "Fragment",
@@ -65,36 +105,34 @@ const node: ReaderFragment = (function () {
           path: v0 /*: any*/,
         },
         fragmentPathInResult: [],
-        operation: DatasetsPaginationQuery_graphql,
+        operation: paginateGroupPageQuery_graphql,
       },
     },
-    name: "RootDatasets_query",
+    name: "paginateGroup_query",
     selections: [
       {
-        alias: "datasets",
+        alias: "samples",
         args: [
           {
             kind: "Variable",
-            name: "search",
-            variableName: "search",
+            name: "dataset",
+            variableName: "dataset",
+          },
+          {
+            kind: "Variable",
+            name: "view",
+            variableName: "view",
           },
         ],
-        concreteType: "DatasetConnection",
+        concreteType: "SampleItemConnection",
         kind: "LinkedField",
-        name: "__DatasetsList_query_datasets_connection",
+        name: "__paginateGroup_query_samples_connection",
         plural: false,
         selections: [
           {
             alias: null,
             args: null,
-            kind: "ScalarField",
-            name: "total",
-            storageKey: null,
-          },
-          {
-            alias: null,
-            args: null,
-            concreteType: "DatasetEdge",
+            concreteType: "SampleItemEdge",
             kind: "LinkedField",
             name: "edges",
             plural: true,
@@ -109,7 +147,7 @@ const node: ReaderFragment = (function () {
               {
                 alias: null,
                 args: null,
-                concreteType: "Dataset",
+                concreteType: null,
                 kind: "LinkedField",
                 name: "node",
                 plural: false,
@@ -118,15 +156,31 @@ const node: ReaderFragment = (function () {
                     alias: null,
                     args: null,
                     kind: "ScalarField",
-                    name: "name",
+                    name: "__typename",
                     storageKey: null,
                   },
                   {
-                    alias: null,
-                    args: null,
-                    kind: "ScalarField",
-                    name: "__typename",
-                    storageKey: null,
+                    kind: "InlineFragment",
+                    selections: [v1 /*: any*/, v2 /*: any*/, v3 /*: any*/],
+                    type: "ImageSample",
+                    abstractKey: null,
+                  },
+                  {
+                    kind: "InlineFragment",
+                    selections: [
+                      {
+                        alias: null,
+                        args: null,
+                        kind: "ScalarField",
+                        name: "frameRate",
+                        storageKey: null,
+                      },
+                      v1 /*: any*/,
+                      v2 /*: any*/,
+                      v3 /*: any*/,
+                    ],
+                    type: "VideoSample",
+                    abstractKey: null,
                   },
                 ],
                 storageKey: null,
@@ -168,6 +222,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "280afc557752c2245a140c58ccb00248";
+(node as any).hash = "1baec3bb8a5ab767caef58ccff94602f";
 
 export default node;

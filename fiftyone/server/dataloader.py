@@ -12,11 +12,12 @@ from dacite import Config, from_dict
 import motor.motor_asyncio as mtr
 from strawberry.dataloader import DataLoader
 
-from fiftyone.server.data import Info, HasCollectionType
+from fiftyone.server.data import Info, T
 
 
 @dataclass
 class DataLoaderConfig:
+    collection: str
     key: str
     filters: t.List[dict]
 
@@ -25,23 +26,23 @@ dataloaders: t.Dict[type, DataLoaderConfig] = {}
 
 
 def get_dataloader(
-    cls: t.Type[HasCollectionType],
+    cls: t.Type[T],
     config: DataLoaderConfig,
     db: mtr.AsyncIOMotorDatabase,
     session: mtr.AsyncIOMotorClientSession,
-) -> DataLoader[str, t.Optional[HasCollectionType]]:
+) -> DataLoader[str, t.Optional[T]]:
     async def load_items(
         keys: t.List[str],
-    ) -> t.List[t.Optional[HasCollectionType]]:
+    ) -> t.List[t.Optional[T]]:
         results = {}
         if config.key == "id":
             config.key == "_id"
-        async for doc in db[cls.get_collection_name()].find(
+        async for doc in db[config.collection].find(
             {"$and": [{config.key: {"$in": keys}}] + config.filters}
         ):
             results[doc[config.key]] = doc
 
-        def build(doc: dict = None) -> t.Optional[HasCollectionType]:
+        def build(doc: dict = None) -> t.Optional[T]:
             if not doc:
                 return None
 
@@ -54,16 +55,13 @@ def get_dataloader(
 
 
 def get_dataloader_resolver(
-    cls: t.Type[HasCollectionType], key: str, filters: t.List[dict]
-) -> t.Callable[
-    [str, Info],
-    t.Coroutine[t.Any, t.Any, t.Optional[HasCollectionType]],
-]:
-    dataloaders[cls] = DataLoaderConfig(key=key, filters=filters)
+    cls: t.Type[T], collection: str, key: str, filters: t.List[dict]
+) -> t.Callable[[str, Info], t.Coroutine[t.Any, t.Any, t.Optional[T]],]:
+    dataloaders[cls] = DataLoaderConfig(
+        collection=collection, key=key, filters=filters
+    )
 
-    async def resolver(
-        name: str, info: Info
-    ) -> t.Awaitable[t.Optional[HasCollectionType]]:
+    async def resolver(name: str, info: Info) -> t.Awaitable[t.Optional[T]]:
         return await info.context.dataloaders[cls].load(name)
 
     resolver.__annotations__[key] = resolver.__annotations__.pop("name")

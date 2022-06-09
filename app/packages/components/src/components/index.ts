@@ -1,4 +1,5 @@
 export { default as Button } from "./Button";
+export { default as ColumnScroller } from "./ColumnScroller";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as Header } from "./Header";
 export * from "./Icons";

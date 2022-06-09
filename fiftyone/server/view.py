@@ -22,13 +22,13 @@ _LABEL_TAGS = "_label_tags"
 
 
 def get_view(
-    dataset_name,
+    dataset_name: str,
     stages=None,
     filters=None,
     count_label_tags=False,
     only_matches=True,
     similarity=None,
-):
+) -> fov.DatasetView:
     """Get the view from request paramters
 
     Args:

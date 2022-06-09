@@ -16,6 +16,7 @@ import {
   State,
   ItemIndexMap,
 } from "./state";
+export type { Response } from "./state";
 import { createScrollReader } from "./zooming";
 
 import {
@@ -104,7 +105,7 @@ export default class Flashlight<K> {
         return (
           (this.state.width /
             (this.state.containerHeight *
-              this.state.options.rowAspectRatioThreshold)) *
+              Math.max(this.state.options.rowAspectRatioThreshold, 1))) *
           500
         );
       }
@@ -126,10 +127,8 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(this.config);
     this.showPixels();
 
-    const {
-      width,
-      height,
-    } = this.container.parentElement.getBoundingClientRect();
+    const { width, height } =
+      this.container.parentElement.getBoundingClientRect();
     this.state.width = width - 16;
     this.state.containerHeight = height;
 

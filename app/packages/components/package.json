@@ -29,6 +29,7 @@
     "vite": "2.4.2"
   },
   "peerDependencies": {
+    "@fiftyone/flashlight": "*",
     "@material-ui/core": "*",
     "@material-ui/icons": "*",
     "@react-spring/web": "^9.4.3",

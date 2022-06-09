@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { Controller } from "@react-spring/core";
 import styled from "styled-components";
@@ -19,6 +19,23 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
+import { Resizable } from "re-resizable";
+import { ColumnScroller } from "@fiftyone/components";
+import {
+  graphql,
+  usePaginationFragment,
+  usePreloadedQuery,
+  useQueryLoader,
+} from "react-relay";
+
+import {
+  paginateGroup,
+  paginateGroupPaginationFragment,
+  paginateGroupQuery,
+  paginateGroupQueryRef,
+  paginateGroup_query$key,
+} from "../queries";
+import { FlashlightConfig, Response } from "@fiftyone/flashlight";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -60,28 +77,125 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
+    ({ get, set }) =>
+      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+        const { sample } = get(atoms.modal);
+        let labels = {
+          ...get(atoms.selectedLabels),
         };
-      }
+        if (labels[id]) {
+          delete labels[id];
+        } else {
+          labels[id] = {
+            field,
+            sampleId: sample._id,
+            frameNumber,
+          };
+        }
 
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
-      );
-    },
+        set(atoms.selectedLabels, labels);
+        send(
+          Object.entries(labels).map(([labelId, data]) => ({
+            ...data,
+            labelId,
+          }))
+        );
+      },
     []
   );
+};
+
+const Group: React.FC<{
+  fragmentRef: paginateGroup_query$key;
+  pageSize: number;
+}> = ({ fragmentRef }) => {
+  const [width, setWidth] = useState(200);
+  const pageCount = useRef(0);
+  const {
+    data: { samples },
+    hasNext,
+    isLoadingNext,
+    loadNext,
+  } = usePaginationFragment(paginateGroupPaginationFragment, fragmentRef);
+
+  const hasNextRef = useRef(true);
+  hasNextRef.current = hasNext;
+
+  const countRef = useRef(0);
+
+  const resolveRef = useRef<(value: Response<number>) => void>();
+
+  useEffect(() => {
+    const items = samples.edges.slice(countRef.current);
+
+    !isLoadingNext &&
+      resolveRef.current({
+        items: items.map(({ node }) => {
+          if (node.__typename === "%other") {
+            throw new Error("invalid response");
+          }
+          return {
+            aspectRatio: node.width / node.height,
+            id: node.sample.id as string,
+          };
+        }),
+      });
+
+    samples.edges.length;
+  }, [isLoadingNext, samples]);
+
+  return (
+    <Resizable
+      size={{ height: "100%", width }}
+      minWidth={200}
+      maxWidth={600}
+      style={{ padding: "1rem" }}
+      enable={{
+        top: false,
+        right: false,
+        bottom: false,
+        left: true,
+        topRight: false,
+        bottomRight: false,
+        bottomLeft: false,
+        topLeft: false,
+      }}
+      onResizeStop={(e, direction, ref, { width: delta }) => {
+        setWidth(width + delta);
+      }}
+    >
+      <ColumnScroller
+        get={(page) => {
+          pageCount.current = page + 1;
+          if (pageCount.current === 1) {
+            return Promise.resolve({
+              items: samples.edges.map((sample) => sample),
+              nextRequestKey: hasNext ? pageCount.current : null,
+            });
+          }
+
+          return new Promise((resolve) => {
+            resolveRef.current = resolve;
+          });
+        }}
+        render={(d) => {
+          console.log(d);
+        }}
+      />
+    </Resizable>
+  );
+};
+
+const GroupColumn = () => {
+  const ref = useRecoilValue(paginateGroupQueryRef);
+
+  if (!ref) {
+    return null;
+  }
+
+  const data = usePreloadedQuery<paginateGroupQuery>(paginateGroup, ref);
+
+  return <Group fragmentRef={data} />;
 };
 
 const SampleModal = () => {
@@ -99,7 +213,6 @@ const SampleModal = () => {
   );
   const clearModal = useClearModal();
   const disabled = useRecoilValue(disabledPaths);
-
   const renderEntry = useCallback(
     (
       key: string,
@@ -247,6 +360,7 @@ const SampleModal = () => {
             onNext={() => getIndex(index + 1)}
           />
         </ContentColumn>
+        <GroupColumn />
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,

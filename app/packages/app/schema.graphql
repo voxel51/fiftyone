@@ -58,7 +58,7 @@ type Dataset {
 type DatasetConnection {
   pageInfo: PageInfo!
   edges: [DatasetEdge!]!
-  total: Int!
+  total: Int
 }
 
 type DatasetEdge {
@@ -90,6 +90,14 @@ type EvaluationRunConfig implements RunConfig {
   predField: String!
   method: String!
 }
+
+type ImageSample implements Sample {
+  height: Int!
+  width: Int!
+  sample: JSON!
+}
+
+scalar JSON
 
 scalar JSONArray
 
@@ -154,6 +162,12 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   dataset(name: String!, view: JSONArray): Dataset
+  samples(
+    dataset: String!
+    view: JSONArray!
+    first: Int = 20
+    after: Int = 0
+  ): SampleItemConnection!
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -171,12 +185,31 @@ interface RunConfig {
   cls: String!
 }
 
+interface Sample {
+  height: Int!
+  width: Int!
+  sample: JSON!
+}
+
 type SampleField {
   ftype: String!
   path: String!
   subfield: String
   embeddedDocType: String
   dbField: String
+}
+
+union SampleItem = ImageSample | VideoSample
+
+type SampleItemConnection {
+  pageInfo: PageInfo!
+  edges: [SampleItemEdge!]!
+  total: Int
+}
+
+type SampleItemEdge {
+  node: SampleItem!
+  cursor: String!
 }
 
 input SelectedLabel {
@@ -194,6 +227,13 @@ type SidebarGroup {
 type Target {
   target: Int!
   value: String!
+}
+
+type VideoSample implements Sample {
+  height: Int!
+  width: Int!
+  sample: JSON!
+  frameRate: Float!
 }
 
 type ViewResponse {

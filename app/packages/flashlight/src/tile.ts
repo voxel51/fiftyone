@@ -40,7 +40,7 @@ export default function tile(
       continue;
     }
 
-    if (currentAR >= rowAspectRatioThreshold) {
+    if (rowAspectRatioThreshold <= 0 || currentAR >= rowAspectRatioThreshold) {
       rows.push({ items: currentRow, aspectRatio: currentAR });
       currentRow = [item];
       currentAR = item.aspectRatio;
