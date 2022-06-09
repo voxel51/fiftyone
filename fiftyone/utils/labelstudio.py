@@ -10,6 +10,8 @@ Limitations:
 import itertools
 import json
 import logging
+import random
+import string
 import webbrowser
 from copy import deepcopy
 from datetime import datetime as dt
@@ -26,20 +28,19 @@ ls = fou.lazy_import(
     "label_studio_sdk", callback=lambda: fou.ensure_import("label_studio_sdk")
 )
 
-
 logger = logging.getLogger(__name__)
 
 
 class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
     def __init__(
-        self,
-        name: str,
-        label_schema: str,
-        media_field="filepath",
-        url=None,
-        api_key=None,
-        project_name=None,
-        **kwargs,
+            self,
+            name: str,
+            label_schema: str,
+            media_field="filepath",
+            url=None,
+            api_key=None,
+            project_name=None,
+            **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
 
@@ -155,7 +156,16 @@ class LabelStudioAnnotationSDK(ls.Client):
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
                 predictions[label_field] = {
-                    smp.id: export_label_to_labelstudio(smp[label_field])
+                    smp.id: export_label_to_labelstudio(
+                                smp[label_field],
+                                full_result={
+                                    "from_name": "label",
+                                    "to_name": smp.media_type,
+                                    "original_width": smp.metadata["width"],
+                                    "original_height": smp.metadata["height"],
+                                    "image_rotation": getattr(smp, "rotation",
+                                                              0)
+                                    })
                     for smp in samples.select_fields(label_field)
                 }
 
@@ -204,7 +214,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         )
 
         # get
-        uploaded_ids = project.get_tasks(only_ids=True)[-len(files) :]
+        uploaded_ids = project.get_tasks(only_ids=True)[-len(files):]
         uploaded_tasks = {
             i: t["source_id"] for i, t in zip(uploaded_ids, tasks)
         }
@@ -246,7 +256,6 @@ class LabelStudioAnnotationSDK(ls.Client):
                     import_labelstudio_annotation(r)
                     for r in latest_annotation.get("result", [])
                 ]
-
 
             # add to dict
             label_ids = {l.id: l for l in labels} \
@@ -335,7 +344,8 @@ class LabelStudioAnnotationSDK(ls.Client):
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
     def __init__(
-        self, samples, config, id_map, project_id, uploaded_tasks, backend=None
+            self, samples, config, id_map, project_id, uploaded_tasks,
+            backend=None
     ):
         super().__init__(samples, config, id_map=id_map, backend=backend)
         self.project_id = project_id
@@ -390,9 +400,9 @@ def generate_labelling_config(media, label_type, labels=None):
 
     # labels view
     parent_tag, child_tag, tag_kwargs = _ls_tags_from_type(label_type)
-    parent_name = child_tag.lower() if child_tag else parent_tag.lower()
+    # parent_name = child_tag.lower() if child_tag else parent_tag.lower()
     label_view = etree.SubElement(
-        root, parent_tag, name=parent_name, toName=media, **tag_kwargs
+        root, parent_tag, name="label", toName=media, **tag_kwargs
     )
     if labels:
         for one in labels:
@@ -417,126 +427,204 @@ def import_labelstudio_annotation(result: dict):
     # TODO handle multiple classes for segmentation
     if isinstance(result, dict):
         ls_type = result["type"]
-        label_values = result["value"][ls_type]
     elif isinstance(result, list):
         ls_type = result[0]["type"]
-        label_values = [res["value"][ls_type] for res in result]
     else:
         raise TypeError(f"type {type(result)} is not understood")
 
-    method = _label_class_from_tag(ls_type)
-
-    if ls_type == "choices" and len(label_values) == 1:
-        return method(label=label_values[0])
-    elif ls_type == "choices" and len(label_values) > 1:
-        # multi-label classification
-        return [method(label=l) for l in label_values]
+    if ls_type == "choices":
+        return _from_choices(result)
     elif ls_type == "rectanglelabels":
-        ls_box = [
-            result["value"]["x"],
-            result["value"]["y"],
-            result["value"]["width"],
-            result["value"]["height"],
-        ]
-        kwargs = dict(bounding_box=_normalize_values(ls_box))
-        return method(label=label_values[0], **kwargs)
+        return _from_rectanglelabels(result)
     elif ls_type == "polygonlabels":
-        ls_points = _normalize_values(result["value"]["points"])
-        kwargs = dict(points=[ls_points], filled=True, closed=True)
-        return method(label=label_values[0], **kwargs)
+        return _from_polygonlabels(result)
     elif ls_type == "keypointlabels":
-        keypoints = []
-        group_fn = lambda x: x["value"][ls_type][0]
-        for key, group in itertools.groupby(result, group_fn):
-            points = [(one["value"]["x"], one["value"]["y"]) for one in group]
-            points = _normalize_values(points)
-            keypoints.append(method(label=key, points=points))
-        return keypoints
+        return _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        brush = fou.lazy_import("label_studio_converter.brush",
-                                callback=lambda: fou.ensure_import(
-                                    "label_studio_converter.brush"))
-        img = brush.decode_rle(result["value"]["rle"])
-        mask = img.reshape((result["original_height"],
-                            result["original_width"],
-                            4))[:, :, 3]
-        return method(label=label_values[0], mask=mask)
+        return _from_brushlabels(result)
     elif ls_type == "number":
-        return method(value=label_values)
+        return fol.Regression(value=result["value"]["number"])
     else:
         raise ValueError(f"unable to import {ls_type=} from Label Studio")
 
 
-def export_label_to_labelstudio(label):
+def _update_dict(src_dict, update_dict):
+    new = deepcopy(src_dict)
+    new.update(update_dict)
+    return new
+
+
+def export_label_to_labelstudio(label, full_result={}):
     """Export a label to the Label Studio format
 
     Args:
-        label: fo.Label instance
+        label: fo.Label instance or a list of fo.Label instances.
+        full_result: If not empty, return the full result for Label Studio.
 
     Returns:
-        a dictionary with the Label Studio format
+        a dictionary or a list with the Label Studio format
     """
-    if isinstance(label, fol.Regression):
-        label_cls = label._cls
-        ls_tag = _tag_from_label(label_cls).lower()
-        result = {ls_tag: label.value}
-    elif isinstance(label, fol.Label):
-        label_cls = label._cls
-        ls_tag = _tag_from_label(label_cls).lower()
-        result = {ls_tag: [label.label]}
-    elif isinstance(label, list) and isinstance(label[0], fol.Classification):
-        # multi-label classification
-        label_cls = label[0]._cls
-        ls_tag = _tag_from_label(label_cls).lower()
-        result = {ls_tag: [l.label for l in label]}
-    elif isinstance(label, list) and isinstance(label[0], fol.Keypoint):
-        # keypoints
-        label_cls = label[0]._cls
-        ls_tag = _tag_from_label(label_cls).lower()
-        result = [{ls_tag: [l.label]} for l in label]
+    if _check_type(label, fol.Classification, fol.Classifications):
+        result_value, ls_type = _to_classification(label)
+    elif _check_type(label, fol.Detection, fol.Detections):
+        result_value, ls_type = _to_detection(label)
+    elif _check_type(label, fol.Polyline, fol.Polylines):
+        result_value, ls_type = _to_polyline(label)
+    elif _check_type(label, fol.Keypoint, fol.Keypoints):
+        result_value, ls_type = _to_keypoint(label)
+    elif isinstance(label, fol.Segmentation):
+        result_value, ls_type = _to_segmentation(label)
+    elif isinstance(label, fol.Regression):
+        result_value = {"number": label.value}
+        ls_type = "number"
     else:
-        raise ValueError(f"{type(label)} is unknown")
+        raise ValueError(f"{type(label)} is not supported")
 
-    if ls_tag == "choices":
-        return result
-    elif ls_tag == "rectanglelabels":
-        box = _denormalize_values(label.bounding_box)
-        result.update(
-            {
-                "x": box[0],
-                "y": box[1],
-                "width": box[2],
-                "height": box[3],
-                "rotation": getattr(label, "rotation", 0),
-            }
-        )
-        return result
-    elif ls_tag == "polygonlabels":
-        result.update({"points": _denormalize_values(label.points[0])})
-        return result
-    elif ls_tag == "keypointlabels":
-        results = []
-        for kp, res in zip(label, result):
-            points = _denormalize_values(kp.points)
-            ls_points = [{
-                "x": p[0],
-                "y": p[1],
-                "width": 0.34,
-                ls_tag: res[ls_tag]
-            } for p in points]
-            results.extend(ls_points)
-        return results
-    elif ls_tag == "brushlabels":
-        brush = fou.lazy_import("label_studio_converter.brush",
-                                callback=lambda: fou.ensure_import(
-                                    "label_studio_converter.brush"))
-        rle = brush.mask2rle(label.mask)
-        result.update({"format": "rle", "rle": rle})
-        return result
-    elif ls_tag == "number":
-        return result
+    if bool(full_result):
+        # return full LS result
+        if not isinstance(result_value, (list, tuple)):
+            result_value = [result_value]
+        return [_update_dict(full_result,
+                             dict(value=r, type=ls_type,
+                                  id=_generate_prediction_id()))
+                for r in result_value]
     else:
-        raise ValueError(f"{ls_tag!r} not supported")
+        return result_value
+
+
+def _generate_prediction_id(n=10):
+    return "".join(random.choices(string.ascii_letters, k=n))
+
+
+def _to_classification(label):
+    ls_type = "choices"
+    if isinstance(label, list):
+        return {ls_type: [l.label for l in label]}, ls_type
+    elif isinstance(label, fol.Classifications):
+        return {ls_type: [l.label for l in label.classifications]}, ls_type
+    else:
+        return {ls_type: [label.label]}, ls_type
+
+
+def _to_detection(label):
+    ls_type = "rectanglelabels"
+    if isinstance(label, list):
+        return [_to_detection(l)[0] for l in label], ls_type
+    elif isinstance(label, fol.Detections):
+        return [_to_detection(l)[0] for l in label.detections], ls_type
+    else:
+        box = _denormalize_values(label.bounding_box)
+        result = {
+            "x": box[0],
+            "y": box[1],
+            "width": box[2],
+            "height": box[3],
+            "rotation": getattr(label, "rotation", 0),
+            "rectanglelabels": [label.label],
+        }
+        return result, ls_type
+
+
+def _to_polyline(label):
+    ls_type = "polygonlabels"
+    if isinstance(label, list):
+        return [_to_polyline(l)[0] for l in label], ls_type
+    elif isinstance(label, fol.Polylines):
+        return [_to_polyline(l)[0] for l in label.polylines], ls_type
+    else:
+        result = {
+            "points": _denormalize_values(label.points[0]),
+            "polygonlabels": [label.label],
+        }
+        return result, ls_type
+
+
+def _to_keypoint(label):
+    ls_type = "keypointlabels"
+    if isinstance(label, list):
+        return sum([_to_keypoint(l)[0] for l in label], []), ls_type
+    elif isinstance(label, fol.Keypoints):
+        return sum([_to_keypoint(l)[0] for l in label.keypoints], []), ls_type
+    else:
+        points = _denormalize_values(label.points)
+        results = [{
+            "x": p[0],
+            "y": p[1],
+            "width": getattr(label, "width", 0.34),
+            "keypointlabels": [label.label],
+        } for p in points]
+        return results, ls_type
+
+
+def _to_segmentation(label):
+    brush = fou.lazy_import("label_studio_converter.brush",
+                            callback=lambda: fou.ensure_import(
+                                "label_studio_converter.brush"))
+    rle = brush.mask2rle(label.mask)
+    result = {
+        "format": "rle",
+        "rle": rle,
+        "brushlabels": [label.label]
+    }
+    return result, "brushlabels"
+
+
+def _from_choices(result):
+    label_values = result["value"]["choices"]
+    if len(label_values) == 1:
+        return fol.Classification(label=label_values[0])
+    else:
+        # multi-label classification
+        return [fol.Classification(label=l) for l in label_values]
+
+
+def _from_rectanglelabels(result):
+    ls_box = [
+        result["value"]["x"],
+        result["value"]["y"],
+        result["value"]["width"],
+        result["value"]["height"],
+    ]
+    label_values = result["value"][result["type"]]
+    return fol.Detection(label=label_values[0],
+                         bounding_box=_normalize_values(ls_box))
+
+
+def _from_polygonlabels(result):
+    ls_points = _normalize_values(result["value"]["points"])
+    label_values = result["value"][result["type"]]
+    kwargs = dict(points=[ls_points], filled=True, closed=True)
+    return fol.Polyline(label=label_values[0], **kwargs)
+
+
+def _from_keypointlabels(result):
+    keypoints = []
+    group_fn = lambda x: x["value"]["keypointlabels"][0]
+    for key, group in itertools.groupby(result, group_fn):
+        points = [(one["value"]["x"], one["value"]["y"]) for one in group]
+        points = _normalize_values(points)
+        keypoints.append(fol.Keypoint(label=key, points=points))
+    return keypoints
+
+
+def _from_brushlabels(result):
+    brush = fou.lazy_import("label_studio_converter.brush",
+                            callback=lambda: fou.ensure_import(
+                                "label_studio_converter.brush"))
+
+    label_values = result["value"]["brushlabels"]
+    img = brush.decode_rle(result["value"]["rle"])
+    mask = img.reshape((result["original_height"],
+                        result["original_width"],
+                        4))[:, :, 3]
+    return fol.Segmentation(label=label_values[0], mask=mask)
+
+
+def _check_type(label, label_type, label_type_multiple):
+    is_singular = isinstance(label, (label_type, label_type_multiple))
+    is_list_type = isinstance(label, list) and isinstance(label[0],
+                                                          label_type)
+    return is_singular or is_list_type
 
 
 def _ls_tags_from_type(label_type: str):
