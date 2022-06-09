@@ -1,4 +1,16 @@
 """Test Label Studio integration.
+
+To run these tests:
+    Run Label Studio server
+
+    Get an Access Token from Label Studio account settings
+    LABELSTUDIO_TOKEN=<TOKEN> pytest tests/intensive/labelstudio_tests.py
+
+To review project setup, uploaded tasks and predictions:
+    set a breakpoint before `dataset.load_annotations()` in the
+    `test_annotate_simple` and `test_annotate_with_predictions`
+    and run tests with a debugger. Once the brakpoint is reached,
+    go to a browser and review project.
 """
 import os
 import random
@@ -32,7 +44,7 @@ def label_configs():
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Choices name="choice" toName="image" choice="single-radio">
+  <Choices name="label" toName="image" choice="single-radio">
     <Choice value="Adult content"/>
     <Choice value="Weapons"/>
     <Choice value="Violence"/>
@@ -47,7 +59,7 @@ def label_configs():
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Choices name="choice" toName="image" choice="multiple">
+  <Choices name="label" toName="image" choice="multiple">
     <Choice value="Boeing"/>
     <Choice value="Airbus"/>
   </Choices>
@@ -144,7 +156,7 @@ def label_configs():
             },
             "output": """<View>
   <Image name="image" value="$image"/>
-  <Number name="number" toName="image"/>
+  <Number name="label" toName="image"/>
 </View>""",
         },
     ]
@@ -376,31 +388,9 @@ def test_annotate_simple(backend_config, setup, label_type):
     assert len(labelled) == len(dummy_predictions)
 
 
-def _generate_dummy_labels(label_type, labels):
-    if label_type == "classification":
-        return fo.Classification(label=random.choice(labels))
-    elif label_type == "detections":
-        detections = [
-            fo.Detection(label=random.choice(labels),
-                         bounding_box=np.random.random(4).tolist()),
-            fo.Detection(label=random.choice(labels),
-                         bounding_box=np.random.random(4).tolist()),
-            ]
-        return fo.Detections(detections=detections)
-    elif label_type == "polylines":
-        polylines = [
-            fo.Polyline(label=random.choice(labels),
-                        points=np.random.random(5, 2).tolist()),
-            fo.Polyline(label=random.choice(labels),
-                        points=np.random.random(6, 2).tolist()),
-        ]
-        return fo.Polylines(polylines=polylines)
-    else:
-        raise ValueError("Unknown label type: {}".format(label_type))
-
-
 @pytest.mark.parametrize("label_type",
-                         ["classification"])
+                         ["classification", "detections", "polylines",
+                          "keypoints"])
 def test_annotate_with_predictions(backend_config, setup, label_type):
     dataset, anno_key, label_field, labels = setup
     label_field += f"-{label_type}"
@@ -519,3 +509,40 @@ def _generate_dummy_predictions(label_type, labels, n):
         } for _ in range(n)]
     else:
         raise ValueError("Unknown label type")
+
+
+def _generate_dummy_labels(label_type, labels):
+    if label_type == "classification":
+        return fo.Classification(label=random.choice(labels))
+    elif label_type == "detections":
+        rand_box = lambda: (np.random.random(4) / 2).tolist()
+        detections = [
+            fo.Detection(label=random.choice(labels),
+                         bounding_box=rand_box()),
+            fo.Detection(label=random.choice(labels),
+                         bounding_box=rand_box()),
+            ]
+        return fo.Detections(detections=detections)
+    elif label_type == "polylines":
+        rand_points = lambda n: [np.random.random((n, 2)).tolist()]
+        polylines = [
+            fo.Polyline(label=random.choice(labels),
+                        points=rand_points(5)),
+            fo.Polyline(label=random.choice(labels),
+                        points=rand_points(6)),
+        ]
+        return fo.Polylines(polylines=polylines)
+    elif label_type == "keypoints":
+        keypoints = [
+            fo.Keypoint(label=random.choice(labels),
+                        points=np.random.random((5, 2)).tolist()),
+            fo.Keypoint(label=random.choice(labels),
+                        points=np.random.random((4, 2)).tolist()),
+        ]
+        return fo.Keypoints(keypoints=keypoints)
+    elif label_type == "segmentation":
+        raise NotImplementedError()
+    elif label_type == "scalar":
+        return fo.Regression(value=random.randint(0, 100))
+    else:
+        raise ValueError("Unknown label type: {}".format(label_type))
