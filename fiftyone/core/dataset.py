@@ -453,6 +453,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
+    def tags(self):
+        """A list of tags given to the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add some tags
+            dataset.tags = ["test", "projectA"]
+
+            # Edit the tags
+            dataset.tags.pop()
+            dataset.tags.append("projectB")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.tags
+
+    @tags.setter
+    def tags(self, value):
+        _value = self._doc.tags
+        try:
+            self._doc.tags = value
+            self._doc.save()
+        except:
+            self._doc.tags = _value
+            raise
+
+    @property
     def info(self):
         """A user-facing dictionary of information about the dataset.
 
@@ -4650,6 +4680,7 @@ def _list_dataset_info():
                 "version": dataset.version,
                 "persistent": dataset.persistent,
                 "media_type": dataset.media_type,
+                "tags": dataset.tags,
                 "num_samples": num_samples,
             }
         except:
@@ -4662,6 +4693,7 @@ def _list_dataset_info():
                 "version": None,
                 "persistent": None,
                 "media_type": None,
+                "tags": None,
                 "num_samples": None,
             }
 
