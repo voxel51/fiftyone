@@ -123,5 +123,5 @@ def _make_load_state_dict_from_url_monkey_patcher(entrypoint, model_dir):
         entrypoint_module,
         custom_load_state_dict_from_url,
         fcn_name=load_state_dict_from_url.__name__,
-        namespace=torchvision,
+        namespace=torchvision.models,
     )
