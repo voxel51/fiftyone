@@ -352,7 +352,16 @@ export default React.memo(() => {
     atoms.tagging({ modal: false, labels: true })
   );
   const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
-  const selectedMediaFieldName = selectedMediaField.grid || "filepath";
+  const dataset = useRecoilValue(atoms.dataset)
+  let selectedMediaFieldName;
+
+  if (selectedMediaField.grid) {
+    selectedMediaFieldName = selectedMediaField.grid
+  } else if (dataset.appConfig.gridMediaField) {
+    selectedMediaFieldName = dataset.appConfig.gridMediaField
+  } else {
+    selectedMediaFieldName = 'filepath'
+  }
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -367,6 +376,7 @@ export default React.memo(() => {
   }: atoms.SampleData) => {
     const constructor = getLookerType(getMimeType(sample));
     const etc = isClips ? { support: sample.support } : {};
+
     const config = {
       src: getSampleSrc(sample[selectedMediaFieldName], sample._id, url),
       thumbnail: true,
@@ -430,15 +440,10 @@ export default React.memo(() => {
     )
   );
 
-  useEffect(() => {
-    alert;
-  }, [selectedMediaFieldName]);
-
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached() || tagging) {
       return;
     }
-
     store.reset();
     freeVideos();
     nextIndex = 0;
@@ -452,13 +457,18 @@ export default React.memo(() => {
     tagging,
     useRecoilValue(pageParameters),
     useRecoilValue(atoms.refresher),
+    selectedMediaFieldName
   ]);
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
+        selectedMediaFieldName,
         initialRequestKey: 1,
-        options,
+        options: {
+          ...options,
+          selectedMediaFieldName
+        },
         onItemClick: onThumbnailClick,
         onResize: (width) => {
           let min = 7;
@@ -480,7 +490,7 @@ export default React.memo(() => {
         onItemResize: (id, dimensions) => {
           store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
-        get: async (page) => {
+        get: async (page, selectedMediaFieldName) => {
           try {
             const { results, more } = await getFetchFunction()(
               "POST",
@@ -489,9 +499,18 @@ export default React.memo(() => {
             );
 
             const itemData = results.map((result) => {
+              const {mediaFieldsMetadata} = result
+              let dimensions = [result.width, result.height]
+              const selectedMediaFieldMetadata = selectedMediaFieldName && mediaFieldsMetadata && mediaFieldsMetadata[selectedMediaFieldName]
+
+              if (selectedMediaFieldMetadata) {
+                dimensions = [selectedMediaFieldMetadata.width, selectedMediaFieldMetadata.height]
+              }
+
               const data: atoms.SampleData = {
                 sample: result.sample,
-                dimensions: [result.width, result.height],
+                dimensions,
+                mediaFieldsMetadata,
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
                 url: result.url,
@@ -521,7 +540,14 @@ export default React.memo(() => {
         render: (sampleId, element, dimensions, soft, hide) => {
           try {
             const result = store.samples.get(sampleId);
+            const {selectedMediaFieldName} = flashlight.current.state.options
+            const selectedMediaFieldMetadata = selectedMediaFieldName && result.mediaFieldsMetadata && result.mediaFieldsMetadata[selectedMediaFieldName]
 
+            if (selectedMediaFieldMetadata) {
+              result.dimensions = [selectedMediaFieldMetadata.width, selectedMediaFieldMetadata.height]
+            }
+            
+            
             if (store.lookers.has(sampleId)) {
               const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
@@ -546,9 +572,13 @@ export default React.memo(() => {
       });
       flashlight.current.attach(id);
     } else {
-      flashlight.current.updateOptions(options);
+      flashlight.current.updateOptions({
+        ...options,
+        selectedMediaFieldName
+      });
       flashlight.current.updateItems((sampleId) => {
         const looker = store.lookers.get(sampleId);
+        console.log(lookerOptions)
         looker &&
           looker.updateOptions({
             ...lookerOptions,
@@ -556,7 +586,7 @@ export default React.memo(() => {
           });
       });
     }
-  }, [id, options, lookerOptions, selected, gridZoomRef]);
+  }, [id, options, lookerOptions, selected, gridZoomRef, selectedMediaFieldName]);
 
   return <Container id={id}></Container>;
 });

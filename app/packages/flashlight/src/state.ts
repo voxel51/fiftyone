@@ -58,6 +58,7 @@ export type OnItemResize = (id: string, dimensions: [number, number]) => void;
 
 export interface Options {
   rowAspectRatioThreshold: number;
+  selectedMediaFieldName: string;
 }
 
 export type OnResize = (width: number) => Options;
