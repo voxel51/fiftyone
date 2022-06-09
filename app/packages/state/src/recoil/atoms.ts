@@ -14,6 +14,7 @@ interface AppSample extends Sample {
 export interface SampleData {
   sample: AppSample;
   dimensions: Dimensions;
+  mediaFieldsMetadata: Map<string, Dimensions>;
   frameRate?: number;
   frameNumber?: number;
   url?: string;
@@ -185,6 +186,6 @@ export const colorscale = atom<RGB[]>({
 });
 
 export const selectedMediaField = atom<State.MediaFieldSelection>({
-  key: "selectedGridMediaField",
-  default: { grid: "filepath", modal: null },
+  key: "selectedMediaField",
+  default: { grid: null, modal: null },
 });
