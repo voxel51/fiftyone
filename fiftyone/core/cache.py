@@ -734,16 +734,16 @@ async def _do_async_download_media(arg):
     logger=None,
 )
 async def _do_download_file(session, url, local_path):
-    async with session.get(url) as response:
-        checksum = response.headers.get("Etag", None)
+    async with session.get(url) as r:
+        checksum = r.headers.get("Etag", None)
         if checksum:
             checksum = checksum[1:-1]
 
         async with aiofiles.open(local_path, "wb") as f:
-            async for chunk, _ in response.content.iter_chunks():
+            async for chunk, _ in r.content.iter_chunks():
                 await f.write(chunk)
 
-        response.raise_for_status()
+        r.raise_for_status()
 
     return checksum
 

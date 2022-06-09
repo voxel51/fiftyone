@@ -5,7 +5,6 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import backoff
 import itertools
 import logging
 import multiprocessing
@@ -13,6 +12,7 @@ import os
 import re
 import requests
 
+import backoff
 from PIL import Image
 
 import eta.core.utils as etau
@@ -211,7 +211,7 @@ class VideoMetadata(Metadata):
         """Builds an :class:`VideoMetadata` object for the given video.
 
         Args:
-            video_path: the path to a video (local path or url)
+            video_path: the path to a video
             mime_type (None): the MIME type of the image. If not provided, it
                 will be guessed
 
@@ -226,16 +226,6 @@ class VideoMetadata(Metadata):
 
     @classmethod
     def _build_for_local(cls, video_path, mime_type=None):
-        """Capture the metadata from the local file
-
-        Args:
-            video_path: local path to the video
-            mime_type (None): the MIME type of the image. If not provided, it
-                will be guessed
-
-        Returns:
-            a :class: `VideoMetadata
-        """
         stream_info = etav.VideoStreamInfo.build_for(
             video_path, mime_type=mime_type
         )
@@ -261,29 +251,17 @@ class VideoMetadata(Metadata):
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
-        """Builds an :class:`VideoMetadata` object for the given external video.
-
-        Args:
-            url: url to the external video resource
-            mime_type (None): the MIME type of the image. If not provided, it
-                will be guessed
-
-        Returns:
-            a :class:`VideoMetadata`
-        """
         try:
             stream_info = etav.VideoStreamInfo.build_for(
                 url, mime_type=mime_type
             )
-        except Exception as err:
-            # A failure occured when getting the metadata.
-            # Test to see if it's a retryable HTTP error
-            # before raising
+        except Exception as e:
+            # Something went wrong; if we get a retryable code when pinging the
+            # URL, trigger a retry
             with requests.get(url, stream=True) as r:
                 r.raise_for_status()
 
-            # if it's not retryable or we hit the max retry, bail
-            raise err
+            raise e
 
         return cls(
             size_bytes=stream_info.size_bytes,

@@ -92,10 +92,10 @@ async def get_metadata(session, filepath, media_type, metadata=None):
         else:
             # Retrieve metadata from remote source
             metadata = await read_url_metadata(session, url, is_video)
-    except Exception as exc:
+    except Exception as e:
         # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(exc, FFprobeNotFoundException):
-            raise exc
+        if isinstance(e, FFmpegNotFoundException):
+            raise e
 
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -109,14 +109,6 @@ async def get_metadata(session, filepath, media_type, metadata=None):
     return d
 
 
-@backoff.on_exception(
-    backoff.expo,
-    aiohttp.ClientResponseError,
-    factor=HTTPRetryConfig.FACTOR,
-    max_tries=HTTPRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
-    logger=None,
-)
 async def read_url_metadata(session, url, is_video):
     """Calculates the metadata for the given media URL.
 
@@ -136,25 +128,22 @@ async def read_url_metadata(session, url, is_video):
             "frame_rate": info.frame_rate,
         }
 
+    width, height = await get_url_image_dimensions(session, url)
+
     #
     # Here's an alternative that uses PIL.Image
-    # Our async get_image_dimensions() seems to be a bit faster, so we won't
-    # use this unless PIL's presumably wider range of supported image formats
-    # becomes important
+    # Our async get_url_image_dimensions() seems to be a bit faster, so we
+    # won't use this unless PIL's presumably wider range of supported image
+    # formats becomes important
     #
     """
     loop = asyncio.get_event_loop()
     width, height, _ = await loop.run_in_executor(
-        None, _get_image_dimensions, url
+        None, _get_url_image_dimensions, url
     )
-    return {"width": width, "height": height}
     """
 
-    url = foc._safe_aiohttp_url(url)
-
-    async with session.get(url) as response:
-        width, height = await get_image_dimensions(Reader(response.content))
-        return {"width": width, "height": height}
+    return {"width": width, "height": height}
 
 
 async def read_local_metadata(local_path, is_video):
@@ -177,7 +166,8 @@ async def read_local_metadata(local_path, is_video):
 
     async with aiofiles.open(local_path, "rb") as f:
         width, height = await get_image_dimensions(f)
-        return {"width": width, "height": height}
+
+    return {"width": width, "height": height}
 
 
 class Reader(object):
@@ -214,6 +204,33 @@ class Reader(object):
     giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
+async def get_url_image_dimensions(session, url):
+    url = foc._safe_aiohttp_url(url)
+    async with session.get(url) as r:
+        return await get_image_dimensions(Reader(r.content))
+
+
+@backoff.on_exception(
+    backoff.expo,
+    requests.exceptions.RequestException,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
+def _get_url_image_dimensions(url):
+    with requests.get(url, stream=True) as r:
+        return fome.get_image_info(fou.ResponseStream(r))
+
+
+@backoff.on_exception(
+    backoff.expo,
+    aiohttp.ClientResponseError,
+    factor=HTTPRetryConfig.FACTOR,
+    max_tries=HTTPRetryConfig.MAX_TRIES,
+    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
+    logger=None,
+)
 async def get_stream_info(path, session=None):
     """Returns a :class:`eta.core.video.VideoStreamInfo` instance for the
     provided video path or URL.
@@ -227,7 +244,7 @@ async def get_stream_info(path, session=None):
         a :class:`eta.core.video.VideoStreamInfo`
     """
     if _FFPROBE_BINARY_PATH is None:
-        raise FFprobeNotFoundException(
+        raise FFmpegNotFoundException(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"
         )
@@ -251,8 +268,9 @@ async def get_stream_info(path, session=None):
     # Something went wrong; if we get a retryable code when pinging the URL,
     # trigger a retry
     if stderr and session is not None:
-        async with session.get(path) as response:
-            response.raise_for_status()
+        url = foc._safe_aiohttp_url(path)
+        async with session.get(url) as r:
+            r.raise_for_status()
 
     if stderr:
         raise RuntimeError(stderr)
@@ -274,12 +292,6 @@ async def get_stream_info(path, session=None):
     mime_type = etau.guess_mime_type(path)
 
     return etav.VideoStreamInfo(stream_info, format_info, mime_type=mime_type)
-
-
-def _get_image_dimensions(url):
-    # @todo needs retries before being production-ready
-    with requests.get(url, stream=True) as r:
-        return fome.get_image_info(fou.ResponseStream(r))
 
 
 async def get_image_dimensions(input):
@@ -432,7 +444,7 @@ class MetadataException(Exception):
     pass
 
 
-class FFprobeNotFoundException(MetadataException):
-    """Exception raised when FFprobe cannot be found."""
+class FFmpegNotFoundException(RuntimeError):
+    """Exception raised when FFmpeg or FFprobe cannot be found."""
 
     pass

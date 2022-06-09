@@ -8,7 +8,6 @@ FiftyOne Server main.
 import argparse
 import os
 
-import aiohttp
 import asyncio
 from hypercorn.asyncio import serve
 from hypercorn.config import Config
