@@ -351,9 +351,9 @@ const useLookerOptionsUpdate = () => {
     ({ snapshot, set }) =>
       async (event: CustomEvent) => {
         const currentOptions = await snapshot.getPromise(
-          atoms.savedLookerOptions
+          fos.savedLookerOptions
         );
-        set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+        set(fos.savedLookerOptions, { ...currentOptions, ...event.detail });
       }
   );
 };
@@ -402,9 +402,10 @@ const Looker = ({
   isGroupMainView,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
+  const { sample, mediaFieldsMetadata, dimensions: originalDimensions, frameRate, frameNumber, url } = useRecoilValue(
     fos.modal
   );
+
   const isClips = useRecoilValue(fos.isClipsView);
   const mimetype = getMimeType(sample);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField);
@@ -415,6 +416,12 @@ const Looker = ({
     sample._id,
     url
   );
+  const mediaFieldDimensions = mediaFieldsMetadata[selectedMediaFieldName]
+  const dimensions = mediaFieldDimensions
+    ? [mediaFieldDimensions.width, mediaFieldDimensions.height]
+    : originalDimensions
+
+
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
