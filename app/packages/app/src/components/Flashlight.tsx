@@ -3,6 +3,7 @@ import React, {
   useRef,
   useState,
   MutableRefObject,
+  useEffect,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import {
@@ -429,6 +430,10 @@ export default React.memo(() => {
     )
   );
 
+  useEffect(() => {
+    alert;
+  }, [selectedMediaFieldName]);
+
   useLayoutEffect(() => {
     if (!flashlight.current || !flashlight.current.isAttached() || tagging) {
       return;
@@ -447,7 +452,6 @@ export default React.memo(() => {
     tagging,
     useRecoilValue(pageParameters),
     useRecoilValue(atoms.refresher),
-    selectedMediaFieldName,
   ]);
 
   useLayoutEffect(() => {
