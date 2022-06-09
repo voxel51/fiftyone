@@ -153,12 +153,6 @@ def segmentations_to_detections(
         fol.Segmentation,
     )
 
-    if mask_targets is None:
-        if out_field in sample_collection.mask_targets:
-            mask_targets = sample_collection.mask_targets[out_field]
-        elif sample_collection.default_mask_targets:
-            mask_targets = sample_collection.default_mask_targets
-
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
@@ -277,12 +271,6 @@ def segmentations_to_polylines(
         in_field,
         fol.Segmentation,
     )
-
-    if mask_targets is None:
-        if out_field in sample_collection.mask_targets:
-            mask_targets = sample_collection.mask_targets[out_field]
-        elif sample_collection.default_mask_targets:
-            mask_targets = sample_collection.default_mask_targets
 
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
