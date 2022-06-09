@@ -472,9 +472,10 @@ const Looker = ({
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
+  const { sample, mediaFieldsMetadata, dimensions: originalDimensions, frameRate, frameNumber, url } = useRecoilValue(
     atoms.modal
   );
+
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
   const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
@@ -485,6 +486,12 @@ const Looker = ({
     sample._id,
     url
   );
+  const mediaFieldDimensions = mediaFieldsMetadata[selectedMediaFieldName]
+  const dimensions = mediaFieldDimensions
+    ? [mediaFieldDimensions.width, mediaFieldDimensions.height]
+    : originalDimensions
+
+
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const getLookerConstructor = useRecoilValue(lookerType);

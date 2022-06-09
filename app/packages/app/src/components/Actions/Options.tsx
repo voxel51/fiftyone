@@ -225,12 +225,15 @@ const Patches = ({ modal }) => {
 };
 
 const MediaFields = ({ modal }) => {
+  const dataset = useRecoilValue(atoms.dataset)
+  const {gridMediaField} = dataset.appConfig
   const [selectedField, setSelectedField] =
     useRecoilState<State.MediaFieldSelection>(atoms.selectedMediaField);
   const { appConfig } = useRecoilValue(atoms.dataset);
   const selectedFieldName = modal
     ? selectedField.modal || selectedField.grid
-    : selectedField.grid;
+    : selectedField.grid || gridMediaField;
+    
   const fields = appConfig?.mediaFields || [];
 
   if (fields.length <= 1) return null;
@@ -240,7 +243,7 @@ const MediaFields = ({ modal }) => {
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
 
       <TabOption
-        active={selectedFieldName}
+        active={selectedFieldName || 'filepath'}
         rows={true}
         options={fields.map((value: Field) => {
           return {

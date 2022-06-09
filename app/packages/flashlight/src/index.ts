@@ -268,7 +268,7 @@ export default class Flashlight<K> {
     this.loading = true;
     let ctx = this.ctx;
     return this.state
-      .get(this.state.currentRequestKey)
+      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
       .then(({ items, nextRequestKey }) => {
         if (ctx !== this.ctx) {
           return;

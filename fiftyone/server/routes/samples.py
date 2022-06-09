@@ -76,7 +76,7 @@ async def _generate_results(samples, media_fields):
         filepath = sample["filepath"]
         sample_result = {
             "sample": sample,
-            "media_fields_metadata": md["media_fields_metadata"],
+            "mediaFieldsMetadata": md["media_fields_metadata"],
         }
         sample_result.update(md["metadata"])
         results.append(sample_result)
