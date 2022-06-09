@@ -706,13 +706,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Name:", self.name),
             ("Media type:", self.media_type),
-            ("Num samples:", aggs[0]),
+            ("Num samples:", self.count()),
             ("Persistent:", self.persistent),
-            ("Tags:", aggs[1]),
+            ("Tags:", self.tags),
         ]
 
         elements = fou.justify_headings(elements)
