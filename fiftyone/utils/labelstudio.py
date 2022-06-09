@@ -10,6 +10,7 @@ Limitations:
 import itertools
 import json
 import logging
+import webbrowser
 from copy import deepcopy
 from datetime import datetime as dt
 from typing import List
@@ -138,7 +139,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         )
         return project, label_info["type"]
 
-    def _prepare_tasks(self, samples):
+    def _prepare_tasks(self, samples, label_schema):
         samples.compute_metadata()
         tasks = [
             {
@@ -149,9 +150,18 @@ class LabelStudioAnnotationSDK(ls.Client):
             }
             for one in samples.select_fields("filepath")
         ]
-        return tasks
 
-    def _import_tasks(self, project, tasks):
+        predictions = {}
+        for label_field, label_info in label_schema.items():
+            if label_info["existing_field"]:
+                predictions[label_field] = {
+                    smp.id: export_label_to_labelstudio(smp[label_field])
+                    for smp in samples.select_fields(label_field)
+                }
+
+        return tasks, predictions
+
+    def _import_tasks(self, project, tasks, predictions=None):
         """Upload files to Label Studio and register them as tasks
 
         Args:
@@ -193,10 +203,21 @@ class LabelStudioAnnotationSDK(ls.Client):
             "POST", f"/api/projects/{project.id}/reimport", data=payload
         )
 
+        # get
         uploaded_ids = project.get_tasks(only_ids=True)[-len(files) :]
         uploaded_tasks = {
             i: t["source_id"] for i, t in zip(uploaded_ids, tasks)
         }
+
+        if predictions:
+            source2task = {v: k for k, v in uploaded_tasks.items()}
+            for label_field, label_predictions in predictions.items():
+                ls_predictions = [{
+                    "task": source2task[smp_id],
+                    "result": pred,
+                } for smp_id, pred in label_predictions.items()]
+                project.create_predictions(ls_predictions)
+
         return uploaded_tasks
 
     @staticmethod
@@ -244,8 +265,8 @@ class LabelStudioAnnotationSDK(ls.Client):
     def upload_tasks(self, samples, backend):
         config = backend.config
         project, label_type = self._init_project(config, samples)
-        tasks = self._prepare_tasks(samples)
-        uploaded_tasks = self._import_tasks(project, tasks)
+        tasks, predictions = self._prepare_tasks(samples, config.label_schema)
+        uploaded_tasks = self._import_tasks(project, tasks, predictions)
         id_map = {}  # TODO change when uploading predictions
         return LabelStudioAnnotationResults(
             samples,
@@ -332,7 +353,10 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
                 setattr(config, name, value)
 
     def launch_editor(self):
-        raise NotImplementedError
+        """Open a Label Studio tab in browser."""
+        project_url = f"{self.config.url}/projects/{self.project_id}"
+        logger.info("Launching editor at '%s'...", project_url)
+        webbrowser.open_new_tab(project_url)
 
     def cleanup(self):
         if self.project_id is not None:
@@ -450,7 +474,7 @@ def export_label_to_labelstudio(label):
         label: fo.Label instance
 
     Returns:
-        a dictionary the Label Studio format
+        a dictionary with the Label Studio format
     """
     if isinstance(label, fol.Regression):
         label_cls = label._cls
@@ -541,8 +565,12 @@ def _label_class_from_tag(label_type: str):
 
 
 def _tag_from_label(label_cls):
+    label_cls = label_cls.lower()
     if label_cls in _LABEL2TYPE:
         label_type = _LABEL2TYPE[label_cls]
+        return _LABEL_TYPES[label_type]["parent_tag"]
+    elif label_cls in foua._RETURN_TYPES_MAP:
+        label_type = foua._RETURN_TYPES_MAP[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
     else:
         raise ValueError(f"Unsupported label class: {label_cls}")

@@ -1,6 +1,7 @@
 """Test Label Studio integration.
 """
 import os
+import random
 
 import numpy as np
 import pytest
@@ -18,7 +19,6 @@ def backend_config():
         "url": os.getenv("LABELSTUDIO_URL", "http://localhost:8080"),
         "api_key": os.getenv("LABELSTUDIO_TOKEN"),
     }
-import random
 
 
 @pytest.fixture()
@@ -338,10 +338,10 @@ def test_export_labels(label_mappings):
 
 @pytest.fixture()
 def setup(backend_config):
-    dataset = foz.load_zoo_dataset("quickstart").take(2).clone()
+    dataset = foz.load_zoo_dataset("quickstart").take(3).clone()
     anno_key = "new_key"
     label_field = "new_field"
-    labels = ["Cat", "Bear", "Horse"]
+    labels = ["Cat", "Bear", "Horse", "Dog", "Wolf", "Lion"]
     yield dataset, anno_key, label_field, labels
     res = dataset.load_annotation_results(anno_key, **backend_config)
     res.cleanup()
@@ -374,6 +374,55 @@ def test_annotate_simple(backend_config, setup, label_type):
 
     labelled = dataset.exists(label_field)
     assert len(labelled) == len(dummy_predictions)
+
+
+def _generate_dummy_labels(label_type, labels):
+    if label_type == "classification":
+        return fo.Classification(label=random.choice(labels))
+    elif label_type == "detections":
+        detections = [
+            fo.Detection(label=random.choice(labels),
+                         bounding_box=np.random.random(4).tolist()),
+            fo.Detection(label=random.choice(labels),
+                         bounding_box=np.random.random(4).tolist()),
+            ]
+        return fo.Detections(detections=detections)
+    elif label_type == "polylines":
+        polylines = [
+            fo.Polyline(label=random.choice(labels),
+                        points=np.random.random(5, 2).tolist()),
+            fo.Polyline(label=random.choice(labels),
+                        points=np.random.random(6, 2).tolist()),
+        ]
+        return fo.Polylines(polylines=polylines)
+    else:
+        raise ValueError("Unknown label type: {}".format(label_type))
+
+
+@pytest.mark.parametrize("label_type",
+                         ["classification"])
+def test_annotate_with_predictions(backend_config, setup, label_type):
+    dataset, anno_key, label_field, labels = setup
+    label_field += f"-{label_type}"
+
+    # add dummy labels
+    for smp in dataset:
+        smp[label_field] = _generate_dummy_labels(label_type, labels)
+        smp.save()
+
+    dataset.annotate(
+        anno_key,
+        label_field=label_field,
+        project_name=f"labelstudio_{label_type}_tests",
+        label_type=label_type,
+        **backend_config
+    )
+
+    # test that project tasks have predictions
+    res = dataset.load_annotation_results(anno_key, **backend_config)
+    ls_project = res.backend.connect_to_api().get_project(res.project_id)
+    assert len(ls_project.tasks_ids) == len(dataset)
+    assert ls_project.get_predictions_coverage()["undefined"] == 1.0
 
 
 def _assert_labels_equal(converted, expected):
