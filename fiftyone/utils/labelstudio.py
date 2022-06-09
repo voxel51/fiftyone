@@ -2,14 +2,40 @@
 Utilities for working with annotations in
 `Label Studio <https://labelstud.io>`_.
 
-Limitations:
-- Takes latest annotation if multiple.
-- Only uploads files.
-- Predictions without scores yet
+Run Label Studio:
+    1. As a python package:
+        pip install label-studio
+        label-studio start
+    2. As a docker image:
+        docker run -d -p 8080:8080 \
+            --name labelstudio \
+            -v /tmp/labelstudio:/data \
+            labelstudio/labelstudio
+
+Set environment variables:
+    export FIFTYONE_LABELSTUDIO_URL=<url>
+    export FIFTYONE_LABELSTUDIO_TOKEN=<token>
+
+Annotate:
+    dataset = fo.load_dataset("quickstart")
+    dataset.annotate(<anno_key>, label_field=<field_name>,
+                    label_type=<label_type>,
+                    classes=[list, of, classes],
+                    backend="labelstudio")
+    # Note: a new project will be created with a labelling config
+    # that matches label type and classes.
+    # Note: it might take a while because files have to be
+    # uploaded to the Label Studio server.
+
+Load annotations:
+    dataset.load_annotations(<anno_key>)
+    # Note: this will only load the latest annotation per task
+    # if multiple annotations exist for a task.
 """
 import itertools
 import json
 import logging
+import os
 import random
 import string
 import webbrowser
@@ -32,24 +58,40 @@ logger = logging.getLogger(__name__)
 
 
 class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
+    """Base class for Label Studio backend configuration.
+
+    Args:
+        name: the name of the backend
+        label_schema: a dictionary containing the description of label fields,
+            classes and attribute to annotate
+        media_field ("filepath"): string field name containing the paths to
+            media files on disk to upload
+        url: the URL of the Label Studio server
+        api_key: the API key to use for authentication
+        project_name: the name of the project to use on the Label Studio server
+
+    """
+
     def __init__(
-            self,
-            name: str,
-            label_schema: str,
-            media_field="filepath",
-            url=None,
-            api_key=None,
-            project_name=None,
-            **kwargs,
+        self,
+        name: str,
+        label_schema: str,
+        media_field="filepath",
+        url="http://localhost:8080",
+        api_key=None,
+        project_name=None,
+        **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
 
-        self.url = url if url is not None else "http://localhost:8080"
-        self.api_key = api_key
+        self.url = url
         self.project_name = project_name
 
-        assert api_key is not None, "set LABELSTUDIO_TOKEN in your environment"
-        self._api_key = api_key
+        self._api_key = (
+            api_key if api_key else os.getenv("FIFTYONE_LABELSTUDIO_TOKEN")
+        )
+        if self._api_key is None:
+            raise ValueError("No Label Studio API key provided")
 
     @property
     def api_key(self):
@@ -80,6 +122,18 @@ class LabelStudioBackend(foua.AnnotationBackend):
             "scalar",
         ]
 
+    @property
+    def supported_attr_types(self):
+        return []
+
+    @property
+    def supports_keyframes(self):
+        return False
+
+    @property
+    def supports_video_sample_fields(self):
+        return False
+
     def connect_to_api(self):
         return LabelStudioAnnotationSDK(
             url=self.config.url, api_key=self.config.api_key
@@ -108,17 +162,38 @@ class LabelStudioBackend(foua.AnnotationBackend):
 
 
 class LabelStudioAnnotationSDK(ls.Client):
+    """A class to upload tasks and predictions to and fetch annotations
+    from Label Studio
+
+    On initialization, the class will check if the server is reachable.
+
+    """
+
     def __post_init__(self):
         self.check_connection()
 
     def _init_project(self, config, samples):
+        """Create a new project on Label Studio.
+
+        If project_name is not set in the configs, it will be generated.
+        If project_name exists on the server, a timestamp will be added
+        to the project name.
+
+        Args:
+            config: an instance of LabelStudioBackendConfig
+            samples: a sample collection object
+
+        Returns:
+            a tuple of label_studio_sdk.Project and label type
+        """
         project_name = deepcopy(config.project_name)
         label_schema = deepcopy(config.label_schema)
 
         if project_name is None:
             _dataset_name = samples._root_dataset.name.replace(" ", "_")
             project_name = f"FiftyOne_{_dataset_name.replace(' ', '_')}"
-        # if project name take, add timestr
+
+        # if project name take, add timestamp
         projects = self.list_projects()
         for one in projects:
             if one.params["title"] == project_name:
@@ -141,6 +216,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         return project, label_info["type"]
 
     def _prepare_tasks(self, samples, label_schema):
+        """Extract sample data and existing labels if any"""
         samples.compute_metadata()
         tasks = [
             {
@@ -157,26 +233,27 @@ class LabelStudioAnnotationSDK(ls.Client):
             if label_info["existing_field"]:
                 predictions[label_field] = {
                     smp.id: export_label_to_labelstudio(
-                                smp[label_field],
-                                full_result={
-                                    "from_name": "label",
-                                    "to_name": smp.media_type,
-                                    "original_width": smp.metadata["width"],
-                                    "original_height": smp.metadata["height"],
-                                    "image_rotation": getattr(smp, "rotation",
-                                                              0)
-                                    })
+                        smp[label_field],
+                        full_result={
+                            "from_name": "label",
+                            "to_name": smp.media_type,
+                            "original_width": smp.metadata["width"],
+                            "original_height": smp.metadata["height"],
+                            "image_rotation": getattr(smp, "rotation", 0),
+                        },
+                    )
                     for smp in samples.select_fields(label_field)
                 }
 
         return tasks, predictions
 
     def _import_tasks(self, project, tasks, predictions=None):
-        """Upload files to Label Studio and register them as tasks
+        """Upload files to Label Studio and register them as tasks.
 
         Args:
             project: label studio sdk Project instance
             tasks: a list of task dicts
+            predictions: if given, these predictions will be uploaded as well
 
         Returns:
             a dict mapping of task_id to sample_id
@@ -214,7 +291,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         )
 
         # get
-        uploaded_ids = project.get_tasks(only_ids=True)[-len(files):]
+        uploaded_ids = project.get_tasks(only_ids=True)[-len(files) :]
         uploaded_tasks = {
             i: t["source_id"] for i, t in zip(uploaded_ids, tasks)
         }
@@ -222,10 +299,13 @@ class LabelStudioAnnotationSDK(ls.Client):
         if predictions:
             source2task = {v: k for k, v in uploaded_tasks.items()}
             for label_field, label_predictions in predictions.items():
-                ls_predictions = [{
-                    "task": source2task[smp_id],
-                    "result": pred,
-                } for smp_id, pred in label_predictions.items()]
+                ls_predictions = [
+                    {
+                        "task": source2task[smp_id],
+                        "result": pred,
+                    }
+                    for smp_id, pred in label_predictions.items()
+                ]
                 project.create_predictions(ls_predictions)
 
         return uploaded_tasks
@@ -250,7 +330,8 @@ class LabelStudioAnnotationSDK(ls.Client):
             )
             if label_type == "keypoints":
                 labels = import_labelstudio_annotation(
-                    latest_annotation["result"])
+                    latest_annotation["result"]
+                )
             else:
                 labels = [
                     import_labelstudio_annotation(r)
@@ -258,8 +339,11 @@ class LabelStudioAnnotationSDK(ls.Client):
                 ]
 
             # add to dict
-            label_ids = {l.id: l for l in labels} \
-                if not isinstance(labels[0], fol.Regression) else labels[0]
+            label_ids = (
+                {l.id: l for l in labels}
+                if not isinstance(labels[0], fol.Regression)
+                else labels[0]
+            )
             sample_id = task_id2sample_id[t["id"]]
             results[sample_id] = label_ids
 
@@ -272,6 +356,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             return [export_label_to_labelstudio(l) for l in labels]
 
     def upload_tasks(self, samples, backend):
+        """Create a Label Studio project and upload samples"""
         config = backend.config
         project, label_type = self._init_project(config, samples)
         tasks, predictions = self._prepare_tasks(samples, config.label_schema)
@@ -344,8 +429,7 @@ class LabelStudioAnnotationSDK(ls.Client):
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
     def __init__(
-            self, samples, config, id_map, project_id, uploaded_tasks,
-            backend=None
+        self, samples, config, id_map, project_id, uploaded_tasks, backend=None
     ):
         super().__init__(samples, config, id_map=id_map, backend=backend)
         self.project_id = project_id
@@ -387,12 +471,15 @@ def generate_labelling_config(media, label_type, labels=None):
     Returns:
         A labelling config.
     """
-    etree = fou.lazy_import("lxml.etree",
-                            callback=lambda: fou.ensure_import("lxml.etree"))
+    etree = fou.lazy_import(
+        "lxml.etree", callback=lambda: fou.ensure_import("lxml.etree")
+    )
 
     assert media in ["image", "video"]
-    assert label_type in _LABEL_TYPES.keys() or \
-           label_type in foua._RETURN_TYPES_MAP.keys()
+    assert (
+        label_type in _LABEL_TYPES.keys()
+        or label_type in foua._RETURN_TYPES_MAP.keys()
+    )
 
     # root view and media view
     root = etree.Element("View")
@@ -484,10 +571,13 @@ def export_label_to_labelstudio(label, full_result={}):
         # return full LS result
         if not isinstance(result_value, (list, tuple)):
             result_value = [result_value]
-        return [_update_dict(full_result,
-                             dict(value=r, type=ls_type,
-                                  id=_generate_prediction_id()))
-                for r in result_value]
+        return [
+            _update_dict(
+                full_result,
+                dict(value=r, type=ls_type, id=_generate_prediction_id()),
+            )
+            for r in result_value
+        ]
     else:
         return result_value
 
@@ -547,25 +637,25 @@ def _to_keypoint(label):
         return sum([_to_keypoint(l)[0] for l in label.keypoints], []), ls_type
     else:
         points = _denormalize_values(label.points)
-        results = [{
-            "x": p[0],
-            "y": p[1],
-            "width": getattr(label, "width", 0.34),
-            "keypointlabels": [label.label],
-        } for p in points]
+        results = [
+            {
+                "x": p[0],
+                "y": p[1],
+                "width": getattr(label, "width", 0.34),
+                "keypointlabels": [label.label],
+            }
+            for p in points
+        ]
         return results, ls_type
 
 
 def _to_segmentation(label):
-    brush = fou.lazy_import("label_studio_converter.brush",
-                            callback=lambda: fou.ensure_import(
-                                "label_studio_converter.brush"))
+    brush = fou.lazy_import(
+        "label_studio_converter.brush",
+        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+    )
     rle = brush.mask2rle(label.mask)
-    result = {
-        "format": "rle",
-        "rle": rle,
-        "brushlabels": [label.label]
-    }
+    result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
     return result, "brushlabels"
 
 
@@ -586,8 +676,9 @@ def _from_rectanglelabels(result):
         result["value"]["height"],
     ]
     label_values = result["value"][result["type"]]
-    return fol.Detection(label=label_values[0],
-                         bounding_box=_normalize_values(ls_box))
+    return fol.Detection(
+        label=label_values[0], bounding_box=_normalize_values(ls_box)
+    )
 
 
 def _from_polygonlabels(result):
@@ -608,22 +699,22 @@ def _from_keypointlabels(result):
 
 
 def _from_brushlabels(result):
-    brush = fou.lazy_import("label_studio_converter.brush",
-                            callback=lambda: fou.ensure_import(
-                                "label_studio_converter.brush"))
+    brush = fou.lazy_import(
+        "label_studio_converter.brush",
+        callback=lambda: fou.ensure_import("label_studio_converter.brush"),
+    )
 
     label_values = result["value"]["brushlabels"]
     img = brush.decode_rle(result["value"]["rle"])
-    mask = img.reshape((result["original_height"],
-                        result["original_width"],
-                        4))[:, :, 3]
+    mask = img.reshape(
+        (result["original_height"], result["original_width"], 4)
+    )[:, :, 3]
     return fol.Segmentation(label=label_values[0], mask=mask)
 
 
 def _check_type(label, label_type, label_type_multiple):
     is_singular = isinstance(label, (label_type, label_type_multiple))
-    is_list_type = isinstance(label, list) and isinstance(label[0],
-                                                          label_type)
+    is_list_type = isinstance(label, list) and isinstance(label[0], label_type)
     return is_singular or is_list_type
 
 
@@ -636,8 +727,9 @@ def _ls_tags_from_type(label_type: str):
     Returns:
         A tuple of parent tag, child tag and parent_tag kwargs
     """
-    x = _LABEL_TYPES.get(label_type,
-                         _LABEL_TYPES[foua._RETURN_TYPES_MAP[label_type]])
+    x = _LABEL_TYPES.get(
+        label_type, _LABEL_TYPES[foua._RETURN_TYPES_MAP[label_type]]
+    )
     return x["parent_tag"], x["child_tag"], x.get("tag_kwargs", {})
 
 
@@ -648,8 +740,7 @@ def _label_class_from_tag(label_type: str):
     }
     if label_type in reverse:
         return reverse[label_type]
-    else:
-        raise ValueError(f"Unknown label type: {label_type}")
+    raise ValueError(f"Unknown label type: {label_type}")
 
 
 def _tag_from_label(label_cls):
@@ -711,6 +802,6 @@ _LABEL_TYPES = {
         parent_tag="Number",
         child_tag=None,
         label=fol.Regression,
-    )
+    ),
 }
 _LABEL2TYPE = {v["label"].__name__: k for k, v in _LABEL_TYPES.items()}
