@@ -418,6 +418,10 @@ def test_annotate_with_predictions(backend_config, setup, label_type):
     assert len(ls_project.tasks_ids) == len(dataset)
     assert ls_project.get_predictions_coverage()["undefined"] == 1.0
 
+    # test that annotations can be loaded back in lieu of existing labels
+    ls_project.create_annotations_from_predictions()
+    dataset.load_annotations(anno_key, **backend_config)
+
 
 def _assert_labels_equal(converted, expected):
     assert converted._cls == expected._cls
@@ -489,13 +493,7 @@ def _generate_dummy_predictions(label_type, labels, n):
     elif label_type == "polylines":
         return [
             {
-                "points": (
-                    np.random.randn(
-                        4,
-                        2,
-                    )
-                    * 100
-                ).tolist(),
+                "points": (np.random.random((4, 2)) * 100).tolist(),
                 "polygonlabels": [random.choice(labels)],
             }
             for _ in range(n)
