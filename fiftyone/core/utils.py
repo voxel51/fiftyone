@@ -1356,7 +1356,7 @@ def get_multiprocessing_context():
         # default multiprocessing context, force 'fork' to be used
         #
         # Background: on macOS, multiprocessing's default context was changed
-        # from 'spawn' to 'fork' in Python 3.8, but we prefer 'fork' because
+        # from 'fork' to 'spawn' in Python 3.8, but we prefer 'fork' because
         # the startup time is much shorter. Also, this is not fully proven, but
         # @brimoor believes he's seen cases where 'spawn' causes some of our
         # `multiprocessing.Pool.imap_unordered()` calls to run twice...
