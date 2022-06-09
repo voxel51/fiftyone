@@ -6,6 +6,7 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import backoff
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
@@ -29,6 +30,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+from fiftyone.core.config import HTTPRetryConfig
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -3634,6 +3636,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "csrftoken"
             ]
 
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.RequestException,
+        factor=HTTPRetryConfig.FACTOR,
+        max_tries=HTTPRetryConfig.MAX_TRIES,
+        giveup=lambda e: e.error_code not in HTTPRetryConfig.RETRY_CODES,
+        logger=None,
+    )
     def _make_request(
         self, request_method, url, print_error_info=True, **kwargs
     ):
