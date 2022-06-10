@@ -1,5 +1,6 @@
 aiofiles==0.7.0
 argcomplete==1.11.0
+backoff==1.11.1
 boto3==1.17.36
 dacite==1.6.0
 Deprecated==1.2.11

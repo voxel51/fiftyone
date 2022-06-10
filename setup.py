@@ -32,6 +32,7 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
+    "backoff",
     "boto3",
     "dacite>=1.6.0",
     "Deprecated",
