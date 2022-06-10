@@ -846,8 +846,7 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
         force_rgb (False): whether to force convert all images to RGB
-        classes (None): the list of possible class labels. If omitted, the
-            class list is dynamically generated as samples are processed
+        classes (None): the list of possible class labels
     """
 
     def __init__(
@@ -872,15 +871,6 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     @property
     def label_cls(self):
         return fol.Detections
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
 
     def _make_example_generator(self):
         return TFObjectDetectionExampleGenerator(
@@ -1019,8 +1009,7 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
 
     Args:
         force_rgb (False): whether to force convert all images to RGB
-        classes (None): the list of possible class labels. If omitted, the
-            class list is dynamically generated as examples are processed
+        classes (None): the list of possible class labels
     """
 
     def __init__(self, force_rgb=False, classes=None):
@@ -1029,14 +1018,14 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
         self.classes = classes
 
         if classes:
-            labels_map_rev = _to_labels_map_rev(classes)
             dynamic_classes = False
+            labels_map_rev = _to_labels_map_rev(classes)
         else:
-            labels_map_rev = {}
             dynamic_classes = True
+            labels_map_rev = {}
 
-        self._labels_map_rev = labels_map_rev
         self._dynamic_classes = dynamic_classes
+        self._labels_map_rev = labels_map_rev
 
     def make_tf_example(self, image_or_path, detections, filename=None):
         """Makes a ``tf.train.Example`` for the given data.
