@@ -132,4 +132,4 @@ ENV FIFTYONE_MEDIA_CACHE_SIZE_BYTES=-1 \
 # Serve the app
 #
 
-CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:5151
+CMD hypercorn fiftyone.teams.app:app --bind 0.0.0.0:"${FIFTYONE_DEFAULT_APP_PORT:-5151}"

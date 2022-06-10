@@ -1,0 +1,162 @@
+# Declare variables to be passed into your templates.
+
+# If you set namespace.create to false, you must create the namespace before applying the helm chart
+#  You must still set the namespace.name parameter for the remaining resources to be installed
+# If you set namespace.create to true this helm chart will create the namespace for you
+namespace:
+  create: true
+  name: your-namespace-here
+
+secret:
+  # The name of the secret to use in the namespace.name namespace
+  name: fiftyone-teams-secrets
+  # If you set secret.create to true, this Helm chart will create the secrets defined below
+  # If you choose to create your secrets seperately, please set namespace.create to false too!
+  # create: true
+  # createSecrets:
+    # mongodbConnectionString: mongodb://user:password@hostname:port/?authSource=admin
+    # organizationId: org_Voxel51OrgID
+    # Client IDs are currently optional, feel free to leave this commented
+    # clientId: your-client-id-goes-here
+
+env:
+  # you must set the following variables:
+  #    - FIFTYONE_TEAMS_ORGANIZATION
+  #    - FIFTYONE_DATABASE_URI
+  # you can set them as nonsensitive or as secrets, but they must be set
+  # non sensitive variables
+  nonsensitive:
+    FIFTYONE_DEFAULT_APP_PORT: 5151
+    FIFTYONE_DATABASE_ADMIN: true
+    # These are nonsensitive since you're mounting them from secrets below
+    # AWS_CONFIG_FILE=/opt/secrets/aws/aws-credentials-file
+    # GOOGLE_APPLICATION_CREDENTIALS=/opt/secrets/google/service-account
+    # MINIO_CONFIG_FILE=/opt/secrets/minio/minio-credentials-file
+  # sensitive envirionment variables and the secret key they should be set from
+  sensitive:
+    # Do NOT set this to your Mongo connection string, set it to the key of a secret (see above)
+    FIFTYONE_DATABASE_URI: mongodbConnectionString
+    # Do NOT set this to your Voxel51 Organization ID, set it to the key of a secret (see above)
+    FIFTYONE_TEAMS_ORGANIZATION: organizationId
+    # client IDs are currently optional, this will become required later
+    # FIFTYONE_TEAMS_CLIENT_ID: clientId
+
+replicaCount: 2
+
+image:
+  # Voxel51 can provide you with credentials to pull fiftyone-teams-app from Docker Hub or you can
+  #  chose to build fiftyone-teams-app and publish it to a local repository instead
+  repository: your-fiftyone-teams-app-repo/your-fiftyone-teams-repo
+  # repository: voxel51/fiftyone-teams-app
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+# If you use Pull Secrets you will need to create the namespace and the Pull Secrets
+#
+# Details on configuring your imagePullSecrets can be found here:
+#   https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+#
+# If Voxel51 provided you with a voxel51-docker.json file, you can use the following command:
+#  kubectl --namespace your-namespace-here create secret generic regcred \
+#    --from-file=.dockerconfigjson=./voxel51-docker.json --type kubernetes.io/dockerconfigjson
+imagePullSecrets: []
+# If you use the Voxel51 command above your imagePullSecrets would look like:
+# imagePullSecrets:
+#  - name: regcred
+
+# In order to keep volume mounts as flexible as possible, you must define both the volumeMounts and
+#  volumes definitions.  Make sure your volume name matches a volumeMounts name.
+# To add volumes and volumeMounts remove the {}s and create apppropriate entries.
+volumeMounts: {}
+#   - mountPath: /opt/secrets/aws
+#     name: aws-credentials-volume
+#   - mountPath: /opt/secrets/google
+#     name: google-credentials-volume
+#   - mountPath: /opt/secrets/minio
+#     name: minio-credentials-volume
+#   - mountPath: /opt/persistent/data
+#     name: google-persistent-volume
+
+# You might create your secret with a command similar to:
+#  kubectl create secret generic aws-credentials-secret --from-file=aws-credentials-file=./myfile
+volumes: {}
+#   - name: aws-credentials-volume
+#     secret:
+#       secretName: aws-credentials-secret
+#       optional: false
+#   - name: google-credentials-volume
+#     secret:
+#       secretName: google-credentials-secret
+#       optional: false
+#   - name: minio-credentials-volume
+#     secret:
+#       secretName: minio-credentials-secret
+#       optional: false
+#   - name: google-persistent-volume
+#     gcePersistentDisk:
+#       pdName: fiftyone-data-disk
+#       fsType: ext4
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "fiftyone-teams"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: your-company.fiftyone.ai
+      paths:
+        - path: /*
+          pathType: ImplementationSpecific
+  # You must use an SSL protected endpoint for FiftyOne Teams authentication to work
+  #  You must provide a secret in your namespace that contains tls.crt and tls.key keys and values
+  tls:
+    - secretName: your-identifier-cert-secret
+      hosts:
+        - your-company.fiftyone.ai
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

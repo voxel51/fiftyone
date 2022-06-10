@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fiftyone-teams.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "fiftyone-teams.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ include "fiftyone-teams.port" . }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "fiftyone-teams.selectorLabels" . | nindent 4 }}

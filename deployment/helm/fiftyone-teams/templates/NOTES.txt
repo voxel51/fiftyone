@@ -1,0 +1,6 @@
+Visit the following URL to access your FiftyOne Teams application:
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}
+  {{- end }}
+{{- end }}
