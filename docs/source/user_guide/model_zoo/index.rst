@@ -225,7 +225,7 @@ All models in the FiftyOne Model Zoo are instances of the |Model| class, which
 defines a common interface for loading models and generating predictions with
 defined input and output data formats.
 
-.. note:
+.. note::
 
     The following sections describe the interface that all models in the Model
     Zoo implement. If you write a wrapper for your custom model that implements
@@ -406,7 +406,7 @@ For models that support batching, the |Model| interface also provides a
 :meth:`predict_all() <fiftyone.core.models.Model.predict_all>` method that can
 provide an efficient implementation of predicting on a batch of data.
 
-.. note:
+.. note::
 
     Builtin methods like
     :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
@@ -414,7 +414,7 @@ provide an efficient implementation of predicting on a batch of data.
     size used when performing inference with models that support efficient
     batching.
 
-.. note:
+.. note::
 
     PyTorch models can implement the |TorchModelMixin| mixin, in which case
     `DataLoaders <https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader>`_
@@ -450,7 +450,7 @@ By convention,
 :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` should
 return a numpy array containing the embedding.
 
-.. note:
+.. note::
 
     Sample embeddings are typically 1D vectors, but this is not strictly
     required.
