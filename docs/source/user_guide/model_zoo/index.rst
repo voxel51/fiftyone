@@ -357,7 +357,7 @@ and the output ``labels`` can be any of the following:
 
     # Multiple sample-level labels
     for key, value in labels.items():
-        sample[label_field + "_" + key] = value
+        sample[label_key(key)] = value
 
 -   A dict mapping frame numbers to |Label| instances. In this case, the
     provided labels are interpreted as frame-level labels that should be added
@@ -384,13 +384,23 @@ and the output ``labels`` can be any of the following:
     # Multiple per-frame labels
     sample.frames.merge(
         {
-            frame_number: {
-                label_field + "_" + name: label
-                for name, label in frame_dict.items()
-            }
+            frame_number: {label_key(k): v for k, v in frame_dict.items()}
             for frame_number, frame_dict in labels.items()
         }
     )
+
+In the above snippets, the ``label_key`` function maps label dict keys to field
+names, and is defined from ``label_field`` as follows::
+
+.. code-block:: python
+    :linenos:
+
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
+        label_key = lambda k: label_field + "_" + k
+    else:
+        label_key = lambda k: k
 
 For models that support batching, the |Model| interface also provides a
 :meth:`predict_all() <fiftyone.core.models.Model.predict_all>` method that can
