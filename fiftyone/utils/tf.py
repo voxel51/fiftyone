@@ -249,7 +249,7 @@ class TFRecordsWriter(object):
             tf_records_patt = self.tf_records_path + "-%05d-of-%05d"
             tf_records_paths = [
                 tf_records_patt % (i, self.num_shards)
-                for i in range(0, self.num_shards)
+                for i in range(self.num_shards)
             ]
         else:
             self._num_shards = 1
