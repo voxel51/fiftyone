@@ -3641,7 +3641,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.error_code not in HTTPRetryConfig.RETRY_CODES,
+        giveup=lambda e: hasattr(e, "error_code")
+        and e.error_code not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _make_request(

@@ -14,10 +14,14 @@ from collections import defaultdict
 import numpy as np
 import os
 import unittest
+from unittest.mock import patch
+
+import requests
 
 import eta.core.utils as etau
 
 import fiftyone as fo
+from fiftyone.core.config import HTTPRetryConfig
 import fiftyone.utils.cvat as fouc
 import fiftyone.zoo as foz
 
@@ -990,6 +994,35 @@ class CVATTests(unittest.TestCase):
                 dataset.values("frames.test_field.detections.id", unwind=True)
             ),
         )
+
+    @patch("fiftyone.utils.cvat.CVATAnnotationAPI._validate")
+    def test_request_retries(self, validate_mock):
+        def gen_failure():
+            i = 0
+            while True:
+                # Retry 10 times, but the 11th would have succeeded
+                if i < HTTPRetryConfig.MAX_TRIES + 1:
+                    yield requests.exceptions.ReadTimeout()
+                else:
+                    yield fouc.CVATAnnotationAPI._validate
+                i += 1
+
+        validate_mock.side_effect = gen_failure()
+        with self.assertRaises(requests.exceptions.ReadTimeout):
+            self.test_upload()
+
+        def gen_success():
+            i = 0
+            while True:
+                # Retry 9 times, on the 10th try it succeeds
+                if i < HTTPRetryConfig.MAX_TRIES - 1:
+                    yield requests.exceptions.ReadTimeout()
+                else:
+                    yield fouc.CVATAnnotationAPI._validate
+                i += 1
+
+        validate_mock.side_effect = gen_success()
+        self.test_upload()
 
 
 if __name__ == "__main__":
