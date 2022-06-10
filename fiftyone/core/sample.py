@@ -240,7 +240,8 @@ class _SampleMixin(object):
             # Single sample-level field
             self.set_field(label_field, labels, create=expand_schema)
 
-        self.save()
+        if self._in_db:
+            self.save()
 
     def merge(
         self,
