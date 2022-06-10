@@ -261,8 +261,8 @@ class COCODetectionDatasetImporter(
             If None, the parameter will default to ``labels.json``
         label_types (None): a label type or list of label types to load. The
             supported values are
-            ``("detections", "segmentations", "keypoints")``. By default, only
-            "detections" are loaded
+            ``("detections", "segmentations", "keypoints")``. By default, all
+            label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -984,8 +984,12 @@ class COCOObject(object):
                 for the object, if available
 
         Returns:
-            a :class:`fiftyone.core.labels.Detection`
+            a :class:`fiftyone.core.labels.Detection`, or None if no bbox data
+            is available
         """
+        if self.bbox is None:
+            return None
+
         label, attributes = self._get_object_label_and_attributes(
             classes, supercategory_map
         )
@@ -1356,7 +1360,7 @@ def is_download_required(
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
             supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
+            default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1425,7 +1429,7 @@ def download_coco_dataset_split(
             ``("2014", "2017")``
         label_types (None): a label type or list of label types to load. The
             supported values are ``("detections", "segmentations")``. By
-            default, only "detections" are loaded
+            default, all label types are loaded
         classes (None): a string or list of strings specifying required classes
             to load. Only samples containing at least one instance of a
             specified class will be loaded
@@ -1710,7 +1714,7 @@ def _write_partial_annotations(d, outpath, split, filenames):
 
 def _parse_label_types(label_types):
     if label_types is None:
-        return ["detections"]
+        return _SUPPORTED_LABEL_TYPES
 
     if etau.is_str(label_types):
         label_types = [label_types]
@@ -1987,6 +1991,9 @@ def _coco_objects_to_polylines(
             msg = "Skipping object with no segmentation mask"
             warnings.warn(msg)
 
+    if not polylines:
+        return None
+
     return fol.Polylines(polylines=polylines)
 
 
@@ -2002,11 +2009,15 @@ def _coco_objects_to_detections(
             load_segmentation=load_segmentations,
         )
 
-        if load_segmentations and detection.mask is None:
-            msg = "Skipping object with no segmentation mask"
-            warnings.warn(msg)
-        else:
-            detections.append(detection)
+        if detection is not None:
+            if load_segmentations and detection.mask is None:
+                msg = "Skipping object with no segmentation mask"
+                warnings.warn(msg)
+            else:
+                detections.append(detection)
+
+    if not detections:
+        return None
 
     return fol.Detections(detections=detections)
 
@@ -2014,7 +2025,12 @@ def _coco_objects_to_detections(
 def _coco_objects_to_keypoints(coco_objects, frame_size, classes):
     keypoints = []
     for coco_obj in coco_objects:
-        keypoints.append(coco_obj.to_keypoints(frame_size, classes=classes))
+        keypoint = coco_obj.to_keypoints(frame_size, classes=classes)
+        if keypoint is not None:
+            keypoints.append(keypoint)
+
+    if not keypoints:
+        return None
 
     return fol.Keypoints(keypoints=keypoints)
 

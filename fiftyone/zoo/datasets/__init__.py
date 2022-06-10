@@ -225,6 +225,12 @@ def load_zoo_dataset(
         dataset_importer_cls, kwargs
     )
 
+    # Inject default importer kwargs, if any
+    if zoo_dataset.importer_kwargs:
+        for key, value in zoo_dataset.importer_kwargs.items():
+            if key not in importer_kwargs:
+                importer_kwargs[key] = value
+
     for key, value in unused_kwargs.items():
         if (
             key in download_kwargs
@@ -830,6 +836,13 @@ class ZooDataset(object):
         by the user before the dataset can be loaded.
         """
         return False
+
+    @property
+    def importer_kwargs(self):
+        """A dict of default kwargs to pass to this dataset's
+        :class:`fiftyone.utils.data.importers.DatasetImporter`.
+        """
+        return {}
 
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
