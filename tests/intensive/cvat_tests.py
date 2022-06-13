@@ -495,7 +495,9 @@ class CVATTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             label_schema = {
-                "ground_truth": {"attributes": {"group_id": {"type": "group"}}}
+                "ground_truth": {
+                    "attributes": {"group_id": {"type": "group_id"}}
+                }
             }
             anno_key4 = "group_id_failure"
             dataset.annotate(
