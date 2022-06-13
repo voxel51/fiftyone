@@ -39,6 +39,8 @@ import { clone, isElectron } from "@fiftyone/utilities";
 import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 
+import {usePlugins} from '@fiftyone/plugins'
+
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
     ...RootConfig_query

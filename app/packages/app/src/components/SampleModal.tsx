@@ -11,6 +11,7 @@ import Looker from "../components/Looker";
 import Group from "./Group/Group";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
+import {usePlugin, PluginComponentType} from '@fiftyone/plugins'
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -234,6 +235,8 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
   const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
+  const [plugin] = usePlugin(PluginComponentType.SampleModalContent)
+  const PluginComponent = plugin && plugin.component
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -255,6 +258,9 @@ const SampleModal = () => {
           />
         </ContentColumn>
         <Sidebar render={renderEntry} modal={true} />
+        {PluginComponent && <ContentColumn>
+          {PluginComponent && <PluginComponent />}
+        </ContentColumn>}
       </Container>
     </ModalWrapper>,
     document.getElementById("modal")
