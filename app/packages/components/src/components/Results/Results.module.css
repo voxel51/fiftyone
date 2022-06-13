@@ -5,10 +5,14 @@
   box-shadow: 0 2px 20px var(--background-dark);
   box-sizing: border-box;
   width: auto;
-  overflow: visible;
-  position: absolute;
-  max-height: 200px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scrollContainer {
   overflow: auto;
+  max-height: 250px;
+  padding-bottom: 26.5px;
 }
 
 .result {
@@ -45,4 +49,8 @@
   flex-direction: column;
   text-decoration: none;
   border-top: 1px solid var(--background-dark-border);
+  background: var(--background-dark);
+  position: absolute;
+  bottom: 0;
+  width: 100%;
 }

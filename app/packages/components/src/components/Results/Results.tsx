@@ -3,8 +3,6 @@ import React from "react";
 
 import style from "./Results.module.css";
 
-export { container, footer } from "./Results.module.css";
-
 export interface ResultProps<T> {
   active: boolean;
   result: T;
@@ -70,16 +68,18 @@ const Results = <T extends unknown>({
   toKey = (value: T) => String(value),
 }: ResultsProps<T>) => {
   return (
-    <div>
-      {results.map((result, i) => (
-        <Result
-          active={i === active}
-          component={component}
-          key={toKey(result)}
-          result={result}
-          onClick={() => onSelect(result)}
-        />
-      ))}
+    <div className={style.container}>
+      <div className={style.scrollContainer}>
+        {results.map((result, i) => (
+          <Result
+            active={i === active}
+            component={component}
+            key={toKey(result)}
+            result={result}
+            onClick={() => onSelect(result)}
+          />
+        ))}
+      </div>
       <div className={style.footer}>
         {Boolean(total) && (
           <>
