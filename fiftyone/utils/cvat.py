@@ -4143,12 +4143,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
+        has_ignored_attributes = False
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
         # labels should be downloaded into
         if project_id is not None:
             self._ensure_one_field_per_type(label_schema)
+            has_ignored_attributes = self._has_ignored_attributes(label_schema)
 
         id_map = {}
         project_ids = []
@@ -4177,6 +4179,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             or occluded_attr is not None
             or group_id_attr is not None
         ):
+            if project_id is not None and has_ignored_attributes:
+                raise ValueError(
+                    "A project was specified so the 'label_schema', "
+                    "'classes', and 'attributes' arguments are ignored, but "
+                    "they contained either occluded or group id "
+                    "attributes. To use occluded or group id attributes "
+                    "with existing projects, provide the 'occluded_attr' "
+                    "and 'group_id_attr' arguments."
+                )
             config.label_schema = label_schema
 
         num_samples = len(samples)
@@ -4721,6 +4732,19 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             group_id_attrs,
             label_field_classes,
         )
+
+    def _has_ignored_attributes(self, label_schema):
+        for label_field, label_info in label_schema.items():
+            (
+                _,
+                occluded_attr_name,
+                group_id_attr_name,
+            ) = self._to_cvat_attributes(label_info["attributes"])
+
+            if occluded_attr_name or group_id_attr_name:
+                return True
+
+        return False
 
     def _build_cvat_schema(
         self, label_schema, occluded_attr=None, group_id_attr=None

@@ -1571,9 +1571,12 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     will receieve command line prompt(s) at import time to provide label
     field(s) in which to store the annotations.
 
-    You can also use the `occluded_attr` and `group_id_attr` arguments to link
-    the states of CVAT's occlusion widget and grouping capabilities to
-    specified attributes of your objects.
+.. warning::
+
+    Since the `label_schema` and `attribute` arguments are ignored, any occluded or
+    group id attributes defined there will also be ignored. In order to connect
+    occluded or group id attributes, use the `occluded_attr` and
+    `group_id_attr` arguments directly.
 
 .. code:: python
     :linenos:
