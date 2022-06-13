@@ -491,6 +491,9 @@ provided:
 -   **occluded_attr** (*None*): an optional attribute name containing existing
     occluded values and/or in which to store downloaded occluded values for all
     objects in the annotation run
+-   **group_id_attr** (*None*): an optional attribute name containing existing
+    group ids and/or in which to store downloaded group ids for all objects in
+    the annotation run
 -   **issue_tracker** (*None*): URL(s) of an issue tracker to link to the
     created task(s). This argument can be a list of URLs when annotating videos
     or when using `task_size` and generating multiple tasks
@@ -689,6 +692,8 @@ For CVAT, the following `type` values are supported:
     `values` is unused
 -   `occluded`: CVAT's builtin occlusion toggle icon. This widget type can only
     be specified for at most one attribute, which must be a boolean
+-   `group_id`: CVAT's grouping capabilities. This attribute type can only
+    be specified for at most one attribute, which must be an integer
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -1566,8 +1571,9 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     will receieve command line prompt(s) at import time to provide label
     field(s) in which to store the annotations.
 
-    You can also use the `occluded_attr` argument to link the state of CVAT's
-    occlusion widget to a specified attribute of your objects.
+    You can also use the `occluded_attr` and `group_id_attr` arguments to link
+    the states of CVAT's occlusion widget and grouping capabilities to
+    specified attributes of your objects.
 
 .. code:: python
     :linenos:
@@ -1914,7 +1920,7 @@ linked to the occlusion widget.
     dataset.delete_annotation_run(anno_key)
 
 You can also use the `occluded_attr` parameter to sync the state of CVAT's
-occlusion widet with a specified attribute of all spatial fields that are being
+occlusion widget with a specified attribute of all spatial fields that are being
 annotated that did not explicitly have an occluded attribute defined in the
 label schema.
 
@@ -1956,6 +1962,100 @@ attributes between annotation runs.
 .. image:: /images/integrations/cvat_occ_widget.png
    :alt: cvat-occ-widget
    :align: center
+
+.. _cvat-group-id:
+
+Using CVAT groups
+-----------------
+
+The CVAT UI provides a way to group objects together both visually and though
+a group id in the API.
+
+You can configure CVAT annotation runs so that the state of the group id is
+read/written to a FiftyOne label attribute of your choice by
+specifying the attribute's type as `group_id` in your label schema.
+
+In addition, if you are editing existing labels using the `attributes=True`
+syntax (the default) to infer the label schema for an existing field, if a
+boolean attribute with the name `"group_id"` is found, it will automatically be
+linked to CVAT groups.
+
+.. note::
+
+    You can only specify the `group_id` type for at most one attribute of each
+    label field/class in your label schema, and, if you are editing existing
+    labels, the attribute that you choose must contain integer values.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_group_id"
+
+    # Populate a new `group_id` attribute on the existing `ground_truth` labels
+    label_schema = {
+        "ground_truth": {
+            "attributes": {
+                "group_id": {
+                    "type": "group_id",
+                }
+            }
+        }
+    }
+
+    view.annotate(anno_key, label_schema=label_schema, launch_editor=True)
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark groups in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+You can also use the `group_id_attr` parameter to sync the state of CVAT's
+group ids with a specified attribute of all spatial fields that are being
+annotated that did not explicitly have a group id attribute defined in the
+label schema.
+
+This parameter is especially useful when working with existing CVAT projects,
+since CVAT project schemas are not able to retain information about group id
+attributes between annotation runs.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+    view = dataset.take(1)
+
+    anno_key = "cvat_group_id_project"
+    project_name = "example_group_id"
+    label_field = "ground_truth"
+
+    # Create project
+    view.annotate("new_proj", label_field=label_field, project_name=project_name)
+
+    # Upload to existing project
+    view.annotate(
+        anno_key,
+        label_field=label_field,
+        group_id_attr="group_id_value",
+        project_name=project_name,
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Mark groups in CVAT...
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
 
 .. _cvat-destination-field:
 

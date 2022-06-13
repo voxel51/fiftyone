@@ -4848,7 +4848,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 (
                     _attrs,
                     _occluded_attr_name,
-                    group_id_attr_name,
+                    _group_id_attr_name,
                 ) = self._to_cvat_attributes(_class["attributes"])
                 if _occluded_attr_name is None and occluded_attr is not None:
                     _occluded_attr_name = occluded_attr
