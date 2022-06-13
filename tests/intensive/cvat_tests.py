@@ -480,6 +480,30 @@ class CVATTests(unittest.TestCase):
         self.assertNotIn(project_id, results2.project_ids)
         self.assertIsNotNone(api.get_project_id(project_name))
 
+        with self.assertRaises(ValueError):
+            label_schema = {
+                "ground_truth": {
+                    "attributes": {"occluded": {"type": "occluded"}}
+                }
+            }
+            anno_key3 = "occluded_failure"
+            dataset.annotate(
+                anno_key3,
+                label_schema=label_schema,
+                project_name=project_name,
+            )
+
+        with self.assertRaises(ValueError):
+            label_schema = {
+                "ground_truth": {"attributes": {"group_id": {"type": "group"}}}
+            }
+            anno_key4 = "group_id_failure"
+            dataset.annotate(
+                anno_key4,
+                label_schema=label_schema,
+                project_name=project_name,
+            )
+
         dataset.load_annotations(anno_key, cleanup=True)
         self.assertIsNotNone(api.get_project_id(project_name))
 
