@@ -6172,7 +6172,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         elif dup_class_name in cvat_schema:
             class_name = dup_class_name
         else:
-            return None, None, None, None, None
+            return None, None, None, None, None, None
 
         attr_schema = cvat_schema[class_name]
 
