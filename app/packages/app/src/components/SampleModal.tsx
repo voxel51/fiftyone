@@ -19,6 +19,7 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
+import {usePlugin, PluginComponentType} from '@fiftyone/plugins'
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -229,6 +230,8 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
+  const [plugin] = usePlugin(PluginComponentType.SampleModalContent)
+  const PluginComponent = plugin && plugin.component
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -247,6 +250,9 @@ const SampleModal = () => {
             onNext={() => getIndex(index + 1)}
           />
         </ContentColumn>
+        {PluginComponent && <ContentColumn>
+          {PluginComponent && <PluginComponent />}
+        </ContentColumn>}
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,

@@ -45,6 +45,8 @@ import { getDatasetName } from "../utils/generic";
 import { RGB } from "@fiftyone/looker";
 import { State } from "../recoil/types";
 
+import {usePlugins} from '@fiftyone/plugins'
+
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
     ...RootConfig_query

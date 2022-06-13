@@ -13,5 +13,15 @@ export default defineConfig(({ mode }) => {
       relay,
       nodePolyfills(),
     ],
+    server: {
+      proxy: {
+        '/plugins': {
+            target: 'http://localhost:5151',
+            changeOrigin: false,
+            secure: false,      
+            ws: false,
+        }
+      }
+    }
   };
 });

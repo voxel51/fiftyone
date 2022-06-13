@@ -14,6 +14,7 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .pin import Pin
+from .plugins import Plugins
 from .samples import Samples
 from .select import Select
 from .sidebar import Sidebar
@@ -34,6 +35,7 @@ routes = [
     ("/frames", Frames),
     ("/media", Media),
     ("/pin", Pin),
+    ("/plugins", Plugins),
     ("/samples", Samples),
     ("/select", Select),
     ("/sidebar", Sidebar),

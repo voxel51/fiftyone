@@ -15,6 +15,7 @@ import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
 import { modal, refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
+import {usePlugins} from '@fiftyone/plugins'
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -137,10 +138,16 @@ const App: React.FC = ({}) => {
     return () => controller.abort();
   }, []);
 
+
+  const plugins = usePlugins()
+  const loadingElement = <Loading>Pixelating...</Loading>
+
   switch (readyState) {
     case AppReadyState.CONNECTING:
-      return <Loading>Pixelating...</Loading>;
+      return loadingElement;
     case AppReadyState.OPEN:
+      if (plugins.isLoading) return loadingElement;
+      if (plugins.error) return <div>Plugin error...</div>
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;
