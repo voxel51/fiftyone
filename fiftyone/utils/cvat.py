@@ -4371,6 +4371,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = label_info.get("type", None)
                 scalar_attrs = assigned_scalar_attrs.get(label_field, False)
                 _occluded_attrs = occluded_attrs.get(label_field, {})
+                _group_id_attrs = group_id_attrs.get(label_field, {})
                 _id_map = id_map.get(label_field, {})
 
                 label_field_results = {}
@@ -4428,6 +4429,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ignore_types,
                     assigned_scalar_attrs=scalar_attrs,
                     occluded_attrs=_occluded_attrs,
+                    group_id_attrs=_group_id_attrs,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, shape_results
@@ -4456,6 +4458,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         track_index=track_index,
                         immutable_attrs=immutable_attrs,
                         occluded_attrs=_occluded_attrs,
+                        group_id_attrs=_group_id_attrs,
                     )
                     label_field_results = self._merge_results(
                         label_field_results, track_shape_results
@@ -5285,6 +5288,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         track_index=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         results = {}
         prev_type = None
@@ -5323,6 +5327,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 track_index=track_index,
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -5350,6 +5355,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     track_index=track_index,
                     immutable_attrs=immutable_attrs,
                     occluded_attrs=occluded_attrs,
+                    group_id_attrs=group_id_attrs,
                 )
 
         return results
@@ -5372,6 +5378,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         track_index=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         frame = anno["frame"]
 
@@ -5411,6 +5418,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 index=track_index,
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -6515,6 +6523,8 @@ class CVATShape(CVATLabel):
             from its track
         occluded_attrs (None): a dictonary mapping class names to the
             corresponding attribute linked to the CVAT occlusion widget, if any
+        group_id_attrs (None): a dictonary mapping class names to the
+            corresponding attribute linked to the CVAT group id, if any
     """
 
     def __init__(
@@ -6527,6 +6537,7 @@ class CVATShape(CVATLabel):
         index=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         super().__init__(
             label_dict,
@@ -6544,10 +6555,16 @@ class CVATShape(CVATLabel):
             self.attributes["rotation"] = label_dict["rotation"]
 
         # Parse occluded attribute, if necessary
-        if occluded_attrs is not None:
-            occluded_attr_name = occluded_attrs.get(self.label, None)
-            if occluded_attr_name:
-                self.attributes[occluded_attr_name] = label_dict["occluded"]
+        self._parse_named_attribute(label_dict, "occluded", occluded_attrs)
+
+        # Parse group id attribute, if necessary
+        self._parse_named_attribute(label_dict, "group", group_id_attrs)
+
+    def _parse_named_attribute(self, label_dict, attr_key, attrs):
+        if attrs is not None:
+            attr_name = attrs.get(self.label, None)
+            if attr_name is not None:
+                self.attributes[attr_name] = label_dict[attr_key]
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
