@@ -4,7 +4,7 @@ To run these tests:
     Run Label Studio server
 
     Copy an Access Token from Label Studio account settings
-    export FIFTYONE_LABELSTUDIO_TOKEN=<TOKEN>
+    export FIFTYONE_LABELSTUDIO_API_KEY=<TOKEN>
     pytest tests/intensive/labelstudio_tests.py
 
     Set label studio server address if needed:
@@ -14,7 +14,7 @@ To run these tests:
 To review project setup, uploaded tasks and predictions:
     set a breakpoint before `dataset.load_annotations()` in the
     `test_annotate_simple` and `test_annotate_with_predictions`
-    and run tests with a debugger. Once the brakpoint is reached,
+    and run tests with a debugger. Once the breakpoint is reached,
     go to a browser and review project.
 """
 import os
@@ -34,7 +34,7 @@ def backend_config():
     return {
         "backend": "labelstudio",
         "url": os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
-        "api_key": os.getenv("FIFTYONE_LABELSTUDIO_TOKEN"),
+        "api_key": os.getenv("FIFTYONE_LABELSTUDIO_API_KEY"),
     }
 
 
@@ -414,7 +414,7 @@ def test_annotate_with_predictions(backend_config, setup, label_type):
 
     # test that project tasks have predictions
     res = dataset.load_annotation_results(anno_key, **backend_config)
-    ls_project = res.backend.connect_to_api().get_project(res.project_id)
+    ls_project = _get_project(res)
     assert len(ls_project.tasks_ids) == len(dataset)
     assert ls_project.get_predictions_coverage()["undefined"] == 1.0
 
@@ -465,9 +465,15 @@ def _assert_predictions_equal(converted, expected):
             assert converted[k] == v
 
 
+def _get_project(annotation_results):
+    api = annotation_results.backend.connect_to_api()
+    ls_project = api._client.get_project(annotation_results.project_id)
+    return ls_project
+
+
 def _add_dummy_annotations(dataset, anno_key, predictions):
     res = dataset.load_annotation_results(anno_key)
-    ls_project = res.backend.connect_to_api().get_project(res.project_id)
+    ls_project = _get_project(res)
     for task_id, pred in zip(res.uploaded_tasks.keys(), predictions):
         ls_project.create_prediction(
             task_id=task_id,

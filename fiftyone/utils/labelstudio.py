@@ -10,11 +10,11 @@ Run Label Studio:
         docker run -d -p 8080:8080 \
             --name labelstudio \
             -v /tmp/labelstudio:/data \
-            labelstudio/labelstudio
+            heartexlabs/label-studio:latest
 
 Set environment variables:
     export FIFTYONE_LABELSTUDIO_URL=<url>
-    export FIFTYONE_LABELSTUDIO_TOKEN=<token>
+    export FIFTYONE_LABELSTUDIO_API_KEY=<access_token>
 
 Annotate:
     dataset = fo.load_dataset("quickstart")
@@ -77,7 +77,7 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
         name: str,
         label_schema: str,
         media_field="filepath",
-        url="http://localhost:8080",
+        url=None,
         api_key=None,
         project_name=None,
         **kwargs,
@@ -87,11 +87,7 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
         self.url = url
         self.project_name = project_name
 
-        self._api_key = (
-            api_key if api_key else os.getenv("FIFTYONE_LABELSTUDIO_TOKEN")
-        )
-        if self._api_key is None:
-            raise ValueError("No Label Studio API key provided")
+        self._api_key = api_key
 
     @property
     def api_key(self):
@@ -137,7 +133,7 @@ class LabelStudioBackend(foua.AnnotationBackend):
         return False
 
     def connect_to_api(self):
-        return LabelStudioAnnotationSDK(
+        return LabelStudioAnnotationAPI(
             url=self.config.url, api_key=self.config.api_key
         )
 
@@ -163,7 +159,7 @@ class LabelStudioBackend(foua.AnnotationBackend):
         return annotations
 
 
-class LabelStudioAnnotationSDK(ls.Client):
+class LabelStudioAnnotationAPI(foua.AnnotationAPI):
     """A class to upload tasks and predictions to and fetch annotations
     from Label Studio
 
@@ -171,8 +167,19 @@ class LabelStudioAnnotationSDK(ls.Client):
 
     """
 
-    def __post_init__(self):
-        self.check_connection()
+    def __init__(self, url, api_key):
+        self.url = url
+        self._api_key = api_key
+        self.backend = "labelstudio"
+
+        self._setup()
+
+    def _setup(self):
+        if self._api_key is None:
+            self._api_key = self._prompt_api_key(self.backend)
+
+        self._client = ls.Client(self.url, self._api_key)
+        self._client.check_connection()
 
     def _init_project(self, config, samples):
         """Create a new project on Label Studio.
@@ -196,7 +203,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             project_name = f"FiftyOne_{_dataset_name.replace(' ', '_')}"
 
         # if project name take, add timestamp
-        projects = self.list_projects()
+        projects = self._client.list_projects()
         for one in projects:
             if one.params["title"] == project_name:
                 time_str = str(int(dt.timestamp(dt.now())))
@@ -212,7 +219,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             labels=label_info["classes"],
         )
 
-        project = self.start_project(
+        project = self._client.start_project(
             title=project_name, label_config=label_config
         )
         return project
@@ -277,7 +284,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         ]
 
         # upload files first and get their upload ids
-        upload_resp = self.make_request(
+        upload_resp = self._client.make_request(
             "POST",
             f"/api/projects/{project.id}/import",
             params={"commit_to_project": True},
@@ -291,8 +298,8 @@ class LabelStudioAnnotationSDK(ls.Client):
                 "files_as_tasks_list": False,
             }
         )
-        self.headers.update({"Content-Type": "application/json"})
-        self.make_request(
+        self._client.headers.update({"Content-Type": "application/json"})
+        self._client.make_request(
             "POST", f"/api/projects/{project.id}/reimport", data=payload
         )
 
@@ -391,7 +398,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             # Label fields
             results[label_type][sample_id][label_id] = label
         """
-        project = self.get_project(results.project_id)
+        project = self._client.get_project(results.project_id)
         labelled_tasks = self._get_matched_labelled_tasks(
             project, list(results.uploaded_tasks.keys())
         )
@@ -417,7 +424,7 @@ class LabelStudioAnnotationSDK(ls.Client):
             task_ids: list of task ids
         """
         for t_id in task_ids:
-            self.make_request(
+            self._client.make_request(
                 "DELETE",
                 f"/api/tasks/{t_id}",
             )
@@ -428,7 +435,7 @@ class LabelStudioAnnotationSDK(ls.Client):
         Args:
             project_id: project id
         """
-        self.make_request(
+        self._client.make_request(
             "DELETE",
             f"/api/projects/{project_id}",
         )
@@ -466,6 +473,16 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
             api = self.backend.connect_to_api()
             api.delete_tasks(self.uploaded_tasks)
             api.delete_project(self.project_id)
+
+    @classmethod
+    def _from_dict(cls, d, samples, config):
+        return cls(
+            samples,
+            config,
+            d["id_map"],
+            d["project_id"],
+            d["uploaded_tasks"],
+        )
 
 
 def generate_labelling_config(media, label_type, labels=None):
@@ -755,8 +772,8 @@ def _label_class_from_tag(label_type: str):
 
 def _tag_from_label(label_cls):
     label_cls = label_cls.lower()
-    if label_cls in _LABEL2TYPE:
-        label_type = _LABEL2TYPE[label_cls]
+    if label_cls in _LABEL_TO_TYPE:
+        label_type = _LABEL_TO_TYPE[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
     if label_cls in foua._RETURN_TYPES_MAP:
         label_type = foua._RETURN_TYPES_MAP[label_cls]
@@ -832,4 +849,4 @@ _LABEL_TYPES = {
         label=fol.Regression,
     ),
 }
-_LABEL2TYPE = {v["label"].__name__: k for k, v in _LABEL_TYPES.items()}
+_LABEL_TO_TYPE = {v["label"].__name__: k for k, v in _LABEL_TYPES.items()}
