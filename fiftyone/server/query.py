@@ -191,6 +191,11 @@ class Dataset(HasCollection):
 
             dataset.view_cls = etau.get_class_name(view)
 
+        # old dataset docs, e.g. from imports have frame fields attached even for
+        # image datasets. we need to remove them
+        if dataset.media_type != MediaType.video:
+            dataset.frame_fields = []
+
         return dataset
 
 
@@ -297,6 +302,11 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
         ]
 
         data.view_cls = etau.get_class_name(view)
+
+    # old dataset docs, e.g. from imports have frame fields attached even for
+    # image datasets. we need to remove them
+    if data.media_type != MediaType.video:
+        data.frame_fields = []
 
     return asdict(data)
 
