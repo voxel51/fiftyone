@@ -39,17 +39,14 @@ import * as viewAtoms from "../recoil/view";
 import { getSampleSrc, lookerType, useClearModal } from "../recoil/utils";
 import { getMimeType } from "../utils/generic";
 import { filterView } from "../utils/view";
-import {
-  useEventHandler,
-  useSelectSample,
-  useSetSelected,
-} from "../utils/hooks";
+import { useEventHandler, useSetSelected } from "../utils/hooks";
 import { pathFilter } from "./Filters";
 import { sidebarGroupsDefinition, textFilter } from "./Sidebar";
 import { gridZoom } from "./ImageContainerHeader";
 import { store } from "./Flashlight.store";
 import { similarityParameters } from "./Actions/Similar";
 import { skeletonFilter } from "./Filters/utils";
+import { selectedMediaField } from "../recoil/config";
 
 const setModal = async (
   snapshot: Snapshot,
@@ -351,17 +348,7 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
-  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
-  const dataset = useRecoilValue(atoms.dataset)
-  let selectedMediaFieldName;
-
-  if (selectedMediaField.grid) {
-    selectedMediaFieldName = selectedMediaField.grid
-  } else if (dataset.appConfig.gridMediaField) {
-    selectedMediaFieldName = dataset.appConfig.gridMediaField
-  } else {
-    selectedMediaFieldName = 'filepath'
-  }
+  const selectedMedia = useRecoilValue(selectedMediaField(false));
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -369,7 +356,6 @@ export default React.memo(() => {
   const tagging = taggingLabels || taggingSamples;
   lookerGeneratorRef.current = ({
     sample,
-    dimensions,
     frameNumber,
     frameRate,
     url,
@@ -378,9 +364,8 @@ export default React.memo(() => {
     const etc = isClips ? { support: sample.support } : {};
 
     const config = {
-      src: getSampleSrc(sample[selectedMediaFieldName], sample._id, url),
+      src: getSampleSrc(sample[selectedMedia], sample._id, url),
       thumbnail: true,
-      dimensions,
       sampleId: sample._id,
       frameRate,
       dataset: datasetName,
@@ -412,9 +397,8 @@ export default React.memo(() => {
   const aspectRatioGenerator = useRef<any>();
   aspectRatioGenerator.current = ({
     sample,
-    dimensions: [width, height],
+    aspectRatio,
   }: atoms.SampleData) => {
-    const aspectRatio = width / height;
     return lookerOptions.zoom
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
@@ -457,18 +441,14 @@ export default React.memo(() => {
     tagging,
     useRecoilValue(pageParameters),
     useRecoilValue(atoms.refresher),
-    selectedMediaFieldName
+    selectedMedia,
   ]);
 
   useLayoutEffect(() => {
     if (!flashlight.current) {
       flashlight.current = new Flashlight<number>({
-        selectedMediaFieldName,
         initialRequestKey: 1,
-        options: {
-          ...options,
-          selectedMediaFieldName
-        },
+        options,
         onItemClick: onThumbnailClick,
         onResize: (width) => {
           let min = 7;
@@ -490,7 +470,7 @@ export default React.memo(() => {
         onItemResize: (id, dimensions) => {
           store.lookers.has(id) && store.lookers.get(id).resize(dimensions);
         },
-        get: async (page, selectedMediaFieldName) => {
+        get: async (page) => {
           try {
             const { results, more } = await getFetchFunction()(
               "POST",
@@ -499,18 +479,9 @@ export default React.memo(() => {
             );
 
             const itemData = results.map((result) => {
-              const {mediaFieldsMetadata} = result
-              let dimensions = [result.width, result.height]
-              const selectedMediaFieldMetadata = selectedMediaFieldName && mediaFieldsMetadata && mediaFieldsMetadata[selectedMediaFieldName]
-
-              if (selectedMediaFieldMetadata) {
-                dimensions = [selectedMediaFieldMetadata.width, selectedMediaFieldMetadata.height]
-              }
-
               const data: atoms.SampleData = {
+                aspectRatio: result.aspect_ratio,
                 sample: result.sample,
-                dimensions,
-                mediaFieldsMetadata,
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
                 url: result.url,
@@ -540,14 +511,7 @@ export default React.memo(() => {
         render: (sampleId, element, dimensions, soft, hide) => {
           try {
             const result = store.samples.get(sampleId);
-            const {selectedMediaFieldName} = flashlight.current.state.options
-            const selectedMediaFieldMetadata = selectedMediaFieldName && result.mediaFieldsMetadata && result.mediaFieldsMetadata[selectedMediaFieldName]
 
-            if (selectedMediaFieldMetadata) {
-              result.dimensions = [selectedMediaFieldMetadata.width, selectedMediaFieldMetadata.height]
-            }
-            
-            
             if (store.lookers.has(sampleId)) {
               const looker = store.lookers.get(sampleId);
               hide ? looker.disable() : looker.attach(element, dimensions);
@@ -574,11 +538,10 @@ export default React.memo(() => {
     } else {
       flashlight.current.updateOptions({
         ...options,
-        selectedMediaFieldName
       });
       flashlight.current.updateItems((sampleId) => {
         const looker = store.lookers.get(sampleId);
-        console.log(lookerOptions)
+
         looker &&
           looker.updateOptions({
             ...lookerOptions,
@@ -586,7 +549,7 @@ export default React.memo(() => {
           });
       });
     }
-  }, [id, options, lookerOptions, selected, gridZoomRef, selectedMediaFieldName]);
+  }, [id, options, lookerOptions, selected, gridZoomRef]);
 
   return <Container id={id}></Container>;
 });

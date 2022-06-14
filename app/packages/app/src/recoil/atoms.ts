@@ -10,8 +10,7 @@ interface AppSample extends Sample {
 
 export interface SampleData {
   sample: AppSample;
-  dimensions: Dimensions;
-  mediaFieldsMetadata: Map<string, Dimensions>;
+  aspectRatio: number;
   frameRate?: number;
   frameNumber?: number;
   url?: string;
@@ -186,9 +185,4 @@ export const appConfig = atom<State.Config>({
 export const colorscale = atom<RGB[]>({
   key: "colorscale",
   default: null,
-});
-
-export const selectedMediaField = atom<State.MediaFieldSelection>({
-  key: "selectedMediaField",
-  default: { grid: null, modal: null },
 });

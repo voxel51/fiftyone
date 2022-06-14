@@ -101,7 +101,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         requestAnimationFrame(() => {
           update(
             ({
-              config: { thumbnail, dimensions },
+              config: { thumbnail },
+              dimensions,
               pan: [px, py],
               scale,
               windowBBox: [tlx, tly, width, height],

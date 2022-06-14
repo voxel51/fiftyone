@@ -398,4 +398,9 @@ class DatasetDocument(Document):
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
-    app_config = EmbeddedDocumentField(document_type=DatasetAppConfigDocument)
+    app_config = EmbeddedDocumentField(
+        document_type=DatasetAppConfigDocument,
+        default=lambda: DatasetAppConfigDocument(
+            grid_media_field="filepath", media_fields=["filepath"]
+        ),
+    )

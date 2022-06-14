@@ -245,7 +245,7 @@ export const zoomIn: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {
@@ -280,7 +280,7 @@ export const zoomOut: Control = {
       ({
         scale,
         windowBBox: [_, __, ww, wh],
-        config: { dimensions },
+        dimensions,
         pan: [px, py],
         options: { zoomPad },
       }) => {

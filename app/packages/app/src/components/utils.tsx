@@ -173,21 +173,20 @@ export const PopoutSectionTitle = styled.div`
 const TabOptionDiv = animated(styled.div`
   display: flex;
   font-weight: bold;
-  flex-direction: ${(props) => (props.$rows ? "column" : "row")};
   cursor: pointer;
   justify-content: space-between;
   margin: 0.5rem -0.5rem;
-  height: ${(props) => (props.$rows ? "auto" : "2rem")};
+  height: 2rem;
+
   & > div {
     display: flex;
-    justify-content: ${(props) => (props.$rows ? "start" : "center")};
-    padding: ${(props) => (props.$rows ? "0.1rem 0 0.3rem 1rem" : "0")};
+    flex-direction: column;
     align-content: center;
     cursor: inherit;
     flex-grow: 1;
     flex-basis: 0;
-    text-align: ${(props) => (props.$rows ? "left" : "center")};
-    overflow: ${(props) => (props.$rows ? "visible" : "hidden")};
+    text-align: center;Checkbox
+    overflow: hidden;
   }
 `);
 
@@ -203,10 +202,9 @@ export type TabOptionProps = {
   active: string;
   options: TabOption[];
   color?: string;
-  $rows?: boolean;
 };
 
-export const TabOption = ({ active, options, color, rows }: TabOptionProps) => {
+export const TabOption = ({ active, options, color }: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(
@@ -231,7 +229,6 @@ export const TabOption = ({ active, options, color, rows }: TabOptionProps) => {
       style={style}
       onMouseEnter={() => set({ background: theme.background })}
       onMouseLeave={() => set({ background: theme.backgroundLight })}
-      $rows={rows}
     >
       {options.map(({ text, title, onClick }, i) => (
         <Tab

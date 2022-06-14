@@ -123,7 +123,7 @@ export default class KeypointOverlay<
   ): [number, number | null] | null {
     const distances: [number, number][] = [];
     let {
-      config: { dimensions },
+      dimensions,
       pointRadius,
       pixelCoordinates: [x, y],
     } = state;

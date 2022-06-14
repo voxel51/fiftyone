@@ -120,7 +120,6 @@ export type Dimensions = [number, number];
 interface BaseConfig {
   thumbnail: boolean;
   src: string;
-  dimensions: Dimensions;
   sampleId: string;
   fieldSchema: Schema;
 }
@@ -170,6 +169,7 @@ export interface TooltipOverlay {
 
 export interface BaseState {
   disabled: boolean;
+  dimensions?: Dimensions;
   cursorCoordinates: Coordinates;
   pixelCoordinates: Coordinates;
   disableControls: boolean;

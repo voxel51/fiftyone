@@ -37,7 +37,8 @@ export type Labels<T> = [string, T[]][];
 export class ClassificationsOverlay<
   State extends BaseState,
   Label extends Classification = ClassificationLabel
-> implements Overlay<State> {
+> implements Overlay<State>
+{
   private labelBoundingBoxes: { [key: string]: BoundingBox };
 
   protected readonly labels: Labels<Label>;
@@ -89,7 +90,7 @@ export class ClassificationsOverlay<
 
   getPointInfo(state: Readonly<State>): PointInfo<Label> {
     const filtered = this.getFilteredAndFlat(state);
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
 
     let result: PointInfo<Label>;
 

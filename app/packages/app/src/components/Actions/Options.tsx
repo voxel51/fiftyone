@@ -13,7 +13,8 @@ import { Button } from "../utils";
 import Popout from "./Popout";
 import { Slider } from "../Common/RangeSlider";
 import { useTheme } from "@fiftyone/components";
-import { State } from "../../recoil/types";
+import RadioGroup from "../Common/RadioGroup";
+import { selectedMediaField } from "../../recoil/config";
 
 export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
@@ -224,16 +225,12 @@ const Patches = ({ modal }) => {
   );
 };
 
-const MediaFields = ({ modal }) => {
-  const dataset = useRecoilValue(atoms.dataset)
-  const {gridMediaField} = dataset.appConfig
-  const [selectedField, setSelectedField] =
-    useRecoilState<State.MediaFieldSelection>(atoms.selectedMediaField);
+const MediaFields = ({ modal }: { modal: boolean }) => {
+  const [selectedField, setSelectedField] = useRecoilState(
+    selectedMediaField(modal)
+  );
   const { appConfig } = useRecoilValue(atoms.dataset);
-  const selectedFieldName = modal
-    ? selectedField.modal || selectedField.grid
-    : selectedField.grid || gridMediaField;
-    
+
   const fields = appConfig?.mediaFields || [];
 
   if (fields.length <= 1) return null;
@@ -242,24 +239,10 @@ const MediaFields = ({ modal }) => {
     <>
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
 
-      <TabOption
-        active={selectedFieldName || 'filepath'}
-        rows={true}
-        options={fields.map((value: Field) => {
-          return {
-            text: value,
-            title: `View Media with "${selectedFieldName}"`,
-            onClick: () => {
-              selectedFieldName !== value &&
-                setSelectedField((current) => {
-                  if (modal) {
-                    return { ...current, modal: value };
-                  }
-                  return { modal: null, grid: value };
-                });
-            },
-          };
-        })}
+      <RadioGroup
+        value={selectedField || "filepath"}
+        choices={fields}
+        setValue={(value) => setSelectedField(value)}
       />
     </>
   );

@@ -145,9 +145,4 @@ export namespace State {
     view: Stage[];
     viewCls: string | null;
   }
-
-  export interface MediaFieldSelection {
-    grid?: string;
-    modal?: string;
-  }
 }

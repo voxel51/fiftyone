@@ -126,10 +126,8 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(this.config);
     this.showPixels();
 
-    const {
-      width,
-      height,
-    } = this.container.parentElement.getBoundingClientRect();
+    const { width, height } =
+      this.container.parentElement.getBoundingClientRect();
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
@@ -268,7 +266,7 @@ export default class Flashlight<K> {
     this.loading = true;
     let ctx = this.ctx;
     return this.state
-      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
+      .get(this.state.currentRequestKey)
       .then(({ items, nextRequestKey }) => {
         if (ctx !== this.ctx) {
           return;

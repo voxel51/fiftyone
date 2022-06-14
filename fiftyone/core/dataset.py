@@ -246,10 +246,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
-        if self._doc.app_config == None:
-            self._doc.app_config = DatasetAppConfigDocument(
-                grid_media_field="filepath", media_fields=["filepath"]
-            )
 
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
