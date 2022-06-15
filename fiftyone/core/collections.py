@@ -2010,11 +2010,7 @@ class SampleCollection(object):
                 instances
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
-                classes are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.classes` or
-                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels
-                are used
+                the observed ground truth/predicted labels are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
@@ -2116,11 +2112,7 @@ class SampleCollection(object):
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
-                classes are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.classes` or
-                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels
-                are used
+                the observed ground truth/predicted labels are used
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
             method (None): a string specifying the evaluation method to use.
@@ -2211,10 +2203,7 @@ class SampleCollection(object):
                 instances
             eval_key (None): a string key to use to refer to this evaluation
             mask_targets (None): a dict mapping mask values to labels. If not
-                provided, mask targets are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
-                :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
-                possible, or else the observed pixel values are used
+                provided, the observed pixel values are used
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
             **kwargs: optional keyword arguments for the constructor of the
