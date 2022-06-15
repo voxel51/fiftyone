@@ -1263,9 +1263,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Standard
 
-        fouy.add_yolo_labels(
-            dataset, "yolo", labels_path=yolo_labels_path, classes=classes
-        )
+        fouy.add_yolo_labels(dataset, "yolo", yolo_labels_path, classes)
         self.assertEqual(
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("yolo.detections.label"),
@@ -1277,8 +1275,8 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         fouy.add_yolo_labels(
             dataset,
             "yolo_inclusive",
-            labels_path=yolo_labels_path,
-            classes=classes,
+            yolo_labels_path,
+            classes,
             include_missing=True,
         )
         self.assertEqual(
@@ -1300,9 +1298,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
         coco_labels_path = os.path.join(export_dir, "labels.json")
 
-        fouc.add_coco_labels(
-            dataset, "coco", coco_labels_path, classes=classes
-        )
+        fouc.add_coco_labels(dataset, "coco", coco_labels_path, classes)
         self.assertEqual(
             dataset.count_values("predictions.detections.label"),
             dataset.count_values("coco.detections.label"),
