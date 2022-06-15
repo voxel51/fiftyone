@@ -3491,12 +3491,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def projects_url(self):
         return "%s/projects" % self.base_api_url
 
+    def projects_page_url(self, page_number):
+        return "%s/projects?page=%d" % (self.base_api_url, page_number)
+
     def project_url(self, project_id):
         return "%s/%d" % (self.projects_url, project_id)
 
     @property
     def tasks_url(self):
         return "%s/tasks" % self.base_api_url
+
+    def tasks_page_url(self, page_number):
+        return "%s/tasks?page=%d" % (self.base_api_url, page_number)
 
     def task_url(self, task_id):
         return "%s/%d" % (self.tasks_url, task_id)
@@ -3806,7 +3812,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the list of project IDs
         """
-        return self._get_paginated_results(self.projects_url, value="id")
+        return self._get_paginated_results(
+            self.projects_url, self.projects_page_url, value="id"
+        )
 
     def project_exists(self, project_id):
         """Checks if the given project exists.
@@ -3942,7 +3950,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the list of task IDs
         """
-        return self._get_paginated_results(self.tasks_url, value="id")
+        return self._get_paginated_results(
+            self.tasks_url, self.tasks_page_url, value="id"
+        )
 
     def task_exists(self, task_id):
         """Checks if the given task exists.
@@ -4459,10 +4469,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return attr_id_map, class_map_rev
 
-    def _get_paginated_results(self, url, value=None):
+    def _get_paginated_results(self, base_url, get_page_url, value=None):
         results = []
-        page = url
-        while page is not None:
+        page_number = 1
+        page = base_url
+        while True:
             response = self.get(page).json()
             for result in response["results"]:
                 if value is not None:
@@ -4470,7 +4481,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 else:
                     results.append(result)
 
-            page = response["next"]
+            if not response["next"]:
+                break
+
+            page_number += 1
+            page = get_page_url(page_number)
 
         return results
 

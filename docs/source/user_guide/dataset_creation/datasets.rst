@@ -1553,16 +1553,16 @@ COCO format:
     dataset.export(
         export_dir="/tmp/coco",
         dataset_type=fo.types.COCODetectionDataset,
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     dataset.export(
         dataset_type=fo.types.COCODetectionDataset,
         labels_path="/tmp/coco/predictions.json",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -1577,7 +1577,7 @@ COCO format:
         dataset2,
         "predictions",
         "/tmp/coco/predictions.json",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -2147,16 +2147,16 @@ images-and-labels and labels-only data in YOLO format:
     dataset.export(
         export_dir="/tmp/yolov4",
         dataset_type=fo.types.YOLOv4Dataset,
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     dataset.export(
         dataset_type=fo.types.YOLOv4Dataset,
         labels_path="/tmp/yolov4/predictions",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -2171,7 +2171,7 @@ images-and-labels and labels-only data in YOLO format:
         dataset2,
         "predictions",
         "/tmp/yolov4/predictions",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -2327,16 +2327,16 @@ images-and-labels and labels-only data in YOLO format:
         export_dir="/tmp/yolov5",
         dataset_type=fo.types.YOLOv5Dataset,
         split="validation",
-        classes=classes,
         label_field="ground_truth",
+        classes=classes,
     )
 
     # Export predictions
     view.export(
         dataset_type=fo.types.YOLOv5Dataset,
         labels_path="/tmp/yolov5/predictions/validation",
-        classes=classes,
         label_field="predictions",
+        classes=classes,
     )
 
     # Now load ground truth labels into a new dataset
@@ -2352,7 +2352,7 @@ images-and-labels and labels-only data in YOLO format:
         dataset2,
         "predictions",
         "/tmp/yolov5/predictions/validation",
-        classes=classes,
+        classes,
     )
 
     # Verify that ground truth and predictions were imported as expected
@@ -3283,6 +3283,13 @@ following this format:
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
 
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELImageDatasetImporter <fiftyone.utils.openlabel.OpenLABELImageDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
+
 You can create a FiftyOne dataset from a OpenLABEL image dataset stored in the
 above format as follows:
 
@@ -3566,6 +3573,13 @@ following this format:
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import of datasets of this type.
+
+If loading |Keypoints| related to a given |KeypointSkeleton|, then you can
+provide a `skeleton` and `skeleton_key` argument to the
+:class:`OpenLABELVideoDatasetImporter <fiftyone.utils.openlabel.OpenLABELVideoDatasetImporter>`
+allowing you to match points in your annotations file to labels in the
+|KeypointSkeleton| and load the points and their attributes in the correct
+order.
 
 You can create a FiftyOne dataset from a OpenLABEL video dataset stored in the
 above format as follows:

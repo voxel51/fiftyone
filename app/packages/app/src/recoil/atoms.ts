@@ -68,6 +68,11 @@ export const fullscreen = atom<boolean>({
   default: false,
 });
 
+export const showOverlays = atom<boolean>({
+  key: "showOverlays",
+  default: true,
+});
+
 export const teams = atom({
   key: "teams",
   default: {
