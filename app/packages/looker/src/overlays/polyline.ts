@@ -22,7 +22,7 @@ export default class PolylineOverlay<
       (state.strokeWidth * TOLERANCE) /
       getRenderedScale(
         [state.windowBBox[2], state.windowBBox[3]],
-        state.config.dimensions
+        state.dimensions
       );
     const minDistance = this.getMouseDistance(state);
     if (minDistance <= tolerance) {
@@ -58,7 +58,7 @@ export default class PolylineOverlay<
 
   getMouseDistance(state: Readonly<State>): number {
     const distances = [];
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
     for (const shape of this.label.points) {
       for (let i = 0; i < shape.length - 1; i++) {
@@ -128,7 +128,7 @@ export default class PolylineOverlay<
   }
 
   private isPointInPath(state: Readonly<State>, path: Coordinates[]): boolean {
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
     const [x, y] = state.pixelCoordinates;
 
     let inside = false;
