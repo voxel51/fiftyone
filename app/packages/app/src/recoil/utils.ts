@@ -51,10 +51,6 @@ export const useClearModal = () => {
         set(atoms.selectedLabels, {});
         set(atoms.hiddenLabels, {});
         set(atoms.modal, null);
-        set(atoms.selectedMediaField, (current) => ({
-          ...current,
-          modal: null,
-        }));
       },
     []
   );

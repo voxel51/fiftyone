@@ -19,6 +19,7 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
+import { selectedMediaField } from "../recoil/config";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -91,10 +92,8 @@ const useOnSelectLabel = () => {
 const SampleModal = () => {
   const { sample, index, getIndex } = useRecoilValue(atoms.modal);
 
-  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
-  const selectedMediaFieldName =
-    selectedMediaField.modal || selectedMediaField.grid || "filepath";
-  const sampleSrc = getSampleSrc(sample[selectedMediaFieldName], sample._id);
+  const selectedMedia = useRecoilValue(selectedMediaField(true));
+  const sampleSrc = getSampleSrc(sample[selectedMedia], sample._id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
   const tagText = useTagText(true);

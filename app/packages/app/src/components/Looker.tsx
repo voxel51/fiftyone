@@ -29,6 +29,7 @@ import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 import { skeletonFilter } from "./Filters/utils";
+import { selectedMediaField } from "../recoil/config";
 
 const Header = styled.div`
   position: absolute;
@@ -472,25 +473,12 @@ const Looker = ({
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, mediaFieldsMetadata, dimensions: originalDimensions, frameRate, frameNumber, url } = useRecoilValue(
-    atoms.modal
-  );
+  const { sample, frameRate, frameNumber, url } = useRecoilValue(atoms.modal);
 
   const isClips = useRecoilValue(viewAtoms.isClipsView);
   const mimetype = getMimeType(sample);
-  const selectedMediaField = useRecoilValue(atoms.selectedMediaField);
-  const selectedMediaFieldName =
-    selectedMediaField.modal || selectedMediaField.grid || "filepath";
-  const sampleSrc = getSampleSrc(
-    sample[selectedMediaFieldName],
-    sample._id,
-    url
-  );
-  const mediaFieldDimensions = mediaFieldsMetadata[selectedMediaFieldName]
-  const dimensions = mediaFieldDimensions
-    ? [mediaFieldDimensions.width, mediaFieldDimensions.height]
-    : originalDimensions
-
+  const selectedMedia = useRecoilValue(selectedMediaField(true));
+  const sampleSrc = getSampleSrc(sample[selectedMedia], sample._id, url);
 
   const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
@@ -515,7 +503,6 @@ const Looker = ({
       sample,
       {
         src: sampleSrc,
-        dimensions,
         frameRate,
         frameNumber,
         sampleId: sample._id,

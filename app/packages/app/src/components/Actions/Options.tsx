@@ -1,6 +1,11 @@
 import React from "react";
 import { Autorenew, Check } from "@material-ui/icons";
-import { constSelector, useRecoilState, useRecoilValue } from "recoil";
+import {
+  constSelector,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
@@ -229,6 +234,7 @@ const MediaFields = ({ modal }: { modal: boolean }) => {
   const [selectedField, setSelectedField] = useRecoilState(
     selectedMediaField(modal)
   );
+  const setModal = modal ? null : useSetRecoilState(selectedMediaField(true));
   const { appConfig } = useRecoilValue(atoms.dataset);
 
   const fields = appConfig?.mediaFields || [];
@@ -242,7 +248,10 @@ const MediaFields = ({ modal }: { modal: boolean }) => {
       <RadioGroup
         value={selectedField || "filepath"}
         choices={fields}
-        setValue={(value) => setSelectedField(value)}
+        setValue={(value) => {
+          setSelectedField(value);
+          setModal && value !== appConfig.gridMediaField && setModal(value);
+        }}
       />
     </>
   );
