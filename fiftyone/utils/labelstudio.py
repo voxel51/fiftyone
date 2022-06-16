@@ -132,6 +132,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
     def supports_video_sample_fields(self):
         return False
 
+    @property
+    def supports_attributes(self):
+        return False
+
     def connect_to_api(self):
         return LabelStudioAnnotationAPI(
             url=self.config.url, api_key=self.config.api_key

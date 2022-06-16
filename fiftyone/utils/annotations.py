@@ -840,6 +840,9 @@ def _get_attributes(
     label_type,
     classes=None,
 ):
+    if not backend.supports_attributes:
+        return {}
+
     if "attributes" in label_info:
         attributes = label_info["attributes"]
 
@@ -1823,6 +1826,14 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement supports_video_sample_fields"
         )
+
+    @property
+    def supports_attributes(self):
+        """Whether this backend supports uploading and editing label
+        attributes. By default, all backends support attributes, but can
+        overwrite this property to ignore attributes.
+        """
+        return True
 
     @property
     def requires_label_schema(self):
