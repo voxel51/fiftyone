@@ -235,8 +235,14 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
   const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
-  const [plugin] = usePlugin(PluginComponentType.SampleModalContent)
-  const PluginComponent = plugin && plugin.component
+  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
+  const PluginComponent = false; // plugin && plugin.component
+
+  const pluginAPI = {
+    getSampleSrc,
+    sample,
+    dataset: useRecoilValue(atoms.dataset),
+  };
 
   return ReactDOM.createPortal(
     <ModalWrapper
