@@ -263,6 +263,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path
         );
 
+        if (field === null) {
+          continue;
+        }
+
         const pushList = (renderer, value) => {
           let count = 0;
           let rest = 0;
@@ -377,13 +381,17 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field, unknown, boolean] => {
+): [Field | null, unknown, boolean] => {
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
 
   for (const key of path.split(".")) {
     field = schema[key];
+
+    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+      return [null, null, false];
+    }
 
     if (![undefined, null].includes(value)) {
       value = unwind(field.name !== "id" ? field.dbField || key : "id", value);
