@@ -19,7 +19,7 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
-import {usePlugin, PluginComponentType} from '@fiftyone/plugins'
+import { usePlugin, PluginComponentType } from "@fiftyone/plugins";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -61,36 +61,37 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
+    ({ get, set }) =>
+      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+        const { sample } = get(atoms.modal);
+        let labels = {
+          ...get(atoms.selectedLabels),
         };
-      }
+        if (labels[id]) {
+          delete labels[id];
+        } else {
+          labels[id] = {
+            field,
+            sampleId: sample._id,
+            frameNumber,
+          };
+        }
 
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
-      );
-    },
+        set(atoms.selectedLabels, labels);
+        send(
+          Object.entries(labels).map(([labelId, data]) => ({
+            ...data,
+            labelId,
+          }))
+        );
+      },
     []
   );
 };
 
 const SampleModal = () => {
-  const {
-    sample: { filepath, _id },
-    index,
-    getIndex,
-  } = useRecoilValue(atoms.modal);
+  const { sample, index, getIndex } = useRecoilValue(atoms.modal);
+  const { filepath, _id } = sample;
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
@@ -230,8 +231,14 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
-  const [plugin] = usePlugin(PluginComponentType.SampleModalContent)
-  const PluginComponent = plugin && plugin.component
+  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
+  const PluginComponent = false; // plugin && plugin.component
+
+  const pluginAPI = {
+    getSampleSrc,
+    sample,
+    dataset: useRecoilValue(atoms.dataset),
+  };
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -241,18 +248,19 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          <Looker
-            key={`modal-${sampleSrc}`}
-            lookerRef={lookerRef}
-            onSelectLabel={onSelectLabel}
-            onClose={clearModal}
-            onPrevious={index > 0 ? () => getIndex(index - 1) : null}
-            onNext={() => getIndex(index + 1)}
-          />
+          {PluginComponent ? (
+            <PluginComponent api={pluginAPI} />
+          ) : (
+            <Looker
+              key={`modal-${sampleSrc}`}
+              lookerRef={lookerRef}
+              onSelectLabel={onSelectLabel}
+              onClose={clearModal}
+              onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+              onNext={() => getIndex(index + 1)}
+            />
+          )}
         </ContentColumn>
-        {PluginComponent && <ContentColumn>
-          {PluginComponent && <PluginComponent />}
-        </ContentColumn>}
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,

@@ -29,6 +29,7 @@ import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 import { skeletonFilter } from "./Filters/utils";
+import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 
 const Header = styled.div`
   position: absolute;
@@ -422,12 +423,13 @@ const lookerOptions = selector({
 3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (event: CustomEvent) => {
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
-      set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
-    }
+    ({ snapshot, set }) =>
+      async (event: CustomEvent) => {
+        const currentOptions = await snapshot.getPromise(
+          atoms.savedLookerOptions
+        );
+        set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+      }
   );
 };
 
@@ -445,7 +447,9 @@ const useShowOverlays = () => {
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(atoms.selectedLabels, {}),
+    ({ set }) =>
+      async () =>
+        set(atoms.selectedLabels, {}),
     []
   );
 };
@@ -556,8 +560,19 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
+  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
+  const pluginAPI = {
+    getSampleSrc,
+    sample,
+    dataset: useRecoilValue(atoms.dataset),
+  };
+  const pluginIsActive = plugin && plugin.activator(pluginAPI);
+  const PluginComponent = pluginIsActive && plugin.component;
+
   useEffect(() => {
-    looker.attach(id);
+    if (!pluginIsActive) {
+      looker.attach(id);
+    }
   }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
@@ -592,6 +607,7 @@ const Looker = ({
           <ModalActionsRow lookerRef={lookerRef} />
         </Header>
       )}
+      {PluginComponent && <PluginComponent api={pluginAPI} />}
       {<TooltipInfo looker={looker} />}
     </div>
   );
