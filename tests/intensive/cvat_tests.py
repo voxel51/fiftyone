@@ -70,7 +70,14 @@ def _get_label(api, task_id, label=None):
 
 
 def _create_annotation(
-    api, task_id, shape=None, tag=None, track=None, points=None, _type=None
+    api,
+    task_id,
+    shape=None,
+    tag=None,
+    track=None,
+    points=None,
+    _type=None,
+    group_id=0,
 ):
     if points is None:
         points = [10, 20, 30, 40]
@@ -87,7 +94,7 @@ def _create_annotation(
                 "type": _type,
                 "frame": 0,
                 "label_id": label,
-                "group": 0,
+                "group": group_id,
                 "attributes": [],
                 "points": points,
                 "occluded": False,
@@ -100,7 +107,7 @@ def _create_annotation(
             tag = {
                 "frame": 0,
                 "label_id": label,
-                "group": 0,
+                "group": group_id,
                 "attributes": [],
             }
         tags = [tag]
@@ -115,7 +122,7 @@ def _create_annotation(
             track = {
                 "frame": start,
                 "label_id": label,
-                "group": 0,
+                "group": group_id,
                 "shapes": [
                     {
                         "type": _type,
@@ -161,6 +168,7 @@ def _update_shape(
     points=None,
     attributes=None,
     occluded=None,
+    group_id=None,
 ):
     anno_json = api.get(api.task_annotation_url(task_id)).json()
     shape = _find_shape(anno_json, label_id)
@@ -169,6 +177,8 @@ def _update_shape(
             shape["points"] = points
         if occluded is not None:
             shape["occluded"] = occluded
+        if group_id is not None:
+            shape["group"] = group_id
         if attributes is not None:
             attr_id_map, class_id_map = api._get_attr_class_maps(task_id)
             if label is None:
@@ -473,6 +483,32 @@ class CVATTests(unittest.TestCase):
         )
         self.assertNotIn(project_id, results2.project_ids)
         self.assertIsNotNone(api.get_project_id(project_name))
+
+        with self.assertRaises(ValueError):
+            label_schema = {
+                "ground_truth": {
+                    "attributes": {"occluded": {"type": "occluded"}}
+                }
+            }
+            anno_key3 = "occluded_failure"
+            dataset.annotate(
+                anno_key3,
+                label_schema=label_schema,
+                project_name=project_name,
+            )
+
+        with self.assertRaises(ValueError):
+            label_schema = {
+                "ground_truth": {
+                    "attributes": {"group_id": {"type": "group_id"}}
+                }
+            }
+            anno_key4 = "group_id_failure"
+            dataset.annotate(
+                anno_key4,
+                label_schema=label_schema,
+                project_name=project_name,
+            )
 
         dataset.load_annotations(anno_key, cleanup=True)
         self.assertIsNotNone(api.get_project_id(project_name))
@@ -1023,6 +1059,62 @@ class CVATTests(unittest.TestCase):
 
         validate_mock.side_effect = gen_success()
         self.test_upload()
+
+    def test_group_id(self):
+        dataset = (
+            foz.load_zoo_dataset("quickstart", max_samples=2)
+            .select_fields("ground_truth")
+            .clone()
+        )
+        group_id_attr_name = "group_id_attr"
+
+        # Set group id attribute
+        sample = dataset.first()
+        for det in sample.ground_truth.detections:
+            det["group_id_attr"] = 1
+        sample.save()
+
+        anno_key = "cvat_group_ids"
+
+        # Populate a new `group_id` attribute on the existing `ground_truth` labels
+        label_schema = {
+            "ground_truth": {
+                "attributes": {
+                    group_id_attr_name: {
+                        "type": "group_id",
+                    }
+                }
+            }
+        }
+
+        results = dataset.annotate(
+            anno_key, label_schema=label_schema, backend="cvat"
+        )
+
+        api = results.connect_to_api()
+        task_id = results.task_ids[0]
+        shape_id = dataset.first().ground_truth.detections[0].id
+
+        test_group_id = 2
+        _update_shape(api, task_id, shape_id, group_id=test_group_id)
+
+        dataset.load_annotations(anno_key, cleanup=True)
+
+        id_group_map = dict(
+            zip(
+                *dataset.values(
+                    [
+                        "ground_truth.detections.id",
+                        "ground_truth.detections.%s" % group_id_attr_name,
+                    ],
+                    unwind=True,
+                )
+            )
+        )
+        self.assertEqual(id_group_map.pop(shape_id), test_group_id)
+        self.assertFalse(
+            any([gid == test_group_id for gid in id_group_map.values()])
+        )
 
 
 if __name__ == "__main__":

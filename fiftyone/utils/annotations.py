@@ -1004,7 +1004,7 @@ def load_annotations(
             else:
                 logger.warning(
                     "Ignoring string `dest_field=%s` since the label "
-                    "schema contains %d > 1 fields",
+                    "schema contains %d (> 1) fields",
                     dest_field,
                     len(label_schema),
                 )
