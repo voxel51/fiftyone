@@ -103,9 +103,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
       reset(similarityParameters);
 
       const newDataset = transformDataset(dataset);
-
       const oldDataset = get(atoms.dataset);
-      oldDataset && console.log(oldDataset.id, newDataset.id);
       if (!oldDataset || oldDataset.id !== newDataset.id) {
         reset(_activeFields({ modal: false }));
       }
