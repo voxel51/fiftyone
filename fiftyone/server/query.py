@@ -29,7 +29,7 @@ from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.mixins import HasCollection
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -165,7 +165,7 @@ class Dataset(HasCollection):
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[JSONArray], info: Info
+        cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
