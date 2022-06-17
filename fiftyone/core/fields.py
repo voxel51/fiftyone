@@ -17,7 +17,7 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
-import fiftyone.core.odm as foo
+from fiftyone.core.odm.embedded_document import EmbeddedDocument
 import fiftyone.core.utils as fou
 
 
@@ -688,7 +688,7 @@ class EmbeddedDocumentListField(
         )
 
 
-class Group(foo.EmbeddedDocument):
+class Group(EmbeddedDocument):
     """A named group membership.
 
     Args:
