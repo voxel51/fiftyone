@@ -24,7 +24,7 @@
   height: 100%;
   font-family: "Palanquin", sans-serif;
   font-weight: bold;
-  background-color: hsl(210, 11%, 15%);
+  background: transparent;
   outline: none;
   border: none;
 }

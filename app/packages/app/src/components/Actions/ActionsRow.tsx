@@ -1,37 +1,50 @@
 import React, {
   MutableRefObject,
-  useEffect,
+  RefCallback,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
+  ArrowDownward,
   Bookmark,
   Check,
   FlipToBack,
+  KeyboardArrowLeft,
+  KeyboardArrowRight,
   LocalOffer,
   Settings,
   VisibilityOff,
   Wallpaper,
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
-import { atom, selectorFamily, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  selectorFamily,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
 
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+
 import OptionsActions from "./Options";
-import Patcher, { patchesFields, patching } from "./Patcher";
+import Patcher, { patchesFields, patching, sendPatch } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import { PillButton } from "../utils";
 import * as atoms from "../../recoil/atoms";
+import * as filterAtoms from "../../recoil/filters";
 import * as selectors from "../../recoil/selectors";
-import socket from "../../shared/connection";
-import { useEventHandler, useOutsideClick, useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
-import Similar, { similaritySorting } from "./Similar";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { hasFilters } from "../Filters/atoms";
+import {
+  useEventHandler,
+  useOutsideClick,
+  useUnprocessedStateUpdate,
+} from "../../utils/hooks";
+import Similar, { similarityParameters } from "./Similar";
+import { useTheme } from "@fiftyone/components";
 
 const Loading = () => {
   const theme = useTheme();
@@ -53,10 +66,6 @@ const Patches = () => {
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const fields = useRecoilValue(patchesFields);
-
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
 
   return (
     <ActionDiv ref={ref}>
@@ -86,9 +95,9 @@ const hasSimilarityKeys = selectorFamily<boolean, boolean>({
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef();
-  const loading = useRecoilValue(similaritySorting);
   useOutsideClick(ref, () => open && setOpen(false));
   const hasSimilarity = useRecoilValue(hasSimilarityKeys(modal));
+  const hasSorting = useRecoilValue(similarityParameters);
   const [mRef, bounds] = useMeasure();
   const close = false;
 
@@ -96,20 +105,19 @@ const Similarity = ({ modal }: { modal: boolean }) => {
     close && setOpen(false);
   }, [close]);
 
-  if (!hasSimilarity) {
+  if (!hasSimilarity && !hasSorting) {
     return null;
   }
-
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        icon={loading ? <Loading /> : <Wallpaper />}
+        icon={<Wallpaper />}
         open={open}
-        onClick={() => !loading && setOpen(!open)}
+        onClick={() => setOpen(!open)}
         highlight={true}
         ref={mRef}
         title={"Sort by similarity"}
-        style={{ cursor: loading ? "default" : "pointer" }}
+        style={{ cursor: "pointer" }}
       />
       {open && (
         <Similar modal={modal} close={() => setOpen(false)} bounds={bounds} />
@@ -127,20 +135,17 @@ const Tag = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
-  const selected = useRecoilValue(
-    modal ? selectors.selectedLabelIds : atoms.selectedSamples
-  );
+  const labels = useRecoilValue(selectors.selectedLabelIds);
+  const samples = useRecoilValue(atoms.selectedSamples);
+
+  const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(selectors.anyTagging);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
+
   const [mRef, bounds] = useMeasure();
-  const close = false;
 
   const disabled = tagging;
-
-  useLayoutEffect(() => {
-    close && setOpen(false);
-  }, [close]);
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {
@@ -157,20 +162,16 @@ const Tag = ({
         icon={disabled ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && available && setOpen(!open)}
-        highlight={(Boolean(selected.size) || open) && available}
+        highlight={(selected || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
       />
-      {open && !close && available && (
+      {open && available && (
         <Tagger
           modal={modal}
           bounds={bounds}
           close={() => setOpen(false)}
-          lookerRef={
-            lookerRef && lookerRef.current instanceof VideoLooker
-              ? (lookerRef as MutableRefObject<VideoLooker>)
-              : null
-          }
+          lookerRef={lookerRef}
         />
       )}
     </ActionDiv>
@@ -186,42 +187,46 @@ const Selected = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const selectedSamples = useRecoilValue(atoms.selectedSamples);
-  const selectedObjects = useRecoilValue(selectors.selectedLabels);
+  const samples = useRecoilValue(atoms.selectedSamples);
+  const labels = useRecoilValue(selectors.selectedLabelIds);
   const ref = useRef();
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
-
-  const numItems = modal
-    ? Object.keys(selectedObjects).length
-    : selectedSamples.size;
 
   lookerRef &&
     useEventHandler(lookerRef.current, "buffering", (e) =>
       setLoading(e.detail)
     );
 
-  if (numItems < 1 && !modal) {
+  if (samples.size < 1 && !modal) {
     return null;
   }
+
+  let text = samples.size.toLocaleString();
+  if (samples.size > 0 && labels.size > 0 && modal) {
+    text = `${text} | ${labels.size.toLocaleString()}`;
+  } else if (labels.size > 0 && modal) {
+    text = labels.size.toLocaleString();
+  }
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
         icon={loading ? <Loading /> : <Check />}
         open={open}
-        style={{ cursor: loading ? "default" : "pointer" }}
         onClick={() => {
           if (loading) {
             return;
           }
           setOpen(!open);
         }}
-        highlight={numItems > 0 || open}
-        text={`${numItems}`}
+        highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
+        text={text}
         ref={mRef}
-        title={`Manage selected ${modal ? "label" : "sample"}${
-          numItems > 1 ? "s" : ""
-        }`}
+        title={`Manage selected`}
+        style={{
+          cursor: loading ? "default" : "pointer",
+        }}
       />
       {open && (
         <Selector
@@ -282,65 +287,116 @@ export const savingFilters = atom<boolean>({
 });
 
 const SaveFilters = () => {
-  const hasFiltersValue = useRecoilValue(hasFilters(false));
-  const [loading, setLoading] = useRecoilState(savingFilters);
+  const hasFiltersValue = useRecoilValue(filterAtoms.hasFilters(false));
+  const similarity = useRecoilValue(similarityParameters);
+  const loading = useRecoilValue(savingFilters);
+  const updateState = useUnprocessedStateUpdate();
 
-  return hasFiltersValue ? (
-    <PillButton
-      open={false}
-      highlight={true}
-      icon={loading ? <Loading /> : <Bookmark />}
-      style={{ cursor: loading ? "default" : "pointer" }}
-      onClick={() => {
-        if (loading) {
-          return;
-        }
-        setLoading(true);
-        socket.send(packageMessage("save_filters", {}));
-      }}
-      title={"Convert current field filters to view stages"}
-    />
+  const saveFilters = useRecoilCallback(
+    ({ snapshot, set }) => async () => {
+      const loading = await snapshot.getPromise(savingFilters);
+      if (loading) {
+        return;
+      }
+      set(savingFilters, true);
+      sendPatch(snapshot, updateState, null).then(() => {
+        set(savingFilters, false);
+        set(similarityParameters, null);
+      });
+    },
+    []
+  );
+
+  return hasFiltersValue || similarity ? (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={loading ? <Loading /> : <Bookmark />}
+        style={{ cursor: loading ? "default" : "pointer" }}
+        onClick={saveFilters}
+        title={"Convert current filters and/or sorting to view stages"}
+      />
+    </ActionDiv>
   ) : null;
 };
 
+const ToggleSidebar: React.FC<{
+  modal: boolean;
+}> = React.forwardRef(({ modal, ...props }, ref) => {
+  const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
+
+  return (
+    <PillButton
+      onClick={() => {
+        setVisible(!visible);
+      }}
+      title={`${visible ? "Hide" : "Show"} sidebar`}
+      open={visible}
+      icon={
+        visible ? (
+          modal ? (
+            <KeyboardArrowRight />
+          ) : (
+            <KeyboardArrowLeft />
+          )
+        ) : modal ? (
+          <KeyboardArrowLeft />
+        ) : (
+          <KeyboardArrowRight />
+        )
+      }
+      highlight={!visible}
+      ref={ref}
+    />
+  );
+});
+
 const ActionsRowDiv = styled.div`
+  position: relative;
   display: flex;
   justify-content: ltr;
-  margin-top: 2.5px;
   row-gap: 0.5rem;
   column-gap: 0.5rem;
+  align-items: center;
 `;
 
-type ActionsRowProps = {
-  modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker>;
-};
-
-const ActionsRow = ({ modal, lookerRef }: ActionsRowProps) => {
+export const GridActionsRow = () => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
-  const isClips = useRecoilValue(selectors.isClipsView);
-  const style = modal
-    ? {
-        overflowX: "auto",
-        overflowY: "hidden",
-        margin: "0 -1em",
-        padding: "0 1em",
-        flexWrap: "wrap",
-      }
-    : {
-        flexWrap: "no-wrap",
-      };
+
   return (
-    <ActionsRowDiv style={style}>
-      <Options modal={modal} />
-      <Tag modal={modal} lookerRef={modal ? lookerRef : null} />
-      {!modal && <Patches />}
-      {!isVideo && <Similarity modal={modal} />}
-      {modal && <Hidden />}
-      {!modal && <SaveFilters />}
-      <Selected modal={modal} lookerRef={lookerRef} />
+    <ActionsRowDiv>
+      <ToggleSidebar modal={false} />
+      <Options modal={false} />
+      <Tag modal={false} />
+      <Patches />
+      {!isVideo && <Similarity modal={false} />}
+      <SaveFilters />
+      <Selected modal={false} />
     </ActionsRowDiv>
   );
 };
 
-export default React.memo(ActionsRow);
+export const ModalActionsRow = ({
+  lookerRef,
+}: {
+  lookerRef?: MutableRefObject<VideoLooker>;
+}) => {
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
+
+  return (
+    <ActionsRowDiv
+      style={{
+        justifyContent: "rtl",
+        right: 0,
+      }}
+    >
+      <Hidden />
+      <Selected modal={true} lookerRef={lookerRef} />
+      {!isVideo && <Similarity modal={true} />}
+      <Tag modal={true} lookerRef={lookerRef} />
+      <Options modal={true} />
+      <ToggleSidebar modal={true} />
+    </ActionsRowDiv>
+  );
+};

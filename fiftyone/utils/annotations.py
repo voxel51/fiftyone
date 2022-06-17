@@ -115,10 +115,8 @@ def annotate(
             ``label_field`` or all fields in ``label_schema`` without classes
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
-            are not provided by this argument nor ``label_schema``, they are
-            parsed from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
-            possible, or else the observed labels on your dataset are used
+            are not provided by this argument nor ``label_schema``, the
+            observed labels on your dataset are used
         attributes (True): specifies the label attributes of each label
             field to include (other than their ``label``, which is always
             included) in the annotation export. Can be any of the
@@ -772,10 +770,6 @@ def _get_classes(
             % label_field
         )
 
-    classes = samples.get_classes(label_field)
-    if classes:
-        return classes
-
     _, label_path = samples._get_label_field_path(label_field, "label")
     return sorted(
         set(samples._dataset.distinct(label_path))
@@ -814,12 +808,6 @@ def _parse_classes_dict(
 def _get_mask_targets(samples, mask_targets, label_field, label_info):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
-
-    if mask_targets is None and label_field in samples.mask_targets:
-        mask_targets = samples.mask_targets[label_field]
-
-    if mask_targets is None and samples.default_mask_targets:
-        mask_targets = samples.default_mask_targets
 
     if mask_targets is None:
         mask_targets = {i: str(i) for i in range(1, 256)}
@@ -1016,7 +1004,7 @@ def load_annotations(
             else:
                 logger.warning(
                     "Ignoring string `dest_field=%s` since the label "
-                    "schema contains %d > 1 fields",
+                    "schema contains %d (> 1) fields",
                     dest_field,
                     len(label_schema),
                 )
@@ -1402,8 +1390,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     frame_labels = anno_dict[sample_id][frame_id]
                     label = frame_labels.pop(label_id)
-                    label._id = ObjectId()
-                    new_label_id = str(label._id)
+                    new_label_id = str(ObjectId())
+                    label.id = new_label_id
                     frame_labels[new_label_id] = label
                     new_ids.discard((sample_id, frame_id, label_id))
                     new_ids.add((sample_id, frame_id, new_label_id))
@@ -1413,8 +1401,8 @@ def _merge_labels(
                     # Regenerate duplicate label ID
                     sample_labels = anno_dict[sample_id]
                     label = sample_labels.pop(label_id)
-                    label._id = ObjectId()
-                    new_label_id = str(label._id)
+                    new_label_id = str(ObjectId())
+                    label.id = new_label_id
                     sample_labels[new_label_id] = label
                     new_ids.discard((sample_id, label_id))
                     new_ids.add((sample_id, new_label_id))
@@ -1684,7 +1672,7 @@ def _update_tracks(samples, label_field, anno_dict, only_keyframes):
                 #
                 _existing_id = id_map.get((_id, _frame_id, _index), None)
                 if _existing_id is not None:
-                    label._id = ObjectId(_existing_id)
+                    label.id = _existing_id
                     del frame_annos[_label_id]
                     frame_annos[_existing_id] = label
 

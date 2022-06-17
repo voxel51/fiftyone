@@ -1,26 +1,27 @@
-import React, { Suspense } from "react";
+import React, { useMemo } from "react";
 import { Checkbox as MaterialCheckbox } from "@material-ui/core";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 import styled from "styled-components";
 
 import { useHighlightHover } from "../Actions/utils";
 import { ItemAction } from "../Actions/ItemAction";
-import { useTheme } from "../../utils/hooks";
-import { formatDateTime, summarizeLongStr } from "../../utils/generic";
 import { getValueString } from "../Filters/utils";
-import { RecoilValueReadOnly, useRecoilValue } from "recoil";
-import * as selectors from "../../recoil/selectors";
-import { DATE_TIME } from "@fiftyone/looker/src/constants";
+import { constSelector, RecoilValueReadOnly } from "recoil";
+import { NameAndCountContainer } from "../utils";
+import { SuspenseEntryCounts } from "./CountSubcount";
+import { prettify } from "../../utils/generic";
+import { useTheme } from "@fiftyone/components";
 
-interface CheckboxProps {
+interface CheckboxProps<T> {
   color?: string;
-  name: number | string | boolean | null | [number, number];
+  name: T;
   value: boolean;
   setValue: (value: boolean) => void;
   count?: number;
-  subCountAtom?: RecoilValueReadOnly<number>;
+  subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
   forceColor?: boolean;
+  formatter?: (value: T) => string;
 }
 
 const StyledCheckboxContainer = styled.div`
@@ -35,112 +36,61 @@ const StyledCheckbox = animated(styled(ItemAction)`
   margin: 0;
 `);
 
-const CheckboxNameDiv = styled.div`
-  text-overflow: ellipsis;
-  font-weight: bold;
-  flex-grow: 1;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  display: flex;
-  justify-content: space-between;
-`;
-
-const makeCountStr = (subCount = null, count = null) => {
-  if (subCount === undefined || count === null) {
-    return "";
-  }
-
-  if (typeof subCount === "number" && subCount !== count) {
-    return `${subCount.toLocaleString()} of ${count.toLocaleString()}`;
-  }
-
-  return count.toLocaleString();
-};
-
-const CheckboxName = ({
-  subCountAtom,
-  count,
-  text,
+const Checkbox = <T extends unknown>({
   color,
-}: {
-  subCountAtom?: RecoilValueReadOnly<number>;
-  count: number;
-  text: string;
-  color?: string;
-}) => {
-  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
-  const countStr = makeCountStr(subCount, count);
-  const timeZone = useRecoilValue(selectors.timeZone);
+  name,
+  value,
+  setValue,
+  subcountAtom,
+  count,
+  disabled,
+  forceColor,
+  formatter,
+}: CheckboxProps<T>) => {
+  const theme = useTheme();
+  color = color ?? theme.brand;
+  const props = useHighlightHover(disabled);
+  const [text, coloring] = getValueString(formatter ? formatter(name) : name);
+
+  const countAtom =
+    typeof count === "number"
+      ? useMemo(() => constSelector(count), [count])
+      : null;
 
   return (
-    <CheckboxNameDiv>
-      <span style={color ? { color } : {}}>
-        {summarizeLongStr(
-          text && text._cls === DATE_TIME
-            ? formatDateTime(text.datetime, timeZone)
-            : text,
-          28 - countStr.length,
-          "middle"
+    <StyledCheckboxContainer title={text}>
+      <StyledCheckbox
+        {...props}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          !disabled && setValue(!value);
+        }}
+      >
+        {!disabled && (
+          <MaterialCheckbox
+            checked={value}
+            title={text}
+            style={{ color, padding: "0 0.5rem 0 0" }}
+            disableRipple={true}
+          />
         )}
-      </span>
-      {count && <span>{countStr}</span>}
-    </CheckboxNameDiv>
-  );
-};
 
-const Checkbox = React.memo(
-  ({
-    color,
-    name,
-    value,
-    setValue,
-    subCountAtom,
-    count,
-    disabled,
-    forceColor,
-  }: CheckboxProps) => {
-    const theme = useTheme();
-    color = color ?? theme.brand;
-    const props = useHighlightHover(disabled);
-    const [text, coloring] = getValueString(name);
-
-    return (
-      <StyledCheckboxContainer title={text}>
-        <StyledCheckbox {...props} onClick={() => setValue(!value)}>
-          {!disabled && (
-            <MaterialCheckbox
-              checked={value}
-              title={text}
-              style={{ color, padding: "0 0.5rem 0 0" }}
-              onChange={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setValue(!value);
-              }}
-              disableRipple={true}
+        <NameAndCountContainer>
+          <span style={{ color: coloring || forceColor ? color : "unset" }}>
+            {prettify(text)}
+          </span>
+          {countAtom && (
+            <SuspenseEntryCounts
+              countAtom={countAtom}
+              subcountAtom={subcountAtom}
             />
           )}
-          <Suspense
-            fallback={
-              <CheckboxName
-                count={count}
-                color={coloring ? color : null}
-                text={text}
-              />
-            }
-          >
-            <CheckboxName
-              color={coloring || forceColor ? color : null}
-              count={count}
-              subCountAtom={subCountAtom}
-              text={text}
-            />
-          </Suspense>
-        </StyledCheckbox>
-      </StyledCheckboxContainer>
-    );
-  }
-);
+        </NameAndCountContainer>
+      </StyledCheckbox>
+    </StyledCheckboxContainer>
+  );
+};
 
 export default Checkbox;

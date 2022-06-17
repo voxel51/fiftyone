@@ -257,13 +257,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        count, tags = self.aggregate([foa.Count(), foa.Distinct("tags")])
-
         elements = [
             ("Dataset:", self.dataset_name),
             ("Media type:", self.media_type),
-            ("Num %s:" % self._elements_str, count),
-            ("Tags:", tags),
+            ("Num %s:" % self._elements_str, self.count()),
         ]
 
         elements = fou.justify_headings(elements)

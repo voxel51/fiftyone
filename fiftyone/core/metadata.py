@@ -16,7 +16,7 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -316,7 +316,9 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
 
     view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for sample_id, metadata in pb(
                 pool.imap_unordered(_do_compute_metadata, inputs)
             ):

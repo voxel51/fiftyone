@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { config, animated, useSpring } from "react-spring";
+import { config, animated, useSpring } from "@react-spring/web";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import { ReportProblem } from "@material-ui/icons";

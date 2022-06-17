@@ -9,11 +9,11 @@ The following installation steps are a part of the
 [install script](../install.bash).
 
 First, install [`nvm`](https://github.com/nvm-sh/nvm) and install and set your
-node version to `v16.4.2` using `nvm`:
+node version to `v17.9.0` using `nvm`.
 
-```shell
-nvm install v16.4.2
-nvm use v16.4.2
+```sh
+nvm install v17.9.0
+nvm use v17.9.0
 ```
 
 Then install `yarn` globally in your node environment with `npm`:
@@ -41,6 +41,13 @@ access to stack traces:
 
 ```shell
 python fiftyone/server/main.py
+```
+
+If you want to run both the app client development server and the backend
+server, try running:
+
+```shell
+yarn dev:wpy
 ```
 
 Either way, now simply launch the App like normal:

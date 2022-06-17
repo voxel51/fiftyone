@@ -35,12 +35,11 @@ You can explicitly create a view that contains an entire dataset via
     Dataset:        quickstart
     Media type:     image
     Num samples:    200
-    Tags:           ['validation']
     Sample fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         uniqueness:   fiftyone.core.fields.FloatField
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
@@ -851,12 +850,11 @@ detection dataset:
     Dataset:     quickstart
     Media type:  image
     Num patches: 1232
-    Tags:        ['validation']
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detection)
     View stages:
@@ -976,12 +974,11 @@ respectively.
     Dataset:     quickstart
     Media type:  image
     Num patches: 5363
-    Tags:        ['validation']
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField
@@ -1125,14 +1122,13 @@ temporal segment by simply passing the name of the temporal detection field to
     Dataset:    2021.09.03.09.44.57
     Media type: video
     Num clips:  4
-    Tags:       []
     Clip fields:
         id:        fiftyone.core.fields.ObjectIdField
         sample_id: fiftyone.core.fields.ObjectIdField
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
         events:    fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
@@ -1228,14 +1224,13 @@ that contains at least one person:
     Dataset:    quickstart-video
     Media type: video
     Num clips:  8
-    Tags:       []
     Clip fields:
         id:        fiftyone.core.fields.ObjectIdField
         sample_id: fiftyone.core.fields.ObjectIdField
         filepath:  fiftyone.core.fields.StringField
         support:   fiftyone.core.fields.FrameSupportField
         tags:      fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.VideoMetadata)
     Frame fields:
         id:           fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -1384,12 +1379,11 @@ frame of the videos in a |Dataset| or |DatasetView|:
     Dataset:     quickstart-video
     Media type:  image
     Num samples: 1279
-    Tags:        []
     Sample fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
@@ -1531,12 +1525,11 @@ sample per object patch in the frames of the dataset!
     Dataset:     quickstart-video
     Media type:  image
     Num patches: 11345
-    Tags:        []
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         sample_id:    fiftyone.core.fields.ObjectIdField
         frame_id:     fiftyone.core.fields.ObjectIdField
         frame_number: fiftyone.core.fields.FrameNumberField
@@ -2223,15 +2216,16 @@ Let's say you have a dataset that looks like this:
 
 .. code-block:: bash
 
-    Name:           open-images-v4-test
-    Num samples:    1000
-    Persistent:     True
-    Tags:           []
+    Name:        open-images-v4-test
+    Media type:  image
+    Num samples: 1000
+    Persistent:  True
+    Tags:        []
     Sample fields:
         id:                       fiftyone.core.fields.ObjectIdField
         filepath:                 fiftyone.core.fields.StringField
         tags:                     fiftyone.core.fields.ListField(StringField)
-        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:                 fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         open_images_id:           fiftyone.core.fields.StringField
         groundtruth_image_labels: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classifications)
         groundtruth_detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)

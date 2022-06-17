@@ -8,6 +8,8 @@ Clips views.
 from copy import deepcopy
 from collections import defaultdict
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone.core.dataset as fod
@@ -40,7 +42,7 @@ class ClipView(fos.SampleView):
 
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     def save(self):
         """Saves the clip to the database."""
@@ -440,6 +442,9 @@ def make_clips_dataset(
     dataset = fod.Dataset(
         name=name, _clips=True, _src_collection=sample_collection
     )
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.VIDEO
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
@@ -517,11 +522,11 @@ def make_clips_dataset(
     return dataset
 
 
-def _is_frame_support_field(sample_collection, field):
-    field_type = sample_collection._get_field_type(field)
-    return isinstance(field_type, fof.FrameSupportField) or (
-        isinstance(field_type, fof.ListField)
-        and isinstance(field_type.field, fof.FrameSupportField)
+def _is_frame_support_field(sample_collection, field_path):
+    field = sample_collection.get_field(field_path)
+    return isinstance(field, fof.FrameSupportField) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, fof.FrameSupportField)
     )
 
 
@@ -532,10 +537,12 @@ def _make_pretty_summary(dataset):
     dataset._sample_doc_cls._fields_ordered = tuple(pretty_fields)
 
 
-def _write_support_clips(dataset, src_collection, field, other_fields=None):
-    field_type = src_collection._get_field_type(field)
-    is_list = isinstance(field_type, fof.ListField) and not isinstance(
-        field_type, fof.FrameSupportField
+def _write_support_clips(
+    dataset, src_collection, field_path, other_fields=None
+):
+    field = src_collection.get_field(field_path)
+    is_list = isinstance(field, fof.ListField) and not isinstance(
+        field, fof.FrameSupportField
     )
 
     src_dataset = src_collection._dataset
@@ -549,7 +556,7 @@ def _write_support_clips(dataset, src_collection, field, other_fields=None):
         "filepath": True,
         "metadata": True,
         "tags": True,
-        "support": "$" + field,
+        "support": "$" + field.name,
     }
 
     if other_fields:

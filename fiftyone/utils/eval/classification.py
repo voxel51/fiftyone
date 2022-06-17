@@ -67,11 +67,8 @@ def evaluate_classifications(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Classification` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
-        classes (None): the list of possible classes. If not provided, classes
-            are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
-            :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-            possible, or else the observed ground truth/predicted labels are
-            used
+        classes (None): the list of possible classes. If not provided, the
+            observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for results purposes
         method ("simple"): a string specifying the evaluation method to use.
@@ -85,14 +82,6 @@ def evaluate_classifications(
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Classification, same_type=True
     )
-
-    if classes is None:
-        if pred_field in samples.classes:
-            classes = samples.classes[pred_field]
-        elif gt_field in samples.classes:
-            classes = samples.classes[gt_field]
-        elif samples.default_classes:
-            classes = samples.default_classes
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
@@ -241,18 +230,18 @@ class SimpleEvaluation(ClassificationEvaluation):
             pred = pred[len(samples._FRAMES_PREFIX) :]
 
             # Sample-level accuracies
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((F(gt) == F(pred)).to_double()).mean(),
             ).save(eval_key)
 
             # Per-frame accuracies
-            dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)
+            dataset.add_frame_field(eval_key, fof.BooleanField)
             samples.set_field(eval_frame, F(gt) == F(pred)).save(eval_frame)
         else:
             # Per-sample accuracies
-            dataset._add_sample_field_if_necessary(eval_key, fof.BooleanField)
+            dataset.add_sample_field(eval_key, fof.BooleanField)
             samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
 
         return results
@@ -362,15 +351,15 @@ class TopKEvaluation(ClassificationEvaluation):
 
             # Sample-level accuracies
             avg_accuracies = [np.mean(c) if c else None for c in correct]
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_values(eval_key, avg_accuracies)
 
             # Per-frame accuracies
-            dataset._add_frame_field_if_necessary(eval_key, fof.BooleanField)
+            dataset.add_frame_field(eval_key, fof.BooleanField)
             samples.set_values(eval_frame, correct)
         else:
             # Per-sample accuracies
-            dataset._add_sample_field_if_necessary(eval_key, fof.BooleanField)
+            dataset.add_sample_field(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
         return results
@@ -535,7 +524,7 @@ class BinaryEvaluation(ClassificationEvaluation):
             Fpred = (F(pred) != None).if_else(F(pred), neg_label)
 
             # Sample-level accuracies
-            dataset._add_sample_field_if_necessary(eval_key, fof.FloatField)
+            dataset.add_sample_field(eval_key, fof.FloatField)
             samples.set_field(
                 eval_key,
                 F("frames").map((Fgt == Fpred).to_double()).mean(),
@@ -543,7 +532,7 @@ class BinaryEvaluation(ClassificationEvaluation):
 
             # Per-frame accuracies
             # This implementation implicitly treats missing data as `neg_label`
-            dataset._add_frame_field_if_necessary(eval_key, fof.StringField)
+            dataset.add_frame_field(eval_key, fof.StringField)
             samples.set_field(
                 eval_frame,
                 F().switch(
@@ -558,7 +547,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         else:
             # Per-sample accuracies
             # This implementation implicitly treats missing data as `neg_label`
-            dataset._add_sample_field_if_necessary(eval_key, fof.StringField)
+            dataset.add_sample_field(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
                 F().switch(

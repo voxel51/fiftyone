@@ -604,7 +604,7 @@ def _polylines_to_detections(polylines):
     for polyline in polylines:
         detection = polyline.to_detection()
 
-        detection._id = polyline._id  # keep same ID
+        detection.id = polyline.id  # keep same ID
         detections.append(detection)
 
     return detections
@@ -626,7 +626,7 @@ def _masks_to_polylines(detections, tolerance, error_level):
                 base_error=e,
             )
 
-        polyline._id = detection._id  # keep same ID
+        polyline.id = detection.id  # keep same ID
         polylines.append(polyline)
 
     return polylines

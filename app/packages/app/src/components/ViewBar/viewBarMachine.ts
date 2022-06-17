@@ -6,6 +6,7 @@ import viewStageMachine, {
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 import { viewsAreEqual } from "../../utils/view";
+import { getFetchFunction } from "@fiftyone/utilities";
 
 const { choose } = actions;
 
@@ -37,7 +38,7 @@ export const createStage = (
 });
 
 function getStageInfo(context) {
-  return fetch(`${context.http}/stages`).then((response) => response.json());
+  return getFetchFunction()("GET", "/stages");
 }
 
 function serializeStage(stage, stageMap, fieldNames) {
