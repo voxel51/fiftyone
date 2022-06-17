@@ -15,7 +15,7 @@ import { similarityParameters } from "../../components/Actions/Similar";
 import { toCamelCase } from "@fiftyone/utilities";
 
 const Query = graphql`
-  query DatasetQuery($name: String!, $view: JSONArray) {
+  query DatasetQuery($name: String!, $view: BSONArray) {
     dataset(name: $name, view: $view) {
       id
       name

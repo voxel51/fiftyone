@@ -243,6 +243,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
           showConfidence
           showIndex
           showLabel
+          showSkeletons
           showTooltip
           timezone
           useFrameNumber

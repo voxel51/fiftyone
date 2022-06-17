@@ -120,9 +120,10 @@ export const targets = selector({
 
 export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
   {
-    key: "skeleton",
+    key: "getSkeleton",
     get: ({ get }) => {
       const dataset = get(atoms.dataset);
+
       const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
         acc[name] = rest;
         return acc;

@@ -5,9 +5,23 @@ FiftyOne Server GraphQL scalars
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import json_util
+import json
 import typing as t
 
 import strawberry as gql
+
+BSON = gql.scalar(
+    t.NewType("BSON", object),
+    serialize=lambda v: json.loads(json_util.dumps(v)),
+    parse_value=lambda v: json_util.loads(json.dumps(v)),
+)
+
+BSONArray = gql.scalar(
+    t.NewType("BSONArray", object),
+    serialize=lambda v: json.loads(json_util.dumps(v)),
+    parse_value=lambda v: json_util.loads(json.dumps(v)),
+)
 
 JSON = gql.scalar(
     t.NewType("JSON", object),
