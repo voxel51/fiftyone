@@ -530,70 +530,51 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
         """
+        _, field = self._parse_field(path, include_private=include_private)
+        return field
+
+    def _parse_field(self, path, include_private=False):
         keys = path.split(".")
 
         if not keys:
-            return None
+            return None, None
+
+        resolved_keys = []
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
-            keys = keys[1:]
-        else:
-            schema = self.get_field_schema()
 
-        field = None
-        include_private and _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
-        for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
-
-            if idx != last and isinstance(field, fof.ListField):
-                field = field.field
-
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
-                include_private and _add_mapped_fields_as_private_fields(
-                    schema
-                )
-
-        return field
-
-    def _resolve_field(self, path):
-        keys = path.split(".")
-
-        if not keys:
-            return None
-
-        resolved_keys = []
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
             keys = keys[1:]
             resolved_keys.append("frames")
         else:
             schema = self.get_field_schema()
 
-        _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
+            field_name = _handle_id_field(
+                schema, field_name, include_private=include_private
+            )
 
-            resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, fof.ListField):
+            field = schema.get(field_name, None)
+
+            if field is None:
+                return None, None
+
+            resolved_keys.append(field.db_field or field.name)
+
+            if idx == len(keys) - 1:
+                continue
+
+            if isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
 
-        return ".".join(resolved_keys)
+        resolved_path = ".".join(resolved_keys)
+
+        return resolved_path, field
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -6732,7 +6713,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field = self._resolve_field(field)
+            _field = self._parse_field(field, include_private=True)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
@@ -8061,6 +8042,26 @@ def _parse_field_name(
     )
 
 
+def _handle_id_field(schema, field_name, include_private=False):
+    if not include_private and field_name.startswith("_"):
+        return None
+
+    if field_name in schema:
+        return field_name
+
+    if field_name.startswith("_"):
+        _field_name = field_name[1:]
+    else:
+        _field_name = "_" + field_name
+
+    field = schema.get(_field_name, None)
+
+    if isinstance(field, fof.ObjectIdField):
+        return _field_name
+
+    return field_name
+
+
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
         return field_name, False, False
@@ -8390,10 +8391,10 @@ def _handle_existing_dirs(
                 etau.delete_file(_labels_path)
 
 
-def _add_mapped_fields_as_private_fields(schema):
+def _add_db_fields_to_schema(schema):
     additions = {}
     for field in schema.values():
-        if field.db_field:
+        if field.db_field != field.name:
             additions[field.db_field] = field
 
     schema.update(additions)

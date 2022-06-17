@@ -314,14 +314,12 @@ class _HasID(Label):
     property, as well as a ``tags`` attribute.
     """
 
-    id = fof.ObjectIdField(
-        default=ObjectId, required=True, unique=True, db_field="_id"
-    )
+    _id = fof.ObjectIdField(default=ObjectId, required=True, unique=True)
     tags = fof.ListField(fof.StringField())
 
     @property
-    def _id(self):
-        return ObjectId(self.id)
+    def id(self):
+        return str(self._id)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
