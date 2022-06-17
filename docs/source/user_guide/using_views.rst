@@ -35,7 +35,6 @@ You can explicitly create a view that contains an entire dataset via
     Dataset:        quickstart
     Media type:     image
     Num samples:    200
-    Tags:           ['validation']
     Sample fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
@@ -851,7 +850,6 @@ detection dataset:
     Dataset:     quickstart
     Media type:  image
     Num patches: 1232
-    Tags:        ['validation']
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
@@ -976,7 +974,6 @@ respectively.
     Dataset:     quickstart
     Media type:  image
     Num patches: 5363
-    Tags:        ['validation']
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
@@ -1125,7 +1122,6 @@ temporal segment by simply passing the name of the temporal detection field to
     Dataset:    2021.09.03.09.44.57
     Media type: video
     Num clips:  4
-    Tags:       []
     Clip fields:
         id:        fiftyone.core.fields.ObjectIdField
         sample_id: fiftyone.core.fields.ObjectIdField
@@ -1228,7 +1224,6 @@ that contains at least one person:
     Dataset:    quickstart-video
     Media type: video
     Num clips:  8
-    Tags:       []
     Clip fields:
         id:        fiftyone.core.fields.ObjectIdField
         sample_id: fiftyone.core.fields.ObjectIdField
@@ -1384,7 +1379,6 @@ frame of the videos in a |Dataset| or |DatasetView|:
     Dataset:     quickstart-video
     Media type:  image
     Num samples: 1279
-    Tags:        []
     Sample fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
@@ -1531,7 +1525,6 @@ sample per object patch in the frames of the dataset!
     Dataset:     quickstart-video
     Media type:  image
     Num patches: 11345
-    Tags:        []
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
