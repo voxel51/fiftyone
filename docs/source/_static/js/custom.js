@@ -1,11 +1,11 @@
 $(function () {
-  const sections = $("section").sort(
+  const sections = $(".section").sort(
     (a, b) => $(a).offset().top - $(b).offset().top
   );
 
   const sectionStartThreshold =
     $("#pytorch-page-level-bar").height() +
-    parseInt($("section h2").css("marginTop")) +
+    parseInt($(".section h2").css("marginTop")) +
     10;
 
   let lastSection = undefined;
