@@ -932,6 +932,14 @@ classification or object detections) associated with the image.
             sample_parser = CustomLabeledImageSampleParser(...)
             label_field = ...
 
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_field = "ground_truth"
+                label_key = lambda k: k
+
             for sample in samples:
                 sample_parser.with_sample(sample)
 
@@ -947,9 +955,7 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=image_path, metadata=metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -1191,6 +1197,14 @@ classification or object detections) associated with the image.
             sample_parser = CustomLabeledVideoSampleParser(...)
             label_field = ...
 
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_field = "ground_truth"
+                label_key = lambda k: k
+
             for sample in samples:
                 sample_parser.with_sample(sample)
 
@@ -1207,9 +1221,7 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=video_path, metadata=metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
+                    sample.update_fields({label_key(k): v for k, v in label.items()})
                 elif label is not None:
                     sample[label_field] = label
 
@@ -1219,8 +1231,7 @@ classification or object detections) associated with the image.
                     for frame_number, _label in frames.items():
                         if isinstance(_label, dict):
                             frame_labels[frame_number] = {
-                                label_field + "_" + field_name: label
-                                for field_name, label in _label.items()
+                                label_key(k): v for k, v in _label.items()
                             }
                         elif _label is not None:
                             frame_labels[frame_number] = {label_field: _label}
