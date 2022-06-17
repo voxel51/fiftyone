@@ -46,10 +46,10 @@ export default class SectionElement implements Section {
           if (onItemClick) {
             itemElement.addEventListener("click", (event) => {
               event.preventDefault();
-              onItemClick(event, itemData.id);
+              onItemClick(itemData.id);
             });
             itemElement.addEventListener("contextmenu", (event) => {
-              onItemClick(event, itemData.id);
+              onItemClick(itemData.id);
             });
           }
 

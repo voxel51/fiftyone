@@ -37,20 +37,3 @@ export const lookerType = selector<(mimetype: string) => LookerTypes>({
     };
   },
 });
-
-export const useClearModal = () => {
-  return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) => () => {
-      const fullscreen = get(atoms.fullscreen);
-      if (fullscreen) {
-        return;
-      }
-      const currentOptions = get(atoms.savedLookerOptions);
-      set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
-      set(atoms.selectedLabels, {});
-      set(atoms.hiddenLabels, {});
-      set(atoms.modal, null);
-    },
-    []
-  );
-};

@@ -29,7 +29,6 @@ import { PopoutSectionTitle } from "../utils";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
-import { store } from "../Flashlight.store";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
 import { aggregationsTick } from "../../recoil/aggregations";
@@ -87,37 +86,36 @@ const useSortBySimilarity = (close) => {
   const update = useUnprocessedStateUpdate();
   const handleError = useErrorHandler();
   return useRecoilCallback(
-    ({ snapshot, set }) => async (
-      parameters: State.SortBySimilarityParameters
-    ) => {
-      const queryIds = await getQueryIds(snapshot, parameters.brainKey);
-      const view = await snapshot.getPromise(viewAtoms.view);
-      set(similaritySorting, true);
+    ({ snapshot, set }) =>
+      async (parameters: State.SortBySimilarityParameters) => {
+        const queryIds = await getQueryIds(snapshot, parameters.brainKey);
+        const view = await snapshot.getPromise(viewAtoms.view);
+        set(similaritySorting, true);
 
-      try {
-        const data = await getFetchFunction()("POST", "/sort", {
-          dataset: await snapshot.getPromise(selectors.datasetName),
-          view,
-          filters: await snapshot.getPromise(filters),
-          similarity: toSnakeCase({
-            ...parameters,
-            queryIds,
-          }),
-        });
+        try {
+          const data = await getFetchFunction()("POST", "/sort", {
+            dataset: await snapshot.getPromise(selectors.datasetName),
+            view,
+            filters: await snapshot.getPromise(filters),
+            similarity: toSnakeCase({
+              ...parameters,
+              queryIds,
+            }),
+          });
 
-        update(({ set }) => {
-          set(similarityParameters, { ...parameters, queryIds });
-          set(atoms.modal, null);
-          set(similaritySorting, false);
-          set(aggregationsTick, (cur) => cur + 1);
-          close();
+          update(({ set }) => {
+            set(similarityParameters, { ...parameters, queryIds });
+            set(atoms.modal, null);
+            set(similaritySorting, false);
+            set(aggregationsTick, (cur) => cur + 1);
+            close();
 
-          return data;
-        });
-      } catch (error) {
-        handleError(error);
-      }
-    },
+            return data;
+          });
+        } catch (error) {
+          handleError(error);
+        }
+      },
     []
   );
 };
@@ -129,46 +127,48 @@ const searchBrainKeyValue = atom<string>({
 
 const availableSimilarityKeys = selectorFamily<string[], boolean>({
   key: "availableSimilarityKeys",
-  get: (modal) => ({ get }) => {
-    const isPatches = get(viewAtoms.isPatchesView);
-    const keys = get(selectors.similarityKeys);
-    if (!isPatches && !modal) {
-      return keys.samples;
-    } else if (!modal) {
-      return keys.patches.reduce((acc, [key, field]) => {
-        if (get(schemaAtoms.labelPaths({})).includes(field)) {
-          acc = [...acc, key];
+  get:
+    (modal) =>
+    ({ get }) => {
+      const isPatches = get(viewAtoms.isPatchesView);
+      const keys = get(selectors.similarityKeys);
+      if (!isPatches && !modal) {
+        return keys.samples;
+      } else if (!modal) {
+        return keys.patches.reduce((acc, [key, field]) => {
+          if (get(schemaAtoms.labelPaths({})).includes(field)) {
+            acc = [...acc, key];
+          }
+          return acc;
+        }, []);
+      } else if (modal) {
+        const selectedLabels = get(atoms.selectedLabels);
+
+        if (Object.keys(selectedLabels).length) {
+          const fields = new Set(
+            Object.values(selectedLabels).map(({ field }) => field)
+          );
+
+          const patches = keys.patches
+            .filter(([k, v]) => fields.has(v))
+            .reduce((acc, [k]) => {
+              return [...acc, k];
+            }, []);
+          return patches;
+        } else if (isPatches) {
+          const { sample } = get(atoms.modal);
+
+          return keys.patches
+            .filter(([k, v]) => sample[v])
+            .reduce((acc, [k]) => {
+              return [...acc, k];
+            }, []);
         }
-        return acc;
-      }, []);
-    } else if (modal) {
-      const selectedLabels = get(atoms.selectedLabels);
 
-      if (Object.keys(selectedLabels).length) {
-        const fields = new Set(
-          Object.values(selectedLabels).map(({ field }) => field)
-        );
-
-        const patches = keys.patches
-          .filter(([k, v]) => fields.has(v))
-          .reduce((acc, [k]) => {
-            return [...acc, k];
-          }, []);
-        return patches;
-      } else if (isPatches) {
-        const { sample } = get(atoms.modal);
-
-        return keys.patches
-          .filter(([k, v]) => sample[v])
-          .reduce((acc, [k]) => {
-            return [...acc, k];
-          }, []);
+        return keys.samples;
       }
-
-      return keys.samples;
-    }
-    return [];
-  },
+      return [];
+    },
 });
 
 const currentSimilarityKeys = selectorFamily<
@@ -176,29 +176,33 @@ const currentSimilarityKeys = selectorFamily<
   boolean
 >({
   key: "currentSimilarityKeys",
-  get: (modal) => ({ get }) => {
-    const searchBrainKey = get(searchBrainKeyValue);
-    const keys = get(availableSimilarityKeys(modal));
-    const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
-    return {
-      total: keys.length,
-      choices: result.slice(0, 11),
-    };
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      const searchBrainKey = get(searchBrainKeyValue);
+      const keys = get(availableSimilarityKeys(modal));
+      const result = keys.filter((k) => k.includes(searchBrainKey)).sort();
+      return {
+        total: keys.length,
+        choices: result.slice(0, 11),
+      };
+    },
 });
 
 const sortType = selectorFamily<string, boolean>({
   key: "sortBySimilarityType",
-  get: (modal) => ({ get }) => {
-    const isRoot = get(viewAtoms.isRootView);
-    if (modal) {
-      return "labels";
-    } else if (isRoot) {
-      return "images";
-    } else {
-      return "patches";
-    }
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      const isRoot = get(viewAtoms.isRootView);
+      if (modal) {
+        return "labels";
+      } else if (isRoot) {
+        return "images";
+      } else {
+        return "patches";
+      }
+    },
 });
 
 interface SortBySimilarityProps {

@@ -47,14 +47,6 @@ export const isVideoDataset = selector({
   },
 });
 
-export const defaultGridZoom = selector<number>({
-  key: "defaultGridZoom",
-  get: ({ get }) => get(atoms.appConfig)?.gridZoom,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {

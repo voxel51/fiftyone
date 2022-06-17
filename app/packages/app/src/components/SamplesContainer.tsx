@@ -3,18 +3,18 @@ import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import FieldsSidebar, {
-  EntryKind,
-  Entries,
-  SidebarEntry,
-  useTagText,
-  disabledPaths,
-} from "../components/Sidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Flashlight from "../components/Flashlight";
 
-import * as atoms from "../recoil/atoms";
 import { State } from "../recoil/types";
+import {
+  disabledPaths,
+  EntryKind,
+  SidebarEntry,
+  sidebarVisible,
+  useTagText,
+} from "../recoil/sidebar";
+import Sidebar, { Entries } from "./Sidebar";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
@@ -33,7 +33,7 @@ const Container = styled.div`
 
 const SamplesContainer = React.memo(() => {
   const tagText = useTagText(false);
-  const showSidebar = useRecoilValue(atoms.sidebarVisible(false));
+  const showSidebar = useRecoilValue(sidebarVisible(false));
   const disabled = useRecoilValue(disabledPaths);
 
   const renderGridEntry = useCallback(
@@ -145,7 +145,7 @@ const SamplesContainer = React.memo(() => {
 
   return (
     <Container>
-      {showSidebar && <FieldsSidebar render={renderGridEntry} modal={false} />}
+      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
 
       <ContentColumn>
         <Flashlight key={"flashlight"} />

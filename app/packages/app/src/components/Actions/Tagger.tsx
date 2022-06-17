@@ -37,7 +37,6 @@ import { PopoutSectionTitle } from "../utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { filters, modalFilters } from "../../recoil/filters";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
-import { store } from "../Flashlight.store";
 import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`

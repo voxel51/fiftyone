@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b94e9887d8617527c466721e6c97b342>>
+ * @generated SignedSource<<cb08fac3efe674e616d16c4686012bdb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,12 +26,12 @@ export type paginateGroupQuery = {
 
 const node: ConcreteRequest = (function () {
   var v0 = {
-      defaultValue: null,
+      defaultValue: 20,
       kind: "LocalArgument",
       name: "count",
     },
     v1 = {
-      defaultValue: null,
+      defaultValue: 0,
       kind: "LocalArgument",
       name: "cursor",
     },
@@ -227,16 +227,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "e44a29e2c4f822127e35ca6973ffe072",
+      cacheID: "2a3aa96dc6b18cfcb032857f21658aea",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: JSONArray!\n  $count: Int\n  $cursor: Int\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: JSONArray!\n  $count: Int = 20\n  $cursor: Int = 0\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "967f821e9dbbc106cfa53a18438c7478";
+(node as any).hash = "50a9ebb50d763dc7454bfe1013b34d36";
 
 export default node;

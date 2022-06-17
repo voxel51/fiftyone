@@ -28,17 +28,13 @@ export const refresher = atom<boolean>({
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => () => {
-      set(refresher, !get(refresher));
-    },
+    ({ get, set }) =>
+      () => {
+        set(refresher, !get(refresher));
+      },
     []
   );
 };
-
-export const sidebarWidth = atomFamily<number, boolean>({
-  key: "sidebarWidth",
-  default: 300,
-});
 
 export const modal = atom<ModalSample | null>({
   key: "modal",
@@ -137,11 +133,6 @@ export const hiddenLabels = atom<State.SelectedLabelMap>({
 export const stageInfo = atom({
   key: "stageInfo",
   default: undefined,
-});
-
-export const sidebarVisible = atomFamily<boolean, boolean>({
-  key: "sidebarVisible",
-  default: true,
 });
 
 export const viewCounter = atom({

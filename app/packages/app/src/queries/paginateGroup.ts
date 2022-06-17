@@ -8,14 +8,15 @@ export const paginateGroupQueryRef = atom<
 >({
   key: "paginateGroupQueryRef",
   default: null,
+  dangerouslyAllowMutability: true,
 });
 
 export default graphql`
   query paginateGroupQuery(
     $dataset: String!
     $view: JSONArray!
-    $count: Int
-    $cursor: Int
+    $count: Int = 20
+    $cursor: Int = 0
   ) {
     ...paginateGroup_query
   }

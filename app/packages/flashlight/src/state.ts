@@ -41,7 +41,7 @@ export type Get<K> = (key: K) => Promise<Response<K>>;
 export type ItemIndexMap = { [key: string]: number };
 
 export type OnItemClick = (
-  event: MouseEvent,
+  next: () => Promise<void>,
   id: string,
   itemIndexMap: ItemIndexMap
 ) => void;
@@ -60,7 +60,7 @@ export interface Options {
   rowAspectRatioThreshold: number;
 }
 
-export type OnResize = (width: number) => Options;
+export type OnResize = (width: number) => Optional<Options>;
 
 export interface State<K> {
   get: Get<K>;

@@ -45,6 +45,7 @@ import {
 } from "../../utils/hooks";
 import Similar, { similarityParameters } from "./Similar";
 import { useTheme } from "@fiftyone/components";
+import { sidebarVisible } from "../../recoil/sidebar";
 
 const Loading = () => {
   const theme = useTheme();
@@ -84,12 +85,14 @@ const Patches = () => {
 
 const hasSimilarityKeys = selectorFamily<boolean, boolean>({
   key: "hasSimilarityKeys",
-  get: (modal) => ({ get }) => {
-    if (modal) {
-      return true;
-    }
-    return Boolean(get(atoms.selectedSamples).size);
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      if (modal) {
+        return true;
+      }
+      return Boolean(get(atoms.selectedSamples).size);
+    },
 });
 
 const Similarity = ({ modal }: { modal: boolean }) => {
@@ -293,17 +296,18 @@ const SaveFilters = () => {
   const updateState = useUnprocessedStateUpdate();
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const loading = await snapshot.getPromise(savingFilters);
-      if (loading) {
-        return;
-      }
-      set(savingFilters, true);
-      sendPatch(snapshot, updateState, null).then(() => {
-        set(savingFilters, false);
-        set(similarityParameters, null);
-      });
-    },
+    ({ snapshot, set }) =>
+      async () => {
+        const loading = await snapshot.getPromise(savingFilters);
+        if (loading) {
+          return;
+        }
+        set(savingFilters, true);
+        sendPatch(snapshot, updateState, null).then(() => {
+          set(savingFilters, false);
+          set(similarityParameters, null);
+        });
+      },
     []
   );
 
@@ -324,7 +328,7 @@ const SaveFilters = () => {
 const ToggleSidebar: React.FC<{
   modal: boolean;
 }> = React.forwardRef(({ modal, ...props }, ref) => {
-  const [visible, setVisible] = useRecoilState(atoms.sidebarVisible(modal));
+  const [visible, setVisible] = useRecoilState(sidebarVisible(modal));
 
   return (
     <PillButton

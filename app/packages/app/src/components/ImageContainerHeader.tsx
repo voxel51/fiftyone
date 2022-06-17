@@ -1,22 +1,16 @@
 import React, { Suspense } from "react";
 import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
-import { atom, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import * as aggregationAtoms from "../recoil/aggregations";
-import * as selectors from "../recoil/selectors";
 import * as viewAtoms from "../recoil/view";
 
 import { GridActionsRow } from "./Actions";
-import { gridZoomRange } from "./Flashlight";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 import { useTheme } from "@fiftyone/components";
-
-export const gridZoom = atom<number>({
-  key: "gridZoom",
-  default: selectors.defaultGridZoom,
-});
+import { gridZoom, gridZoomRange } from "../recoil/grid";
 
 const SamplesHeader = styled.div`
   position: absolute;

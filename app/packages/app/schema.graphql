@@ -92,8 +92,8 @@ type EvaluationRunConfig implements RunConfig {
 }
 
 type ImageSample implements Sample {
-  height: Int!
   width: Int!
+  height: Int!
   sample: JSON!
 }
 
@@ -186,8 +186,8 @@ interface RunConfig {
 }
 
 interface Sample {
-  height: Int!
   width: Int!
+  height: Int!
   sample: JSON!
 }
 
@@ -230,8 +230,8 @@ type Target {
 }
 
 type VideoSample implements Sample {
-  height: Int!
   width: Int!
+  height: Int!
   sample: JSON!
   frameRate: Float!
 }

@@ -24,8 +24,8 @@ from fiftyone.server.scalars import JSON, JSONArray
 
 @gql.interface
 class Sample:
-    height: int
     width: int
+    height: int
     sample: JSON
 
 

@@ -6,12 +6,17 @@ import { move } from "@fiftyone/utilities";
 
 import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
-import { EntryKind, SidebarEntry, useEntries } from "./utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
-import { disabledPaths } from "./recoil";
 import { replace } from "./Entries/GroupEntries";
+import {
+  disabledPaths,
+  EntryKind,
+  SidebarEntry,
+  sidebarVisible,
+  sidebarWidth,
+  useEntries,
+} from "../../recoil/sidebar";
 
 const MARGIN = 3;
 
@@ -712,9 +717,8 @@ const InteractiveSidebar = ({
             if (entry.kind === EntryKind.GROUP) {
               group = entry.name;
             }
-            const { shadow, cursor, ...springs } = items.current[
-              key
-            ].controller.springs;
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
             const { children } = render(
               key,
               group,

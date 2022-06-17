@@ -15,7 +15,6 @@ import * as filterAtoms from "../recoil/filters";
 import * as selectors from "../recoil/selectors";
 import { State } from "../recoil/types";
 import * as viewAtoms from "../recoil/view";
-import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
 import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
@@ -38,6 +37,7 @@ import { getDatasetName } from "./generic";
 import { RouterContext } from "@fiftyone/components";
 import { RGB } from "@fiftyone/looker";
 import { DatasetQuery } from "../Root/Datasets/__generated__/DatasetQuery.graphql";
+import { resolveGroups, sidebarGroupsDefinition } from "../recoil/sidebar";
 
 export const useEventHandler = (
   target,

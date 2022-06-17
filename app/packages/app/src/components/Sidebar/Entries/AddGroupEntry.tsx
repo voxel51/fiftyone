@@ -1,35 +1,41 @@
 import { RouterContext } from "@fiftyone/components";
 import React, { useContext, useState } from "react";
 import { useRecoilCallback } from "recoil";
+import {
+  persistGroups,
+  sidebarGroupsDefinition,
+  validateGroupName,
+} from "../../../recoil/sidebar";
 
 import { State } from "../../../recoil/types";
 import * as viewAtoms from "../../../recoil/view";
 import { getDatasetName } from "../../../utils/generic";
 
-import { persistGroups, sidebarGroupsDefinition } from "../recoil";
-import { validateGroupName } from "../utils";
 import { InputDiv } from "./utils";
 
 const AddGroup = () => {
   const [value, setValue] = useState("");
   const context = useContext(RouterContext);
   const addGroup = useRecoilCallback(
-    ({ set, snapshot }) => async (newGroup: string) => {
-      const current = await snapshot.getPromise(sidebarGroupsDefinition(false));
-      if (
-        !validateGroupName(
-          current.map(([name]) => name),
-          newGroup
-        )
-      ) {
-        return;
-      }
-      const newGroups: State.SidebarGroups = [...current, [newGroup, []]];
+    ({ set, snapshot }) =>
+      async (newGroup: string) => {
+        const current = await snapshot.getPromise(
+          sidebarGroupsDefinition(false)
+        );
+        if (
+          !validateGroupName(
+            current.map(([name]) => name),
+            newGroup
+          )
+        ) {
+          return;
+        }
+        const newGroups: State.SidebarGroups = [...current, [newGroup, []]];
 
-      const view = await snapshot.getPromise(viewAtoms.view);
-      set(sidebarGroupsDefinition(false), newGroups);
-      persistGroups(getDatasetName(context), view, newGroups);
-    },
+        const view = await snapshot.getPromise(viewAtoms.view);
+        set(sidebarGroupsDefinition(false), newGroups);
+        persistGroups(getDatasetName(context), view, newGroups);
+      },
     []
   );
 

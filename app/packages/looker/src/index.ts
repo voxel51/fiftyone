@@ -81,9 +81,17 @@ import { getFrameNumber } from "./elements/util";
 import { getColor } from "./color";
 import { Events } from "./elements/base";
 
-export { zoomAspectRatio } from "./zoom";
-export { freeVideos } from "./elements/util";
 export { createColorGenerator, getRGB } from "./color";
+export { freeVideos } from "./elements/util";
+export {
+  FrameConfig,
+  FrameOptions,
+  ImageConfig,
+  ImageOptions,
+  VideoConfig,
+  VideoOptions,
+} from "./state";
+export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];

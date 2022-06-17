@@ -16,7 +16,7 @@ import {
   State,
   ItemIndexMap,
 } from "./state";
-export type { Response } from "./state";
+export type { Render, Response } from "./state";
 import { createScrollReader } from "./zooming";
 
 import {
@@ -499,13 +499,13 @@ export default class Flashlight<K> {
     };
   }
 
-  private getOnItemClick(): (event: MouseEvent, id: string) => void | null {
+  private getOnItemClick(): (id: string) => void | null {
     if (!this.state.onItemClick) {
       return null;
     }
 
-    return (event, id) =>
-      this.state.onItemClick(event, id, { ...this.state.itemIndexMap });
+    return (id) =>
+      this.state.onItemClick(this.get, id, { ...this.state.itemIndexMap });
   }
 
   private createContainer(): HTMLDivElement {
