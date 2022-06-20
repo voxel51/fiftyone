@@ -3,6 +3,75 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.3:
+
+FiftyOne 0.16.3
+---------------
+*Released June 20, 2022*
+
+App
+
+- Changed expanded view ESC sequence to reset zoom before frame scrubbing
+  `#1810 <https://github.com/voxel51/fiftyone/pull/1810>_`
+- Fixed the expanded view tooltip when a keypoint has ``nan`` point(s)
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>_`
+- Fixed initial loading of keypoint skeletons 
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>_`
+- Fixed |Classifications| rendering in the grid 
+  `#1828 <https://github.com/voxel51/fiftyone/pull/1828>_`
+- Fixed App loads old (``<=v0.14.0``) datasets that have yet to be migrated
+  exist `#1829 <https://github.com/voxel51/fiftyone/pull/1829>_`
+- Fixed spurious loading states from tagging in the expanded view
+  `#1834 <https://github.com/voxel51/fiftyone/pull/1834>_`
+- Fixed a bug that caused frame classifications to be incorrectly rendered in
+  the grid `#1877 <https://github.com/voxel51/fiftyone/pull/1877>_`
+- Fixed active (checked) field persistence in the grid when changing views
+  `#1878 <https://github.com/voxel51/fiftyone/pull/1878>_`
+- Fixed views and actions that contain ``BSON``
+  `#1879 <https://github.com/voxel51/fiftyone/pull/1879>_`
+- Fixed ``JSON`` rendering in the expanded view for nested data
+  `#1880 <https://github.com/voxel51/fiftyone/pull/1880>_`
+- Fixed selection and expansion for bad media files
+  `#1882 <https://github.com/voxel51/fiftyone/pull/1882>_`
+
+Core
+
+- Added ``skeleton`` and ``skeleton_key`` to the OpenLABEL
+  :ref:`image <OpenLABELImageDataset-import>` and
+  :ref:`video <OpenLABELVideoDataset-import>` importers
+  `#1812 <https://github.com/voxel51/fiftyone/pull/1812>_`
+- Fixed a database field issue in
+  :meth:`clone_frame_field() <fiftyone.core.dataset.Dataset.clone_frame_field>`
+  and
+  :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
+  `#1824 <https://github.com/voxel51/fiftyone/pull/1824>_`
+- Fixed using zoo models with newest version of Torchvision
+  `#1838 <https://github.com/voxel51/fiftyone/pull/1838>_`
+- Added
+  :func:`classifications_to_detections() <fiftyone.utils.labels.find_duplicates>`
+  for converting classifications to detections
+  `#1842 <https://github.com/voxel51/fiftyone/pull/1842>_`
+- Set forking as default for macOS multiprocessing
+  `#1844 <https://github.com/voxel51/fiftyone/pull/1844>_`
+- Added :attr:`dataset.tags <fiftyone.core.dataset.Dataset.tags>`
+  for organizing datasets
+  `#1845 <https://github.com/voxel51/fiftyone/pull/1845>_`
+- Added functionality to explicitly define classes for evaluation methods
+  `#1858 <https://github.com/voxel51/fiftyone/pull/1858>_`
+- Fixed ``tfrecord``` shard enumeration, i.e. zero index
+  `#1859 <https://github.com/voxel51/fiftyone/pull/1859>_`
+- Added support for label field dicts when importing labeled datasets
+  `#1864 <https://github.com/voxel51/fiftyone/pull/1864>_`
+- Removed non-XML or non-TXT files from CVAT, KITTI, CVATVideo
+  `#1884 <https://github.com/voxel51/fiftyone/pull/1884>_`
+
+Annotation
+
+- Updated CVAT task and project processing
+  `#1839 <https://github.com/voxel51/fiftyone/pull/1839>_`
+- Added the ability to upload and download group ids from CVAT
+  `#1876 <https://github.com/voxel51/fiftyone/pull/1876>_`
+
 .. _release-notes-v0.16.2:
 
 FiftyOne 0.16.2
