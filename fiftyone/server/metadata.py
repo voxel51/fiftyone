@@ -207,8 +207,6 @@ class Reader(object):
 async def get_url_image_dimensions(session, url):
     url = foc._safe_aiohttp_url(url)
     async with session.get(url) as r:
-        # aiohttp returns nothing if there's no Exception; not None
-        # so we can raise early
         r.raise_for_status()
         return await get_image_dimensions(Reader(r.content))
 

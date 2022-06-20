@@ -84,8 +84,8 @@ class Metadata(DynamicEmbeddedDocument):
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
-            size_bytes = int(r.headers["Content-Length"])
             r.raise_for_status()
+            size_bytes = int(r.headers["Content-Length"])
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
