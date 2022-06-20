@@ -296,7 +296,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
 
         if (LABEL_RENDERERS[field.embeddedDocType]) {
+          if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
+
           if (classifications) {
             pushList(
               LABEL_RENDERERS[field.embeddedDocType],
