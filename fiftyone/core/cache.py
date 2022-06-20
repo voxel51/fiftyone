@@ -730,11 +730,12 @@ async def _do_async_download_media(arg):
     aiohttp.ClientResponseError,
     factor=HTTPRetryConfig.FACTOR,
     max_tries=HTTPRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
+    giveup=lambda e: e.status not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def _do_download_file(session, url, local_path):
     async with session.get(url) as r:
+        r.raise_for_status()
         checksum = r.headers.get("Etag", None)
         if checksum:
             checksum = checksum[1:-1]
@@ -742,8 +743,6 @@ async def _do_download_file(session, url, local_path):
         async with aiofiles.open(local_path, "wb") as f:
             async for chunk, _ in r.content.iter_chunks():
                 await f.write(chunk)
-
-        r.raise_for_status()
 
     return checksum
 

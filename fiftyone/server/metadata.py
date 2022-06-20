@@ -201,12 +201,15 @@ class Reader(object):
     aiohttp.ClientResponseError,
     factor=HTTPRetryConfig.FACTOR,
     max_tries=HTTPRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
+    giveup=lambda e: e.status not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def get_url_image_dimensions(session, url):
     url = foc._safe_aiohttp_url(url)
     async with session.get(url) as r:
+        # aiohttp returns nothing if there's no Exception; not None
+        # so we can raise early
+        r.raise_for_status()
         return await get_image_dimensions(Reader(r.content))
 
 
@@ -215,11 +218,12 @@ async def get_url_image_dimensions(session, url):
     requests.exceptions.RequestException,
     factor=HTTPRetryConfig.FACTOR,
     max_tries=HTTPRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+    giveup=lambda e: e.response.status_code not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 def _get_url_image_dimensions(url):
     with requests.get(url, stream=True) as r:
+        r.raise_for_status()
         return fome.get_image_info(fou.ResponseStream(r))
 
 
@@ -228,7 +232,7 @@ def _get_url_image_dimensions(url):
     aiohttp.ClientResponseError,
     factor=HTTPRetryConfig.FACTOR,
     max_tries=HTTPRetryConfig.MAX_TRIES,
-    giveup=lambda e: e.code not in HTTPRetryConfig.RETRY_CODES,
+    giveup=lambda e: e.status not in HTTPRetryConfig.RETRY_CODES,
     logger=None,
 )
 async def get_stream_info(path, session=None):

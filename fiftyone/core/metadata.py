@@ -75,7 +75,8 @@ class Metadata(DynamicEmbeddedDocument):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -84,6 +85,7 @@ class Metadata(DynamicEmbeddedDocument):
 
         with requests.get(url, stream=True) as r:
             size_bytes = int(r.headers["Content-Length"])
+            r.raise_for_status()
 
         return cls(size_bytes=size_bytes, mime_type=mime_type)
 
@@ -148,7 +150,8 @@ class ImageMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.status_code not in HTTPRetryConfig.RETRY_CODES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
@@ -156,6 +159,7 @@ class ImageMetadata(Metadata):
             mime_type = etau.guess_mime_type(url)
 
         with requests.get(url, stream=True) as r:
+            r.raise_for_status()
             size_bytes = int(r.headers["Content-Length"])
             width, height, num_channels = get_image_info(fou.ResponseStream(r))
 
@@ -247,7 +251,8 @@ class VideoMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.error_code not in HTTPRetryConfig.RETRY_CODES,
+        giveup=lambda e: e.response.status_code
+        not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
     def _build_for_url(cls, url, mime_type=None):
