@@ -75,34 +75,34 @@ class RunConfig:
 @gql.interface
 class Run:
     key: str
-    version: str
-    timestamp: datetime
-    config: RunConfig
-    view_stages: t.List[str]
+    version: t.Optional[str]
+    timestamp: t.Optional[datetime]
+    config: t.Optional[RunConfig]
+    view_stages: t.Optional[t.List[str]]
 
 
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
-    method: str
+    method: t.Optional[str]
     patches_field: t.Optional[str]
 
 
 @gql.type
 class BrainRun(Run):
-    config: BrainRunConfig
+    config: t.Optional[BrainRunConfig]
 
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    gt_field: str
-    pred_field: str
-    method: str
+    gt_field: t.Optional[str]
+    pred_field: t.Optional[str]
+    method: t.Optional[str]
 
 
 @gql.type
 class EvaluationRun(Run):
-    config: EvaluationRunConfig
+    config: t.Optional[EvaluationRunConfig]
 
 
 @gql.type
