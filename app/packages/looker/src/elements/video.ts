@@ -566,9 +566,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.removeEventListener("loadedmetadata", load);
           };
 
+          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
-          video.src = src;
         });
       } else {
         this.element = document.createElement("video");

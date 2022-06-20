@@ -62,11 +62,10 @@ async def get_metadata(filepath, metadata=None):
     try:
         # Retrieve media metadata from disk
         metadata = await read_metadata(filepath, is_video)
-    except Exception as exc:
-
+    except Exception as e:
         # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(exc, FFprobeNotFoundException):
-            raise exc
+        if isinstance(e, FFmpegNotFoundException):
+            raise e
 
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
@@ -140,7 +139,7 @@ async def get_stream_info(path):
         a :class:`eta.core.video.VideoStreamInfo`
     """
     if _FFPROBE_BINARY_PATH is None:
-        raise FFprobeNotFoundException(
+        raise FFmpegNotFoundException(
             "You must have ffmpeg installed on your machine in order to view "
             "video datasets in the App, but we failed to find it"
         )
@@ -332,7 +331,7 @@ class MetadataException(Exception):
     pass
 
 
-class FFprobeNotFoundException(MetadataException):
-    """Exception raised when FFprobe cannot be found."""
+class FFmpegNotFoundException(RuntimeError):
+    """Exception raised when FFmpeg or FFprobe cannot be found."""
 
     pass

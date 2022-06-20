@@ -80,9 +80,9 @@ export class FrameElement extends BaseElement<FrameState, null> {
             video.removeEventListener("loadedmetadata", loaded);
           };
 
-          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", loaded);
+          video.src = src;
         });
 
         return {};
