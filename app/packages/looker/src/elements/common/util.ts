@@ -17,6 +17,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
   return (state: Readonly<State>, overlays: Readonly<Overlay<State>[]>) => {
     if (
       (!state.options.showTooltip ||
+        !state.options.showOverlays ||
         state.config.thumbnail ||
         state.disableOverlays) &&
       !nullify

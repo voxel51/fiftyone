@@ -29,7 +29,7 @@ from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.mixins import HasCollection
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -165,7 +165,7 @@ class Dataset(HasCollection):
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[JSONArray], info: Info
+        cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
@@ -175,9 +175,7 @@ class Dataset(HasCollection):
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
-            dataset.id = (
-                ObjectId()
-            )  # if it is not the root dataset, change the id (relay requires it)
+            dataset.id = view._dataset._doc.id
             dataset.media_type = d["media_type"]
             dataset.sample_fields = [
                 from_dict(SampleField, s)
@@ -214,6 +212,7 @@ class AppConfig:
     show_confidence: bool
     show_index: bool
     show_label: bool
+    show_skeletons: bool
     show_tooltip: bool
     timezone: t.Optional[str]
     use_frame_number: bool
@@ -284,7 +283,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     if view is not None and view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
-        data.id = ObjectId()
+        data.id = view._dataset._doc.id
         data.sample_fields = [
             from_dict(SampleField, s)
             for s in _flatten_fields([], d["sample_fields"])

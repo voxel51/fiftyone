@@ -8,10 +8,13 @@ type AppConfig {
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!
+  showSkeletons: Boolean!
   showTooltip: Boolean!
   timezone: String
   useFrameNumber: Boolean!
 }
+
+scalar BSONArray
 
 type BrainRun implements Run {
   key: String!
@@ -90,8 +93,6 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
-scalar JSONArray
-
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
@@ -117,7 +118,7 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    view: JSONArray!
+    view: BSONArray!
     dataset: String!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -152,7 +153,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: JSONArray): Dataset
+  dataset(name: String!, view: BSONArray): Dataset
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -196,6 +197,6 @@ type Target {
 }
 
 type ViewResponse {
-  view: JSONArray!
+  view: BSONArray!
   dataset: Dataset!
 }

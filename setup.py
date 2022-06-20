@@ -12,7 +12,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.16.2"
+VERSION = "0.16.3"
 
 
 def get_version():
@@ -153,9 +153,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

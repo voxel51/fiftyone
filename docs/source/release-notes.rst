@@ -27,7 +27,7 @@ App
 
 Core
 
-- Fixed errors related session-attached plots
+- Fixed errors related to session-attached plots
   `#1808 <https://github.com/voxel51/fiftyone/pull/1808>`_
 
 .. _release-notes-v0.16.1:
@@ -94,10 +94,10 @@ App
 Core
 
 - Fixed edge cases in
-  :meth:`SampleCollection.clone_frame_field() <fiftyone.core.collections.SampleCollection.clone_frame_field>`,
-  :meth:`SampleCollection.merge_samples() <fiftyone.core.collections.SampleCollection.merge_samples>`,
+  :meth:`clone_frame_field() <fiftyone.core.dataset.Dataset.clone_frame_field>`,
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`,
   and
-  :meth:`SampleCollection.rename_frame_field() <fiftyone.core.collections.SampleCollection.rename_frame_field>`
+  :meth:`rename_frame_field() <fiftyone.core.dataset.Dataset.rename_frame_field>`
   `#1749 <https://github.com/voxel51/fiftyone/pull/1749>`_
 - Fixed a bug that would cause non-persistent datasets to be prematurely
   deleted `#1747 <https://github.com/voxel51/fiftyone/pull/1747>`_

@@ -5,11 +5,11 @@ dacite==1.6.0
 Deprecated==1.2.11
 eventlet==0.31.0
 Flask==1.1.2
-httpx==0.7.7
+httpx==0.23.0
 hypercorn==0.13.2
 Jinja2==3.0.3
 kaleido==0.2.1
-matplotlib==3.2.1
+matplotlib==3.5.2
 mongoengine==0.20.0
 motor==2.3.0
 ndjson==0.3.1
