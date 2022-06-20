@@ -1,18 +1,17 @@
 import { Route, RouterContext } from "@fiftyone/components";
+import { toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 
 import DatasetComponent from "../../components/Dataset";
 import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
-import { useRecoilValue } from "recoil";
 import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
-import { _activeFields } from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
-import { toCamelCase } from "@fiftyone/utilities";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: BSONArray) {
@@ -99,7 +98,6 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   useEffect(() => {
     update(({ reset }) => {
       reset(filters);
-      reset(_activeFields({ modal: false }));
       reset(similarityParameters);
 
       return {
