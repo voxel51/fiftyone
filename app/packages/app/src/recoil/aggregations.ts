@@ -125,10 +125,21 @@ export const aggregations = selectorFamily<
     ({ modal, extended }) =>
     async ({ get }) => {
       let filters = null;
+      let hiddenLabels = null;
       get(atoms.refresher);
 
       if (extended && get(filterAtoms.hasFilters(modal))) {
         filters = get(modal ? filterAtoms.modalFilters : filterAtoms.filters);
+        hiddenLabels = modal
+          ? toSnakeCase(
+              Object.entries(get(atoms.hiddenLabels)).map(
+                ([labelId, data]) => ({
+                  labelId,
+                  ...data,
+                })
+              )
+            )
+          : null;
       } else if (extended) {
         return get(
           aggregations({ extended: false, modal })
@@ -149,10 +160,7 @@ export const aggregations = selectorFamily<
           sample_ids: modal ? get(atoms.modal).sample._id : null,
           dataset,
           view: get(viewAtoms.view),
-          hidden_labels:
-            modal && extended
-              ? toSnakeCase(get(selectors.hiddenLabelsArray))
-              : null,
+          hidden_labels: hiddenLabels,
         }
       )) as { aggregations: AggregationsData };
 

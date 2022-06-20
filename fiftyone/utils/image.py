@@ -328,7 +328,9 @@ def _transform_images_multi(
     stale_paths = []
 
     with fou.ProgressBar(inputs) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for sample_id, inpath, outpath, did_transform in pb(
                 pool.imap_unordered(_do_transform, inputs)
             ):

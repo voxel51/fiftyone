@@ -116,9 +116,10 @@ def add_labeled_images(
             :class:`fiftyone.core.labels.Label` instance per sample, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample, this argument specifies a string prefix to prepend to
-            each label key; the default in this case is to directly use the
-            keys of the imported label dictionaries as field names
+            per sample, this argument can be either a string prefix to prepend
+            to each label key or a dict mapping label keys to field names; the
+            default in this case is to directly use the keys of the imported
+            label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -143,7 +144,9 @@ def add_labeled_images(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
@@ -283,9 +286,10 @@ def add_labeled_videos(
             :class:`fiftyone.core.labels.Label` instance per sample/frame, this
             argument specifies the name of the field to use; the default is
             ``"ground_truth"``. If the parser produces a dictionary of labels
-            per sample/frame, this argument specifies a string prefix to
-            prepend to each label key; the default in this case is to directly
-            use the keys of the imported label dictionaries as field names
+            per sample/frame, this argument can be either a string prefix to
+            prepend to each label key or a dict mapping label keys to field
+            names; the default in this case is to directly use the keys of the
+            imported label dictionaries as field names
         tags (None): an optional tag or iterable of tags to attach to each
             sample
         expand_schema (True): whether to dynamically add new sample fields
@@ -304,7 +308,9 @@ def add_labeled_videos(
             )
         )
 
-    if label_field:
+    if isinstance(label_field, dict):
+        label_key = lambda k: label_field.get(k, k)
+    elif label_field is not None:
         label_key = lambda k: label_field + "_" + k
     else:
         label_field = "ground_truth"
