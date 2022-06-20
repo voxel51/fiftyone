@@ -9,9 +9,7 @@ import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
 import transformDataset from "./transformDataset";
-import * as atoms from "../../recoil/atoms";
 import { filters } from "../../recoil/filters";
-import { _activeFields } from "../../recoil/schema";
 import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
 
@@ -98,22 +96,16 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = useStateUpdate();
 
   useEffect(() => {
-    update(({ reset, get }) => {
+    update(({ reset }) => {
       reset(filters);
       reset(similarityParameters);
-
-      const newDataset = transformDataset(dataset);
-      const oldDataset = get(atoms.dataset);
-      if (!oldDataset || oldDataset.id !== newDataset.id) {
-        reset(_activeFields({ modal: false }));
-      }
 
       return {
         colorscale: router.state.colorscale,
         config: router.state.config
           ? (toCamelCase(router.state.config) as State.Config)
           : undefined,
-        dataset: newDataset,
+        dataset: transformDataset(dataset),
         state: router.state.state,
       };
     });
