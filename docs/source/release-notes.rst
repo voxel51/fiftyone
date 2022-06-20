@@ -19,8 +19,8 @@ App
   `#1828 <https://github.com/voxel51/fiftyone/pull/1828>_`
 - Fixed |Classifications| rendering in the grid 
   `#1828 <https://github.com/voxel51/fiftyone/pull/1828>_`
-- Fixed App loads old (``<=v0.14.0``) datasets that have yet to be migrated
-  exist `#1829 <https://github.com/voxel51/fiftyone/pull/1829>_`
+- Fixed App loads for environments with old (``<=v0.14.0``) datasets that have
+  yet to be migrated `#1829 <https://github.com/voxel51/fiftyone/pull/1829>_`
 - Fixed spurious loading states from tagging in the expanded view
   `#1834 <https://github.com/voxel51/fiftyone/pull/1834>_`
 - Fixed a bug that caused frame classifications to be incorrectly rendered in
@@ -35,7 +35,7 @@ App
   `#1882 <https://github.com/voxel51/fiftyone/pull/1882>_`
 - Fixed ``Other`` plot tab ``date`` and ``datetime`` fields with ``None```
   values `#1817 <https://github.com/voxel51/fiftyone/pull/1817>_`
-- Added more results to search seletors
+- Increased results from 10 to 200 for search selectors
   `#1875 <https://github.com/voxel51/fiftyone/pull/1875>_`
 - Fixed App issues related to dataset deletion and dataset schema changes
   `#1875 <https://github.com/voxel51/fiftyone/pull/1875>_`
@@ -51,20 +51,20 @@ Core
   and
   :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
   `#1824 <https://github.com/voxel51/fiftyone/pull/1824>_`
-- Fixed using zoo models with newest version of Torchvision
+- Fixed using zoo models with the newest version of Torchvision
   `#1838 <https://github.com/voxel51/fiftyone/pull/1838>_`
 - Added
   :func:`classifications_to_detections() <fiftyone.utils.labels.find_duplicates>`
   for converting classifications to detections
   `#1842 <https://github.com/voxel51/fiftyone/pull/1842>_`
-- Set forking as default for macOS multiprocessing
+- Set forking as the default for macOS multiprocessing
   `#1844 <https://github.com/voxel51/fiftyone/pull/1844>_`
 - Added :attr:`dataset.tags <fiftyone.core.dataset.Dataset.tags>`
   for organizing datasets
   `#1845 <https://github.com/voxel51/fiftyone/pull/1845>_`
 - Added functionality to explicitly define classes for evaluation methods
   `#1858 <https://github.com/voxel51/fiftyone/pull/1858>_`
-- Fixed ``tfrecord``` shard enumeration, i.e. zero index
+- Fixed ``tfrecord``` shard enumeration, i.e. zero indexing
   `#1859 <https://github.com/voxel51/fiftyone/pull/1859>_`
 - Added support for label field dicts when importing labeled datasets
   `#1864 <https://github.com/voxel51/fiftyone/pull/1864>_`
