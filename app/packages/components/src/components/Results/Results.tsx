@@ -3,8 +3,6 @@ import React from "react";
 
 import style from "./Results.module.css";
 
-export { container, footer } from "./Results.module.css";
-
 export interface ResultProps<T> {
   active: boolean;
   result: T;
@@ -70,25 +68,28 @@ const Results = <T extends unknown>({
   toKey = (value: T) => String(value),
 }: ResultsProps<T>) => {
   return (
-    <>
-      {results.map((result, i) => (
-        <Result
-          active={i === active}
-          component={component}
-          key={toKey(result)}
-          result={result}
-          onClick={() => onSelect(result)}
-        />
-      ))}
+    <div className={style.container}>
+      <div className={style.scrollContainer}>
+        {results.map((result, i) => (
+          <Result
+            active={i === active}
+            component={component}
+            key={toKey(result)}
+            result={result}
+            onClick={() => onSelect(result)}
+          />
+        ))}
+      </div>
       <div className={style.footer}>
         {Boolean(total) && (
           <>
-            {total.toLocaleString()} result{total > 1 ? "s" : ""}
+            {results.length} of {total.toLocaleString()} result
+            {total > 1 ? "s" : ""}
           </>
         )}
         {!Boolean(total) && <>No results</>}
       </div>
-    </>
+    </div>
   );
 };
 

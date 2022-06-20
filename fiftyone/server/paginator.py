@@ -15,6 +15,7 @@ from strawberry.arguments import UNSET
 
 import fiftyone.core.odm as foo
 
+from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, HasCollectionType
 
 
@@ -99,7 +100,7 @@ def get_paginator_resolver(
 ]:
     async def paginate(
         search: t.Optional[str],
-        first: t.Optional[int] = 10,
+        first: t.Optional[int] = LIST_LIMIT,
         after: t.Optional[Cursor] = None,
         info: Info = None,
     ):
