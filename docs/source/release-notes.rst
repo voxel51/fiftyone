@@ -33,6 +33,12 @@ App
   `#1880 <https://github.com/voxel51/fiftyone/pull/1880>_`
 - Fixed selection and expansion for bad media files
   `#1882 <https://github.com/voxel51/fiftyone/pull/1882>_`
+- Fixed ``Other`` plot tab ``date`` and ``datetime`` fields with ``None```
+  values `#1817 <https://github.com/voxel51/fiftyone/pull/1817>_`
+- Added more results to search seletors
+  `#1875 <https://github.com/voxel51/fiftyone/pull/1875>_`
+- Fixed App issues related to dataset deletion and dataset schema changes
+  `#1875 <https://github.com/voxel51/fiftyone/pull/1875>_`
 
 Core
 
