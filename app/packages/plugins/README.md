@@ -98,19 +98,19 @@ import AwesomeMap from "great-react-mapping-library";
 
 function CustomPlot() {
   // example making a custom graphql query
-  const [points, loading] = fop
-    .useQuery
-    // tbd
-    ();
+  const [lasso, setLasso] = React.useState(null);
+  const [points, loading] = fop.useQuery(`
+    # graphql to load only points for rendering
+  `);
   if (loading) return <Spinner />;
 
-  return <AwesomeMap geoPoints={points} />;
+  return <AwesomeMap geoPoints={points} onLasso={(s) => setLasso(s)} />;
 }
 
 fop.registerComponent({
   // component to delegate to
   copmponent: CustomPlot,
-  // tell fiftyone you want to provide a Visualizer
+  // tell fiftyone you want to provide a custom Plot
   type: PluginComponentTypes.Plot,
   // used for the plot selector button
   label: "Map",
