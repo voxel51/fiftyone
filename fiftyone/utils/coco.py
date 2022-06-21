@@ -46,9 +46,9 @@ def add_coco_labels(
     sample_collection,
     label_field,
     labels_or_path,
+    classes,
     label_type="detections",
     coco_id_field=None,
-    classes=None,
     extra_attrs=True,
     use_polylines=False,
     tolerance=None,
@@ -129,6 +129,7 @@ def add_coco_labels(
             will be created if necessary
         labels_or_path: a list of COCO annotations or the path to a JSON file
             containing such data on disk
+        classes: the list of class label strings
         label_type ("detections"): the type of labels to load. Supported values
             are ``("detections", "segmentations", "keypoints")``
         coco_id_field (None): this parameter determines how to map the
@@ -141,9 +142,6 @@ def add_coco_labels(
             -   the name of a field of ``sample_collection`` containing the
                 COCO IDs for the samples that correspond to the ``image_id`` of
                 the predictions
-        classes (None): the list of class label strings. If not provided, these
-            must be available from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes`
         extra_attrs (True): whether to load extra annotation attributes onto
             the imported labels. Supported values are:
 
@@ -156,14 +154,6 @@ def add_coco_labels(
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
     """
-    if classes is None:
-        classes = sample_collection.get_classes(label_field)
-
-    if not classes:
-        raise ValueError(
-            "You must provide `classes` in order to load COCO labels"
-        )
-
     if etau.is_str(labels_or_path):
         labels = fos.read_json(labels_or_path)
         if isinstance(labels, dict):
@@ -645,9 +635,7 @@ class COCODetectionDatasetExporter(
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         info (None): a dict of info as returned by
             :meth:`load_coco_detection_annotations` to include in the exported
             JSON. If not provided, this info will be extracted when
@@ -708,12 +696,13 @@ class COCODetectionDatasetExporter(
         self.num_decimals = num_decimals
         self.tolerance = tolerance
 
-        self._labels_map_rev = None
         self._image_id = None
         self._anno_id = None
         self._images = None
         self._annotations = None
         self._classes = None
+        self._dynamic_classes = classes is None
+        self._labels_map_rev = None
         self._has_labels = None
         self._media_exporter = None
 
@@ -730,7 +719,6 @@ class COCODetectionDatasetExporter(
         self._anno_id = 0
         self._images = []
         self._annotations = []
-        self._classes = set()
         self._has_labels = False
 
         self._parse_classes()
@@ -743,17 +731,6 @@ class COCODetectionDatasetExporter(
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-
         if self.info is None:
             self.info = sample_collection.info
 
@@ -793,7 +770,10 @@ class COCODetectionDatasetExporter(
         for label in labels:
             _label = label.label
 
-            if self._labels_map_rev is not None:
+            if self._dynamic_classes:
+                category_id = _label  # will be converted to int later
+                self._classes.add(_label)
+            else:
                 if _label not in self._labels_map_rev:
                     msg = (
                         "Ignoring object with label '%s' not in provided "
@@ -803,11 +783,8 @@ class COCODetectionDatasetExporter(
                     continue
 
                 category_id = self._labels_map_rev[_label]
-            else:
-                category_id = _label  # will be converted to int later
 
             self._anno_id += 1
-            self._classes.add(_label)
 
             obj = COCOObject.from_label(
                 label,
@@ -824,13 +801,13 @@ class COCODetectionDatasetExporter(
             self._annotations.append(obj.to_anno_dict())
 
     def close(self, *args):
-        if self.classes is not None:
-            classes = self.classes
-        else:
+        if self._dynamic_classes:
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
             for anno in self._annotations:
                 anno["category_id"] = labels_map_rev[anno["category_id"]]
+        else:
+            classes = self.classes
 
         date_created = datetime.now().replace(microsecond=0).isoformat()
         info = {
@@ -873,7 +850,9 @@ class COCODetectionDatasetExporter(
         self._media_exporter.close()
 
     def _parse_classes(self):
-        if self.classes is not None:
+        if self._dynamic_classes:
+            self._classes = set()
+        else:
             self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 

@@ -39,6 +39,8 @@ interface TagData {
   value: string;
 }
 
+const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
+
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private colorByValue: boolean;
@@ -261,7 +263,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path
         );
 
-        const pushList = (ftype: string, value) => {
+        if (field === null) {
+          continue;
+        }
+
+        const pushList = (renderer, value) => {
           let count = 0;
           let rest = 0;
           for (
@@ -269,9 +275,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
             index < (value as Array<unknown>).length;
             index++
           ) {
-            if (PRIMITIVE_RENDERERS[ftype](path, value[index]) && count < 3) {
+            const result = renderer(path, value[index]);
+            if (result && count < 3) {
               count++;
-              elements.push(PRIMITIVE_RENDERERS[ftype](path, value[index]));
+              elements.push(result);
             } else {
               rest++;
             }
@@ -289,19 +296,29 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
 
         if (LABEL_RENDERERS[field.embeddedDocType]) {
-          elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+          if (path.startsWith("frames.")) continue;
+          const classifications = LABEL_LISTS.includes(field.embeddedDocType);
+
+          if (classifications) {
+            pushList(
+              LABEL_RENDERERS[field.embeddedDocType],
+              value.classifications
+            );
+          } else {
+            elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
+          }
           continue;
         }
 
         if (PRIMITIVE_RENDERERS[field.ftype]) {
           list
-            ? pushList(field.ftype, value)
+            ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
             : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
           continue;
         }
 
         if (field.ftype === LIST_FIELD && PRIMITIVE_RENDERERS[field.subfield]) {
-          pushList(field.subfield, value);
+          pushList(PRIMITIVE_RENDERERS[field.subfield], value);
           continue;
         }
       }
@@ -366,13 +383,17 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field, unknown, boolean] => {
+): [Field | null, unknown, boolean] => {
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
 
   for (const key of path.split(".")) {
     field = schema[key];
+
+    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+      return [null, null, false];
+    }
 
     if (![undefined, null].includes(value)) {
       value = unwind(field.name !== "id" ? field.dbField || key : "id", value);

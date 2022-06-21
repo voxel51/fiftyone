@@ -120,9 +120,10 @@ export const targets = selector({
 
 export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
   {
-    key: "skeleton",
+    key: "getSkeleton",
     get: ({ get }) => {
       const dataset = get(atoms.dataset);
+
       const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
         acc[name] = rest;
         return acc;
@@ -214,18 +215,12 @@ export const hiddenLabelsArray = selector({
       ...data,
     }));
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 

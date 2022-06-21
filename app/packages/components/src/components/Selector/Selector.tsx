@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import Input from "react-input-autosize";
 import { useLayer } from "react-laag";
 
-import Results, { container, footer } from "../Results/Results";
+import Results from "../Results/Results";
 
 import style from "./Selector.module.css";
 
@@ -176,7 +176,7 @@ const Selector = <T extends unknown>({
         editing && (
           <AnimatePresence>
             <motion.div
-              className={container}
+              className={style.resultsContainer}
               initial={{ opacity: 0, height: 0 }}
               animate={{
                 opacity: 1,
@@ -192,7 +192,9 @@ const Selector = <T extends unknown>({
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense fallback={<div className={footer}>Loading...</div>}>
+              <Suspense
+                fallback={<div className={style.loadingFooter}>Loading...</div>}
+              >
                 <SelectorResults
                   active={active}
                   search={search}
