@@ -198,7 +198,9 @@ def _download_images(inputs):
 
 def _download_images_multi(inputs, num_workers):
     with fou.ProgressBar(inputs) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for _ in pb(pool.imap_unordered(_download_image, inputs)):
                 pass
 

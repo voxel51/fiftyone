@@ -78,7 +78,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.8,<0.9",
     "fiftyone-db>=0.3,<0.4",
-    "voxel51-eta>=0.7.0,<0.8",
+    "voxel51-eta>=0.7.1,<0.8",
 ]
 
 
@@ -161,9 +161,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

@@ -165,7 +165,11 @@ class _SampleMixin(object):
         )
 
     def add_labels(
-        self, labels, label_field, confidence_thresh=None, expand_schema=True
+        self,
+        labels,
+        label_field=None,
+        confidence_thresh=None,
+        expand_schema=True,
     ):
         """Adds the given labels to the sample.
 
@@ -178,7 +182,7 @@ class _SampleMixin(object):
             instances. In this case, the labels are added as follows::
 
                 for key, value in labels.items():
-                    sample[label_field + "_" + key] = value
+                    sample[label_key(key)] = value
 
         -   A dict mapping frame numbers to :class:`fiftyone.core.labels.Label`
             instances. In this case, the provided labels are interpreted as
@@ -199,24 +203,37 @@ class _SampleMixin(object):
                 sample.frames.merge(
                     {
                         frame_number: {
-                            label_field + "_" + name: label
-                            for name, label in frame_dict.items()
+                            label_key(key): value
+                            for key, value in frame_dict.items()
                         }
                         for frame_number, frame_dict in labels.items()
                     }
                 )
 
+        In the above, the ``label_key`` function maps label dict keys to field
+        names, and is defined from ``label_field`` as follows::
+
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_key = lambda k: k
+
         Args:
             labels: a :class:`fiftyone.core.labels.Label` or dict of labels per
                 the description above
-            label_field: the sample field or prefix in which to save the labels
+            label_field (None): the sample field, prefix, or dict defining in
+                which field(s) to save the labels
             confidence_thresh (None): an optional confidence threshold to apply
                 to any applicable labels before saving them
             expand_schema (True): whether to dynamically add new fields
                 encountered to the dataset schema. If False, an error is raised
                 if any fields are not in the dataset schema
         """
-        if label_field:
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
             label_key = lambda k: label_field + "_" + k
         else:
             label_key = lambda k: k
@@ -242,6 +259,11 @@ class _SampleMixin(object):
                     },
                     expand_schema=expand_schema,
                 )
+            elif label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided in order to add labels "
+                    "to a single frame-level field"
+                )
             else:
                 # Single frame-level field
                 self.frames.merge(
@@ -259,10 +281,17 @@ class _SampleMixin(object):
                 expand_schema=expand_schema,
             )
         elif labels is not None:
+            if label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided in order to add labels "
+                    "to a single sample field"
+                )
+
             # Single sample-level field
             self.set_field(label_field, labels, create=expand_schema)
 
-        self.save()
+        if self._in_db:
+            self.save()
 
     def merge(
         self,
