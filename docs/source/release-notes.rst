@@ -44,7 +44,7 @@ App
   `#1880 <https://github.com/voxel51/fiftyone/pull/1880>`_
 - Fixed selection and expansion for bad media files
   `#1882 <https://github.com/voxel51/fiftyone/pull/1882>`_
-- Fixed ``Other`` plot tab ``date`` and ``datetime`` fields with ``None```
+- Fixed ``Other`` plot tab ``date`` and ``datetime`` fields with ``None``
   values `#1817 <https://github.com/voxel51/fiftyone/pull/1817>`_
 - Increased results from 10 to 200 for search selectors
   `#1875 <https://github.com/voxel51/fiftyone/pull/1875>`_
