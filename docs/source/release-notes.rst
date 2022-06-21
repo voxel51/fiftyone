@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.4:
+
+FiftyOne 0.16.4
+---------------
+*Released June 21, 2022*
+
+App
+
+- Fixed frame fields from being omitted in the sidebar
+  `#1899 <https://github.com/voxel51/fiftyone/pull/1899>`_
+
 .. _release-notes-v0.16.3:
 
 FiftyOne 0.16.3
