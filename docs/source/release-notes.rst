@@ -22,6 +22,8 @@ FiftyOne 0.16.3
 
 App
 
+- Added hotkey to hide overlays while pressed
+  `#1779 <https://github.com/voxel51/fiftyone/pull/1779>`_
 - Changed expanded view ESC sequence to reset zoom before frame scrubbing
   `#1810 <https://github.com/voxel51/fiftyone/pull/1810>`_
 - Fixed the expanded view tooltip when a keypoint has ``nan`` point(s)
