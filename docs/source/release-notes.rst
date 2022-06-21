@@ -54,7 +54,7 @@ Core
 - Fixed using zoo models with the newest version of Torchvision
   `#1838 <https://github.com/voxel51/fiftyone/pull/1838>`_
 - Added
-  :func:`classifications_to_detections() <fiftyone.utils.labels.find_duplicates>`
+  :func:`classifications_to_detections() <fiftyone.utils.labels.classifications_to_detections>`
   for converting classifications to detections
   `#1842 <https://github.com/voxel51/fiftyone/pull/1842>`_
 - Set forking as the default for macOS multiprocessing
@@ -64,7 +64,7 @@ Core
   `#1845 <https://github.com/voxel51/fiftyone/pull/1845>`_
 - Added functionality to explicitly define classes for evaluation methods
   `#1858 <https://github.com/voxel51/fiftyone/pull/1858>`_
-- Fixed ``tfrecord``` shard enumeration, i.e. zero indexing
+- Fixed ``tfrecord`` shard enumeration, i.e. zero indexing
   `#1859 <https://github.com/voxel51/fiftyone/pull/1859>`_
 - Added support for label field dicts when importing labeled datasets
   `#1864 <https://github.com/voxel51/fiftyone/pull/1864>`_
