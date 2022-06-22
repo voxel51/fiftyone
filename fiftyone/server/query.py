@@ -22,6 +22,7 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
@@ -191,7 +192,7 @@ class Dataset(HasCollection):
 
         # old dataset docs, e.g. from imports have frame fields attached even for
         # image datasets. we need to remove them
-        if dataset.media_type != MediaType.video:
+        if dataset.media_type != fom.VIDEO:
             dataset.frame_fields = []
 
         return dataset
@@ -304,7 +305,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
 
     # old dataset docs, e.g. from imports have frame fields attached even for
     # image datasets. we need to remove them
-    if data.media_type != MediaType.video:
+    if dataset.media_type != fom.VIDEO:
         data.frame_fields = []
 
     return asdict(data)
