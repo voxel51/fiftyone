@@ -14,7 +14,7 @@ import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
 
 const Query = graphql`
-  query DatasetQuery($name: String!, $view: BSONArray) {
+  query DatasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
       name
@@ -101,12 +101,12 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
       reset(similarityParameters);
 
       return {
-        colorscale: router.state.colorscale,
-        config: router.state.config
+        colorscale: router.state ? router.state.colorscale : undefined,
+        config: router.state
           ? (toCamelCase(router.state.config) as State.Config)
           : undefined,
         dataset: transformDataset(dataset),
-        state: router.state.state,
+        state: router.state ? router?.state.state : undefined,
       };
     });
   }, [dataset, prepared, router]);
