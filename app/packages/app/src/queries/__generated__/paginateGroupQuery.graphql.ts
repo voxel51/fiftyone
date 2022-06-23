@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cb08fac3efe674e616d16c4686012bdb>>
+ * @generated SignedSource<<a83d8ac363f3912a192844025a6b0f57>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -227,16 +227,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "2a3aa96dc6b18cfcb032857f21658aea",
+      cacheID: "92d31dbe933787dfa614b7acfb25676b",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: JSONArray!\n  $count: Int = 20\n  $cursor: Int = 0\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: Int = 0\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "50a9ebb50d763dc7454bfe1013b34d36";
+(node as any).hash = "f020e70930d38442f60985764546a2fc";
 
 export default node;

@@ -43,6 +43,7 @@ def get_view(
         similarity (None): sort by similarity paramters
     """
     view = fod.load_dataset(dataset_name)
+    view.reload()
 
     if stages:
         view = fov.DatasetView._build(view, stages)

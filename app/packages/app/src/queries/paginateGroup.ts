@@ -14,7 +14,7 @@ export const paginateGroupQueryRef = atom<
 export default graphql`
   query paginateGroupQuery(
     $dataset: String!
-    $view: JSONArray!
+    $view: BSONArray!
     $count: Int = 20
     $cursor: Int = 0
   ) {

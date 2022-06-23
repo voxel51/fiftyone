@@ -44,8 +44,9 @@ interface FlashlightLookerProps {
 const deferrer =
   (initialized: MutableRefObject<boolean>) =>
   (fn: (...args: any[]) => void) =>
-  (...args: any[]) =>
-    initialized.current && fn(...args);
+  (...args: any[]): void => {
+    if (initialized.current) fn(...args);
+  };
 
 export const FlashlightLooker: React.FC<FlashlightLookerProps> = ({
   lookerSettings,
@@ -64,16 +65,17 @@ export const FlashlightLooker: React.FC<FlashlightLookerProps> = ({
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold },
       onItemClick: setSample,
-      onResize: (...args) => onResize.current && onResize.current(...args),
+      onResize: (...args) =>
+        onResize.current ? onResize.current(...args) : {},
       onItemResize: (id, dimensions) =>
-        store.lookers.has(id) && store.lookers.get(id).resize(dimensions),
+        store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
       get: async (page) => {},
       render: (id, element, dimensions, soft, hide) => {
         const result = store.samples.get(id);
 
         if (store.lookers.has(id)) {
           const looker = store.lookers.get(id);
-          hide ? looker.disable() : looker.attach(element, dimensions);
+          hide ? looker?.disable() : looker?.attach(element, dimensions);
 
           return;
         }
@@ -100,10 +102,8 @@ export const FlashlightLooker: React.FC<FlashlightLookerProps> = ({
 
   useLayoutEffect(
     deferred(() =>
-      flashlight.updateItems(
-        (sampleId) =>
-          store.lookers.has(sampleId) &&
-          store.lookers.get(sampleId).updateOptions(lookerSettings.options)
+      flashlight.updateItems((sampleId) =>
+        store.lookers.get(sampleId)?.updateOptions(lookerSettings.options)
       )
     ),
     [lookerSettings.options]

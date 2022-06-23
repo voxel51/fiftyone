@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3bcfcc22ec532c25fadb0075182d3f40>>
+ * @generated SignedSource<<dbe638a14ac18e142314caa6ecb872bc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -219,12 +219,12 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "bcbb582d7ab784dc89ec0d2b766ee5b2",
+      cacheID: "79460049e45c229d9bb02b86e0fd9c15",
       id: null,
       metadata: {},
       name: "paginateGroupPageQuery",
       operationKind: "query",
-      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: Int\n  $dataset: String!\n  $view: JSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: Int\n  $dataset: String!\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();

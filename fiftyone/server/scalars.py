@@ -14,7 +14,13 @@ from fiftyone.core.json import stringify
 
 
 BSON = gql.scalar(
-    t.NewType("JSON", object),
+    t.NewType("BSON", object),
+    serialize=lambda v: json.loads(json_util.dumps(v)),
+    parse_value=lambda v: json_util.loads(json.dumps(v)),
+)
+
+BSONArray = gql.scalar(
+    t.NewType("BSONArray", object),
     serialize=lambda v: json.loads(json_util.dumps(v)),
     parse_value=lambda v: json_util.loads(json.dumps(v)),
 )

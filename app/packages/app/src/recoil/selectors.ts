@@ -207,18 +207,12 @@ export const hiddenLabelsArray = selector({
       ...data,
     }));
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 

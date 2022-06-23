@@ -30,7 +30,7 @@ from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import ImageSample, VideoSample, paginate_samples
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -70,34 +70,34 @@ class RunConfig:
 @gql.interface
 class Run:
     key: str
-    version: str
-    timestamp: datetime
-    config: RunConfig
-    view_stages: t.List[str]
+    version: t.Optional[str]
+    timestamp: t.Optional[datetime]
+    config: t.Optional[RunConfig]
+    view_stages: t.Optional[t.List[str]]
 
 
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
-    method: str
+    method: t.Optional[str]
     patches_field: t.Optional[str]
 
 
 @gql.type
 class BrainRun(Run):
-    config: BrainRunConfig
+    config: t.Optional[BrainRunConfig]
 
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    gt_field: str
-    pred_field: str
-    method: str
+    gt_field: t.Optional[str]
+    pred_field: t.Optional[str]
+    method: t.Optional[str]
 
 
 @gql.type
 class EvaluationRun(Run):
-    config: EvaluationRunConfig
+    config: t.Optional[EvaluationRunConfig]
 
 
 @gql.type
@@ -156,19 +156,18 @@ class Dataset:
 
     @classmethod
     async def resolver(
-        cls, name: str, view: t.Optional[JSONArray], info: Info
+        cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
             return dataset
 
         ds = fo.load_dataset(name)
+        ds.reload()
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
-            dataset.id = (
-                ObjectId()
-            )  # if it is not the root dataset, change the id (relay requires it)
+            dataset.id = view._dataset._doc.id
             dataset.media_type = d["media_type"]
             dataset.sample_fields = [
                 from_dict(SampleField, s)
@@ -180,6 +179,11 @@ class Dataset:
             ]
 
             dataset.view_cls = etau.get_class_name(view)
+
+        # old dataset docs, e.g. from imports have frame fields attached even for
+        # image datasets. we need to remove them
+        if dataset.media_type != MediaType.video:
+            dataset.frame_fields = []
 
         return dataset
 
@@ -251,7 +255,7 @@ class Query:
     async def samples(
         self,
         dataset: str,
-        view: JSONArray,
+        view: BSONArray,
         first: t.Optional[int] = 20,
         after: t.Optional[int] = 0,
     ) -> Connection[gql.union("SampleItem", types=(ImageSample, VideoSample))]:
@@ -286,7 +290,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     if view is not None and view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
-        data.id = ObjectId()
+        data.id = view._dataset._doc.id
         data.sample_fields = [
             from_dict(SampleField, s)
             for s in _flatten_fields([], d["sample_fields"])
@@ -297,6 +301,11 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
         ]
 
         data.view_cls = etau.get_class_name(view)
+
+    # old dataset docs, e.g. from imports have frame fields attached even for
+    # image datasets. we need to remove them
+    if data.media_type != MediaType.video:
+        data.frame_fields = []
 
     return asdict(data)
 

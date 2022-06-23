@@ -1429,9 +1429,15 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   }
 
   const result = {};
-  for (let fieldName in schema) {
-    const { dbField, ftype } = schema[fieldName];
-    const key = dbField || fieldName;
+  for (let fieldName in value) {
+    const field = schema[fieldName];
+    if (!field) {
+      result[fieldName] = value[fieldName];
+      continue;
+    }
+
+    const { dbField, ftype } = field;
+    const key = fieldName === "id" ? "id" : dbField || fieldName;
 
     if (value[key] === undefined) continue;
 

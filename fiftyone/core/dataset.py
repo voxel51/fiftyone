@@ -453,6 +453,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise
 
     @property
+    def tags(self):
+        """A list of tags given to the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add some tags
+            dataset.tags = ["test", "projectA"]
+
+            # Edit the tags
+            dataset.tags.pop()
+            dataset.tags.append("projectB")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.tags
+
+    @tags.setter
+    def tags(self, value):
+        _value = self._doc.tags
+        try:
+            self._doc.tags = value
+            self._doc.save()
+        except:
+            self._doc.tags = _value
+            raise
+
+    @property
     def info(self):
         """A user-facing dictionary of information about the dataset.
 
@@ -676,13 +706,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             ("Name:", self.name),
             ("Media type:", self.media_type),
-            ("Num samples:", aggs[0]),
+            ("Num samples:", self.count()),
             ("Persistent:", self.persistent),
-            ("Tags:", aggs[1]),
+            ("Tags:", self.tags),
         ]
 
         elements = fou.justify_headings(elements)
@@ -2531,10 +2560,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2688,10 +2718,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -2841,10 +2872,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -2991,10 +3023,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -3086,10 +3119,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -3174,10 +3208,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             key_field ("filepath"): the sample field to use to decide whether
@@ -3293,10 +3328,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -3433,10 +3468,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             expand_schema (True): whether to dynamically add new sample fields
@@ -3524,10 +3559,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the parser produces a
-                dictionary of labels per sample/frame, this argument specifies
-                a string prefix to prepend to each label key; the default in
-                this case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample/frame, this argument can be
+                either a string prefix to prepend to each label key or a dict
+                mapping label keys to field names; the default in this case is
+                to directly use the keys of the imported label dictionaries as
+                field names
             label_field ("ground_truth"): the name (or root name) of the
                 frame field(s) to use for the labels
             tags (None): an optional tag or iterable of tags to attach to each
@@ -3757,10 +3793,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             **kwargs: optional keyword arguments to pass to the constructor of
@@ -3865,10 +3902,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             cleanup (True): whether to delete the archive after extracting it
@@ -3917,10 +3955,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the importer produces a
-                dictionary of labels per sample, this argument specifies a
-                string prefix to prepend to each label key; the default in this
-                case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample, this argument can be either a
+                string prefix to prepend to each label key or a dict mapping
+                label keys to field names; the default in this case is to
+                directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -3999,10 +4038,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample, this
                 argument specifies the name of the field to use; the default is
                 ``"ground_truth"``. If the parser produces a dictionary of
-                labels per sample, this argument specifies a string prefix to
-                prepend to each label key; the default in this case is to
-                directly use the keys of the imported label dictionaries as
-                field names
+                labels per sample, this argument can be either a string prefix
+                to prepend to each label key or a dict mapping label keys to
+                field names; the default in this case is to directly use the
+                keys of the imported label dictionaries as field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -4121,10 +4160,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.labels.Label` instance per sample/frame,
                 this argument specifies the name of the field to use; the
                 default is ``"ground_truth"``. If the parser produces a
-                dictionary of labels per sample/frame, this argument specifies
-                a string prefix to prepend to each label key; the default in
-                this case is to directly use the keys of the imported label
-                dictionaries as field names
+                dictionary of labels per sample/frame, this argument can be
+                either a string prefix to prepend to each label key or a dict
+                mapping label keys to field names; the default in this case is
+                to directly use the keys of the imported label dictionaries as
+                field names
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
 
@@ -4650,6 +4690,7 @@ def _list_dataset_info():
                 "version": dataset.version,
                 "persistent": dataset.persistent,
                 "media_type": dataset.media_type,
+                "tags": dataset.tags,
                 "num_samples": num_samples,
             }
         except:
@@ -4662,6 +4703,7 @@ def _list_dataset_info():
                 "version": None,
                 "persistent": None,
                 "media_type": None,
+                "tags": None,
                 "num_samples": None,
             }
 

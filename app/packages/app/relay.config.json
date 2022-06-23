@@ -4,6 +4,8 @@
     "eagerEsModules": true,
     "language": "typescript",
     "customScalars": {
+        "BSON": "object",
+        "BSONArray": "Array",
         "Date": "string",
         "DateTime": "string",
         "JSON": "object",

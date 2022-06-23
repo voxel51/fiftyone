@@ -67,6 +67,44 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_dataset_tags(self):
+        dataset_name = self.test_dataset_tags.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertEqual(dataset.tags, [])
+
+        dataset.tags = ["cat", "dog"]
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset2 = fo.load_dataset(dataset_name)
+
+        self.assertEqual(dataset2.tags, ["cat", "dog"])
+
+        # save() must be called to persist in-place edits
+        dataset2.tags.append("rabbit")
+
+        del dataset2
+        gc.collect()  # force garbage collection
+
+        dataset3 = fo.load_dataset(dataset_name)
+
+        self.assertEqual(dataset3.tags, ["cat", "dog"])
+
+        # This will persist the edits
+        dataset3.tags.append("rabbit")
+        dataset3.save()
+
+        del dataset3
+        gc.collect()  # force garbage collection
+
+        dataset4 = fo.load_dataset(dataset_name)
+
+        self.assertEqual(dataset4.tags, ["cat", "dog", "rabbit"])
+
+    @drop_datasets
     def test_dataset_info(self):
         dataset_name = self.test_dataset_info.__name__
 

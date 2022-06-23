@@ -36,8 +36,8 @@ import { transformDataset } from "../Root/Datasets";
 import { getDatasetName } from "./generic";
 import { RouterContext } from "@fiftyone/components";
 import { RGB } from "@fiftyone/looker";
-import { DatasetQuery } from "../Root/Datasets/__generated__/DatasetQuery.graphql";
 import { resolveGroups, sidebarGroupsDefinition } from "../recoil/sidebar";
+import { _activeFields } from "../recoil/schema";
 
 export const useEventHandler = (
   target,
@@ -310,7 +310,7 @@ export const useStateUpdate = () => {
       const { colorscale, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
-      const { get, set } = t;
+      const { get, reset, set } = t;
 
       if (state) {
         const view = get(viewAtoms.view);
@@ -351,14 +351,19 @@ export const useStateUpdate = () => {
         dataset.evaluations = Object.values(dataset.evaluations || {});
 
         const groups = resolveGroups(dataset);
-        const current = get(sidebarGroupsDefinition(false));
+        const currentSidebar = get(sidebarGroupsDefinition(false));
 
-        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
           set(
             aggregationAtoms.aggregationsTick,
             get(aggregationAtoms.aggregationsTick) + 1
           );
+        }
+
+        const previousDataset = get(atoms.dataset);
+        if (!previousDataset || previousDataset.id !== dataset.id) {
+          reset(_activeFields({ modal: false }));
         }
 
         set(atoms.dataset, dataset);
