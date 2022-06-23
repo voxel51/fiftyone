@@ -414,7 +414,6 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
         set(selectors.anyTagging, false);
 
         refreshers.forEach((r) => r());
-        set(atoms.tagging({ modal, labels: targetLabels }), false);
       },
     [modal, targetLabels, lookerRef]
   );

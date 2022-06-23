@@ -533,7 +533,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
-          const error = (event) => {
+          const error = () => {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
