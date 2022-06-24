@@ -1,5 +1,5 @@
 import { Route, RouterContext } from "@fiftyone/components";
-import { toCamelCase } from "@fiftyone/utilities";
+import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
@@ -113,6 +113,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
 
   if (!name) {
     return null;
+  }
+
+  if (!dataset) {
+    throw new NotFoundError(`/datasets/${name}`);
   }
 
   return <DatasetComponent />;
