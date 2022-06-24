@@ -101,12 +101,17 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
       reset(similarityParameters);
 
       return {
-        colorscale: router.state ? router.state.colorscale : undefined,
-        config: router.state
-          ? (toCamelCase(router.state.config) as State.Config)
-          : undefined,
+        colorscale:
+          router.state && router.state.colorscale
+            ? router.state.colorscale
+            : undefined,
+        config:
+          router.state && router.state.config
+            ? (toCamelCase(router.state.config) as State.Config)
+            : undefined,
         dataset: transformDataset(dataset),
-        state: router.state ? router?.state.state : undefined,
+        state:
+          router.state && router.state.state ? router?.state.state : undefined,
       };
     });
   }, [dataset, prepared, router]);
