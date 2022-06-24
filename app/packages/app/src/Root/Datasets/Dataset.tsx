@@ -12,6 +12,7 @@ import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
 import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
+import { getDatasetName } from "../../utils/generic";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -92,6 +93,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
   const router = useContext(RouterContext);
   const name = useRecoilValue(datasetName);
+  if (!dataset) {
+    throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
+  }
 
   const update = useStateUpdate();
 
@@ -99,7 +103,6 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     update(({ reset }) => {
       reset(filters);
       reset(similarityParameters);
-
       return {
         colorscale:
           router.state && router.state.colorscale
@@ -114,14 +117,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
           router.state && router.state.state ? router?.state.state : undefined,
       };
     });
-  }, [dataset, prepared, router]);
+  }, [dataset, router]);
 
   if (!name) {
     return null;
-  }
-
-  if (!dataset) {
-    throw new NotFoundError(`/datasets/${name}`);
   }
 
   return <DatasetComponent />;
