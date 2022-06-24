@@ -44,8 +44,8 @@ export const Result = <T extends unknown>({
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
-    <div onClick={onClick}>
-      <Component value={result} className={classNames(...classes)} />
+    <div onClick={onClick} className={classNames(...classes)}>
+      <Component value={result} className={style.resultComponent} />
     </div>
   );
 };

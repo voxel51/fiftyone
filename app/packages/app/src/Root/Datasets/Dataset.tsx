@@ -1,5 +1,5 @@
 import { Route, RouterContext } from "@fiftyone/components";
-import { toCamelCase } from "@fiftyone/utilities";
+import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
@@ -101,18 +101,27 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
       reset(similarityParameters);
 
       return {
-        colorscale: router.state ? router.state.colorscale : undefined,
-        config: router.state
-          ? (toCamelCase(router.state.config) as State.Config)
-          : undefined,
+        colorscale:
+          router.state && router.state.colorscale
+            ? router.state.colorscale
+            : undefined,
+        config:
+          router.state && router.state.config
+            ? (toCamelCase(router.state.config) as State.Config)
+            : undefined,
         dataset: transformDataset(dataset),
-        state: router.state ? router?.state.state : undefined,
+        state:
+          router.state && router.state.state ? router?.state.state : undefined,
       };
     });
   }, [dataset, prepared, router]);
 
   if (!name) {
     return null;
+  }
+
+  if (!dataset) {
+    throw new NotFoundError(`/datasets/${name}`);
   }
 
   return <DatasetComponent />;

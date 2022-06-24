@@ -3,6 +3,19 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.16.5:
+
+FiftyOne 0.16.5
+---------------
+*Released June 24, 2022*
+
+App
+
+- Fixed dataset selection searches
+  `#1907 <https://github.com/voxel51/fiftyone/pull/1907>`_
+- Fixed dataset results for long dataset names
+  `#1907 <https://github.com/voxel51/fiftyone/pull/1907>`_
+
 .. _release-notes-v0.16.4:
 
 FiftyOne 0.16.4
