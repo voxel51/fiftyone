@@ -72,8 +72,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "srcQuery",
       operationKind: "query",
-      text:
-        "query srcQuery {\n  teamsConfig {\n    clientId\n    organization\n  }\n}\n",
+      text: "query srcQuery {\n  teamsConfig {\n    clientId\n    organization\n  }\n}\n",
     },
   };
 })();

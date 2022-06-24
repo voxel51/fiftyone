@@ -145,7 +145,7 @@ type PageInfo {
 type Query {
   datasets(
     search: String
-    first: Int = 10
+    first: Int = 200
     after: String = null
   ): DatasetConnection!
   colorscale: [[Int!]!]

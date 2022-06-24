@@ -168,6 +168,7 @@ class Dataset(HasCollection):
     async def resolver(
         cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
+        assert info is not None
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
             return dataset

@@ -8,23 +8,26 @@ type AppConfig {
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!
+  showSkeletons: Boolean!
   showTooltip: Boolean!
   timezone: String
   useFrameNumber: Boolean!
 }
 
+scalar BSONArray
+
 type BrainRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: BrainRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: BrainRunConfig
+  viewStages: [String!]
 }
 
 type BrainRunConfig implements RunConfig {
   cls: String!
   embeddingsField: String
-  method: String!
+  method: String
   patchesField: String
 }
 
@@ -37,8 +40,8 @@ enum ColorBy {
 type Dataset {
   id: ID!
   name: String!
-  createdAt: Date!
-  lastLoadedAt: DateTime!
+  createdAt: Date
+  lastLoadedAt: DateTime
   persistent: Boolean!
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
@@ -48,7 +51,7 @@ type Dataset {
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
   appSidebarGroups: [SidebarGroup!]
-  version: String!
+  version: String
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
@@ -77,20 +80,18 @@ scalar DateTime
 
 type EvaluationRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: EvaluationRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: EvaluationRunConfig
+  viewStages: [String!]
 }
 
 type EvaluationRunConfig implements RunConfig {
   cls: String!
-  gtField: String!
-  predField: String!
-  method: String!
+  gtField: String
+  predField: String
+  method: String
 }
-
-scalar JSONArray
 
 type KeypointSkeleton {
   labels: [String!]
@@ -117,7 +118,7 @@ type Mutation {
   setView(
     subscription: String!
     session: String
-    view: JSONArray!
+    view: BSONArray!
     dataset: String!
   ): ViewResponse!
   storeTeamsSubmission: Boolean!
@@ -145,7 +146,7 @@ type PageInfo {
 type Query {
   datasets(
     search: String
-    first: Int = 10
+    first: Int = 200
     after: String = null
   ): DatasetConnection!
   colorscale: [[Int!]!]
@@ -153,7 +154,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
-  dataset(name: String!, view: JSONArray): Dataset
+  dataset(name: String!, view: BSONArray): Dataset
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -163,10 +164,10 @@ type Query {
 
 interface Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: RunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: RunConfig
+  viewStages: [String!]
 }
 
 interface RunConfig {
@@ -218,6 +219,6 @@ input UserInput {
 }
 
 type ViewResponse {
-  view: JSONArray!
+  view: BSONArray!
   dataset: Dataset!
 }
