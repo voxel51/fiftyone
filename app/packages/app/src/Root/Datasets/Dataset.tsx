@@ -1,5 +1,5 @@
 import { Route, RouterContext } from "@fiftyone/components";
-import { toCamelCase } from "@fiftyone/utilities";
+import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
@@ -12,9 +12,10 @@ import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
 import { State } from "../../recoil/types";
 import { similarityParameters } from "../../components/Actions/Similar";
+import { getDatasetName } from "../../utils/generic";
 
 const Query = graphql`
-  query DatasetQuery($name: String!, $view: BSONArray) {
+  query DatasetQuery($name: String!, $view: BSONArray = null) {
     dataset(name: $name, view: $view) {
       id
       name
@@ -92,6 +93,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
   const router = useContext(RouterContext);
   const name = useRecoilValue(datasetName);
+  if (!dataset) {
+    throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
+  }
 
   const update = useStateUpdate();
 
@@ -99,17 +103,21 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     update(({ reset }) => {
       reset(filters);
       reset(similarityParameters);
-
       return {
-        colorscale: router.state.colorscale,
-        config: router.state.config
-          ? (toCamelCase(router.state.config) as State.Config)
-          : undefined,
+        colorscale:
+          router.state && router.state.colorscale
+            ? router.state.colorscale
+            : undefined,
+        config:
+          router.state && router.state.config
+            ? (toCamelCase(router.state.config) as State.Config)
+            : undefined,
         dataset: transformDataset(dataset),
-        state: router.state.state,
+        state:
+          router.state && router.state.state ? router?.state.state : undefined,
       };
     });
-  }, [dataset, prepared, router]);
+  }, [dataset, router]);
 
   if (!name) {
     return null;

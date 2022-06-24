@@ -48,7 +48,7 @@ const convertTargets = (
 };
 
 export default (
-  dataset: NonNullable<DatasetQuery$data["dataset"]>
+  dataset: DatasetQuery$data["dataset"]
 ): Readonly<State.Dataset> => {
   const targets = Object.fromEntries(
     (dataset?.maskTargets || []).map(({ name, targets }) => [
