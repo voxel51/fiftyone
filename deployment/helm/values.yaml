@@ -16,7 +16,7 @@ secret:
   # createSecrets:
     # mongodbConnectionString: mongodb://user:password@hostname:port/?authSource=admin
     # organizationId: org_Voxel51OrgID
-    # Client IDs are currently optional, feel free to leave this commented
+    # Client IDs will be required in two releases - add yours today!
     # clientId: your-client-id-goes-here
 
 env:
