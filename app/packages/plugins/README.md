@@ -101,6 +101,7 @@ function CustomPlot() {
   const [lasso, setLasso] = React.useState(null);
   const [points, loading] = fop.useQuery(`
     # graphql to load only points for rendering
+    # using ${lasso}
   `);
   if (loading) return <Spinner />;
 
@@ -133,8 +134,6 @@ function MyPlugin() {
 
   return <ul>{activeFields.map(f => <li>{f.name}</li>)}
 }
-
-
 ```
 
 ### State
@@ -163,14 +162,13 @@ type State = {
   dataset: Dataset;
   sample: Sample;
   error: AppError;
+  config: PluginConfig;
 };
 ```
 
 ### Interactivity
 
-If your plugin only has internal state, you can use existing mechansims in react or libaries you are using to achieve your
-desired ux. Eg. in a 3d Visualizer, you might want to use
-Thee.js and its object model, events, and state management. Or simply `useState()`.
+If your plugin only has internal state, you can use existing state management to achieve your desired ux. Eg. in a 3d Visualizer, you might want to use Thee.js and its object model, events, and state management. Or just use your own React hooks to maintain your plugin components internal state.
 
 Note: multiple plugins cooridinating custom state is not currently supported by the plugin api.
 
@@ -181,17 +179,44 @@ If you want to allow users to interact with other aspects of fiftyone through yo
 // of a React component
 
 // select a dataset
-const changeDataset = fop.useAction(fop.actions.changeDataset);
+const selectLabel = fop.useAction(fop.actions.selectLabel);
 
 // in a callback
-changeDataset("quickstart");
+selectLabel('labelId');
 ```
 
 Available Actions:
 
-- `changeDataset(datasetName)`
-- `selectSample(sampleId)`
-- `tagSample(options)`
-- `nextSample()` / `prevSample()`
+- `selectSample(sampleId)` - similar to clicking on sample's checkbox
+- `deselectAllSamples()` - uncheck all samples
+- `viewSample(sampleId)` - view sample in the modal
+- `selectLabel(options)` - used for label tagging
+- `deselectAllLabels()` - deselect all labels
 
-Note: additional actions will be added as needed. We would like to keep this list as minimal as possible.
+Note: additional actions will be added. We would like to keep this list as minimal as possible.
+
+
+## Config + Credentials
+
+Somme plugins wrap libraries or tools that require credentials such as API keys or tokens. Below is an example for how to provide and read these credentials.
+
+The same mechanism can be used to expose configuration to plugin users.
+
+You can store your credentials in your plugin config located at `~/.fiftyone/annotation_config.json`:
+
+```json
+{
+  "plugins": {
+    "myMapPlugin": {
+      "mapboxAPIKey": "..."
+    }
+  }
+}
+```
+
+Then in your plugin implementation, you can read these values similarly to reading other state:
+
+```js
+const pluginConfig = fop.useValue(fop.state.config)
+const {mapboxAPIKey} = pluginConfig.myMapPlugin
+```

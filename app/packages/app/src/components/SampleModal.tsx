@@ -231,14 +231,6 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
-  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
-  const PluginComponent = false; // plugin && plugin.component
-
-  const pluginAPI = {
-    getSampleSrc,
-    sample,
-    dataset: useRecoilValue(atoms.dataset),
-  };
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -248,18 +240,14 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          {PluginComponent ? (
-            <PluginComponent api={pluginAPI} />
-          ) : (
-            <Looker
-              key={`modal-${sampleSrc}`}
-              lookerRef={lookerRef}
-              onSelectLabel={onSelectLabel}
-              onClose={clearModal}
-              onPrevious={index > 0 ? () => getIndex(index - 1) : null}
-              onNext={() => getIndex(index + 1)}
-            />
-          )}
+          <Looker
+            key={`modal-${sampleSrc}`}
+            lookerRef={lookerRef}
+            onSelectLabel={onSelectLabel}
+            onClose={clearModal}
+            onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+            onNext={() => getIndex(index + 1)}
+          />
         </ContentColumn>
         <FieldsSidebar render={renderEntry} modal={true} />
       </Container>

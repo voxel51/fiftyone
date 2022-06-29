@@ -564,6 +564,12 @@ const Looker = ({
   const pluginAPI = {
     getSampleSrc,
     sample,
+    onSelectLabel,
+    useState: useRecoilValue,
+    state: {
+      selectedLabels: atoms.selectedLabels,
+      pathFilter
+    },
     dataset: useRecoilValue(atoms.dataset),
   };
   const pluginIsActive = plugin && plugin.activator(pluginAPI);

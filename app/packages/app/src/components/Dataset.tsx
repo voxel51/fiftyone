@@ -7,8 +7,6 @@ import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "./SampleModal";
 import { modal } from "../recoil/atoms";
 
-const PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
-
 const Container = styled.div`
   height: 100%;
   display: flex;
@@ -31,7 +29,7 @@ function Dataset() {
     <>
       {isModalActive && <SampleModal />}
       <Container>
-        <HorizontalNav entries={PLOTS} key={"nav"} />
+        <HorizontalNav key={"nav"} />
         <Body key={"body"}>
           <SamplesContainer key={"samples"} />
         </Body>

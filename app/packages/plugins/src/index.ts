@@ -84,11 +84,13 @@ export function usePlugin(
 
 export enum PluginComponentType {
   SampleModalContent,
+  Plot
 }
 
 type PluginActivator = (props: any) => boolean;
 interface PluginComponentRegistration {
   name: string;
+  label?: string;
   component: FunctionComponent;
   type: PluginComponentType;
   activator: PluginActivator;
