@@ -8,11 +8,11 @@ import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
+import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 
 import * as fos from "@fiftyone/state";
 
 export type Props = {
-  entries: string[];
 };
 
 const Container = styled(Resizable)`
@@ -79,7 +79,9 @@ const ToggleMaximize = React.memo(
   }
 );
 
-const HorizontalNav = ({ entries }: Props) => {
+const DISTRIBUTION_PLOTS = ["Sample tags", "Label tags", "Labels", "Other fields"];
+
+const HorizontalNav = ({}: Props) => {
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
   const [expanded, setExpanded] = useState(false);
@@ -89,6 +91,13 @@ const HorizontalNav = ({ entries }: Props) => {
 
   const height = expanded ? openedHeight : closedHeight;
   const elementNames = useRecoilValue(fos.elementNames);
+  const pluginPlots = usePlugin(PluginComponentType.Plot)
+  const pluginPlotLabels = pluginPlots.map(p => p.label)
+
+  const buttonLabels = [
+    ...DISTRIBUTION_PLOTS,
+    ...pluginPlotLabels
+  ]
 
   return (
     <Container
@@ -110,7 +119,7 @@ const HorizontalNav = ({ entries }: Props) => {
     >
       <Nav>
         <PlotsButtons>
-          {entries.map((e) => (
+          {buttonLabels.map((e) => (
             <PlotButton
               key={e}
               className={e === activePlot && expanded ? "active" : ""}
@@ -153,12 +162,28 @@ const HorizontalNav = ({ entries }: Props) => {
           />
         </NavButtons>
       </Nav>
-      {expanded &&
-        entries.map((e) =>
-          e === activePlot ? <Distributions key={activePlot} group={e} /> : null
-        )}
+      {expanded ? <ActivePlot
+        key={activePlot}
+        active={activePlot}
+        pluginPlotLabels={pluginPlotLabels}
+        distributionPlots={DISTRIBUTION_PLOTS}
+        pluginPlots={pluginPlots}
+      /> : null}
     </Container>
   );
 };
+
+function ActivePlot({active, pluginPlots, pluginPlotLabels, distributionPlots}) {
+  const isPluginPlot = pluginPlotLabels.includes(active)
+  const isDistPlot = distributionPlots.includes(active)
+  const plugin = isPluginPlot ? pluginPlots.find(p => p.label === active) : null
+
+  if (isDistPlot) return <Distributions key={active} group={active} />
+  if (plugin) {
+    return <plugin.component />
+  }
+
+  return null
+}
 
 export default HorizontalNav;
