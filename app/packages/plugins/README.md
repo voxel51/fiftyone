@@ -182,7 +182,7 @@ If you want to allow users to interact with other aspects of fiftyone through yo
 const selectLabel = fop.useAction(fop.actions.selectLabel);
 
 // in a callback
-selectLabel('labelId');
+selectLabel("labelId");
 ```
 
 Available Actions:
@@ -194,7 +194,6 @@ Available Actions:
 - `deselectAllLabels()` - deselect all labels
 
 Note: additional actions will be added. We would like to keep this list as minimal as possible.
-
 
 ## Config + Credentials
 
@@ -217,6 +216,87 @@ You can store your credentials in your plugin config located at `~/.fiftyone/ann
 Then in your plugin implementation, you can read these values similarly to reading other state:
 
 ```js
-const pluginConfig = fop.useValue(fop.state.config)
-const {mapboxAPIKey} = pluginConfig.myMapPlugin
+const pluginConfig = fop.useValue(fop.state.config);
+const { mapboxAPIKey } = pluginConfig.myMapPlugin;
+```
+
+## Querying Fiftyone
+
+The typical use case for a plugin is to provide a unique way of visualizing fiftyone data. However some plugins may need to also fetch data in a unique way to efficiently visualize it.
+
+For example, a `PluginComponentType.Plot` plugin rendering a map of geo points may need to fetch data relative to where the user is currently viewing. In mongodb, such a query would look like this:
+
+```js
+{
+  $geoNear: {
+    near: { type: "Point", coordinates: [ -73.99279 , 40.719296 ] },
+    maxDistance: 2,
+    query: { category: "Parks" },
+  }
+}
+```
+
+In a fiftyone plugin this same query can be performed using the `useAggregation()` method of the plugin sdk.
+
+```js
+import * as fop from "@fiftyone/plugins";
+
+function useGeoDataNear() {
+  const dataset = fop.useState(fop.state.dataset);
+  const [origin, setOrigin] = React.useState({ lat: 0, lng: 0 });
+  const availableFields = findAvailableFields(dataset.fields);
+  const [aggregate, isLoading, points] = fop.useAggregation(dataset.name);
+  const [selectedField, setField] = React.useState(availableFields[0]);
+
+  React.useEffect(() => {
+    aggregate({
+      view: [
+        fop.stages.GeoNear({
+          point: origin,
+          locationField: selectedField,
+          maxDistance: 2,
+          query: {
+            category: "Parks",
+          },
+        }),
+      ],
+    });
+  }, [origin]);
+
+  return {
+    points,
+    isLoading,
+    setOrigin,
+    setField,
+    availableFields,
+    selectedField,
+  };
+}
+
+function MapPlugin() {
+  const {
+    points,
+    isLoading,
+    setOrigin,
+    setField,
+    availableFields,
+    selectedField,
+  } = useGeoDataNear();
+
+  return (
+    <Map
+      points={points}
+      onMoveCamera={(o) => setOrigin(o)}
+      onSelectField={(f) => setField(f)}
+      selectedField={selectedField}
+      locationFields={availableFields}
+    />
+  );
+}
+
+fop.registerComponent({
+  name: "MapPlugin",
+  label: "Map",
+  activator: ({ dataset }) => findAvailableFields(dataset.fields).length > 0,
+});
 ```
