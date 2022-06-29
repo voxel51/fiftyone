@@ -61,24 +61,21 @@ class Aggregation(object):
         self._expr = expr
         self._safe = safe
 
-    def __eq__(self, other):
-        return (
-            isinstance(other, self.__class__)
-            and self._kwargs() == other._kwargs()
-        )
+    def __str__(self):
+        return repr(self)
 
-    def _kwargs(self):
-        """Returns a list of ``[name, value]`` lists describing the parameters
-        of this stage instance.
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in self._kwargs():
+            if k.startswith("_"):
+                continue
 
-        Returns:
-            a list of ``[name, value]`` lists
-        """
-        return [
-            ["field_or_expr", self._field_name or self._expr],
-            ["expr", self._expr if self._field_name is not None else None],
-            ["safe", self._safe],
-        ]
+            v_repr = _repr.repr(v)
+            # v_repr = etau.summarize_long_str(v_repr, 30)
+            kwargs_list.append("%s=%s" % (k, v_repr))
+
+        kwargs_str = ", ".join(kwargs_list)
+        return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     @property
     def field_name(self):
@@ -180,31 +177,57 @@ class Aggregation(object):
 
         return False
 
-    def _serialize(self):
-        """Returns a JSON dict representation of the :class:`ViewStage`.
+    def _serialize(self, include_uuid=True):
+        """Returns a JSON dict representation of the :class:`Aggregation`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the aggregation's UUID in
+                the JSON representation
 
         Returns:
             a JSON dict
         """
-        return {"_cls": etau.get_class_name(self), "kwargs": self._kwargs()}
+        d = {
+            "_cls": etau.get_class_name(self),
+            "kwargs": self._kwargs(),
+        }
+
+        if include_uuid:
+            if self._uuid is None:
+                self._uuid = str(uuid.uuid4())
+
+            d["_uuid"] = self._uuid
+
+        return d
+
+    def _kwargs(self):
+        """Returns a list of ``[name, value]`` lists describing the parameters
+        of this aggregation instance.
+
+        Returns:
+            a list of ``[name, value]`` lists
+        """
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["safe", self._safe],
+        ]
 
     @classmethod
-    def _from_dict(cls, data):
-        """Creates a :class:`ViewStage` instance from a serialized JSON dict
+    def _from_dict(cls, d):
+        """Creates an :class:`Aggregation` instance from a serialized JSON dict
         representation of it.
 
         Args:
             d: a JSON dict
 
         Returns:
-            a :class:`ViewStage`
+            an :class:`Aggregation`
         """
-        implementing_cls = etau.get_class(data["_cls"])
-        return implementing_cls(**dict(data["kwargs"]))
+        aggregation_cls = etau.get_class(d["_cls"])
+        agg = aggregation_cls(**{k: v for (k, v) in d["kwargs"]})
+        agg._uuid = d.get("_uuid", None)
+        return agg
 
 
 class AggregationError(Exception):
@@ -295,7 +318,7 @@ class Bounds(Aggregation):
 
     def _kwargs(self):
         return super()._kwargs() + [
-            ["_count_nonfinites", self._count_nonfinites],
+            ["_count_nonfinites", self._count_nonfinites]
         ]
 
     def default_result(self):
@@ -475,9 +498,7 @@ class Count(Aggregation):
         self._unwind = _unwind
 
     def _kwargs(self):
-        return super()._kwargs() + [
-            ["_unwind", self._unwind],
-        ]
+        return super()._kwargs() + [["_unwind", self._unwind]]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -626,11 +647,13 @@ class CountValues(Aggregation):
         self._search = _search
         self._selected = _selected
 
+        self._field_type = None
+
     def _kwargs(self):
         return super()._kwargs() + [
             ["_first", self._first],
             ["_sort_by", self._sort_by],
-            ["_asc", self._order == 1],
+            ["_asc", self._asc],
             ["_include", self._include],
             ["_search", self._search],
             ["_selected", self._selected],
@@ -1011,8 +1034,9 @@ class HistogramValues(Aggregation):
         self._parse_args()
 
     def _kwargs(self):
-        super_kwargs = [tup for tup in super()._kwargs() if tup[0] != "safe"]
-        return super_kwargs + [
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
             ["bins", self._bins],
             ["range", self._range],
             ["auto", self._auto],
@@ -1664,8 +1688,9 @@ class Values(Aggregation):
         self._num_list_fields = None
 
     def _kwargs(self):
-        super_kwargs = [tup for tup in super()._kwargs() if tup[0] != "safe"]
-        return super_kwargs + [
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
             ["missing_value", self._missing_value],
             ["unwind", self._unwind],
             ["_allow_missing", self._allow_missing],
