@@ -1259,7 +1259,7 @@ class SampleCollection(object):
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, _, list_fields, _, id_to_str = self._parse_field_name(
+        _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
@@ -1281,8 +1281,6 @@ class SampleCollection(object):
             label_type = field_type.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
-            if is_frame_field:
-                path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
             if path in self._get_filtered_fields():
@@ -1314,11 +1312,11 @@ class SampleCollection(object):
             and isinstance(field_type.field, fof.EmbeddedDocumentField)
             and isinstance(self, fov.DatasetView)
         ):
-            list_fields = sorted(set(list_fields + [field_name]))
+            list_fields = sorted(set(list_fields + [_field_name]))
 
         if is_frame_field:
             self._set_frame_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -1328,7 +1326,7 @@ class SampleCollection(object):
             )
         else:
             self._set_sample_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -6713,7 +6711,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field = self._parse_field(field, include_private=True)
+            _field, _ = self._parse_field(field, include_private=True)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
