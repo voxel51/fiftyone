@@ -316,8 +316,9 @@ class Bounds(Aggregation):
         self, field_or_expr, expr=None, safe=False, _count_nonfinites=False
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
-        self._field_type = None
         self._count_nonfinites = _count_nonfinites
+
+        self._field_type = None
 
     def _kwargs(self):
         return super()._kwargs() + [
@@ -874,6 +875,7 @@ class Distinct(Aggregation):
 
     def __init__(self, field_or_expr, expr=None, safe=False):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+
         self._field_type = None
 
     def default_result(self):
@@ -1023,7 +1025,6 @@ class HistogramValues(Aggregation):
         self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         super().__init__(field_or_expr, expr=expr)
-
         self._bins = bins
         self._range = range
         self._auto = auto
@@ -1680,14 +1681,14 @@ class Values(Aggregation):
         _raw=False,
     ):
         super().__init__(field_or_expr, expr=expr)
-
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
         self._big_result = _big_result
-        self._big_field = None
         self._raw = _raw
+
         self._field_type = None
+        self._big_field = None
         self._num_list_fields = None
 
     def _kwargs(self):
