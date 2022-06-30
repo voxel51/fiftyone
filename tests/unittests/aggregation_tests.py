@@ -863,53 +863,6 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_serialize(self):
-        samples = [
-            fo.Sample(
-                filepath="image1.jpg",
-                predictions=fo.Detections(
-                    detections=[
-                        fo.Detection(
-                            label="cat",
-                            bounding_box=[0.1, 0.1, 0.4, 0.4],
-                            confidence=0.7,
-                        ),
-                        fo.Detection(
-                            label="dog",
-                            bounding_box=[0.3, 0.3, 0.5, 0.5],
-                            confidence=0.9,
-                        ),
-                    ]
-                ),
-            ),
-            fo.Sample(
-                filepath="image2.jpg",
-                predictions=fo.Detections(
-                    detections=[
-                        fo.Detection(
-                            label="rabbit",
-                            bounding_box=[0.4, 0.4, 0.2, 0.2],
-                            confidence=0.8,
-                        ),
-                    ]
-                ),
-            ),
-            fo.Sample(
-                filepath="image3.jpg",
-                predictions=fo.Detections(
-                    detections=[
-                        fo.Detection(
-                            label="squirrel",
-                            bounding_box=[0.5, 0.5, 0.5, 0.5],
-                            confidence=0.9,
-                        ),
-                    ]
-                ),
-            ),
-        ]
-
-        dataset = fo.Dataset()
-        dataset.add_samples(samples)
-
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
         aggregations = [
@@ -932,9 +885,7 @@ class DatasetTests(unittest.TestCase):
         agg_dicts = [a._serialize() for a in aggregations]
         also_aggregations = [fo.Aggregation._from_dict(d) for d in agg_dicts]
 
-        results = dataset.aggregate(aggregations)
-        also_results = dataset.aggregate(also_aggregations)
-        self.assertEqual(len(results), len(also_results))
+        self.assertListEqual(aggregations, also_aggregations)
 
 
 if __name__ == "__main__":
