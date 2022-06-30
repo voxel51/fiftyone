@@ -69,6 +69,9 @@ class ViewStage(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
+
     @property
     def has_view(self):
         """Whether this stage's output view should be loaded via

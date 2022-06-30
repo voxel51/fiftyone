@@ -77,6 +77,9 @@ class Aggregation(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
+
     @property
     def field_name(self):
         """The name of the field being computed on, if any."""
