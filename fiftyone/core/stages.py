@@ -69,6 +69,9 @@ class ViewStage(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
+
     @property
     def has_view(self):
         """Whether this stage's output view should be loaded via
@@ -210,8 +213,8 @@ class ViewStage(object):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -260,9 +263,8 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.get("_uuid", None)
-        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
-        stage._uuid = uuid
+        stage = view_stage_cls(**dict(d["kwargs"]))
+        stage._uuid = d.get("_uuid", None)
         return stage
 
 
