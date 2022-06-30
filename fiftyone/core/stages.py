@@ -213,8 +213,8 @@ class ViewStage(object):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -263,7 +263,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
+        stage = view_stage_cls(**dict(d["kwargs"]))
         stage._uuid = d.get("_uuid", None)
         return stage
 

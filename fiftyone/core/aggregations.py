@@ -228,7 +228,7 @@ class Aggregation(object):
             an :class:`Aggregation`
         """
         aggregation_cls = etau.get_class(d["_cls"])
-        agg = aggregation_cls(**{k: v for (k, v) in d["kwargs"]})
+        agg = aggregation_cls(**dict(d["kwargs"]))
         agg._uuid = d.get("_uuid", None)
         return agg
 
