@@ -747,6 +747,7 @@ class SetValuesTests(unittest.TestCase):
         )
 
         filepaths = dataset.values("filepath")
+
         values = {
             filepaths[0]: {2: 3, 4: 5},
             filepaths[1]: {3: 4, 5: 6, 7: 8},
@@ -773,6 +774,30 @@ class SetValuesTests(unittest.TestCase):
 
         int_fields = dataset.values("frames.int_field", unwind=True)
         self.assertListEqual(int_fields, [-1, 4, -1, 4, 6, 8, 2, -1, 6])
+
+        values = {
+            filepaths[0]: {1: fo.Classification(label="cat")},
+            filepaths[1]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+            },
+            filepaths[2]: {
+                1: fo.Classification(label="cat"),
+                2: fo.Classification(label="dog"),
+                3: fo.Classification(label="rabbit"),
+            },
+        }
+
+        dataset.set_values(
+            "frames.classification_field",
+            values,
+            key_field="filepath",
+        )
+
+        labels = dataset.values("frames.classification_field.label")
+        self.assertListEqual(labels[0][:1], ["cat"])
+        self.assertListEqual(labels[1][:2], ["cat", "dog"])
+        self.assertListEqual(labels[2][:3], ["cat", "dog", "rabbit"])
 
     def test_set_values_dataset(self):
         n = len(self.dataset)
@@ -1265,6 +1290,10 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
 
+        for default_field in ("id", "filepath", "tags", "metadata"):
+            with self.assertRaises(ValueError):
+                self.dataset.exclude_fields(default_field)
+
         for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
             self.assertIsNone(sample.selected_field_names)
             self.assertSetEqual(
@@ -1274,6 +1303,22 @@ class ViewStageTests(unittest.TestCase):
                 sample.exclude_fields_field1
 
             self.assertIsNone(sample.exclude_fields_field2)
+
+    def test_exclude_frame_fields(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(int_field=1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        for default_field in ("frames.id", "frames.frame_number"):
+            with self.assertRaises(ValueError):
+                dataset.exclude_fields(default_field)
+
+        for sample in dataset.exclude_fields("frames.int_field"):
+            for frame in sample.frames.values():
+                with self.assertRaises(AttributeError):
+                    frame.int_field
 
     def test_exists(self):
         self.sample1["exists"] = True
