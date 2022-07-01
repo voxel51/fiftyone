@@ -290,6 +290,213 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(int((sample1.date - sample3.date).total_seconds()), 0)
 
     @drop_datasets
+    def test_get_field(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample_field("list_field", fo.ListField)
+        dataset.add_sample_field(
+            "list_str_field", fo.ListField, subfield=fo.StringField
+        )
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            int_field=1,
+            classification_field=fo.Classification(label="cat", foo="bar"),
+            classifications_field=fo.Classifications(
+                classifications=[fo.Classification(label="cat", foo="bar")]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(dataset.get_field("id"), fo.ObjectIdField)
+
+        self.assertIsNone(dataset.get_field("_id"))
+        self.assertIsInstance(
+            dataset.get_field("_id", include_private=True),
+            fo.ObjectIdField,
+        )
+
+        self.assertIsInstance(dataset.get_field("int_field"), fo.IntField)
+
+        self.assertIsInstance(dataset.get_field("list_field"), fo.ListField)
+        self.assertIsNone(dataset.get_field("list_field").field)
+
+        self.assertIsInstance(
+            dataset.get_field("list_str_field"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("list_str_field").field,
+            fo.StringField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("classification_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("classification_field").document_type,
+            fo.Classification,
+        )
+        self.assertIsNone(dataset.get_field("classification_field.foo"))
+
+        self.assertIsInstance(
+            dataset.get_field("classifications_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("classifications_field").document_type,
+            fo.Classifications,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications").field,
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field(
+                "classifications_field.classifications"
+            ).field.document_type,
+            fo.Classification,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications.label"),
+            fo.StringField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("classifications_field.classifications.id"),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field("classifications_field.classifications._id")
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "classifications_field.classifications._id",
+                include_private=True,
+            ),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field("classifications_field.classifications.foo")
+        )
+
+    @drop_datasets
+    def test_get_field_frames(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+
+        dataset.add_frame_field("list_field", fo.ListField)
+        dataset.add_frame_field(
+            "list_str_field", fo.ListField, subfield=fo.StringField
+        )
+
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(
+            int_field=1,
+            classification_field=fo.Classification(label="cat", foo="bar"),
+            classifications_field=fo.Classifications(
+                classifications=[fo.Classification(label="cat", foo="bar")]
+            ),
+        )
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(dataset.get_field("frames.id"), fo.ObjectIdField)
+
+        self.assertIsNone(dataset.get_field("frames._id"))
+        self.assertIsInstance(
+            dataset.get_field("frames._id", include_private=True),
+            fo.ObjectIdField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.int_field"),
+            fo.IntField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.list_field"),
+            fo.ListField,
+        )
+        self.assertIsNone(dataset.get_field("frames.list_field").field)
+
+        self.assertIsInstance(
+            dataset.get_field("frames.list_str_field"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field("frames.list_str_field").field,
+            fo.StringField,
+        )
+
+        self.assertIsInstance(
+            dataset.get_field("frames.classification_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("frames.classification_field").document_type,
+            fo.Classification,
+        )
+        self.assertIsNone(dataset.get_field("frames.classification_field.foo"))
+
+        self.assertIsInstance(
+            dataset.get_field("frames.classifications_field"),
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field("frames.classifications_field").document_type,
+            fo.Classifications,
+        )
+        self.assertIsInstance(
+            dataset.get_field("frames.classifications_field.classifications"),
+            fo.ListField,
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications"
+            ).field,
+            fo.EmbeddedDocumentField,
+        )
+        self.assertEqual(
+            dataset.get_field(
+                "frames.classifications_field.classifications"
+            ).field.document_type,
+            fo.Classification,
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications.label"
+            ),
+            fo.StringField,
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications.id"
+            ),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field(
+                "frames.classifications_field.classifications._id"
+            )
+        )
+        self.assertIsInstance(
+            dataset.get_field(
+                "frames.classifications_field.classifications._id",
+                include_private=True,
+            ),
+            fo.ObjectIdField,
+        )
+        self.assertIsNone(
+            dataset.get_field(
+                "frames.classifications_field.classifications.foo"
+            )
+        )
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
