@@ -9,14 +9,7 @@ import { NameAndCountContainer } from "../../utils";
 
 import RegularEntry from "./RegularEntry";
 
-const TagValueEntry = ({
-  path,
-  tag,
-}: {
-  entryKey: string;
-  path: string;
-  tag: string;
-}) => {
+const TagValueEntry = ({ path, tag }: { path: string; tag: string }) => {
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,

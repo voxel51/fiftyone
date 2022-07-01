@@ -958,7 +958,9 @@ class Session(object):
         if self.remote:
             return
 
-        self._client.send_event(CloseSession())
+        if self._client._connected:
+            self._client.send_event(CloseSession())
+
         self.plots.disconnect()
 
     def freeze(self) -> None:

@@ -1,4 +1,5 @@
 import {
+  ErrorBoundary,
   Loading,
   RouterContext,
   RouteRenderer,
@@ -28,7 +29,9 @@ const Network: React.FC<{
   return (
     <RelayEnvironmentProvider environment={environment}>
       <RouterContext.Provider value={context}>
-        <Renderer />
+        <ErrorBoundary>
+          <Renderer />
+        </ErrorBoundary>
       </RouterContext.Provider>
     </RelayEnvironmentProvider>
   );
@@ -36,13 +39,7 @@ const Network: React.FC<{
 
 export const NetworkRenderer = ({ makeRoutes }) => {
   const refreshRouter = useRecoilValue(refresher);
-  const { context, environment } = useRouter(
-    (environment) =>
-      makeRoutes(environment, {
-        view: () => [],
-      }),
-    [refreshRouter]
-  );
+  const { context, environment } = useRouter(makeRoutes, [refreshRouter]);
 
   const isModalActive = Boolean(useRecoilValue(modal));
 

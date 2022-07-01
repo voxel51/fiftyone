@@ -70,13 +70,15 @@ export const appConfigDefault = selectorFamily<
   { key: string; modal: boolean }
 >({
   key: "appConfigDefault",
-  get: ({ modal, key }) => ({ get }) => {
-    if (modal) {
-      return get(appConfigDefault({ modal: false, key }));
-    }
+  get:
+    ({ modal, key }) =>
+    ({ get }) => {
+      if (modal) {
+        return get(appConfigDefault({ modal: false, key }));
+      }
 
-    return get(atoms.appConfig)[key];
-  },
+      return get(atoms.appConfig)[key];
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -118,9 +120,10 @@ export const targets = selector({
 
 export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
   {
-    key: "skeleton",
+    key: "getSkeleton",
     get: ({ get }) => {
       const dataset = get(atoms.dataset);
+
       const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
         acc[name] = rest;
         return acc;
@@ -133,9 +136,11 @@ export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
 
 export const skeleton = selectorFamily<KeypointSkeleton | null, string>({
   key: "skeleton",
-  get: (field) => ({ get }) => {
-    return get(getSkeleton)(field);
-  },
+  get:
+    (field) =>
+    ({ get }) => {
+      return get(getSkeleton)(field);
+    },
 });
 
 export const getTarget = selector({
@@ -159,6 +164,20 @@ export const selectedLabelIds = selector<Set<string>>({
   get: ({ get }) => {
     const labels = get(atoms.selectedLabels);
     return new Set(Object.keys(labels));
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const selectedLabelList = selector<State.SelectedLabel[]>({
+  key: "selectedLabelList",
+  get: ({ get }) => {
+    const labels = get(atoms.selectedLabels);
+    return Object.entries(labels).map(([labelId, label]) => ({
+      labelId,
+      ...label,
+    }));
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -196,18 +215,12 @@ export const hiddenLabelsArray = selector({
       ...data,
     }));
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hiddenLabelIds = selector({
   key: "hiddenLabelIds",
   get: ({ get }) => {
     return new Set(Object.keys(get(atoms.hiddenLabels)));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -256,21 +269,23 @@ export const pathHiddenLabelsMap = selector<{
 
 export const hiddenFieldLabels = selectorFamily<string[], string>({
   key: "hiddenFieldLabels",
-  get: (fieldName) => ({ get }) => {
-    const labels = get(atoms.hiddenLabels);
-    const {
-      sample: { _id },
-    } = get(atoms.modal);
+  get:
+    (fieldName) =>
+    ({ get }) => {
+      const labels = get(atoms.hiddenLabels);
+      const {
+        sample: { _id },
+      } = get(atoms.modal);
 
-    if (_id) {
-      return Object.entries(labels)
-        .filter(
-          ([_, { sampleId: id, field }]) => _id === id && field === fieldName
-        )
-        .map(([labelId]) => labelId);
-    }
-    return [];
-  },
+      if (_id) {
+        return Object.entries(labels)
+          .filter(
+            ([_, { sampleId: id, field }]) => _id === id && field === fieldName
+          )
+          .map(([labelId]) => labelId);
+      }
+      return [];
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },

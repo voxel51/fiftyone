@@ -3,8 +3,6 @@ import React from "react";
 
 import style from "./Results.module.css";
 
-export { container, footer } from "./Results.module.css";
-
 export interface ResultProps<T> {
   active: boolean;
   result: T;
@@ -46,8 +44,8 @@ export const Result = <T extends unknown>({
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
-    <div onClick={onClick}>
-      <Component value={result} className={classNames(...classes)} />
+    <div onClick={onClick} className={classNames(...classes)}>
+      <Component value={result} className={style.resultComponent} />
     </div>
   );
 };
@@ -70,25 +68,28 @@ const Results = <T extends unknown>({
   toKey = (value: T) => String(value),
 }: ResultsProps<T>) => {
   return (
-    <>
-      {results.map((result, i) => (
-        <Result
-          active={i === active}
-          component={component}
-          key={toKey(result)}
-          result={result}
-          onClick={() => onSelect(result)}
-        />
-      ))}
+    <div className={style.container}>
+      <div className={style.scrollContainer}>
+        {results.map((result, i) => (
+          <Result
+            active={i === active}
+            component={component}
+            key={toKey(result)}
+            result={result}
+            onClick={() => onSelect(result)}
+          />
+        ))}
+      </div>
       <div className={style.footer}>
         {Boolean(total) && (
           <>
-            {total.toLocaleString()} result{total > 1 ? "s" : ""}
+            {results.length} of {total.toLocaleString()} result
+            {total > 1 ? "s" : ""}
           </>
         )}
         {!Boolean(total) && <>No results</>}
       </div>
-    </>
+    </div>
   );
 };
 

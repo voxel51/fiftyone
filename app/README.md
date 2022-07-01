@@ -43,6 +43,13 @@ access to stack traces:
 python fiftyone/server/main.py
 ```
 
+If you want to run both the app client development server and the backend
+server, try running:
+
+```shell
+yarn dev:wpy
+```
+
 Either way, now simply launch the App like normal:
 
 ```py

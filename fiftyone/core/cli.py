@@ -484,6 +484,7 @@ def _print_all_dataset_info(sort_by, reverse):
         "version",
         "persistent",
         "media_type",
+        "tags",
         "num_samples",
     ]
 
@@ -511,6 +512,9 @@ def _format_cell(cell):
 
     if isinstance(cell, datetime):
         return cell.replace(microsecond=0)
+
+    if etau.is_container(cell):
+        return ",".join(cell)
 
     return cell
 

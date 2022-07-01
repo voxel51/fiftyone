@@ -272,7 +272,9 @@ def _transform_images_multi(
     view = sample_collection.select_fields()
 
     with fou.ProgressBar(inputs) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for sample_id, inpath, outpath, _ in pb(
                 pool.imap_unordered(_do_transform, inputs)
             ):

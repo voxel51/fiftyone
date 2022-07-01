@@ -404,6 +404,7 @@ const lookerOptions = selector({
       ...get(atoms.savedLookerOptions),
       selectedLabels: [...get(selectors.selectedLabelIds)],
       fullscreen: get(atoms.fullscreen),
+      showOverlays: get(atoms.showOverlays),
       timeZone: get(selectors.timeZone),
       coloring: get(colorAtoms.coloring(true)),
       alpha: get(atoms.alpha(true)),
@@ -433,6 +434,12 @@ const useLookerOptionsUpdate = () => {
 const useFullscreen = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
     set(atoms.fullscreen, event.detail);
+  });
+};
+
+const useShowOverlays = () => {
+  return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
+    set(atoms.showOverlays, event.detail);
   });
 };
 
@@ -535,6 +542,8 @@ const Looker = ({
   const headerRef = useRef<HTMLElement>();
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
+  useEventHandler(looker, "showOverlays", useShowOverlays());
+
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);

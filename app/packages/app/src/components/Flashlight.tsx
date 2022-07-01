@@ -9,6 +9,7 @@ import {
   atom,
   RecoilState,
   selector,
+  selectorFamily,
   Snapshot,
   useRecoilCallback,
   useRecoilValue,
@@ -111,12 +112,12 @@ const flashlightOptions = selector<FlashlightOptions>({
   },
 });
 
-const flashlightLookerOptions = selector({
+const flashlightLookerOptions = selectorFamily<any, boolean>({
   key: "flashlightLookerOptions",
-  get: ({ get }) => {
+  get: (withFilter) => ({ get }) => {
     return {
       coloring: get(colorAtoms.coloring(false)),
-      filter: get(pathFilter(false)),
+      filter: withFilter ? get(pathFilter(false)) : null,
       activePaths: get(schemaAtoms.activeFields({ modal: false })),
       zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(false)),
       loop: true,
@@ -133,6 +134,13 @@ const flashlightLookerOptions = selector({
     };
   },
 });
+
+const useLookerOptions = () => {
+  const loaded = useRecoilValueLoadable(flashlightLookerOptions(true));
+
+  const loading = useRecoilValue(flashlightLookerOptions(false));
+  return loaded.contents instanceof Promise ? loading : loaded.contents;
+};
 
 const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;
@@ -300,7 +308,7 @@ const pageParameters = selector<PageParameters>({
 export default React.memo(() => {
   const [id] = useState(() => uuid());
   const options = useRecoilValue(flashlightOptions);
-  const lookerOptions = useRecoilValueLoadable(flashlightLookerOptions);
+  const lookerOptions = useLookerOptions();
   const getLookerType = useRecoilValue(lookerType);
   const lookerGeneratorRef = useRef<any>();
   const isClips = useRecoilValue(viewAtoms.isClipsView);
@@ -330,7 +338,6 @@ export default React.memo(() => {
   const taggingLabels = useRecoilValue(
     atoms.tagging({ modal: false, labels: true })
   );
-  const dataset = useRecoilValue(selectors.datasetName);
 
   const taggingSamples = useRecoilValue(
     atoms.tagging({ modal: false, labels: false })
@@ -368,7 +375,7 @@ export default React.memo(() => {
     };
 
     const looker = new constructor(sample, config, {
-      ...lookerOptions.contents,
+      ...lookerOptions,
       selected: selected.has(sample._id),
     });
     looker.addEventListener("error", (event: ErrorEvent) => {
@@ -383,7 +390,7 @@ export default React.memo(() => {
     dimensions: [width, height],
   }: atoms.SampleData) => {
     const aspectRatio = width / height;
-    return lookerOptions.contents.zoom
+    return lookerOptions.zoom
       ? zoomAspectRatio(sample, aspectRatio)
       : aspectRatio;
   };
@@ -524,7 +531,7 @@ export default React.memo(() => {
         const looker = store.lookers.get(sampleId);
         looker &&
           looker.updateOptions({
-            ...lookerOptions.contents,
+            ...lookerOptions,
             selected: selected.has(sampleId),
           });
       });

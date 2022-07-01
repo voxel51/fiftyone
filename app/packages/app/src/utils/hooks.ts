@@ -20,7 +20,7 @@ import { savingFilters } from "../components/Actions/ActionsRow";
 import { viewsAreEqual } from "./view";
 import { similaritySorting } from "../components/Actions/Similar";
 import { patching } from "../components/Actions/Patcher";
-import { matchPath, useSendEvent, useTo } from "@fiftyone/components";
+import { useSendEvent, useTo } from "@fiftyone/components";
 import { useMutation } from "react-relay";
 import {
   setDataset,
@@ -36,6 +36,9 @@ import { useErrorHandler } from "react-error-boundary";
 import { transformDataset } from "../Root/Datasets";
 import { getDatasetName } from "./generic";
 import { RouterContext } from "@fiftyone/components";
+import { RGB } from "@fiftyone/looker";
+import { DatasetQuery } from "../Root/Datasets/__generated__/DatasetQuery.graphql";
+import { _activeFields } from "../recoil/schema";
 
 export const useEventHandler = (
   target,
@@ -112,10 +115,8 @@ export const useFollow = (leaderRef, followerRef, set) => {
       return;
     }
     const { x, y } = followerRef.current.getBoundingClientRect();
-    const {
-      x: leaderX,
-      width: leaderWidth,
-    } = leaderRef.current.getBoundingClientRect();
+    const { x: leaderX, width: leaderWidth } =
+      leaderRef.current.getBoundingClientRect();
 
     set({
       left: x,
@@ -274,24 +275,31 @@ export const useScreenshot = (
   return run;
 };
 
+interface StateUpdate {
+  colorscale?: RGB[];
+  config?: State.Config;
+  dataset?: State.Dataset;
+  state?: Partial<State.Description>;
+}
+
 export type StateResolver =
-  | { dataset?: State.Dataset; state?: Partial<State.Description> }
-  | ((
-      t: TransactionInterface_UNSTABLE
-    ) => { dataset?: State.Dataset; state?: Partial<State.Description> });
+  | StateUpdate
+  | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
 
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
   return (resolve: StateResolver) => {
     update((t) => {
-      const { dataset, state } =
+      const { colorscale, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
       return {
-        state: { ...toCamelCase(state), view: state.view } as State.Description,
+        colorscale,
         dataset: dataset
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
+        config: config ? (toCamelCase(config) as State.Config) : undefined,
+        state: { ...toCamelCase(state), view: state.view } as State.Description,
       };
     });
   };
@@ -300,12 +308,12 @@ export const useUnprocessedStateUpdate = () => {
 export const useStateUpdate = () => {
   return useRecoilTransaction_UNSTABLE(
     (t) => (resolve: StateResolver) => {
-      const { state, dataset } =
+      const { colorscale, config, dataset, state } =
         resolve instanceof Function ? resolve(t) : resolve;
 
-      const { get, set } = t;
+      const { get, reset, set } = t;
 
-      if (state?.view) {
+      if (state) {
         const view = get(viewAtoms.view);
 
         if (!viewsAreEqual(view, state.view || [])) {
@@ -314,10 +322,9 @@ export const useStateUpdate = () => {
         }
       }
 
-      state?.colorscale !== undefined &&
-        set(atoms.colorscale, state.colorscale);
+      colorscale !== undefined && set(atoms.colorscale, colorscale);
 
-      state?.config !== undefined && set(atoms.appConfig, state.config);
+      config !== undefined && set(atoms.appConfig, config);
       state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
 
       state?.selected && set(atoms.selectedSamples, new Set(state.selected));
@@ -334,10 +341,10 @@ export const useStateUpdate = () => {
 
       const colorPool = get(atoms.colorPool);
       if (
-        state?.config &&
-        JSON.stringify(state.config.colorPool) !== JSON.stringify(colorPool)
+        config &&
+        JSON.stringify(config.colorPool) !== JSON.stringify(colorPool)
       ) {
-        set(atoms.colorPool, state.config.colorPool);
+        set(atoms.colorPool, config.colorPool);
       }
 
       if (dataset) {
@@ -345,14 +352,19 @@ export const useStateUpdate = () => {
         dataset.evaluations = Object.values(dataset.evaluations || {});
 
         const groups = resolveGroups(dataset);
-        const current = get(sidebarGroupsDefinition(false));
+        const currentSidebar = get(sidebarGroupsDefinition(false));
 
-        if (JSON.stringify(groups) !== JSON.stringify(current)) {
+        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
           set(sidebarGroupsDefinition(false), groups);
           set(
             aggregationAtoms.aggregationsTick,
             get(aggregationAtoms.aggregationsTick) + 1
           );
+        }
+
+        const previousDataset = get(atoms.dataset);
+        if (!previousDataset || previousDataset.id !== dataset.id) {
+          reset(_activeFields({ modal: false }));
         }
 
         set(atoms.dataset, dataset);
@@ -374,7 +386,10 @@ export const useStateUpdate = () => {
 };
 
 export const useSetDataset = () => {
-  const { to } = useTo();
+  const { to } = useTo({
+    state: { selected: [], selectedLabels: [], view: [], viewCls: null },
+    variables: { view: [] },
+  });
   const send = useSendEvent();
   const [commit] = useMutation<setDatasetMutation>(setDataset);
   const subscription = useRecoilValue(selectors.stateSubscription);
@@ -382,6 +397,7 @@ export const useSetDataset = () => {
 
   return (name?: string) => {
     to(name ? `/datasets/${encodeURI(name)}` : "/");
+
     send((session) =>
       commit({
         onError,
@@ -429,8 +445,8 @@ export const useSetView = () => {
   const [commit] = useMutation<setViewMutation>(setView);
   const onError = useErrorHandler();
 
-  return (view) =>
-    send((session) =>
+  return (view) => {
+    send((session) => {
       commit({
         variables: {
           subscription,
@@ -445,25 +461,29 @@ export const useSetView = () => {
             state: {
               view,
               viewCls: dataset.viewCls,
+              selected: [],
+              selectedLabels: [],
             },
           });
         },
-      })
-    );
+      });
+    });
+  };
 };
 
 export const useSelectSample = () => {
   const setSelected = useSetSelected();
 
   return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) => async (sampleId: string) => {
-      const selected = new Set(get(atoms.selectedSamples));
-      selected.has(sampleId)
-        ? selected.delete(sampleId)
-        : selected.add(sampleId);
-      set(atoms.selectedSamples, selected);
-      setSelected([...selected]);
-    },
+    ({ set, get }) =>
+      async (sampleId: string) => {
+        const selected = new Set(get(atoms.selectedSamples));
+        selected.has(sampleId)
+          ? selected.delete(sampleId)
+          : selected.add(sampleId);
+        set(atoms.selectedSamples, selected);
+        setSelected([...selected]);
+      },
     []
   );
 };
@@ -471,7 +491,7 @@ export const useSelectSample = () => {
 export const useReset = () => {
   return useRecoilTransaction_UNSTABLE(({ set }) => () => {
     set(atoms.selectedSamples, new Set());
-    set(atoms.selectedLabels, new Array());
+    set(atoms.selectedLabels, {});
     set(viewAtoms.view, []);
   });
 };
