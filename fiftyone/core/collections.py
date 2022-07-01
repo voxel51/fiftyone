@@ -539,6 +539,7 @@ class SampleCollection(object):
         if not keys:
             return None, None
 
+        field = None
         resolved_keys = []
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":

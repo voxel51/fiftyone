@@ -698,7 +698,7 @@ class ExcludeFields(ViewStage):
                 )
             )
 
-            defaults = [f for f in fields if f in default_frame_fields]
+            defaults = [f for f in frame_fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
