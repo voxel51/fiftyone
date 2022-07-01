@@ -1714,6 +1714,31 @@ class VideoTests(unittest.TestCase):
             frame["ground_truth"]
 
     @drop_datasets
+    def test_to_frames_schema(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        frames = dataset.to_frames()
+        view = frames.select_fields()
+
+        sample = view.first()
+        sample["foo"] = "bar"
+        sample.save()
+
+        self.assertNotIn("foo", view.get_field_schema())
+        self.assertIn("foo", frames.get_field_schema())
+        self.assertIn("foo", dataset.get_frame_field_schema())
+
+        frame = frames.first()
+        self.assertEqual(frame["foo"], "bar")
+
+        frame = dataset.first().frames.first()
+        self.assertEqual(frame["foo"], "bar")
+
+    @drop_datasets
     def test_to_frames_sparse(self):
         dataset = fo.Dataset()
 

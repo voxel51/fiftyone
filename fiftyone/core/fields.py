@@ -652,6 +652,11 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         fields = {}
 
         for name, field in self.document_type._fields.items():
+            # By convention, ObjectId fields are always exposed to users as
+            # public string values
+            if isinstance(field, ObjectIdField) and name.startswith("_"):
+                name = name[1:]
+
             if not include_private and name.startswith("_"):
                 continue
 

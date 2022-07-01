@@ -18,16 +18,16 @@ scalar BSONArray
 
 type BrainRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: BrainRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: BrainRunConfig
+  viewStages: [String!]
 }
 
 type BrainRunConfig implements RunConfig {
   cls: String!
   embeddingsField: String
-  method: String!
+  method: String
   patchesField: String
 }
 
@@ -80,17 +80,17 @@ scalar DateTime
 
 type EvaluationRun implements Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: EvaluationRunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: EvaluationRunConfig
+  viewStages: [String!]
 }
 
 type EvaluationRunConfig implements RunConfig {
   cls: String!
-  gtField: String!
-  predField: String!
-  method: String!
+  gtField: String
+  predField: String
+  method: String
 }
 
 type KeypointSkeleton {
@@ -145,7 +145,7 @@ type PageInfo {
 type Query {
   datasets(
     search: String
-    first: Int = 10
+    first: Int = 200
     after: String = null
   ): DatasetConnection!
   colorscale: [[Int!]!]
@@ -161,10 +161,10 @@ type Query {
 
 interface Run {
   key: String!
-  version: String!
-  timestamp: DateTime!
-  config: RunConfig!
-  viewStages: [String!]!
+  version: String
+  timestamp: DateTime
+  config: RunConfig
+  viewStages: [String!]
 }
 
 interface RunConfig {

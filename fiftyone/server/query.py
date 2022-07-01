@@ -22,6 +22,7 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
 
@@ -75,34 +76,34 @@ class RunConfig:
 @gql.interface
 class Run:
     key: str
-    version: str
-    timestamp: datetime
-    config: RunConfig
-    view_stages: t.List[str]
+    version: t.Optional[str]
+    timestamp: t.Optional[datetime]
+    config: t.Optional[RunConfig]
+    view_stages: t.Optional[t.List[str]]
 
 
 @gql.type
 class BrainRunConfig(RunConfig):
     embeddings_field: t.Optional[str]
-    method: str
+    method: t.Optional[str]
     patches_field: t.Optional[str]
 
 
 @gql.type
 class BrainRun(Run):
-    config: BrainRunConfig
+    config: t.Optional[BrainRunConfig]
 
 
 @gql.type
 class EvaluationRunConfig(RunConfig):
-    gt_field: str
-    pred_field: str
-    method: str
+    gt_field: t.Optional[str]
+    pred_field: t.Optional[str]
+    method: t.Optional[str]
 
 
 @gql.type
 class EvaluationRun(Run):
-    config: EvaluationRunConfig
+    config: t.Optional[EvaluationRunConfig]
 
 
 @gql.type
@@ -167,17 +168,17 @@ class Dataset(HasCollection):
     async def resolver(
         cls, name: str, view: t.Optional[BSONArray], info: Info
     ) -> t.Optional["Dataset"]:
+        assert info is not None
         dataset = await dataset_dataloader(name, info)
         if dataset is None:
             return dataset
 
         ds = fo.load_dataset(name)
+        ds.reload()
         view = fov.DatasetView._build(ds, view or [])
         if view._dataset != ds:
             d = view._dataset._serialize()
-            dataset.id = (
-                ObjectId()
-            )  # if it is not the root dataset, change the id (relay requires it)
+            dataset.id = view._dataset._doc.id
             dataset.media_type = d["media_type"]
             dataset.sample_fields = [
                 from_dict(SampleField, s)
@@ -189,6 +190,11 @@ class Dataset(HasCollection):
             ]
 
             dataset.view_cls = etau.get_class_name(view)
+
+        # old dataset docs, e.g. from imports have frame fields attached even for
+        # image datasets. we need to remove them
+        if dataset.media_type != fom.VIDEO:
+            dataset.frame_fields = []
 
         return dataset
 
@@ -285,7 +291,7 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     if view is not None and view._dataset != dataset:
         d = view._dataset._serialize()
         data.media_type = d["media_type"]
-        data.id = ObjectId()
+        data.id = view._dataset._doc.id
         data.sample_fields = [
             from_dict(SampleField, s)
             for s in _flatten_fields([], d["sample_fields"])
@@ -296,6 +302,11 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
         ]
 
         data.view_cls = etau.get_class_name(view)
+
+    # old dataset docs, e.g. from imports have frame fields attached even for
+    # image datasets. we need to remove them
+    if dataset.media_type != fom.VIDEO:
+        data.frame_fields = []
 
     return asdict(data)
 

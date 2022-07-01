@@ -354,56 +354,53 @@ class FramesView(fov.DatasetView):
             self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
-        if fields is None:
-            fields = list(self.get_field_schema())
+        if delete:
+            schema = self.get_field_schema()
+        else:
+            schema = self._frames_dataset.get_field_schema()
 
-        default_fields = set(
-            self._get_default_sample_fields(include_private=True)
-        )
+        src_schema = self._source_collection.get_frame_field_schema()
 
-        def add(paths):
-            for path in paths:
+        add_fields = []
+        del_fields = []
+
+        if fields is not None:
+            # We're syncing specific fields; if they are not present in source
+            # collection, add them
+
+            for field_name in fields:
+                if field_name not in src_schema:
+                    add_fields.append(field_name)
+        else:
+            # We're syncing all fields; add any missing fields to source
+            # collection and, if requested, delete any source fields that
+            # aren't in this view
+
+            default_fields = set(
+                self._get_default_sample_fields(include_private=True)
+            )
+
+            for field_name in schema.keys():
                 if (
-                    self._source_collection.get_field(f"frames.{path}") is None
-                    and path not in default_fields
+                    field_name not in src_schema
+                    and field_name not in default_fields
                 ):
-                    field_kwargs = foo.get_field_kwargs(self.get_field(path))
-                    self._source_collection._dataset.add_frame_field(
-                        path, **field_kwargs
-                    )
-                elif path != "metadata":
-                    field = self.get_field(path)
-                    if isinstance(field, fof.ListField):
-                        field = field.field
-                    if isinstance(field, fof.EmbeddedDocumentField):
-                        add(
-                            [
-                                f"{path}.{key}"
-                                for key in field.get_field_schema()
-                            ]
-                        )
+                    add_fields.append(field_name)
 
-        add(fields)
+            if delete:
+                for field_name in src_schema.keys():
+                    if field_name not in schema:
+                        del_fields.append(field_name)
 
-        def remove(paths):
-            for path in paths:
-                field = self.get_field(path)
-                if field is None:
-                    self._source_collection._dataset.delete_frame_field(path)
-                else:
-                    if isinstance(field, fof.ListField):
-                        field = field.field
-                    if isinstance(field, fof.EmbeddedDocumentField):
-                        remove(
-                            [
-                                f"{path}.{key}"
-                                for key in field.get_field_schema()
-                            ]
-                        )
+        for field_name in add_fields:
+            field_kwargs = foo.get_field_kwargs(schema[field_name])
+            self._source_collection._dataset.add_frame_field(
+                field_name, **field_kwargs
+            )
 
-        delete and remove(
-            list(self._source_collection.get_frame_field_schema())
-        )
+        if delete:
+            for field_name in del_fields:
+                self._source_collection._dataset.delete_frame_field(field_name)
 
     def _sync_source_keep_fields(self):
         schema = self.get_field_schema()
