@@ -323,7 +323,7 @@ class _HasID(Label):
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
-        return self._fields_ordered
+        return ("id",) + self._fields_ordered
 
 
 class _HasLabelList(object):
