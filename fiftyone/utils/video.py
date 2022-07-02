@@ -225,6 +225,7 @@ def transform_videos(
 def sample_videos(
     sample_collection,
     output_dir=None,
+    rel_dir=None,
     frames_patt=None,
     frames=None,
     fps=None,
@@ -243,12 +244,9 @@ def sample_videos(
     """Samples the videos in the sample collection into directories of
     per-frame images according to the provided parameters using ``ffmpeg``.
 
-    The frames for each sample are stored in a directory with the same basename
-    as the input video or the specified ``output_dir`` with frame numbers/format
-    specified by ``frames_patt``.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    By default, each folder of images is written using the same basename as the
+    input video. For example, if ``frames_patt = "%%06d.jpg"``, then videos
+    with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -265,12 +263,47 @@ def sample_videos(
             000002.jpg
             ...
 
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
+
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        output_dir (None): an optional output directory to use as the basename
-            of the sampled frames.  When not specified the basename will
-            be the same as the input video
+        output_dir (None): an optional output directory in which to write the
+            sampled frames. By default, the frames are written in folders with
+            the same basename of each video
+        rel_dir (None): a relative directory to remove from the filepath of
+            each video, if possible. The path is converted to an absolute path
+            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
+            argument can be used in conjunction with ``output_dir`` to cause
+            the sampled frames to be written in a nested directory structure
+            within ``output_dir`` matching the shape of the input video's
+            folder structure
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
@@ -319,6 +352,7 @@ def sample_videos(
         sample_frames=True,
         original_frame_numbers=original_frame_numbers,
         output_dir=output_dir,
+        rel_dir=rel_dir,
         frames_patt=frames_patt,
         force_reencode=force_sample,
         save_filepaths=save_filepaths,
@@ -583,6 +617,7 @@ def _transform_videos(
     max_size=None,
     sample_frames=False,
     output_dir=None,
+    rel_dir=None,
     frames_patt=None,
     original_frame_numbers=True,
     reencode=False,
@@ -609,8 +644,12 @@ def _transform_videos(
         for sample, _frames in pb(zip(view, frames)):
             inpath = sample.filepath
 
+            _outpath = _get_outpath(
+                inpath, output_dir=output_dir, rel_dir=rel_dir
+            )
+
             if sample_frames:
-                outdir = output_dir or os.path.splitext(inpath)[0]
+                outdir = os.path.splitext(_outpath)[0]
                 outpath = os.path.join(outdir, frames_patt)
 
                 # If sampling was not forced and the first frame exists, assume
@@ -619,13 +658,13 @@ def _transform_videos(
                 if not force_reencode and os.path.isfile(outpath % fn):
                     continue
             elif reencode:
-                root, ext = os.path.splitext(inpath)
+                root, ext = os.path.splitext(_outpath)
                 if ext.lower() != ".mp4":
                     outpath = root + ".mp4"
                 else:
-                    outpath = inpath
+                    outpath = _outpath
             else:
-                outpath = inpath
+                outpath = _outpath
 
             _transform_video(
                 inpath,
@@ -672,6 +711,19 @@ def _transform_videos(
             if outpath != inpath and not sample_frames:
                 sample.filepath = outpath
                 sample.save()
+
+
+def _get_outpath(inpath, output_dir=None, rel_dir=None):
+    if output_dir is None:
+        return inpath
+
+    if rel_dir is not None:
+        rel_dir = fou.normalize_path(rel_dir)
+        filename = os.path.relpath(inpath, rel_dir)
+    else:
+        filename = os.path.basename(inpath)
+
+    return os.path.join(output_dir, filename)
 
 
 def _transform_video(

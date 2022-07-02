@@ -418,6 +418,7 @@ def make_frames_dataset(
     max_size=None,
     sparse=False,
     output_dir=None,
+    rel_dir=None,
     frames_patt=None,
     force_sample=False,
     skip_failures=True,
@@ -437,13 +438,10 @@ def make_frames_dataset(
     omitted from the frames dataset.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with the same basename as
-    the input video, or the specified ``output_dir``, using the frame numbers/format
-    specified by ``frames_patt``, and stores the resulting frame paths in a
-    ``filepath`` field of the input collection.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    collection into a directory of per-frame images with filenames specified by
+    ``frames_patt``. By default, each folder of images is written using the
+    same basename as the input video. For example, if
+    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -459,6 +457,33 @@ def make_frames_dataset(
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     By default, samples will be generated for every video frame at full
     resolution, but this method provides a variety of parameters that can be
@@ -501,10 +526,17 @@ def make_frames_dataset(
             for which :class:`fiftyone.core.frame.Frame` instances exist in the
             input collection. This parameter has no effect when
             ``sample_frames==False`` since frames must always exist in order to
-            have ``filepath`` information use
-        output_dir (None): an optional output directory to use as the basename
-            of the sampled frames.  When not specified the basename will
-            be the same as the input video
+            have ``filepath`` information used
+        output_dir (None): an optional output directory in which to write the
+            sampled frames. By default, the frames are written in folders with
+            the same basename of each video
+        rel_dir (None): a relative directory to remove from the filepath of
+            each video, if possible. The path is converted to an absolute path
+            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
+            argument can be used in conjunction with ``output_dir`` to cause
+            the sampled frames to be written in a nested directory structure
+            within ``output_dir`` matching the shape of the input video's
+            folder structure
         frames_patt (None): a pattern specifying the filename/format to use to
             write or check or existing sampled frames, e.g., ``"%%06d.jpg"``.
             The default value is
@@ -582,6 +614,7 @@ def make_frames_dataset(
         fouv.sample_videos(
             to_sample_view,
             output_dir=output_dir,
+            rel_dir=rel_dir,
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
