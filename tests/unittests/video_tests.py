@@ -776,7 +776,7 @@ class VideoTests(unittest.TestCase):
 
         ref = sample12.frames[3].ground_truth.detections[2]
         common = ref.copy()
-        common.id = ref.id
+        common._id = ref._id
         common.label = "COMMON"
 
         sample22 = fo.Sample(filepath="video2.mp4")

@@ -767,6 +767,6 @@ def _copy_labels(labels):
 
     # We need the IDs to stay the same
     for _label, label in zip(_labels[field], labels[field]):
-        _label.id = label.id
+        _label._id = label._id
 
     return _labels
