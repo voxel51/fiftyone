@@ -596,6 +596,8 @@ def make_frames_dataset(
         dataset,
         sample_collection,
         sample_frames,
+        output_dir,
+        rel_dir,
         frames_patt,
         fps,
         max_fps,
@@ -673,6 +675,8 @@ def _init_frames(
     dataset,
     src_collection,
     sample_frames,
+    output_dir,
+    rel_dir,
     frames_patt,
     fps,
     max_fps,
@@ -739,8 +743,10 @@ def _init_frames(
             _sample_id = sample["_id"]
             support = None
 
-        outdir = os.path.splitext(video_path)[0]
-        images_patt = os.path.join(outdir, frames_patt)
+        _outpath = fouv._get_outpath(
+            video_path, output_dir=output_dir, rel_dir=rel_dir
+        )
+        images_patt = os.path.join(os.path.splitext(_outpath)[0], frames_patt)
 
         # Determine which frame numbers to include in the frames dataset and
         # whether any frame images need to be sampled

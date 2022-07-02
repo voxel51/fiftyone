@@ -649,8 +649,9 @@ def _transform_videos(
             )
 
             if sample_frames:
-                outdir = os.path.splitext(_outpath)[0]
-                outpath = os.path.join(outdir, frames_patt)
+                outpath = os.path.join(
+                    os.path.splitext(_outpath)[0], frames_patt
+                )
 
                 # If sampling was not forced and the first frame exists, assume
                 # that all frames exist
