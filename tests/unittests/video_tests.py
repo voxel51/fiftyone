@@ -30,6 +30,9 @@ class VideoTests(unittest.TestCase):
         frame5 = fo.Frame()
         frame3 = fo.Frame(hello="world")
 
+        self.assertIsNone(frame1.sample_id)
+        self.assertIsNone(frame1._sample_id)
+
         # Intentionally out of order to test sorting
         frames[1] = frame1
         frames[5] = frame5
@@ -70,6 +73,9 @@ class VideoTests(unittest.TestCase):
         self.assertIsNotNone(frame1.id)
         self.assertIsNone(frame3.id)
         self.assertIsNotNone(frame5.id)
+
+        self.assertIsInstance(frame1.sample_id, str)
+        self.assertIsInstance(frame1._sample_id, ObjectId)
 
         self.assertTrue(len(sample.frames), 2)
 

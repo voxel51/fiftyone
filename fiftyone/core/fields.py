@@ -73,17 +73,7 @@ class IntField(mongoengine.fields.IntField, Field):
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        return ObjectId(value)
-
-    def to_python(self, value):
-        if value is None:
-            return None
-
-        return str(value)
+    pass
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
