@@ -32,28 +32,8 @@ export class FrameNumberElement extends BaseElement<FrameState> {
   }
 }
 
-export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
+export class FrameElement extends BaseElement<FrameState, null> {
   imageSource: HTMLCanvasElement;
-
-  getEvents(): Events<FrameState> {
-    return {
-      error: ({ event, dispatchEvent }) => {
-        dispatchEvent("error", { event });
-      },
-      loadedmetadata: ({ update }) => {
-        update(({ config: { frameNumber, frameRate } }) => {
-          this.element.currentTime = getTime(frameNumber, frameRate);
-          return {
-            duration: this.element.duration,
-          };
-        });
-      },
-      seeked: ({ update, dispatchEvent }) => {
-        update({ loaded: true });
-        dispatchEvent("loaded");
-      },
-    };
-  }
 
   createHTMLElement(update: StateUpdate<FrameState>) {
     this.imageSource = document.createElement("canvas");
@@ -87,7 +67,7 @@ export class FrameElement extends BaseElement<FrameState, HTMLVideoElement> {
           };
           video.addEventListener("seeked", seeked);
 
-          const error = (event) => {
+          const error = () => {
             video.removeEventListener("error", error);
             release();
             update({ error: true });

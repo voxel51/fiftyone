@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7e435fb3c4de85d786e7412919f27d22>>
+ * @generated SignedSource<<ee814c0549c8b6c760bd14012375a55c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -53,26 +53,26 @@ export type setViewMutation$data = {
       }> | null;
       readonly evaluations: ReadonlyArray<{
         readonly key: string;
-        readonly version: string;
-        readonly timestamp: string;
-        readonly viewStages: ReadonlyArray<string>;
+        readonly version: string | null;
+        readonly timestamp: string | null;
+        readonly viewStages: ReadonlyArray<string> | null;
         readonly config: {
           readonly cls: string;
-          readonly predField: string;
-          readonly gtField: string;
-        };
+          readonly predField: string | null;
+          readonly gtField: string | null;
+        } | null;
       }>;
       readonly brainMethods: ReadonlyArray<{
         readonly key: string;
-        readonly version: string;
-        readonly timestamp: string;
-        readonly viewStages: ReadonlyArray<string>;
+        readonly version: string | null;
+        readonly timestamp: string | null;
+        readonly viewStages: ReadonlyArray<string> | null;
         readonly config: {
           readonly cls: string;
           readonly embeddingsField: string | null;
-          readonly method: string;
+          readonly method: string | null;
           readonly patchesField: string | null;
-        };
+        } | null;
       }>;
       readonly lastLoadedAt: string | null;
       readonly createdAt: string | null;
