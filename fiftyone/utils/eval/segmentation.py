@@ -75,10 +75,7 @@ def evaluate_segmentations(
             truth :class:`fiftyone.core.labels.Segmentation` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
         mask_targets (None): a dict mapping mask values to labels. If not
-            provided, mask targets are loaded from
-            :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
-            :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
-            possible, or else the observed pixel values are used
+            provided, the observed pixel values are used
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple")``
         **kwargs: optional keyword arguments for the constructor of the
@@ -90,14 +87,6 @@ def evaluate_segmentations(
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
-
-    if mask_targets is None:
-        if pred_field in samples.mask_targets:
-            mask_targets = samples.mask_targets[pred_field]
-        elif gt_field in samples.mask_targets:
-            mask_targets = samples.mask_targets[gt_field]
-        elif samples.default_mask_targets:
-            mask_targets = samples.default_mask_targets
 
     config = _parse_config(pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
@@ -255,19 +244,13 @@ class SimpleEvaluation(SegmentationEvaluation):
             # note: fields are manually declared so they'll exist even when
             # `samples` is empty
             dataset = samples._dataset
-            dataset._add_sample_field_if_necessary(acc_field, fof.FloatField)
-            dataset._add_sample_field_if_necessary(pre_field, fof.FloatField)
-            dataset._add_sample_field_if_necessary(rec_field, fof.FloatField)
+            dataset.add_sample_field(acc_field, fof.FloatField)
+            dataset.add_sample_field(pre_field, fof.FloatField)
+            dataset.add_sample_field(rec_field, fof.FloatField)
             if processing_frames:
-                dataset._add_frame_field_if_necessary(
-                    acc_field, fof.FloatField
-                )
-                dataset._add_frame_field_if_necessary(
-                    pre_field, fof.FloatField
-                )
-                dataset._add_frame_field_if_necessary(
-                    rec_field, fof.FloatField
-                )
+                dataset.add_frame_field(acc_field, fof.FloatField)
+                dataset.add_frame_field(pre_field, fof.FloatField)
+                dataset.add_frame_field(rec_field, fof.FloatField)
 
         logger.info("Evaluating segmentations...")
         for sample in _samples.iter_samples(progress=True):

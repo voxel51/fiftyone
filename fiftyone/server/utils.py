@@ -1,11 +1,15 @@
 """
-FiftyOne server utils.
+FiftyOne Server utils
 
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone import ViewField as F
+from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 
 
 def change_sample_tags(sample_collection, changes):
@@ -55,6 +59,43 @@ def change_label_tags(sample_collection, changes, label_fields=None):
             label_field, tag_expr
         )
         tag_view._edit_label_tags(edit_fcn, label_fields=[label_field])
+
+
+def iter_label_fields(view: foc.SampleCollection):
+    """
+    Yields the labels of the
+    :class:`fiftyone.core.collections.SampleCollection`
+
+    Args:
+        view: a :class:`fiftyone.core.collections.SampleCollection`
+    """
+    for field_name, field in view.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield field_name, field
+
+    if view.media_type != fom.VIDEO:
+        return
+
+    for field_name, field in view.get_frame_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    ).items():
+        yield "frames.%s" % field_name, field
+
+
+def meets_type(field: fof.Field, type_or_types):
+    """
+    Determines whether the field meets type or types, or the field
+    is a :class:`fiftyone.core.fields.ListField` that meets the type or types
+
+    Args:
+        field: a class:`fiftyone.core.fields.Field`
+        type: a field type or `tuple` of field types
+    """
+    return isinstance(field, type_or_types) or (
+        isinstance(field, fof.ListField)
+        and isinstance(field.field, type_or_types)
+    )
 
 
 def _get_tag_expr(changes):

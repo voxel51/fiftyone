@@ -16,18 +16,16 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
-import fiftyone.core.metadata as fomt
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
-import fiftyone.utils.labels as foul
 
 
 logger = logging.getLogger(__name__)
 
 
 class SegmentationType(enum.Enum):
-    """The FiftyOne label type to load segmentations into"""
+    """The FiftyOne label type used to store segmentations"""
 
     INSTANCE = 1
     POLYLINE = 2
@@ -85,6 +83,11 @@ class OpenLABELImageDatasetImporter(
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load
+        skeleton (None): a :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+            to reference when loading keypoints
+        skeleton_key (None): the key in the OpenLABEL annotations pointing to
+            the label of each keypoint matching the labels defined in the given
+            ``skeleton``
     """
 
     def __init__(
@@ -97,6 +100,8 @@ class OpenLABELImageDatasetImporter(
         shuffle=False,
         seed=None,
         max_samples=None,
+        skeleton=None,
+        skeleton_key=None,
     ):
         if dataset_dir is None and data_path is None and labels_path is None:
             raise ValueError(
@@ -129,6 +134,8 @@ class OpenLABELImageDatasetImporter(
         self.labels_path = labels_path
         self._label_types = _label_types
         self.use_polylines = use_polylines
+        self.skeleton = skeleton
+        self.skeleton_key = skeleton_key
 
         self._info = None
         self._image_paths_map = None
@@ -155,28 +162,36 @@ class OpenLABELImageDatasetImporter(
                 _remove_ext(os.path.basename(file_id))
             ]
 
-        stream = self._annotations.get_stream(file_id)
-        height, width = stream.height, stream.width
-
-        if height is None or width is None:
-            sample_metadata = fomt.ImageMetadata.build_for(sample_path)
-            height, width = sample_metadata["height"], sample_metadata["width"]
-        else:
-            sample_metadata = fomt.ImageMetadata(width=width, height=height)
-
-        frame_size = (width, height)
-        objects = self._annotations.get_objects(file_id)
         seg_type = (
             SegmentationType.POLYLINE
             if self.use_polylines
             else SegmentationType.INSTANCE
         )
-        label = objects.to_labels(frame_size, self._label_types, seg_type)
+
+        width, height = self._annotations.get_dimensions(file_id)
+
+        if height is None or width is None:
+            sample_metadata = fom.ImageMetadata.build_for(sample_path)
+            height, width = sample_metadata["height"], sample_metadata["width"]
+        else:
+            sample_metadata = fom.ImageMetadata(width=width, height=height)
+
+        frame_size = (width, height)
+        sample_labels, frame_labels = self._annotations.get_labels(
+            file_id,
+            self._label_types,
+            frame_size,
+            seg_type,
+            skeleton=self.skeleton,
+            skeleton_key=self.skeleton_key,
+        )
+
+        labels = _merge_frame_labels(sample_labels, frame_labels, seg_type)
 
         if self._has_scalar_labels:
-            label = next(iter(label.values())) if label else None
+            labels = next(iter(labels.values())) if labels else None
 
-        return sample_path, sample_metadata, label
+        return sample_path, sample_metadata, labels
 
     @property
     def has_dataset_info(self):
@@ -192,17 +207,7 @@ class OpenLABELImageDatasetImporter(
 
     @property
     def label_cls(self):
-        seg_type = fol.Polylines if self.use_polylines else fol.Detections
-        types = {
-            "detections": fol.Detections,
-            "segmentations": seg_type,
-            "keypoints": fol.Keypoints,
-        }
-
-        if self._has_scalar_labels:
-            return types[self._label_types[0]]
-
-        return {k: v for k, v in types.items() if k in self._label_types}
+        return None
 
     def setup(self):
         image_paths_map = self._load_data_map(
@@ -210,7 +215,7 @@ class OpenLABELImageDatasetImporter(
         )
 
         file_ids = []
-        annotations = OpenLABELAnnotations(fom.IMAGE)
+        annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
             labels_path = fou.normpath(self.labels_path)
@@ -296,6 +301,11 @@ class OpenLABELVideoDatasetImporter(
             samples are imported
         seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to load
+        skeleton (None): a :class:`fiftyone.core.odm.dataset.KeypointSkeleton`
+            to reference when loading keypoints
+        skeleton_key (None): the key in the OpenLABEL annotations pointing to
+            the label of each keypoint matching the labels defined in the given
+            ``skeleton``
     """
 
     def __init__(
@@ -308,6 +318,8 @@ class OpenLABELVideoDatasetImporter(
         shuffle=False,
         seed=None,
         max_samples=None,
+        skeleton=None,
+        skeleton_key=None,
     ):
         if dataset_dir is None and data_path is None and labels_path is None:
             raise ValueError(
@@ -340,6 +352,8 @@ class OpenLABELVideoDatasetImporter(
         self.labels_path = labels_path
         self._label_types = _label_types
         self.use_polylines = use_polylines
+        self.skeleton = skeleton
+        self.skeleton_key = skeleton_key
 
         self._info = None
         self._video_paths_map = None
@@ -366,32 +380,39 @@ class OpenLABELVideoDatasetImporter(
                 _remove_ext(os.path.basename(file_id))
             ]
 
-        stream = self._annotations.get_stream(file_id)
-        height, width = stream.height, stream.width
+        width, height = self._annotations.get_dimensions(file_id)
 
         if height is None or width is None:
-            sample_metadata = fomt.VideoMetadata.build_for(sample_path)
+            sample_metadata = fom.VideoMetadata.build_for(sample_path)
             height, width = (
                 sample_metadata["frame_height"],
                 sample_metadata["frame_width"],
             )
         else:
-            sample_metadata = fomt.VideoMetadata(
+            sample_metadata = fom.VideoMetadata(
                 frame_width=width, frame_height=height
             )
 
         frame_size = (width, height)
-        frames = self._annotations.get_objects(file_id)
         seg_type = (
             SegmentationType.POLYLINE
             if self.use_polylines
             else SegmentationType.INSTANCE
         )
-        frame_labels = frames.to_labels(
-            frame_size, self._label_types, seg_type
+
+        frame_size = (width, height)
+        sample_labels, frame_labels = self._annotations.get_labels(
+            file_id,
+            self._label_types,
+            frame_size,
+            seg_type,
+            skeleton=self.skeleton,
+            skeleton_key=self.skeleton_key,
         )
 
-        return sample_path, sample_metadata, None, frame_labels
+        sample_labels = _remove_empty_labels(sample_labels, seg_type)
+
+        return sample_path, sample_metadata, sample_labels, frame_labels
 
     @property
     def has_dataset_info(self):
@@ -402,22 +423,8 @@ class OpenLABELVideoDatasetImporter(
         return True
 
     @property
-    def _has_scalar_labels(self):
-        return len(self._label_types) == 1
-
-    @property
     def label_cls(self):
-        seg_type = fol.Polylines if self.use_polylines else fol.Detections
-        types = {
-            "detections": fol.Detections,
-            "segmentations": seg_type,
-            "keypoints": fol.Keypoints,
-        }
-
-        if self._has_scalar_labels:
-            return types[self._label_types[0]]
-
-        return {k: v for k, v in types.items() if k in self._label_types}
+        return None
 
     def setup(self):
         video_paths_map = self._load_data_map(
@@ -425,7 +432,7 @@ class OpenLABELVideoDatasetImporter(
         )
 
         file_ids = []
-        annotations = OpenLABELAnnotations(fom.VIDEO)
+        annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
             labels_path = fou.normpath(self.labels_path)
@@ -463,19 +470,12 @@ class OpenLABELVideoDatasetImporter(
 class OpenLABELAnnotations(object):
     """Annotations parsed from OpenLABEL format able to be converted to
     FiftyOne labels.
-
-    Args:
-        media_type: whether the annotations correspond to images
-            (``fiftyone.core.media.IMAGE``) or videos
-            (``fiftyone.core.media.VIDEO``)
     """
 
-    def __init__(self, media_type):
-        self.is_video = media_type == fom.VIDEO
-        self.objects = {}
-        self.streams = {}
+    def __init__(self):
+        self.objects = OpenLABELObjects()
+        self.streams = OpenLABELStreams()
         self.metadata = {}
-        self.uri_to_streams = {}
 
     def parse_labels(self, base_dir, labels_path):
         """Parses a single OpenLABEL labels file.
@@ -499,435 +499,919 @@ class OpenLABELAnnotations(object):
         self.metadata[label_file_id] = metadata
         potential_file_ids.extend(metadata.parse_potential_file_ids())
 
-        if self.is_video:
-            object_parser = OpenLABELFramesParser()
-        else:
-            object_parser = OpenLABELObjectsParser()
+        streams_dict = labels.get("streams", {})
+        self.streams.parse_streams_dict(streams_dict, label_file_id)
 
-        self._parse_streams(labels, label_file_id)
-        self._parse_objects(labels, object_parser)
-        self._parse_frames(labels, label_file_id, object_parser)
-        self._store_objects(object_parser, label_file_id, potential_file_ids)
+        objects_dict = labels.get("objects", {})
+        self.objects.parse_objects_dict(objects_dict, label_file_id)
 
-        potential_file_ids.extend(self._update_stream_uris(label_file_id))
+        frames_dict = labels.get("frames", {})
+        self._parse_frames(frames_dict, label_file_id)
+
+        potential_file_ids.extend(self.streams.uris)
 
         return potential_file_ids
 
-    def _update_stream_uris(self, label_file_id):
-        file_ids = self.streams[label_file_id].uris
-        for uri in file_ids:
-            self.uri_to_streams[uri] = label_file_id
+    def _parse_frames(self, frames, label_file_id):
+        for frame_ind, frame in frames.items():
+            frame_number = int(frame_ind) + 1
 
-        return file_ids
-
-    def _parse_streams(self, labels, label_file_id):
-        self.streams[label_file_id] = OpenLABELStreams()
-        for stream_name, stream_info in labels.get("streams", {}).items():
-            self.streams[label_file_id].add_stream_dict(
-                stream_name, stream_info
+            objects = frame.get("objects", {})
+            self.objects.parse_objects_dict(
+                objects, label_file_id, frame_number=frame_number
             )
 
-    def _parse_objects(self, labels, parser):
-        for obj_id, obj_d in labels.get("objects", {}).items():
-            parser.add_object_dict(obj_id, obj_d)
+            streams_dict = frame.get("frame_properties", {}).get("streams", {})
+            self.streams.parse_streams_dict(
+                streams_dict, label_file_id, frame_number=frame_number
+            )
 
-    def _store_objects(self, parser, label_file_id, potential_file_ids):
-        for stream_name, objects in parser.to_stream_objects_map().items():
-            _uris = []
-            if stream_name is not None:
-                stream = self.streams[label_file_id].streams.get(
-                    stream_name, None
-                )
-                if stream:
-                    _uris.append(stream.uri)
-
-            for uri in set(_uris + potential_file_ids):
-                if uri in self.objects:
-                    self.objects[uri].add_objects(objects)
-                else:
-                    self.objects[uri] = deepcopy(objects)
-
-    def _parse_frames(self, labels, label_file_id, object_parser):
-        for frame_ind, frame in labels.get("frames", {}).items():
-            frame_number = int(frame_ind) + 1
-            _objects = frame.get("objects", {})
-            for obj_id, obj_d in _objects.items():
-                if self.is_video:
-                    object_parser.add_object_dict(
-                        obj_id, obj_d, frame_number=frame_number
-                    )
-                else:
-                    object_parser.add_object_dict(obj_id, obj_d)
-
-            _streams = frame.get("frame_properties", {}).get("streams", None)
-            if _streams:
-                for stream_name, stream_info in _streams.items():
-                    self.streams[label_file_id].add_stream_dict(
-                        stream_name, stream_info
-                    )
-
-    def get_objects(self, uri):
-        """Get the :class:`OpenLABELObjects` or :class:`OpenLABELFrames`
-        corresponding to a given uri.
+    def get_dimensions(self, file_id):
+        """Get the width and height of a given URI or file id
 
         Args:
-            uri: the uri of the media for which to get objects
+            file_id: the unique identifier to a media file
 
         Returns:
-            the :class:`OpenLABELObjects` or :class:`OpenLABELFrames`
-            corresponding to the given uri
+            (width, height) of the given file
         """
-        if self.is_video:
-            return self.objects.get(uri, OpenLABELFrames({}))
+        return self.streams.get_dimensions(file_id)
 
-        return self.objects.get(uri, OpenLABELObjects([]))
-
-    def get_stream(self, uri):
-        """Get the :class:`OpenLABELStream` corresponding to a given uri.
+    def get_labels(
+        self,
+        uri,
+        label_types,
+        frame_size,
+        seg_type,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        """Get the FiftyOne labels corresponding to the annotations of a given
+        URI. The results are two dictionaries, sample- and frame-level, mapping
+        field names to values and label objects.
 
         Args:
-            uri: the uri of the media for which to get the stream
+            uri: the unique identifier to a media file
+            label_types: a list of label types to load. The
+                supported values are
+                ``("detections", "segmentations", "keypoints")``.
+            frame_size: the (width, height) tuple for the media frame
+            seg_type: the :class:`SegmentationType` to use for segmentation
+                annotations
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use as a
+                reference when loading keypoints
+            skeleton_key (None): the name of the field in the OpenLABEL
+                annotations containing the labels of keypoints matching the
+                labels of the given skeleton
 
         Returns:
-            the :class:`OpenLABELStream` corresponding to the given uri
+            a dictionary of sample level fields and label objects and a
+            dictionary of frame numbers to frame level fields and label objects
         """
-        if uri not in self.uri_to_streams:
-            return OpenLABELStream(uri=uri)
-
-        label_file_id = self.uri_to_streams[uri]
-        streams = self.streams[label_file_id]
-        return streams.get_one_stream(uri)
-
-
-class OpenLABELParser(object):
-    """An interface for :class:`OpenLABELFramesParser` or
-    :class:`OpenLABELObjectsParser`.
-    """
-
-    def __init__(self):
-        self.stream_to_id_map = defaultdict(list)
-        self.streamless_objects = set()
-
-    @property
-    def _label_type(self):
-        raise NotImplementedError("Subclass must implement `_label_type`")
-
-    def _get_objects_for_ids(self, ids):
-        raise NotImplementedError(
-            "Subclass must impelment `_get_objects_for_ids()`"
+        stream_infos = self.streams.get_stream_info(uri)
+        sample_objects = self.objects.get_objects(stream_infos)
+        return sample_objects.to_labels(
+            frame_size,
+            label_types,
+            seg_type,
+            stream_infos,
+            skeleton=skeleton,
+            skeleton_key=skeleton_key,
         )
 
-    def _parse_object(self, obj, obj_id, obj_d):
-        if obj is None:
-            obj, frame_numbers = OpenLABELObject.from_anno_dict(obj_id, obj_d)
-        else:
-            frame_numbers = obj.update_object_dict(obj_d)
 
-        stream = obj.stream
-        if stream is None:
-            self.streamless_objects.add(obj_id)
-        else:
-            if obj_id in self.streamless_objects:
-                self.streamless_objects.remove(obj_id)
+class OpenLABELStreamInfos(object):
+    """A collection of multiple :class:`OpenLABELStreamInfo` objects."""
 
-            self.stream_to_id_map[stream].append(obj_id)
+    def __init__(self, infos=None):
+        self.infos = infos if infos else []
 
-        return obj, frame_numbers
-
-    def to_stream_objects_map(self):
-        """Get the parsed objects for each stream.
-
-        Returns:
-            a dict mapping streams to openLABEL objects or frames
-        """
-        stream_objects_map = {}
-        for stream_name, ids in self.stream_to_id_map.items():
-            objects = self._get_objects_for_ids(ids)
-            stream_objects_map[stream_name] = self._label_type(objects)
-
-        objects = self._get_objects_for_ids(self.streamless_objects)
-        if objects:
-            stream_objects_map[None] = self._label_type(objects)
-
-        return stream_objects_map
-
-
-class OpenLABELObjectsParser(OpenLABELParser):
-    """Parses and collects :class:`OpenLABELObjects` from object dictionaries."""
-
-    def __init__(self):
-        super().__init__()
-        self.objects = {}
-
-    @property
-    def _label_type(self):
-        return OpenLABELObjects
-
-    def add_object_dict(self, obj_id, obj_d):
-        """Parses the given raw object dictionary.
+    def get_stream_attributes(self, frame_number=None):
+        """Aggregates attributes from all streams in this collection.
 
         Args:
-            obj_id: the string id of the given object
-            obj_d: a dict containing object information to parse
+            frame_number (None): a specific frame number for which to get
+                stream attributes
+
+        Returns:
+            a dictionary of attributes from all streams in this collection
         """
-        obj = self.objects.get(obj_id, None)
-        obj, _ = self._parse_object(obj, obj_id, obj_d)
-        self.objects[obj_id] = obj
+        attributes = {}
+        for info in self.infos:
+            is_sample = frame_number is None and info.is_sample_level
+            has_frame_number = (
+                info.frame_numbers and frame_number in info.frame_numbers
+            )
+            if is_sample or has_frame_number:
+                attributes.update(info.get_stream_attributes())
 
-    def _get_objects_for_ids(self, ids):
-        return [self.objects[i] for i in ids]
+        return attributes
+
+    @property
+    def frame_numbers(self):
+        """All frame numbers existing in the :class:`OpenLABELStreamInfo` objects in
+        this collection.
+        """
+        frame_numbers = []
+        for info in self.infos:
+            if info.frame_numbers:
+                frame_numbers.extend(info.frame_numbers)
+        return sorted(set(frame_numbers))
 
 
-class OpenLABELObjects(object):
-    """A collection of :class:`OpenLABELObject`.
+class OpenLABELStreamInfo(object):
+    """Information about a stream used to gather specific objects for a media
+    file.
 
     Args:
-        objects: a list of :class:`OpenLABELObject`
+        frame_numbers (None): frame numbers related to this stream info
+        stream (None): an :class:`OpenLABELStream`
+        label_file_id (None): a label file id related to this stream info
+        is_sample_level (None): whether this stream info corresponds to
+            sample-level or frame-level
     """
 
-    def __init__(self, objects):
-        self.objects = objects
-
-    def _to_labels(self, frame_size, labels_type, obj_to_label):
-        labels = []
-        for obj in self.objects:
-            labels.extend(obj_to_label(obj, frame_size))
-
-        kwargs = {labels_type._LABEL_LIST_FIELD: labels}
-        return labels_type(**kwargs)
-
-    def _to_detections(self, frame_size):
-        return self._to_labels(
-            frame_size,
-            fol.Detections,
-            OpenLABELObject.to_detections,
-        )
-
-    def _to_keypoints(self, frame_size):
-        return self._to_labels(
-            frame_size,
-            fol.Keypoints,
-            OpenLABELObject.to_keypoints,
-        )
-
-    def _to_polylines(self, frame_size):
-        return self._to_labels(
-            frame_size,
-            fol.Polylines,
-            OpenLABELObject.to_polylines,
-        )
-
-    def _to_segmentations(
-        self, frame_size, seg_type=SegmentationType.INSTANCE
+    def __init__(
+        self,
+        frame_numbers=None,
+        stream=None,
+        label_file_id=None,
+        is_sample_level=None,
     ):
-        polylines = self._to_polylines(frame_size)
-        if seg_type == SegmentationType.POLYLINE:
-            return polylines
+        self.frame_numbers = frame_numbers
+        self.stream = stream
+        self.label_file_id = label_file_id
+        self.is_sample_level = is_sample_level
 
-        return polylines.to_detections(frame_size=frame_size)
+    @property
+    def is_streamless(self):
+        """Whether there exists a stream corresponding to this info."""
+        return self.stream is None
 
-    def add_objects(self, new_objects):
-        """Adds additional OpenLABEL objects to this collection.
+    def get_stream_attributes(self):
+        """Get a dictionary of attributes for the stream in this object.
+
+        Returns:
+            a dictionary of attributes from the corresponding stream
+        """
+        attributes = {}
+        if self.stream:
+            attributes.update(self.stream.other_attrs)
+
+        return attributes
+
+
+class OpenLABELGroup(object):
+    """A utility for parsing groups of OpenLABEL elements"""
+
+    def __init__(self):
+        self._element_id_to_element = {}
+        self._keys_by_label_file_id = defaultdict(set)
+
+    def _parse_group_dict(self, group_dict, label_file_id, frame_number=None):
+        # Streams are unique by name and label file id
+        for key, element_dict in group_dict.items():
+            self._add_element_dict(
+                label_file_id,
+                key,
+                element_dict,
+                frame_number=frame_number,
+            )
+
+    @property
+    def _element_type(self):
+        raise NotImplementedError("Subclass must implement '_element_type'")
+
+    @classmethod
+    def _get_element_id(cls, label_file_id, name):
+        return "%s_%s" % (label_file_id, name)
+
+    @classmethod
+    def _get_label_file_id(cls, element_id, element_name):
+        return element_id[: -len(element_name) - 1]
+
+    def _add_element_dict(self, label_file_id, key, info_d, frame_number=None):
+        """Parses the given raw stream dictionary.
 
         Args:
-            new_objects: either a list of :class:`OpenLABELObject` or a
-                different :class:`OpenLABELObjects`
+            stream_name: the name of the stream being parsed
+            stream_d: a dict containing stream information to parse
+            frame_number (None): the frame number from which this stream
+                information dict was parsed, 'None' if from the top-level
+                streams
         """
-        if isinstance(new_objects, OpenLABELObjects):
-            self.objects.extend(new_objects.objects)
+        element_id = self._get_element_id(label_file_id, key)
+        element = self._element_id_to_element.get(element_id, None)
+        if element is None:
+            element = self._element_type.from_anno_dict(
+                key, info_d, frame_number=frame_number
+            )
         else:
-            self.objects.extend(new_objects)
+            element.update_dict(info_d, frame_number=frame_number)
+
+        if element:
+            self._element_id_to_element[element_id] = element
+            self._keys_by_label_file_id[label_file_id].add(key)
+
+        return element
+
+
+class OpenLABELObjects(OpenLABELGroup):
+    """A collection of :class:`OpenLABELObject` and corresponding utility
+    methods.
+    """
+
+    @property
+    def streams(self):
+        """Get streams corresponding to any object in this collection."""
+        _streams = []
+        for obj in self.all_objects:
+            _streams.extend(obj.streams)
+        return list(set(_streams))
+
+    @property
+    def all_objects(self):
+        """Get all :class:`OpenLABELObject`s in this collection."""
+        return list(self._element_id_to_element.values())
+
+    def parse_objects_dict(
+        self, objects_dict, label_file_id, frame_number=None
+    ):
+        """Parses the OpenLABEL annotations corresponding to a specific
+        dictionary of objects.
+
+        Args:
+            objects_dict: the dict of OpenLABEL object annotations
+            label_file_id: the name of the annotations file containing these
+                objects
+            frame_number (None): an optional frame that this ``objects_dict`` is
+                in
+        """
+        self._parse_group_dict(
+            objects_dict, label_file_id, frame_number=frame_number
+        )
+
+    @property
+    def _element_type(self):
+        return OpenLABELObject
+
+    def add_object(self, obj_key, label_file_id, obj):
+        """Adds an :class:`OpenLABELObject` to this collection.
+
+        Args:
+            obj_key: the name of the object in the OpenLABEL annotations
+            label_file_id: the filename of the annotations file containing this
+                label
+            obj: the :class:`OpenLABELObject` to add
+        """
+        obj_id = self._get_element_id(obj_key, label_file_id)
+        self._element_id_to_element[obj_id] = obj
+
+    def _get_filtered_object(self, obj_id, stream_info):
+        # Get object that contains exactly the information needed, either with
+        # frames filtered, removed, or merged
+        if obj_id not in self._element_id_to_element:
+            return None
+
+        obj = self._element_id_to_element[obj_id]
+        return obj.filter_stream(stream_info)
+
+    def get_objects(self, stream_infos):
+        """Gets any objects that correspond to an info in the given stream
+        infos.
+
+        Args:
+            stream_infos: a :class:`OpenLABELStreamInfos` used to get corresponding
+                objects
+
+        Returns:
+            an :class:`OpenLABELObjects` with objects that correspond to any of the
+            given stream infos
+        """
+        stream_objects = OpenLABELObjects()
+        for stream_info in stream_infos.infos:
+            label_file_id = stream_info.label_file_id
+            obj_keys = self._keys_by_label_file_id.get(label_file_id, [])
+            for obj_key in obj_keys:
+                obj_id = self._get_element_id(label_file_id, obj_key)
+                obj = self._get_filtered_object(obj_id, stream_info)
+                if obj:
+                    stream_objects.add_object(obj_key, label_file_id, obj)
+
+        return stream_objects
 
     def to_labels(
-        self, frame_size, label_types, seg_type=SegmentationType.INSTANCE
+        self,
+        frame_size,
+        label_types,
+        seg_type,
+        stream_infos,
+        skeleton=None,
+        skeleton_key=None,
     ):
         """Converts the stored :class:`OpenLABELObject` to FiftyOne labels.
 
         Args:
             frame_size: the size of the image frame in pixels (width, height)
             label_types: a list of label types to load
-            seg_type (SegmentationType.INSTANCE): the type to use to store
-                segmentations
+            seg_type: the :class:`SegmentationType` to use to store segmentations
+            stream_infos: the :class:`OpenLABELStreamInfos` containing sample-level
+                attributes to parse into labels
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` to use when
+                loading keypoint annotations
+            skeleton_key (None): the name of the field in the OpenLABEL
+                annotations containing the labels of keypoints matching the
+                labels of the given skeleton
 
         Returns:
-            a dict mapping the specified label types to FiftyOne labels
+            a dictionary of sample level fields and label objects and a
+            dictionary of frame numbers to frame level fields and label objects
+
         """
-        label = {}
-
-        if "detections" in label_types:
-            label["detections"] = self._to_detections(frame_size)
-
-        if "keypoints" in label_types:
-            label["keypoints"] = self._to_keypoints(frame_size)
-
-        if "segmentations" in label_types:
-            label["segmentations"] = self._to_segmentations(
-                frame_size, seg_type=seg_type
-            )
-
-        return label
-
-
-class OpenLABELFramesParser(OpenLABELParser):
-    """Parses and collects :class:`OpenLABELObject` framewise from object
-    dictionaries
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.framewise_objects = defaultdict(dict)
-
-    @property
-    def _label_type(self):
-        return OpenLABELFrames
-
-    def add_object_dict(self, obj_id, obj_d, frame_number=None):
-        """Parses the given raw object dictionary.
-
-        Args:
-            obj_id: the string id of the given object
-            obj_d: a dict containing object information to parse
-            frame_number (None): the frame number corresponding to the given
-                object
-        """
-        obj = self.framewise_objects[frame_number].get(obj_id, None)
-        obj, frame_numbers = self._parse_object(obj, obj_id, obj_d)
-
-        if frame_numbers:
-            if frame_number is not None:
-                frame_numbers.append(frame_number)
-                frame_numbers = sorted(set(frame_numbers))
-        else:
-            frame_numbers = [frame_number]
-
-        for frame_number in frame_numbers:
-            if frame_number is not None and self.framewise_objects[None].get(
-                obj_id, False
-            ):
-                del self.framewise_objects[None][obj_id]
-
-            self.framewise_objects[frame_number][obj_id] = deepcopy(obj)
-
-    def _get_objects_for_ids(self, ids):
-        frame_objects = {}
-        for frame_number, objects in self.framewise_objects.items():
-            _objects = [objects[i] for i in ids if i in objects]
-            if _objects:
-                frame_objects[frame_number] = OpenLABELObjects(_objects)
-
-        return frame_objects
-
-
-class OpenLABELFrames(object):
-    """A collection of :class:`OpenLABELObject` framewise.
-
-    Args:
-        frame_objects: a dict mapping frame numbers to
-            :class:`OpenLABELObject`
-    """
-
-    def __init__(self, frame_objects):
-        self.frame_objects = frame_objects
-
-    def to_labels(
-        self, frame_size, label_types, seg_type=SegmentationType.POLYLINE
-    ):
-        """Converts the stored :class:`OpenLABELObject` to FiftyOne labels
-
-        Args:
-            frame_size: the size of the image frame in pixels (width, height)
-            label_types: a list of label types to load
-            seg_type (SegmentationType.INSTANCE): the type to use to store
-                segmentations
-
-        Returns:
-            a dict mapping frame numbers to dicts mapping the specified label
-            types to FiftyOne labels
-        """
-
-        frame_labels = {}
-        for frame_number, objects in self.frame_objects.items():
-            frame_label = {}
+        frame_dets = defaultdict(list)
+        frame_kps = defaultdict(list)
+        frame_segs = defaultdict(list)
+        for obj in self.all_objects:
             if "detections" in label_types:
-                frame_label["detections"] = objects._to_detections(frame_size)
+                for frame_number, dets in obj.to_detections(
+                    frame_size
+                ).items():
+                    frame_dets[frame_number].extend(dets)
 
             if "keypoints" in label_types:
-                frame_label["keypoints"] = objects._to_keypoints(frame_size)
+                for frame_number, kps in obj.to_keypoints(
+                    frame_size, skeleton=skeleton, skeleton_key=skeleton_key
+                ).items():
+                    frame_kps[frame_number].extend(kps)
 
             if "segmentations" in label_types:
-                frame_label["segmentations"] = objects._to_segmentations(
-                    frame_size, seg_type=seg_type
+                for frame_number, segs in obj.to_polylines(frame_size).items():
+                    if seg_type == SegmentationType.POLYLINE:
+                        _segs = segs
+                    elif seg_type == SegmentationType.INSTANCE:
+                        _segs = []
+                        for seg in segs:
+                            _segs.append(
+                                seg.to_detection(frame_size=frame_size)
+                            )
+                    else:
+                        raise NotImplementedError(
+                            "Loading semantic segmentations is not yet "
+                            "supported"
+                        )
+                    frame_segs[frame_number].extend(_segs)
+
+        sample_labels = stream_infos.get_stream_attributes()
+
+        frame_labels = defaultdict(dict)
+        for frame_number in stream_infos.frame_numbers:
+            frame_labels[frame_number] = stream_infos.get_stream_attributes(
+                frame_number=frame_number
+            )
+
+        for frame_number, dets in frame_dets.items():
+            frame_labels[frame_number]["detections"] = fol.Detections(
+                detections=dets
+            )
+
+        for frame_number, kps in frame_kps.items():
+            frame_labels[frame_number]["keypoints"] = fol.Keypoints(
+                keypoints=kps
+            )
+
+        for frame_number, segs in frame_segs.items():
+            if seg_type == SegmentationType.POLYLINE:
+                frame_labels[frame_number]["segmentations"] = fol.Polylines(
+                    polylines=segs
                 )
-            frame_labels[frame_number] = frame_label
-
-        return frame_labels
-
-    def add_objects(self, new_objects):
-        """Adds additional OpenLABEL frames to this collection.
-
-        Args:
-            new_objects: either a dict of framewise :class`OpenLABELObjects`
-                or a different :class:`OpenLABELFrames`
-        """
-
-        if isinstance(new_objects, OpenLABELFrames):
-            new_objects = new_objects.frame_objects
-
-        for frame_number, objects in new_objects.items():
-            if frame_number not in self.frame_objects:
-                self.frame_objects[frame_number] = objects
+            elif seg_type == SegmentationType.INSTANCE:
+                frame_labels[frame_number]["segmentations"] = fol.Detections(
+                    detections=segs
+                )
             else:
-                self.frame_objects[frame_number].add_objects(objects)
+                raise NotImplementedError(
+                    "Loading semantic segmentations is not yet supported"
+                )
+
+        sample_labels.update(frame_labels.pop(None, {}))
+
+        return sample_labels, dict(frame_labels)
 
 
-class OpenLABELStreams(object):
+class OpenLABELStreams(OpenLABELGroup):
     """A collection of OpenLABEL streams."""
 
     def __init__(self):
-        self.streams = {}
-        self.uri_to_names_map = defaultdict(list)
+        super().__init__()
+        self._uri_to_stream_ids = defaultdict(set)
 
     @property
     def uris(self):
-        """The list of uris or file_ids corresponding to the streams in this
-        collection
+        """All unique media file identifiers corresponding to streams in this
+        collection.
         """
-        return list(self.uri_to_names_map.keys())
+        _uris = []
+        for stream in self._element_id_to_element.values():
+            _uris.extend(stream.uris)
+        return list(set(_uris))
 
-    def add_stream_dict(self, stream_name, stream_d):
+    def parse_streams_dict(
+        self, streams_dict, label_file_id, frame_number=None
+    ):
+        """Parses the OpenLABEL annotations corresponding to a specific
+        dictionary of streams.
+
+        Args:
+            streams_dict: the dict of OpenLABEL stream annotations
+            label_file_id: the name of the annotations file containing these
+                streams
+            frame_number (None): an optional frame that this ``streams_dict`` is
+                in
+        """
+
+        for key, element_dict in streams_dict.items():
+            self._add_stream_dict(
+                label_file_id,
+                key,
+                element_dict,
+                frame_number=frame_number,
+            )
+
+    def get_dimensions(self, uri):
+        """Get the width and height of a given URI or file id.
+
+        Args:
+            file_id: the unique identifier to a media file
+
+        Returns:
+            (width, height) of the given file
+        """
+        stream_ids = list(self._uri_to_stream_ids.get(uri, []))
+        # All streams pointing to this URI should be the same media
+        if stream_ids:
+            stream_id = stream_ids[0]
+            stream = self._element_id_to_element.get(stream_id, None)
+            if stream:
+                return stream.width, stream.height
+
+        return None, None
+
+    @property
+    def _element_type(self):
+        return OpenLABELStream
+
+    def _add_stream_dict(
+        self, label_file_id, stream_name, stream_d, frame_number=None
+    ):
         """Parses the given raw stream dictionary.
 
         Args:
+            label_file_id: the filename of the annotations file from which
+                these labels are parsed
             stream_name: the name of the stream being parsed
             stream_d: a dict containing stream information to parse
+            frame_number (None): the frame number from which this stream
+                information dict was parsed, 'None' if from the top-level
+                streams
         """
-        stream = self.streams.get(stream_name, None)
-        if stream is None:
-            stream = OpenLABELStream.from_anno_dict(stream_name, stream_d)
-        else:
-            stream.update_stream_dict(stream_d)
+        stream = self._add_element_dict(
+            label_file_id, stream_name, stream_d, frame_number=frame_number
+        )
+        stream_id = self._get_element_id(label_file_id, stream_name)
 
         if stream is not None:
-            if stream.uri is not None:
-                self.uri_to_names_map[stream.uri].append(stream_name)
+            for uri in stream.uris:
+                self._uri_to_stream_ids[uri].add(stream_id)
 
-            self.streams[stream_name] = stream
-
-    def get_one_stream(self, uri):
-        """Get the `OpenLABELStream` corresponding to a
-        given uri or file_id.
+    def get_stream_info(self, uri):
+        """Get all stream infos, including stream and relevant frame numbers,
+        for a given media file identifier.
 
         Args:
-            uri: the uri or file_id for which to get the stream
+            uri: the unique media file identifer for which to get all stream
+                infos
 
         Returns:
-            An `OpenLABELStream`
+            the :class:`OpenLABELStreamInfos` corresponding to the given uri
         """
-        stream_names = self.uri_to_names_map[uri]
-        if stream_names and stream_names[0] in self.streams:
-            return self.streams[stream_names[0]]
+        infos = []
+        if uri in self._uri_to_stream_ids:
+            # Matches at least one stream at sample/frame level
+            stream_ids = self._uri_to_stream_ids[uri]
+            for stream_id in stream_ids:
+                stream = self._element_id_to_element[stream_id]
+                label_file_id = self._get_label_file_id(
+                    stream_id,
+                    stream.name,
+                )
+                frame_numbers, is_sample_level = stream.get_frame_numbers(uri)
+                info = OpenLABELStreamInfo(
+                    frame_numbers=frame_numbers,
+                    stream=stream,
+                    label_file_id=label_file_id,
+                    is_sample_level=is_sample_level,
+                )
+                infos.append(info)
+        else:
+            # Does not match any stream, create info with only label file id,
+            # must be sample level
+            info = OpenLABELStreamInfo(label_file_id=uri, is_sample_level=True)
+            infos.append(info)
 
-        return OpenLABELStream(uri=uri)
+        return OpenLABELStreamInfos(infos=infos)
+
+
+class AttributeParser(object):
+    """Methods used to parse attributes from OpenLABEL annotations."""
+
+    _STREAM_KEYS = ["stream", "coordinate_system"]
+    _IGNORE_KEYS = [
+        "frame_intervals",
+        "val",
+        "attributes",
+        "object_data",
+        "object_data_pointers",
+        "bbox",
+        "point2d",
+        "poly2d",
+    ]
+
+    @classmethod
+    def _parse_attributes(cls, d):
+        attributes = {k: v for k, v in d.items() if k not in cls._IGNORE_KEYS}
+        attributes_dict = d.get("attributes", {})
+        stream = None
+        for k in cls._STREAM_KEYS:
+            if k in d:
+                stream = d[k]
+
+        _attrs, _stream = cls._parse_name_val_attributes(attributes_dict)
+        attributes.update(_attrs)
+        if _stream:
+            stream = _stream
+
+        return attributes, stream
+
+    @classmethod
+    def _parse_name_val_attributes(cls, d):
+        attributes = {}
+        stream = None
+        for attr_type, attrs in d.items():
+            for attr in attrs:
+                name = attr["name"]
+                val = attr["val"]
+                if name.lower() in cls._STREAM_KEYS:
+                    stream = val
+
+                if name.lower() not in cls._IGNORE_KEYS:
+                    attributes[name] = val
+        return attributes, stream
+
+
+class OpenLABELShape(AttributeParser):
+    """A single OpenLABEL shape like a bounding box or polygon."""
+
+    def __init__(self, coords, attributes=None, stream=None):
+        self.coords = coords
+        self.attributes = attributes if attributes else {}
+        self.stream = stream
+
+    @classmethod
+    def from_shape_dict(cls, d):
+        """Constructs a shape from a dictionary of information.
+
+        Args:
+            d: a dictionary containing information about a shape
+        Returns:
+            an :class:`OpenLABELShape`
+        """
+        coords = d.pop("val", None)
+        attributes, stream = cls._parse_attributes(d)
+        return cls(coords, attributes=attributes, stream=stream)
+
+
+class OpenLABELBBox(OpenLABELShape):
+    """An OpenLABEL bounding box."""
+
+    def to_label(self, label, attributes, width, height):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+
+        Return:
+            an :class:`fiftyone.core.labels.Detection`
+        """
+        num_coords = len(self.coords)
+        if num_coords != 4:
+            raise ValueError(
+                "Expected bounding box to have 4 coordinates, found %d"
+                % num_coords
+            )
+
+        cx, cy, w, h = self.coords
+        x = cx - (w / 2)
+        y = cy - (h / 2)
+        bounding_box = [x / width, y / height, w / width, h / height]
+
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
+
+        return fol.Detection(
+            label=label,
+            bounding_box=bounding_box,
+            **_attrs,
+        )
+
+
+class OpenLABELPoly2D(OpenLABELShape):
+    """An OpenLABEL polyline."""
+
+    def to_label(self, label, attributes, width, height):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+
+        Return:
+            an :class:`fiftyone.core.labels.Polyline`
+        """
+        rel_points = [
+            [(x / width, y / height) for x, y, in _pairwise(self.coords)]
+        ]
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
+
+        filled = _attrs.pop("filled", None)
+        if filled is None:
+            filled = not _attrs.get("is_hole", True)
+
+        closed = _attrs.pop("closed", True)
+        _attrs.pop("label", None)
+
+        return fol.Polyline(
+            label=label,
+            points=rel_points,
+            filled=filled,
+            closed=closed,
+            **_attrs,
+        )
+
+
+class OpenLABELPoint(OpenLABELShape):
+    """An OpenLABEL keypoint."""
+
+    @classmethod
+    def _sort_by_skeleton(cls, points, attrs, label_order, skeleton_order):
+        if len(points) != len(label_order):
+            return points, attrs
+
+        if not isinstance(skeleton_order, list):
+            skeleton_order = skeleton_order.labels
+
+        sorted_points = []
+        sorted_attrs = {}
+        attrs_to_sort = {}
+        for k, v in attrs.items():
+            if isinstance(v, list) and len(v) == len(points):
+                attrs_to_sort[k] = v
+                sorted_attrs[k] = []
+            else:
+                sorted_attrs[k] = v
+
+        for label in skeleton_order:
+            if label not in label_order:
+                sorted_points.append([float("nan"), float("nan")])
+                for k in attrs_to_sort:
+                    sorted_attrs[k].append(None)
+            else:
+                ind = label_order.index(label)
+                sorted_points.append(points[ind])
+                for k, v in attrs_to_sort.items():
+                    sorted_attrs[k].append(v[ind])
+
+        return sorted_points, sorted_attrs
+
+    def to_label(
+        self,
+        label,
+        attributes,
+        width,
+        height,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
+                sort list attributes based on the labels in the skeleton. Used
+                only if ``skeleton_key`` is provided
+            skeleton_key (None): the string key into the attributes dictionary
+                containing the label of each point, used to sort list attribute
+                fields based on the labels in the skeleton. Used only if
+                ``skeleton`` is provided
+
+        Return:
+            an :class:`fiftyone.core.labels.Keypoint`
+        """
+        rel_points = [(x / width, y / height) for x, y, in self.coords]
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
+        if skeleton and skeleton_key and skeleton_key in _attrs:
+            label_order = _attrs.pop(skeleton_key)
+            rel_points, _attrs = self._sort_by_skeleton(
+                rel_points, _attrs, label_order, skeleton
+            )
+
+        return fol.Keypoint(label=label, points=rel_points, **_attrs)
+
+
+class OpenLABELShapes(AttributeParser):
+    """A collection of OpenLABEL shapes."""
+
+    def __init__(self, shapes=None, attributes=None, stream=None):
+        self.shapes = shapes if shapes else []
+        self.attributes = attributes if attributes else {}
+        self.stream = stream
+
+    @property
+    def streams(self):
+        """A list of streams corresponding to any object in this collection."""
+        streams = []
+        if self.stream:
+            streams.append(self.stream)
+
+        for shape in self.shapes:
+            stream = shape.stream
+            if stream:
+                streams.append(stream)
+
+        return streams
+
+    @classmethod
+    def from_object_data_list(cls, shape_type, l, attributes=None):
+        """Construct an :class:`OpenLABELShapes` from a list of shape
+        dictionaries.
+
+        Args:
+            shape_type: the type of the shape being loaded. Options are
+                (:class:`OpenLABELBBox`, :class:`OpenLABELPoly2D`,
+                :class:`OpenLABELPoint`)
+            l: a list of shape dictionaries parsed from OpenLABEL object
+                annotations
+            attributes (None): a dictionary of attributes corresponding to all
+                shapes in this collection
+
+        Returns:
+            a :class:`OpenLABELShapes`
+        """
+        shapes = []
+        for shape_d in l:
+            shapes.append(shape_type.from_shape_dict(shape_d))
+
+        stream = None
+        if attributes:
+            attributes, stream = cls._parse_name_val_attributes(attributes)
+
+        return cls(shapes=shapes, attributes=attributes, stream=stream)
+
+    def merge_shapes(self, shapes):
+        """Merges another :class:`OpenLABELShapes` into this one.
+
+        Args:
+            shapes: another :class:`OpenLABELShapes` to merge into this
+                object
+        """
+        if shapes:
+            self.shapes.extend(shapes.shapes)
+            self.attributes.update(shapes.attributes)
+
+    def to_labels(
+        self,
+        label,
+        attributes,
+        width,
+        height,
+        is_points=False,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        """Convert this shape to a FiftyOne label.
+
+        Args:
+            label: the class label for this shape
+            attributes: a dictionary of attributes for this shape
+            width: the width of the frame in pixels
+            height: the height of the frame in pixels
+            is_points (False): whether the labels being converted are keypoints
+            skeleton (None): a
+                :class:`fiftyone.core.odm.dataset.KeypointSkeleton` used to
+                sort list attributes based on the labels in the skeleton. Used
+                only if ``is_points`` and ``skeleton_key`` is provided
+            skeleton_key (None): the string key into the attributes dictionary
+                containing the label of each point, used to sort list attribute
+                fields based on the labels in the skeleton. Used only if
+                ``is_points`` and ``skeleton`` is provided
+
+        Return:
+            an :class:`fiftyone.core.labels.Keypoint`
+        """
+        if is_points:
+            return self._to_point_labels(
+                label,
+                attributes,
+                width,
+                height,
+                skeleton=skeleton,
+                skeleton_key=skeleton_key,
+            )
+
+        return self._to_individual_labels(label, attributes, width, height)
+
+    @property
+    def _homogenous_shape_types(self):
+        types = [type(s) for s in self.shapes]
+
+        if len(set(types)) > 1:
+            return False
+
+        return True
+
+    def _to_point_labels(
+        self,
+        label,
+        attributes,
+        width,
+        height,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        labels = []
+
+        if not self.shapes:
+            return labels
+
+        if not self._homogenous_shape_types or not isinstance(
+            self.shapes[0], OpenLABELPoint
+        ):
+            raise ValueError(
+                "Found non-point shapes when attempting to convert to "
+                "Keypoint labels."
+            )
+
+        # Convert keypoints to list of points
+        coords = []
+        _attrs = defaultdict(list)
+        stream = None
+        for shape in self.shapes:
+            coords.append(shape.coords)
+            for k, v in shape.attributes.items():
+                _attrs[k].append(v)
+
+            if shape.stream:
+                stream = shape.stream
+
+        if coords:
+            _attrs = dict(_attrs)
+            _attrs.update(self.attributes)
+            shape = type(self.shapes[0])(
+                coords, attributes=dict(_attrs), stream=stream
+            )
+            labels.append(
+                shape.to_label(
+                    label,
+                    attributes,
+                    width,
+                    height,
+                    skeleton=skeleton,
+                    skeleton_key=skeleton_key,
+                )
+            )
+
+        return labels
+
+    def _to_individual_labels(self, label, attributes, width, height):
+        labels = []
+        _attrs = deepcopy(attributes)
+        _attrs.update(self.attributes)
+        for shape in self.shapes:
+            labels.append(shape.to_label(label, _attrs, width, height))
+
+        return labels
 
 
 class OpenLABELStream(object):
@@ -937,29 +1421,35 @@ class OpenLABELStream(object):
         name (None): the name of the stream
         type (None): the type of the stream
         description (None): a string description for this stream
+        properties (None): a dict of properties for this stream
         uri (None): the uri or file_id of the media corresponding to this
             stream
-        properties (None): a dict of properties for this stream
+        other_attrs (None): a dictionary of other attributes corresponding to
+            this stream
     """
 
     _HEIGHT_KEYS = ["height", "height_px"]
     _WIDTH_KEYS = ["width", "width_px"]
+    _URI_KEYS = ["uri"]
 
     def __init__(
         self,
-        name=None,
+        name,
         type=None,
-        description=None,
-        uri=None,
         properties=None,
+        uris=None,
+        other_attrs=None,
     ):
         self.name = name
         self.type = type
-        self.description = description
-        self.uri = uri
         self.properties = properties
         self.height = None
         self.width = None
+        self.other_attrs = other_attrs if other_attrs else {}
+
+        self._uris = uris if uris else []
+
+        self.frame_streams = {}
 
         if properties:
             self._parse_properties_dict(properties)
@@ -978,57 +1468,114 @@ class OpenLABELStream(object):
         if key.lower() in self._WIDTH_KEYS:
             self.width = float(value)
 
-    def update_stream_dict(self, d):
+    def update_dict(self, d, frame_number=None):
         """Updates this stream with additional information.
 
         Args:
             d: a dict containing additional stream information
+            frame_number (None): the frame number from which this stream
+                information dict was parsed, 'None' if from the top-level
+                streams
         """
-        _type, properties, uri, description = self._parse_stream_dict(d)
+        if frame_number:
+            frame_stream = self.frame_streams.get(
+                frame_number, OpenLABELStream(self.name)
+            )
+            frame_stream.update_dict(d)
+            self.frame_streams[frame_number] = frame_stream
 
-        if uri:
-            self.uri = uri
+        else:
+            _type, properties, uris, other_attrs = self._parse_stream_dict(d)
 
-        if properties:
-            self.properties = properties
-            self._parse_properties_dict(properties)
+            if _type:
+                if _type != "camera":
+                    return
 
-        if description:
-            self.description = description
+                self.type = _type
 
-        if _type:
-            self.type = _type
+            if properties:
+                self.properties = properties
+                self._parse_properties_dict(properties)
+
+            if uris:
+                self._uris = sorted(set(self._uris + uris))
+
+            if other_attrs:
+                self.other_attrs.update(other_attrs)
+
+    @property
+    def uris(self):
+        """Get uris corresponding to any stream in this collection."""
+        _uris = deepcopy(self._uris)
+        for _stream in self.frame_streams.values():
+            _uris.extend(_stream.uris)
+
+        return sorted(set(_uris))
+
+    def get_frame_numbers(self, uri):
+        """Get frame numbers corresponding to the given uri."""
+        is_sample_level = False
+        if uri in self._uris:
+            # URI corresponds to all frames in this stream
+            # Likely a video annotation
+            # For an image, that sample will just contain annotations from all
+            # frames
+            is_sample_level = True
+            return list(self.frame_streams.keys()), is_sample_level
+
+        frame_numbers = []
+        for frame_number, frame_stream in self.frame_streams.items():
+            # URI exists in one or more frames in this stream
+            # Likely an image annotation
+            if uri in frame_stream.uris:
+                frame_numbers.append(frame_number)
+
+        return frame_numbers, is_sample_level
 
     @classmethod
-    def from_anno_dict(cls, stream_name, d):
+    def from_anno_dict(cls, stream_name, d, frame_number):
         """Create an OpenLABEL stream from the stream information dictionary.
 
         Args:
             stream_name: the name of the stream
             d: a dict containing information about this stream
+            frame_number: the frame number from which this stream
+                information dict was parsed, 'None' if from the top-level
+                streams
 
         Returns:
-            An `OpenLABELStream`
+            An :class:`OpenLABELStream`
         """
-        _type, properties, uri, description = cls._parse_stream_dict(d)
-        if _type != "camera":
-            return None
+        if frame_number is not None:
+            stream = cls(stream_name)
+            stream.update_dict(d, frame_number=frame_number)
+        else:
+            _type, properties, uris, other_attrs = cls._parse_stream_dict(d)
+            if _type and _type != "camera":
+                return None
 
-        return cls(
-            name=stream_name,
-            type=_type,
-            description=description,
-            uri=uri,
-            properties=properties,
-        )
+            stream = cls(
+                stream_name,
+                type=_type,
+                properties=properties,
+                uris=uris,
+                other_attrs=other_attrs,
+            )
+
+        return stream
 
     @classmethod
     def _parse_stream_dict(cls, d):
-        _type = d.get("type", None)
-        properties = d.get("stream_properties", None)
-        uri = d.get("uri", None)
-        description = d.get("description", None)
-        return _type, properties, uri, description
+        _type = d.pop("type", None)
+        properties = d.pop("stream_properties", None)
+
+        uris = []
+        for uri_key in cls._URI_KEYS:
+            uri_val = d.pop(uri_key, None)
+            if uri_val and uri_val not in uris:
+                uris.append(uri_val)
+
+        return _type, properties, uris, d
 
 
 class OpenLABELMetadata(object):
@@ -1065,56 +1612,162 @@ class OpenLABELMetadata(object):
         return file_ids
 
 
-class OpenLABELObject(object):
+class OpenLABELObject(AttributeParser):
     """An object parsed from OpenLABEL labels.
 
     Args:
-        id (None): the OpenLABEL id string for this object
+        key: the OpenLABEL key string for this object
         name (None): the name string of the object
         type (None): the type string of the object
-        bboxes ([]): a list of absolute bounding box coordinates for this
+        bboxes (None): an :class`OpenLABELShapes` of bounding boxes for this
             object
-        segmentations ([]): a list of aboslute polygon segmentations for this
+        segmentations (None): an :class`OpenLABELShapes` of polygon
+            segmentations for this object
+        keyponts (None): an :class:`OpenLABELShapes` of keypoints for this
             object
-        keyponts ([]): a list of absolute keypoint coordinates for this object
-        stream (None): the `OpenLABELStream` this object corresponds to
-        attributes ({}): a dict of attributes and their values for this object
+        stream (None): the :class:`OpenLABELStream` this object corresponds to
+        other_attrs (None): a dict of attributes and their values for this
+            object
+        is_frame_level (False): whether this object is sample-level or
+            frame-level
     """
 
     _STREAM_KEYS = ["stream", "coordinate_system"]
 
     def __init__(
         self,
-        id=None,
+        key,
         name=None,
         type=None,
         bboxes=None,
         segmentations=None,
         keypoints=None,
         stream=None,
-        attributes=None,
+        other_attrs=None,
+        is_frame_level=False,
     ):
-        if bboxes is None:
-            bboxes = []
 
-        if segmentations is None:
-            segmentations = []
+        self.shapes = {
+            "bboxes": OpenLABELShapes(),
+            "segmentations": OpenLABELShapes(),
+            "keypoints": OpenLABELShapes(),
+        }
+        if bboxes:
+            self.shapes["bboxes"] = bboxes
 
-        if keypoints is None:
-            keypoints = []
+        if segmentations:
+            self.shapes["segmentations"] = segmentations
 
-        if attributes is None:
-            attributes = {}
+        if keypoints:
+            self.shapes["keypoints"] = keypoints
 
-        self.id = id
+        self.key = key
         self.name = name
         self.type = type
 
-        self.bboxes = bboxes
-        self.segmentations = segmentations
-        self.keypoints = keypoints
         self.stream = stream
-        self.attributes = attributes
+        self.other_attrs = other_attrs if other_attrs else {}
+        self.frame_objects = {}
+        self.is_frame_level = is_frame_level
+
+    @property
+    def _sample_level_streams(self):
+        _streams = []
+        if self.stream:
+            _streams.append(self.stream)
+
+        for _shapes in self.shapes.values():
+            _streams.extend(_shapes.streams)
+
+        return list(set(_streams))
+
+    @property
+    def streams(self):
+        """Get streams corresponding to this object."""
+        _streams = deepcopy(self._sample_level_streams)
+
+        for _object in self.frame_objects.values():
+            _streams.extend(_object.streams)
+
+        return list(set(_streams))
+
+    @property
+    def is_streamless(self):
+        """Whether any streams are connected to this object or corresponding
+        frame-level objects.
+        """
+        return not bool(self._sample_level_streams)
+
+    def filter_stream(self, stream_info):
+        """Filters this object to contain only frame labels specified in the
+        given stream info
+
+        Args:
+            stream_info: the :class:`OpenLABELStreamInfo` to use to filter this
+                object
+
+        Returns:
+            an :class:`OpenLABELObject` containing only frames related to the
+            given stream info
+        """
+        # if obj is top level and stream info is sample level
+        if stream_info.is_streamless:
+            if self.is_frame_level or not self.is_streamless:
+                return None
+
+            # This object is sample-level and streamless
+            return self
+
+        if stream_info.is_sample_level:
+            return self
+
+        return self._keep_frames(stream_info.frame_numbers)
+
+    def _keep_frames(self, frame_numbers):
+        _obj = deepcopy(self)
+        numbers_to_remove = set(_obj.frame_objects.keys()) - set(frame_numbers)
+        for frame_number in numbers_to_remove:
+            _obj.frame_objects.pop(frame_number, None)
+        return _obj
+
+    def _to_labels(
+        self,
+        frame_size,
+        shape_type,
+        parent=None,
+        is_points=False,
+        skeleton=None,
+        skeleton_key=None,
+    ):
+        label, attributes, width, height = self._get_label_attrs(
+            frame_size, parent=parent
+        )
+
+        frame_labels = defaultdict(list)
+        shapes = self.shapes[shape_type]
+        frame_labels[None] = shapes.to_labels(
+            label,
+            attributes,
+            width,
+            height,
+            is_points=is_points,
+            skeleton=skeleton,
+            skeleton_key=skeleton_key,
+        )
+
+        for frame_number, frame_object in self.frame_objects.items():
+            frame_labels[frame_number].extend(
+                frame_object._to_labels(
+                    frame_size,
+                    shape_type,
+                    parent=self,
+                    is_points=is_points,
+                    skeleton=skeleton,
+                    skeleton_key=skeleton_key,
+                )[None]
+            )
+
+        return frame_labels
 
     def to_detections(self, frame_size):
         """Converts the bounding boxes in this object to
@@ -1127,30 +1780,17 @@ class OpenLABELObject(object):
             a list of :class:`fiftyone.core.labels.Detection` objects for each
             bounding box in this object
         """
-        if not self.bboxes:
-            return []
+        return self._to_labels(frame_size, "bboxes")
 
+    def _get_label_attrs(self, frame_size, parent=None):
         label = self.type
-        attributes = self._get_object_attributes()
+        if label is None and parent:
+            label = parent.type
+
+        attributes = self._get_object_attributes(parent=parent)
 
         width, height = frame_size
-
-        detections = []
-        for bbox in self.bboxes:
-            cx, cy, w, h = bbox
-            x = cx - (w / 2)
-            y = cy - (h / 2)
-            bounding_box = [x / width, y / height, w / width, h / height]
-
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    **attributes,
-                )
-            )
-
-        return detections
+        return label, attributes, width, height
 
     def to_polylines(self, frame_size):
         """Converts the segmentations in this object to
@@ -1163,39 +1803,9 @@ class OpenLABELObject(object):
             a list of :class:`fiftyone.core.labels.Polyline` objects for each
             polyline in this object
         """
-        if not self.segmentations:
-            return []
+        return self._to_labels(frame_size, "segmentations")
 
-        label = self.type
-        attributes = self._get_object_attributes()
-
-        width, height = frame_size
-
-        polylines = []
-        for segmentation in self.segmentations:
-            rel_points = [
-                [(x / width, y / height) for x, y, in _pairwise(segmentation)]
-            ]
-
-            filled = attributes.pop("filled", None)
-            if filled is None:
-                filled = not attributes.get("is_hole", True)
-
-            closed = attributes.pop("closed", True)
-            attributes.pop("label", None)
-
-            polylines.append(
-                fol.Polyline(
-                    label=label,
-                    points=rel_points,
-                    filled=filled,
-                    closed=closed,
-                    **attributes,
-                )
-            )
-        return polylines
-
-    def to_keypoints(self, frame_size):
+    def to_keypoints(self, frame_size, skeleton=None, skeleton_key=None):
         """Converts the keypoints in this object to
         :class:`fiftyone.core.labels.Keypoint` objects.
 
@@ -1206,25 +1816,16 @@ class OpenLABELObject(object):
             a list of :class:`fiftyone.core.labels.Keypoint` objects for each
             keypoint in this object
         """
-        if not self.keypoints:
-            return []
-
-        label = self.type
-        attributes = self._get_object_attributes()
-
-        width, height = frame_size
-
-        keypoints = []
-        for kps in self.keypoints:
-            rel_points = [(x / width, y / height) for x, y, in kps]
-            keypoints.append(
-                fol.Keypoint(label=label, points=rel_points, **attributes)
-            )
-
-        return keypoints
+        return self._to_labels(
+            frame_size,
+            "keypoints",
+            is_points=True,
+            skeleton=skeleton,
+            skeleton_key=skeleton_key,
+        )
 
     @classmethod
-    def from_anno_dict(cls, anno_id, d):
+    def from_anno_dict(cls, obj_key, d, frame_number=None):
         """Create an :class:`OpenLABELObject` from the raw label dictionary.
 
         Args:
@@ -1235,7 +1836,63 @@ class OpenLABELObject(object):
             a tuple containing the :class:`OpenLABELObject` and the frame
             numbers the object corresponds to, if any.
         """
-        (
+        if frame_number is not None:
+            obj = cls(obj_key, is_frame_level=False)
+            obj.update_dict(d, frame_number=frame_number)
+        else:
+            (
+                bboxes,
+                segmentations,
+                points,
+                name,
+                _type,
+                stream,
+                other_attrs,
+            ) = cls._parse_object_dict(d)
+
+            obj = cls(
+                obj_key,
+                name=name,
+                type=_type,
+                bboxes=bboxes,
+                segmentations=segmentations,
+                keypoints=points,
+                stream=stream,
+                other_attrs=other_attrs,
+                is_frame_level=False,
+            )
+        return obj
+
+    @classmethod
+    def _get_shape_list(cls, object_data, key):
+        l = object_data.pop(key, [])
+        if isinstance(l, dict):
+            l = [l]
+        return l
+
+    @classmethod
+    def _parse_object_dict(cls, d):
+        object_data = d.pop("object_data", {})
+
+        bbox_l = cls._get_shape_list(object_data, "bbox")
+        poly2d_l = cls._get_shape_list(object_data, "poly2d")
+        point2d_l = cls._get_shape_list(object_data, "point2d")
+
+        name = d.pop("name", None)
+        _type = d.pop("type", None)
+        attributes, stream = cls._parse_attributes(d)
+
+        bboxes = OpenLABELShapes.from_object_data_list(
+            OpenLABELBBox, bbox_l, attributes=object_data
+        )
+        segmentations = OpenLABELShapes.from_object_data_list(
+            OpenLABELPoly2D, poly2d_l, attributes=object_data
+        )
+        points = OpenLABELShapes.from_object_data_list(
+            OpenLABELPoint, point2d_l, attributes=object_data
+        )
+
+        return (
             bboxes,
             segmentations,
             points,
@@ -1243,136 +1900,9 @@ class OpenLABELObject(object):
             _type,
             stream,
             attributes,
-            frame_numbers,
-        ) = cls._parse_object_dict(d)
-
-        obj = cls(
-            id=anno_id,
-            name=name,
-            type=_type,
-            bboxes=bboxes,
-            segmentations=segmentations,
-            keypoints=points,
-            stream=stream,
-            attributes=attributes,
-        )
-        return obj, frame_numbers
-
-    @classmethod
-    def _parse_obj_type(
-        cls, object_data, label_type, attributes=None, stream=None
-    ):
-        if attributes is None:
-            attributes = {}
-
-        obj = object_data.get(label_type, [])
-        if label_type == "point2d" and obj:
-            # Points are not stored in lists by default
-            obj = [obj]
-
-        obj, attrs, _stream = cls._parse_object_data(obj)
-        attributes.update(attrs)
-        if stream is None:
-            stream = _stream
-
-        return obj, attributes, stream
-
-    @classmethod
-    def _parse_object_dict(cls, d):
-        object_data = d.get("object_data", {})
-
-        bboxes, attributes, stream = cls._parse_obj_type(object_data, "bbox")
-
-        polys, attributes, stream = cls._parse_obj_type(
-            object_data,
-            "poly2d",
-            attributes=attributes,
-            stream=stream,
         )
 
-        point, attributes, stream = cls._parse_obj_type(
-            object_data,
-            "point2d",
-            attributes=attributes,
-            stream=stream,
-        )
-        if point:
-            point = [point]
-
-        name = d.get("name", None)
-        _type = d.get("type", None)
-        attrs, attr_stream = cls._parse_attributes(d)
-        attributes.update(attrs)
-
-        frame_numbers = cls._parse_frame_numbers(d)
-
-        if stream is None:
-            stream = attr_stream
-
-        return (
-            bboxes,
-            polys,
-            point,
-            name,
-            _type,
-            stream,
-            attributes,
-            frame_numbers,
-        )
-
-    @classmethod
-    def _parse_frame_numbers(cls, d):
-        frame_numbers = []
-        for frame_interval in d.get("frame_intervals", []):
-            fs = int(frame_interval["frame_start"]) + 1
-            fe = int(frame_interval["frame_end"]) + 2
-            frame_numbers += list(range(fs, fe))
-
-        return sorted(set(frame_numbers))
-
-    @classmethod
-    def _parse_object_data(cls, object_data_list):
-        parsed_obj_list = []
-        attributes = {}
-        stream = None
-        for obj_data in object_data_list:
-            stream = obj_data.get(
-                "stream", obj_data.get("coordinate_system", None)
-            )
-            attrs, attr_stream = cls._parse_attributes(obj_data)
-            if stream is None:
-                stream = attr_stream
-
-            attributes.update(attrs)
-            parsed_obj_list.append(obj_data["val"])
-
-        return parsed_obj_list, attributes, stream
-
-    @classmethod
-    def _parse_attributes(cls, d):
-        _ignore_keys = [
-            "frame_intervals",
-            "val",
-            "attributes",
-            "object_data",
-            "object_data_pointers",
-        ]
-        attributes = {k: v for k, v in d.items() if k not in _ignore_keys}
-        attributes_dict = d.get("attributes", {})
-        stream = None
-        for attr_type, attrs in attributes_dict.items():
-            for attr in attrs:
-                name = attr["name"]
-                val = attr["val"]
-                if name.lower() in cls._STREAM_KEYS:
-                    stream = val
-
-                if name.lower() not in _ignore_keys:
-                    attributes[name] = val
-
-        return attributes, stream
-
-    def update_object_dict(self, d):
+    def update_dict(self, d, frame_number=None):
         """Updates this :class:`OpenLABELObject` given the raw label
         dictionary.
 
@@ -1382,48 +1912,59 @@ class OpenLABELObject(object):
         Returns:
             newly parsed frame numbers the object corresponds to, if any
         """
-        (
-            bboxes,
-            segmentations,
-            points,
-            name,
-            _type,
-            stream,
-            attributes,
-            frame_numbers,
-        ) = self._parse_object_dict(d)
+        if frame_number:
+            frame_object = self.frame_objects.get(
+                frame_number, OpenLABELObject(self.key, is_frame_level=True)
+            )
+            frame_object.update_dict(d)
+            self.frame_objects[frame_number] = frame_object
+        else:
+            (
+                bboxes,
+                segmentations,
+                points,
+                name,
+                _type,
+                stream,
+                other_attrs,
+            ) = self._parse_object_dict(d)
 
-        self.bboxes.extend(bboxes)
-        self.segmentations.extend(segmentations)
-        self.keypoints.extend(points)
+            self.shapes["bboxes"].merge_shapes(bboxes)
+            self.shapes["segmentations"].merge_shapes(segmentations)
+            self.shapes["keypoints"].merge_shapes(points)
 
-        if name and not self.name:
-            self.name = name
+            if name and not self.name:
+                self.name = name
 
-        if stream and not self.stream:
-            self.stream = stream
+            if stream and not self.stream:
+                self.stream = stream
 
-        self.attributes.update(attributes)
+            self.other_attrs.update(other_attrs)
 
-        return frame_numbers
-
-    def _get_object_attributes(self):
+    def _get_object_attributes(self, parent=None):
         attributes = {}
+
+        if parent:
+            attributes.update(parent._get_object_attributes())
 
         if self.name is not None:
             attributes["name"] = self.name
 
-        if self.id is not None:
-            attributes["openLABEL_id"] = self.id
+        if self.key is not None:
+            attributes["OpenLABEL_id"] = self.key
 
-        attributes.update(self.attributes)
+        attributes.update(self.other_attrs)
 
         return attributes
 
 
 def _validate_file_ids(potential_file_ids, sample_paths_map):
     file_ids = []
-    for file_id in set(potential_file_ids):
+    potential_file_ids = set(potential_file_ids)
+    if None in potential_file_ids:
+        potential_file_ids.remove(None)
+
+    for file_id in potential_file_ids:
         is_file = os.path.exists(file_id)
         has_file_id = _remove_ext(file_id) in sample_paths_map
         has_basename = (
@@ -1475,3 +2016,76 @@ def _pairwise(x):
 
 def _remove_ext(p):
     return os.path.splitext(p)[0]
+
+
+def _merge_frame_labels(sample_labels, frame_labels, seg_type):
+    # Add frame labels to sample labels, if there is a key collision, merge the
+    # labels if they are a list field otherewise skip
+    for labels in frame_labels.values():
+        for name, value in labels.items():
+            if name == "detections":
+                _extend_labels(
+                    sample_labels, value, name, fol.Detections, "detections"
+                )
+
+            elif name == "keypoints":
+                _extend_labels(
+                    sample_labels, value, name, fol.Keypoints, "keypoints"
+                )
+
+            elif name == "segmentations":
+                if seg_type == SegmentationType.POLYLINE:
+                    _extend_labels(
+                        sample_labels, value, name, fol.Polylines, "polylines"
+                    )
+                elif seg_type == SegmentationType.INSTANCE:
+                    _extend_labels(
+                        sample_labels,
+                        value,
+                        name,
+                        fol.Detections,
+                        "detections",
+                    )
+                else:
+                    raise NotImplementedError(
+                        "Loading semantic segmentations is not yet supported"
+                    )
+
+            elif name in sample_labels:
+                if isinstance(sample_labels[name], list):
+                    if not isinstance(value, list):
+                        value = [value]
+
+                    sample_labels[name].extend(value)
+
+            else:
+                sample_labels[name] = value
+
+    return sample_labels
+
+
+def _extend_labels(sample_labels, value, name, labels_type, label_kwarg):
+    if name not in sample_labels:
+        sample_labels[name] = labels_type(**{label_kwarg: []})
+    else:
+        sample_labels[name][label_kwarg].extend(value[label_kwarg])
+
+
+def _remove_empty_labels(sample_labels, seg_type):
+    _remove_empty_label_type(sample_labels, "detections", "detections")
+    _remove_empty_label_type(sample_labels, "keypoints", "keypoints")
+    if seg_type == SegmentationType.POLYLINE:
+        _remove_empty_label_type(sample_labels, "segmentations", "polylines")
+    elif seg_type == SegmentationType.INSTANCE:
+        _remove_empty_label_type(sample_labels, "segmentations", "detections")
+    else:
+        raise NotImplementedError(
+            "Loading semantic segmentations is not yet supported"
+        )
+
+    return sample_labels
+
+
+def _remove_empty_label_type(sample_labels, key, label_type):
+    if key in sample_labels and not sample_labels[key][label_type]:
+        sample_labels.pop(key, None)

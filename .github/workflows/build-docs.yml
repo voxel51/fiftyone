@@ -42,10 +42,10 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Set up Python 3.6
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.6
+          python-version: 3.8
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel
@@ -58,8 +58,7 @@ jobs:
       - name: Install
         run: |
           sudo apt-get install pandoc
-          pip install -r requirements/extras.txt
-          pip install -r requirements/docs.txt
+          pip install -r requirements/dev.txt
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install -e .

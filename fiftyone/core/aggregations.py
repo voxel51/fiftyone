@@ -8,6 +8,8 @@ Aggregations.
 from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
+import reprlib
+import uuid
 
 import numpy as np
 
@@ -40,6 +42,8 @@ class Aggregation(object):
             floating point values
     """
 
+    _uuid = None
+
     def __init__(self, field_or_expr, expr=None, safe=False):
         if field_or_expr is not None and not etau.is_str(field_or_expr):
             if expr is not None:
@@ -56,6 +60,25 @@ class Aggregation(object):
         self._field_name = field_name
         self._expr = expr
         self._safe = safe
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in self._kwargs():
+            if k.startswith("_"):
+                continue
+
+            v_repr = _repr.repr(v)
+            # v_repr = etau.summarize_long_str(v_repr, 30)
+            kwargs_list.append("%s=%s" % (k, v_repr))
+
+        kwargs_str = ", ".join(kwargs_list)
+        return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
 
     @property
     def field_name(self):
@@ -157,6 +180,58 @@ class Aggregation(object):
 
         return False
 
+    def _serialize(self, include_uuid=True):
+        """Returns a JSON dict representation of the :class:`Aggregation`.
+
+        Args:
+            include_uuid (True): whether to include the aggregation's UUID in
+                the JSON representation
+
+        Returns:
+            a JSON dict
+        """
+        d = {
+            "_cls": etau.get_class_name(self),
+            "kwargs": self._kwargs(),
+        }
+
+        if include_uuid:
+            if self._uuid is None:
+                self._uuid = str(uuid.uuid4())
+
+            d["_uuid"] = self._uuid
+
+        return d
+
+    def _kwargs(self):
+        """Returns a list of ``[name, value]`` lists describing the parameters
+        of this aggregation instance.
+
+        Returns:
+            a list of ``[name, value]`` lists
+        """
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["safe", self._safe],
+        ]
+
+    @classmethod
+    def _from_dict(cls, d):
+        """Creates an :class:`Aggregation` instance from a serialized JSON dict
+        representation of it.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            an :class:`Aggregation`
+        """
+        aggregation_cls = etau.get_class(d["_cls"])
+        agg = aggregation_cls(**dict(d["kwargs"]))
+        agg._uuid = d.get("_uuid", None)
+        return agg
+
 
 class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
@@ -244,8 +319,14 @@ class Bounds(Aggregation):
         self, field_or_expr, expr=None, safe=False, _count_nonfinites=False
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
-        self._field_type = None
         self._count_nonfinites = _count_nonfinites
+
+        self._field_type = None
+
+    def _kwargs(self):
+        return super()._kwargs() + [
+            ["_count_nonfinites", self._count_nonfinites]
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -417,8 +498,14 @@ class Count(Aggregation):
             floating point values
     """
 
-    def __init__(self, field_or_expr=None, expr=None, safe=False):
+    def __init__(
+        self, field_or_expr=None, expr=None, safe=False, _unwind=True
+    ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._unwind = _unwind
+
+    def _kwargs(self):
+        return super()._kwargs() + [["_unwind", self._unwind]]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -448,6 +535,7 @@ class Count(Aggregation):
             self._field_name,
             expr=self._expr,
             safe=self._safe,
+            unwind=self._unwind,
         )
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
@@ -555,13 +643,28 @@ class CountValues(Aggregation):
         _sort_by="count",
         _asc=True,
         _include=None,
+        _search="",
+        _selected=[],
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._first = _first
         self._sort_by = _sort_by
-        self._order = 1 if _asc else -1
+        self._asc = _asc
         self._include = _include
+        self._search = _search
+        self._selected = _selected
+
         self._field_type = None
+
+    def _kwargs(self):
+        return super()._kwargs() + [
+            ["_first", self._first],
+            ["_sort_by", self._sort_by],
+            ["_asc", self._asc],
+            ["_include", self._include],
+            ["_search", self._search],
+            ["_selected", self._selected],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -589,11 +692,15 @@ class CountValues(Aggregation):
             p = lambda x: x
 
         if self._first is not None:
+            count = d["count"]
+            if not count:
+                return (0, [])
+
             return (
-                d["count"],
+                count[0]["count"],
                 [
                     [p(i["k"]), i["count"]]
-                    for i in d["result"]
+                    for i in d["result"][0]["result"]
                     if i["k"] is not None
                 ],
             )
@@ -619,33 +726,64 @@ class CountValues(Aggregation):
             {"$group": {"_id": value, "count": {"$sum": 1}}},
         ]
 
-        if self._first is not None:
-            sort = OrderedDict()
-            limit = self._first
+        if self._first is None:
+            return pipeline + [
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {"$push": {"k": "$_id", "count": "$count"}},
+                    }
+                }
+            ]
 
-            if self._include is not None:
-                limit = max(limit, len(self._include))
-                pipeline += [
-                    {"$set": {"included": {"$in": ["$_id", self._include]}}},
-                ]
-                sort["included"] = -1
+        if self._search or self._selected:
+            pipeline += [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$not": {"$in": ["$_id", self._selected]}},
+                                {
+                                    "$regexMatch": {
+                                        "input": "$_id",
+                                        "regex": self._search,
+                                        "options": None,
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                }
+            ]
 
-            sort[self._sort_by] = self._order
-            sort["count" if self._sort_by != "count" else "_id"] = self._order
+        sort = OrderedDict()
+        limit = self._first
 
-            pipeline += [{"$sort": sort}, {"$limit": limit}]
+        if self._include is not None:
+            limit = max(limit, len(self._include))
+            pipeline += [
+                {"$set": {"included": {"$in": ["$_id", self._include]}}},
+            ]
+            sort["included"] = -1
 
-        pipeline += [
+        order = 1 if self._asc else -1
+        sort[self._sort_by] = order
+        sort["count" if self._sort_by != "count" else "_id"] = order
+
+        result = [
+            {"$sort": sort},
+            {"$limit": limit},
             {
                 "$group": {
                     "_id": None,
                     "result": {"$push": {"k": "$_id", "count": "$count"}},
-                    "count": {"$sum": 1},
                 }
             },
         ]
 
-        return pipeline
+        return pipeline + [
+            {"$facet": {"count": [{"$count": "count"}], "result": result}}
+        ]
 
 
 class Distinct(Aggregation):
@@ -740,6 +878,7 @@ class Distinct(Aggregation):
 
     def __init__(self, field_or_expr, expr=None, safe=False):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+
         self._field_type = None
 
     def default_result(self):
@@ -889,7 +1028,6 @@ class HistogramValues(Aggregation):
         self, field_or_expr, expr=None, bins=None, range=None, auto=False
     ):
         super().__init__(field_or_expr, expr=expr)
-
         self._bins = bins
         self._range = range
         self._auto = auto
@@ -901,6 +1039,15 @@ class HistogramValues(Aggregation):
         self._last_edges = None
 
         self._parse_args()
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["bins", self._bins],
+            ["range", self._range],
+            ["auto", self._auto],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1265,6 +1412,9 @@ class Std(Aggregation):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._sample = sample
 
+    def _kwargs(self):
+        return super()._kwargs() + [["sample", self._sample]]
+
     def default_result(self):
         """Returns the default result for this aggregation.
 
@@ -1534,15 +1684,26 @@ class Values(Aggregation):
         _raw=False,
     ):
         super().__init__(field_or_expr, expr=expr)
-
         self._missing_value = missing_value
         self._unwind = unwind
         self._allow_missing = _allow_missing
         self._big_result = _big_result
-        self._big_field = None
         self._raw = _raw
+
         self._field_type = None
+        self._big_field = None
         self._num_list_fields = None
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["expr", self._expr],
+            ["missing_value", self._missing_value],
+            ["unwind", self._unwind],
+            ["_allow_missing", self._allow_missing],
+            ["_big_result", self._big_result],
+            ["_raw", self._raw],
+        ]
 
     @property
     def _has_big_result(self):
@@ -1583,9 +1744,10 @@ class Values(Aggregation):
         if self._raw:
             return values
 
-        if self._field_type is not None:
-            fcn = self._field_type.to_python
+        if self._field is not None:
+            fcn = self._field.to_python
             level = 1 + self._num_list_fields
+
             return _transform_values(values, fcn, level=level)
 
         return values
@@ -1596,7 +1758,7 @@ class Values(Aggregation):
             pipeline,
             list_fields,
             id_to_str,
-            field_type,
+            field,
         ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
@@ -1606,7 +1768,7 @@ class Values(Aggregation):
         )
 
         self._big_field = big_field
-        self._field_type = field_type
+        self._field = field
         self._num_list_fields = len(list_fields)
 
         pipeline.extend(
@@ -1621,6 +1783,21 @@ class Values(Aggregation):
         )
 
         return pipeline
+
+
+class _AggregationRepr(reprlib.Repr):
+    def repr_ViewExpression(self, expr, level):
+        return self.repr1(expr.to_mongo(), level=level - 1)
+
+
+_repr = _AggregationRepr()
+_repr.maxlevel = 2
+_repr.maxdict = 3
+_repr.maxlist = 3
+_repr.maxtuple = 3
+_repr.maxset = 3
+_repr.maxstring = 30
+_repr.maxother = 30
 
 
 def _transform_values(values, fcn, level=1):
@@ -1953,7 +2130,7 @@ def _get_field_type(sample_collection, field_name, unwind=True):
     # Remove array references
     field_name = "".join(field_name.split("[]"))
 
-    field_type = sample_collection._get_field_type(field_name)
+    field_type = sample_collection.get_field(field_name)
 
     if unwind:
         while isinstance(field_type, fof.ListField):

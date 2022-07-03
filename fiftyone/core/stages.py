@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
+import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -67,6 +68,9 @@ class ViewStage(object):
 
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
 
     @property
     def has_view(self):
@@ -209,8 +213,8 @@ class ViewStage(object):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -259,9 +263,8 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.get("_uuid", None)
-        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
-        stage._uuid = uuid
+        stage = view_stage_cls(**dict(d["kwargs"]))
+        stage._uuid = d.get("_uuid", None)
         return stage
 
 
@@ -533,11 +536,9 @@ class ExcludeBy(ViewStage):
         return self._values
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, field, _ = sample_collection._handle_id_fields(self._field)
 
-        if is_id_field:
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -545,7 +546,7 @@ class ExcludeBy(ViewStage):
         else:
             values = self._values
 
-        return [{"$match": {field_name: {"$not": {"$in": values}}}}]
+        return [{"$match": {path: {"$not": {"$in": values}}}}]
 
     def _kwargs(self):
         return [["field", self._field], ["values", self._values]]
@@ -4453,11 +4454,9 @@ class SelectBy(ViewStage):
         return self._ordered
 
     def to_mongo(self, sample_collection):
-        field_name, is_id_field, _ = sample_collection._handle_id_fields(
-            self._field
-        )
+        path, field, _ = sample_collection._handle_id_fields(self._field)
 
-        if is_id_field:
+        if isinstance(field, fof.ObjectIdField):
             values = [
                 value if isinstance(value, ObjectId) else ObjectId(value)
                 for value in self._values
@@ -4466,16 +4465,10 @@ class SelectBy(ViewStage):
             values = self._values
 
         if not self._ordered:
-            return [{"$match": {field_name: {"$in": values}}}]
+            return [{"$match": {path: {"$in": values}}}]
 
         return [
-            {
-                "$set": {
-                    "_select_order": {
-                        "$indexOfArray": [values, "$" + field_name]
-                    }
-                }
-            },
+            {"$set": {"_select_order": {"$indexOfArray": [path, "$" + path]}}},
             {"$match": {"_select_order": {"$gt": -1}}},
             {"$sort": {"_select_order": 1}},
             {"$unset": "_select_order"},
@@ -6169,14 +6162,11 @@ class ToFrames(ViewStage):
     to each frame image. Any frames without a ``filepath`` populated will be
     omitted from the returned view.
 
-    When ``sample_frames`` is True, this method samples each video in the input
-    collection into a directory of per-frame images with the same basename as
-    the input video with frame numbers/format specified by ``frames_patt``, and
-    stores the resulting frame paths in a ``filepath`` field of the input
-    collection.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images with filenames specified by
+    ``frames_patt``. By default, each folder of images is written using the
+    same basename as the input video. For example, if
+    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -6192,6 +6182,33 @@ class ToFrames(ViewStage):
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     By default, samples will be generated for every video frame at full
     resolution, but this method provides a variety of parameters that can be

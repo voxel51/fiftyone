@@ -10,11 +10,18 @@ import {
   RecoilState,
   RecoilValue,
   useRecoilCallback,
+  useRecoilRefresher_UNSTABLE,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
+import { useSpring } from "@react-spring/web";
+
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
+import * as schemaAtoms from "../../recoil/schema";
+import * as viewAtoms from "../../recoil/view";
 
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
@@ -23,17 +30,15 @@ import {
   numLabelsInSelectedSamples,
   SwitchDiv,
   SwitcherDiv,
+  tagStatistics,
 } from "./utils";
-import { Button } from "../FieldsSidebar";
-import * as fieldAtoms from "../Filters/utils";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import socket from "../../shared/connection";
-import { useTheme } from "../../utils/hooks";
-import { packageMessage } from "../../utils/socket";
+import { Button } from "../utils";
 import { PopoutSectionTitle } from "../utils";
-import * as filterAtoms from "../Filters/atoms";
-import { VideoLooker } from "@fiftyone/looker";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { filters, modalFilters } from "../../recoil/filters";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { store } from "../Flashlight.store";
+import { useTheme } from "@fiftyone/components";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -115,7 +120,7 @@ const Section = ({
   labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -246,7 +251,8 @@ const Section = ({
                   ? elementNames.plural
                   : elementNames.singular
               }`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
               }}
@@ -256,7 +262,7 @@ const Section = ({
                 height: "2rem",
                 borderRadius: 0,
               }}
-            ></Button>
+            />
           )}
           {hasChanges && !value.length && (
             <Button
@@ -268,7 +274,7 @@ const Section = ({
                 borderRadius: 0,
                 textAlign: "center",
               }}
-            ></Button>
+            />
           )}
         </>
       ) : null}
@@ -330,51 +336,85 @@ const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
 
-const packageGrid = ({ targetLabels, activeLabels, changes }) =>
-  packageMessage("tag", {
-    target_labels: targetLabels,
-    active_labels: activeLabels,
-    changes,
-  });
-
-const packageModal = ({
-  labels,
-  sample_id,
-  changes,
-  activeLabels,
-  frameNumber = null,
-}) =>
-  packageMessage("tag_modal", {
-    changes,
-    labels,
-    sample_id,
-    active_labels: activeLabels,
-    frame_number: frameNumber,
-  });
-
 const useTagCallback = (modal, targetLabels, lookerRef = null) => {
+  const refreshers = [true, false]
+    .map((modal) =>
+      [true, false].map((extended) =>
+        useRecoilRefresher_UNSTABLE(
+          aggregationAtoms.aggregations({ modal, extended })
+        )
+      )
+    )
+    .flat();
+  refreshers.push(
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false }))
+  );
+  refreshers.push(
+    useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: targetLabels }))
+  );
+
   return useRecoilCallback(
-    ({ snapshot }) => async ({ changes }) => {
-      const activeLabels = (
-        await snapshot.getPromise(fieldAtoms.activeLabelPaths(modal))
-      ).filter((l) => !(l.startsWith("tags.") || l.startsWith("_label_tags.")));
-      if (modal) {
-        socket.send(
-          packageModal({
-            sample_id: (await snapshot.getPromise(atoms.modal)).sample._id,
-            changes,
-            labels: targetLabels,
-            activeLabels,
-            frameNumber:
-              lookerRef && lookerRef.current
-                ? lookerRef.current.frameNumber
-                : null,
-          })
+    ({ snapshot, set }) =>
+      async ({ changes }) => {
+        const activeLabels = await snapshot.getPromise(
+          schemaAtoms.labelPaths({ expanded: false })
         );
-      } else {
-        socket.send(packageGrid({ changes, targetLabels, activeLabels }));
-      }
-    },
+        const f = await snapshot.getPromise(modal ? modalFilters : filters);
+        const view = await snapshot.getPromise(viewAtoms.view);
+        const dataset = await snapshot.getPromise(selectors.datasetName);
+        const selectedLabels =
+          modal && targetLabels
+            ? await snapshot.getPromise(selectors.selectedLabelList)
+            : null;
+        const selectedSamples = await snapshot.getPromise(
+          atoms.selectedSamples
+        );
+        const hiddenLabels =
+          modal && targetLabels
+            ? await snapshot.getPromise(selectors.hiddenLabelsArray)
+            : null;
+
+        const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
+
+        const { samples } = await getFetchFunction()("POST", "/tag", {
+          filters: f,
+          view,
+          dataset,
+          active_label_fields: activeLabels,
+          target_labels: targetLabels,
+          changes,
+          modal: modal ? modalData.sample._id : null,
+          sample_ids: modal
+            ? null
+            : selectedSamples.size
+            ? [...selectedSamples]
+            : null,
+          labels:
+            selectedLabels && selectedLabels.length
+              ? toSnakeCase(selectedLabels)
+              : null,
+          hidden_labels: hiddenLabels ? toSnakeCase(hiddenLabels) : null,
+        });
+
+        samples &&
+          samples.forEach((sample) => {
+            if (modalData.sample._id === sample._id) {
+              set(atoms.modal, { ...modalData, sample });
+              lookerRef.current.updateSample(sample);
+            }
+
+            store.samples.set(sample._id, {
+              ...store.samples.get(sample._id),
+              sample,
+            });
+            store.lookers.has(sample._id) &&
+              store.lookers.get(sample._id).updateSample(sample);
+          });
+
+        set(selectors.anyTagging, false);
+
+        refreshers.forEach((r) => r());
+      },
     [modal, targetLabels, lookerRef]
   );
 };
@@ -392,37 +432,44 @@ const usePlaceHolder = (
   modal: boolean,
   labels: boolean,
   elementNames: { plural: string; singular: string }
-): (() => [number, string]) => {
-  return () => {
-    const selection = useRecoilValue(
-      modal ? selectors.selectedLabelIds : atoms.selectedSamples
-    ).size;
+) => {
+  return (): [number, string] => {
+    const selectedSamples = useRecoilValue(atoms.selectedSamples).size;
 
-    if (modal && labels) {
+    const selectedLabels = useRecoilValue(selectors.selectedLabelIds).size;
+    if (modal && labels && (!selectedSamples || selectedLabels)) {
       const labelCount =
-        selection > 0
-          ? selection
-          : useRecoilValue(filterAtoms.labelCount(modal));
-      return [labelCount, labelsModalPlaceholder(selection, labelCount)];
-    } else if (modal) {
+        selectedLabels > 0
+          ? selectedLabels
+          : useRecoilValue(
+              aggregationAtoms.labelCount({ modal: true, extended: true })
+            );
+      return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
+    } else if (modal && !selectedSamples) {
       return [1, samplePlaceholder(elementNames)];
     } else {
-      const totalSamples = useRecoilValue(selectors.totalCount);
-      const filteredSamples = useRecoilValue(selectors.filteredCount);
+      const totalSamples = useRecoilValue(
+        aggregationAtoms.count({ path: "", extended: false, modal: false })
+      );
+      const filteredSamples = useRecoilValue(
+        aggregationAtoms.count({ path: "", extended: true, modal: false })
+      );
       const count = filteredSamples ?? totalSamples;
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
-      const labelCount = selection
+      const labelCount = selectedSamples
         ? selectedLabelCount
-        : useRecoilValue(filterAtoms.labelCount(modal));
+        : useRecoilValue(
+            aggregationAtoms.labelCount({ modal, extended: true })
+          );
       if (labels) {
         return [
           labelCount,
-          labelsPlaceholder(selection, labelCount, count, elementNames),
+          labelsPlaceholder(selectedSamples, labelCount, count, elementNames),
         ];
       } else {
         return [
-          selection > 0 ? selection : count,
-          samplesPlaceholder(selection, labelCount, count, elementNames),
+          selectedSamples > 0 ? selectedSamples : count,
+          samplesPlaceholder(selectedSamples, labelCount, count, elementNames),
         ];
       }
     }
@@ -433,12 +480,12 @@ type TaggerProps = {
   modal: boolean;
   bounds: any;
   close: () => void;
-  lookerRef?: MutableRefObject<VideoLooker>;
+  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
 };
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
-  const elementNames = useRecoilValue(selectors.elementNames);
+  const elementNames = useRecoilValue(viewAtoms.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
@@ -452,7 +499,6 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
 
   const submit = useTagCallback(modal, labels, lookerRef);
   const placeholder = usePlaceHolder(modal, labels, elementNames);
-
   return (
     <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
       <SwitcherDiv>
@@ -470,7 +516,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </SwitchDiv>
       </SwitcherDiv>
       {labels && (
-        <Suspense fallback={<Loader />} key={"labels"}>
+        <Suspense fallback={null} key={"labels"}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
@@ -482,7 +528,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
         </Suspense>
       )}
       {!labels && (
-        <Suspense fallback={<Loader />} key={elementNames.plural}>
+        <Suspense fallback={null} key={elementNames.plural}>
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}

@@ -1,0 +1,64 @@
+.container {
+  background-color: var(--background-dark);
+  border: 1px solid var(--background-dark-border);
+  border-radius: 2px;
+  box-shadow: 0 2px 20px var(--background-dark);
+  box-sizing: border-box;
+  width: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.scrollContainer {
+  overflow: auto;
+  max-height: 250px;
+  padding-bottom: 26.5px;
+}
+
+.result {
+  display: flex;
+  padding: 0 1rem;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  user-select: none;
+  cursor: pointer;
+  color: var(--font-dark);
+  background: var(--background-dark);
+  transition: all 0.1 ease-in;
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 1.2rem;
+  min-width: none;
+}
+
+.result.active,
+.result:hover {
+  background: var(--background);
+  color: var(--font);
+}
+
+.resultComponent {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+
+.footer {
+  text-align: right;
+  color: var(--font);
+  padding: 0 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  text-decoration: none;
+  border-top: 1px solid var(--background-dark-border);
+  background: var(--background-dark);
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}

@@ -11,6 +11,7 @@ from .database import (
     establish_db_conn,
     get_db_client,
     get_db_conn,
+    get_async_db_client,
     get_async_db_conn,
     drop_database,
     sync_database,
@@ -43,11 +44,9 @@ from .dataset import (
 )
 from .document import (
     Document,
-    DynamicDocument,
-    EmbeddedDocument,
-    DynamicEmbeddedDocument,
     SerializableDocument,
 )
+from .embedded_document import DynamicEmbeddedDocument, EmbeddedDocument
 from .frame import (
     DatasetFrameDocument,
     NoDatasetFrameDocument,
@@ -55,7 +54,6 @@ from .frame import (
 from .mixins import (
     get_default_fields,
     get_field_kwargs,
-    get_implied_field_kwargs,
     validate_fields_match,
 )
 from .runs import RunDocument
@@ -63,4 +61,5 @@ from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
+from .utils import get_implied_field_kwargs
 from .views import ViewDocument

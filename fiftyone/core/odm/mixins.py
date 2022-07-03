@@ -22,7 +22,8 @@ import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
-from .document import Document, BaseEmbeddedDocument
+from .document import Document
+from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -106,112 +107,6 @@ def validate_fields_match(
                     existing_field.field,
                 )
             )
-
-
-def get_field_kwargs(field):
-    """Constructs the field keyword arguments dictionary for the given
-    :class:`fiftyone.core.fields.Field` instance.
-
-    Args:
-        field: a :class:`fiftyone.core.fields.Field`
-
-    Returns:
-        a field specification dict
-    """
-    ftype = type(field)
-    kwargs = {"ftype": ftype}
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs["embedded_doc_type"] = field.document_type
-
-    if issubclass(ftype, (fof.ListField, fof.DictField)):
-        kwargs["subfield"] = field.field
-
-    return kwargs
-
-
-def get_implied_field_kwargs(value):
-    """Infers the field keyword arguments dictionary for a field that can hold
-    values of the given type.
-
-    Args:
-        value: a value
-
-    Returns:
-        a field specification dict
-    """
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    if isinstance(value, bool):
-        return {"ftype": fof.BooleanField}
-
-    if isinstance(value, numbers.Integral):
-        return {"ftype": fof.IntField}
-
-    if isinstance(value, numbers.Number):
-        return {"ftype": fof.FloatField}
-
-    if isinstance(value, six.string_types):
-        return {"ftype": fof.StringField}
-
-    if isinstance(value, datetime):
-        return {"ftype": fof.DateTimeField}
-
-    if isinstance(value, date):
-        return {"ftype": fof.DateField}
-
-    if isinstance(value, (list, tuple)):
-        kwargs = {"ftype": fof.ListField}
-
-        value_types = set(_get_list_value_type(v) for v in value)
-
-        if value_types == {fof.IntField, fof.FloatField}:
-            kwargs["subfield"] = fof.FloatField
-        elif len(value_types) == 1:
-            value_type = next(iter(value_types))
-            if value_type is not None:
-                kwargs["subfield"] = value_type
-
-        return kwargs
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError(
-        "Cannot infer an appropriate field type for value '%s'" % value
-    )
-
-
-def _get_list_value_type(value):
-    if isinstance(value, bool):
-        return fof.BooleanField
-
-    if isinstance(value, numbers.Integral):
-        return fof.IntField
-
-    if isinstance(value, numbers.Number):
-        return fof.FloatField
-
-    if isinstance(value, six.string_types):
-        return fof.StringField
-
-    if isinstance(value, datetime):
-        return fof.DateTimeField
-
-    if isinstance(value, date):
-        return fof.DateField
-
-    return None
 
 
 class DatasetMixin(object):
@@ -374,11 +269,19 @@ class DatasetMixin(object):
 
         for field_name in add_fields:
             field = schema[field_name]
-            cls._add_field_schema(field_name, **get_field_kwargs(field))
+            kwargs = get_field_kwargs(field)
+            kwargs["db_field"] = _get_db_field(field, field_name)
+            cls._add_field_schema(field_name, **kwargs)
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None, **kwargs
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        fields=None,
+        **kwargs,
     ):
         """Adds a new field to the document.
 
@@ -394,12 +297,17 @@ class DatasetMixin(object):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+            fields (None): the field definitions of the
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+                Only applicable when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
         """
         cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            fields=fields,
             **kwargs,
         )
 
@@ -412,13 +320,9 @@ class DatasetMixin(object):
             field_name: the field name
             value: the field value
         """
-        kwargs = get_implied_field_kwargs(value)
+        field = create_field(field_name, **get_implied_field_kwargs(value))
 
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            validate_fields_match(field_name, kwargs, cls._fields[field_name])
-        else:
-            cls.add_field(field_name, **kwargs)
+        cls.merge_field_schema({field_name: field})
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
@@ -749,8 +653,14 @@ class DatasetMixin(object):
         else:
             field = field_or_doc
 
+        prev = cls._fields.get(field.name, None)
+
         cls._fields[field.name] = field
-        cls._fields_ordered += (field.name,)
+        if prev is None:
+            cls._fields_ordered += (field.name,)
+        else:
+            field.required = prev.required
+            field.null = prev.null
         setattr(cls, field.name, field)
 
     @classmethod
@@ -788,12 +698,12 @@ class DatasetMixin(object):
     def _rename_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields.pop(field_name)
+        new_db_field = _get_db_field(field, new_field_name)
 
-        field.db_field = new_field_name
         field.name = new_field_name
+        field.db_field = new_db_field
 
         cls._fields[new_field_name] = field
-
         cls._fields_ordered = tuple(
             (fn if fn != field_name else new_field_name)
             for fn in cls._fields_ordered
@@ -812,7 +722,7 @@ class DatasetMixin(object):
         for f in fields:
             if f.name == field_name:
                 f.name = new_field_name
-                f.db_field = new_field_name
+                f.db_field = new_db_field
 
         dataset_doc.save()
 
@@ -820,7 +730,11 @@ class DatasetMixin(object):
     def _clone_field_schema(cls, field_name, new_field_name):
         # pylint: disable=no-member
         field = cls._fields[field_name]
-        cls._add_field_schema(new_field_name, **get_field_kwargs(field))
+
+        kwargs = get_field_kwargs(field)
+        kwargs["db_field"] = _get_db_field(field, new_field_name)
+
+        cls._add_field_schema(new_field_name, **kwargs)
 
     @classmethod
     def _delete_field_schema(cls, field_name):
@@ -1180,3 +1094,15 @@ def _deserialize_value(value):
         return fou.deserialize_numpy_array(value)
 
     return value
+
+
+def _get_db_field(field, new_field_name):
+    if field.db_field is None:
+        return None
+
+    # This is hacky, but we must account for the fact that ObjectIdField often
+    # uses db_field = "_<field_name>"
+    if field.db_field == "_" + field.name:
+        return "_" + new_field_name
+
+    return new_field_name

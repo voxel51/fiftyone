@@ -182,7 +182,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     config: { frameRate, support },
   }: Readonly<VideoState>) {
     let updatePlay = false;
-    if (this.singleFrame === null && loaded) {
+    if (loaded) {
       if (this.locked !== lockedToSupport) {
         this.singleFrame = lockedToSupport
           ? support[0] === support[1]
@@ -417,10 +417,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
   getEvents(): Events<VideoState> {
     return {
-      error: ({ update, event, dispatchEvent }) => {
+      error: ({ update }) => {
         this.releaseVideo();
         update({ error: true });
-        dispatchEvent("error", { event });
       },
       loadedmetadata: ({ update }) => {
         update(({ config: { frameRate }, frameNumber }) => {
@@ -534,17 +533,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.canvas.height = dimensions[1];
         this.canvas.style.imageRendering = "pixelated";
         acquireThumbnailer().then(([video, release]) => {
-          const error = (event) => {
-            // Chrome v60
-            if (event.path && event.path[0]) {
-              event = event.path[0].error;
-            }
-
-            // Firefox v55
-            if (event.originalTarget) {
-              event = event.originalTarget.error;
-            }
-
+          const error = () => {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
@@ -577,9 +566,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.removeEventListener("loadedmetadata", load);
           };
 
+          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
-          video.src = src;
         });
       } else {
         this.element = document.createElement("video");

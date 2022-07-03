@@ -791,11 +791,10 @@ results of an evaluation on the
     Dataset:     quickstart
     Media type:  image
     Num patches: 5363
-    Tags:        ['validation']
     Patch fields:
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.StringField
@@ -1910,12 +1909,11 @@ You can also view frame-level evaluation results as
     Dataset:     video-eval-demo
     Media type:  image
     Num patches: 12112
-    Tags:        []
     Patch fields:
         id:           fiftyone.core.fields.ObjectIdField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
         predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
         sample_id:    fiftyone.core.fields.ObjectIdField

@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { selector, selectorFamily } from "recoil";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import styled from "styled-components";
-import { v4 as uuid } from "uuid";
 
-import { activeLabelPaths } from "../Filters/utils";
-import * as filterAtoms from "../Filters/atoms";
 import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import { useTheme } from "../../utils/hooks";
-import { packageMessage, request } from "../../utils/socket";
-import socket from "../../shared/connection";
+import * as aggregationAtoms from "../../recoil/aggregations";
+import * as filterAtoms from "../../recoil/filters";
+import * as schemaAtoms from "../../recoil/schema";
+import { hiddenLabelsArray } from "../../recoil/selectors";
+import { State } from "../../recoil/types";
+import { view } from "../../recoil/view";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
+import { useTheme } from "@fiftyone/components";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background};
@@ -62,27 +63,16 @@ export const useHighlightHover = (disabled, override = null, color = null) => {
   };
 };
 
-export const numTaggable = selectorFamily<
-  number | null,
-  { modal: boolean; labels: boolean }
->({
-  key: "numTaggable",
-  get: ({ modal, labels }) => ({ get }) => {
-    if (labels) {
-      return 0;
-    } else if (modal) {
-      return 1;
-    } else {
-      return 0;
-    }
-  },
-});
-
 export const allTags = selector<{ sample: string[]; label: string[] } | null>({
   key: "tagAggs",
   get: async ({ get }) => {
-    const labels = get(filterAtoms.labelTagCounts(false));
-    const sample = get(filterAtoms.sampleTagCounts(false));
+    const labels = get(
+      aggregationAtoms.labelTagCounts({ modal: false, extended: false })
+    );
+
+    const sample = get(
+      aggregationAtoms.sampleTagCounts({ modal: false, extended: false })
+    );
 
     if (!labels || !sample) {
       return null;
@@ -103,30 +93,40 @@ export const tagStatistics = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStatistics",
-  get: ({ modal, labels }) => async ({ get }) => {
-    get(atoms.stateDescription);
-    get(atoms.selectedSamples);
-    const activeLabels = get(activeLabelPaths(false));
+  get:
+    ({ modal, labels: count_labels }) =>
+    async ({ get }) => {
+      const activeLabels = get(schemaAtoms.activeLabelFields({ modal }));
+      const selected = get(atoms.selectedSamples);
 
-    const id = uuid();
-    const { count, tags } = await request<{
-      count: number;
-      tags: { [key: string]: number };
-    }>({
-      type: "tag_statistics",
-      uuid: id,
-      args: {
-        active_labels: activeLabels,
-        sample_id: modal ? get(atoms.modal).sample._id : null,
-        filters: modal
-          ? get(filterAtoms.modalFilterStages)
-          : get(selectors.filterStages),
-        labels,
-      },
-    });
+      let labels: State.SelectedLabel[] = [];
+      if (modal) {
+        labels = Object.entries(get(atoms.selectedLabels)).map(
+          ([labelId, data]) => ({
+            labelId,
+            ...data,
+          })
+        );
+      }
 
-    return { count, tags };
-  },
+      const { count, tags } = await getFetchFunction()("POST", "/tagging", {
+        dataset: get(atoms.dataset).name,
+        view: get(view),
+        active_label_fields: activeLabels,
+        sample_ids: selected.size
+          ? [...selected]
+          : modal
+          ? [get(atoms.modal).sample._id]
+          : null,
+        labels: toSnakeCase(labels),
+        count_labels,
+        filters: get(modal ? filterAtoms.modalFilters : filterAtoms.filters),
+        hidden_labels:
+          modal && labels ? toSnakeCase(get(hiddenLabelsArray)) : null,
+      });
+
+      return { count, tags };
+    },
 });
 
 export const numLabelsInSelectedSamples = selector<number>({
@@ -141,19 +141,17 @@ export const tagStats = selectorFamily<
   { modal: boolean; labels: boolean }
 >({
   key: "tagStats",
-  get: ({ modal, labels }) => ({ get }) => {
-    const tags = get(allTags);
-    const results = tags
-      ? Object.fromEntries(tags[labels ? "label" : "sample"].map((t) => [t, 0]))
-      : null;
+  get:
+    ({ modal, labels }) =>
+    ({ get }) => {
+      const tags = get(allTags);
+      const results = Object.fromEntries(
+        tags[labels ? "label" : "sample"].map((t) => [t, 0])
+      );
 
-    if (!results) {
-      return null;
-    }
-
-    return {
-      ...results,
-      ...get(tagStatistics({ modal, labels })).tags,
-    };
-  },
+      return {
+        ...results,
+        ...get(tagStatistics({ modal, labels })).tags,
+      };
+    },
 });

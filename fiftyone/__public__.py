@@ -15,6 +15,7 @@ app_config = _foc.load_app_config()
 _foo.establish_db_conn(config)
 
 from .core.aggregations import (
+    Aggregation,
     Bounds,
     Count,
     CountValues,

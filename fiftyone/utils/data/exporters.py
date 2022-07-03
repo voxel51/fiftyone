@@ -647,8 +647,8 @@ def _make_label_coercion_functions(
         if label_field is None:
             continue
 
-        field_type = sample_collection._get_field_type(
-            label_field, is_frame_field=frames
+        field_type = sample_collection.get_field(
+            f"{'frames.' if frames else ''}{label_field}"
         )
 
         if isinstance(field_type, fof.EmbeddedDocumentField):
@@ -1175,8 +1175,7 @@ class DatasetExporter(object):
 
         Subclasses can optionally implement this method if their export format
         can record information such as the
-        :meth:`fiftyone.core.collections.SampleCollection.info` or
-        :meth:`fiftyone.core.collections.SampleCollection.classes` of the
+        :meth:`fiftyone.core.collections.SampleCollection.info` of the
         collection being exported.
 
         By convention, this method must be optional; i.e., if it is not called
@@ -2006,9 +2005,7 @@ class FiftyOneImageClassificationDatasetExporter(
             -   ``True``: always include a (possibly empty) attributes dict
             -   ``None``: include attributes only if they exist
             -   a name or iterable of names of specific attributes to include
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -2075,18 +2072,6 @@ class FiftyOneImageClassificationDatasetExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
 
     def export_sample(self, image_or_path, label, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
@@ -2356,9 +2341,7 @@ class FiftyOneImageDetectionDatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         include_confidence (None): whether to include detection confidences in
             the export. The supported values are:
 
@@ -2438,18 +2421,6 @@ class FiftyOneImageDetectionDatasetExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)
@@ -2537,9 +2508,7 @@ class FiftyOneTemporalDetectionDatasetExporter(
             on the value of the ``data_path`` parameter
         use_timestamps (False): whether to export the support of each temporal
             detection in seconds rather than frame numbers
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         include_confidence (None): whether to include detection confidences in
             the export. The supported values are:
 
@@ -2619,18 +2588,6 @@ class FiftyOneTemporalDetectionDatasetExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
 
     def export_sample(self, video_path, temporal_detections, _, metadata=None):
         _, uuid = self._media_exporter.export(video_path)

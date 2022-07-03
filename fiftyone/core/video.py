@@ -51,7 +51,7 @@ class FrameView(fos.SampleView):
 
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     def save(self):
         """Saves the frame to the database."""
@@ -346,49 +346,56 @@ class FramesView(fov.DatasetView):
             self._source_collection._dataset._clear_frames(frame_ids=frame_ids)
 
     def _sync_source_schema(self, fields=None, delete=False):
-        schema = self.get_field_schema()
-        src_schema = self._source_collection.get_frame_field_schema()
+        if fields is None:
+            fields = list(self.get_field_schema())
 
-        add_fields = []
-        del_fields = []
+        default_fields = set(
+            self._get_default_sample_fields(include_private=True)
+        )
 
-        if fields is not None:
-            # We're syncing specific fields; if they are not present in source
-            # collection, add them
-
-            for field_name in fields:
-                if field_name not in src_schema:
-                    add_fields.append(field_name)
-        else:
-            # We're syncing all fields; add any missing fields to source
-            # collection and, if requested, delete any source fields that
-            # aren't in this view
-
-            default_fields = set(
-                self._get_default_sample_fields(include_private=True)
-            )
-
-            for field_name in schema.keys():
+        def add(paths):
+            for path in paths:
                 if (
-                    field_name not in src_schema
-                    and field_name not in default_fields
+                    self._source_collection.get_field(f"frames.{path}") is None
+                    and path not in default_fields
                 ):
-                    add_fields.append(field_name)
+                    field_kwargs = foo.get_field_kwargs(self.get_field(path))
+                    self._source_collection._dataset.add_frame_field(
+                        path, **field_kwargs
+                    )
+                elif path != "metadata":
+                    field = self.get_field(path)
+                    if isinstance(field, fof.ListField):
+                        field = field.field
+                    if isinstance(field, fof.EmbeddedDocumentField):
+                        add(
+                            [
+                                f"{path}.{key}"
+                                for key in field.get_field_schema()
+                            ]
+                        )
 
-            if delete:
-                for field_name in src_schema.keys():
-                    if field_name not in schema:
-                        del_fields.append(field_name)
+        add(fields)
 
-        for field_name in add_fields:
-            field_kwargs = foo.get_field_kwargs(schema[field_name])
-            self._source_collection._dataset.add_frame_field(
-                field_name, **field_kwargs
-            )
+        def remove(paths):
+            for path in paths:
+                field = self.get_field(path)
+                if field is None:
+                    self._source_collection._dataset.delete_frame_field(path)
+                else:
+                    if isinstance(field, fof.ListField):
+                        field = field.field
+                    if isinstance(field, fof.EmbeddedDocumentField):
+                        remove(
+                            [
+                                f"{path}.{key}"
+                                for key in field.get_field_schema()
+                            ]
+                        )
 
-        if delete:
-            for field_name in del_fields:
-                self._source_collection._dataset.delete_frame_field(field_name)
+        delete and remove(
+            list(self._source_collection.get_frame_field_schema())
+        )
 
     def _sync_source_keep_fields(self):
         schema = self.get_field_schema()
@@ -410,6 +417,8 @@ def make_frames_dataset(
     min_size=None,
     max_size=None,
     sparse=False,
+    output_dir=None,
+    rel_dir=None,
     frames_patt=None,
     force_sample=False,
     skip_failures=True,
@@ -429,13 +438,10 @@ def make_frames_dataset(
     omitted from the frames dataset.
 
     When ``sample_frames`` is True, this method samples each video in the
-    collection into a directory of per-frame images with the same basename as
-    the input video with frame numbers/format specified by ``frames_patt``, and
-    stores the resulting frame paths in a ``filepath`` field of the input
-    collection.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    collection into a directory of per-frame images with filenames specified by
+    ``frames_patt``. By default, each folder of images is written using the
+    same basename as the input video. For example, if
+    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -451,6 +457,33 @@ def make_frames_dataset(
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     By default, samples will be generated for every video frame at full
     resolution, but this method provides a variety of parameters that can be
@@ -493,7 +526,17 @@ def make_frames_dataset(
             for which :class:`fiftyone.core.frame.Frame` instances exist in the
             input collection. This parameter has no effect when
             ``sample_frames==False`` since frames must always exist in order to
-            have ``filepath`` information use
+            have ``filepath`` information used
+        output_dir (None): an optional output directory in which to write the
+            sampled frames. By default, the frames are written in folders with
+            the same basename of each video
+        rel_dir (None): a relative directory to remove from the filepath of
+            each video, if possible. The path is converted to an absolute path
+            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
+            argument can be used in conjunction with ``output_dir`` to cause
+            the sampled frames to be written in a nested directory structure
+            within ``output_dir`` matching the shape of the input video's
+            folder structure
         frames_patt (None): a pattern specifying the filename/format to use to
             write or check or existing sampled frames, e.g., ``"%%06d.jpg"``.
             The default value is
@@ -529,6 +572,9 @@ def make_frames_dataset(
     #
 
     dataset = fod.Dataset(name=name, _frames=True)
+    dataset._doc.app_sidebar_groups = (
+        sample_collection._dataset._doc.app_sidebar_groups
+    )
     dataset.media_type = fom.IMAGE
     dataset.add_sample_field(
         "sample_id", fof.ObjectIdField, db_field="_sample_id"
@@ -550,6 +596,8 @@ def make_frames_dataset(
         dataset,
         sample_collection,
         sample_frames,
+        output_dir,
+        rel_dir,
         frames_patt,
         fps,
         max_fps,
@@ -564,8 +612,11 @@ def make_frames_dataset(
         to_sample_view = sample_collection._root_dataset.select(
             ids_to_sample, ordered=True
         )
+
         fouv.sample_videos(
             to_sample_view,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
             frames_patt=frames_patt,
             frames=frames_to_sample,
             size=size,
@@ -624,6 +675,8 @@ def _init_frames(
     dataset,
     src_collection,
     sample_frames,
+    output_dir,
+    rel_dir,
     frames_patt,
     fps,
     max_fps,
@@ -690,8 +743,10 @@ def _init_frames(
             _sample_id = sample["_id"]
             support = None
 
-        outdir = os.path.splitext(video_path)[0]
-        images_patt = os.path.join(outdir, frames_patt)
+        _outpath = fouv._get_outpath(
+            video_path, output_dir=output_dir, rel_dir=rel_dir
+        )
+        images_patt = os.path.join(os.path.splitext(_outpath)[0], frames_patt)
 
         # Determine which frame numbers to include in the frames dataset and
         # whether any frame images need to be sampled
