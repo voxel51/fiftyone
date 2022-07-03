@@ -18,47 +18,38 @@ from decorators import drop_datasets
 class LabelTests(unittest.TestCase):
     @drop_datasets
     def test_id(self):
-        regression = fo.Regression(value=51)
-        self.assertIsInstance(regression.id, str)
-        self.assertIsInstance(regression._id, ObjectId)
+        labels = {
+            "regression": fo.Regression(value=51),
+            "detection": fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
+            "classification": fo.Classification(label="cat"),
+            "polyline": fo.Polyline(label="cat", points=[]),
+            "keypoint": fo.Keypoint(label="cat", points=[]),
+            "segmentation": fo.Segmentation(
+                mask=np.random.randint(255, size=(4, 4), dtype=np.uint8)
+            ),
+            "heatmap": fo.Heatmap(map=np.random.random(size=(4, 4))),
+            "temporal_detection": fo.TemporalDetection(
+                label="cat", support=[1, 2]
+            ),
+            "geolocation": fo.GeoLocation(point=(0, 0)),
+            "geolocations": fo.GeoLocations(point=[(0, 0)]),
+        }
 
-        detection = fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
-        self.assertIsInstance(detection.id, str)
-        self.assertIsInstance(detection._id, ObjectId)
+        for label in labels.values():
+            self.assertIsInstance(label.id, str)
+            self.assertIsInstance(label._id, ObjectId)
 
-        classification = fo.Classification(label="cat")
-        self.assertIsInstance(classification.id, str)
-        self.assertIsInstance(classification._id, ObjectId)
+        sample = fo.Sample(filepath="image.jpg", **labels)
 
-        polyline = fo.Polyline(label="cat", points=[])
-        self.assertIsInstance(polyline.id, str)
-        self.assertIsInstance(polyline._id, ObjectId)
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
 
-        keypoint = fo.Keypoint(label="cat", points=[])
-        self.assertIsInstance(keypoint.id, str)
-        self.assertIsInstance(keypoint._id, ObjectId)
+        sample_view = dataset.view().first()
 
-        segmentation = fo.Segmentation(
-            mask=np.random.randint(255, size=(4, 4), dtype=np.uint8)
-        )
-        self.assertIsInstance(segmentation.id, str)
-        self.assertIsInstance(segmentation._id, ObjectId)
-
-        heatmap = fo.Heatmap(mask=np.random.random(size=(4, 4)))
-        self.assertIsInstance(heatmap.id, str)
-        self.assertIsInstance(heatmap._id, ObjectId)
-
-        temporal_detection = fo.TemporalDetection(label="cat", support=[1, 2])
-        self.assertIsInstance(temporal_detection.id, str)
-        self.assertIsInstance(temporal_detection._id, ObjectId)
-
-        geolocation = fo.GeoLocation(point=(0, 0))
-        self.assertIsInstance(geolocation.id, str)
-        self.assertIsInstance(geolocation._id, ObjectId)
-
-        geolocations = fo.GeoLocations(points=[(0, 0)])
-        self.assertIsInstance(geolocations.id, str)
-        self.assertIsInstance(geolocations._id, ObjectId)
+        for field in labels.keys():
+            label = sample_view[field]
+            self.assertIsInstance(label.id, str)
+            self.assertIsInstance(label._id, ObjectId)
 
 
 if __name__ == "__main__":
