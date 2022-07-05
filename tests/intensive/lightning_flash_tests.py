@@ -25,7 +25,7 @@ from flash.video import VideoClassificationData, VideoClassifier
 
 import fiftyone as fo
 import fiftyone.brain as fob
-import fiftyone.utils.splits as fous
+import fiftyone.utils.random as four
 import fiftyone.zoo as foz
 
 
@@ -69,7 +69,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
@@ -134,7 +134,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "test": 0.1, "val": 0.1}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
@@ -283,7 +283,7 @@ class LightningFlashTests(unittest.TestCase):
 
         # Create splits from the dataset
         splits = {"train": 0.7, "pred": 0.3}
-        fous.random_split(dataset, splits)
+        four.random_split(dataset, splits)
 
         # Here we use views into one dataset,
         # but you can also use a different dataset for each split
