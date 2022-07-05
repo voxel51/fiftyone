@@ -98,8 +98,8 @@ def weighted_sample(
     Args:
         sample_collection: a :class:`fiftyone.core.collections.SampleCollection`
         k: the number of samples to select
-        tag: the tag to use to encode the results of the sampling
-        weights (None): an array of per-sample weights
+        weights: an array of per-sample weights
+        tag: the sample tag to use to encode the results
         exact (True): whether to tag exactly ``k`` samples (True) or sample so
             that the expected number of samples is ``k`` (False)
         seed (None): an optional random seed to use
@@ -168,7 +168,7 @@ def balanced_sample(sample_collection, k, path, tag, exact=True, seed=None):
         k: the number of samples to select
         path: the categorical field against which to sample, e.g.,
             ``"ground_truth.label"``
-        tag: the tag to use to encode the results of the sampling
+        tag: the sample tag to use to encode the results
         exact (True): whether to tag exactly ``k`` samples (True) or sample so
             that the expected number of samples is ``k`` (False)
         seed (None): an optional random seed to use
