@@ -4450,6 +4450,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for track_index, track in enumerate(tracks, 1):
                     label_id = track["label_id"]
                     shapes = track["shapes"]
+                    track_group_id = track.get("group", None)
                     for shape in shapes:
                         shape["label_id"] = label_id
 
@@ -4468,6 +4469,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ignore_types,
                         assigned_scalar_attrs=scalar_attrs,
                         track_index=track_index,
+                        track_group_id=track_group_id,
                         immutable_attrs=immutable_attrs,
                         occluded_attrs=_occluded_attrs,
                         group_id_attrs=_group_id_attrs,
@@ -5311,6 +5313,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
+        track_group_id=None,
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
@@ -5350,6 +5353,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ignore_types,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
+                track_group_id=track_group_id,
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
@@ -5378,6 +5382,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ignore_types,
                     assigned_scalar_attrs=assigned_scalar_attrs,
                     track_index=track_index,
+                    track_group_id=track_group_id,
                     immutable_attrs=immutable_attrs,
                     occluded_attrs=occluded_attrs,
                     group_id_attrs=group_id_attrs,
@@ -5401,6 +5406,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
+        track_group_id=None,
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
@@ -5444,6 +5450,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
+                group_id=track_group_id,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -6550,6 +6557,8 @@ class CVATShape(CVATLabel):
             corresponding attribute linked to the CVAT occlusion widget, if any
         group_id_attrs (None): a dictonary mapping class names to the
             corresponding attribute linked to the CVAT group id, if any
+        group_id (None): an optional group id value for this shape when it
+            cannot be parsed from the label dict
     """
 
     def __init__(
@@ -6563,6 +6572,7 @@ class CVATShape(CVATLabel):
         immutable_attrs=None,
         occluded_attrs=None,
         group_id_attrs=None,
+        group_id=None,
     ):
         super().__init__(
             label_dict,
@@ -6583,13 +6593,22 @@ class CVATShape(CVATLabel):
         self._parse_named_attribute(label_dict, "occluded", occluded_attrs)
 
         # Parse group id attribute, if necessary
-        self._parse_named_attribute(label_dict, "group", group_id_attrs)
+        self._parse_named_attribute(
+            label_dict, "group", group_id_attrs, default=group_id
+        )
 
-    def _parse_named_attribute(self, label_dict, attr_key, attrs):
+    def _parse_named_attribute(
+        self, label_dict, attr_key, attrs, default=None
+    ):
         if attrs is not None:
             attr_name = attrs.get(self.label, None)
             if attr_name is not None:
-                self.attributes[attr_name] = label_dict[attr_key]
+                if attr_key in label_dict:
+                    attr_value = label_dict[attr_key]
+                else:
+                    attr_value = default
+
+                self.attributes[attr_name] = attr_value
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))
