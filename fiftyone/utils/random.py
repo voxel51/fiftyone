@@ -105,7 +105,7 @@ def weighted_sample(
         seed (None): an optional random seed to use
 
     Returns:
-        a :meth:`fiftyone.core.view.DatasetView` containing the sample
+        a :class:`fiftyone.core.view.DatasetView` containing the sample
     """
     weights = np.asarray(weights)
     probs = (k / sum(weights)) * weights
@@ -174,7 +174,7 @@ def balanced_sample(sample_collection, k, path, tag, exact=True, seed=None):
         seed (None): an optional random seed to use
 
     Returns:
-        a :meth:`fiftyone.core.view.DatasetView` containing the sample
+        a :class:`fiftyone.core.view.DatasetView` containing the sample
     """
     counts = sample_collection.count_values(path)
     weights = np.array([1 / counts[l] for l in sample_collection.values(path)])
