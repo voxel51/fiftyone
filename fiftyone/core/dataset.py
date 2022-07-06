@@ -1520,7 +1520,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return sample_ids
 
     def add_collection(
-        self, sample_collection, include_info=True, overwrite_info=False
+        self,
+        sample_collection,
+        include_info=True,
+        overwrite_info=False,
+        new_ids=False,
     ):
         """Adds the contents of the given collection to the dataset.
 
@@ -1537,10 +1541,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
                 information. Only applicable when ``include_info`` is True
+            new_ids (False): whether to generate new sample/frame IDs. By
+                default, the IDs of the input collection are retained
 
         Returns:
             a list of IDs of the samples that were added to this dataset
         """
+        if new_ids:
+            return _add_collection_with_new_ids(
+                self,
+                sample_collection,
+                include_info=include_info,
+                overwrite_info=overwrite_info,
+            )
+
         num_samples = len(self)
         self.merge_samples(
             sample_collection,
@@ -5456,6 +5470,61 @@ def _get_single_index_map(coll):
         for k, v in coll.index_information().items()
         if len(v["key"]) == 1
     }
+
+
+def _add_collection_with_new_ids(
+    dataset,
+    sample_collection,
+    include_info=True,
+    overwrite_info=False,
+):
+    if sample_collection.media_type != fom.VIDEO:
+        # New sample IDs are automatically regenerated upon insert
+        view = sample_collection.mongo([{"$project": {"_id": False}}])
+        return dataset.add_collection(
+            view,
+            include_info=include_info,
+            overwrite_info=overwrite_info,
+        )
+
+    #
+    # For video datasets, we must take greater care, because sample IDs are
+    # used as foreign keys in the frame documents
+    #
+
+    dataset._merge_doc(
+        sample_collection,
+        merge_info=include_info,
+        overwrite_info=overwrite_info,
+    )
+
+    old_ids = sample_collection.values("_id")
+
+    sample_pipeline = sample_collection._pipeline(detach_frames=True) + [
+        {"$unset": "_id"},
+        {"$merge": dataset._sample_collection_name},
+    ]
+    sample_collection._dataset._aggregate(pipeline=sample_pipeline)
+
+    frame_pipeline = sample_collection._pipeline(frames_only=True) + [
+        {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
+        {"$unset": "_id"},
+        {"$merge": dataset._frame_collection_name},
+    ]
+    sample_collection._dataset._aggregate(pipeline=frame_pipeline)
+
+    new_ids = dataset[-len(old_ids) :].values("_id")
+
+    ops = [
+        UpdateMany(
+            {"_tmp": _old},
+            {"$set": {"_sample_id": _new}, "$unset": {"_tmp": ""}},
+        )
+        for _old, _new in zip(old_ids, new_ids)
+    ]
+    dataset._bulk_write(ops, frames=True)
+
+    return [str(_id) for _id in new_ids]
 
 
 def _merge_samples_python(
