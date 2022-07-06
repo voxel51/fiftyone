@@ -1,4 +1,9 @@
 import React, { FunctionComponent, useEffect, useState } from "react";
+import { getFetchFunction } from "@fiftyone/utilities";
+import * as aggregations from "./aggregations";
+import Aggregation from "./Aggregation";
+import { useRecoilValue } from "recoil";
+
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -82,9 +87,18 @@ export function usePlugin(
   return usingRegistry().getByType(type);
 }
 
+export function useActivePlugins(type: PluginComponentType, ctx: any) {
+  return usePlugin(type).filter((p) => {
+    if (typeof p.activator === "function") {
+      return p.activator(ctx);
+    }
+    return false;
+  });
+}
+
 export enum PluginComponentType {
   SampleModalContent,
-  Plot
+  Plot,
 }
 
 type PluginActivator = (props: any) => boolean;
@@ -136,3 +150,39 @@ class PluginComponentRegistry {
     return results;
   }
 }
+
+export function useAction(action: any) {
+  return action;
+}
+
+export const actions = {
+  viewSample: (sampleId: string) => {},
+};
+
+const AGGREGATE_ROUTE = "/aggregate";
+
+export function useAggregation() {
+  const [isLoading, setLoading] = React.useState(true);
+  const [result, setResult] = React.useState(null);
+  // const dataset = useRecoilValue(atoms.dataset)
+
+  const aggregate = async (
+    aggregations: Aggregation[],
+    datasetName?: string
+  ) => {
+    const jsonAggregations = aggregations.map((a) => a.toJSON());
+
+    const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {
+      filters: null,
+      dataset: datasetName,
+      sample_ids: null,
+      aggregations: jsonAggregations,
+    })) as any;
+    setResult(resBody.aggregate);
+    setLoading(false);
+  };
+
+  return [aggregate, result, isLoading];
+}
+
+export { aggregations };

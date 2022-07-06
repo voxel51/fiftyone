@@ -13,9 +13,11 @@ import { State } from "./recoil/types";
 import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
 import { getDatasetName } from "./utils/generic";
-import { modal, refresher, useRefresh } from "./recoil/atoms";
+import * as atoms from "./recoil/atoms";
 import Network from "./Network";
-import {usePlugins} from '@fiftyone/plugins'
+import { usePlugins } from "@fiftyone/plugins";
+
+const { modal, refresher, useRefresh } = atoms;
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -138,16 +140,15 @@ const App: React.FC = ({}) => {
     return () => controller.abort();
   }, []);
 
-
-  const plugins = usePlugins()
-  const loadingElement = <Loading>Pixelating...</Loading>
+  const plugins = usePlugins();
+  const loadingElement = <Loading>Pixelating...</Loading>;
 
   switch (readyState) {
     case AppReadyState.CONNECTING:
       return loadingElement;
     case AppReadyState.OPEN:
       if (plugins.isLoading) return loadingElement;
-      if (plugins.error) return <div>Plugin error...</div>
+      if (plugins.error) return <div>Plugin error...</div>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;

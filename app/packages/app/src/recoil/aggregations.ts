@@ -398,6 +398,14 @@ export const count = selectorFamily<
         return get(counts({ extended, path, modal }))[value] || 0;
       }
 
+      //
+      // HACK: to prevent issue fixed in develop
+      // remove before merging
+      //
+      if (!data[path]) {
+        return 0;
+      }
+
       return data[path].Count;
     },
   cachePolicy_UNSTABLE: {

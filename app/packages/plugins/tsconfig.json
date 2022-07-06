@@ -12,7 +12,14 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noImplicitAny": false,
-    "plugins": []
+    "plugins": [],
+    "types": ["vite/client"]
   },
-  "include": ["./src"]
+  "include": ["./src"],
+  "references": [
+    { "path": "../components" },
+    { "path": "../looker" },
+    { "path": "../flashlight" },
+    { "path": "../utilities" }
+  ]
 }
