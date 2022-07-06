@@ -6,6 +6,7 @@ import { State } from "./types";
 
 interface AppSample extends Sample {
   _id: string;
+  support?: [number, number];
 }
 
 export interface SampleData {
@@ -16,9 +17,13 @@ export interface SampleData {
   url?: string;
 }
 
-interface ModalSample extends SampleData {
+export interface ModalNavigation {
   index: number;
   getIndex: (index: number) => void;
+}
+
+interface ModalSample extends SampleData {
+  navigation?: ModalNavigation;
 }
 
 export const refresher = atom<boolean>({
@@ -28,10 +33,9 @@ export const refresher = atom<boolean>({
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      () => {
-        set(refresher, !get(refresher));
-      },
+    ({ get, set }) => () => {
+      set(refresher, !get(refresher));
+    },
     []
   );
 };

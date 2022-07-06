@@ -1,3 +1,4 @@
+import { Point } from "@fiftyone/looker";
 import { selectorFamily } from "recoil";
 import { Nonfinite } from "../../recoil/aggregations";
 import { filters, modalFilters } from "../../recoil/filters";
@@ -35,13 +36,6 @@ export interface NumericFilter {
   inf: boolean;
   exclude: boolean;
   _CLS: string;
-}
-
-interface Point {
-  points: [number | Nonfinite, number | Nonfinite];
-  label: string;
-  confidence?: number | Nonfinite;
-  [key: string]: any;
 }
 
 export interface StringFilter {

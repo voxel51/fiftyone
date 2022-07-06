@@ -1,7 +1,8 @@
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import LRUCache from "lru-cache";
+import { useState } from "react";
 
-import { SampleData } from "../../recoil/atoms";
+import { SampleData } from "../recoil/atoms";
 
 export type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
@@ -19,7 +20,7 @@ export interface LookerStore<T extends Lookers> {
   reset: () => void;
 }
 
-export default <T extends Lookers>(): LookerStore<T> => {
+const create = <T extends Lookers>(): LookerStore<T> => {
   const indices = new Map<number, string>();
   const lookers = createLookerCache<T>();
   const samples = new Map<string, SampleData>();
@@ -34,4 +35,9 @@ export default <T extends Lookers>(): LookerStore<T> => {
       indices.clear();
     },
   };
+};
+
+export default () => {
+  const [store] = useState(() => create());
+  return store;
 };

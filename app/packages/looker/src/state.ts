@@ -242,7 +242,7 @@ export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
 };
 
-interface Point {
+export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
   [key: string]: any;
@@ -294,6 +294,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   defaultSkeleton: null,
   skeletons: {},
   showSkeletons: true,
+  showOverlays: true,
   pointFilter: (path: string, point: Point) => true,
 };
 

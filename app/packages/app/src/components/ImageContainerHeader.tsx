@@ -10,7 +10,7 @@ import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 import { useTheme } from "@fiftyone/components";
-import { gridZoom, gridZoomRange } from "../recoil/grid";
+import { gridZoom, gridZoomRange } from "./Grid";
 
 const SamplesHeader = styled.div`
   position: absolute;

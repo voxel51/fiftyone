@@ -3,10 +3,6 @@ import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import ContainerHeader from "../components/ImageContainerHeader";
-import Flashlight from "../components/Flashlight";
-
-import { State } from "../recoil/types";
 import {
   disabledPaths,
   EntryKind,
@@ -14,6 +10,10 @@ import {
   sidebarVisible,
   useTagText,
 } from "../recoil/sidebar";
+import { State } from "../recoil/types";
+
+import Grid from "./Grid";
+import ContainerHeader from "./ImageContainerHeader";
 import Sidebar, { Entries } from "./Sidebar";
 
 const ContentColumn = styled.div`
@@ -148,7 +148,7 @@ const SamplesContainer = React.memo(() => {
       {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
 
       <ContentColumn>
-        <Flashlight key={"flashlight"} />
+        <Grid key={"grid"} />
         <ContainerHeader key={"header"} />
       </ContentColumn>
     </Container>

@@ -22,7 +22,7 @@ export const coloring = selectorFamily<Coloring, boolean>({
       by: get(selectors.appConfigOption({ key: "colorBy", modal })),
       points: get(
         selectors.appConfigOption({ key: "multicolorKeypoints", modal })
-      ),
+      ) as boolean,
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(pool.length)

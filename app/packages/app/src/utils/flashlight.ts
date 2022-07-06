@@ -1,9 +1,15 @@
 import { Render } from "@fiftyone/flashlight";
-export const makeFlashlightLookerRenderer: (
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { MutableRefObject } from "react";
+import { SampleData } from "../recoil/atoms";
+export const makeFlashlightLookerRenderer: <
+  T extends FrameLooker | ImageLooker | VideoLooker
+>(
   store,
   onSelect: (id: string) => void,
-  onError: (error: Error) => void
-) => Render = (store, onSelect, onError) => {
+  onError: (error: Error) => void,
+  generator: MutableRefObject<((data: SampleData) => T) | undefined>
+) => Render = (store, onSelect, onError, generator) => {
   return (id, element, dimensions, soft, hide) => {
     try {
       const result = store.samples.get(id);
@@ -15,11 +21,14 @@ export const makeFlashlightLookerRenderer: (
         return;
       }
 
+      if (!generator.current) {
+        throw new Error("no generator");
+      }
+
       if (!soft) {
-        const looker = lookerGeneratorRef.current(result);
-        looker.addEventListener(
-          "selectthumbnail",
-          ({ detail }: { detail: string }) => onSelect(detail)
+        const looker = generator.current(result);
+        looker.addEventListener("selectthumbnail", ({ detail }) =>
+          onSelect(detail)
         );
 
         store.lookers.set(id, looker);
@@ -29,43 +38,4 @@ export const makeFlashlightLookerRenderer: (
       onError(error);
     }
   };
-};
-
-export const makeFlahlightLookerGetter = () => {
-  try {
-    const { results, more } = await getFetchFunction()("POST", "/samples", {
-      ...paramsRef.current,
-      page,
-    });
-
-    const itemData = results.map((result) => {
-      const data: atoms.SampleData = {
-        sample: result.sample,
-        dimensions: [result.width, result.height],
-        frameRate: result.frameRate,
-        frameNumber: result.sample.frameNumber,
-        url: result.url,
-      };
-
-      store.samples.set(result.sample._id, data);
-      store.indices.set(nextIndex, result.sample._id);
-      nextIndex++;
-
-      return data;
-    });
-
-    const items = itemData.map((data) => {
-      return {
-        id: data.sample._id,
-        aspectRatio: aspectRatioGenerator.current(data),
-      };
-    });
-
-    return {
-      items,
-      nextRequestKey: more ? page + 1 : null,
-    };
-  } catch (error) {
-    handleError(error);
-  }
 };

@@ -15,18 +15,23 @@ import {
   paginateGroup_query$data,
   paginateGroup_query$key,
 } from "../../queries";
-import createStore from "../../flashlightStore";
+import createStore from "../FlashlightLooker/createStore";
+import { zoomAspectRatio } from "@fiftyone/looker";
 
 const store = createStore();
 
-const process = (edges: paginateGroup_query$data["samples"]["edges"]) =>
+const process = (zoom: boolean,edges: paginateGroup_query$data["samples"]["edges"]) =>
   edges.map(({ node }) => {
     if (node.__typename === "%other") {
       throw new Error("invalid response");
     }
+
+    const aspectRatio = node.width / node.height'
     return {
-      aspectRatio: node.width / node.height,
-      id: node.sample._id as string,
+      aspectRatio:  zoom
+      ? zoomAspectRatio(node.sample as any, aspectRatio)
+      : aspectRatio,
+      id: (node.sample as any)._id as string,
     };
   });
 
@@ -42,11 +47,9 @@ const Column: React.FC<{
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
-
   const countRef = useRef(0);
 
   const resolveRef = useRef<(value: Response<number>) => void>();
-  const lookerGeneratorRef = useRef<any>();
 
   useEffect(() => {
     if (resolveRef.current && countRef.current !== samples.edges.length) {

@@ -62,6 +62,7 @@ import {
   Dimensions,
   Sample,
   MaskTargets,
+  Coloring,
 } from "./state";
 import {
   addToBuffers,
@@ -84,6 +85,8 @@ import { Events } from "./elements/base";
 export { createColorGenerator, getRGB } from "./color";
 export { freeVideos } from "./elements/util";
 export {
+  Coloring,
+  Point,
   FrameConfig,
   FrameOptions,
   ImageConfig,
@@ -95,18 +98,6 @@ export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
-export interface Coloring {
-  by: "instance" | "field" | "label";
-  pool: string[];
-  scale: RGB[];
-  seed: number;
-  targets: string[];
-  defaultMaskTargets?: MaskTargets;
-  maskTargets: {
-    [field: string]: MaskTargets;
-  };
-}
 
 const workerCallbacks = {
   requestColor: [

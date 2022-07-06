@@ -64,30 +64,29 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-        const { sample } = get(atoms.modal);
-        let labels = {
-          ...get(atoms.selectedLabels),
+    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+      const { sample } = get(atoms.modal);
+      let labels = {
+        ...get(atoms.selectedLabels),
+      };
+      if (labels[id]) {
+        delete labels[id];
+      } else {
+        labels[id] = {
+          field,
+          sampleId: sample._id,
+          frameNumber,
         };
-        if (labels[id]) {
-          delete labels[id];
-        } else {
-          labels[id] = {
-            field,
-            sampleId: sample._id,
-            frameNumber,
-          };
-        }
+      }
 
-        set(atoms.selectedLabels, labels);
-        send(
-          Object.entries(labels).map(([labelId, data]) => ({
-            ...data,
-            labelId,
-          }))
-        );
-      },
+      set(atoms.selectedLabels, labels);
+      send(
+        Object.entries(labels).map(([labelId, data]) => ({
+          ...data,
+          labelId,
+        }))
+      );
+    },
     []
   );
 };
@@ -251,7 +250,7 @@ const SampleModal = () => {
             lookerRef={lookerRef}
             onSelectLabel={onSelectLabel}
             onClose={clearModal}
-            onPrevious={index > 0 ? () => getIndex(index - 1) : null}
+            onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
             onNext={() => getIndex(index + 1)}
           />
         </ContentColumn>
