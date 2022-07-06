@@ -560,7 +560,7 @@ const Looker = ({
     initialRef.current = false;
   }, []);
 
-  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
+  const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const pluginAPI = {
     getSampleSrc,
     sample,
@@ -568,7 +568,7 @@ const Looker = ({
     useState: useRecoilValue,
     state: {
       selectedLabels: atoms.selectedLabels,
-      pathFilter
+      pathFilter,
     },
     dataset: useRecoilValue(atoms.dataset),
   };

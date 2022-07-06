@@ -138,19 +138,28 @@ fop.registerComponent({
 
 ```jsx
 import * as fop from "@fiftyone/plugins";
-import { Spinner } from "@fiftyone/components";
 import AwesomeMap from "great-react-mapping-library";
 
-function CustomPlot() {
-  // example making a custom graphql query
-  const [lasso, setLasso] = React.useState(null);
-  const [points, loading] = fop.useQuery(`
-    # graphql to load only points for rendering
-    # using ${lasso}
-  `);
-  if (loading) return <Spinner />;
+function CustomPlot({ dataset }) {
+  const [aggregate, points, loading] = fop.useAggregation();
 
-  return <AwesomeMap geoPoints={points} onLasso={(s) => setLasso(s)} />;
+  React.useEffect(() => {
+    aggregate(
+      [
+        new fop.aggregations.Values({
+          fieldOrExpr: "id",
+        }),
+        new fop.aggregations.Values({
+          fieldOrExpr: "location.point.coordinates",
+        }),
+      ],
+      dataset.name
+    );
+  }, []);
+
+  if (loading) return <h1>Loading</h1>;
+
+  return <MyMap geoPoints={points} />;
 }
 
 fop.registerComponent({

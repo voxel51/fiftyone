@@ -6,6 +6,7 @@ import styled from "styled-components";
 
 import * as atoms from "../recoil/atoms";
 import * as viewAtoms from "../recoil/view";
+import * as filterAtoms from "../recoil/filters";
 
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
@@ -192,7 +193,12 @@ function ActivePlot({
 
   if (isDistPlot) return <Distributions key={active} group={active} />;
   if (plugin) {
-    return <plugin.component dataset={useRecoilValue(atoms.dataset)} />;
+    const pluginProps = {
+      dataset: useRecoilValue(atoms.dataset),
+      view: useRecoilValue(viewAtoms.view),
+      filters: useRecoilValue(filterAtoms.filters),
+    };
+    return <plugin.component {...pluginProps} />;
   }
 
   return null;

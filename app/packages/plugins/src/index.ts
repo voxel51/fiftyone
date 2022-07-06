@@ -100,7 +100,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
 }
 
 export enum PluginComponentType {
-  SampleModalContent,
+  Visualizer,
   Plot,
 }
 
@@ -164,7 +164,19 @@ export const actions = {
 
 const AGGREGATE_ROUTE = "/aggregate";
 
-export function useAggregation() {
+type AggregationParams = {
+  view?: any;
+  filters?: any;
+  dataset?: any;
+  sample_ids?: any;
+};
+
+export function useAggregation({
+  view,
+  filters,
+  dataset,
+  sample_ids,
+}: AggregationParams = {}) {
   const [isLoading, setLoading] = React.useState(true);
   const [result, setResult] = React.useState(null);
   // const dataset = useRecoilValue(atoms.dataset)
@@ -176,9 +188,10 @@ export function useAggregation() {
     const jsonAggregations = aggregations.map((a) => a.toJSON());
 
     const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {
-      filters: null,
-      dataset: datasetName,
-      sample_ids: null,
+      filters: filters, // extended view
+      view: view,
+      dataset: datasetName || dataset.name,
+      sample_ids: sample_ids,
       aggregations: jsonAggregations,
     })) as any;
     setResult(resBody.aggregate);
