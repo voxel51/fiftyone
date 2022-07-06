@@ -2039,8 +2039,11 @@ __metadata:
   dependencies:
     "@babel/preset-typescript": ^7.17.12
     "@fiftyone/prettier-config": "*"
+    "@fiftyone/utilities": "workspace:^"
     "@types/react": ^18.0.12
+    fs-extra: ^10.1.0
     jest: ^28.1.1
+    lodash: ^4.17.21
     prettier: 2.2.1
     typescript: 4.2.4
     vite: 2.4.2

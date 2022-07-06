@@ -68,7 +68,7 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
 
     if (response.status >= 400) {
       const error = await response.json();
-      throw new ServerError(((error as unknown) as { stack: string }).stack);
+      throw new ServerError((error as unknown as { stack: string }).stack);
     }
 
     return await response[result]();
@@ -78,6 +78,7 @@ export const setFetchFunction = (origin: string, headers: HeadersInit = {}) => {
 };
 
 const isWorker =
+  // @ts-ignore
   typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 
 export const getAPI = () => {
@@ -167,9 +168,7 @@ export const getEventSource = (
               throw new Error(`${response.status} ${response.url}`);
             }
 
-            throw new ServerError(
-              ((err as unknown) as { stack: string }).stack
-            );
+            throw new ServerError((err as unknown as { stack: string }).stack);
           }
 
           return response;

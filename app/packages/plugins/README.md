@@ -245,22 +245,20 @@ function useGeoDataNear() {
   const dataset = fop.useState(fop.state.dataset);
   const [origin, setOrigin] = React.useState({ lat: 0, lng: 0 });
   const availableFields = findAvailableFields(dataset.fields);
-  const [aggregate, isLoading, points] = fop.useAggregation(dataset.name);
+  const [aggregate, points, isLoading] = fop.useAggregation(dataset.name);
   const [selectedField, setField] = React.useState(availableFields[0]);
 
   React.useEffect(() => {
-    aggregate({
-      view: [
-        fop.stages.GeoNear({
-          point: origin,
-          locationField: selectedField,
-          maxDistance: 2,
-          query: {
-            category: "Parks",
-          },
-        }),
-      ],
-    });
+    aggregate([
+      fop.aggregations.GeoNear({
+        point: origin,
+        locationField: selectedField,
+        maxDistance: 2,
+        query: {
+          category: "Parks",
+        },
+      }),
+    ]);
   }, [origin]);
 
   return {

@@ -148,16 +148,15 @@ const App: React.FC = ({}) => {
     return () => controller.abort();
   }, []);
 
-
-  const plugins = usePlugins()
-  const loadingElement = <Loading>Pixelating...</Loading>
+  const plugins = usePlugins();
+  const loadingElement = <Loading>Pixelating...</Loading>;
 
   switch (readyState) {
     case AppReadyState.CONNECTING:
       return loadingElement;
     case AppReadyState.OPEN:
       if (plugins.isLoading) return loadingElement;
-      if (plugins.error) return <div>Plugin error...</div>
+      if (plugins.error) return <div>Plugin error...</div>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;
