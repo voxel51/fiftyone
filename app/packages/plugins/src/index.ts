@@ -21,6 +21,9 @@ function usingRegistry() {
 }
 
 export function registerComponent(registration: PluginComponentRegistration) {
+  if (!registration.activator) {
+    registration.activator = () => true;
+  }
   usingRegistry().register(registration);
 }
 export function unregisterComponent(name: string) {
