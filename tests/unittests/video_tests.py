@@ -1125,6 +1125,80 @@ class VideoTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_add_collection(self):
+        sample1 = fo.Sample(filepath="video.mp4", foo="bar")
+        sample1.frames[1] = fo.Frame(foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        sample2 = fo.Sample(filepath="video.mp4", spam="eggs")
+        sample2.frames[1] = fo.Frame(spam="eggs")
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset2)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertTrue("spam" in dataset.get_field_schema())
+        self.assertTrue("spam" in dataset.get_frame_field_schema())
+        self.assertIsNone(dataset.first()["spam"])
+        self.assertIsNone(dataset.first().frames.first()["spam"])
+        self.assertEqual(dataset.last()["spam"], "eggs")
+        self.assertEqual(dataset.last().frames.last()["spam"], "eggs")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(
+            dataset2.exclude_fields(["spam", "frames.spam"])
+        )
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertTrue("spam" not in dataset.get_field_schema())
+        self.assertTrue("spam" not in dataset.get_frame_field_schema())
+        self.assertIsNone(dataset.last()["foo"])
+        self.assertIsNone(dataset.last().frames.last()["foo"])
+
+    @drop_datasets
+    def test_add_collection_new_ids(self):
+        sample1 = fo.Sample(filepath="video.mp4", foo="bar")
+        sample1.frames[1] = fo.Frame(foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset, new_ids=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(len(set(dataset.values("frames.id", unwind=True))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertEqual(dataset.first().frames.first()["foo"], "bar")
+        self.assertEqual(dataset.last()["foo"], "bar")
+        self.assertEqual(dataset.last().frames.last()["foo"], "bar")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(
+            dataset.exclude_fields(["foo", "frames.foo"]),
+            new_ids=True,
+        )
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(len(set(dataset.values("frames.id", unwind=True))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertEqual(dataset.first().frames.first()["foo"], "bar")
+        self.assertIsNone(dataset.last()["foo"])
+        self.assertIsNone(dataset.last().frames.last()["foo"])
+
+    @drop_datasets
     def test_to_clips(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("support", fo.FrameSupportField)

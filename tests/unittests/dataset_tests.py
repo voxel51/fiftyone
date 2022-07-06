@@ -843,6 +843,57 @@ class DatasetTests(unittest.TestCase):
             )
 
     @drop_datasets
+    def test_add_collection(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        sample2 = fo.Sample(filepath="image.jpg", spam="eggs")
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset2)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue("spam" in dataset.get_field_schema())
+        self.assertIsNone(dataset.first()["spam"])
+        self.assertEqual(dataset.last()["spam"], "eggs")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset2.exclude_fields("spam"))
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue("spam" not in dataset.get_field_schema())
+        self.assertIsNone(dataset.last()["foo"])
+
+    @drop_datasets
+    def test_add_collection_new_ids(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar")
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        # Merge dataset
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset, new_ids=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertEqual(dataset.last()["foo"], "bar")
+
+        # Merge view
+        dataset = dataset1.clone()
+        dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(len(set(dataset.values("id"))), 2)
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertIsNone(dataset.last()["foo"])
+
+    @drop_datasets
     def test_expand_schema(self):
         # None-valued new fields are ignored for schema expansion
 
