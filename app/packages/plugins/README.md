@@ -2,11 +2,57 @@
 
 Develop plugins for fiftyone.
 
-## API Proposal
+## Developing your Plugin
 
-This document is for working through the proposed plugin API.
+In order to develop and test your plugin you will need the following:
 
-It should be updated prior to merging/releasing.
+- a development install of fiftyone
+- the fiftyone app setup for development
+- a plugin skeleton (start with one of the plugins in voxel51/fiftyone-plugins)
+- npm link / symlink to the `@fiftyone/plugins` package
+
+For local testing, follow these basic steps:
+
+First ensure your plugin's `package.json` includes the path to the plugin script:
+
+```json
+  "fiftyone": {
+    "script": "dist/index.umd.js"
+  }
+```
+
+Then follow the steps below, in separate terminal sessions as needed.
+
+```sh
+# tell fiftyone where you want to load plugins from
+# this should be a parent directory to all your plugins
+FIFTYONE_PLUGINS_DIR=$MY_PLUGINS_DIR
+
+# start the fiftyone app in dev mode
+cd $FIFTYONE/app/packaages/app
+yarn dev
+
+# start the fiftyone python server (in a separate session)
+cd $FIFTYONE
+python fiftyone/server/main.py
+
+# ensure your plugin has a symlink to the @fiftyone/plugins package
+cd $FIFTYONE/app/packaages/plugins
+npm link
+cd $MY_PLUGIN
+npm link @fiftyone/plugins
+
+# now you can build your plugin for development
+yarn build
+```
+
+You should now have a running fiftyone server and app, including your plugin.
+
+NOTE: each time you change you plugin's source you must rebuild using `yarn build`. You can setup a watcher to do this automatically (see: [nodemon](https://www.npmjs.com/package/nodemon)).
+
+## Examples
+
+Below are introductory examples to the fiftyone plugin api.
 
 ### Hello World
 
@@ -14,10 +60,9 @@ A simple hello world plugin, that renders "hello world" in place of the `SampleM
 
 ```jsx
 import { registerComponent, PluginComponentTypes } from "@fiftyone/plugins";
-import { Button } from "@fiftyone/components";
 
 function HelloWorld() {
-  return <Button>Hello World</Button>;
+  return <h1>Hello World</h1>;
 }
 
 registerComponent({
