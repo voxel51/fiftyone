@@ -191,7 +191,12 @@ function ActivePlot({
 
   if (isDistPlot) return <Distributions key={active} group={active} />;
   if (plugin) {
-    return <plugin.component dataset={useRecoilValue(atoms.dataset)} />;
+    const pluginProps = {
+      dataset: useRecoilValue(atoms.dataset),
+      view: useRecoilValue(viewAtoms.view),
+      filters: useRecoilValue(filterAtoms.filters),
+    };
+    return <plugin.component {...pluginProps} />;
   }
 
   return null;
