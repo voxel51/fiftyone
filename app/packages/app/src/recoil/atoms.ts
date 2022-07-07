@@ -33,9 +33,10 @@ export const refresher = atom<boolean>({
 
 export const useRefresh = () => {
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => () => {
-      set(refresher, !get(refresher));
-    },
+    ({ get, set }) =>
+      () => {
+        set(refresher, !get(refresher));
+      },
     []
   );
 };

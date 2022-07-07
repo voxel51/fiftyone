@@ -5,54 +5,51 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { CallbackInterface, RecoilValue, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
-import Flashlight, { FlashlightConfig } from "@fiftyone/flashlight";
-import {
-  freeVideos,
-  VideoLooker,
-  ImageLooker,
-  FrameLooker,
-} from "@fiftyone/looker";
-
-import useSelectSample, { SelectThumbnailData } from "./useSelectSample";
+import Flashlight from "@fiftyone/flashlight";
+import { freeVideos } from "@fiftyone/looker";
 
 import { flashlightLooker } from "./Grid.module.css";
 import { selectedSamples } from "../../recoil/atoms";
 import useCreateLooker from "../../hooks/useCreateLooker";
-import { useFlashlightLookerPager } from "./hooks";
 import useLookerStore from "../../hooks/useLookerStore";
-import useSetSampleView from "../../hooks/useSetSampleView";
 import { rowAspectRatioThreshold } from "./recoil";
 import { useLookerOptions } from "../../recoil/looker";
 import useResize from "./useResize";
+import usePage from "./usePage";
+import useExpandSample from "./useExpandSample";
+import useSelectSample, {
+  SelectThumbnailData,
+} from "../../hooks/useSelectSample";
 
-const deferrer = (initialized: MutableRefObject<boolean>) => (
-  fn: (...args: any[]) => void
-) => (...args: any[]): void => {
-  if (initialized.current) fn(...args);
-};
+const deferrer =
+  (initialized: MutableRefObject<boolean>) =>
+  (fn: (...args: any[]) => void) =>
+  (...args: any[]): void => {
+    if (initialized.current) fn(...args);
+  };
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());
   const store = useLookerStore();
-  const setSample = useSetSampleView(store, onLookerClick);
+  const expandSample = useExpandSample(store);
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
-  const selectSample = useRef<(data: SelectThumbnailData) => void>();
   const lookerOptions = useLookerOptions(false);
   const createLooker = useCreateLooker(true, lookerOptions);
   const selected = useRecoilValue(selectedSamples);
-  const [next, pager] = useFlashlightLookerPager(false, store);
+  const [next, pager] = usePage(false, store);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight<number>({
+      horizontal: false,
       initialRequestKey: 1,
       options: { rowAspectRatioThreshold: threshold },
-      onItemClick: setSample,
+      onItemClick: expandSample,
       onResize: resize.current,
       onItemResize: (id, dimensions) =>
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
@@ -84,6 +81,9 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
+  const selectSample = useRef<(data: SelectThumbnailData) => void>(
+    useSelectSample(flashlight)
+  );
   selectSample.current = useSelectSample(flashlight);
 
   useLayoutEffect(
@@ -113,7 +113,7 @@ const Grid: React.FC<{}> = () => {
       store.reset();
       freeVideos();
     }),
-    [refresh]
+    []
   );
 
   useEffect(() => {

@@ -7,11 +7,12 @@ const useEscape = () => {
     document,
     "keydown",
     useRecoilTransaction_UNSTABLE(
-      ({ get, set }) => (event: KeyboardEvent) => {
-        event.key === "Escape" &&
-          !get(modal) &&
-          set(selectedSamples, new Set());
-      },
+      ({ get, set }) =>
+        (event: KeyboardEvent) => {
+          event.key === "Escape" &&
+            !get(modal) &&
+            set(selectedSamples, new Set());
+        },
       []
     )
   );

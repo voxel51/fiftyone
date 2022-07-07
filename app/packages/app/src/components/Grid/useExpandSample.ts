@@ -3,9 +3,11 @@ import { useCallback } from "react";
 import useExpandSample from "../../hooks/useExpandSample";
 import { Lookers, LookerStore } from "../../hooks/useLookerStore";
 import { SampleData } from "../../recoil/atoms";
+import useSetGroup from "./useSetGroup";
 
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const expandSample = useExpandSample();
+  const setGroup = useSetGroup();
 
   return useCallback<
     (
@@ -13,25 +15,31 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     ) => void
   >(
     (next, sampleId, itemIndexMap) => {
+      setGroup();
       const clickedIndex = itemIndexMap[sampleId];
 
       const expand = (index: number, sample?: SampleData) =>
         sample && expandSample(sample, { index, getIndex });
 
       const getIndex = (index: number) => {
-        const promise = store.indices.has(index)
-          ? Promise.resolve(store.samples.get(store.indices.get(index)))
-          : next().then(() => {
-              return store.indices.has(index)
-                ? store.samples.get(store.indices.get(index))
-                : null;
-            });
+        const id = store.indices.get(index);
 
-        promise
-          ? promise.then((sample) => {
-              sample ? expand(index, sample) : null;
-            })
-          : null;
+        let promise;
+        if (id) {
+          promise = Promise.resolve(id);
+        } else {
+          promise = next().then(() => {
+            const id = store.indices.get(index);
+
+            if (!id) {
+              throw new Error("unable to paginate to next sample");
+            }
+
+            return id;
+          });
+        }
+
+        promise.then((sample) => sample && expand(index, sample));
       };
 
       const sample = store.samples.get(sampleId);

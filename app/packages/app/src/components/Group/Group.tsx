@@ -1,7 +1,13 @@
-import { ColumnScroller, Loading } from "@fiftyone/components";
+import { Scroller, Loading } from "@fiftyone/components";
 import { Response } from "@fiftyone/flashlight";
 import { Resizable } from "re-resizable";
-import React, { Suspense, useEffect, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   PreloadedQuery,
   usePaginationFragment,
@@ -15,22 +21,36 @@ import {
   paginateGroup_query$data,
   paginateGroup_query$key,
 } from "../../queries";
-import createStore from "../FlashlightLooker/createStore";
 import { zoomAspectRatio } from "@fiftyone/looker";
+import useLookerStore, { LookerStore } from "../../hooks/useLookerStore";
+import useCreateLooker from "../../hooks/useCreateLooker";
+import { useLookerOptions } from "../../recoil/looker";
 
-const store = createStore();
-
-const process = (zoom: boolean,edges: paginateGroup_query$data["samples"]["edges"]) =>
+const process = (
+  next: MutableRefObject<number>,
+  store: LookerStore<any>,
+  zoom: boolean,
+  edges: paginateGroup_query$data["samples"]["edges"]
+) =>
   edges.map(({ node }) => {
     if (node.__typename === "%other") {
       throw new Error("invalid response");
     }
+    const data = {
+      sample: node.sample,
+      dimensions: [node.width, node.height],
+    };
 
-    const aspectRatio = node.width / node.height'
+    store.samples.set(node.sample._id, data);
+    store.indices.set(next.current, node.sample._id);
+    next.current++;
+
+    const aspectRatio = node.width / node.height;
+
     return {
-      aspectRatio:  zoom
-      ? zoomAspectRatio(node.sample as any, aspectRatio)
-      : aspectRatio,
+      aspectRatio: zoom
+        ? zoomAspectRatio(node.sample as any, aspectRatio)
+        : aspectRatio,
       id: (node.sample as any)._id as string,
     };
   });
@@ -44,6 +64,8 @@ const Column: React.FC<{
     hasNext,
     loadNext,
   } = usePaginationFragment(paginateGroupPaginationFragment, fragmentRef);
+  const store = useLookerStore();
+  const createLooker = useCreateLooker(true, useLookerOptions(true));
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
@@ -56,19 +78,24 @@ const Column: React.FC<{
       countRef.current = samples.edges.length;
       pageCount.current += 1;
       resolveRef.current({
-        items: process(samples.edges.slice(countRef.current)),
+        items: process(
+          countRef,
+          store,
+          false,
+          samples.edges.slice(countRef.current)
+        ),
         nextRequestKey: pageCount.current,
       });
     }
   }, [samples]);
 
   return (
-    <ColumnScroller
+    <Scroller
       get={(page) => {
         pageCount.current = page + 1;
         if (pageCount.current === 1) {
           return Promise.resolve({
-            items: process(samples.edges),
+            items: process(countRef, store, false, samples.edges),
             nextRequestKey: hasNext ? pageCount.current : null,
           });
         } else {
@@ -81,24 +108,25 @@ const Column: React.FC<{
       render={(sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
-        if (store.lookers.has(sampleId)) {
-          const looker = store.lookers.get(sampleId);
+        const looker = store.lookers.get(sampleId);
+        if (looker) {
           hide ? looker.disable() : looker.attach(element, dimensions);
-
           return;
         }
 
-        if (!soft) {
-          const looker = lookerGeneratorRef.current(result);
+        if (!soft && createLooker.current && result) {
+          const looker = createLooker.current(result);
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: { detail: string }) => null
           );
 
           store.lookers.set(sampleId, looker);
+
           looker.attach(element, dimensions);
         }
       }}
+      horizontal={true}
     />
   );
 };

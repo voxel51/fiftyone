@@ -14,14 +14,13 @@ import { getMimeType } from "../utils/generic";
 
 export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   thumbnail: boolean,
-  optionsAtom: RecoilValue<Omit<ReturnType<T["getDefaultOptions"]>, "selected">>
+  options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">
 ) => {
   const createLookerRef = useRef<(data: SampleData) => T>();
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
-  const options = useRecoilValue(optionsAtom);
   const handleError = useErrorHandler();
 
   const fieldSchema = useRecoilValue(

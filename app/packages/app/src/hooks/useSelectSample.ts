@@ -1,7 +1,7 @@
 import Flashlight from "@fiftyone/flashlight";
 import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { selectedSamples } from "../../recoil/atoms";
-import { useSetSelected } from "../../utils/hooks";
+import { selectedSamples } from "../recoil/atoms";
+import { useSetSelected } from "../utils/hooks";
 
 const argFact =
   <T extends unknown>(compareFn) =>

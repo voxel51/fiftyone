@@ -13,6 +13,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
 
+import useClearModal from "../hooks/useClearModal";
 import { paginateGroupQueryRef } from "../queries";
 import Group from "./Group/Group";
 import {
@@ -22,7 +23,6 @@ import {
   useTagText,
 } from "../recoil/sidebar";
 import Sidebar, { Entries } from "./Sidebar";
-import { useClearModal } from "../recoil/grid";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -51,6 +51,8 @@ const ContentColumn = styled.div`
   width: 1px;
   position: relative;
   overflow: visible;
+  display: flex;
+  flex-direction: column;
 `;
 
 interface SelectEvent {
@@ -64,29 +66,30 @@ interface SelectEvent {
 const useOnSelectLabel = () => {
   const send = useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
+    ({ get, set }) =>
+      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
+        const { sample } = get(atoms.modal);
+        let labels = {
+          ...get(atoms.selectedLabels),
         };
-      }
+        if (labels[id]) {
+          delete labels[id];
+        } else {
+          labels[id] = {
+            field,
+            sampleId: sample._id,
+            frameNumber,
+          };
+        }
 
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({
-          ...data,
-          labelId,
-        }))
-      );
-    },
+        set(atoms.selectedLabels, labels);
+        send(
+          Object.entries(labels).map(([labelId, data]) => ({
+            ...data,
+            labelId,
+          }))
+        );
+      },
     []
   );
 };
@@ -245,6 +248,7 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
+          {groupQueryRef && <Group queryRef={groupQueryRef} />}
           <Looker
             key={`modal-${sampleSrc}`}
             lookerRef={lookerRef}
@@ -252,9 +256,9 @@ const SampleModal = () => {
             onClose={clearModal}
             onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
             onNext={() => getIndex(index + 1)}
+            style={{ flex: 1 }}
           />
         </ContentColumn>
-        {groupQueryRef && <Group queryRef={groupQueryRef} />}
         <Sidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,
