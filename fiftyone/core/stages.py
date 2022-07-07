@@ -632,21 +632,24 @@ class ExcludeFields(ViewStage):
         )
         excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
-        excluded_frame_fields = self.get_excluded_fields(
-            sample_collection, frames=True
-        )
-        excluded_frame_fields = sample_collection._handle_db_fields(
-            excluded_frame_fields, frames=True
-        )
-        excluded_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f for f in excluded_frame_fields
-        ]
+        if sample_collection.media_type == fom.VIDEO:
+            excluded_frame_fields = self.get_excluded_fields(
+                sample_collection, frames=True
+            )
+            excluded_frame_fields = sample_collection._handle_db_fields(
+                excluded_frame_fields, frames=True
+            )
 
-        if excluded_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            excluded_fields = [f for f in excluded_fields if f != "frames"]
-            excluded_fields += excluded_frame_fields
+            excluded_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in excluded_frame_fields
+            ]
+
+            if excluded_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                excluded_fields = [f for f in excluded_fields if f != "frames"]
+                excluded_fields += excluded_frame_fields
 
         if not excluded_fields:
             return []
