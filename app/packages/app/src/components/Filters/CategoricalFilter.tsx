@@ -211,40 +211,42 @@ const categoricalSearchResults = selectorFamily<
   { path: string; modal: boolean }
 >({
   key: "categoricalSearchResults",
-  get: ({ path, modal }) => async ({ get }) => {
-    const search = get(categoricalSearch({ modal, path }));
-    const sorting = get(atoms.sortFilterResults(modal));
-    let sampleId = null;
-    const selected = get(selectedValuesAtom({ path, modal }));
-    if (modal) {
-      sampleId = get(atoms.modal)?.sample._id;
-    }
+  get:
+    ({ path, modal }) =>
+    async ({ get }) => {
+      const search = get(categoricalSearch({ modal, path }));
+      const sorting = get(atoms.sortFilterResults(modal));
+      let sampleId = null;
+      const selected = get(selectedValuesAtom({ path, modal }));
+      if (modal) {
+        sampleId = get(atoms.modal)?.sample._id;
+      }
 
-    const noneCount = get(
-      aggregationAtoms.noneCount({ path, modal, extended: false })
-    );
+      const noneCount = get(
+        aggregationAtoms.noneCount({ path, modal, extended: false })
+      );
 
-    const data = await getFetchFunction()("POST", "/values", {
-      dataset: get(atoms.dataset).name,
-      view: get(view),
-      path,
-      search,
-      selected,
-      sample_id: sampleId,
-      ...sorting,
-    });
+      const data = await getFetchFunction()("POST", "/values", {
+        dataset: get(atoms.dataset).name,
+        view: get(view),
+        path,
+        search,
+        selected,
+        sample_id: sampleId,
+        ...sorting,
+      });
 
-    let { values, count } = data as { values: V[]; count: number };
+      let { values, count } = data as { values: V[]; count: number };
 
-    if (noneCount > 0 && "None".includes(search)) {
-      values = [...values, { value: null, count: noneCount }]
-        .sort(nullSort(sorting))
-        .slice(0, 25);
-      count++;
-    }
+      if (noneCount > 0 && "None".includes(search)) {
+        values = [...values, { value: null, count: noneCount }]
+          .sort(nullSort(sorting))
+          .slice(0, 25);
+        count++;
+      }
 
-    return { count, values };
-  },
+      return { count, values };
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -274,12 +276,13 @@ const useOnSelect = (
   selectedCounts: MutableRefObject<Map<V["value"], number>>
 ) => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async ({ value, count }: V) => {
-      const selected = new Set(await snapshot.getPromise(selectedAtom));
-      selectedCounts.current.set(value, count);
-      selected.add(value);
-      set(selectedAtom, [...selected].sort());
-    },
+    ({ snapshot, set }) =>
+      async ({ value, count }: V) => {
+        const selected = new Set(await snapshot.getPromise(selectedAtom));
+        selectedCounts.current.set(value, count);
+        selected.add(value);
+        set(selectedAtom, [...selected].sort());
+      },
     [selectedAtom, selectedCounts]
   );
 };
@@ -297,17 +300,12 @@ interface Props {
   title: string;
 }
 
-const ResultComponent = ({
-  value: { value, count },
-  className,
-}: {
-  value: V;
-  className: string;
-}) => {
+const ResultComponent = ({ value: { value, count } }: { value: V }) => {
   return (
-    <div className={className} style={{ fontSize: "1rem" }}>
+    <>
       <span
         style={{
+          fontSize: "1rem",
           flex: 1,
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -316,34 +314,36 @@ const ResultComponent = ({
       >
         {value}
       </span>
-      <span>{count}</span>
-    </div>
+      <span style={{ fontSize: "1rem" }}>{count}</span>
+    </>
   );
 };
 
 export const isKeypointLabel = selectorFamily<boolean, string>({
   key: "isKeypointLabel",
-  get: (path) => ({ get }) => {
-    const { CountValues } = get(
-      aggregationAtoms.aggregations({ modal: false, extended: false })
-    )[path] as aggregationAtoms.CategoricalAggregations;
+  get:
+    (path) =>
+    ({ get }) => {
+      const { CountValues } = get(
+        aggregationAtoms.aggregations({ modal: false, extended: false })
+      )[path] as aggregationAtoms.CategoricalAggregations;
 
-    if (!CountValues) {
-      const keys = path.split(".");
-      let parent = keys[0];
+      if (!CountValues) {
+        const keys = path.split(".");
+        let parent = keys[0];
 
-      let f = get(field(parent));
-      if (!f && parent === "frames") {
-        parent = `frames.${keys[1]}`;
+        let f = get(field(parent));
+        if (!f && parent === "frames") {
+          parent = `frames.${keys[1]}`;
+        }
+
+        if (VALID_KEYPOINTS.includes(get(field(parent)).embeddedDocType)) {
+          return true;
+        }
       }
 
-      if (VALID_KEYPOINTS.includes(get(field(parent)).embeddedDocType)) {
-        return true;
-      }
-    }
-
-    return false;
-  },
+      return false;
+    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },

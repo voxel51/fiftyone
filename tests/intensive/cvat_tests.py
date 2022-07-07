@@ -468,7 +468,20 @@ class CVATTests(unittest.TestCase):
         api = results.connect_to_api()
         project_id = api.get_project_id(project_name)
         self.assertIsNotNone(project_id)
-        self.assertIn(project_id, results.project_ids)
+        if project_id not in results.project_ids:
+            # Delete project if it exists
+            api.delete_project(project_id)
+            anno_key_retry = "anno_key_retry"
+            results = dataset.annotate(
+                anno_key_retry,
+                backend="cvat",
+                label_field="ground_truth",
+                project_name=project_name,
+            )
+            api = results.connect_to_api()
+            project_id = api.get_project_id(project_name)
+            self.assertIsNotNone(project_id)
+            self.assertIn(project_id, results.project_ids)
 
         anno_key2 = "anno_key2"
         results2 = dataset.annotate(
@@ -479,6 +492,14 @@ class CVATTests(unittest.TestCase):
         )
         self.assertNotIn(project_id, results2.project_ids)
         self.assertIsNotNone(api.get_project_id(project_name))
+
+        # Test upload without schema
+        anno_key3 = "anno_key3"
+        results3 = dataset.annotate(
+            anno_key3,
+            backend="cvat",
+            project_name=project_name,
+        )
 
         with self.assertRaises(ValueError):
             label_schema = {
