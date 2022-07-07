@@ -5121,6 +5121,12 @@ def _save_view(view, fields=None):
         sample_fields = fields
         frame_fields = []
 
+    if sample_fields:
+        sample_fields = dataset._handle_db_fields(sample_fields)
+
+    if frame_fields:
+        frame_fields = dataset._handle_db_fields(frame_fields, frames=True)
+
     save_samples = sample_fields or all_fields
     save_frames = frame_fields or all_fields
 
