@@ -84,16 +84,17 @@ import { Events } from "./elements/base";
 
 export { createColorGenerator, getRGB } from "./color";
 export { freeVideos } from "./elements/util";
-export {
+export type {
   Coloring,
-  Point,
   FrameConfig,
   FrameOptions,
   ImageConfig,
   ImageOptions,
+  Point,
   VideoConfig,
   VideoOptions,
 } from "./state";
+
 export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
