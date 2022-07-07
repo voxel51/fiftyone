@@ -335,11 +335,12 @@ class DatasetMixin(object):
         default_fields = get_default_fields(
             cls.__bases__[0], include_private=True
         )
+
         for field_name in field_names:
             if field_name in default_fields:
                 raise ValueError(
                     "Cannot rename default %s field '%s'"
-                    % (cls._doc_name(), field_name)
+                    % (cls._doc_name().lower(), field_name)
                 )
 
             # pylint: disable=no-member
@@ -349,13 +350,10 @@ class DatasetMixin(object):
                     % (cls._doc_name(), field_name)
                 )
 
-        if not field_names:
-            return
+        cls._rename_fields_simple(field_names, new_field_names)
 
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._rename_field_schema(field_name, new_field_name)
-
-        cls._rename_fields_simple(field_names, new_field_names)
 
     @classmethod
     def _rename_embedded_fields(
@@ -370,9 +368,6 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if not field_names:
-            return
-
         cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
@@ -390,9 +385,6 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if not field_names:
-            return
-
         for field_name in field_names:
             # pylint: disable=no-member
             if field_name not in cls._fields:
@@ -401,15 +393,15 @@ class DatasetMixin(object):
                     % (cls._doc_name(), field_name)
                 )
 
-        for field_name, new_field_name in zip(field_names, new_field_names):
-            cls._clone_field_schema(field_name, new_field_name)
-
         if sample_collection is None:
             cls._clone_fields_simple(field_names, new_field_names)
         else:
             cls._clone_fields_collection(
                 field_names, new_field_names, sample_collection
             )
+
+        for field_name, new_field_name in zip(field_names, new_field_names):
+            cls._clone_field_schema(field_name, new_field_name)
 
     @classmethod
     def _clone_embedded_fields(
@@ -424,9 +416,6 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if not field_names:
-            return
-
         cls._clone_fields_collection(
             field_names, new_field_names, sample_collection
         )
@@ -441,8 +430,13 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if not field_names:
-            return
+        for field_name in field_names:
+            # pylint: disable=no-member
+            if field_name not in cls._fields:
+                raise AttributeError(
+                    "%s field '%s' does not exist"
+                    % (cls._doc_name(), field_name)
+                )
 
         if sample_collection is None:
             cls._clear_fields_simple(field_names)
@@ -459,9 +453,6 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if not field_names:
-            return
-
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
@@ -486,25 +477,26 @@ class DatasetMixin(object):
             if field_name in default_fields:
                 fou.handle_error(
                     ValueError(
-                        "Cannot delete default field '%s'" % field_name
+                        "Cannot delete default %s field '%s'"
+                        % (cls._doc_name().lower(), field_name)
                     ),
                     error_level,
                 )
             elif field_name not in cls._fields:
                 fou.handle_error(
-                    AttributeError("Field '%s' does not exist" % field_name),
+                    AttributeError(
+                        "%s field '%s' does not exist"
+                        % (cls._doc_name(), field_name)
+                    ),
                     error_level,
                 )
             else:
                 _field_names.append(field_name)
 
-        if not _field_names:
-            return
+        cls._delete_fields_simple(_field_names)
 
         for field_name in _field_names:
             cls._delete_field_schema(field_name)
-
-        cls._delete_fields_simple(_field_names)
 
     @classmethod
     def _delete_embedded_fields(cls, field_names):
@@ -513,14 +505,18 @@ class DatasetMixin(object):
         Args:
             field_names: an iterable of "embedded.field.names"
         """
-        if not field_names:
-            return
-
         cls._delete_fields_simple(field_names)
 
     @classmethod
     def _rename_fields_simple(cls, field_names, new_field_names):
-        rename_expr = {k: v for k, v in zip(field_names, new_field_names)}
+        if not field_names:
+            return
+
+        _field_names, _new_field_names = cls._handle_db_fields(
+            field_names, new_field_names
+        )
+
+        rename_expr = {k: v for k, v in zip(_field_names, _new_field_names)}
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
@@ -532,17 +528,24 @@ class DatasetMixin(object):
     ):
         from fiftyone import ViewField as F
 
+        if not field_names:
+            return
+
+        _field_names, _new_field_names = cls._handle_db_fields(
+            field_names, new_field_names
+        )
+
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
-            new_field_names = [prefix + f for f in new_field_names]
+            _field_names = [prefix + f for f in _field_names]
+            _new_field_names = [prefix + f for f in _new_field_names]
 
             root = lambda f: ".".join(f.split(".", 2)[:2])
         else:
             root = lambda f: f.split(".", 1)[0]
 
         view = sample_collection.view()
-        for field_name, new_field_name in zip(field_names, new_field_names):
+        for field_name, new_field_name in zip(_field_names, _new_field_names):
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
@@ -554,9 +557,9 @@ class DatasetMixin(object):
             else:
                 expr = F("$" + field_name)
 
-            view = view.set_field(new_field_name, expr)
+            view = view.set_field(new_field_name, expr, _allow_missing=True)
 
-        view = view.mongo([{"$unset": field_names}])
+        view = view.mongo([{"$unset": _field_names}])
 
         #
         # Ideally only the embedded field would be saved, but the `$merge`
@@ -568,7 +571,14 @@ class DatasetMixin(object):
 
     @classmethod
     def _clone_fields_simple(cls, field_names, new_field_names):
-        set_expr = {v: "$" + k for k, v in zip(field_names, new_field_names)}
+        if not field_names:
+            return
+
+        _field_names, _new_field_names = cls._handle_db_fields(
+            field_names, new_field_names
+        )
+
+        set_expr = {v: "$" + k for k, v in zip(_field_names, _new_field_names)}
 
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
@@ -580,17 +590,24 @@ class DatasetMixin(object):
     ):
         from fiftyone import ViewField as F
 
+        if not field_names:
+            return
+
+        _field_names, _new_field_names = cls._handle_db_fields(
+            field_names, new_field_names
+        )
+
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
-            new_field_names = [prefix + f for f in new_field_names]
+            _field_names = [prefix + f for f in _field_names]
+            _new_field_names = [prefix + f for f in _new_field_names]
 
             root = lambda f: ".".join(f.split(".", 2)[:2])
         else:
             root = lambda f: f.split(".", 1)[0]
 
         view = sample_collection.view()
-        for field_name, new_field_name in zip(field_names, new_field_names):
+        for field_name, new_field_name in zip(_field_names, _new_field_names):
             new_base = new_field_name.rsplit(".", 1)[0]
             if "." in field_name:
                 base, leaf = field_name.rsplit(".", 1)
@@ -602,7 +619,7 @@ class DatasetMixin(object):
             else:
                 expr = F("$" + field_name)
 
-            view = view.set_field(new_field_name, expr)
+            view = view.set_field(new_field_name, expr, _allow_missing=True)
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
@@ -614,23 +631,33 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_fields_simple(cls, field_names):
+        if not field_names:
+            return
+
+        _field_names = cls._handle_db_fields(field_names)
+
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$set": {k: None for k in field_names}})
+        collection.update_many({}, {"$set": {k: None for k in _field_names}})
 
     @classmethod
     def _clear_fields_collection(cls, field_names, sample_collection):
+        if not field_names:
+            return
+
+        _field_names = cls._handle_db_fields(field_names)
+
         if cls._is_frames_doc:
             prefix = sample_collection._FRAMES_PREFIX
-            field_names = [prefix + f for f in field_names]
+            _field_names = [prefix + f for f in _field_names]
 
             root = lambda f: ".".join(f.split(".", 2)[:2])
         else:
             root = lambda f: f.split(".", 1)[0]
 
         view = sample_collection.view()
-        for field_name in field_names:
-            view = view.set_field(field_name, None)
+        for field_name in _field_names:
+            view = view.set_field(field_name, None, _allow_missing=True)
 
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
@@ -642,9 +669,45 @@ class DatasetMixin(object):
 
     @classmethod
     def _delete_fields_simple(cls, field_names):
+        if not field_names:
+            return
+
+        _field_names = cls._handle_db_fields(field_names)
+
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, [{"$unset": field_names}])
+        collection.update_many({}, [{"$unset": _field_names}])
+
+    @classmethod
+    def _handle_db_field(cls, field_name, new_field_name=None):
+        # pylint: disable=no-member
+        field = cls._fields.get(field_name, None)
+
+        if field is None or field.db_field is None:
+            if new_field_name is not None:
+                return field_name, new_field_name
+
+            return field_name
+
+        _field_name = field.db_field
+
+        if new_field_name is not None:
+            _new_field_name = _get_db_field(field, new_field_name)
+            return _field_name, _new_field_name
+
+        return _field_name
+
+    @classmethod
+    def _handle_db_fields(cls, field_names, new_field_names=None):
+        if new_field_names is not None:
+            return zip(
+                *[
+                    cls._handle_db_field(f, new_field_name=n)
+                    for f, n in zip(field_names, new_field_names)
+                ]
+            )
+
+        return tuple(cls._handle_db_field(f) for f in field_names)
 
     @classmethod
     def _declare_field(cls, field_or_doc):
@@ -661,6 +724,7 @@ class DatasetMixin(object):
         else:
             field.required = prev.required
             field.null = prev.null
+
         setattr(cls, field.name, field)
 
     @classmethod

@@ -1192,6 +1192,11 @@ class VideoTests(unittest.TestCase):
             },
         )
 
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.VideoMetadata,
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "sample_id", "filepath", "support", "metadata", "tags"},
@@ -1535,6 +1540,11 @@ class VideoTests(unittest.TestCase):
                 "hello",
                 "ground_truth",
             },
+        )
+
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.ImageMetadata,
         )
 
         self.assertSetEqual(

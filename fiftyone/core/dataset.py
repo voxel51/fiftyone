@@ -4913,13 +4913,11 @@ def _create_dataset(
     if _clips:
         # Clips datasets directly inherit frames from source dataset
         src_dataset = _src_collection._dataset
-        media_type = fom.VIDEO
         frame_collection_name = src_dataset._doc.frame_collection_name
         frame_doc_cls = src_dataset._frame_doc_cls
         frame_fields = src_dataset._doc.frame_fields
     else:
         # @todo don't create frame collection until media type is VIDEO?
-        media_type = None
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
@@ -4932,7 +4930,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_loaded_at=now,
-        media_type=media_type,
+        media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
@@ -4960,20 +4958,6 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         frame_collection.create_index(
             [("_sample_id", 1), ("frame_number", 1)], unique=True
         )
-
-
-def _declare_fields(doc_cls, field_docs=None):
-    for field_name, field in doc_cls._fields.items():
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field.name, **foo.get_field_kwargs(field))
-            field._set_parent(doc_cls)
-            doc_cls._fields[field_name] = field
-            setattr(doc_cls, field_name, field)
-
-    if field_docs is not None:
-        for field_doc in field_docs:
-            field = field_doc.to_field()
-            doc_cls._declare_field(field, field.name)
 
 
 def _make_sample_collection_name(patches=False, frames=False, clips=False):
@@ -5298,6 +5282,12 @@ def _save_view(view, fields=None):
     else:
         sample_fields = fields
         frame_fields = []
+
+    if sample_fields:
+        sample_fields = dataset._handle_db_fields(sample_fields)
+
+    if frame_fields:
+        frame_fields = dataset._handle_db_fields(frame_fields, frames=True)
 
     save_samples = sample_fields or all_fields
     save_frames = frame_fields or all_fields

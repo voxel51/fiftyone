@@ -7685,6 +7685,14 @@ class SampleCollection(object):
 
         return fields_map
 
+    def _handle_db_field(self, field_name, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return db_fields_map.get(field_name, field_name)
+
+    def _handle_db_fields(self, field_names, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return [db_fields_map.get(f, f) for f in field_names]
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
