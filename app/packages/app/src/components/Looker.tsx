@@ -453,6 +453,7 @@ const Looker = ({
     state: {
       selectedLabels: atoms.selectedLabels,
       pathFilter,
+      alpha: atoms.alpha,
     },
     dataset: useRecoilValue(atoms.dataset),
   };
