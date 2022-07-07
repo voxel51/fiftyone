@@ -4743,13 +4743,11 @@ def _create_dataset(
     if _clips:
         # Clips datasets directly inherit frames from source dataset
         src_dataset = _src_collection._dataset
-        media_type = fom.VIDEO
         frame_collection_name = src_dataset._doc.frame_collection_name
         frame_doc_cls = src_dataset._frame_doc_cls
         frame_fields = src_dataset._doc.frame_fields
     else:
         # @todo don't create frame collection until media type is VIDEO?
-        media_type = None
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
@@ -4762,7 +4760,7 @@ def _create_dataset(
         version=focn.VERSION,
         created_at=now,
         last_loaded_at=now,
-        media_type=media_type,
+        media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
         persistent=persistent,
