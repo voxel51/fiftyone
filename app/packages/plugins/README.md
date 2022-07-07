@@ -2,6 +2,43 @@
 
 Develop plugins for fiftyone.
 
+## Installing plugins
+
+In order to install a plugin you must have one of the three tools available in the environment you are running fiftyone.
+
+- npm
+- yarn
+
+Create a directory where you want to store your plugins. Note: this directory must be readable by the fiftyone server.
+
+When running fiftyone, you must specify the location of the plugin directory using the `FIFTYONE_PLUGINS_DIR`.
+
+Once you have a plugins directory setup, you must create a shell package to version your plugins.
+
+```
+cd $FIFTYONE_PLUGINS_DIR
+yarn init # or npm init
+```
+
+Now you can install a node package that contains a plugin.
+
+```
+# if it is avaialable on plubic/private npm registry
+yarn add my-fiftyone-plugin
+# or with npm
+npm install my-fiftyone-plugin --save
+```
+
+If your plugin is only available in a git repository, you can still install via git, although the environment must be configured to allow reading from that git repository.
+
+```
+# install via a github http url
+yarn add my-plugin@https://github.com/user/my-plugin.git#my-branch-name
+
+# install via ssh/repo
+yarn add ssh://github.com/user/my-plugin#my-branch
+```
+
 ## Developing your Plugin
 
 In order to develop and test your plugin you will need the following:
@@ -50,7 +87,32 @@ You should now have a running fiftyone server and app, including your plugin.
 
 NOTE: each time you change you plugin's source you must rebuild using `yarn build`. You can setup a watcher to do this automatically (see: [nodemon](https://www.npmjs.com/package/nodemon)).
 
-## Examples
+## Publishing your plugin
+
+You can publish your plugin to either a public/private npm registry,
+or a git repository. Including your package.json and built (dist) files is required for both. No other files are required to be published with your plugin.
+
+Before publishing make sure you do the following:
+
+- login to the registry you are trying to publish to
+- OR use a .npmrc to include private registry credentials
+- have the correct name, version, etc in your package.json
+- have a built plugin `dist` directory
+- your package.json points to the plugin entry point
+
+Then to publish your latest plugin to an npm registry:
+
+```
+# using yarn
+yarn publish
+# using npm
+```
+
+If you are using a git repository to publish your plugins,
+you must ensure that you include the `dist` directory when
+pushing to the remote repo.
+
+## How to write Plugins
 
 Below are introductory examples to the fiftyone plugin api.
 
