@@ -7,7 +7,7 @@ export interface ResultProps<T> {
   active: boolean;
   result: T;
   onClick: () => void;
-  component: React.FC<{ value: T; className: string }>;
+  component: React.FC<{ value: T }>;
 }
 
 const NONSTRING_VALUES: any[] = [false, true, null];
@@ -44,8 +44,8 @@ export const Result = <T extends unknown>({
   const classes = active ? [style.active, style.result] : [style.result];
 
   return (
-    <div onClick={onClick}>
-      <Component value={result} className={classNames(...classes)} />
+    <div onClick={onClick} className={classNames(...classes)}>
+      <Component value={result} />
     </div>
   );
 };

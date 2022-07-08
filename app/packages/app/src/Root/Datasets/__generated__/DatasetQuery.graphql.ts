@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b3df6bfbb118ec7bd55dad61f8bcca10>>
+ * @generated SignedSource<<5d5add4e4cdaeeb59d23f1d54bb97b3c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -472,16 +472,16 @@ const node: ConcreteRequest = (function () {
       selections: v11 /*: any*/,
     },
     params: {
-      cacheID: "2e788a38f5add212d3ac68a4ea5c3b00",
+      cacheID: "33066060725b03810ef6572c95db4570",
       id: null,
       metadata: {},
       name: "DatasetQuery",
       operationKind: "query",
-      text: "query DatasetQuery(\n  $name: String!\n  $view: BSONArray\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n  }\n}\n",
+      text: "query DatasetQuery(\n  $name: String!\n  $view: BSONArray = null\n) {\n  dataset(name: $name, view: $view) {\n    id\n    name\n    mediaType\n    sampleFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    frameFields {\n      ftype\n      subfield\n      embeddedDocType\n      path\n      dbField\n    }\n    appSidebarGroups {\n      name\n      paths\n    }\n    maskTargets {\n      name\n      targets {\n        target\n        value\n      }\n    }\n    defaultMaskTargets {\n      target\n      value\n    }\n    evaluations {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        predField\n        gtField\n      }\n    }\n    brainMethods {\n      key\n      version\n      timestamp\n      viewStages\n      config {\n        cls\n        embeddingsField\n        method\n        patchesField\n      }\n    }\n    lastLoadedAt\n    createdAt\n    skeletons {\n      name\n      labels\n      edges\n    }\n    defaultSkeleton {\n      labels\n      edges\n    }\n    version\n    viewCls\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "8db4b5cfa990a8b34fd487168771584c";
+(node as any).hash = "acdb1fd703d1544665bf0bb4fa3823c1";
 
 export default node;

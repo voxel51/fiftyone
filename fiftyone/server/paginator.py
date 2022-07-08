@@ -49,10 +49,11 @@ async def get_items(
     key: str,
     filters: t.List[dict],
     search: str,
-    first: int = 10,
+    first: int = LIST_LIMIT,
     after: t.Optional[str] = UNSET,
 ) -> Connection[T, str]:
     start = list(filters)
+    first = first or LIST_LIMIT
     if search:
         start += [{"$match": {"name": {"$regex": search}}}]
 

@@ -45,6 +45,7 @@
   overflow: visible;
   position: absolute;
   overflow: auto;
+  max-width: 480px;
 }
 
 .loadingFooter {

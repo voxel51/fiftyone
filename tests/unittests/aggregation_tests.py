@@ -861,6 +861,32 @@ class DatasetTests(unittest.TestCase):
         values = dataset.values(expr1 & expr2)
         self.assertListEqual(values, [False, False])
 
+    @drop_datasets
+    def test_serialize(self):
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+        aggregations = [
+            fo.Bounds("predictions.detections.confidence"),
+            fo.Count(),
+            fo.Count("predictions.detections"),
+            fo.CountValues("predictions.detections.label"),
+            fo.Distinct("predictions.detections.label"),
+            fo.HistogramValues(
+                "predictions.detections.confidence",
+                bins=50,
+                range=[0, 1],
+            ),
+            fo.Mean("predictions.detections[]", expr=bbox_area),
+            fo.Std("predictions.detections[]", expr=bbox_area),
+            fo.Sum("predictions.detections", expr=F().length()),
+            fo.Values("id"),
+        ]
+
+        agg_dicts = [a._serialize() for a in aggregations]
+        also_aggregations = [fo.Aggregation._from_dict(d) for d in agg_dicts]
+
+        self.assertListEqual(aggregations, also_aggregations)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
