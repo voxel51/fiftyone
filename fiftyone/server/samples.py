@@ -45,8 +45,8 @@ async def paginate_samples(
     filters: JSON,
     similarity: JSON,
     first: int,
-    after: int,
-) -> Connection[t.Union[ImageSample, VideoSample]]:
+    after: t.Optional[str] = None,
+) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
         stages=stages,
@@ -63,7 +63,10 @@ async def paginate_samples(
 
         view = view.set_field("frames", F("frames").filter(expr))
 
-    view = view.skip(after)
+    if after is None:
+        after = "-1"
+
+    view = view.skip(int(after) + 1)
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
@@ -101,7 +104,7 @@ async def paginate_samples(
                     {"sample": doc, **metadata_map[doc["filepath"]]},
                     Config(check_types=False),
                 ),
-                cursor=idx + after,
+                cursor=str(idx + int(after) + 1),
             )
         )
 

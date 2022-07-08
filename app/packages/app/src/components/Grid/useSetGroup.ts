@@ -18,12 +18,21 @@ export default () => {
       async () => {
         const dataset = await snapshot.getPromise(selectors.datasetName);
         const view = await snapshot.getPromise(viewAtoms.view);
+        const current = await snapshot.getPromise(paginateGroupQueryRef);
+        current && current.dispose();
         set(
           paginateGroupQueryRef,
-          loadQuery<paginateGroupQuery>(environment, paginateGroup, {
-            dataset,
-            view,
-          })
+          loadQuery<paginateGroupQuery>(
+            environment,
+            paginateGroup,
+            {
+              dataset,
+              view,
+            },
+            {
+              networkCacheConfig: { force: true },
+            }
+          )
         );
       },
     [environment]

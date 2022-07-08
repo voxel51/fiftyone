@@ -24,11 +24,13 @@ body,
   background-color: var(--background-transparent);
   top: 0;
   z-index: 1000;
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 
 #modal.modalon {
   display: block;
+  visibility: visible;
 }
 
 * {

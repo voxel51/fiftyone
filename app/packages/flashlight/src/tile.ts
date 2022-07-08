@@ -1,7 +1,13 @@
 import { ItemData, RowData } from "./state";
 
-const lastRow = ({ items }: RowData, threshold: number): RowData => {
-  const aspectRatios = items.map(({ aspectRatio }) => aspectRatio);
+const lastRow = (
+  { items }: RowData,
+  horizontal: boolean,
+  threshold: number
+): RowData => {
+  const aspectRatios = items.map(({ aspectRatio }) =>
+    horizontal ? 1 / aspectRatio : aspectRatio
+  );
   if (aspectRatios.length && new Set(aspectRatios).size === 1) {
     let aspectRatio = aspectRatios[0];
     let singleAR = aspectRatio;
@@ -23,6 +29,7 @@ const lastRow = ({ items }: RowData, threshold: number): RowData => {
 
 export default function tile(
   items: ItemData[],
+  horizontal: boolean,
   rowAspectRatioThreshold: number,
   hasMore: boolean
 ): {
@@ -36,6 +43,9 @@ export default function tile(
     const item = items[i];
     if (currentAR === null) {
       currentAR = item.aspectRatio;
+      if (horizontal) {
+        currentAR = 1 / currentAR;
+      }
       currentRow.push(item);
       continue;
     }
@@ -44,10 +54,20 @@ export default function tile(
       rows.push({ items: currentRow, aspectRatio: currentAR });
       currentRow = [item];
       currentAR = item.aspectRatio;
+
+      if (horizontal) {
+        currentAR = 1 / currentAR;
+      }
       continue;
     }
 
-    currentAR += item.aspectRatio;
+    let ar = item.aspectRatio;
+
+    if (horizontal) {
+      ar = 1 / ar;
+    }
+
+    currentAR += ar;
     currentRow.push(item);
   }
 
@@ -57,6 +77,7 @@ export default function tile(
       rows.push(
         lastRow(
           { items: currentRow, aspectRatio: currentAR },
+          horizontal,
           rowAspectRatioThreshold
         )
       );

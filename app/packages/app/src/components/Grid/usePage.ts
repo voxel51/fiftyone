@@ -23,6 +23,7 @@ const usePage = (
             const { zoom, ...params } = await snapshot.getPromise(
               pageParameters(modal)
             );
+            console.log(page, params);
             const { results, more } = await getFetchFunction()(
               "POST",
               "/samples",
@@ -62,7 +63,7 @@ const usePage = (
 
             return {
               items,
-              nextRequestKey: more ? page + 1 : undefined,
+              nextRequestKey: more ? page + 1 : null,
             };
           } catch (error) {
             handleError(error);

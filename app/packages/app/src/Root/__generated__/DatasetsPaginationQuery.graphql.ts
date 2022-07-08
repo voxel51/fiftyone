@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f64f5d2de46ce61ada13b4910bbdaec1>>
+ * @generated SignedSource<<a14e0bade0e7eb45cd4a095cd8bb2403>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,8 +19,8 @@ export type DatasetsPaginationQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"RootDatasets_query">;
 };
 export type DatasetsPaginationQuery = {
-  variables: DatasetsPaginationQuery$variables;
   response: DatasetsPaginationQuery$data;
+  variables: DatasetsPaginationQuery$variables;
 };
 
 const node: ConcreteRequest = (function () {
@@ -83,7 +83,7 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v1 /*: any*/,
-          concreteType: "DatasetConnection",
+          concreteType: "DatasetStrConnection",
           kind: "LinkedField",
           name: "datasets",
           plural: false,
@@ -98,7 +98,7 @@ const node: ConcreteRequest = (function () {
             {
               alias: null,
               args: null,
-              concreteType: "DatasetEdge",
+              concreteType: "DatasetStrEdge",
               kind: "LinkedField",
               name: "edges",
               plural: true,
@@ -148,7 +148,7 @@ const node: ConcreteRequest = (function () {
             {
               alias: null,
               args: null,
-              concreteType: "PageInfo",
+              concreteType: "DatasetStrPageInfo",
               kind: "LinkedField",
               name: "pageInfo",
               plural: false,

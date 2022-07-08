@@ -30,7 +30,7 @@ class Samples(HTTPEndpoint):
             filters,
             similarity,
             page_length,
-            (page - 1) * page_length,
+            (page - 1) * page_length - 1,
         )
 
         return {

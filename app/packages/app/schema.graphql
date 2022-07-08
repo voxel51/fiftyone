@@ -57,15 +57,22 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
 }
 
-type DatasetConnection {
-  pageInfo: PageInfo!
-  edges: [DatasetEdge!]!
+type DatasetStrConnection {
+  pageInfo: DatasetStrPageInfo!
+  edges: [DatasetStrEdge!]!
   total: Int
 }
 
-type DatasetEdge {
+type DatasetStrEdge {
   node: Dataset!
   cursor: String!
+}
+
+type DatasetStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
 }
 
 """
@@ -143,19 +150,12 @@ type NamedTargets {
   targets: [Target!]!
 }
 
-type PageInfo {
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: String
-  endCursor: String
-}
-
 type Query {
   datasets(
     search: String
     first: Int = 200
     after: String = null
-  ): DatasetConnection!
+  ): DatasetStrConnection!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -166,8 +166,8 @@ type Query {
     dataset: String!
     view: BSONArray!
     first: Int = 20
-    after: Int = 0
-  ): SampleItemConnection!
+    after: String = null
+  ): SampleItemStrConnection!
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -201,15 +201,22 @@ type SampleField {
 
 union SampleItem = ImageSample | VideoSample
 
-type SampleItemConnection {
-  pageInfo: PageInfo!
-  edges: [SampleItemEdge!]!
+type SampleItemStrConnection {
+  pageInfo: SampleItemStrPageInfo!
+  edges: [SampleItemStrEdge!]!
   total: Int
 }
 
-type SampleItemEdge {
+type SampleItemStrEdge {
   node: SampleItem!
   cursor: String!
+}
+
+type SampleItemStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
 }
 
 input SelectedLabel {

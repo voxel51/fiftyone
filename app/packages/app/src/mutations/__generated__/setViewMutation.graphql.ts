@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ee814c0549c8b6c760bd14012375a55c>>
+ * @generated SignedSource<<40c595444669be3aac87923c21edf04d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,35 +11,59 @@
 import { ConcreteRequest, Mutation } from "relay-runtime";
 export type MediaType = "image" | "video" | "%future added value";
 export type setViewMutation$variables = {
-  subscription: string;
-  session?: string | null;
-  view: Array;
   dataset: string;
+  session?: string | null;
+  subscription: string;
+  view: Array;
 };
 export type setViewMutation$data = {
   readonly setView: {
     readonly dataset: {
-      readonly id: string;
-      readonly name: string;
-      readonly mediaType: MediaType | null;
-      readonly sampleFields: ReadonlyArray<{
-        readonly ftype: string;
-        readonly subfield: string | null;
-        readonly embeddedDocType: string | null;
-        readonly path: string;
-        readonly dbField: string | null;
-      }>;
-      readonly frameFields: ReadonlyArray<{
-        readonly ftype: string;
-        readonly subfield: string | null;
-        readonly embeddedDocType: string | null;
-        readonly path: string;
-        readonly dbField: string | null;
-      }>;
       readonly appSidebarGroups: ReadonlyArray<{
         readonly name: string;
         readonly paths: ReadonlyArray<string>;
       }> | null;
+      readonly brainMethods: ReadonlyArray<{
+        readonly config: {
+          readonly cls: string;
+          readonly embeddingsField: string | null;
+          readonly method: string | null;
+          readonly patchesField: string | null;
+        } | null;
+        readonly key: string;
+        readonly timestamp: string | null;
+        readonly version: string | null;
+        readonly viewStages: ReadonlyArray<string> | null;
+      }>;
+      readonly createdAt: string | null;
+      readonly defaultMaskTargets: ReadonlyArray<{
+        readonly target: number;
+        readonly value: string;
+      }> | null;
+      readonly defaultSkeleton: {
+        readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+        readonly labels: ReadonlyArray<string> | null;
+      } | null;
+      readonly evaluations: ReadonlyArray<{
+        readonly config: {
+          readonly cls: string;
+          readonly gtField: string | null;
+          readonly predField: string | null;
+        } | null;
+        readonly key: string;
+        readonly timestamp: string | null;
+        readonly version: string | null;
+        readonly viewStages: ReadonlyArray<string> | null;
+      }>;
+      readonly frameFields: ReadonlyArray<{
+        readonly dbField: string | null;
+        readonly embeddedDocType: string | null;
+        readonly ftype: string;
+        readonly path: string;
+        readonly subfield: string | null;
+      }>;
+      readonly id: string;
+      readonly lastLoadedAt: string | null;
       readonly maskTargets: ReadonlyArray<{
         readonly name: string;
         readonly targets: ReadonlyArray<{
@@ -47,53 +71,29 @@ export type setViewMutation$data = {
           readonly value: string;
         }>;
       }>;
-      readonly defaultMaskTargets: ReadonlyArray<{
-        readonly target: number;
-        readonly value: string;
-      }> | null;
-      readonly evaluations: ReadonlyArray<{
-        readonly key: string;
-        readonly version: string | null;
-        readonly timestamp: string | null;
-        readonly viewStages: ReadonlyArray<string> | null;
-        readonly config: {
-          readonly cls: string;
-          readonly predField: string | null;
-          readonly gtField: string | null;
-        } | null;
+      readonly mediaType: MediaType | null;
+      readonly name: string;
+      readonly sampleFields: ReadonlyArray<{
+        readonly dbField: string | null;
+        readonly embeddedDocType: string | null;
+        readonly ftype: string;
+        readonly path: string;
+        readonly subfield: string | null;
       }>;
-      readonly brainMethods: ReadonlyArray<{
-        readonly key: string;
-        readonly version: string | null;
-        readonly timestamp: string | null;
-        readonly viewStages: ReadonlyArray<string> | null;
-        readonly config: {
-          readonly cls: string;
-          readonly embeddingsField: string | null;
-          readonly method: string | null;
-          readonly patchesField: string | null;
-        } | null;
+      readonly skeletons: ReadonlyArray<{
+        readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+        readonly labels: ReadonlyArray<string> | null;
+        readonly name: string;
       }>;
-      readonly lastLoadedAt: string | null;
-      readonly createdAt: string | null;
       readonly version: string | null;
       readonly viewCls: string | null;
-      readonly skeletons: ReadonlyArray<{
-        readonly name: string;
-        readonly labels: ReadonlyArray<string> | null;
-        readonly edges: ReadonlyArray<ReadonlyArray<number>>;
-      }>;
-      readonly defaultSkeleton: {
-        readonly labels: ReadonlyArray<string> | null;
-        readonly edges: ReadonlyArray<ReadonlyArray<number>>;
-      } | null;
     };
     readonly view: Array;
   };
 };
 export type setViewMutation = {
-  variables: setViewMutation$variables;
   response: setViewMutation$data;
+  variables: setViewMutation$variables;
 };
 
 const node: ConcreteRequest = (function () {

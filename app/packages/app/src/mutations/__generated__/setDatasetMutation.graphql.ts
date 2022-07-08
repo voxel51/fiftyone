@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3e35b3a01bfee84904e25dbe3ad4d7c4>>
+ * @generated SignedSource<<64dc42978810a57aebdcb1e6729518b4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,16 +10,16 @@
 
 import { ConcreteRequest, Mutation } from "relay-runtime";
 export type setDatasetMutation$variables = {
-  subscription: string;
-  session?: string | null;
   name?: string | null;
+  session?: string | null;
+  subscription: string;
 };
 export type setDatasetMutation$data = {
   readonly setDataset: boolean;
 };
 export type setDatasetMutation = {
-  variables: setDatasetMutation$variables;
   response: setDatasetMutation$data;
+  variables: setDatasetMutation$variables;
 };
 
 const node: ConcreteRequest = (function () {

@@ -37,7 +37,8 @@ export type Labels<T> = [string, T[]][];
 export class ClassificationsOverlay<
   State extends BaseState,
   Label extends Classification = ClassificationLabel
-> implements Overlay<State> {
+> implements Overlay<State>
+{
   private labelBoundingBoxes: { [key: string]: BoundingBox };
 
   protected readonly labels: Labels<Label>;
@@ -136,6 +137,7 @@ export class ClassificationsOverlay<
         label
       );
       top = result.top;
+
       if (result.box) {
         newBoxes[label.id] = result.box;
       }
@@ -236,6 +238,7 @@ export class ClassificationsOverlay<
 
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
+
     let [tlx, tly, w, h] = [
       state.textPad + cx,
       top + cy,

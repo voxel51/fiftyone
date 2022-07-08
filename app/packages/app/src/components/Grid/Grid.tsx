@@ -12,7 +12,12 @@ import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 
 import { flashlightLooker } from "./Grid.module.css";
-import { selectedSamples } from "../../recoil/atoms";
+import {
+  cropToContent,
+  refresher,
+  selectedSamples,
+  tagging,
+} from "../../recoil/atoms";
 import useCreateLooker from "../../hooks/useCreateLooker";
 import useLookerStore from "../../hooks/useLookerStore";
 import { rowAspectRatioThreshold } from "./recoil";
@@ -23,13 +28,11 @@ import useExpandSample from "./useExpandSample";
 import useSelectSample, {
   SelectThumbnailData,
 } from "../../hooks/useSelectSample";
-
-const deferrer =
-  (initialized: MutableRefObject<boolean>) =>
-  (fn: (...args: any[]) => void) =>
-  (...args: any[]): void => {
-    if (initialized.current) fn(...args);
-  };
+import * as viewAtoms from "../../recoil/view";
+import { filterView } from "../../utils/view";
+import { filters } from "../../recoil/filters";
+import { datasetName } from "../../recoil/selectors";
+import { deferrer, stringifyObj } from "@fiftyone/components";
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());
@@ -48,7 +51,7 @@ const Grid: React.FC<{}> = () => {
     const flashlight = new Flashlight<number>({
       horizontal: false,
       initialRequestKey: 1,
-      options: { rowAspectRatioThreshold: threshold },
+      options: { rowAspectRatioThreshold: threshold, offset: 60 },
       onItemClick: expandSample,
       onResize: resize.current,
       onItemResize: (id, dimensions) =>
@@ -70,7 +73,12 @@ const Grid: React.FC<{}> = () => {
 
         if (!soft) {
           const looker = createLooker.current(result);
-          looker.addEventListener("selectthumbnail", selectSample.current);
+          looker.addEventListener(
+            "selectthumbnail",
+            ({ detail }: CustomEvent) => {
+              selectSample.current(detail);
+            }
+          );
 
           store.lookers.set(id, looker);
           looker.attach(element, dimensions);
@@ -105,15 +113,31 @@ const Grid: React.FC<{}> = () => {
     [lookerOptions, selected]
   );
 
-  useLayoutEffect(() => flashlight.attach(id), []);
+  useLayoutEffect(() => {
+    flashlight.attach(id);
+    return () => flashlight.detach();
+  }, [flashlight, id]);
+  const taggingLabels = useRecoilValue(tagging({ modal: false, labels: true }));
+
+  const taggingSamples = useRecoilValue(
+    tagging({ modal: false, labels: false })
+  );
+  const isTagging = taggingLabels || taggingSamples;
+  const dd = useRecoilValue(datasetName);
+
   useLayoutEffect(
     deferred(() => {
+      if (isTagging || !flashlight.isAttached()) {
+        return;
+      }
+      console.log(dd);
+
       next.current = 0;
       flashlight.reset();
       store.reset();
       freeVideos();
     }),
-    []
+    [dd]
   );
 
   useEffect(() => {

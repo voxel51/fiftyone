@@ -353,65 +353,6 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const lookerOptions = selector({
-  key: "lookerOptions",
-  get: ({ get }) => {
-    const showConfidence = get(
-      selectors.appConfigOption({ modal: true, key: "showConfidence" })
-    );
-    const showIndex = get(
-      selectors.appConfigOption({ modal: true, key: "showIndex" })
-    );
-    const showLabel = get(
-      selectors.appConfigOption({ modal: true, key: "showLabel" })
-    );
-    const showTooltip = get(
-      selectors.appConfigOption({ modal: true, key: "showTooltip" })
-    );
-    const useFrameNumber = get(
-      selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
-    );
-    const video = get(selectors.isVideoDataset)
-      ? {
-          loop: get(
-            selectors.appConfigOption({ modal: true, key: "loopVideos" })
-          ),
-        }
-      : {};
-    const zoom = get(viewAtoms.isPatchesView)
-      ? get(atoms.cropToContent(true))
-      : false;
-
-    return {
-      activePaths: get(schemaAtoms.activeFields({ modal: true })),
-      showConfidence,
-      showControls: true,
-      showIndex,
-      showLabel,
-      useFrameNumber,
-      showTooltip,
-      ...video,
-      zoom,
-      filter: get(pathFilter(true)),
-      ...get(atoms.savedLookerOptions),
-      selectedLabels: [...get(selectors.selectedLabelIds)],
-      fullscreen: get(atoms.fullscreen),
-      showOverlays: get(atoms.showOverlays),
-      timeZone: get(selectors.timeZone),
-      coloring: get(colorAtoms.coloring(true)),
-      alpha: get(atoms.alpha(true)),
-      showSkeletons: get(
-        selectors.appConfigOption({ key: "showSkeletons", modal: true })
-      ),
-      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: Object.fromEntries(
-        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
-      ),
-      pointFilter: get(skeletonFilter(true)),
-    };
-  },
-});
-3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -523,6 +464,8 @@ const Looker = ({
         width: "100%",
         height: "100%",
         background: theme.backgroundDark,
+        borderTop: `1px solid ${theme.backgroundDarkBorder}`,
+        position: "relative",
         ...style,
       }}
       onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}

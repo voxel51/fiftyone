@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<970ec59b81cd5feb85840dd314dcc7c8>>
+ * @generated SignedSource<<bb0687e9e42ae0f2db6cfb6dc36dacf9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,8 +14,8 @@ export type TeamsStoreTeamsSubmissionMutation$data = {
   readonly storeTeamsSubmission: boolean;
 };
 export type TeamsStoreTeamsSubmissionMutation = {
-  variables: TeamsStoreTeamsSubmissionMutation$variables;
   response: TeamsStoreTeamsSubmissionMutation$data;
+  variables: TeamsStoreTeamsSubmissionMutation$variables;
 };
 
 const node: ConcreteRequest = (function () {

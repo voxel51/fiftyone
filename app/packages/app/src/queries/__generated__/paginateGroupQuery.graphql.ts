@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a83d8ac363f3912a192844025a6b0f57>>
+ * @generated SignedSource<<599f5e2760d2983e038ae0fb1da85258>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,17 +11,17 @@
 import { ConcreteRequest, Query } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type paginateGroupQuery$variables = {
+  count?: number | null;
+  cursor?: string | null;
   dataset: string;
   view: Array;
-  count?: number | null;
-  cursor?: number | null;
 };
 export type paginateGroupQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<"paginateGroup_query">;
 };
 export type paginateGroupQuery = {
-  variables: paginateGroupQuery$variables;
   response: paginateGroupQuery$data;
+  variables: paginateGroupQuery$variables;
 };
 
 const node: ConcreteRequest = (function () {
@@ -31,7 +31,7 @@ const node: ConcreteRequest = (function () {
       name: "count",
     },
     v1 = {
-      defaultValue: 0,
+      defaultValue: null,
       kind: "LocalArgument",
       name: "cursor",
     },
@@ -123,7 +123,7 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v4 /*: any*/,
-          concreteType: "SampleItemConnection",
+          concreteType: "SampleItemStrConnection",
           kind: "LinkedField",
           name: "samples",
           plural: false,
@@ -131,7 +131,7 @@ const node: ConcreteRequest = (function () {
             {
               alias: null,
               args: null,
-              concreteType: "SampleItemEdge",
+              concreteType: "SampleItemStrEdge",
               kind: "LinkedField",
               name: "edges",
               plural: true,
@@ -190,7 +190,7 @@ const node: ConcreteRequest = (function () {
             {
               alias: null,
               args: null,
-              concreteType: "PageInfo",
+              concreteType: "SampleItemStrPageInfo",
               kind: "LinkedField",
               name: "pageInfo",
               plural: false,
@@ -227,16 +227,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "92d31dbe933787dfa614b7acfb25676b",
+      cacheID: "420edaf5afc8eaafac61dcb7e3751814",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: Int = 0\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: String = null\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "f020e70930d38442f60985764546a2fc";
+(node as any).hash = "721ff0a8adab47afdf2e03e0840fe7aa";
 
 export default node;

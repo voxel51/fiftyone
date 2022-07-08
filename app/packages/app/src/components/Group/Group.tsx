@@ -1,5 +1,5 @@
 import { Scroller, Loading } from "@fiftyone/components";
-import { Response } from "@fiftyone/flashlight";
+import Flashlight, { Response } from "@fiftyone/flashlight";
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
@@ -24,7 +24,13 @@ import {
 import { zoomAspectRatio } from "@fiftyone/looker";
 import useLookerStore, { LookerStore } from "../../hooks/useLookerStore";
 import useCreateLooker from "../../hooks/useCreateLooker";
-import { useLookerOptions } from "../../recoil/looker";
+import { lookerOptions, useLookerOptions } from "../../recoil/looker";
+import { useErrorHandler } from "react-error-boundary";
+import { useRecoilTransaction_UNSTABLE } from "recoil";
+import { selectedSamples } from "../../recoil/atoms";
+import useSelectSample, {
+  SelectThumbnailData,
+} from "../../hooks/useSelectSample";
 
 const process = (
   next: MutableRefObject<number>,
@@ -65,17 +71,20 @@ const Column: React.FC<{
     loadNext,
   } = usePaginationFragment(paginateGroupPaginationFragment, fragmentRef);
   const store = useLookerStore();
-  const createLooker = useCreateLooker(true, useLookerOptions(true));
+  const opts = useLookerOptions(true);
+  const createLooker = useCreateLooker(true, opts);
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
   const countRef = useRef(0);
+  const handleError = useErrorHandler();
 
-  const resolveRef = useRef<(value: Response<number>) => void>();
+  const resolveRef = useRef<((value: Response<number>) => void) | null>(null);
+  const nextRef = useRef(loadNext);
+  nextRef.current = loadNext;
 
   useEffect(() => {
     if (resolveRef.current && countRef.current !== samples.edges.length) {
-      countRef.current = samples.edges.length;
       pageCount.current += 1;
       resolveRef.current({
         items: process(
@@ -86,11 +95,30 @@ const Column: React.FC<{
         ),
         nextRequestKey: pageCount.current,
       });
+      countRef.current = samples.edges.length;
+      resolveRef.current = null;
     }
   }, [samples]);
+  const run = useRecoilTransaction_UNSTABLE(
+    ({ get }) =>
+      (id: string) => {
+        store.lookers.get(id)?.updateOptions({
+          ...opts,
+          selected: get(selectedSamples).has(id),
+        });
+      },
+    [opts]
+  );
+  const updates = useRef(run);
+  updates.current = run;
+  const flashlightRef = useRef<Flashlight<number>>();
+
+  const selectSample = useRef<(data: SelectThumbnailData) => void>();
+  selectSample.current = useSelectSample(flashlightRef.current);
 
   return (
     <Scroller
+      flashlightRef={flashlightRef}
       get={(page) => {
         pageCount.current = page + 1;
         if (pageCount.current === 1) {
@@ -99,7 +127,10 @@ const Column: React.FC<{
             nextRequestKey: hasNext ? pageCount.current : null,
           });
         } else {
-          loadNext(20);
+          hasNextRef.current &&
+            nextRef.current(20, {
+              onComplete: (error) => error && handleError(error),
+            });
           return new Promise((resolve) => {
             resolveRef.current = resolve;
           });
@@ -127,6 +158,7 @@ const Column: React.FC<{
         }
       }}
       horizontal={true}
+      updateItems={[lookerOptions({ modal: true, withFilter: true }), updates]}
     />
   );
 };
@@ -134,29 +166,29 @@ const Column: React.FC<{
 const Group: React.FC<{
   queryRef: PreloadedQuery<paginateGroupQuery>;
 }> = ({ queryRef }) => {
-  const [width, setWidth] = useState(200);
+  const [height, setHeight] = useState(150);
   const data = usePreloadedQuery<paginateGroupQuery>(paginateGroup, queryRef);
 
   return (
     <Resizable
-      size={{ height: "100%", width }}
-      minWidth={200}
-      maxWidth={600}
+      size={{ height, width: "100%" }}
+      minHeight={100}
+      maxHeight={300}
       enable={{
         top: false,
         right: false,
-        bottom: false,
-        left: true,
+        bottom: true,
+        left: false,
         topRight: false,
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
       }}
-      onResizeStop={(e, direction, ref, { width: delta }) => {
-        setWidth(width + delta);
+      onResizeStop={(e, direction, ref, { height: delta }) => {
+        setHeight(height + delta);
       }}
     >
-      <Suspense fallback={<Loading>Voxelating</Loading>}>
+      <Suspense fallback={<Loading>Pixelating...</Loading>}>
         <Column fragmentRef={data} />
       </Suspense>
     </Resizable>

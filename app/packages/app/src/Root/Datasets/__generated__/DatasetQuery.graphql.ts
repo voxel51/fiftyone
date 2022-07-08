@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2cb84efb7418fd4a4be851b1369caf23>>
+ * @generated SignedSource<<b3df6bfbb118ec7bd55dad61f8bcca10>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,27 +16,51 @@ export type DatasetQuery$variables = {
 };
 export type DatasetQuery$data = {
   readonly dataset: {
-    readonly id: string;
-    readonly name: string;
-    readonly mediaType: MediaType | null;
-    readonly sampleFields: ReadonlyArray<{
-      readonly ftype: string;
-      readonly subfield: string | null;
-      readonly embeddedDocType: string | null;
-      readonly path: string;
-      readonly dbField: string | null;
-    }>;
-    readonly frameFields: ReadonlyArray<{
-      readonly ftype: string;
-      readonly subfield: string | null;
-      readonly embeddedDocType: string | null;
-      readonly path: string;
-      readonly dbField: string | null;
-    }>;
     readonly appSidebarGroups: ReadonlyArray<{
       readonly name: string;
       readonly paths: ReadonlyArray<string>;
     }> | null;
+    readonly brainMethods: ReadonlyArray<{
+      readonly config: {
+        readonly cls: string;
+        readonly embeddingsField: string | null;
+        readonly method: string | null;
+        readonly patchesField: string | null;
+      } | null;
+      readonly key: string;
+      readonly timestamp: string | null;
+      readonly version: string | null;
+      readonly viewStages: ReadonlyArray<string> | null;
+    }>;
+    readonly createdAt: string | null;
+    readonly defaultMaskTargets: ReadonlyArray<{
+      readonly target: number;
+      readonly value: string;
+    }> | null;
+    readonly defaultSkeleton: {
+      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+      readonly labels: ReadonlyArray<string> | null;
+    } | null;
+    readonly evaluations: ReadonlyArray<{
+      readonly config: {
+        readonly cls: string;
+        readonly gtField: string | null;
+        readonly predField: string | null;
+      } | null;
+      readonly key: string;
+      readonly timestamp: string | null;
+      readonly version: string | null;
+      readonly viewStages: ReadonlyArray<string> | null;
+    }>;
+    readonly frameFields: ReadonlyArray<{
+      readonly dbField: string | null;
+      readonly embeddedDocType: string | null;
+      readonly ftype: string;
+      readonly path: string;
+      readonly subfield: string | null;
+    }>;
+    readonly id: string;
+    readonly lastLoadedAt: string | null;
     readonly maskTargets: ReadonlyArray<{
       readonly name: string;
       readonly targets: ReadonlyArray<{
@@ -44,51 +68,27 @@ export type DatasetQuery$data = {
         readonly value: string;
       }>;
     }>;
-    readonly defaultMaskTargets: ReadonlyArray<{
-      readonly target: number;
-      readonly value: string;
-    }> | null;
-    readonly evaluations: ReadonlyArray<{
-      readonly key: string;
-      readonly version: string | null;
-      readonly timestamp: string | null;
-      readonly viewStages: ReadonlyArray<string> | null;
-      readonly config: {
-        readonly cls: string;
-        readonly predField: string | null;
-        readonly gtField: string | null;
-      } | null;
+    readonly mediaType: MediaType | null;
+    readonly name: string;
+    readonly sampleFields: ReadonlyArray<{
+      readonly dbField: string | null;
+      readonly embeddedDocType: string | null;
+      readonly ftype: string;
+      readonly path: string;
+      readonly subfield: string | null;
     }>;
-    readonly brainMethods: ReadonlyArray<{
-      readonly key: string;
-      readonly version: string | null;
-      readonly timestamp: string | null;
-      readonly viewStages: ReadonlyArray<string> | null;
-      readonly config: {
-        readonly cls: string;
-        readonly embeddingsField: string | null;
-        readonly method: string | null;
-        readonly patchesField: string | null;
-      } | null;
-    }>;
-    readonly lastLoadedAt: string | null;
-    readonly createdAt: string | null;
     readonly skeletons: ReadonlyArray<{
+      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
+      readonly labels: ReadonlyArray<string> | null;
       readonly name: string;
-      readonly labels: ReadonlyArray<string> | null;
-      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
     }>;
-    readonly defaultSkeleton: {
-      readonly labels: ReadonlyArray<string> | null;
-      readonly edges: ReadonlyArray<ReadonlyArray<number>>;
-    } | null;
     readonly version: string | null;
     readonly viewCls: string | null;
   } | null;
 };
 export type DatasetQuery = {
-  variables: DatasetQuery$variables;
   response: DatasetQuery$data;
+  variables: DatasetQuery$variables;
 };
 
 const node: ConcreteRequest = (function () {

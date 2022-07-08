@@ -245,7 +245,7 @@ class Query:
         return fo.config.do_not_track
 
     dataset = gql.field(resolver=Dataset.resolver)
-    datasets: Connection[Dataset] = gql.field(
+    datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
         )
@@ -257,8 +257,10 @@ class Query:
         dataset: str,
         view: BSONArray,
         first: t.Optional[int] = 20,
-        after: t.Optional[int] = 0,
-    ) -> Connection[gql.union("SampleItem", types=(ImageSample, VideoSample))]:
+        after: t.Optional[str] = None,
+    ) -> Connection[
+        gql.union("SampleItem", types=(ImageSample, VideoSample)), str
+    ]:
         return await paginate_samples(dataset, view, None, None, first, after)
 
     @gql.field

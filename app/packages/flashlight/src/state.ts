@@ -33,7 +33,7 @@ export interface RowData {
 
 export interface Response<K> {
   items: ItemData[];
-  nextRequestKey?: K;
+  nextRequestKey: K | null;
 }
 
 export type Get<K> = (key: K) => Promise<Response<K>>;
@@ -58,6 +58,7 @@ export type OnItemResize = (id: string, dimensions: [number, number]) => void;
 
 export interface Options {
   rowAspectRatioThreshold: number;
+  offset: number;
 }
 
 export type OnResize = (width: number) => Optional<Options>;
@@ -68,7 +69,7 @@ export interface State<K> {
   containerHeight: number;
   width: number;
   height: number;
-  currentRequestKey: K;
+  currentRequestKey: K | null;
   currentRemainder: ItemData[];
   currentRowRemainder: RowData[];
   items: ItemData[];

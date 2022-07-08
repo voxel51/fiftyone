@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<20b8469496d8ab0169d905141092d33e>>
+ * @generated SignedSource<<014909aed6374effe231f2dc836b8367>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { Fragment, ReaderFragment } from "relay-runtime";
 export type ColorBy = "field" | "instance" | "label" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type RootConfig_query$data = {
+  readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
@@ -27,7 +28,6 @@ export type RootConfig_query$data = {
     readonly timezone: string | null;
     readonly useFrameNumber: boolean;
   };
-  readonly colorscale: ReadonlyArray<ReadonlyArray<number>> | null;
   readonly " $fragmentType": "RootConfig_query";
 };
 export type RootConfig_query$key = {

@@ -17,6 +17,7 @@ import {
   sidebarWidth,
   useEntries,
 } from "../../recoil/sidebar";
+import { useTheme } from "@fiftyone/components";
 
 const MARGIN = 3;
 
@@ -680,6 +681,7 @@ const InteractiveSidebar = ({
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
   );
+  const theme = useTheme();
 
   return shown ? (
     <Resizable
@@ -698,6 +700,14 @@ const InteractiveSidebar = ({
       }}
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
+      }}
+      style={{
+        borderLeft: modal
+          ? `1px solid ${theme.backgroundDarkBorder}`
+          : undefined,
+        borderRight: !modal
+          ? `1px solid ${theme.backgroundDarkBorder}`
+          : undefined,
       }}
     >
       <SidebarColumn

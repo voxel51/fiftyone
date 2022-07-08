@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f621e01f71aa29cb86382fcc3e872716>>
+ * @generated SignedSource<<adb7fa002d1d2f24704b51697291bb06>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,13 +12,13 @@ import { ReaderFragment, RefetchableFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type RootDatasets_query$data = {
   readonly datasets: {
-    readonly total: number | null;
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
         readonly name: string;
       };
     }>;
+    readonly total: number | null;
   };
   readonly " $fragmentType": "RootDatasets_query";
 };
@@ -28,6 +28,7 @@ export type RootDatasets_query$key = {
 };
 
 import DatasetsPaginationQuery_graphql from "./DatasetsPaginationQuery.graphql";
+
 const node: ReaderFragment = (function () {
   var v0 = ["datasets"];
   return {
@@ -79,7 +80,7 @@ const node: ReaderFragment = (function () {
             variableName: "search",
           },
         ],
-        concreteType: "DatasetConnection",
+        concreteType: "DatasetStrConnection",
         kind: "LinkedField",
         name: "__DatasetsList_query_datasets_connection",
         plural: false,
@@ -94,7 +95,7 @@ const node: ReaderFragment = (function () {
           {
             alias: null,
             args: null,
-            concreteType: "DatasetEdge",
+            concreteType: "DatasetStrEdge",
             kind: "LinkedField",
             name: "edges",
             plural: true,
@@ -137,7 +138,7 @@ const node: ReaderFragment = (function () {
           {
             alias: null,
             args: null,
-            concreteType: "PageInfo",
+            concreteType: "DatasetStrPageInfo",
             kind: "LinkedField",
             name: "pageInfo",
             plural: false,

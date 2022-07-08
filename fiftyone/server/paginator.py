@@ -18,29 +18,28 @@ import fiftyone.core.odm as foo
 from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, T
 
+C = t.TypeVar("C")
+
 
 @gql.type
-class PageInfo:
+class PageInfo(t.Generic[C]):
     has_next_page: bool
     has_previous_page: bool
-    start_cursor: t.Optional[str]
-    end_cursor: t.Optional[str]
+    start_cursor: t.Optional[C]
+    end_cursor: t.Optional[C]
 
 
 @gql.type
-class Edge(t.Generic[T]):
+class Edge(t.Generic[T, C]):
     node: T
-    cursor: str
+    cursor: C
 
 
 @gql.type
-class Connection(t.Generic[T]):
-    page_info: PageInfo
-    edges: t.List[Edge[T]]
+class Connection(t.Generic[T, C]):
+    page_info: PageInfo[C]
+    edges: t.List[Edge[T, C]]
     total: t.Optional[int] = None
-
-
-Cursor = str
 
 
 async def get_items(
@@ -51,8 +50,8 @@ async def get_items(
     filters: t.List[dict],
     search: str,
     first: int = 10,
-    after: t.Optional[Cursor] = UNSET,
-) -> Connection[T]:
+    after: t.Optional[str] = UNSET,
+) -> Connection[T, str]:
     start = list(filters)
     if search:
         start += [{"$match": {"name": {"$regex": search}}}]
@@ -94,11 +93,11 @@ async def get_items(
 
 def get_paginator_resolver(
     cls: t.Type[T], key: str, filters: t.List[dict], collection: str
-) -> t.Callable[[t.Optional[int], t.Optional[Cursor], Info], Connection[T],]:
+) -> t.Callable[[t.Optional[int], t.Optional[str], Info], Connection[T, str],]:
     async def paginate(
         search: t.Optional[str],
         first: t.Optional[int] = LIST_LIMIT,
-        after: t.Optional[Cursor] = None,
+        after: t.Optional[str] = None,
         info: Info = None,
     ):
         def from_db(doc: dict) -> t.Optional[T]:

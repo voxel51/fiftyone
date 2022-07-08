@@ -16,7 +16,7 @@ export default graphql`
     $dataset: String!
     $view: BSONArray!
     $count: Int = 20
-    $cursor: Int = 0
+    $cursor: String = null
   ) {
     ...paginateGroup_query
   }

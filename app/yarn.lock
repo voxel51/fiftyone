@@ -1739,13 +1739,13 @@ __metadata:
     react-input-autosize: ^3.0.0
     react-is: ^17.0.1
     react-laag: ^2.0.3
-    react-relay: ^13.2.0
+    react-relay: ^14.0.0
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: 2.0.9
     recoil: 0.7.2
     recoil-relay: ^0.0.0
-    relay-compiler: ^13.0.2
+    relay-compiler: ^14.0.0
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
     resize-observer-polyfill: ^1.5.1
@@ -1777,6 +1777,7 @@ __metadata:
     typescript-plugin-css-modules: ^3.4.0
     vite: 2.4.2
   peerDependencies:
+    "@fiftyone/flashlight": "*"
     "@material-ui/core": "*"
     "@material-ui/icons": "*"
     "@react-spring/web": ^9.4.3
@@ -7030,18 +7031,18 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"react-relay@npm:^13.2.0":
-  version: 13.2.0
-  resolution: "react-relay@npm:13.2.0"
+"react-relay@npm:^14.0.0":
+  version: 14.0.0
+  resolution: "react-relay@npm:14.0.0"
   dependencies:
     "@babel/runtime": ^7.0.0
     fbjs: ^3.0.2
     invariant: ^2.2.4
     nullthrows: ^1.1.1
-    relay-runtime: 13.2.0
+    relay-runtime: 14.0.0
   peerDependencies:
     react: ^16.9.0 || ^17 || ^18
-  checksum: 2fcf09cc9f7799c2c27f8a931e103651f26077088320e994e17171ffd18a249a5a64e0d314330497e3ed0530579b1987506df89fd5fb4e391d4e4bc4b66312ee
+  checksum: c329e91cd6ab86421db1be11c46a7ebaf8ede5a7acf5d4dc14d767e31990094d124da8e16796c8f54045f72118742990ed0333250ca2e35fd4499c7d2fa2c2bc
   languageName: node
   linkType: hard
 
@@ -7378,12 +7379,12 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"relay-compiler@npm:^13.0.2":
-  version: 13.2.0
-  resolution: "relay-compiler@npm:13.2.0"
+"relay-compiler@npm:^14.0.0":
+  version: 14.0.0
+  resolution: "relay-compiler@npm:14.0.0"
   bin:
     relay-compiler: cli.js
-  checksum: 54adaf22ef408c7452ae6a27538730fe30f47449a2c129e26fc0b8667abc3faba7862b386d5658b0c5dcfe1a9bc3bcf400ede6f0fdd07a6c24366a4b4a4e0739
+  checksum: 3ff56e2b2337085023b16b7444ba62b67bacb9d82691cd0bc6fe456548efdbf8125bff7e086ba277fd9af1aa55deb28372be7cea9b40e2b13ecc56f194c2e3f8
   languageName: node
   linkType: hard
 
@@ -7396,14 +7397,14 @@ fsevents@~2.3.2:
   languageName: node
   linkType: hard
 
-"relay-runtime@npm:13.2.0":
-  version: 13.2.0
-  resolution: "relay-runtime@npm:13.2.0"
+"relay-runtime@npm:14.0.0":
+  version: 14.0.0
+  resolution: "relay-runtime@npm:14.0.0"
   dependencies:
     "@babel/runtime": ^7.0.0
     fbjs: ^3.0.2
     invariant: ^2.2.4
-  checksum: 4e03d5d3fabb12bd2e5f29da4e4664336af4077b215893e5e6cf4256e4b8f56a6ad1693b75465f1f6118bc682456714404e3f0fcdd51b5b6433a2ddd63ba8160
+  checksum: 5226f3dcf878ddf843c4248199021b679504668320e35b700237c6ae9ff0ead2710c9099f855cff0e840e14e78c5159f7a9c132a9096ad0cb32986837dcf75a0
   languageName: node
   linkType: hard
 

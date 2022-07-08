@@ -16,7 +16,6 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   thumbnail: boolean,
   options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">
 ) => {
-  const createLookerRef = useRef<(data: SampleData) => T>();
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
@@ -30,7 +29,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
   );
 
-  createLookerRef.current = useCallback(
+  const create = useCallback(
     ({ dimensions, frameNumber, frameRate, sample, url }: SampleData): T => {
       const video = getMimeType(sample).startsWith("video/");
       let constructor:
@@ -79,6 +78,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
     },
     [isClip, isFrame, isPatch, options, thumbnail]
   );
+  const createLookerRef = useRef<(data: SampleData) => T>(create);
 
+  createLookerRef.current = create;
   return createLookerRef;
 };

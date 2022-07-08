@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7c6ec27894e1aac69b5d25002e2d181b>>
+ * @generated SignedSource<<dae5456d314bd7e6e7347c6e140b0937>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -43,6 +43,7 @@ export type paginateGroup_query$key = {
 };
 
 import paginateGroupPageQuery_graphql from "./paginateGroupPageQuery.graphql";
+
 const node: ReaderFragment = (function () {
   var v0 = ["samples"],
     v1 = {
@@ -124,7 +125,7 @@ const node: ReaderFragment = (function () {
             variableName: "view",
           },
         ],
-        concreteType: "SampleItemConnection",
+        concreteType: "SampleItemStrConnection",
         kind: "LinkedField",
         name: "__paginateGroup_query_samples_connection",
         plural: false,
@@ -132,7 +133,7 @@ const node: ReaderFragment = (function () {
           {
             alias: null,
             args: null,
-            concreteType: "SampleItemEdge",
+            concreteType: "SampleItemStrEdge",
             kind: "LinkedField",
             name: "edges",
             plural: true,
@@ -191,7 +192,7 @@ const node: ReaderFragment = (function () {
           {
             alias: null,
             args: null,
-            concreteType: "PageInfo",
+            concreteType: "SampleItemStrPageInfo",
             kind: "LinkedField",
             name: "pageInfo",
             plural: false,
