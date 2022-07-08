@@ -46,3 +46,7 @@
   cursor: pointer;
   -webkit-appearance: none;
 }
+
+.lookerHighlight {
+  border: 2px solid var(--brand);
+}

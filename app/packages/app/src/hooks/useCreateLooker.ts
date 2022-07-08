@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { RecoilValue, useRecoilValue } from "recoil";
 
-import { selectedSamples, SampleData } from "../recoil/atoms";
+import { selectedSamples, SampleData, modal } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
@@ -14,13 +14,15 @@ import { getMimeType } from "../utils/generic";
 
 export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   thumbnail: boolean,
-  options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">
+  options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
+  highlight: boolean = false
 ) => {
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
+  const activeId = useRecoilValue(modal)?.sample._id;
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
@@ -68,6 +70,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),
+        highlight: highlight && sample._id === activeId,
       }) as T;
 
       looker.addEventListener("error", (event) => {
@@ -76,7 +79,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       return looker;
     },
-    [isClip, isFrame, isPatch, options, thumbnail]
+    [isClip, isFrame, isPatch, options, thumbnail, activeId]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);
 

@@ -130,7 +130,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     });
   }, [dataset, router]);
 
-  if (!name) {
+  if (!name || name !== dataset.name) {
     return null;
   }
 

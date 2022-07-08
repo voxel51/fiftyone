@@ -1,10 +1,4 @@
-import React, {
-  MutableRefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
@@ -25,14 +19,12 @@ import { useLookerOptions } from "../../recoil/looker";
 import useResize from "./useResize";
 import usePage from "./usePage";
 import useExpandSample from "./useExpandSample";
-import useSelectSample, {
-  SelectThumbnailData,
-} from "../../hooks/useSelectSample";
-import * as viewAtoms from "../../recoil/view";
-import { filterView } from "../../utils/view";
-import { filters } from "../../recoil/filters";
+import useSelectSample from "../../hooks/useSelectSample";
 import { datasetName } from "../../recoil/selectors";
 import { deferrer, stringifyObj } from "@fiftyone/components";
+import { filters } from "../../recoil/filters";
+import { view } from "../../recoil/view";
+import { filterView } from "../../utils/view";
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());
@@ -76,7 +68,7 @@ const Grid: React.FC<{}> = () => {
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              selectSample.current(detail);
+              selectSample.current(flashlight, detail);
             }
           );
 
@@ -89,10 +81,9 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  const selectSample = useRef<(data: SelectThumbnailData) => void>(
-    useSelectSample(flashlight)
-  );
-  selectSample.current = useSelectSample(flashlight);
+  const select = useSelectSample();
+  const selectSample = useRef(select);
+  selectSample.current = select;
 
   useLayoutEffect(
     deferred(() =>
@@ -123,21 +114,26 @@ const Grid: React.FC<{}> = () => {
     tagging({ modal: false, labels: false })
   );
   const isTagging = taggingLabels || taggingSamples;
-  const dd = useRecoilValue(datasetName);
 
   useLayoutEffect(
     deferred(() => {
       if (isTagging || !flashlight.isAttached()) {
         return;
       }
-      console.log(dd);
 
       next.current = 0;
       flashlight.reset();
       store.reset();
       freeVideos();
     }),
-    [dd]
+    [
+      stringifyObj(useRecoilValue(filters)),
+      useRecoilValue(datasetName),
+      useRecoilValue(cropToContent(false)),
+      filterView(useRecoilValue(view)),
+      useRecoilValue(refresher),
+      tagging,
+    ]
   );
 
   useEffect(() => {

@@ -83,6 +83,7 @@ export interface KeypointSkeleton {
 }
 
 interface BaseOptions {
+  highlight: boolean;
   activePaths: string[];
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
@@ -261,6 +262,7 @@ export type StateUpdate<State extends BaseState> = (
 ) => void;
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
+  highlight: false,
   activePaths: [],
   selectedLabels: [],
   showConfidence: false,

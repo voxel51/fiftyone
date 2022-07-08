@@ -69,12 +69,15 @@ export interface SelectThumbnailData {
   sampleId: string;
 }
 
-export default (flashlight: Flashlight<number>) => {
+export default () => {
   const setSelected = useSetSelected();
 
   return useRecoilTransaction_UNSTABLE(
     ({ set, get }) =>
-      async ({ shiftKey, sampleId }: SelectThumbnailData) => {
+      async (
+        flashlight: Flashlight<number>,
+        { shiftKey, sampleId }: SelectThumbnailData
+      ) => {
         const selected = new Set(get(selectedSamples));
         const items = [...selected];
         const map = flashlight.itemIndexes;

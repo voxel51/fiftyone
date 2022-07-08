@@ -26,11 +26,14 @@ import useLookerStore, { LookerStore } from "../../hooks/useLookerStore";
 import useCreateLooker from "../../hooks/useCreateLooker";
 import { lookerOptions, useLookerOptions } from "../../recoil/looker";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { selectedSamples } from "../../recoil/atoms";
-import useSelectSample, {
-  SelectThumbnailData,
-} from "../../hooks/useSelectSample";
+import {
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
+import { modal, selectedSamples } from "../../recoil/atoms";
+import useSelectSample from "../../hooks/useSelectSample";
+import useExpandSample from "../../hooks/useExpandSample";
 
 const process = (
   next: MutableRefObject<number>,
@@ -72,7 +75,7 @@ const Column: React.FC<{
   } = usePaginationFragment(paginateGroupPaginationFragment, fragmentRef);
   const store = useLookerStore();
   const opts = useLookerOptions(true);
-  const createLooker = useCreateLooker(true, opts);
+  const createLooker = useCreateLooker(true, opts, true);
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
@@ -105,6 +108,7 @@ const Column: React.FC<{
         store.lookers.get(id)?.updateOptions({
           ...opts,
           selected: get(selectedSamples).has(id),
+          highlight: get(modal)?.sample._id === id,
         });
       },
     [opts]
@@ -112,13 +116,19 @@ const Column: React.FC<{
   const updates = useRef(run);
   updates.current = run;
   const flashlightRef = useRef<Flashlight<number>>();
+  const setSample = useExpandSample();
 
-  const selectSample = useRef<(data: SelectThumbnailData) => void>();
-  selectSample.current = useSelectSample(flashlightRef.current);
+  const select = useSelectSample();
+  const selectSample = useRef(select);
+  selectSample.current = select;
 
   return (
     <Scroller
       flashlightRef={flashlightRef}
+      onItemClick={(next, id, items) => {
+        const sample = store.samples.get(id);
+        sample && setSample(sample);
+      }}
       get={(page) => {
         pageCount.current = page + 1;
         if (pageCount.current === 1) {
@@ -149,7 +159,10 @@ const Column: React.FC<{
           const looker = createLooker.current(result);
           looker.addEventListener(
             "selectthumbnail",
-            ({ detail }: { detail: string }) => null
+            ({ detail }: CustomEvent) => {
+              flashlightRef.current &&
+                selectSample.current(flashlightRef.current, detail);
+            }
           );
 
           store.lookers.set(sampleId, looker);
@@ -158,7 +171,12 @@ const Column: React.FC<{
         }
       }}
       horizontal={true}
-      updateItems={[lookerOptions({ modal: true, withFilter: true }), updates]}
+      updateItems={[
+        useRecoilValueLoadable(
+          lookerOptions({ modal: true, withFilter: true })
+        ),
+        updates,
+      ]}
     />
   );
 };
