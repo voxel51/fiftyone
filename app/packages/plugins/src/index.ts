@@ -1,12 +1,9 @@
 import React, { FunctionComponent, useEffect, useState } from "react";
 import { getFetchFunction } from "@fiftyone/utilities";
-import * as aggregations from "./aggregations";
-import Aggregation from "./Aggregation";
-import { useRecoilValue } from "recoil";
-
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
+    __fo_plugin_settings__: PluginSettings;
     React: any;
   }
 }
@@ -32,21 +29,41 @@ export function unregisterComponent(name: string) {
 export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
-async function fetchPluginsMetadata() {
-  const res = await fetch("http://localhost:5151/plugins");
-  const result = await res.json();
-  return result;
+
+type PluginDescription = {
+  scriptPath: string;
+  name: string;
+};
+type PluginSetting = {
+  [settingName: string]: any;
+  enabled?: boolean;
+};
+type PluginSettings = { [pluginName: string]: PluginSetting };
+type PluginFetchResult = {
+  plugins: PluginDescription[];
+  settings?: PluginSettings;
+};
+async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
+  // return getFetchFunction()('GET', '/plugins')
+  const res = await fetch("/plugins", { method: "GET" });
+  return res.json();
 }
+
+let _settings = null;
 export async function loadPlugins() {
-  const { plugins } = await fetchPluginsMetadata();
+  const { plugins, settings } = await fetchPluginsMetadata();
+  window.__fo_plugin_settings__ = settings;
   for (const { scriptPath, name } of plugins) {
-    await loadScript(name, scriptPath);
+    const pluginSetting = settings && settings[name];
+    console.log(name, { pluginSetting });
+    if (!pluginSetting || pluginSetting.enabled !== false) {
+      await loadScript(name, scriptPath);
+    }
   }
 }
 async function loadScript(name, url) {
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
-      console.log(e.type, "load event");
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
       if (e.type === "load") {
@@ -154,51 +171,8 @@ class PluginComponentRegistry {
   }
 }
 
-export function useAction(action: any) {
-  return action;
+export function usePluginSettings(pluginName: string): any {
+  const settings =
+    window.__fo_plugin_settings__ && window.__fo_plugin_settings__[pluginName];
+  return settings || {};
 }
-
-export const actions = {
-  viewSample: (sampleId: string) => {},
-};
-
-const AGGREGATE_ROUTE = "/aggregate";
-
-type AggregationParams = {
-  view?: any;
-  filters?: any;
-  dataset?: any;
-  sample_ids?: any;
-};
-
-export function useAggregation({
-  view,
-  filters,
-  dataset,
-  sample_ids,
-}: AggregationParams = {}) {
-  const [isLoading, setLoading] = React.useState(true);
-  const [result, setResult] = React.useState(null);
-  // const dataset = useRecoilValue(atoms.dataset)
-
-  const aggregate = async (
-    aggregations: Aggregation[],
-    datasetName?: string
-  ) => {
-    const jsonAggregations = aggregations.map((a) => a.toJSON());
-
-    const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {
-      filters: filters, // extended view
-      view: view,
-      dataset: datasetName || dataset.name,
-      sample_ids: sample_ids,
-      aggregations: jsonAggregations,
-    })) as any;
-    setResult(resBody.aggregate);
-    setLoading(false);
-  };
-
-  return [aggregate, result, isLoading];
-}
-
-export { aggregations };
