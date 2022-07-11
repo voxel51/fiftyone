@@ -39,6 +39,25 @@ yarn add my-plugin@https://github.com/user/my-plugin.git#my-branch-name
 yarn add ssh://github.com/user/my-plugin#my-branch
 ```
 
+## Configuring plugins
+
+In your `FIFTYONE_PLUGINS_DIR`, create a file named `settings.json`. Each top level property in this file corresponds to the
+name (package.json "name") of one of your installed plugins.
+
+Each plugin should describe what settings it supports. All plugins share the "enabled" setting. If set to `false` the
+plugin will not be loaded.
+
+Below is an example `settings.json` file.
+
+```json
+{
+  "point-clouds": {
+    "enabled": true,
+    "defaultCameraPosition": { "x": 0, "y": 0, "z": 20 }
+  }
+}
+```
+
 ## Developing your Plugin
 
 In order to develop and test your plugin you will need the following:
@@ -311,29 +330,26 @@ Available Actions:
 
 Note: additional actions will be added. We would like to keep this list as minimal as possible.
 
-## Config + Credentials
+## Reading Settings in Your Plugin
 
-Somme plugins wrap libraries or tools that require credentials such as API keys or tokens. Below is an example for how to provide and read these credentials.
+Somme plugins use libraries or tools that require credentials such as API keys or tokens. Below is an example for how to provide and read these credentials.
 
-The same mechanism can be used to expose configuration to plugin users.
+The same mechanism can be used to expose configuration to plugin users, such as color choices, and default values.
 
-You can store your credentials in your plugin config located at `~/.fiftyone/annotation_config.json`:
+You can store your credentials in your plugin settings located at `FIFTYONE_PLUGINS_DIR/settings.json`:
 
 ```json
 {
-  "plugins": {
-    "myMapPlugin": {
-      "mapboxAPIKey": "..."
-    }
+  "my-map-box-plugin": {
+    "mapboxAPIKey": "..."
   }
 }
 ```
 
-Then in your plugin implementation, you can read these values similarly to reading other state:
+Then in your plugin implementation, you can read settings with the `useSettings` hook:
 
 ```js
-const pluginConfig = fop.useValue(fop.state.config);
-const { mapboxAPIKey } = pluginConfig.myMapPlugin;
+const { mapboxAPIKey } = fop.useSettings("my-map-box-plugin");
 ```
 
 ## Querying Fiftyone
