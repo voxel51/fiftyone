@@ -172,9 +172,13 @@ const Column: React.FC<{
       }}
       horizontal={true}
       updateItems={[
-        useRecoilValueLoadable(
-          lookerOptions({ modal: true, withFilter: true })
-        ),
+        [
+          useRecoilValueLoadable(
+            lookerOptions({ modal: true, withFilter: true })
+          ),
+          useRecoilValue(modal),
+          useRecoilValue(selectedSamples),
+        ],
         updates,
       ]}
     />

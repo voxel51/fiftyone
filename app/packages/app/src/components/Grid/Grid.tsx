@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import Flashlight from "@fiftyone/flashlight";
@@ -8,6 +8,7 @@ import { freeVideos } from "@fiftyone/looker";
 import { flashlightLooker } from "./Grid.module.css";
 import {
   cropToContent,
+  modal,
   refresher,
   selectedSamples,
   tagging,
@@ -25,6 +26,7 @@ import { deferrer, stringifyObj } from "@fiftyone/components";
 import { filters } from "../../recoil/filters";
 import { view } from "../../recoil/view";
 import { filterView } from "../../utils/view";
+import { useEventHandler } from "../../utils/hooks";
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());
@@ -134,6 +136,24 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(refresher),
       tagging,
     ]
+  );
+
+  useEventHandler(
+    document,
+    "keydown",
+    useRecoilCallback(
+      ({ snapshot, set }) =>
+        async (event: KeyboardEvent) => {
+          if (event.key !== "Escape") {
+            return;
+          }
+
+          if (!(await snapshot.getPromise(modal))) {
+            set(selectedSamples, new Set());
+          }
+        },
+      []
+    )
   );
 
   useEffect(() => {

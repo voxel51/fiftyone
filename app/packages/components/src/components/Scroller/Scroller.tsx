@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { RecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { deferrer } from "../../use";
 
@@ -13,14 +14,14 @@ export interface ScrollerProps<K = number> {
   get: FlashlightConfig<K>["get"];
   render: FlashlightConfig<K>["render"];
   onItemResize?: FlashlightConfig<K>["onItemResize"];
-  updateItems?: [any, MutableRefObject<(id: string) => void>];
+  updateItems?: [RecoilValue<any>[], MutableRefObject<(id: string) => void>];
   horizontal: boolean;
   flashlightRef: MutableRefObject<Flashlight<number> | undefined>;
   onItemClick: FlashlightConfig<K>["onItemClick"];
 }
 
 const Scroller: React.FC<ScrollerProps> = ({
-  updateItems,
+  updateItems = [[], { current: () => {} }],
   flashlightRef,
   ...flashlightConfig
 }) => {
@@ -48,7 +49,7 @@ const Scroller: React.FC<ScrollerProps> = ({
     deferred(() => {
       updateItems && flashlight.updateItems(updateItems[1].current);
     }),
-    [updateItems && updateItems[0]]
+    updateItems[0]
   );
 
   useEffect(() => {
