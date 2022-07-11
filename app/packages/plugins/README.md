@@ -4,7 +4,7 @@ Develop plugins for fiftyone.
 
 ## Installing plugins
 
-In order to install a plugin you must have one of the three tools available in the environment you are running fiftyone.
+In order to install a plugin you must have one of the two tools available in the environment you are running fiftyone.
 
 - npm
 - yarn
