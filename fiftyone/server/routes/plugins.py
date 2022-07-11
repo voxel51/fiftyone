@@ -34,6 +34,9 @@ class Plugins(HTTPEndpoint):
         settings = load_json_file(settingsFilepath)
 
         pkgs = glob.glob(os.path.join(dir, "*", "package.json"))
+        pkgs += glob.glob(
+            os.path.join(dir, "node_modules", "*", "package.json")
+        )
         plugin_packages = []
 
         for filepath in pkgs:
@@ -47,7 +50,7 @@ class Plugins(HTTPEndpoint):
             dirname = os.path.dirname(filepath)
             plugin_definition["scriptPath"] = "/" + os.path.join(
                 "plugins",
-                os.path.basename(dirname),
+                os.path.dirname(os.path.relpath(filepath, dir)),
                 plugin_definition["script"],
             )
             plugin_packages.append(plugin_definition)
