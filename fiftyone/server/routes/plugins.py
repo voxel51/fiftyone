@@ -23,29 +23,40 @@ import json
 import os
 import glob
 
+
 class Plugins(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
-        
-        dir = os.environ.get('FIFTYONE_PLUGINS_DIR')
-        pkgs = glob.glob(os.path.join(dir, '*', 'package.json'))
+
+        dir = os.environ.get("FIFTYONE_PLUGINS_DIR")
+
+        settingsFilepath = os.path.join(dir, "settings.json")
+        settings = load_json_file(settingsFilepath)
+
+        pkgs = glob.glob(os.path.join(dir, "*", "package.json"))
         plugin_packages = []
-        print(pkgs)
 
         for filepath in pkgs:
-            print(filepath)
-            f = open(filepath, 'r')
+            f = open(filepath, "r")
             pkg = json.loads(f.read())
             plugin_definition = {
-                'name': pkg["name"],
-                'version': pkg["version"]
+                "name": pkg["name"],
+                "version": pkg["version"],
             }
             plugin_definition.update(pkg["fiftyone"])
             dirname = os.path.dirname(filepath)
-            plugin_definition["scriptPath"] = '/' + os.path.join(
-                'plugins',
+            plugin_definition["scriptPath"] = "/" + os.path.join(
+                "plugins",
                 os.path.basename(dirname),
-                plugin_definition["script"]
+                plugin_definition["script"],
             )
             plugin_packages.append(plugin_definition)
-        return {"plugins": plugin_packages}
+        return {"plugins": plugin_packages, "settings": settings}
+
+
+def load_json_file(path_to_file):
+    if os.path.isfile(path_to_file) and os.access(path_to_file, os.R_OK):
+        f = open(path_to_file, "r")
+        return json.loads(f.read())
+    else:
+        return None
