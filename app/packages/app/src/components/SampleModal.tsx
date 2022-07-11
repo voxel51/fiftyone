@@ -95,11 +95,16 @@ const useOnSelectLabel = () => {
 };
 
 const SampleModal = () => {
+  const data = useRecoilValue(atoms.modal);
+  if (!data) {
+    throw new Error("no modal data");
+  }
+
   const {
     sample: { filepath, _id },
-    index,
-    getIndex,
-  } = useRecoilValue(atoms.modal);
+    navigation: { index, getIndex },
+  } = data;
+
   const sampleSrc = getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();

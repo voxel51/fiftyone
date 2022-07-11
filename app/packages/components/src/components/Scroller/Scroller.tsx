@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { RecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { deferrer } from "../../use";
 
@@ -14,7 +13,7 @@ export interface ScrollerProps<K = number> {
   get: FlashlightConfig<K>["get"];
   render: FlashlightConfig<K>["render"];
   onItemResize?: FlashlightConfig<K>["onItemResize"];
-  updateItems?: [RecoilValue<any>[], MutableRefObject<(id: string) => void>];
+  updateItems?: [Array<any>, MutableRefObject<(id: string) => void>];
   horizontal: boolean;
   flashlightRef: MutableRefObject<Flashlight<number> | undefined>;
   onItemClick: FlashlightConfig<K>["onItemClick"];

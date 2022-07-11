@@ -4,7 +4,7 @@
 
 import { Overlay } from "./overlays/base";
 
-import { Schema } from "@fiftyone/utilities";
+import { Schema, Stage } from "@fiftyone/utilities";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
@@ -124,6 +124,8 @@ interface BaseConfig {
   dimensions: Dimensions;
   sampleId: string;
   fieldSchema: Schema;
+  view: Stage[];
+  dataset: string;
 }
 
 export interface FrameConfig extends BaseConfig {

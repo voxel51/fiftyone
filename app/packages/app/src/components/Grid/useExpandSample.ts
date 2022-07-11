@@ -1,5 +1,6 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { useCallback } from "react";
+import useClearModal from "../../hooks/useClearModal";
 import useExpandSample from "../../hooks/useExpandSample";
 import { Lookers, LookerStore } from "../../hooks/useLookerStore";
 import { SampleData } from "../../recoil/atoms";
@@ -8,6 +9,7 @@ import useSetGroup from "./useSetGroup";
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const expandSample = useExpandSample();
   const setGroup = useSetGroup();
+  const clear = useClearModal();
 
   return useCallback<
     (
@@ -17,9 +19,6 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     (next, sampleId, itemIndexMap) => {
       setGroup();
       const clickedIndex = itemIndexMap[sampleId];
-
-      const expand = (index: number, sample?: SampleData) =>
-        sample && expandSample(sample, { index, getIndex });
 
       const getIndex = (index: number) => {
         const id = store.indices.get(index);
@@ -39,8 +38,13 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           });
         }
 
-        promise.then((sample) => sample && expand(index, sample));
+        promise.then((id) => {
+          id ? expand(index, store.samples.get(id)) : clear();
+        });
       };
+
+      const expand = (index: number, sample?: SampleData) =>
+        sample && expandSample(sample, { index, getIndex });
 
       const sample = store.samples.get(sampleId);
 

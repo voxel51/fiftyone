@@ -48,6 +48,8 @@ const process = (
     const data = {
       sample: node.sample,
       dimensions: [node.width, node.height],
+      frameRate: node.frameRate,
+      frameNumber: node.sample.frame_number,
     };
 
     store.samples.set(node.sample._id, data);

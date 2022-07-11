@@ -14,7 +14,7 @@ export default () => {
 
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sample: atoms.SampleData, navigation?: atoms.ModalNavigation) => {
+      async (sample: atoms.SampleData, navigation: atoms.ModalNavigation) => {
         const data = [
           [filterAtoms.modalFilters, filterAtoms.filters],
           ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {

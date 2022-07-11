@@ -412,7 +412,11 @@ const Looker = ({
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = useLookerOptions(true);
-  const createLooker = useCreateLooker(false, lookerOptions);
+  const createLooker = useCreateLooker(false, {
+    ...lookerOptions,
+    hasNext: Boolean(onNext),
+    hasPrevious: Boolean(onPrevious),
+  });
   const [looker] = useState(() => createLooker.current(sampleData));
 
   useEffect(() => {

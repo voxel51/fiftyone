@@ -23,7 +23,7 @@ export interface ModalNavigation {
 }
 
 interface ModalSample extends SampleData {
-  navigation?: ModalNavigation;
+  navigation: ModalNavigation;
 }
 
 export const refresher = atom<boolean>({

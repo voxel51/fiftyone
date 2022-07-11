@@ -37,8 +37,8 @@ const usePage = (
               const data: SampleData = {
                 sample: result.sample,
                 dimensions: [result.width, result.height],
-                frameRate: result.frameRate,
-                frameNumber: result.sample.frameNumber,
+                frameRate: result.frame_rate,
+                frameNumber: result.sample.frame_number,
                 url: result.url,
               };
 

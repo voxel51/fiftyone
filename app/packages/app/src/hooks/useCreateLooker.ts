@@ -2,10 +2,11 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { EMBEDDED_DOCUMENT_FIELD, LIST_FIELD } from "@fiftyone/utilities";
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { RecoilValue, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 
 import { selectedSamples, SampleData, modal } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
+import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -23,6 +24,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
   const activeId = useRecoilValue(modal)?.sample._id;
+  const view = useRecoilValue(viewAtoms.view);
+  const dataset = useRecoilValue(datasetName);
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
@@ -65,6 +68,8 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         src: getSampleSrc(sample.filepath, sample._id, url),
         support: isClip ? sample.support : undefined,
         thumbnail,
+        dataset,
+        view,
       };
 
       const looker = new constructor(sample, config, {
