@@ -42,6 +42,7 @@ import webbrowser
 from copy import deepcopy
 from datetime import datetime as dt
 from typing import List
+from packaging import version
 
 import numpy as np
 
@@ -51,7 +52,8 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.annotations as foua
 
 ls = fou.lazy_import(
-    "label_studio_sdk", callback=lambda: fou.ensure_import("label_studio_sdk")
+    "label_studio_sdk",
+    callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
 )
 
 logger = logging.getLogger(__name__)
@@ -171,6 +173,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         self.url = url
         self._api_key = api_key
         self.backend = "labelstudio"
+        self._min_server_version = "1.5.0"
 
         self._setup()
 
@@ -180,6 +183,18 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         self._client = ls.Client(self.url, self._api_key)
         self._client.check_connection()
+        self._verify_server_version()
+
+    def _verify_server_version(self):
+        server_version = self._client.make_request(
+            "GET", "/api/version"
+        ).json()["release"]
+        if not version.parse(server_version) >= version.parse(
+            self._min_server_version
+        ):
+            raise AssertionError(
+                f"Current Label Studio integration is only compatible with version {self._min_server_version} or above."
+            )
 
     def _init_project(self, config, samples):
         """Create a new project on Label Studio.
