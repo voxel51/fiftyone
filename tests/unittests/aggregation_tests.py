@@ -251,6 +251,15 @@ class DatasetTests(unittest.TestCase):
         for r1, r2 in zip(results1, results2):
             self.assertAlmostEqual(r1, r2)
 
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", "bad-value")
+
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", -1)
+
+        with self.assertRaises(ValueError):
+            d.quantiles("numeric_field", 2)
+
     @drop_datasets
     def test_std(self):
         d = fo.Dataset()
