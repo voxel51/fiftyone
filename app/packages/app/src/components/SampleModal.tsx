@@ -19,7 +19,6 @@ import * as schemaAtoms from "../recoil/schema";
 import { State } from "../recoil/types";
 import { getSampleSrc, useClearModal } from "../recoil/utils";
 import { useSetSelectedLabels } from "../utils/hooks";
-import { usePlugin, PluginComponentType } from "@fiftyone/plugins";
 
 const ModalWrapper = styled.div`
   position: fixed;
