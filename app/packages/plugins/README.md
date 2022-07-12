@@ -66,6 +66,7 @@ In order to develop and test your plugin you will need the following:
 - the fiftyone app setup for development
 - a plugin skeleton (start with one of the plugins in voxel51/fiftyone-plugins)
 - npm link / symlink to the `@fiftyone/plugins` package
+- npm link / symlink to the `@fiftyone/aggregations` package (optional)
 
 For local testing, follow these basic steps:
 
@@ -97,6 +98,9 @@ cd $FIFTYONE/app/packaages/plugins
 npm link
 cd $MY_PLUGIN
 npm link @fiftyone/plugins
+
+# note: if you are using the @fiftyone/aggregations package
+# you will need to follow the same linking steps for that package
 
 # now you can build your plugin for development
 yarn build
@@ -314,19 +318,15 @@ If you want to allow users to interact with other aspects of fiftyone through yo
 // of a React component
 
 // select a dataset
-const selectLabel = fop.useAction(fop.actions.selectLabel);
+const selectLabel = fos.useSelectLabel();
 
 // in a callback
-selectLabel("labelId");
+selectLabel({ id: "labelId", field: "fieldName" });
 ```
 
-Available Actions:
+Available Hooks:
 
-- `selectSample(sampleId)` - similar to clicking on sample's checkbox
-- `deselectAllSamples()` - uncheck all samples
-- `viewSample(sampleId)` - view sample in the modal
-- `selectLabel(options)` - used for label tagging
-- `deselectAllLabels()` - deselect all labels
+- TBD
 
 Note: additional actions will be added. We would like to keep this list as minimal as possible.
 
