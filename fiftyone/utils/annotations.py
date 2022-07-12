@@ -828,11 +828,17 @@ def _get_attributes(
     label_type,
     classes=None,
 ):
-    if not backend.supports_attributes:
-        return {}
 
     if "attributes" in label_info:
         attributes = label_info["attributes"]
+
+    if attributes and not backend.supports_attributes:
+        logger.warning(
+            "The backend '%s' does not support attributes. Provided "
+            "attributes will be ignored.",
+            backend.config.name,
+        )
+        return {}
 
     if attributes in [True, False, None]:
         if label_type == "scalar":
