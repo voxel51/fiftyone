@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest, Query } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type RootQuery$variables = {
   count?: number | null;
@@ -16,80 +16,58 @@ export type RootQuery$variables = {
   search?: string | null;
 };
 export type RootQuery$data = {
-  readonly " $fragmentSpreads": FragmentRefs<"RootConfig_query" | "RootDatasets_query" | "RootGA_query" | "RootNav_query">;
+  readonly " $fragmentSpreads": FragmentRefs<
+    "RootConfig_query" | "RootDatasets_query" | "RootGA_query" | "RootNav_query"
+  >;
 };
 export type RootQuery = {
   response: RootQuery$data;
   variables: RootQuery$variables;
 };
 
-const node: ConcreteRequest = (function(){
-var v0 = {
-  "defaultValue": 10,
-  "kind": "LocalArgument",
-  "name": "count"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "cursor"
-},
-v2 = {
-  "defaultValue": "",
-  "kind": "LocalArgument",
-  "name": "search"
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "colorscale",
-  "storageKey": null
-},
-v4 = [
-  {
-    "kind": "Variable",
-    "name": "after",
-    "variableName": "cursor"
-  },
-  {
-    "kind": "Variable",
-    "name": "first",
-    "variableName": "count"
-  },
-  {
-    "kind": "Variable",
-    "name": "search",
-    "variableName": "search"
-  }
-];
-return {
-  "fragment": {
-    "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
-    ],
-    "kind": "Fragment",
-    "metadata": null,
-    "name": "RootQuery",
-    "selections": [
+const node: ConcreteRequest = (function () {
+  var v0 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "count",
+    },
+    v1 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "cursor",
+    },
+    v2 = {
+      defaultValue: "",
+      kind: "LocalArgument",
+      name: "search",
+    },
+    v3 = {
+      alias: null,
+      args: null,
+      kind: "ScalarField",
+      name: "colorscale",
+      storageKey: null,
+    },
+    v4 = [
       {
-        "args": null,
-        "kind": "FragmentSpread",
-        "name": "RootConfig_query"
+        kind: "Variable",
+        name: "after",
+        variableName: "cursor",
       },
       {
-        "args": null,
-        "kind": "FragmentSpread",
-        "name": "RootDatasets_query"
+        kind: "Variable",
+        name: "first",
+        variableName: "count",
       },
       {
-        "args": null,
-        "kind": "FragmentSpread",
-        "name": "RootGA_query"
+        kind: "Variable",
+        name: "search",
+        variableName: "search",
       },
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ed21843ef (regen graphql schemas and relay)
     ];
   return {
     fragment: {
@@ -228,7 +206,11 @@ return {
         {
           alias: null,
           args: v4 /*: any*/,
+<<<<<<< HEAD
           concreteType: "DatasetStrConnection",
+=======
+          concreteType: "DatasetConnection",
+>>>>>>> ed21843ef (regen graphql schemas and relay)
           kind: "LinkedField",
           name: "datasets",
           plural: false,
@@ -243,7 +225,11 @@ return {
             {
               alias: null,
               args: null,
+<<<<<<< HEAD
               concreteType: "DatasetStrEdge",
+=======
+              concreteType: "DatasetEdge",
+>>>>>>> ed21843ef (regen graphql schemas and relay)
               kind: "LinkedField",
               name: "edges",
               plural: true,
@@ -293,7 +279,11 @@ return {
             {
               alias: null,
               args: null,
+<<<<<<< HEAD
               concreteType: "DatasetStrPageInfo",
+=======
+              concreteType: "PageInfo",
+>>>>>>> ed21843ef (regen graphql schemas and relay)
               kind: "LinkedField",
               name: "pageInfo",
               plural: false,
@@ -380,6 +370,7 @@ return {
       text: 'query RootQuery(\n  $search: String = ""\n  $count: Int\n  $cursor: String\n) {\n  ...RootConfig_query\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootConfig_query on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
     },
   };
+<<<<<<< HEAD
 =======
       {
         "args": null,
@@ -655,6 +646,8 @@ return {
   }
 };
 >>>>>>> b6eedfd7b (initial plugin support)
+=======
+>>>>>>> ed21843ef (regen graphql schemas and relay)
 })();
 
 (node as any).hash = "ad38dfd0504d23894ee801a4ba0ba91e";
