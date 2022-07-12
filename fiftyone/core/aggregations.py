@@ -1458,7 +1458,7 @@ class Quantiles(Aggregation):
         # Note that we don't need to explicitly handle empty `values` here
         # because the `group` stage only outputs a document if there's at least
         # one value to compute on!
-        array = F("values").sort()
+        array = F("values").sort(numeric=True)
         idx = ((F() * array.length()).ceil() - 1).max(0)
         quantile_expr = array.let_in(E(self._quantiles).map(array[idx]))
 

@@ -2584,7 +2584,7 @@ class ViewExpression(object):
         """
         return ViewExpression({"$reverseArray": self})
 
-    def sort(self, key=None, reverse=False):
+    def sort(self, key=None, numeric=False, reverse=False):
         """Sorts this expression, which must resolve to an array.
 
         If no ``key`` is provided, this array must contain elements whose
@@ -2637,13 +2637,19 @@ class ViewExpression(object):
 
         Args:
             key (None): an optional field or ``embedded.field.name`` to sort by
+            numeric (False): whether the array contains numeric values. By
+                default, the values will be sorted alphabetically by their
+                string representations
             reverse (False): whether to sort in descending order
 
         Returns:
             a :class:`ViewExpression`
         """
         if key is not None:
+            # @todo this implicitly assumes `key` is numeric
             comp = "(a, b) => a.{key} - b.{key}".format(key=key)
+        elif numeric:
+            comp = "(a, b) => a - b"
         else:
             comp = ""
 
