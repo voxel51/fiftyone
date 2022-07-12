@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 import math
 
 from bson import ObjectId
+import numpy as np
 import unittest
 
 import fiftyone as fo
@@ -219,6 +220,36 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.mean("numeric_field"), 2)
 
         self.assertAlmostEqual(d.mean(2.0 * (F("numeric_field") + 1)), 6.0)
+
+    @drop_datasets
+    def test_quantiles(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        self.assertIsNone(d.quantiles("numeric_field", 0.5))
+        self.assertListEqual(d.quantiles("numeric_field", [0.5]), [None])
+
+        s = fo.Sample(filepath="image.jpeg", numeric_field=1)
+        d.add_sample(s)
+        self.assertAlmostEqual(d.quantiles("numeric_field", 0.5), 1)
+
+        s = fo.Sample(filepath="image2.jpeg", numeric_field=2)
+        d.add_sample(s)
+
+        q = np.linspace(0, 1, 11)
+
+        results1 = d.quantiles("numeric_field", q)
+        results2 = np.quantile([1, 2], q, method="inverted_cdf")
+
+        self.assertEqual(len(results1), len(results2))
+        for r1, r2 in zip(results1, results2):
+            self.assertAlmostEqual(r1, r2)
+
+        results1 = d.quantiles(2.0 * (F("numeric_field") + 1), q)
+        results2 = np.quantile([4, 6], q, method="inverted_cdf")
+
+        self.assertEqual(len(results1), len(results2))
+        for r1, r2 in zip(results1, results2):
+            self.assertAlmostEqual(r1, r2)
 
     @drop_datasets
     def test_std(self):
@@ -444,6 +475,10 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(math.isnan(dataset.sum("float")))
         self.assertTrue(math.isnan(dataset.std("float")))
 
+        self.assertTrue(math.isnan(dataset.quantiles("float", 1)))
+        self.assertTrue(math.isinf(dataset.quantiles("float", 0)))
+        self.assertAlmostEqual(dataset.quantiles("float", 0.5), 1.0)
+
         counts, edges, other = dataset.histogram_values("float")
         self.assertEqual(other, 5)  # captures None, nan, inf
 
@@ -459,6 +494,10 @@ class DatasetTests(unittest.TestCase):
         self.assertAlmostEqual(dataset.mean("float", safe=True), 1.0)
         self.assertAlmostEqual(dataset.sum("float", safe=True), 1.0)
         self.assertAlmostEqual(dataset.std("float", safe=True), 0.0)
+
+        self.assertAlmostEqual(dataset.quantiles("float", 0, safe=True), 1.0)
+        self.assertAlmostEqual(dataset.quantiles("float", 1, safe=True), 1.0)
+        self.assertAlmostEqual(dataset.quantiles("float", 0.5, safe=True), 1.0)
 
     @drop_datasets
     def test_object_ids(self):
