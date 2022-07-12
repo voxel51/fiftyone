@@ -2628,7 +2628,7 @@ class ViewExpression(object):
 
             view = dataset.set_field(
                 "predictions.detections",
-                F("detections").sort(key="confidence", reverse=True)
+                F("detections").sort(key="confidence", numeric=True, reverse=True)
             )
 
             sample = view.first()
@@ -2646,8 +2646,12 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         if key is not None:
-            # @todo this implicitly assumes `key` is numeric
-            comp = "(a, b) => a.{key} - b.{key}".format(key=key)
+            if numeric:
+                comp = "(a, b) => a.{key} - b.{key}"
+            else:
+                comp = "(a, b) => ('' + a.{key}).localeCompare(b.{key})"
+
+            comp = comp.format(key=key)
         elif numeric:
             comp = "(a, b) => a - b"
         else:
