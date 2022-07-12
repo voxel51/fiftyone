@@ -115,10 +115,8 @@ def annotate(
             ``label_field`` or all fields in ``label_schema`` without classes
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
-            are not provided by this argument nor ``label_schema``, they are
-            parsed from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
-            possible, or else the observed labels on your dataset are used
+            are not provided by this argument nor ``label_schema``, the
+            observed labels on your dataset are used
         attributes (True): specifies the label attributes of each label
             field to include (other than their ``label``, which is always
             included) in the annotation export. Can be any of the
@@ -772,10 +770,6 @@ def _get_classes(
             % label_field
         )
 
-    classes = samples.get_classes(label_field)
-    if classes:
-        return classes
-
     _, label_path = samples._get_label_field_path(label_field, "label")
     return sorted(
         set(samples._dataset.distinct(label_path))
@@ -814,12 +808,6 @@ def _parse_classes_dict(
 def _get_mask_targets(samples, mask_targets, label_field, label_info):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
-
-    if mask_targets is None and label_field in samples.mask_targets:
-        mask_targets = samples.mask_targets[label_field]
-
-    if mask_targets is None and samples.default_mask_targets:
-        mask_targets = samples.default_mask_targets
 
     if mask_targets is None:
         mask_targets = {i: str(i) for i in range(1, 256)}
@@ -1019,7 +1007,7 @@ def load_annotations(
             else:
                 logger.warning(
                     "Ignoring string `dest_field=%s` since the label "
-                    "schema contains %d > 1 fields",
+                    "schema contains %d (> 1) fields",
                     dest_field,
                     len(label_schema),
                 )

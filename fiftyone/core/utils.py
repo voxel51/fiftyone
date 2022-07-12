@@ -17,6 +17,7 @@ import inspect
 import io
 import itertools
 import logging
+import multiprocessing
 import ntpath
 import os
 import posixpath
@@ -24,6 +25,7 @@ import platform
 import signal
 import struct
 import subprocess
+import sys
 import timeit
 import types
 from xml.parsers.expat import ExpatError
@@ -1337,6 +1339,32 @@ def is_32_bit():
         True/False
     """
     return struct.calcsize("P") * 8 == 32
+
+
+def get_multiprocessing_context():
+    """Returns the preferred ``multiprocessing`` context for the current OS.
+
+    Returns:
+        a ``multiprocessing`` context
+    """
+    if (
+        sys.platform == "darwin"
+        and multiprocessing.get_start_method(allow_none=True) is None
+    ):
+        #
+        # If we're running on macOS and the user didn't manually configure the
+        # default multiprocessing context, force 'fork' to be used
+        #
+        # Background: on macOS, multiprocessing's default context was changed
+        # from 'fork' to 'spawn' in Python 3.8, but we prefer 'fork' because
+        # the startup time is much shorter. Also, this is not fully proven, but
+        # @brimoor believes he's seen cases where 'spawn' causes some of our
+        # `multiprocessing.Pool.imap_unordered()` calls to run twice...
+        #
+        return multiprocessing.get_context("fork")
+
+    # Use the default context
+    return multiprocessing.get_context()
 
 
 def datetime_to_timestamp(dt):

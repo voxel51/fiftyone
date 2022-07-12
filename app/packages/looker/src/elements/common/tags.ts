@@ -263,6 +263,10 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path
         );
 
+        if (field === null) {
+          continue;
+        }
+
         const pushList = (renderer, value) => {
           let count = 0;
           let rest = 0;
@@ -292,7 +296,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
 
         if (LABEL_RENDERERS[field.embeddedDocType]) {
+          if (path.startsWith("frames.")) continue;
           const classifications = LABEL_LISTS.includes(field.embeddedDocType);
+
           if (classifications) {
             pushList(
               LABEL_RENDERERS[field.embeddedDocType],
@@ -377,13 +383,17 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field, unknown, boolean] => {
+): [Field | null, unknown, boolean] => {
   let value: unknown = sample;
   let field: Field = null;
   let list = false;
 
   for (const key of path.split(".")) {
     field = schema[key];
+
+    if (field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
+      return [null, null, false];
+    }
 
     if (![undefined, null].includes(value)) {
       value = unwind(field.name !== "id" ? field.dbField || key : "id", value);

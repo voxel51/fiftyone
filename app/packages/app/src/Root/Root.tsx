@@ -46,7 +46,7 @@ import { RGB } from "@fiftyone/looker";
 import { State } from "../recoil/types";
 
 const rootQuery = graphql`
-  query RootQuery($search: String = "", $count: Int = 10, $cursor: String) {
+  query RootQuery($search: String = "", $count: Int, $cursor: String) {
     ...RootConfig_query
     ...RootDatasets_query
     ...RootGA_query

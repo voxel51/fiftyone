@@ -153,12 +153,6 @@ def segmentations_to_detections(
         fol.Segmentation,
     )
 
-    if mask_targets is None:
-        if out_field in sample_collection.mask_targets:
-            mask_targets = sample_collection.mask_targets[out_field]
-        elif sample_collection.default_mask_targets:
-            mask_targets = sample_collection.default_mask_targets
-
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
@@ -278,12 +272,6 @@ def segmentations_to_polylines(
         fol.Segmentation,
     )
 
-    if mask_targets is None:
-        if out_field in sample_collection.mask_targets:
-            mask_targets = sample_collection.mask_targets[out_field]
-        elif sample_collection.default_mask_targets:
-            mask_targets = sample_collection.default_mask_targets
-
     samples = sample_collection.select_fields(in_field)
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
@@ -346,5 +334,55 @@ def classification_to_detections(sample_collection, in_field, out_field):
                 confidence=label.confidence,
             )
             image[out_field] = fol.Detections(detections=[detection])
+
+        sample.save()
+
+
+def classifications_to_detections(sample_collection, in_field, out_field):
+    """Converts the :class:`fiftyone.core.labels.Classifications` field of the
+    collection into a :class:`fiftyone.core.labels.Detections` field containing
+    detections whose bounding boxes span the entire image with one detection
+    for each classification.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Classifications`
+            field
+        out_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field to populate
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Classifications
+    )
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
+
+    for sample in samples.iter_samples(progress=True):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            detections = []
+            classifications = image[in_field]
+            if classifications is None:
+                continue
+
+            for label in classifications.classifications:
+                if label is None:
+                    continue
+
+                detection = fol.Detection(
+                    label=label.label,
+                    bounding_box=[0, 0, 1, 1],  # entire image
+                    confidence=label.confidence,
+                )
+                detections.append(detection)
+
+            image[out_field] = fol.Detections(detections=detections)
 
         sample.save()
