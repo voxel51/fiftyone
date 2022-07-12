@@ -1410,11 +1410,21 @@ class Quantiles(Aggregation):
     """
 
     def __init__(self, field_or_expr, quantiles, expr=None, safe=False):
-        quantiles, is_scalar = self._parse_quantiles(quantiles)
+        quantiles_list, is_scalar = self._parse_quantiles(quantiles)
 
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._quantiles = quantiles
+
+        self._quantiles_list = quantiles_list
         self._is_scalar = is_scalar
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["quantiles", self._quantiles],
+            ["expr", self._expr],
+            ["safe", self._safe],
+        ]
 
     def default_result(self):
         """Returns the default result for this aggregation.
@@ -1425,7 +1435,7 @@ class Quantiles(Aggregation):
         if self._is_scalar:
             return None
 
-        return [None] * len(self._quantiles)
+        return [None] * len(self._quantiles_list)
 
     def parse_result(self, d):
         """Parses the output of :meth:`to_mongo`.
@@ -1460,7 +1470,7 @@ class Quantiles(Aggregation):
         # one value to compute on!
         array = F("values").sort(numeric=True)
         idx = ((F() * array.length()).ceil() - 1).max(0)
-        quantile_expr = array.let_in(E(self._quantiles).map(array[idx]))
+        quantile_expr = array.let_in(E(self._quantiles_list).map(array[idx]))
 
         pipeline.extend(
             [
