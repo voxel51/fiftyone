@@ -238,14 +238,20 @@ class DatasetTests(unittest.TestCase):
         q = np.linspace(0, 1, 11)
 
         results1 = d.quantiles("numeric_field", q)
-        results2 = np.quantile([1, 2], q, method="inverted_cdf")
+
+        # only available in `numpy>=1.22`
+        # results2 = np.quantile([1, 2], q, method="inverted_cdf")
+        results2 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
 
         self.assertEqual(len(results1), len(results2))
         for r1, r2 in zip(results1, results2):
             self.assertAlmostEqual(r1, r2)
 
         results1 = d.quantiles(2.0 * (F("numeric_field") + 1), q)
-        results2 = np.quantile([4, 6], q, method="inverted_cdf")
+
+        # only available in `numpy>=1.22`
+        # results2 = np.quantile([4, 6], q, method="inverted_cdf")
+        results2 = [4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 6]
 
         self.assertEqual(len(results1), len(results2))
         for r1, r2 in zip(results1, results2):
