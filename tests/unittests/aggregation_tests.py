@@ -489,10 +489,11 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(math.isnan(dataset.mean("float")))
         self.assertTrue(math.isnan(dataset.sum("float")))
         self.assertTrue(math.isnan(dataset.std("float")))
-
-        self.assertTrue(math.isnan(dataset.quantiles("float", 1)))
-        self.assertTrue(math.isinf(dataset.quantiles("float", 0)))
-        self.assertAlmostEqual(dataset.quantiles("float", 0.5), 1.0)
+        self.assertTrue(math.isnan(dataset.quantiles("float", 0)))
+        self.assertTrue(math.isnan(dataset.quantiles("float", 0.25)))
+        self.assertTrue(math.isinf(dataset.quantiles("float", 0.50)))
+        self.assertAlmostEqual(dataset.quantiles("float", 0.75), 1.0)
+        self.assertTrue(math.isinf(dataset.quantiles("float", 1)))
 
         counts, edges, other = dataset.histogram_values("float")
         self.assertEqual(other, 5)  # captures None, nan, inf
