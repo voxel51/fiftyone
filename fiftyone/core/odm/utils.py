@@ -14,6 +14,7 @@ import six
 from bson import json_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
+from bson.son import SON
 from mongoengine.fields import StringField
 import numpy as np
 import pytz
@@ -36,6 +37,9 @@ def serialize_value(value, extended=False):
     Returns:
         the serialized value
     """
+    if isinstance(value, SON):
+        return value
+
     if hasattr(value, "to_dict") and callable(value.to_dict):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
