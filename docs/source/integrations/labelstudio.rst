@@ -10,7 +10,7 @@ labelling tool with a simple and straightforward UI. The integration between
 FiftyOne and Label Studio allows you to easily upload your data directly from
 FiftyOne to Label Studio for labeling.
 
-You can get start with Label Studio through a simple pip install to get a local
+You can get started with Label Studio through a simple pip install to get a local
 server up and running. FiftyOne provides
 :ref:`simple setup <label-studio-setup>` instructions
 that you can use to specify the necessary account credentials and server

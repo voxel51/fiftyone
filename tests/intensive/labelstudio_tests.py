@@ -32,7 +32,6 @@ import fiftyone.core.labels as fol
 @pytest.fixture()
 def backend_config():
     return {
-        "backend": "labelstudio",
         "url": os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
         "api_key": os.getenv("FIFTYONE_LABELSTUDIO_API_KEY"),
     }
@@ -377,6 +376,7 @@ def test_annotate_simple(backend_config, setup, label_type):
         project_name=f"labelstudio_{label_type}_tests",
         label_type=label_type,
         classes=labels if label_type != "scalar" else None,
+        backend="labelstudio",
         **backend_config,
     )
 
@@ -384,7 +384,9 @@ def test_annotate_simple(backend_config, setup, label_type):
     dummy_predictions = _generate_dummy_predictions(
         label_type, labels, len(dataset)
     )
-    _add_dummy_annotations(dataset, anno_key, dummy_predictions)
+    _add_dummy_annotations(
+        dataset, anno_key, dummy_predictions, backend_config
+    )
 
     dataset.load_annotations(anno_key, cleanup=False, **backend_config)
 
@@ -409,6 +411,7 @@ def test_annotate_with_predictions(backend_config, setup, label_type):
         label_field=label_field,
         project_name=f"labelstudio_{label_type}_tests",
         label_type=label_type,
+        backend="labelstudio",
         **backend_config,
     )
 
@@ -471,8 +474,8 @@ def _get_project(annotation_results):
     return ls_project
 
 
-def _add_dummy_annotations(dataset, anno_key, predictions):
-    res = dataset.load_annotation_results(anno_key)
+def _add_dummy_annotations(dataset, anno_key, predictions, backend_config):
+    res = dataset.load_annotation_results(anno_key, **backend_config)
     ls_project = _get_project(res)
     for task_id, pred in zip(res.uploaded_tasks.keys(), predictions):
         ls_project.create_prediction(
