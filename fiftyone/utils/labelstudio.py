@@ -71,7 +71,6 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
         url: the URL of the Label Studio server
         api_key: the API key to use for authentication
         project_name: the name of the project to use on the Label Studio server
-
     """
 
     def __init__(
@@ -132,6 +131,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
 
     @property
     def supports_video_sample_fields(self):
+        return False
+
+    @property
+    def supports_attributes(self):
         return False
 
     def connect_to_api(self):
@@ -239,17 +242,17 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         )
         return project
 
-    def _prepare_tasks(self, samples, label_schema):
+    def _prepare_tasks(self, samples, label_schema, media_field):
         """Extract sample data and existing labels if any"""
         samples.compute_metadata()
         tasks = [
             {
                 "source_id": one.id,
-                one.media_type: one.filepath,
+                one.media_type: one[media_field],
                 "media_type": "image",
                 "mime_type": one.metadata.mime_type,
             }
-            for one in samples.select_fields("filepath")
+            for one in samples.select_fields(media_field)
         ]
 
         predictions, id_map = {}, {}
@@ -388,7 +391,9 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         project = self._init_project(config, samples)
         tasks, predictions, id_map = self._prepare_tasks(
-            samples, config.label_schema
+            samples,
+            config.label_schema,
+            config.media_field,
         )
         uploaded_tasks = self._import_tasks(project, tasks, predictions)
         return LabelStudioAnnotationResults(
@@ -466,7 +471,17 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         self.project_id = project_id
         self.uploaded_tasks = uploaded_tasks
 
-    def load_credentials(self, **kwargs):
+    def load_credentials(self, url=None, api_key=None):
+        """Load the Label Studio credentials from the given keyword arguments
+        or the FiftyOne annotation config.
+
+        Args:
+            url (None): the url of the Label Studio server
+            api_key (None): the Label Studio API key
+        """
+        self._load_config_parameters(url=url, api_key=api_key)
+
+    def _load_config_parameters(self, **kwargs):
         config = self.config
         parameters = fo.annotation_config.backends.get(config.name, {})
 
