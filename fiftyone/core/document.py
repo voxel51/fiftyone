@@ -351,15 +351,20 @@ class _Document(object):
         """
         raise NotImplementedError("subclass must implement copy()")
 
-    def to_dict(self):
+    def to_dict(self, include_private=False):
         """Serializes the document to a JSON dictionary.
 
-        The document ID and private fields are excluded in this representation.
+        Args:
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
         d = self._doc.to_dict(extended=True)
+
+        if include_private:
+            return d
+
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_mongo_dict(self, include_id=False):
@@ -724,8 +729,8 @@ class DocumentView(_Document):
 
         super().clear_field(field_name)
 
-    def to_dict(self):
-        d = super().to_dict()
+    def to_dict(self, include_private=False):
+        d = super().to_dict(include_private=include_private)
 
         if self._selected_fields or self._excluded_fields:
             d = {k: v for k, v in d.items() if k in self.field_names}

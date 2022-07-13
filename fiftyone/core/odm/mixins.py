@@ -6,29 +6,23 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
-from datetime import date, datetime
-import json
-import logging
-import numbers
-import six
 
-from bson import json_util
-from bson.binary import Binary
-import numpy as np
+from bson import ObjectId
 
-import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
 from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
-from .utils import get_field_kwargs, get_implied_field_kwargs
+from .utils import (
+    get_field_kwargs,
+    get_implied_field_kwargs,
+    serialize_value,
+    deserialize_value,
+)
 
 fod = fou.lazy_import("fiftyone.core.dataset")
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_default_fields(cls, include_private=False, use_db_fields=False):
@@ -254,6 +248,11 @@ class DatasetMixin(object):
 
         add_fields = []
         for field_name, field in schema.items():
+            if isinstance(field, fof.ObjectIdField) and field_name.startswith(
+                "_"
+            ):
+                field_name = field_name[1:]
+
             if field_name == "id":
                 continue
 
@@ -1070,11 +1069,13 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            # @todo `use_db_field` hack
+            # Store ObjectIds in private fields in the DB
             if k == "id":
                 k = "_id"
+            elif isinstance(v, ObjectId) and not k.startswith("_"):
+                k = "_" + k
 
-            d[k] = _serialize_value(v, extended=extended)
+            d[k] = serialize_value(v, extended=extended)
 
         return d
 
@@ -1082,11 +1083,14 @@ class NoDatasetMixin(object):
     def from_dict(cls, d, extended=False):
         kwargs = {}
         for k, v in d.items():
-            # @todo `use_db_field` hack
+            v = deserialize_value(v)
+
             if k == "_id":
                 k = "id"
+            elif isinstance(v, ObjectId) and k.startswith("_"):
+                k = k[1:]
 
-            kwargs[k] = _deserialize_value(v)
+            kwargs[k] = v
 
         return cls(**kwargs)
 
@@ -1098,66 +1102,6 @@ class NoDatasetMixin(object):
 
     def delete(self):
         pass
-
-
-def _serialize_value(value, extended=False):
-    if hasattr(value, "to_dict") and callable(value.to_dict):
-        # EmbeddedDocumentField
-        return value.to_dict(extended=extended)
-
-    if isinstance(value, numbers.Integral):
-        # IntField
-        return int(value)
-
-    if isinstance(value, numbers.Number):
-        # FloatField
-        return float(value)
-
-    if type(value) is date:
-        # DateField
-        return datetime(value.year, value.month, value.day)
-
-    if isinstance(value, np.ndarray):
-        # VectorField/ArrayField
-        binary = fou.serialize_numpy_array(value)
-        if not extended:
-            return binary
-
-        # @todo improve this
-        return json.loads(json_util.dumps(Binary(binary)))
-
-    if isinstance(value, (list, tuple)):
-        # ListField
-        return [_serialize_value(v, extended=extended) for v in value]
-
-    if isinstance(value, dict):
-        # DictField
-        return {
-            k: _serialize_value(v, extended=extended) for k, v in value.items()
-        }
-
-    return value
-
-
-def _deserialize_value(value):
-    if isinstance(value, dict):
-        if "_cls" in value:
-            # Serialized embedded document
-            _cls = getattr(fo, value["_cls"])
-            return _cls.from_dict(value)
-
-        if "$binary" in value:
-            # Serialized array in extended format
-            binary = json_util.loads(json.dumps(value))
-            return fou.deserialize_numpy_array(binary)
-
-        return value
-
-    if isinstance(value, six.binary_type):
-        # Serialized array in non-extended format
-        return fou.deserialize_numpy_array(value)
-
-    return value
 
 
 def _get_db_field(field, new_field_name):

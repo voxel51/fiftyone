@@ -17,6 +17,8 @@ import eta.core.serial as etas
 
 import fiftyone.core.utils as fou
 
+from .utils import serialize_value, deserialize_value
+
 
 class SerializableDocument(object):
     """Mixin for documents that can be serialized in BSON or JSON format."""
@@ -283,6 +285,30 @@ class MongoEngineBaseDocument(SerializableDocument):
         # @todo is there a way to avoid bson -> str -> json dict?
         return json.loads(json_util.dumps(d))
 
+    def to_mongo(self, *args, **kwargs):
+        # pylint: disable=no-member
+        d = super().to_mongo(*args, **kwargs)
+
+        rename = {}
+
+        for k, v in d.items():
+            # pylint: disable=no-member
+            if k not in self._fields:
+                # Store ObjectIds in private fields in the DB
+                if (
+                    isinstance(v, ObjectId)
+                    and k != "id"
+                    and not k.startswith("_")
+                ):
+                    rename[k] = "_" + k
+
+                d[k] = serialize_value(v)
+
+        for old, new in rename.items():
+            d[new] = d.pop(old)
+
+        return d
+
     @classmethod
     def from_dict(cls, d, extended=False):
         if not extended:
@@ -301,6 +327,29 @@ class MongoEngineBaseDocument(SerializableDocument):
 
         # pylint: disable=no-member
         return cls._from_son(d)
+
+    @classmethod
+    def _from_son(cls, d, *args, **kwargs):
+        rename = {}
+
+        for k, v in d.items():
+            # pylint: disable=no-member
+            if k not in cls._fields:
+                v = deserialize_value(v)
+                d[k] = v
+
+                if (
+                    isinstance(v, ObjectId)
+                    and k != "_id"
+                    and k.startswith("_")
+                ):
+                    rename[k] = k[1:]
+
+        for old, new in rename.items():
+            d[new] = d.pop(old)
+
+        # pylint: disable=no-member
+        return super()._from_son(d, *args, **kwargs)
 
 
 class BaseDocument(MongoEngineBaseDocument):

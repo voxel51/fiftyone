@@ -334,23 +334,24 @@ class _SampleMixin(object):
                 expand_schema=expand_schema,
             )
 
-    def to_dict(self, include_frames=False):
+    def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample to a JSON dictionary.
-
-        Sample IDs and private fields are excluded in this representation.
 
         Args:
             include_frames (False): whether to include the frame labels for
                 video samples
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
-        d = super().to_dict()
+        d = super().to_dict(include_private=include_private)
 
         if self.media_type == fomm.VIDEO:
             if include_frames:
-                d["frames"] = self.frames._to_frames_dict()
+                d["frames"] = self.frames._to_frames_dict(
+                    include_private=include_private
+                )
             else:
                 d.pop("frames", None)
 
@@ -607,19 +608,20 @@ class SampleView(_SampleMixin, DocumentView):
             **kwargs,
         )
 
-    def to_dict(self, include_frames=False):
+    def to_dict(self, include_frames=False, include_private=False):
         """Serializes the sample view to a JSON dictionary.
-
-        The sample ID and private fields are excluded in this representation.
 
         Args:
             include_frames (False): whether to include the frame labels for
                 video samples
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
-        d = super().to_dict(include_frames=include_frames)
+        d = super().to_dict(
+            include_frames=include_frames, include_private=include_private
+        )
 
         if self.selected_field_names or self.excluded_field_names:
             d = {k: v for k, v in d.items() if k in self.field_names}
