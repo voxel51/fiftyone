@@ -372,6 +372,148 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
+    def stats(self, include_media=False, compressed=False):
+        """Returns stats about the collection on disk.
+
+        The ``samples`` keys refer to the sample documents stored in the
+        database.
+
+        The ``media`` keys refer to the raw media associated with each sample
+        on disk.
+
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
+        Args:
+            include_media (False): whether to include stats about the size of
+                the raw media in the collection
+            compressed (False): whether to return the sizes of collections in
+                their compressed form on disk (True) or the logical
+                uncompressed size of the collections (False). This option is
+                only supported for datasets
+
+        Returns:
+            a stats dict
+        """
+        if compressed:
+            raise ValueError(
+                "Compressed stats are only available for entire datasets"
+            )
+
+        stats = {}
+
+        samples_bytes = self._get_samples_bytes()
+        stats["samples_count"] = self.count()
+        stats["samples_bytes"] = samples_bytes
+        stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
+        total_bytes = samples_bytes
+
+        if self.media_type == fom.VIDEO:
+            frames_bytes = self._get_frames_bytes()
+            stats["frames_count"] = self.count("frames")
+            stats["frames_bytes"] = frames_bytes
+            stats["frames_size"] = etau.to_human_bytes_str(frames_bytes)
+            total_bytes += frames_bytes
+
+        if include_media:
+            self.compute_metadata()
+            media_bytes = self.sum("metadata.size_bytes")
+            stats["media_bytes"] = media_bytes
+            stats["media_size"] = etau.to_human_bytes_str(media_bytes)
+            total_bytes += media_bytes
+
+        stats["total_bytes"] = total_bytes
+        stats["total_size"] = etau.to_human_bytes_str(total_bytes)
+
+        return stats
+
+    def _get_samples_bytes(self):
+        """Computes the total size of the sample documents in the collection."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            }
+        ]
+
+        results = self._aggregate(pipeline=pipeline)
+
+        try:
+            return next(iter(results))["size_bytes"]
+        except:
+            return 0
+
+    def _get_frames_bytes(self):
+        """Computes the total size of the frame documents in the collection."""
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            },
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+
+        try:
+            return next(iter(results))["size_bytes"]
+        except:
+            return 0
+
+    def _get_per_sample_bytes(self):
+        """Returns a dictionary mapping sample IDs to document sizes (in bytes)
+        for each sample in the collection.
+        """
+        pipeline = [{"$project": {"size_bytes": {"$bsonSize": "$$ROOT"}}}]
+
+        results = self._aggregate(pipeline=pipeline)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
+    def _get_per_frame_bytes(self):
+        """Returns a dictionary mapping frame IDs to document sizes (in bytes)
+        for each frame in the video collection.
+        """
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$project": {"size_bytes": {"$bsonSize": "$$ROOT"}}},
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
+    def _get_per_sample_frames_bytes(self):
+        """Returns a dictionary mapping sample IDs to total frame document
+        sizes (in bytes) for each sample in the video collection.
+        """
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {
+                "$group": {
+                    "_id": "$_sample_id",
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            },
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
     def first(self):
         """Returns the first sample in the collection.
 

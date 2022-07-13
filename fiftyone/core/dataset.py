@@ -734,21 +734,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def stats(self, include_media=False, compressed=False):
         """Returns stats about the dataset on disk.
 
-        The ``samples`` keys refer to the sample-level labels for the dataset
-        as they are stored in the database.
+        The ``samples`` keys refer to the sample documents stored in the
+        database.
 
         The ``media`` keys refer to the raw media associated with each sample
-        in the dataset on disk (only included if ``include_media`` is True).
+        on disk.
 
-        The ``frames`` keys refer to the frame labels for the dataset as they
-        are stored in the database (video datasets only).
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
 
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the dataset
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
-                uncompressed size of  the collections (False)
+                uncompressed size of the collections (False)
 
         Returns:
             a stats dict
