@@ -1861,7 +1861,6 @@ __metadata:
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
     "@fiftyone/components": "*"
-    "@fiftyone/prettier-config": "*"
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"
     "@microsoft/fetch-event-source": ^2.0.1

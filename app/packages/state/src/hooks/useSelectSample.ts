@@ -7,7 +7,7 @@ const useSelectSample = () => {
 
   return useRecoilTransaction_UNSTABLE(
     ({ set, get }) =>
-      async (sampleId: string) => {
+      (sampleId: string) => {
         const selected = new Set(get(selectedSamples));
         selected.has(sampleId)
           ? selected.delete(sampleId)

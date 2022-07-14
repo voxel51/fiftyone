@@ -1,10 +1,11 @@
-import { Scroller, Loading } from "@fiftyone/components";
+import { Loading } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
 import { Resizable } from "re-resizable";
 import React, {
   MutableRefObject,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -19,10 +20,12 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import { useErrorHandler } from "react-error-boundary";
+import { v4 as uuid } from "uuid";
 
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import { paginateGroup } from "@fiftyone/relay";
 
 const process = (
   next: MutableRefObject<number>,
@@ -58,6 +61,7 @@ const process = (
 const Column: React.FC<{
   fragmentRef: foq.paginateGroup_query$key;
 }> = ({ fragmentRef }) => {
+  const [id] = useState(() => uuid());
   const pageCount = useRef(0);
   const {
     data: { samples },
@@ -93,34 +97,25 @@ const Column: React.FC<{
       resolveRef.current = null;
     }
   }, [samples]);
-  const run = useRecoilTransaction_UNSTABLE(
-    ({ get }) =>
-      (id: string) => {
-        store.lookers.get(id)?.updateOptions({
-          ...opts,
-          selected: get(fos.selectedSamples).has(id),
-          highlight: get(fos.modal)?.sample._id === id,
-        });
-      },
-    [opts]
-  );
-  const updates = useRef(run);
-  updates.current = run;
-  const flashlightRef = useRef<Flashlight<number>>();
+
   const setSample = fos.useExpandSample();
 
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
 
-  return (
-    <Scroller
-      flashlightRef={flashlightRef}
-      onItemClick={(next, id, items) => {
+  const [flashlight] = useState(() => {
+    const flashlight = new Flashlight({
+      horizontal: true,
+      initialRequestKey: 0,
+      onItemClick: (next, id, items) => {
         const sample = store.samples.get(id);
         sample && setSample(sample);
-      }}
-      get={(page) => {
+      },
+      options: {
+        rowAspectRatioThreshold: 0,
+      },
+      get: (page) => {
         pageCount.current = page + 1;
         if (pageCount.current === 1) {
           return Promise.resolve({
@@ -136,8 +131,8 @@ const Column: React.FC<{
             resolveRef.current = resolve;
           });
         }
-      }}
-      render={(sampleId, element, dimensions, soft, hide) => {
+      },
+      render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
         const looker = store.lookers.get(sampleId);
@@ -151,8 +146,7 @@ const Column: React.FC<{
           looker.addEventListener(
             "selectthumbnail",
             ({ detail }: CustomEvent) => {
-              flashlightRef.current &&
-                selectSample.current(flashlightRef.current, detail);
+              selectSample.current(detail.sampleId);
             }
           );
 
@@ -160,19 +154,52 @@ const Column: React.FC<{
 
           looker.attach(element, dimensions);
         }
+      },
+    });
+
+    return flashlight;
+  });
+
+  useLayoutEffect(() => {
+    flashlight.attach(id);
+
+    return () => flashlight.detach();
+  }, [flashlight, id]);
+
+  const updateItem = useRecoilTransaction_UNSTABLE(
+    ({ get }) =>
+      (id: string) => {
+        store.lookers.get(id)?.updateOptions({
+          ...opts,
+          selected: get(fos.selectedSamples).has(id),
+          highlight: get(fos.modal)?.sample._id === id,
+        });
+      },
+    [opts]
+  );
+
+  useLayoutEffect(() => {
+    flashlight.updateItems(updateItem);
+  }, [
+    flashlight,
+    updateItem,
+    useRecoilValueLoadable(
+      fos.lookerOptions({ modal: true, withFilter: true })
+    ),
+    useRecoilValue(fos.modal),
+    useRecoilValue(fos.selectedSamples),
+  ]);
+
+  return (
+    <div
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+        position: "relative",
       }}
-      horizontal={true}
-      updateItems={[
-        [
-          useRecoilValueLoadable(
-            fos.lookerOptions({ modal: true, withFilter: true })
-          ),
-          useRecoilValue(fos.modal),
-          useRecoilValue(fos.selectedSamples),
-        ],
-        updates,
-      ]}
-    />
+      id={id}
+    ></div>
   );
 };
 
@@ -201,7 +228,7 @@ const Group: React.FC<{
         topLeft: false,
       }}
       onResizeStop={(e, direction, ref, { height: delta }) => {
-        setHeight(height + delta);
+        setHeight(Math.max(height + delta, 100));
       }}
     >
       <Suspense fallback={<Loading>Pixelating...</Loading>}>

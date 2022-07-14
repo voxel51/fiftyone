@@ -32,7 +32,8 @@
   height: 100%;
   display: flex;
   justify-content: center;
-  padding: 5rem;
+  position: absolute;
+  z-index: 10000;
 }
 
 .lookerPanelVerticalContainer {
