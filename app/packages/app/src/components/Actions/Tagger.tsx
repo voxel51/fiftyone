@@ -17,12 +17,6 @@ import {
 import styled from "styled-components";
 import { useSpring } from "@react-spring/web";
 
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
-import * as schemaAtoms from "../../recoil/schema";
-import * as viewAtoms from "../../recoil/view";
-
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
 import {
@@ -35,9 +29,9 @@ import {
 import { Button } from "../utils";
 import { PopoutSectionTitle } from "../utils";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-import { filters, modalFilters } from "../../recoil/filters";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -105,7 +99,7 @@ interface SectionProps {
   countAndPlaceholder: () => [number, string];
   taggingAtom: RecoilState<boolean>;
   itemsAtom: RecoilValue<{ [key: string]: number }>;
-  submit: ({ changes: Changes }) => Promise<void>;
+  submit: ({ changes }) => Promise<void>;
   close: () => void;
   labels: boolean;
 }
@@ -119,7 +113,7 @@ const Section = ({
   labels,
 }: SectionProps) => {
   const items = useRecoilValue(itemsAtom);
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
   const [tagging, setTagging] = useRecoilState(taggingAtom);
   const [value, setValue] = useState("");
   const [count, placeholder] = countAndPlaceholder();
@@ -339,9 +333,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
   const refreshers = [true, false]
     .map((modal) =>
       [true, false].map((extended) =>
-        useRecoilRefresher_UNSTABLE(
-          aggregationAtoms.aggregations({ modal, extended })
-        )
+        useRecoilRefresher_UNSTABLE(fos.aggregations({ modal, extended }))
       )
     )
     .flat();
@@ -356,24 +348,24 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
     ({ snapshot, set }) =>
       async ({ changes }) => {
         const activeLabels = await snapshot.getPromise(
-          schemaAtoms.labelPaths({ expanded: false })
+          fos.labelPaths({ expanded: false })
         );
-        const f = await snapshot.getPromise(modal ? modalFilters : filters);
-        const view = await snapshot.getPromise(viewAtoms.view);
-        const dataset = await snapshot.getPromise(selectors.datasetName);
+        const f = await snapshot.getPromise(
+          modal ? fos.modalFilters : fos.filters
+        );
+        const view = await snapshot.getPromise(fos.view);
+        const dataset = await snapshot.getPromise(fos.datasetName);
         const selectedLabels =
           modal && targetLabels
-            ? await snapshot.getPromise(selectors.selectedLabelList)
+            ? await snapshot.getPromise(fos.selectedLabelList)
             : null;
-        const selectedSamples = await snapshot.getPromise(
-          atoms.selectedSamples
-        );
+        const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
         const hiddenLabels =
           modal && targetLabels
-            ? await snapshot.getPromise(selectors.hiddenLabelsArray)
+            ? await snapshot.getPromise(fos.hiddenLabelsArray)
             : null;
 
-        const modalData = modal ? await snapshot.getPromise(atoms.modal) : null;
+        const modalData = modal ? await snapshot.getPromise(fos.modal) : null;
 
         const { samples } = await getFetchFunction()("POST", "/tag", {
           filters: f,
@@ -398,7 +390,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
         samples &&
           samples.forEach((sample) => {
             if (modalData.sample._id === sample._id) {
-              set(atoms.modal, { ...modalData, sample });
+              set(fos.modal, { ...modalData, sample });
               lookerRef.current.updateSample(sample);
             }
 
@@ -410,7 +402,7 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
               store.lookers.get(sample._id).updateSample(sample);
           });
 
-        set(selectors.anyTagging, false);
+        set(fos.anyTagging, false);
 
         refreshers.forEach((r) => r());
       },
@@ -433,33 +425,29 @@ const usePlaceHolder = (
   elementNames: { plural: string; singular: string }
 ) => {
   return (): [number, string] => {
-    const selectedSamples = useRecoilValue(atoms.selectedSamples).size;
+    const selectedSamples = useRecoilValue(fos.selectedSamples).size;
 
-    const selectedLabels = useRecoilValue(selectors.selectedLabelIds).size;
+    const selectedLabels = useRecoilValue(fos.selectedLabelIds).size;
     if (modal && labels && (!selectedSamples || selectedLabels)) {
       const labelCount =
         selectedLabels > 0
           ? selectedLabels
-          : useRecoilValue(
-              aggregationAtoms.labelCount({ modal: true, extended: true })
-            );
+          : useRecoilValue(fos.labelCount({ modal: true, extended: true }));
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
     } else if (modal && !selectedSamples) {
       return [1, samplePlaceholder(elementNames)];
     } else {
       const totalSamples = useRecoilValue(
-        aggregationAtoms.count({ path: "", extended: false, modal: false })
+        fos.count({ path: "", extended: false, modal: false })
       );
       const filteredSamples = useRecoilValue(
-        aggregationAtoms.count({ path: "", extended: true, modal: false })
+        fos.count({ path: "", extended: true, modal: false })
       );
       const count = filteredSamples ?? totalSamples;
       const selectedLabelCount = useRecoilValue(numLabelsInSelectedSamples);
       const labelCount = selectedSamples
         ? selectedLabelCount
-        : useRecoilValue(
-            aggregationAtoms.labelCount({ modal, extended: true })
-          );
+        : useRecoilValue(fos.labelCount({ modal, extended: true }));
       if (labels) {
         return [
           labelCount,
@@ -484,7 +472,7 @@ type TaggerProps = {
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
   const sampleProps = useSpring({
     borderBottomColor: labels ? theme.backgroundDark : theme.brand,
@@ -519,7 +507,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
-            taggingAtom={atoms.tagging({ modal, labels })}
+            taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
             labels={true}
@@ -531,7 +519,7 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
           <Section
             countAndPlaceholder={placeholder}
             submit={submit}
-            taggingAtom={atoms.tagging({ modal, labels })}
+            taggingAtom={fos.tagging({ modal, labels })}
             itemsAtom={tagStats({ modal, labels })}
             close={close}
             labels={false}

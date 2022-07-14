@@ -6,37 +6,24 @@ import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 
 import { flashlightLooker } from "./Grid.module.css";
-import {
-  cropToContent,
-  modal,
-  refresher,
-  selectedSamples,
-  tagging,
-} from "../../recoil/atoms";
-import useCreateLooker from "../../hooks/useCreateLooker";
-import useLookerStore from "../../hooks/useLookerStore";
 import { rowAspectRatioThreshold } from "./recoil";
-import { useLookerOptions } from "../../recoil/looker";
 import useResize from "./useResize";
 import usePage from "./usePage";
 import useExpandSample from "./useExpandSample";
-import useSelectSample from "../../hooks/useSelectSample";
-import { datasetName } from "../../recoil/selectors";
 import { deferrer, stringifyObj } from "@fiftyone/components";
-import { filters } from "../../recoil/filters";
-import { view } from "../../recoil/view";
-import { filterView } from "../../utils/view";
 import { useEventHandler } from "../../utils/hooks";
+
+import * as fos from "@fiftyone/state";
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());
-  const store = useLookerStore();
+  const store = fos.useLookerStore();
   const expandSample = useExpandSample(store);
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
-  const lookerOptions = useLookerOptions(false);
-  const createLooker = useCreateLooker(true, lookerOptions);
-  const selected = useRecoilValue(selectedSamples);
+  const lookerOptions = fos.useLookerOptions(false);
+  const createLooker = fos.useCreateLooker(true, lookerOptions);
+  const selected = useRecoilValue(fos.selectedSamples);
   const [next, pager] = usePage(false, store);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
@@ -83,7 +70,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  const select = useSelectSample();
+  const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
   selectSample.current = select;
 
@@ -110,10 +97,12 @@ const Grid: React.FC<{}> = () => {
     flashlight.attach(id);
     return () => flashlight.detach();
   }, [flashlight, id]);
-  const taggingLabels = useRecoilValue(tagging({ modal: false, labels: true }));
+  const taggingLabels = useRecoilValue(
+    fos.tagging({ modal: false, labels: true })
+  );
 
   const taggingSamples = useRecoilValue(
-    tagging({ modal: false, labels: false })
+    fos.tagging({ modal: false, labels: false })
   );
   const isTagging = taggingLabels || taggingSamples;
 
@@ -129,12 +118,12 @@ const Grid: React.FC<{}> = () => {
       freeVideos();
     }),
     [
-      stringifyObj(useRecoilValue(filters)),
-      useRecoilValue(datasetName),
-      useRecoilValue(cropToContent(false)),
-      filterView(useRecoilValue(view)),
-      useRecoilValue(refresher),
-      tagging,
+      stringifyObj(useRecoilValue(fos.filters)),
+      useRecoilValue(fos.datasetName),
+      useRecoilValue(fos.cropToContent(false)),
+      fos.filterView(useRecoilValue(fos.view)),
+      useRecoilValue(fos.refresher),
+      fos.tagging,
     ]
   );
 
@@ -148,8 +137,8 @@ const Grid: React.FC<{}> = () => {
             return;
           }
 
-          if (!(await snapshot.getPromise(modal))) {
-            set(selectedSamples, new Set());
+          if (!(await snapshot.getPromise(fos.modal))) {
+            set(fos.selectedSamples, new Set());
           }
         },
       []

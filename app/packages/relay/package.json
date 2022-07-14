@@ -1,0 +1,34 @@
+{
+  "name": "@fiftyone/relay",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "FiftyOne App Relay queries, mutations, and subscriptions",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/state",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "prettier": "@fiftyone/prettier-config",
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@fiftyone/prettier-config": "*",
+    "prettier": "2.2.1",
+    "relay-compiler": "^14.0.0",
+    "relay-compiler-language-typescript": "^15.0.1",
+    "relay-config": "^12.0.1",
+    "typescript": "4.2.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "2.4.2"
+  },
+  "dependencies": {
+    "react-relay": "^14.0.0"
+  }
+}

@@ -19,55 +19,36 @@ import {
 import styled from "styled-components";
 
 import { removeKeys } from "@fiftyone/utilities";
-
-import * as aggregationAtoms from "../../../recoil/aggregations";
-import * as filterAtoms from "../../../recoil/filters";
-import * as schemaAtoms from "../../../recoil/schema";
-import { State } from "../../../recoil/types";
-import * as viewAtoms from "../../../recoil/view";
+import * as fos from "@fiftyone/state";
 
 import { PillButton } from "../../utils";
 
-import { elementNames } from "../../../recoil/view";
-import { RouterContext, useTheme } from "@fiftyone/components";
-import { getDatasetName } from "../../../utils/generic";
+import { getDatasetName, RouterContext, useTheme } from "@fiftyone/components";
 import Draggable from "./Draggable";
-import {
-  groupIsEmpty,
-  groupShown,
-  MATCH_LABEL_TAGS,
-  persistGroups,
-  sidebarGroup,
-  sidebarGroups,
-  sidebarGroupsDefinition,
-  textFilter,
-  validateGroupName,
-} from "../../../recoil/sidebar";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",
   get:
     (params) =>
     ({ get }) =>
-      get(sidebarGroup({ ...params, loadingTags: true })).length,
+      get(fos.sidebarGroup({ ...params, loadingTags: true })).length,
 });
 
 const TAGS = {
-  [State.TagKey.SAMPLE]: "tags",
-  [State.TagKey.LABEL]: "label tags",
+  [fos.State.TagKey.SAMPLE]: "tags",
+  [fos.State.TagKey.LABEL]: "label tags",
 };
 
 const numMatchedTags = selectorFamily<
   number,
-  { key: State.TagKey; modal: boolean }
+  { key: fos.State.TagKey; modal: boolean }
 >({
   key: "numMatchedTags",
   get:
     (params) =>
     ({ get }) => {
-      let count = 0;
-      const active = new Set(get(filterAtoms.matchedTags(params)));
-      const f = get(textFilter(params.modal));
+      const active = new Set(get(fos.matchedTags(params)));
+      const f = get(fos.textFilter(params.modal));
 
       return [...active].filter((t) => t.includes(f)).length;
     },
@@ -86,13 +67,15 @@ const numGroupFieldsFiltered = selectorFamily<
       let f = null;
 
       if (params.modal) {
-        const labels = get(schemaAtoms.labelPaths({ expanded: false }));
+        const labels = get(fos.labelPaths({ expanded: false }));
         f = (path) => labels.includes(path);
       }
 
-      for (const path of get(sidebarGroup({ ...params, loadingTags: true }))) {
+      for (const path of get(
+        fos.sidebarGroup({ ...params, loadingTags: true })
+      )) {
         if (
-          get(filterAtoms.fieldIsFiltered({ path, modal: params.modal })) &&
+          get(fos.fieldIsFiltered({ path, modal: params.modal })) &&
           (!f || f(path))
         )
           count++;
@@ -110,17 +93,17 @@ const numGroupFieldsActive = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      let active = get(schemaAtoms.activeFields({ modal: params.modal }));
+      let active = get(fos.activeFields({ modal: params.modal }));
 
       let f = null;
 
       if (params.modal) {
-        const labels = get(schemaAtoms.labelPaths({ expanded: false }));
+        const labels = get(fos.labelPaths({ expanded: false }));
         f = (path) => labels.includes(path);
         active = active.filter((p) => f(p));
       }
 
-      f = get(textFilter(params.modal));
+      f = get(fos.textFilter(params.modal));
 
       if (params.group === "tags") {
         return active.filter(
@@ -137,7 +120,7 @@ const numGroupFieldsActive = selectorFamily<
       }
 
       const paths = new Set(
-        get(sidebarGroup({ ...params, loadingTags: true }))
+        get(fos.sidebarGroup({ ...params, loadingTags: true }))
       );
 
       return active.filter((p) => p.includes(f) && paths.has(p)).length;
@@ -155,10 +138,10 @@ export const useRenameGroup = (modal: boolean, group: string) => {
         newName = newName.toLowerCase();
 
         const current = await snapshot.getPromise(
-          sidebarGroupsDefinition(modal)
+          fos.sidebarGroupsDefinition(modal)
         );
         if (
-          !validateGroupName(
+          !fos.validateGroupName(
             current.map(([name]) => name).filter((name) => name !== group),
             newName
           )
@@ -171,16 +154,16 @@ export const useRenameGroup = (modal: boolean, group: string) => {
           paths,
         ]);
 
-        const view = await snapshot.getPromise(viewAtoms.view);
+        const view = await snapshot.getPromise(fos.view);
         const shown = await snapshot.getPromise(
-          groupShown({ modal, name: group })
+          fos.groupShown({ modal, name: group })
         );
 
         replace[newName] = group;
 
-        set(groupShown({ name: newName, modal }), shown);
-        set(sidebarGroupsDefinition(modal), newGroups);
-        !modal && persistGroups(getDatasetName(context), view, newGroups);
+        set(fos.groupShown({ name: newName, modal }), shown);
+        set(fos.sidebarGroupsDefinition(modal), newGroups);
+        !modal && fos.persistGroups(getDatasetName(context), view, newGroups);
         return true;
       },
     []
@@ -193,10 +176,10 @@ export const useDeleteGroup = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const groups = await snapshot.getPromise(
-          sidebarGroups({ modal, loadingTags: true })
+          fos.sidebarGroups({ modal, loadingTags: true })
         );
         set(
-          sidebarGroups({ modal, loadingTags: true }),
+          fos.sidebarGroups({ modal, loadingTags: true }),
           groups.filter(([name]) => name !== group)
         );
       },
@@ -215,24 +198,22 @@ const useClearActive = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         const paths = await snapshot.getPromise(
-          sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loadingTags: true })
         );
-        const active = await snapshot.getPromise(
-          schemaAtoms.activeFields({ modal })
-        );
+        const active = await snapshot.getPromise(fos.activeFields({ modal }));
 
         if (group === "tags") {
-          set(schemaAtoms.activeTags(modal), []);
+          set(fos.activeTags(modal), []);
           return;
         }
 
         if (group === "label tags") {
-          set(schemaAtoms.activeLabelTags(modal), []);
+          set(fos.activeLabelTags(modal), []);
           return;
         }
 
         set(
-          schemaAtoms.activeFields({ modal }),
+          fos.activeFields({ modal }),
           active.filter((p) => !paths.includes(p))
         );
       },
@@ -241,23 +222,23 @@ const useClearActive = (modal: boolean, group: string) => {
 };
 
 const getTags = (modal, tagKey) =>
-  tagKey === State.TagKey.LABEL
-    ? aggregationAtoms.cumulativeValues({
+  tagKey === fos.State.TagKey.LABEL
+    ? fos.cumulativeValues({
         extended: false,
         modal,
-        ...MATCH_LABEL_TAGS,
+        ...fos.MATCH_LABEL_TAGS,
       })
-    : aggregationAtoms.values({ extended: false, modal, path: "tags" });
+    : fos.values({ extended: false, modal, path: "tags" });
 
 const useClearMatched = ({
   modal,
   tagKey,
 }: {
   modal: boolean;
-  tagKey: State.TagKey;
+  tagKey: fos.State.TagKey;
 }) => {
   const [matched, setMatched] = useRecoilState(
-    filterAtoms.matchedTags({ key: tagKey, modal })
+    fos.matchedTags({ key: tagKey, modal })
   );
 
   const current = useRecoilValueLoadable(getTags(modal, tagKey));
@@ -282,14 +263,14 @@ const useClearFiltered = (modal: boolean, group: string) => {
     ({ set, snapshot }) =>
       async () => {
         let paths = await snapshot.getPromise(
-          sidebarGroup({ modal, group, loadingTags: true })
+          fos.sidebarGroup({ modal, group, loadingTags: true })
         );
         const filters = await snapshot.getPromise(
-          modal ? filterAtoms.modalFilters : filterAtoms.filters
+          modal ? fos.modalFilters : fos.filters
         );
 
         set(
-          modal ? filterAtoms.modalFilters : filterAtoms.filters,
+          modal ? fos.modalFilters : fos.filters,
           removeKeys(filters, paths, true)
         );
       },
@@ -507,7 +488,7 @@ export const TagGroupEntry = React.memo(
   }: {
     entryKey: string;
     modal: boolean;
-    tagKey: State.TagKey;
+    tagKey: fos.State.TagKey;
     trigger: (
       event: React.MouseEvent<HTMLDivElement>,
       key: string,
@@ -515,10 +496,12 @@ export const TagGroupEntry = React.memo(
     ) => void;
   }) => {
     const [expanded, setExpanded] = useRecoilState(
-      groupShown({ name: TAGS[tagKey], modal })
+      fos.groupShown({ name: TAGS[tagKey], modal })
     );
-    const { plural } = useRecoilValue(elementNames);
-    const name = `${tagKey === State.TagKey.SAMPLE ? plural : "label"} tags`;
+    const { plural } = useRecoilValue(fos.elementNames);
+    const name = `${
+      tagKey === fos.State.TagKey.SAMPLE ? plural : "label"
+    } tags`;
 
     return (
       <GroupEntry
@@ -572,10 +555,12 @@ interface PathGroupProps {
 
 export const PathGroupEntry = React.memo(
   ({ entryKey, name, modal, mutable = true, trigger }: PathGroupProps) => {
-    const [expanded, setExpanded] = useRecoilState(groupShown({ name, modal }));
+    const [expanded, setExpanded] = useRecoilState(
+      fos.groupShown({ name, modal })
+    );
     const renameGroup = useRenameGroup(modal, name);
     const onDelete = !modal ? useDeleteGroup(modal, name) : null;
-    const empty = useRecoilValue(groupIsEmpty({ modal, group: name }));
+    const empty = useRecoilValue(fos.groupIsEmpty({ modal, group: name }));
 
     return (
       <GroupEntry

@@ -5,8 +5,8 @@ import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
-import { viewsAreEqual } from "../../utils/view";
 import { getFetchFunction } from "@fiftyone/utilities";
+import { viewsAreEqual } from "@fiftyone/state";
 
 const { choose } = actions;
 

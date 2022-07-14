@@ -13,11 +13,6 @@ import {
   useResetRecoilState,
 } from "recoil";
 
-import * as atoms from "../../recoil/atoms";
-import * as schemaAtoms from "../../recoil/schema";
-import * as selectors from "../../recoil/selectors";
-import { State } from "../../recoil/types";
-import * as viewAtoms from "../../recoil/view";
 import { SORT_BY_SIMILARITY } from "../../utils/links";
 import { useUnprocessedStateUpdate } from "../../utils/hooks";
 
@@ -31,28 +26,13 @@ import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
-import { aggregationsTick } from "../../recoil/aggregations";
-import { filters } from "../../recoil/filters";
 import { useTheme } from "@fiftyone/components";
-
-export const similaritySorting = atom<boolean>({
-  key: "similaritySorting",
-  default: false,
-});
-
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
-  key: "sortBySimilarityParameters",
-  default: null,
-});
+import * as fos from "@fiftyone/state";
 
 const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
-  const selectedLabelIds = await snapshot.getPromise(
-    selectors.selectedLabelIds
-  );
-  const selectedLabels = await snapshot.getPromise(atoms.selectedLabels);
-  const keys = await snapshot.getPromise(selectors.similarityKeys);
+  const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
+  const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
+  const keys = await snapshot.getPromise(fos.similarityKeys);
   const labels_field = keys.patches
     .filter(([k, v]) => k === brainKey)
     .map(([k, v]) => v)[0];
@@ -61,9 +41,9 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
       (id) => selectedLabels[id].field === labels_field
     );
   }
-  const selectedSamples = await snapshot.getPromise(atoms.selectedSamples);
-  const isPatches = await snapshot.getPromise(viewAtoms.isPatchesView);
-  const modal = await snapshot.getPromise(atoms.modal);
+  const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
+  const isPatches = await snapshot.getPromise(fos.isPatchesView);
+  const modal = await snapshot.getPromise(fos.modal);
 
   if (isPatches) {
     if (selectedSamples.size) {
@@ -87,16 +67,16 @@ const useSortBySimilarity = (close) => {
   const handleError = useErrorHandler();
   return useRecoilCallback(
     ({ snapshot, set }) =>
-      async (parameters: State.SortBySimilarityParameters) => {
+      async (parameters: fos.State.SortBySimilarityParameters) => {
         const queryIds = await getQueryIds(snapshot, parameters.brainKey);
-        const view = await snapshot.getPromise(viewAtoms.view);
-        set(similaritySorting, true);
+        const view = await snapshot.getPromise(fos.view);
+        set(fos.similaritySorting, true);
 
         try {
           const data = await getFetchFunction()("POST", "/sort", {
-            dataset: await snapshot.getPromise(selectors.datasetName),
+            dataset: await snapshot.getPromise(fos.datasetName),
             view,
-            filters: await snapshot.getPromise(filters),
+            filters: await snapshot.getPromise(fos.filters),
             similarity: toSnakeCase({
               ...parameters,
               queryIds,
@@ -104,10 +84,10 @@ const useSortBySimilarity = (close) => {
           });
 
           update(({ set }) => {
-            set(similarityParameters, { ...parameters, queryIds });
-            set(atoms.modal, null);
-            set(similaritySorting, false);
-            set(aggregationsTick, (cur) => cur + 1);
+            set(fos.similarityParameters, { ...parameters, queryIds });
+            set(fos.modal, null);
+            set(fos.similaritySorting, false);
+            set(fos.aggregationsTick, (cur) => cur + 1);
             close();
 
             return data;
@@ -130,19 +110,19 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const isPatches = get(viewAtoms.isPatchesView);
-      const keys = get(selectors.similarityKeys);
+      const isPatches = get(fos.isPatchesView);
+      const keys = get(fos.similarityKeys);
       if (!isPatches && !modal) {
         return keys.samples;
       } else if (!modal) {
         return keys.patches.reduce((acc, [key, field]) => {
-          if (get(schemaAtoms.labelPaths({})).includes(field)) {
+          if (get(fos.labelPaths({})).includes(field)) {
             acc = [...acc, key];
           }
           return acc;
         }, []);
       } else if (modal) {
-        const selectedLabels = get(atoms.selectedLabels);
+        const selectedLabels = get(fos.selectedLabels);
 
         if (Object.keys(selectedLabels).length) {
           const fields = new Set(
@@ -156,7 +136,7 @@ const availableSimilarityKeys = selectorFamily<string[], boolean>({
             }, []);
           return patches;
         } else if (isPatches) {
-          const { sample } = get(atoms.modal);
+          const { sample } = get(fos.modal);
 
           return keys.patches
             .filter(([k, v]) => sample[v])
@@ -194,7 +174,7 @@ const sortType = selectorFamily<string, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const isRoot = get(viewAtoms.isRootView);
+      const isRoot = get(fos.isRootView);
       if (modal) {
         return "labels";
       } else if (isRoot) {
@@ -213,11 +193,12 @@ interface SortBySimilarityProps {
 
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
-    const current = useRecoilValue(similarityParameters);
-    const [state, setState] = useState<State.SortBySimilarityParameters>(() =>
-      current
-        ? current
-        : { brainKey: null, distField: null, reverse: false, k: null }
+    const current = useRecoilValue(fos.similarityParameters);
+    const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
+      () =>
+        current
+          ? current
+          : { brainKey: null, distField: null, reverse: false, k: null }
     );
 
     const setParameter = useCallback(
@@ -226,7 +207,7 @@ const SortBySimilarity = React.memo(
       []
     );
     const hasSorting = Boolean(current);
-    const reset = useResetRecoilState(similarityParameters);
+    const reset = useResetRecoilState(fos.similarityParameters);
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 

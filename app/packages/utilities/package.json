@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "mime": "^2.5.2"
   }
 }

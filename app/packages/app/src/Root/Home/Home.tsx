@@ -1,10 +1,11 @@
 import { Loading, Route } from "@fiftyone/components";
 import React, { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
-import { dataset } from "../../recoil/atoms";
+
+import * as fos from "@fiftyone/state";
 
 const Home: Route = ({}) => {
-  const setDataset = useSetRecoilState(dataset);
+  const setDataset = useSetRecoilState(fos.dataset);
   useLayoutEffect(() => {
     setDataset(null);
   }, []);

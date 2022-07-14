@@ -3,14 +3,13 @@ import { Apps } from "@material-ui/icons";
 import styled from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
-import * as aggregationAtoms from "../recoil/aggregations";
-import * as viewAtoms from "../recoil/view";
-
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 import { useTheme } from "@fiftyone/components";
 import { gridZoom, gridZoomRange } from "./Grid";
+
+import * as fos from "@fiftyone/state";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -54,9 +53,9 @@ const SliderContainer = styled.div`
 `;
 
 const Count = () => {
-  const element = useRecoilValue(viewAtoms.elementNames);
+  const element = useRecoilValue(fos.elementNames);
   const total = useRecoilValue(
-    aggregationAtoms.count({ path: "", extended: false, modal: false })
+    fos.count({ path: "", extended: false, modal: false })
   );
 
   return (

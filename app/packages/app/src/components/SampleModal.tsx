@@ -7,22 +7,10 @@ import { useRecoilValue, useRecoilTransaction_UNSTABLE } from "recoil";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
 import Looker from "../components/Looker";
-import * as atoms from "../recoil/atoms";
-import * as schemaAtoms from "../recoil/schema";
-import { State } from "../recoil/types";
-import { getSampleSrc } from "../recoil/utils";
-import { useSetSelectedLabels } from "../utils/hooks";
 
-import useClearModal from "../hooks/useClearModal";
-import { paginateGroupQueryRef } from "../queries";
 import Group from "./Group/Group";
-import {
-  disabledPaths,
-  EntryKind,
-  SidebarEntry,
-  useTagText,
-} from "../recoil/sidebar";
 import Sidebar, { Entries } from "./Sidebar";
+import * as fos from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -64,13 +52,13 @@ interface SelectEvent {
 }
 
 const useOnSelectLabel = () => {
-  const send = useSetSelectedLabels();
+  const send = fos.useSetSelectedLabels();
   return useRecoilTransaction_UNSTABLE(
     ({ get, set }) =>
       ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-        const { sample } = get(atoms.modal);
+        const { sample } = get(fos.modal);
         let labels = {
-          ...get(atoms.selectedLabels),
+          ...get(fos.selectedLabels),
         };
         if (labels[id]) {
           delete labels[id];
@@ -82,7 +70,7 @@ const useOnSelectLabel = () => {
           };
         }
 
-        set(atoms.selectedLabels, labels);
+        set(fos.selectedLabels, labels);
         send(
           Object.entries(labels).map(([labelId, data]) => ({
             ...data,
@@ -95,7 +83,7 @@ const useOnSelectLabel = () => {
 };
 
 const SampleModal = () => {
-  const data = useRecoilValue(atoms.modal);
+  const data = useRecoilValue(fos.modal);
   if (!data) {
     throw new Error("no modal data");
   }
@@ -105,20 +93,18 @@ const SampleModal = () => {
     navigation: { index, getIndex },
   } = data;
 
-  const sampleSrc = getSampleSrc(filepath, _id);
+  const sampleSrc = fos.getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
   const onSelectLabel = useOnSelectLabel();
-  const tagText = useTagText(true);
-  const labelPaths = useRecoilValue(
-    schemaAtoms.labelPaths({ expanded: false })
-  );
-  const clearModal = useClearModal();
-  const disabled = useRecoilValue(disabledPaths);
+  const tagText = fos.useTagText(true);
+  const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
+  const clearModal = fos.useClearModal();
+  const disabled = useRecoilValue(fos.disabledPaths);
   const renderEntry = useCallback(
     (
       key: string,
       group: string,
-      entry: SidebarEntry,
+      entry: fos.SidebarEntry,
       controller: Controller,
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
@@ -127,7 +113,7 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case EntryKind.PATH:
+        case fos.EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
@@ -144,7 +130,9 @@ const SampleModal = () => {
                     modal={true}
                     tag={entry.path.split(".").slice(1).join(".")}
                     tagKey={
-                      isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                      isLabelTag
+                        ? fos.State.TagKey.LABEL
+                        : fos.State.TagKey.SAMPLE
                     }
                   />
                 )}
@@ -184,7 +172,7 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        case EntryKind.GROUP:
+        case fos.EntryKind.GROUP:
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
 
@@ -194,7 +182,9 @@ const SampleModal = () => {
                 <Entries.TagGroup
                   entryKey={key}
                   tagKey={
-                    isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                    isLabelTags
+                      ? fos.State.TagKey.LABEL
+                      : fos.State.TagKey.SAMPLE
                   }
                   modal={true}
                   key={key}
@@ -211,7 +201,7 @@ const SampleModal = () => {
               ),
             disabled: false,
           };
-        case EntryKind.EMPTY:
+        case fos.EntryKind.EMPTY:
           return {
             children: (
               <Entries.Empty
@@ -227,7 +217,7 @@ const SampleModal = () => {
             ),
             disabled: true,
           };
-        case EntryKind.INPUT:
+        case fos.EntryKind.INPUT:
           return {
             children: <Entries.Filter modal={true} key={key} />,
             disabled: true,
@@ -239,11 +229,11 @@ const SampleModal = () => {
     [tagText]
   );
 
-  const screen = useRecoilValue(atoms.fullscreen)
+  const screen = useRecoilValue(fos.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
-  const groupQueryRef = useRecoilValue(paginateGroupQueryRef);
+  const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
 
   return ReactDOM.createPortal(
     <ModalWrapper

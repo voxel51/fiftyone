@@ -1,0 +1,39 @@
+{
+  "name": "@fiftyone/state",
+  "author": "Voxel51, Inc.",
+  "version": "0.0.0",
+  "description": "FiftyOne App state APIs",
+  "homepage": "https://github.com/voxel51/fiftyone/app/packages/state",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/voxel51/fiftyone/"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "vite"
+  },
+  "prettier": "@fiftyone/prettier-config",
+  "private": true,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@fiftyone/components": "*",
+    "@fiftyone/prettier-config": "*",
+    "@fiftyone/relay": "*",
+    "@fiftyone/utilities": "*",
+    "prettier": "2.2.1",
+    "react": "*",
+    "react-error-boundary": "*",
+    "react-relay": "*",
+    "recoil": "*",
+    "typescript": "4.2.4",
+    "typescript-plugin-css-modules": "^3.4.0",
+    "vite": "2.4.2"
+  },
+  "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
+    "lodash": "^4.17.21"
+  }
+}

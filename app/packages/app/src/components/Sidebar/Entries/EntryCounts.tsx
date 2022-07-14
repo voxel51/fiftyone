@@ -1,10 +1,7 @@
 import React, { useCallback } from "react";
 import { selectorFamily } from "recoil";
 
-import * as aggregationAtoms from "../../../recoil/aggregations";
-import { matchedTags } from "../../../recoil/filters";
-import { MATCH_LABEL_TAGS } from "../../../recoil/sidebar";
-import { State } from "../../../recoil/types";
+import * as fos from "@fiftyone/state";
 
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 
@@ -17,7 +14,7 @@ export const PathEntryCounts = ({
 }) => {
   const getAtom = useCallback(
     (extended: boolean) =>
-      aggregationAtoms.count({
+      fos.count({
         extended,
         modal,
         path,
@@ -42,9 +39,9 @@ const labelTagCount = selectorFamily<
     ({ tag, ...rest }) =>
     ({ get }) =>
       get(
-        aggregationAtoms.cumulativeCounts({
+        fos.cumulativeCounts({
           path: tag,
-          ...MATCH_LABEL_TAGS,
+          ...fos.MATCH_LABEL_TAGS,
           ...rest,
         })
       )[tag] || 0,
@@ -52,17 +49,17 @@ const labelTagCount = selectorFamily<
 
 export const tagIsMatched = selectorFamily<
   boolean,
-  { key: State.TagKey; tag: string; modal: boolean }
+  { key: fos.State.TagKey; tag: string; modal: boolean }
 >({
   key: "tagIsActive",
   get:
     ({ key, tag, modal }) =>
     ({ get }) =>
-      get(matchedTags({ key, modal })).has(tag),
+      get(fos.matchedTags({ key, modal })).has(tag),
   set:
     ({ key, tag, modal }) =>
     ({ get, set }, toggle) => {
-      const atom = matchedTags({ key, modal });
+      const atom = fos.matchedTags({ key, modal });
       const current = get(atom);
 
       set(

@@ -1,15 +1,13 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { useCallback } from "react";
-import useClearModal from "../../hooks/useClearModal";
-import useExpandSample from "../../hooks/useExpandSample";
-import { Lookers, LookerStore } from "../../hooks/useLookerStore";
-import { SampleData } from "../../recoil/atoms";
 import useSetGroup from "./useSetGroup";
 
-export default <T extends Lookers>(store: LookerStore<T>) => {
-  const expandSample = useExpandSample();
+import * as fos from "@fiftyone/state";
+
+export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
+  const expandSample = fos.useExpandSample();
   const setGroup = useSetGroup();
-  const clear = useClearModal();
+  const clear = fos.useClearModal();
 
   return useCallback<
     (
@@ -43,7 +41,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         });
       };
 
-      const expand = (index: number, sample?: SampleData) =>
+      const expand = (index: number, sample?: fos.SampleData) =>
         sample && expandSample(sample, { index, getIndex });
 
       const sample = store.samples.get(sampleId);

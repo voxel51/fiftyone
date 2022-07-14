@@ -1,4 +1,10 @@
-import { useRouter, Loading, EventsContext, Theme } from "@fiftyone/components";
+import {
+  useRouter,
+  Loading,
+  EventsContext,
+  Theme,
+  getDatasetName,
+} from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -6,15 +12,19 @@ import { RecoilRoot, useRecoilValue } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useReset, useScreenshot } from "./utils/hooks";
+import { useScreenshot } from "./utils/hooks";
 
 import "./index.css";
-import { State } from "./recoil/types";
-import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
-import { getDatasetName } from "./utils/generic";
-import { modal, refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
+import {
+  modal,
+  refresher,
+  State,
+  stateSubscription,
+  useRefresh,
+  useReset,
+} from "@fiftyone/state";
 
 enum AppReadyState {
   CONNECTING = 0,

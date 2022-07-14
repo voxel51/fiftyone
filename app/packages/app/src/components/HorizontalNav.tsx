@@ -4,13 +4,12 @@ import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import * as atoms from "../recoil/atoms";
-import * as viewAtoms from "../recoil/view";
-
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
+
+import * as fos from "@fiftyone/state";
 
 export type Props = {
   entries: string[];
@@ -82,14 +81,14 @@ const ToggleMaximize = React.memo(
 
 const HorizontalNav = ({ entries }: Props) => {
   const { height: windowHeight } = useWindowSize();
-  const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
+  const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
   const closedHeight = 64;
 
   const height = expanded ? openedHeight : closedHeight;
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
 
   return (
     <Container

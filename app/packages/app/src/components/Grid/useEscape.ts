@@ -1,6 +1,7 @@
 import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { modal, selectedSamples } from "../../recoil/atoms";
 import { useEventHandler } from "../../utils/hooks";
+
+import * as fos from "@fiftyone/state";
 
 const useEscape = () => {
   useEventHandler(
@@ -10,8 +11,8 @@ const useEscape = () => {
       ({ get, set }) =>
         (event: KeyboardEvent) => {
           event.key === "Escape" &&
-            !get(modal) &&
-            set(selectedSamples, new Set());
+            !get(fos.modal) &&
+            set(fos.selectedSamples, new Set());
         },
       []
     )

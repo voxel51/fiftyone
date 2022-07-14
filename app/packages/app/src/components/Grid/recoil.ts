@@ -1,17 +1,11 @@
 import { toSnakeCase } from "@fiftyone/utilities";
 import { atom, selector, selectorFamily } from "recoil";
-import { appConfig, cropToContent } from "../../recoil/atoms";
 
-import * as filterAtoms from "../../recoil/filters";
-import * as selectors from "../../recoil/selectors";
-import { State } from "../../recoil/types";
-import * as viewAtoms from "../../recoil/view";
-
-import { similarityParameters } from "../Actions/Similar";
+import * as fos from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
-  get: ({ get }) => get(appConfig)?.gridZoom,
+  get: ({ get }) => get(fos.appConfig)?.gridZoom,
 });
 
 export const gridZoom = atom<number>({
@@ -30,9 +24,9 @@ export const rowAspectRatioThreshold = selector<number>({
 });
 
 export interface PageParameters {
-  filters: State.Filters;
+  filters: fos.State.Filters;
   dataset: string;
-  view: State.Stage[];
+  view: fos.State.Stage[];
   zoom: boolean;
 }
 
@@ -41,13 +35,13 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const similarity = get(similarityParameters);
+      const similarity = get(fos.similarityParameters);
       return {
-        filters: get(modal ? filterAtoms.filters : filterAtoms.modalFilters),
-        view: get(viewAtoms.view),
-        dataset: get(selectors.datasetName),
+        filters: get(modal ? fos.filters : fos.modalFilters),
+        view: get(fos.view),
+        dataset: get(fos.datasetName),
         similarity: similarity && !modal ? toSnakeCase(similarity) : null,
-        zoom: get(viewAtoms.isPatchesView) && get(cropToContent(modal)),
+        zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
       };
     },
 });

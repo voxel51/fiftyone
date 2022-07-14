@@ -1,26 +1,18 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilCallback, selector } from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useSelectSample } from "../utils/hooks";
+import { useEventHandler } from "../utils/hooks";
 
-import { pathFilter } from "./Filters";
-import * as atoms from "../recoil/atoms";
-import * as colorAtoms from "../recoil/color";
-import * as schemaAtoms from "../recoil/schema";
-import * as selectors from "../recoil/selectors";
-import * as viewAtoms from "../recoil/view";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
-import { skeletonFilter } from "./Filters/utils";
-import useCreateLooker from "../hooks/useCreateLooker";
-import { useLookerOptions } from "../recoil/looker";
+import * as fos from "@fiftyone/state";
 
 const Header = styled.div`
   position: absolute;
@@ -143,7 +135,7 @@ const ContentItem = ({
 };
 
 const useTarget = (field, target) => {
-  const getTarget = useRecoilValue(selectors.getTarget);
+  const getTarget = useRecoilValue(fos.getTarget);
   return getTarget(field, target);
 };
 
@@ -261,7 +253,7 @@ const PolylineInfo = ({ detail }) => {
 };
 
 const Border = ({ color, id }) => {
-  const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
+  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   return (
     <BorderDiv
       style={{
@@ -358,22 +350,22 @@ const useLookerOptionsUpdate = () => {
     ({ snapshot, set }) =>
       async (event: CustomEvent) => {
         const currentOptions = await snapshot.getPromise(
-          atoms.savedLookerOptions
+          fos.savedLookerOptions
         );
-        set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
+        set(fos.savedLookerOptions, { ...currentOptions, ...event.detail });
       }
   );
 };
 
 const useFullscreen = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
-    set(atoms.fullscreen, event.detail);
+    set(fos.fullscreen, event.detail);
   });
 };
 
 const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
-    set(atoms.showOverlays, event.detail);
+    set(fos.showOverlays, event.detail);
   });
 };
 
@@ -381,7 +373,7 @@ const useClearSelectedLabels = () => {
   return useRecoilCallback(
     ({ set }) =>
       async () =>
-        set(atoms.selectedLabels, {}),
+        set(fos.selectedLabels, {}),
     []
   );
 };
@@ -405,14 +397,14 @@ const Looker = ({
   style,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const sampleData = useRecoilValue(atoms.modal);
+  const sampleData = useRecoilValue(fos.modal);
   if (!sampleData) {
     throw new Error("bad");
   }
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
-  const lookerOptions = useLookerOptions(true);
-  const createLooker = useCreateLooker(false, {
+  const lookerOptions = fos.useLookerOptions(true);
+  const createLooker = fos.useCreateLooker(false, {
     ...lookerOptions,
     hasNext: Boolean(onNext),
     hasPrevious: Boolean(onPrevious),
@@ -444,8 +436,8 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = useSelectSample();
-  const selected = useRecoilValue(atoms.selectedSamples);
+  const onSelect = fos.useSelectSample();
+  const selected = useRecoilValue(fos.selectedSamples);
 
   useEffect(() => {
     initialRef.current = false;

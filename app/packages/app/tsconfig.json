@@ -12,8 +12,9 @@
     "include": ["index.ts"],
     "references": [
         { "path": "../components" },
-        { "path": "../looker" },
         { "path": "../flashlight" },
+        { "path": "../looker" },
+        { "path": "../state" },
         { "path": "../utilities" }
     ]
 }

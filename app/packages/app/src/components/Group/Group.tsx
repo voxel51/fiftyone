@@ -13,33 +13,22 @@ import {
   usePaginationFragment,
   usePreloadedQuery,
 } from "react-relay";
-
-import {
-  paginateGroup,
-  paginateGroupPaginationFragment,
-  paginateGroupQuery,
-  paginateGroup_query$data,
-  paginateGroup_query$key,
-} from "../../queries";
-import { zoomAspectRatio } from "@fiftyone/looker";
-import useLookerStore, { LookerStore } from "../../hooks/useLookerStore";
-import useCreateLooker from "../../hooks/useCreateLooker";
-import { lookerOptions, useLookerOptions } from "../../recoil/looker";
-import { useErrorHandler } from "react-error-boundary";
 import {
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import { modal, selectedSamples } from "../../recoil/atoms";
-import useSelectSample from "../../hooks/useSelectSample";
-import useExpandSample from "../../hooks/useExpandSample";
+import { useErrorHandler } from "react-error-boundary";
+
+import { zoomAspectRatio } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import * as foq from "@fiftyone/relay";
 
 const process = (
   next: MutableRefObject<number>,
-  store: LookerStore<any>,
+  store: fos.LookerStore<any>,
   zoom: boolean,
-  edges: paginateGroup_query$data["samples"]["edges"]
+  edges: foq.paginateGroup_query$data["samples"]["edges"]
 ) =>
   edges.map(({ node }) => {
     if (node.__typename === "%other") {
@@ -67,17 +56,17 @@ const process = (
   });
 
 const Column: React.FC<{
-  fragmentRef: paginateGroup_query$key;
+  fragmentRef: foq.paginateGroup_query$key;
 }> = ({ fragmentRef }) => {
   const pageCount = useRef(0);
   const {
     data: { samples },
     hasNext,
     loadNext,
-  } = usePaginationFragment(paginateGroupPaginationFragment, fragmentRef);
-  const store = useLookerStore();
-  const opts = useLookerOptions(true);
-  const createLooker = useCreateLooker(true, opts, true);
+  } = usePaginationFragment(foq.paginateGroupPaginationFragment, fragmentRef);
+  const store = fos.useLookerStore();
+  const opts = fos.useLookerOptions(true);
+  const createLooker = fos.useCreateLooker(true, opts, true);
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
@@ -109,8 +98,8 @@ const Column: React.FC<{
       (id: string) => {
         store.lookers.get(id)?.updateOptions({
           ...opts,
-          selected: get(selectedSamples).has(id),
-          highlight: get(modal)?.sample._id === id,
+          selected: get(fos.selectedSamples).has(id),
+          highlight: get(fos.modal)?.sample._id === id,
         });
       },
     [opts]
@@ -118,9 +107,9 @@ const Column: React.FC<{
   const updates = useRef(run);
   updates.current = run;
   const flashlightRef = useRef<Flashlight<number>>();
-  const setSample = useExpandSample();
+  const setSample = fos.useExpandSample();
 
-  const select = useSelectSample();
+  const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
 
@@ -176,10 +165,10 @@ const Column: React.FC<{
       updateItems={[
         [
           useRecoilValueLoadable(
-            lookerOptions({ modal: true, withFilter: true })
+            fos.lookerOptions({ modal: true, withFilter: true })
           ),
-          useRecoilValue(modal),
-          useRecoilValue(selectedSamples),
+          useRecoilValue(fos.modal),
+          useRecoilValue(fos.selectedSamples),
         ],
         updates,
       ]}
@@ -188,10 +177,13 @@ const Column: React.FC<{
 };
 
 const Group: React.FC<{
-  queryRef: PreloadedQuery<paginateGroupQuery>;
+  queryRef: PreloadedQuery<foq.paginateGroupQuery>;
 }> = ({ queryRef }) => {
   const [height, setHeight] = useState(150);
-  const data = usePreloadedQuery<paginateGroupQuery>(paginateGroup, queryRef);
+  const data = usePreloadedQuery<foq.paginateGroupQuery>(
+    paginateGroup,
+    queryRef
+  );
 
   return (
     <Resizable

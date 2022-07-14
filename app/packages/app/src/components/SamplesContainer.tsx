@@ -3,18 +3,10 @@ import { useRecoilValue } from "recoil";
 import { Controller } from "@react-spring/web";
 import styled from "styled-components";
 
-import {
-  disabledPaths,
-  EntryKind,
-  SidebarEntry,
-  sidebarVisible,
-  useTagText,
-} from "../recoil/sidebar";
-import { State } from "../recoil/types";
-
 import Grid from "./Grid";
 import ContainerHeader from "./ImageContainerHeader";
 import Sidebar, { Entries } from "./Sidebar";
+import * as fos from "@fiftyone/state";
 
 const ContentColumn = styled.div`
   flex-grow: 1;
@@ -32,15 +24,15 @@ const Container = styled.div`
 `;
 
 const SamplesContainer = React.memo(() => {
-  const tagText = useTagText(false);
-  const showSidebar = useRecoilValue(sidebarVisible(false));
-  const disabled = useRecoilValue(disabledPaths);
+  const tagText = fos.useTagText(false);
+  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
+  const disabled = useRecoilValue(fos.disabledPaths);
 
   const renderGridEntry = useCallback(
     (
       key: string,
       group: string,
-      entry: SidebarEntry,
+      entry: fos.SidebarEntry,
       controller: Controller,
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
@@ -49,7 +41,7 @@ const SamplesContainer = React.memo(() => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case EntryKind.PATH:
+        case fos.EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isDisabled = disabled.has(entry.path);
@@ -61,7 +53,11 @@ const SamplesContainer = React.memo(() => {
                   modal={false}
                   key={key}
                   tag={entry.path.split(".").slice(1).join(".")}
-                  tagKey={isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE}
+                  tagKey={
+                    isLabelTag
+                      ? fos.State.TagKey.LABEL
+                      : fos.State.TagKey.SAMPLE
+                  }
                 />
               ) : (
                 <Entries.FilterablePath
@@ -82,7 +78,7 @@ const SamplesContainer = React.memo(() => {
               ),
             disabled: isTag || isLabelTag || disabled.has(entry.path),
           };
-        case EntryKind.GROUP:
+        case fos.EntryKind.GROUP:
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
 
@@ -94,7 +90,9 @@ const SamplesContainer = React.memo(() => {
                   key={key}
                   modal={false}
                   tagKey={
-                    isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                    isLabelTags
+                      ? fos.State.TagKey.LABEL
+                      : fos.State.TagKey.SAMPLE
                   }
                   trigger={trigger}
                 />
@@ -110,7 +108,7 @@ const SamplesContainer = React.memo(() => {
               ),
             disabled: false,
           };
-        case EntryKind.INPUT:
+        case fos.EntryKind.INPUT:
           return {
             children:
               entry.type === "add" ? (
@@ -120,7 +118,7 @@ const SamplesContainer = React.memo(() => {
               ),
             disabled: true,
           };
-        case EntryKind.EMPTY:
+        case fos.EntryKind.EMPTY:
           return {
             children: (
               <Entries.Empty

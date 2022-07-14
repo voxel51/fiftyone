@@ -6,11 +6,11 @@ import {
   RoutingContext,
   useRouter,
 } from "@fiftyone/components";
+import { modal, refresher } from "@fiftyone/state";
 
 import React, { Suspense, useContext, useEffect } from "react";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { modal, refresher } from "./recoil/atoms";
 
 const Renderer: React.FC = () => {
   const context = useContext(RouterContext);

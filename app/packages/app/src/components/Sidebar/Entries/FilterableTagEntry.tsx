@@ -4,25 +4,21 @@ import { LocalOffer, Visibility } from "@material-ui/icons";
 import { useSpring } from "@react-spring/core";
 import { selectorFamily, useRecoilState, useRecoilValue } from "recoil";
 
-import * as colorAtoms from "../../../recoil/color";
-import * as schemaAtoms from "../../../recoil/schema";
-import { State } from "../../../recoil/types";
-import { elementNames } from "../../../recoil/view";
-
 import { NameAndCountContainer } from "../../utils";
 
 import { LabelTagCounts, PathEntryCounts, tagIsMatched } from "./EntryCounts";
 import RegularEntry from "./RegularEntry";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const ACTIVE_ATOM = {
-  [State.TagKey.LABEL]: schemaAtoms.activeLabelTags,
-  [State.TagKey.SAMPLE]: schemaAtoms.activeTags,
+  [fos.State.TagKey.LABEL]: fos.activeLabelTags,
+  [fos.State.TagKey.SAMPLE]: fos.activeTags,
 };
 
 const tagIsActive = selectorFamily<
   boolean,
-  { key: State.TagKey; tag: string; modal: boolean }
+  { key: fos.State.TagKey; tag: string; modal: boolean }
 >({
   key: "tagIsActive",
   get:
@@ -94,7 +90,7 @@ const FilterableTagEntry = ({
   tagKey,
 }: {
   modal: boolean;
-  tagKey: State.TagKey;
+  tagKey: fos.State.TagKey;
   tag: string;
 }) => {
   const theme = useTheme();
@@ -103,15 +99,15 @@ const FilterableTagEntry = ({
   );
 
   const elementsName =
-    tagKey === State.TagKey.SAMPLE
-      ? useRecoilValue(elementNames).plural
+    tagKey === fos.State.TagKey.SAMPLE
+      ? useRecoilValue(fos.elementNames).plural
       : "labels";
 
   const [matched, setMatched] = useRecoilState(
     tagIsMatched({ key: tagKey, modal, tag })
   );
   const color = useRecoilValue(
-    colorAtoms.pathColor({ path: tag, modal, tag: tagKey })
+    fos.pathColor({ path: tag, modal, tag: tagKey })
   );
   const { backgroundColor } = useSpring({
     backgroundColor: matched ? "#6C757D" : theme.backgroundLight,
@@ -139,7 +135,7 @@ const FilterableTagEntry = ({
           )}
           <NameAndCountContainer>
             <span>{tag}</span>
-            {tagKey === State.TagKey.LABEL ? (
+            {tagKey === fos.State.TagKey.LABEL ? (
               <LabelTagCounts modal={modal} tag={tag} />
             ) : (
               <PathEntryCounts path={`tags.${tag}`} modal={modal} />
