@@ -2466,7 +2466,6 @@ tasks.
     # Get info about all tasks currently on the CVAT server
     response = api.get(api.tasks_url).json()
 
-
 Deleting tasks
 --------------
 
