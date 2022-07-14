@@ -2413,6 +2413,26 @@ for that annotation run:
                 Assignee: user1
                 Reviewer: user3
 
+.. note::
+
+    Pro tip: Various methods available on the
+    :class:`results <fiftyone.utils.cvat.CVATAnnotationResults>` object, like
+    those shown above, accept an `api` argument. This allows you to provide a
+    :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` object as
+    defined in the next section. The benefit is that this allows you to avoid
+    authentication in each
+    method and significantly speeds up these calls if there are
+    multiple being performed at a time.
+
+    .. code-block:: python
+        :linenos:
+
+        api = results.connect_to_api()
+
+        for anno_key in dataset.list_annotation_runs():
+            result = dataset.load_annotation_results(anno_key)
+            results.print_status(api=api)
+
 Using the CVAT API
 ------------------
 
@@ -2445,6 +2465,7 @@ tasks.
 
     # Get info about all tasks currently on the CVAT server
     response = api.get(api.tasks_url).json()
+
 
 Deleting tasks
 --------------
