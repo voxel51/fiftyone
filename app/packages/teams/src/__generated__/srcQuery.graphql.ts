@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<90b215b22fe20e97a6ad3d2faa79c962>>
+ * @generated SignedSource<<1726c01a8d2647734b54fb40e8856760>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,9 @@ import { ConcreteRequest, Query } from "relay-runtime";
 export type srcQuery$variables = {};
 export type srcQuery$data = {
   readonly teamsConfig: {
+    readonly audience: string;
     readonly clientId: string;
+    readonly domain: string;
     readonly organization: string;
   };
 };
@@ -35,7 +37,21 @@ const node: ConcreteRequest = (function () {
           alias: null,
           args: null,
           kind: "ScalarField",
+          name: "audience",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
           name: "clientId",
+          storageKey: null,
+        },
+        {
+          alias: null,
+          args: null,
+          kind: "ScalarField",
+          name: "domain",
           storageKey: null,
         },
         {
@@ -67,16 +83,16 @@ const node: ConcreteRequest = (function () {
       selections: v0 /*: any*/,
     },
     params: {
-      cacheID: "37b9d4463d8cc0d7fffbcebe86e8dcb5",
+      cacheID: "49db0f6a4ac5136f46f65ba4a40dd3b7",
       id: null,
       metadata: {},
       name: "srcQuery",
       operationKind: "query",
-      text: "query srcQuery {\n  teamsConfig {\n    clientId\n    organization\n  }\n}\n",
+      text: "query srcQuery {\n  teamsConfig {\n    audience\n    clientId\n    domain\n    organization\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "af5fc5f4b81d82574dea0f90469f3737";
+(node as any).hash = "a6d13645bfc662302a031e204e535058";
 
 export default node;
