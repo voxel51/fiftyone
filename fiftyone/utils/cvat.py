@@ -3242,6 +3242,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.job_ids = job_ids
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
+        self._api = None
 
     def load_credentials(
         self, url=None, username=None, password=None, headers=None
@@ -3268,61 +3269,92 @@ class CVATAnnotationResults(foua.AnnotationResults):
         """
         return self._backend.connect_to_api()
 
-    def launch_editor(self):
+    def launch_editor(self, api=None):
         """Launches the CVAT editor and loads the first task for this
         annotation run.
+
+        Args:
+            api (None): a :class:`CVATAnnotationAPI`
         """
-        api = self.connect_to_api()
+        if api is None:
+            _api = self.connect_to_api()
+        else:
+            _api = api
+
         task_id = self.task_ids[0]
         job_ids = self.job_ids
 
         if job_ids and job_ids[task_id]:
-            editor_url = api.base_job_url(task_id, job_ids[task_id][0])
+            editor_url = _api.base_job_url(task_id, job_ids[task_id][0])
         else:
-            editor_url = api.base_task_url(task_id)
+            editor_url = _api.base_task_url(task_id)
 
         logger.info("Launching editor at '%s'...", editor_url)
-        api.launch_editor(url=editor_url)
-        api.close()
+        _api.launch_editor(url=editor_url)
 
-    def get_status(self):
+        if api is None:
+            _api.close()
+
+    def get_status(self, api=None):
         """Gets the status of the assigned tasks and jobs.
+
+        Args:
+            api (None): a :class:`CVATAnnotationAPI`
 
         Returns:
             a dict of status information
         """
-        return self._get_status()
+        return self._get_status(api=api)
 
-    def print_status(self):
-        """Prints the status of the assigned tasks and jobs."""
-        self._get_status(log=True)
+    def print_status(self, api=None):
+        """Prints the status of the assigned tasks and jobs.
 
-    def delete_tasks(self, task_ids):
+        Args:
+            api (None): a :class:`CVATAnnotationAPI`
+        """
+        self._get_status(log=True, api=api)
+
+    def delete_tasks(self, task_ids, api=None):
         """Deletes the given tasks from both the CVAT server and this run.
 
         Args:
             task_ids: an iterable of task IDs
+            api (None): a :class:`CVATAnnotationAPI`
         """
-        api = self.connect_to_api()
-        api.delete_tasks(task_ids)
-        self._forget_tasks(task_ids)
-        api.close()
+        if api is None:
+            _api = self.connect_to_api()
+        else:
+            _api = api
 
-    def cleanup(self):
-        """Deletes all tasks and created projects associated with this run."""
-        api = self.connect_to_api()
+        _api.delete_tasks(task_ids)
+        self._forget_tasks(task_ids)
+
+        if api is None:
+            _api.close()
+
+    def cleanup(self, api=None):
+        """Deletes all tasks and created projects associated with this run.
+
+        Args:
+            api (None): a :class:`CVATAnnotationAPI`
+        """
+        if api is None:
+            _api = self.connect_to_api()
+        else:
+            _api = api
 
         if self.task_ids:
             logger.info("Deleting tasks...")
-            api.delete_tasks(self.task_ids)
+            _api.delete_tasks(self.task_ids)
 
         if self.project_ids:
-            projects_to_delete = api.get_empty_projects(self.project_ids)
+            projects_to_delete = _api.get_empty_projects(self.project_ids)
             if projects_to_delete:
                 logger.info("Deleting projects...")
-                api.delete_projects(self.project_ids)
+                _api.delete_projects(self.project_ids)
 
-        api.close()
+        if api is None:
+            _api.close()
 
         self.project_ids = []
         self.task_ids = []
@@ -3342,8 +3374,11 @@ class CVATAnnotationResults(foua.AnnotationResults):
         task_ids = set(task_ids)
         self.task_ids = [_id for _id in self.task_ids if _id not in task_ids]
 
-    def _get_status(self, log=False):
-        api = self.connect_to_api()
+    def _get_status(self, log=False, api=None):
+        if api is None:
+            _api = self.connect_to_api()
+        else:
+            _api = api
 
         status = {}
         for label_field, task_ids in self.labels_task_map.items():
@@ -3353,10 +3388,10 @@ class CVATAnnotationResults(foua.AnnotationResults):
             status[label_field] = {}
 
             for task_id in task_ids:
-                task_url = api.task_url(task_id)
+                task_url = _api.task_url(task_id)
 
                 try:
-                    response = api.get(task_url, print_error_info=False)
+                    response = _api.get(task_url, print_error_info=False)
                     task_json = response.json()
                 except:
                     logger.warning(
@@ -3383,15 +3418,15 @@ class CVATAnnotationResults(foua.AnnotationResults):
                         task_status,
                         task_assignee,
                         task_updated,
-                        api.base_task_url(task_id),
+                        _api.base_task_url(task_id),
                     )
 
                 jobs_info = {}
                 for job_id in self.job_ids[task_id]:
-                    job_url = api.taskless_job_url(job_id)
+                    job_url = _api.taskless_job_url(job_id)
 
                     try:
-                        response = api.get(job_url, print_error_info=False)
+                        response = _api.get(job_url, print_error_info=False)
                         job_json = response.json()
                     except:
                         logger.warning(
@@ -3423,7 +3458,8 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "jobs": jobs_info,
                 }
 
-        api.close()
+        if api is None:
+            _api.close()
 
         return status
 
