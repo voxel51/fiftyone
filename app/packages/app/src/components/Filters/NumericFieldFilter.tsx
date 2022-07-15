@@ -65,7 +65,7 @@ const getNonfiniteGetter = (params: {
 
   return (key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] => {
     const [value, setValue] = useRecoilState(
-      numericAtoms.nonfiniteAtom({ ...params, key })
+      fos.nonfiniteAtom({ ...params, key })
     );
 
     return [
@@ -126,13 +126,11 @@ const NumericFieldFilter = ({
   const name = path.split(".").slice(-1)[0];
 
   const setFilter = useSetRecoilState(fos.filter({ modal, path }));
-  const bounds = useRecoilValue(
-    numericAtoms.boundsAtom({ path, defaultRange })
-  );
+  const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
 
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const hasDefaultRange = useRecoilValue(
-    numericAtoms.isDefaultRange({ modal, path, defaultRange })
+    fos.isDefaultRange({ modal, path, defaultRange })
   );
   const hasBounds = bounds.every((b) => b !== null);
   const nonfinites = useNonfinites({
@@ -169,8 +167,8 @@ const NumericFieldFilter = ({
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
-            valueAtom={numericAtoms.rangeAtom({ modal, path, defaultRange })}
-            boundsAtom={numericAtoms.boundsAtom({
+            valueAtom={fos.rangeAtom({ modal, path, defaultRange })}
+            boundsAtom={fos.boundsAtom({
               path,
               defaultRange,
             })}
@@ -214,7 +212,7 @@ const NumericFieldFilter = ({
           ))}
         {isFiltered && nonfinites.length > 0 && hasBounds && (
           <ExcludeOption
-            excludeAtom={numericAtoms.excludeAtom({
+            excludeAtom={fos.excludeAtom({
               path,
               modal,
               defaultRange,

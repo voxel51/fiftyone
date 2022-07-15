@@ -18,15 +18,11 @@
     "dist",
     "README.md"
   ],
-  "dependencies": {
-    "@fiftyone/looker": "*",
-    "simplebar": "^5.3.6"
-  },
   "devDependencies": {
     "@fiftyone/prettier-config": "*",
-    "prettier": "2.2.1",
-    "typescript": "4.2.4",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4",
     "typescript-plugin-css-modules": "^3.4.0",
-    "vite": "2.4.2"
+    "vite": "^3.0.0"
   }
 }

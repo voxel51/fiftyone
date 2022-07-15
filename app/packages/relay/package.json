@@ -20,13 +20,12 @@
   ],
   "devDependencies": {
     "@fiftyone/prettier-config": "*",
-    "prettier": "2.2.1",
+    "prettier": "^2.7.1",
     "relay-compiler": "^14.0.0",
     "relay-compiler-language-typescript": "^15.0.1",
     "relay-config": "^12.0.1",
-    "typescript": "4.2.4",
-    "typescript-plugin-css-modules": "^3.4.0",
-    "vite": "2.4.2"
+    "typescript": "^4.7.4",
+    "vite": "^3.0.0"
   },
   "dependencies": {
     "react-relay": "^14.0.0"
