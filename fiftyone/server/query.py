@@ -155,7 +155,7 @@ class Dataset(HasCollection):
         )
         doc["mask_targets"] = [
             NamedTargets(name, _convert_targets(targets))
-            for name, targets in doc.get("mask_targets", []).items()
+            for name, targets in doc.get("mask_targets", {}).items()
         ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
