@@ -47,9 +47,14 @@ const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
 
   if (isPatches) {
     if (selectedSamples.size) {
-      return [...selectedSamples].map(
-        (id) => store.samples.get(id).sample[labels_field]._id
-      );
+      return [...selectedSamples].map((id) => {
+        const sample = fos.getSample(id);
+        if (sample) {
+          return sample.sample[labels_field]._id;
+        }
+
+        throw new Error("sample not found");
+      });
     }
 
     return modal.sample[labels_field]._id;

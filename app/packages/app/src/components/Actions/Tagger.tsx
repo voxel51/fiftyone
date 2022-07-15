@@ -393,13 +393,16 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
               set(fos.modal, { ...modalData, sample });
               lookerRef.current.updateSample(sample);
             }
+            const current = fos.getSample(sample._id);
 
-            store.samples.set(sample._id, {
-              ...store.samples.get(sample._id),
+            if (!current) {
+              throw new Error("sample not found");
+            }
+
+            fos.updateSample(sample._id, {
+              ...current,
               sample,
             });
-            store.lookers.has(sample._id) &&
-              store.lookers.get(sample._id).updateSample(sample);
           });
 
         set(fos.anyTagging, false);
