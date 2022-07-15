@@ -545,7 +545,9 @@ class Run(Configurable):
                 continue
 
             for field in cls._get_run_fields(samples, _key):
-                if "." in field and field.startswith(root_fields):
+                if "." in field and any(
+                    field.startswith(f) for f in root_fields
+                ):
                     _exclude_fields.append(field)
 
         if _exclude_fields:
