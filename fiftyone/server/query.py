@@ -142,11 +142,11 @@ class Dataset:
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
         doc["default_mask_targets"] = _convert_targets(
-            doc.get("default_mask_targets", [])
+            doc.get("default_mask_targets", {})
         )
         doc["mask_targets"] = [
             NamedTargets(name, _convert_targets(targets))
-            for name, targets in doc.get("mask_targets", []).items()
+            for name, targets in doc.get("mask_targets", {}).items()
         ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
