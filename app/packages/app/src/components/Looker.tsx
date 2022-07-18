@@ -387,6 +387,7 @@ interface LookerProps {
   onPrevious?: EventCallback;
   onSelectLabel?: EventCallback;
   style?: React.CSSProperties;
+  pinned: boolean;
 }
 
 const Looker = ({
@@ -396,6 +397,7 @@ const Looker = ({
   onPrevious,
   onSelectLabel,
   style,
+  pinned,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
   const sampleData = useRecoilValue(fos.modal);
@@ -446,16 +448,13 @@ const Looker = ({
 
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const pluginAPI = {
-    getSampleSrc,
-    sample,
+    getSampleSrc: fos.getSampleSrc,
+    sample: sampleData.sample,
     onSelectLabel,
     useState: useRecoilValue,
-    state: {
-      selectedLabels: atoms.selectedLabels,
-      pathFilter,
-      alpha: atoms.alpha,
-    },
-    dataset: useRecoilValue(atoms.dataset),
+    state: fos,
+    dataset: useRecoilValue(fos.dataset),
+    pinned,
   };
   const pluginIsActive = plugin && plugin.activator(pluginAPI);
   const PluginComponent = pluginIsActive && plugin.component;
@@ -497,7 +496,7 @@ const Looker = ({
             style={{ color: theme.brand }}
             onClick={select}
           />
-          <ModalActionsRow lookerRef={lookerRef} />
+          {!pinned && <ModalActionsRow lookerRef={lookerRef} />}
         </Header>
       )}
       {PluginComponent && <PluginComponent api={pluginAPI} />}

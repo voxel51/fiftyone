@@ -11,7 +11,8 @@ import Looker from "../components/Looker";
 import Group from "./Group/Group";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-import {usePlugin, PluginComponentType} from '@fiftyone/plugins'
+import { usePlugin, PluginComponentType } from "@fiftyone/plugins";
+import PinnedLooker from "./PinnedLooker/PinnedLooker";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -235,14 +236,6 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
   const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
-  const [plugin] = usePlugin(PluginComponentType.SampleModalContent);
-  const PluginComponent = false; // plugin && plugin.component
-
-  const pluginAPI = {
-    getSampleSrc,
-    sample,
-    dataset: useRecoilValue(atoms.dataset),
-  };
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -263,10 +256,19 @@ const SampleModal = () => {
             style={{ flex: 1 }}
           />
         </ContentColumn>
+        <PinnedLooker>
+          <Looker
+            key={`modal2-${sampleSrc}`}
+            lookerRef={lookerRef}
+            onSelectLabel={onSelectLabel}
+            onClose={clearModal}
+            onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
+            onNext={() => getIndex(index + 1)}
+            style={{ flex: 1 }}
+            pinned={true}
+          />
+        </PinnedLooker>
         <Sidebar render={renderEntry} modal={true} />
-        {PluginComponent && <ContentColumn>
-          {PluginComponent && <PluginComponent />}
-        </ContentColumn>}
       </Container>
     </ModalWrapper>,
     document.getElementById("modal")

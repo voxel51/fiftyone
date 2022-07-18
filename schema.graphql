@@ -1,0 +1,249 @@
+type AppConfig {
+  colorBy: ColorBy!
+  colorPool: [String!]!
+  colorscale: String!
+  gridZoom: Int!
+  loopVideos: Boolean!
+  notebookHeight: Int!
+  showConfidence: Boolean!
+  showIndex: Boolean!
+  showLabel: Boolean!
+  showSkeletons: Boolean!
+  showTooltip: Boolean!
+  timezone: String
+  useFrameNumber: Boolean!
+}
+
+scalar BSONArray
+
+type BrainRun implements Run {
+  key: String!
+  version: String
+  timestamp: DateTime
+  config: BrainRunConfig
+  viewStages: [String!]
+}
+
+type BrainRunConfig implements RunConfig {
+  cls: String!
+  embeddingsField: String
+  method: String
+  patchesField: String
+}
+
+enum ColorBy {
+  field
+  instance
+  label
+}
+
+type Dataset {
+  id: ID!
+  name: String!
+  createdAt: Date
+  lastLoadedAt: DateTime
+  persistent: Boolean!
+  mediaType: MediaType
+  maskTargets: [NamedTargets!]!
+  defaultMaskTargets: [Target!]
+  sampleFields: [SampleField!]!
+  frameFields: [SampleField!]!
+  brainMethods: [BrainRun!]!
+  evaluations: [EvaluationRun!]!
+  appSidebarGroups: [SidebarGroup!]
+  version: String
+  viewCls: String
+  defaultSkeleton: KeypointSkeleton
+  skeletons: [NamedKeypointSkeleton!]!
+}
+
+type DatasetStrConnection {
+  pageInfo: DatasetStrPageInfo!
+  edges: [DatasetStrEdge!]!
+  total: Int
+}
+
+type DatasetStrEdge {
+  node: Dataset!
+  cursor: String!
+}
+
+type DatasetStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Date (isoformat)
+"""
+scalar Date
+
+"""
+Date with time (isoformat)
+"""
+scalar DateTime
+
+type EvaluationRun implements Run {
+  key: String!
+  version: String
+  timestamp: DateTime
+  config: EvaluationRunConfig
+  viewStages: [String!]
+}
+
+type EvaluationRunConfig implements RunConfig {
+  cls: String!
+  gtField: String
+  predField: String
+  method: String
+}
+
+type ImageSample implements Sample {
+  width: Int!
+  height: Int!
+  sample: JSON!
+}
+
+scalar JSON
+
+type KeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+}
+
+enum MediaType {
+  image
+  video
+}
+
+type Mutation {
+  setDataset(subscription: String!, session: String, name: String): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    view: BSONArray!
+    dataset: String!
+  ): ViewResponse!
+  storeTeamsSubmission: Boolean!
+}
+
+type NamedKeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+  name: String!
+}
+
+type NamedTargets {
+  name: String!
+  targets: [Target!]!
+}
+
+type Query {
+  datasets(
+    search: String
+    first: Int = 200
+    after: String = null
+  ): DatasetStrConnection!
+  colorscale: [[Int!]!]
+  config: AppConfig!
+  context: String!
+  dev: Boolean!
+  doNotTrack: Boolean!
+  dataset(name: String!, view: BSONArray): Dataset
+  samples(
+    dataset: String!
+    view: BSONArray!
+    first: Int = 20
+    after: String = null
+  ): SampleItemStrConnection!
+  teamsSubmission: Boolean!
+  uid: String!
+  version: String!
+}
+
+interface Run {
+  key: String!
+  version: String
+  timestamp: DateTime
+  config: RunConfig
+  viewStages: [String!]
+}
+
+interface RunConfig {
+  cls: String!
+}
+
+interface Sample {
+  width: Int!
+  height: Int!
+  sample: JSON!
+}
+
+type SampleField {
+  ftype: String!
+  path: String!
+  subfield: String
+  embeddedDocType: String
+  dbField: String
+}
+
+union SampleItem = ImageSample | VideoSample
+
+type SampleItemStrConnection {
+  pageInfo: SampleItemStrPageInfo!
+  edges: [SampleItemStrEdge!]!
+  total: Int
+}
+
+type SampleItemStrEdge {
+  node: SampleItem!
+  cursor: String!
+}
+
+type SampleItemStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+input SelectedLabel {
+  field: String!
+  labelId: String!
+  sampleId: String!
+  frameNumber: Int = null
+}
+
+type SidebarGroup {
+  name: String!
+  paths: [String!]!
+}
+
+type Target {
+  target: Int!
+  value: String!
+}
+
+type VideoSample implements Sample {
+  width: Int!
+  height: Int!
+  sample: JSON!
+  frameRate: Float!
+}
+
+type ViewResponse {
+  view: BSONArray!
+  dataset: Dataset!
+}

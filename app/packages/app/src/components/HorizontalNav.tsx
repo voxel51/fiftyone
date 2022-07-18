@@ -12,8 +12,7 @@ import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
 import * as fos from "@fiftyone/state";
 
-export type Props = {
-};
+export type Props = {};
 
 const Container = styled(Resizable)`
   padding: 1rem 0 0;
@@ -96,6 +95,7 @@ const HorizontalNav = ({}: Props) => {
 
   const height = expanded ? openedHeight : closedHeight;
   const elementNames = useRecoilValue(fos.elementNames);
+  const dataset = useRecoilValue(fos.dataset);
   const pluginPlots = useActivePlugins(PluginComponentType.Plot, { dataset });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
 
@@ -192,9 +192,9 @@ function ActivePlot({
   if (isDistPlot) return <Distributions key={active} group={active} />;
   if (plugin) {
     const pluginProps = {
-      dataset: useRecoilValue(atoms.dataset),
-      view: useRecoilValue(viewAtoms.view),
-      filters: useRecoilValue(filterAtoms.filters),
+      dataset: useRecoilValue(fos.dataset),
+      view: useRecoilValue(fos.view),
+      filters: useRecoilValue(fos.filters),
     };
     return <plugin.component {...pluginProps} />;
   }
