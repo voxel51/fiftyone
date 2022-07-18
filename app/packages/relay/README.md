@@ -1,3 +1,3 @@
-# Utilities
+# Relay
 
-FiftyOne App state APIs
+FiftyOne App Relay GraphQL queries, mutations, and subscriptions

@@ -37,7 +37,7 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
     ({ get }) => {
       const similarity = get(fos.similarityParameters);
       return {
-        filters: get(modal ? fos.filters : fos.modalFilters),
+        filters: get(modal ? fos.modalFilters : fos.filters),
         view: get(fos.view),
         dataset: get(fos.datasetName),
         similarity: similarity && !modal ? toSnakeCase(similarity) : null,

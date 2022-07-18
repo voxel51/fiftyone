@@ -53,6 +53,7 @@ async def paginate_samples(
         filters=filters,
         count_label_tags=True,
         similarity=similarity,
+        only_matches=True,
     )
 
     if view.media_type == fom.VIDEO:
