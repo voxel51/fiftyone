@@ -5276,7 +5276,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         # Convert Polyline to instance segmentation
         if isinstance(label, fol.Polyline):
             detection = CVATShape.polyline_to_detection(label, frame_size)
-            detection._id = ObjectId(label_id)
+            detection.id = label_id
             return detection
 
         # Convert Polylines to semantic segmentation
@@ -5285,7 +5285,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             segmentation = CVATShape.polylines_to_segmentation(
                 label, frame_size, mask_targets
             )
-            segmentation._id = ObjectId(label_id)
+            segmentation.id = label_id
             return segmentation
 
         return label
@@ -6529,7 +6529,7 @@ class CVATLabel(object):
 
     def _set_attributes(self, label):
         if self.id is not None:
-            label._id = ObjectId(self.id)
+            label.id = self.id
 
         for name, value in self.attributes.items():
             label[name] = value
@@ -6696,7 +6696,7 @@ class CVATShape(CVATLabel):
             a :class:`fiftyone.core.labels.Detection`
         """
         detection = polyline.to_detection(frame_size=frame_size)
-        detection._id = polyline._id
+        detection.id = polyline.id
         return detection
 
     @classmethod

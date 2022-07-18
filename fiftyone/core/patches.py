@@ -7,6 +7,8 @@ Patches views.
 """
 from copy import deepcopy
 
+from bson import ObjectId
+
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
@@ -30,11 +32,11 @@ _NO_MATCH_ID = ""
 class _PatchView(fos.SampleView):
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     @property
     def _frame_id(self):
-        return self._doc.frame_id
+        return ObjectId(self._doc.frame_id)
 
     def save(self):
         super().save()
