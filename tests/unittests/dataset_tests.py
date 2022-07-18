@@ -309,8 +309,10 @@ class DatasetTests(unittest.TestCase):
         )
         dataset.add_sample(sample)
 
-        self.assertIsInstance(dataset.get_field("id"), fo.ObjectIdField)
-
+        id_field1 = dataset.get_field("id")
+        self.assertIsInstance(id_field1, fo.ObjectIdField)
+        self.assertEqual(id_field1.name, "id")
+        self.assertEqual(id_field1.db_field, "_id")
         self.assertIsNone(dataset.get_field("_id"))
         self.assertIsInstance(
             dataset.get_field("_id", include_private=True),
@@ -339,6 +341,10 @@ class DatasetTests(unittest.TestCase):
             dataset.get_field("classification_field").document_type,
             fo.Classification,
         )
+        id_field2 = dataset.get_field("classification_field.id")
+        self.assertIsInstance(id_field2, fo.ObjectIdField)
+        self.assertEqual(id_field2.name, "id")
+        self.assertEqual(id_field2.db_field, "_id")
         self.assertIsNone(dataset.get_field("classification_field.foo"))
 
         self.assertIsInstance(
@@ -367,10 +373,12 @@ class DatasetTests(unittest.TestCase):
             dataset.get_field("classifications_field.classifications.label"),
             fo.StringField,
         )
-        self.assertIsInstance(
-            dataset.get_field("classifications_field.classifications.id"),
-            fo.ObjectIdField,
+        id_field3 = dataset.get_field(
+            "classifications_field.classifications.id"
         )
+        self.assertIsInstance(id_field3, fo.ObjectIdField)
+        self.assertEqual(id_field3.name, "id")
+        self.assertEqual(id_field3.db_field, "_id")
         self.assertIsNone(
             dataset.get_field("classifications_field.classifications._id")
         )
@@ -405,8 +413,10 @@ class DatasetTests(unittest.TestCase):
         )
         dataset.add_sample(sample)
 
-        self.assertIsInstance(dataset.get_field("frames.id"), fo.ObjectIdField)
-
+        id_field1 = dataset.get_field("frames.id")
+        self.assertIsInstance(id_field1, fo.ObjectIdField)
+        self.assertEqual(id_field1.name, "id")
+        self.assertEqual(id_field1.db_field, "_id")
         self.assertIsNone(dataset.get_field("frames._id"))
         self.assertIsInstance(
             dataset.get_field("frames._id", include_private=True),
@@ -441,6 +451,10 @@ class DatasetTests(unittest.TestCase):
             dataset.get_field("frames.classification_field").document_type,
             fo.Classification,
         )
+        id_field2 = dataset.get_field("frames.classification_field.id")
+        self.assertIsInstance(id_field2, fo.ObjectIdField)
+        self.assertEqual(id_field2.name, "id")
+        self.assertEqual(id_field2.db_field, "_id")
         self.assertIsNone(dataset.get_field("frames.classification_field.foo"))
 
         self.assertIsInstance(
@@ -473,12 +487,12 @@ class DatasetTests(unittest.TestCase):
             ),
             fo.StringField,
         )
-        self.assertIsInstance(
-            dataset.get_field(
-                "frames.classifications_field.classifications.id"
-            ),
-            fo.ObjectIdField,
+        id_field3 = dataset.get_field(
+            "frames.classifications_field.classifications.id"
         )
+        self.assertIsInstance(id_field3, fo.ObjectIdField)
+        self.assertEqual(id_field3.name, "id")
+        self.assertEqual(id_field3.db_field, "_id")
         self.assertIsNone(
             dataset.get_field(
                 "frames.classifications_field.classifications._id"
