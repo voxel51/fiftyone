@@ -269,7 +269,6 @@ dataset:
         data_path=IMAGES_DIR,
         labels_path="/tmp/coco.json",
         include_id=True,
-        label_field="",
     )
 
     # Verify that the class list for our dataset was imported
