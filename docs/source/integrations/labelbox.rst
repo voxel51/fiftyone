@@ -453,6 +453,19 @@ details:
         `values`, and `default` for each attribute
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute of
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_index_edits** (*True*): whether to allow the `index` attribute
+    of existing video tracks to be modified. Only applicable when editing
+    existing frame fields with `index` attributes
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
+    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, the following Labelbox-specific parameters from
