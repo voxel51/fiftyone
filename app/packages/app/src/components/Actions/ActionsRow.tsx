@@ -1,13 +1,11 @@
 import React, {
   MutableRefObject,
-  RefCallback,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { CircularProgress } from "@material-ui/core";
 import {
-  ArrowDownward,
   Bookmark,
   Check,
   FlipToBack,
@@ -20,7 +18,6 @@ import {
 } from "@material-ui/icons";
 import useMeasure from "react-use-measure";
 import {
-  atom,
   selectorFamily,
   useRecoilCallback,
   useRecoilState,
