@@ -9,6 +9,7 @@ from datetime import date, datetime
 import gc
 import os
 
+from bson import ObjectId
 import numpy as np
 import pytz
 import unittest
@@ -19,7 +20,7 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetTests(unittest.TestCase):
@@ -1241,6 +1242,7 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNone(sample["int1"])
         self.assertIsNone(sample["list_int1"])
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
     def test_rename_fields(self):
         dataset = fo.Dataset()
@@ -1255,8 +1257,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["field"]
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_rename_embedded_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(
@@ -1297,8 +1299,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].new_field
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="image.jpg", field=1)
@@ -1331,8 +1333,88 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
+    def test_object_id_fields(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="image.jpg")
+        dataset.add_sample(sample)
+
+        # Clone field
+
+        dataset.clone_sample_field("id", "sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("sample_id", schema)
+
+        self.assertIsInstance(sample.sample_id, str)
+
+        ids = dataset.values("sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = dataset.values("_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        view = dataset.select_fields("sample_id")
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.sample_id, str)
+
+        ids = view.values("sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = view.values("_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        # Rename field
+
+        dataset.rename_sample_field("sample_id", "still_sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("still_sample_id", schema)
+        self.assertNotIn("sample_id", schema)
+
+        self.assertIsInstance(sample.still_sample_id, str)
+
+        with self.assertRaises(AttributeError):
+            sample.sample_id
+
+        ids = dataset.values("still_sample_id")
+        self.assertIsInstance(ids[0], str)
+
+        oids = dataset.values("_still_sample_id")
+        self.assertIsInstance(oids[0], ObjectId)
+
+        # Clear field
+
+        dataset.clone_sample_field("still_sample_id", "also_sample_id")
+        dataset.clear_sample_field("also_sample_id")
+
+        self.assertIsNone(sample.also_sample_id)
+
+        ids = dataset.values("also_sample_id")
+        self.assertIsNone(ids[0])
+
+        oids = dataset.values("_also_sample_id")
+        self.assertIsNone(oids[0])
+
+        # Delete field
+
+        dataset.delete_sample_field("still_sample_id")
+
+        schema = dataset.get_field_schema()
+        self.assertNotIn("still_sample_id", schema)
+
+        with self.assertRaises(AttributeError):
+            sample.still_sample_id
+
+        sample_view = dataset.view().first()
+
+        with self.assertRaises(AttributeError):
+            sample_view.still_sample_id
+
+    @skip_windows  # TODO: don't skip on Windows
+    @drop_datasets
     def test_clone_embedded_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(
@@ -1372,8 +1454,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.detections[0].field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_frame_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")
@@ -1408,8 +1490,8 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             frame.field_copy
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_embedded_frame_fields(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="video.mp4")

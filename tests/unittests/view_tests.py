@@ -17,7 +17,7 @@ from fiftyone import ViewField as F, VALUE
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetViewTests(unittest.TestCase):
@@ -177,8 +177,8 @@ class DatasetViewTests(unittest.TestCase):
 
 
 class ViewFieldTests(unittest.TestCase):
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -202,8 +202,8 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNone(sample1.predictions.field)
         self.assertIsNotNone(sample2.predictions.field)
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
