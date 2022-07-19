@@ -52,6 +52,9 @@ def serialize_value(value, extended=False):
         # FloatField
         return float(value)
 
+    if isinstance(value, ObjectId) and extended:
+        return {"$oid": str(value)}
+
     if type(value) is date:
         # DateField
         return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
@@ -62,7 +65,7 @@ def serialize_value(value, extended=False):
         if not extended:
             return binary
 
-        # @todo improve this
+        # @todo can we optimize this?
         return json.loads(json_util.dumps(binary))
 
     if isinstance(value, (list, tuple)):
@@ -74,9 +77,6 @@ def serialize_value(value, extended=False):
         return {
             k: serialize_value(v, extended=extended) for k, v in value.items()
         }
-
-    if isinstance(value, ObjectId) and extended:
-        return {"$oid": str(value)}
 
     return value
 
@@ -186,11 +186,10 @@ def get_implied_field_kwargs(value):
         return {"ftype": fof.FloatField}
 
     if isinstance(value, six.string_types):
-        try:
-            ObjectId(value)
-            return {"ftype": fof.ObjectIdField}
-        except:
-            return {"ftype": fof.StringField}
+        return {"ftype": fof.StringField}
+
+    if isinstance(value, ObjectId):
+        return {"ftype": fof.ObjectIdField}
 
     if isinstance(value, datetime):
         return {"ftype": fof.DateTimeField}
@@ -242,9 +241,6 @@ def get_implied_field_kwargs(value):
 
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
-
-    if isinstance(value, ObjectId):
-        return {"ftype": fof.ObjectIdField}
 
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value

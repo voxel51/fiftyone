@@ -289,12 +289,17 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         d = super().to_mongo(*args, **kwargs)
 
+        #
+        # We must manually serialize dynamic fields because MongoEngine doesn't
+        # have a `Field` instance to serialize them for us
+        #
+
         rename = {}
 
         for k, v in d.items():
             # pylint: disable=no-member
             if k not in self._fields:
-                # Store ObjectIds in private fields in the DB
+                # We store ObjectIds in private fields in the DB
                 if (
                     isinstance(v, ObjectId)
                     and k != "id"
@@ -330,6 +335,11 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     @classmethod
     def _from_son(cls, d, *args, **kwargs):
+        #
+        # We must manually deserialize dynamic fields because MongoEngine
+        # doesn't have a `Field` instance to deserialize them for us
+        #
+
         rename = {}
 
         for k, v in d.items():
@@ -338,6 +348,7 @@ class MongoEngineBaseDocument(SerializableDocument):
                 v = deserialize_value(v)
                 d[k] = v
 
+                # We store ObjectIds in private fields in the DB
                 if (
                     isinstance(v, ObjectId)
                     and k != "_id"

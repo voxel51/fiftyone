@@ -159,7 +159,6 @@ class _Document(object):
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
-        # @todo `use_db_field` hack
         if isinstance(value, ObjectId):
             value = str(value)
 
