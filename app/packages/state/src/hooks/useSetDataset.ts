@@ -1,10 +1,10 @@
-import { useTo } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { stateSubscription } from "../recoil";
 import useSendEvent from "./useSendEvent";
+import useTo from "./useTo";
 
 const useSetDataset = () => {
   const { to } = useTo({

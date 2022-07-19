@@ -1977,11 +1977,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/components@*, @fiftyone/components@workspace:packages/components":
+"@fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"
   dependencies:
     "@fiftyone/prettier-config": "*"
+    "@fiftyone/state": "*"
     "@types/react-input-autosize": ^2.2.1
     classnames: ^2.3.1
     framer-motion: ^6.2.7
@@ -2089,7 +2090,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
-    "@fiftyone/components": "*"
     "@fiftyone/prettier-config": "*"
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"

@@ -1,11 +1,11 @@
-import { getDatasetName, RouterContext } from "@fiftyone/components";
 import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { stateSubscription } from "../recoil";
-import { transformDataset } from "../utils";
+import { RouterContext } from "../routing";
+import { getDatasetName, transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
 import useStateUpdate from "./useStateUpdate";
 

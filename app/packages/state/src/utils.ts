@@ -1,5 +1,26 @@
-import * as fos from "@fiftyone/state";
 import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
+import { MutableRefObject } from "react";
+import { State } from "./recoil";
+
+import { matchPath, RoutingContext } from "./routing";
+
+export const deferrer =
+  (initialized: MutableRefObject<boolean>) =>
+  (fn: (...args: any[]) => void) =>
+  (...args: any[]): void => {
+    if (initialized.current) fn(...args);
+  };
+
+export const stringifyObj = (obj) => {
+  if (typeof obj !== "object" || Array.isArray(obj)) return obj;
+  return JSON.stringify(
+    Object.keys(obj)
+      .map((key) => {
+        return [key, obj[key]];
+      })
+      .sort((a, b) => a[0] - b[0])
+  );
+};
 
 export const filterView = (stages) =>
   JSON.stringify(
@@ -54,7 +75,7 @@ const convertTargets = (targets: { target: any; value: any }[]) => {
   );
 };
 
-export const transformDataset = (dataset: any): Readonly<fos.State.Dataset> => {
+export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
   const targets = Object.fromEntries(
     (dataset?.maskTargets || []).map(({ name, targets }) => [
       name,
@@ -74,4 +95,21 @@ export const transformDataset = (dataset: any): Readonly<fos.State.Dataset> => {
     maskTargets: targets,
     mediaType: dataset.mediaType === "image" ? "image" : "video",
   };
+};
+
+export const getDatasetName = (context: RoutingContext<any>): string => {
+  const result = matchPath(
+    context.pathname,
+    {
+      path: "/datasets/:name",
+      exact: true,
+    },
+    {}
+  );
+
+  if (result) {
+    return result.variables.name;
+  }
+
+  return null;
 };

@@ -10,10 +10,11 @@ import { rowAspectRatioThreshold } from "./recoil";
 import useResize from "./useResize";
 import usePage from "./usePage";
 import useExpandSample from "./useExpandSample";
-import { deferrer, stringifyObj } from "@fiftyone/components";
 import { useEventHandler } from "../../utils/hooks";
 
 import * as fos from "@fiftyone/state";
+import { stringifyObj } from "@fiftyone/state";
+import { deferrer } from "@fiftyone/state";
 
 const Grid: React.FC<{}> = () => {
   const [id] = useState(() => uuid());

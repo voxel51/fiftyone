@@ -21,8 +21,6 @@ import {
   iconContainer,
   Route,
   Link,
-  RouterContext,
-  getDatasetName,
 } from "@fiftyone/components";
 
 import gaConfig from "../ga";
@@ -38,8 +36,7 @@ import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { clone, isElectron } from "@fiftyone/utilities";
 import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-
-import {usePlugins} from '@fiftyone/plugins'
+import { getDatasetName, RouterContext } from "@fiftyone/state";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {

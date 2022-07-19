@@ -1,6 +1,5 @@
 import { useContext } from "react";
-
-import { EventsContext } from "@fiftyone/components";
+import { EventsContext } from "../contexts";
 
 export default (force: boolean = false) => {
   const { session } = useContext(EventsContext);

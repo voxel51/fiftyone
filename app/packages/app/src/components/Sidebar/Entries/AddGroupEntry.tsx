@@ -1,9 +1,10 @@
-import { getDatasetName, RouterContext } from "@fiftyone/components";
 import React, { useContext, useState } from "react";
 import { useRecoilCallback } from "recoil";
 import * as fos from "@fiftyone/state";
 
 import { InputDiv } from "./utils";
+import { RouterContext } from "@fiftyone/state";
+import { getDatasetName } from "@fiftyone/state";
 
 const AddGroup = () => {
   const [value, setValue] = useState("");

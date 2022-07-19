@@ -1,17 +1,27 @@
 import React from "react";
 import { createBrowserHistory, createMemoryHistory } from "history";
 import { Environment, loadQuery, PreloadedQuery } from "react-relay";
-import { OperationType, VariablesOf } from "relay-runtime";
+import {
+  Environment,
+  GraphQLResponse,
+  Network,
+  OperationType,
+  RecordSource,
+  Store,
+  VariablesOf,
+} from "relay-runtime";
 
 import {
+  FetchFunction,
+  getFetchFunction,
+  GraphQLError,
   isElectron,
   isNotebook,
   NotFoundError,
   Resource,
 } from "@fiftyone/utilities";
-import { Route } from "..";
 import RouteDefinition, { RouteBase } from "./RouteDefinition";
-import { getEnvironment } from "../use/useRouter";
+
 import { MatchPathResult, matchPath } from "./matchPath";
 
 export interface RouteData<
@@ -230,6 +240,35 @@ const prepareMatches = <T extends OperationType | undefined = OperationType>(
       })
     : [];
 };
+
+async function fetchGraphQL(
+  text: string | null | undefined,
+  variables: object
+): Promise<GraphQLResponse> {
+  const data = await getFetchFunction()<unknown, GraphQLResponse>(
+    "POST",
+    "/graphql",
+    {
+      query: text,
+      variables,
+    }
+  );
+
+  if ("errors" in data && data.errors) {
+    throw new GraphQLError(data.errors as unknown as GraphQLError[]);
+  }
+  return data;
+}
+
+const fetchRelay: FetchFunction = async (params, variables) => {
+  return fetchGraphQL(params.text, variables);
+};
+
+export const getEnvironment = () =>
+  new Environment({
+    network: Network.create(fetchRelay),
+    store: new Store(new RecordSource()),
+  });
 
 export const RouterContext = React.createContext(
   createRouter(getEnvironment(), [], { errors: false }).context
