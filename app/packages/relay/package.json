@@ -2,7 +2,7 @@
   "name": "@fiftyone/relay",
   "author": "Voxel51, Inc.",
   "version": "0.0.0",
-  "description": "FiftyOne App Relay queries, mutations, and subscriptions",
+  "description": "FiftyOne App Relay GraphQL queries, mutations, and subscriptions",
   "homepage": "https://github.com/voxel51/fiftyone/app/packages/state",
   "license": "Apache-2.0",
   "bugs": {

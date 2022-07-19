@@ -1965,6 +1965,9 @@ __metadata:
     recharts: 2.0.9
     recoil: 0.7.2
     recoil-relay: ^0.0.0
+    relay-compiler: ^14.0.0
+    relay-compiler-language-typescript: ^15.0.1
+    relay-config: ^12.0.1
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
     styled-components: ^5.3.3
