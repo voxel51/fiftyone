@@ -7711,8 +7711,9 @@ def _get_default_label_fields_for_exporter(
     if label_cls is None:
         if required:
             raise ValueError(
-                "Cannot select a default field when exporter does not provide "
-                "a `label_cls`"
+                "Unable to automatically select an appropriate label field to "
+                "export because the %s does not provide a `label_cls`"
+                % type(dataset_exporter)
             )
 
         return None
