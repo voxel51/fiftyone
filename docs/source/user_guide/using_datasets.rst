@@ -186,6 +186,62 @@ store an arbitrary list of string tags.
     the dataset's :meth:`tags <fiftyone.core.dataset.Dataset.tags>` property
     in-place to save the changes to the database.
 
+.. _dataset-stats:
+
+Dataset stats
+-------------
+
+You can use the :meth:`stats() <fiftyone.core.dataset.Dataset.stats>` method on
+a dataset to obtain information about the size of the dataset on disk,
+including its metadata in the database and optionally the size of the physical
+media on disk:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    fo.pprint(dataset.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 200,
+        'samples_bytes': 1290762,
+        'samples_size': '1.2MB',
+        'media_bytes': 24412374,
+        'media_size': '23.3MB',
+        'total_bytes': 25703136,
+        'total_size': '24.5MB',
+    }
+
+You can also invoke
+:meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` on a
+:ref:`dataset view <using-views>` to retrieve the same stats about any subset
+of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset[:10].select_fields("ground_truth")
+
+    fo.pprint(view.stats(include_media=True))
+
+.. code-block:: text
+
+    {
+        'samples_count': 10,
+        'samples_bytes': 10141,
+        'samples_size': '9.9KB',
+        'media_bytes': 1726296,
+        'media_size': '1.6MB',
+        'total_bytes': 1736437,
+        'total_size': '1.7MB',
+    }
+
 .. _storing-info:
 
 Storing info
