@@ -220,8 +220,8 @@ media on disk:
 
 You can also invoke
 :meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` on a
-:ref:`dataset view <using-views>` to retrieve the same stats about any subset
-of the dataset:
+:ref:`dataset view <using-views>` to retrieve stats for a specific subset of
+the dataset:
 
 .. code-block:: python
     :linenos:
