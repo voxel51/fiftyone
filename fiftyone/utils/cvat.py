@@ -4742,7 +4742,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _,
                 occluded_attr_name,
                 group_id_attr_name,
-            ) = self._to_cvat_attributes(label_info["attributes"])
+            ) = self._to_cvat_attributes(label_info.get("attributes", {}))
 
             if occluded_attr_name or group_id_attr_name:
                 return True
