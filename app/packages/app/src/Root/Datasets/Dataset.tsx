@@ -1,6 +1,6 @@
 import { Route, RouterContext } from "@fiftyone/components";
 import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 
@@ -11,6 +11,7 @@ import { datasetName } from "../../recoil/selectors";
 import transformDataset from "./transformDataset";
 import { filters } from "../../recoil/filters";
 import { State } from "../../recoil/types";
+import * as viewAtoms from "../../recoil/view";
 import { similarityParameters } from "../../components/Actions/Similar";
 import { getDatasetName } from "../../utils/generic";
 
@@ -93,6 +94,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
   const router = useContext(RouterContext);
   const name = useRecoilValue(datasetName);
+  const view = useRecoilValue(viewAtoms.view);
+  const viewRef = useRef(view);
+  viewRef.current = view;
   if (!dataset) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }
@@ -103,6 +107,8 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     update(({ reset }) => {
       reset(filters);
       reset(similarityParameters);
+      const state =
+        router.state && router.state.state ? router?.state.state || {} : {};
       return {
         colorscale:
           router.state && router.state.colorscale
@@ -113,8 +119,13 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
             ? (toCamelCase(router.state.config) as State.Config)
             : undefined,
         dataset: transformDataset(dataset),
-        state:
-          router.state && router.state.state ? router?.state.state : undefined,
+        state: {
+          ...state,
+          view,
+        },
+        variables: {
+          view: viewRef.current,
+        },
       };
     });
   }, [dataset, router]);
