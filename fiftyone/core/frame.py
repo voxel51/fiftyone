@@ -975,3 +975,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
