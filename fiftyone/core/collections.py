@@ -7468,6 +7468,22 @@ class SampleCollection(object):
             ).keys()
         ]
 
+    def _get_root_fields(self, fields):
+        root_fields = []
+        for field in fields:
+            if self.media_type == fom.VIDEO and field.startswith(
+                self._FRAMES_PREFIX
+            ):
+                # Converts `frames.root[.x.y]` to `frames.root`
+                root = ".".join(field.split(".", 2)[:2])
+            else:
+                # Converts `root[.x.y]` to `root`
+                root = field.split(".", 1)[0]
+
+            root_fields.append(root)
+
+        return root_fields
+
     def _validate_root_field(self, field_name, include_private=False):
         _ = self._get_root_field_type(
             field_name, include_private=include_private
