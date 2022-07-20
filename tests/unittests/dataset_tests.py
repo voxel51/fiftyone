@@ -1349,7 +1349,7 @@ class DatasetTests(unittest.TestCase):
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    def test_object_id_fields(self):
+    def test_object_id_fields1(self):
         dataset = fo.Dataset()
         sample = fo.Sample(filepath="image.jpg")
         dataset.add_sample(sample)
@@ -1426,6 +1426,42 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(AttributeError):
             sample_view.still_sample_id
+
+    @drop_datasets
+    def test_object_id_fields2(self):
+        #
+        # In order to add custom ObjectId fields to a dataset, you must first
+        # declare them
+        #
+
+        dataset = fo.Dataset()
+        dataset.add_sample_field("other_id", fo.ObjectIdField)
+
+        # ObjectIds are presented to user as
+        sample = fo.Sample(filepath="image.jpg", other_id=ObjectId())
+        self.assertIsInstance(sample.other_id, str)
+
+        # But they are correctly serialized as private ObjectId values
+        d = sample.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        dataset.add_sample(sample)
+
+        sample_view = dataset.view().first()
+        self.assertIsInstance(sample_view.other_id, str)
+
+        #
+        # You cannot dynamically add ObjectId fields because they are presented
+        # as strings and thus the wrong field type will be inferred
+        #
+
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(filepath="image.jpg", other_id=ObjectId())
+
+        # ValidationError: StringField cannot except ObjectId values
+        with self.assertRaises(Exception):
+            dataset.add_sample(sample)
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
