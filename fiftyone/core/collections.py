@@ -6890,7 +6890,7 @@ class SampleCollection(object):
         # Serialize samples
         samples = []
         for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+            sd = sample.to_dict(include_frames=True, include_private=True)
 
             if write_frame_labels:
                 frames = {"frames": sd.pop("frames", {})}

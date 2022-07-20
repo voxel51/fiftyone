@@ -624,7 +624,13 @@ class SampleView(_SampleMixin, DocumentView):
         )
 
         if self.selected_field_names or self.excluded_field_names:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            field_names = set(
+                self._get_field_names(include_private=include_private)
+            )
+            if include_frames and self.media_type == fomm.VIDEO:
+                field_names.add("frames")
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 

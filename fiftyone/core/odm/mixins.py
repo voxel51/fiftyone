@@ -123,7 +123,7 @@ class DatasetMixin(object):
 
     @property
     def field_names(self):
-        return self._get_fields_ordered(include_private=False)
+        return self._get_field_names(include_private=False)
 
     @classmethod
     def _doc_name(cls):

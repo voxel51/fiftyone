@@ -642,7 +642,10 @@ class DocumentView(_Document):
         This may be a subset of all fields of the document if fields have been
         selected or excluded.
         """
-        field_names = super().field_names
+        return self._get_field_names(include_private=False)
+
+    def _get_field_names(self, include_private=False):
+        field_names = super()._get_field_names(include_private=include_private)
 
         if self._selected_fields is not None:
             field_names = tuple(
@@ -732,7 +735,11 @@ class DocumentView(_Document):
         d = super().to_dict(include_private=include_private)
 
         if self._selected_fields or self._excluded_fields:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            field_names = set(
+                self._get_field_names(include_private=include_private)
+            )
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
@@ -740,11 +747,11 @@ class DocumentView(_Document):
         d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            d = {
-                k: v
-                for k, v in d.items()
-                if k in self.field_names or k == "_id"
-            }
+            # @todo handle ``name != db_field`` here
+            field_names = set(self._get_field_names(include_private=True))
+            field_names.add("_id")
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
