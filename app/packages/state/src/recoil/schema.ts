@@ -16,7 +16,6 @@ import {
 import * as atoms from "./atoms";
 import { State } from "./types";
 import * as viewAtoms from "./view";
-import { sidebarGroupsDefinition } from "../components/Sidebar";
 
 const RESERVED_FIELDS = [
   "id",

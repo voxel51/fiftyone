@@ -23,8 +23,10 @@ import * as fos from "@fiftyone/state";
 
 import { PillButton } from "../../utils";
 
-import { getDatasetName, RouterContext, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import Draggable from "./Draggable";
+import { getDatasetName } from "@fiftyone/state";
+import { RouterContext } from "@fiftyone/state";
 
 const groupLength = selectorFamily<number, { modal: boolean; group: string }>({
   key: "groupLength",

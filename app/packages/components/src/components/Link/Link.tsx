@@ -1,12 +1,14 @@
+import { RouterContext } from "@fiftyone/state";
 import React, { useCallback, useContext, useTransition } from "react";
-import { RouterContext } from "../../routing";
 
-const Link: React.FC<React.PropsWithChildren<{
-  to?: string;
-  title: string;
-  className?: string;
-  style?: React.CSSProperties;
-}>> = ({ children, className, style, title, to }) => {
+const Link: React.FC<
+  React.PropsWithChildren<{
+    to?: string;
+    title: string;
+    className?: string;
+    style?: React.CSSProperties;
+  }>
+> = ({ children, className, style, title, to }) => {
   const router = useContext(RouterContext);
   const [pending, startTransition] = useTransition();
 
@@ -24,13 +26,6 @@ const Link: React.FC<React.PropsWithChildren<{
               },
               [to, router]
             )
-          : undefined
-      }
-      onMouseEnter={
-        to
-          ? useCallback(() => {
-              router.preload(to);
-            }, [to, router])
           : undefined
       }
       style={style}

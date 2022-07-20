@@ -30,6 +30,9 @@
         "vite": "^3.0.0"
     },
     "dependencies": {
+        "@fiftyone/relay": "*",
+        "@fiftyone/utilities": "*",
+        "@microsoft/fetch-event-source": "^2.0.1",
         "lodash": "^4.17.21"
     }
 }

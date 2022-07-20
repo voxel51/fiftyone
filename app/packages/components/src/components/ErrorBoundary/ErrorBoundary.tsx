@@ -1,10 +1,10 @@
+import { useTo } from "@fiftyone/state";
 import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
 import { Clear, FileCopy } from "@material-ui/icons";
 import classnames from "classnames";
 import React, { PropsWithChildren, useLayoutEffect } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
 import { useCopyToClipboard } from "react-use";
-import { useTo } from "../../routing";
 
 import { scrollable } from "../../scrollable.module.css";
 

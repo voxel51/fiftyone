@@ -1,10 +1,4 @@
-import {
-  useRouter,
-  Loading,
-  EventsContext,
-  Theme,
-  getDatasetName,
-} from "@fiftyone/components";
+import { Loading, Theme } from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -25,7 +19,10 @@ import {
   useRefresh,
   useReset,
 } from "@fiftyone/state";
-import {usePlugins} from '@fiftyone/plugins'
+import { usePlugins } from "@fiftyone/plugins";
+import { useRouter } from "@fiftyone/state";
+import { EventsContext } from "@fiftyone/state";
+import { getDatasetName } from "@fiftyone/state";
 
 enum AppReadyState {
   CONNECTING = 0,
