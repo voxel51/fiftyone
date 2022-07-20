@@ -141,6 +141,20 @@ class ViewStage(object):
         """
         return None
 
+    def get_media_type(self, sample_collection):
+        """Returns the media type outputted by this stage when applied to the
+        given collection, if and only if it is different from the input type.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            the media type, or ``None`` if the stage does not change the media
+        """
+        return None
+
     def load_view(self, sample_collection):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
@@ -630,17 +644,26 @@ class ExcludeFields(ViewStage):
         excluded_fields = self.get_excluded_fields(
             sample_collection, frames=False
         )
+        excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
-        excluded_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_excluded_fields(sample_collection, frames=True)
-        ]
+        if sample_collection.media_type == fom.VIDEO:
+            excluded_frame_fields = self.get_excluded_fields(
+                sample_collection, frames=True
+            )
+            excluded_frame_fields = sample_collection._handle_db_fields(
+                excluded_frame_fields, frames=True
+            )
 
-        if excluded_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            excluded_fields = [f for f in excluded_fields if f != "frames"]
-            excluded_fields += excluded_frame_fields
+            excluded_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in excluded_frame_fields
+            ]
+
+            if excluded_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                excluded_fields = [f for f in excluded_fields if f != "frames"]
+                excluded_fields += excluded_frame_fields
 
         if not excluded_fields:
             return []
@@ -700,7 +723,7 @@ class ExcludeFields(ViewStage):
                 )
             )
 
-            defaults = [f for f in fields if f in default_frame_fields]
+            defaults = [f for f in frame_fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
@@ -2765,6 +2788,12 @@ class GroupBy(ViewStage):
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
+        match_expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines which groups to include in the output view. If
+            provided, this expression will be evaluated on the list of samples
+            in each group
         sort_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -2774,8 +2803,15 @@ class GroupBy(ViewStage):
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field_or_expr, sort_expr=None, reverse=False):
+    def __init__(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         self._field_or_expr = field_or_expr
+        self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
 
@@ -2783,6 +2819,11 @@ class GroupBy(ViewStage):
     def field_or_expr(self):
         """The field or expression to group by."""
         return self._field_or_expr
+
+    @property
+    def match_expr(self):
+        """An expression to apply to select groups in the output view."""
+        return self._match_expr
 
     @property
     def sort_expr(self):
@@ -2796,6 +2837,7 @@ class GroupBy(ViewStage):
 
     def to_mongo(self, _):
         field_or_expr = self._get_mongo_field_or_expr()
+        match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
         if etau.is_str(field_or_expr):
@@ -2806,6 +2848,9 @@ class GroupBy(ViewStage):
         pipeline = [
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
         ]
+
+        if match_expr is not None:
+            pipeline.append({"$match": match_expr})
 
         if sort_expr is not None:
             order = -1 if self._reverse else 1
@@ -2843,6 +2888,12 @@ class GroupBy(ViewStage):
 
         return self._field_or_expr
 
+    def _get_mongo_match_expr(self):
+        if isinstance(self._match_expr, foe.ViewExpression):
+            return self._match_expr.to_mongo(prefix="$docs")
+
+        return self._match_expr
+
     def _get_mongo_sort_expr(self):
         if isinstance(self._sort_expr, foe.ViewExpression):
             return self._sort_expr.to_mongo(prefix="$docs")
@@ -2852,6 +2903,7 @@ class GroupBy(ViewStage):
     def _kwargs(self):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
         ]
@@ -2863,6 +2915,12 @@ class GroupBy(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+            },
+            {
+                "name": "match_expr",
+                "type": "NoneType|json",
+                "placeholder": "match expression",
+                "default": "None",
             },
             {
                 "name": "sort_expr",
@@ -3543,6 +3601,276 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class UseGroup(ViewStage):
+    """Returns a view that treats the specific group slice as the primary
+    sample for each group in the collection.
+
+    .. note::
+
+        Use :class:`SelectGroup` if you want to write a view that extracts a
+        flattened list of samples from specific group(s).
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="center")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1-left.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-center.jpg",
+                    group=group1.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-right.jpg",
+                    group=group1.element("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-left.jpg",
+                    group=group2.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-center.jpg",
+                    group=group2.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-right.jpg",
+                    group=group2.element("right"),
+                ),
+            ]
+        )
+
+        #
+        # Use the "left" group
+        #
+
+        stage = fo.UseGroup("left")
+        view = dataset.add_stage(stage)
+
+        #
+        # Use the default ("center") group
+        #
+
+        stage = fo.UseGroup()
+        view = dataset.add_stage(stage)
+
+    Args:
+        name (None): a group name to use. If none is specified, the default
+            group name is used
+    """
+
+    def __init__(self, name=None):
+        self._name = name
+
+    @property
+    def name(self):
+        """The group name to use."""
+        return self._name
+
+    def to_mongo(self, sample_collection):
+        name = self._name
+        group_path = sample_collection.group_field + ".name"
+
+        if name is None:
+            name = sample_collection.default_group_name
+
+        return [{"$match": {"$expr": {"$eq": ["$" + group_path, name]}}}]
+
+    def validate(self, sample_collection):
+        if sample_collection.group_field is None:
+            raise ValueError(
+                "%s has no group fields" % type(sample_collection)
+            )
+
+    def _kwargs(self):
+        return [["name", self._name]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "name",
+                "type": "NoneType|str|list<str>",
+                "placeholder": "name (default=None)",
+                "default": "None",
+            }
+        ]
+
+
+class SelectGroup(ViewStage):
+    """Selects the samples in a collection with a given group name(s).
+
+    The returned view is a flattened non-grouped view containing only the
+    slice(s) of interest.
+
+    .. note::
+
+        Use :class:`UseGroup` if you want to write a view that processes a
+        specific group slice without flattening the group.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="center")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1-left.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-center.jpg",
+                    group=group1.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-right.jpg",
+                    group=group1.element("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-left.jpg",
+                    group=group2.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-center.jpg",
+                    group=group2.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-right.jpg",
+                    group=group2.element("right"),
+                ),
+            ]
+        )
+
+        #
+        # Retrieve the samples with the "center" group name
+        #
+
+        stage = fo.SelectGroup("center")
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve the samples with the "left" or "right" group names
+        #
+
+        stage = fo.SelectGroup(["left", "right"])
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve a flattened list of all samples
+        #
+
+        stage = fo.SelectGroup()
+        view = dataset.add_stage(stage)
+
+    Args:
+        name (None): a group name or list of group names to select. By default,
+            a flattened list of all samples is returned
+    """
+
+    def __init__(self, name=None):
+        self._name = name
+
+    @property
+    def name(self):
+        """The group name(s) to select."""
+        return self._name
+
+    def to_mongo(self, sample_collection):
+        if self._name is None:
+            return []
+
+        group_path = sample_collection.group_field + ".name"
+
+        if etau.is_container(self._name):
+            return [
+                {
+                    "$match": {
+                        "$expr": {"$in": ["$" + group_path, list(self._name)]}
+                    }
+                }
+            ]
+
+        return [{"$match": {"$expr": {"$eq": ["$" + group_path, self._name]}}}]
+
+    def get_media_type(self, sample_collection):
+        group_field = sample_collection.group_field
+        group_media_types = sample_collection.group_media_types
+
+        if self._name is None:
+            media_types = set(group_media_types.values())
+
+            if len(media_types) > 1:
+                raise ValueError(
+                    "Cannot select all groups when dataset contains multiple "
+                    "media types %s" % media_types
+                )
+
+            return next(iter(group_media_types.values()))
+
+        if etau.is_container(self._name):
+            names = list(self._name)
+
+            media_types = set()
+            for name in names:
+                if name not in group_media_types:
+                    raise ValueError(
+                        "Group field '%s' has no name '%s'"
+                        % (group_field, name)
+                    )
+
+                media_types.add(group_media_types[name])
+
+            if len(media_types) > 1:
+                raise ValueError(
+                    "Cannot select names %s with different media types %s "
+                    "from group field '%s'" % (names, media_types, group_field)
+                )
+
+            return next(iter(media_types))
+
+        if self._name not in group_media_types:
+            raise ValueError(
+                "Group field '%s' has no name '%s'" % (group_field, self._name)
+            )
+
+        return group_media_types[self._name]
+
+    def validate(self, sample_collection):
+        if sample_collection.group_field is None:
+            raise ValueError(
+                "%s has no group fields" % type(sample_collection)
+            )
+
+    def _kwargs(self):
+        return [["name", self._name]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "name",
+                "type": "NoneType|str|list<str>",
+                "placeholder": "name (default=None)",
+                "default": "None",
+            }
+        ]
 
 
 class MatchFrames(ViewStage):
@@ -4563,43 +4891,12 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
-        return self._get_selected_fields(
-            sample_collection, frames=frames, use_db_fields=False
-        )
-
-    def to_mongo(self, sample_collection):
-        selected_fields = self._get_selected_fields(
-            sample_collection, frames=False, use_db_fields=True
-        )
-
-        if sample_collection.media_type == fom.VIDEO:
-            selected_frame_fields = [
-                sample_collection._FRAMES_PREFIX + field
-                for field in self._get_selected_fields(
-                    sample_collection, frames=True, use_db_fields=True
-                )
-            ]
-
-            if selected_frame_fields:
-                # Don't project on root `frames` and embedded fields
-                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-                selected_fields = [f for f in selected_fields if f != "frames"]
-                selected_fields += selected_frame_fields
-
-        if not selected_fields:
-            return []
-
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
-    def _get_selected_fields(
-        self, sample_collection, frames=False, use_db_fields=False
-    ):
         if frames:
             if sample_collection.media_type != fom.VIDEO:
                 return None
 
             default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, use_db_fields=use_db_fields
+                include_private=True
             )
 
             selected_fields = []
@@ -4612,8 +4909,9 @@ class SelectFields(ViewStage):
                     selected_fields.append(field_name)
         else:
             default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, use_db_fields=use_db_fields
+                include_private=True
             )
+
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
 
@@ -4623,6 +4921,38 @@ class SelectFields(ViewStage):
                     selected_fields.append(field)
 
         return list(set(selected_fields) | set(default_fields))
+
+    def to_mongo(self, sample_collection):
+        selected_fields = self.get_selected_fields(
+            sample_collection, frames=False
+        )
+        selected_fields = sample_collection._handle_db_fields(
+            selected_fields, frames=False
+        )
+
+        if sample_collection.media_type == fom.VIDEO:
+            selected_frame_fields = self.get_selected_fields(
+                sample_collection, frames=True
+            )
+            selected_frame_fields = sample_collection._handle_db_fields(
+                selected_frame_fields, frames=True
+            )
+
+            selected_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in selected_frame_fields
+            ]
+
+            if selected_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                selected_fields = [f for f in selected_fields if f != "frames"]
+                selected_fields += selected_frame_fields
+
+        if not selected_fields:
+            return []
+
+        return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _needs_frames(self, sample_collection):
         return any(
@@ -6582,6 +6912,7 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroup,
     SelectLabels,
     SetField,
     Skip,
@@ -6592,6 +6923,7 @@ _STAGES = [
     ToEvaluationPatches,
     ToClips,
     ToFrames,
+    UseGroup,
 ]
 
 

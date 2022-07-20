@@ -3620,6 +3620,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session = requests.Session()
 
         if self._headers:
+            # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
         self._server_version = 2
@@ -6521,9 +6522,7 @@ class CVATLabel(object):
 
     def _set_id(self, label_id):
         try:
-            # Verify that ID is valid
-            ObjectId(label_id)
-
+            ObjectId(label_id)  # verify that ID is valid
             self.id = label_id
         except:
             pass

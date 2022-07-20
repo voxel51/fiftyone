@@ -147,10 +147,16 @@ class SampleCollection(object):
 
     @property
     def _element_str(self):
+        if self.media_type == fom.GROUP:
+            return "group"
+
         return "sample"
 
     @property
     def _elements_str(self):
+        if self.media_type == fom.GROUP:
+            return "groups"
+
         return "samples"
 
     @property
@@ -162,6 +168,27 @@ class SampleCollection(object):
     def media_type(self):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")
+
+    @property
+    def group_field(self):
+        """The current group field of the collection, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_field")
+
+    @property
+    def group_media_types(self):
+        """A dict mapping group names to media types, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_media_types")
+
+    @property
+    def default_group_name(self):
+        """The default group name of the collection, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement default_group_name")
 
     @property
     def info(self):
@@ -504,6 +531,73 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def iter_groups(self):
+        """Returns an iterator over the samples in the collection.
+
+        Returns:
+            an iterator that emits dicts mapping group names to
+            :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` instances, one per group
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        group_view = self.group_by(F(group_field + "._id"))
+
+        curr_id = None
+        group = {}
+
+        # @todo when `self` is a dataset, return `Sample` not `SampleView`
+        for sample in group_view.iter_samples():
+            group_id = sample[group_field].id
+            if group_id == curr_id:
+                group[sample[group_field].name] = sample
+            elif curr_id is None:
+                curr_id = group_id
+                group[sample[group_field].name] = sample
+            else:
+                curr_id = group_id
+                yield group
+
+                group = {}
+                group[sample[group_field].name] = sample
+
+        if group:
+            yield group
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.sample.Sample`
+            or :class:`fiftyone.core.sample.SampleView` instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        group_view = self.match(F(group_field + "._id") == ObjectId(group_id))
+
+        group = {
+            sample[group_field].name: sample
+            for sample in group_view.iter_samples()
+        }
+
+        if not group:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
+
+        return group
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
@@ -530,70 +624,52 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
         """
+        _, field = self._parse_field(path, include_private=include_private)
+        return field
+
+    def _parse_field(self, path, include_private=False):
         keys = path.split(".")
 
         if not keys:
-            return None
+            return None, None
+
+        field = None
+        resolved_keys = []
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
-            keys = keys[1:]
-        else:
-            schema = self.get_field_schema()
 
-        field = None
-        include_private and _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
-        for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
-
-            if idx != last and isinstance(field, fof.ListField):
-                field = field.field
-
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
-                include_private and _add_mapped_fields_as_private_fields(
-                    schema
-                )
-
-        return field
-
-    def _resolve_field(self, path):
-        keys = path.split(".")
-
-        if not keys:
-            return None
-
-        resolved_keys = []
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
             keys = keys[1:]
             resolved_keys.append("frames")
         else:
             schema = self.get_field_schema()
 
-        _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
+            field_name = _handle_id_field(
+                schema, field_name, include_private=include_private
+            )
 
-            resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, fof.ListField):
+            field = schema.get(field_name, None)
+
+            if field is None:
+                return None, None
+
+            resolved_keys.append(field.db_field or field.name)
+
+            if idx == len(keys) - 1:
+                continue
+
+            if isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
 
-        return ".".join(resolved_keys)
+        resolved_path = ".".join(resolved_keys)
+
+        return resolved_path, field
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1278,7 +1354,7 @@ class SampleCollection(object):
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, _, list_fields, _, id_to_str = self._parse_field_name(
+        _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
@@ -1300,8 +1376,6 @@ class SampleCollection(object):
             label_type = field_type.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
-            if is_frame_field:
-                path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
             if path in self._get_filtered_fields():
@@ -1333,11 +1407,11 @@ class SampleCollection(object):
             and isinstance(field_type.field, fof.EmbeddedDocumentField)
             and isinstance(self, fov.DatasetView)
         ):
-            list_fields = sorted(set(list_fields + [field_name]))
+            list_fields = sorted(set(list_fields + [_field_name]))
 
         if is_frame_field:
             self._set_frame_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -1347,7 +1421,7 @@ class SampleCollection(object):
             )
         else:
             self._set_sample_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -3453,7 +3527,13 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def group_by(self, field_or_expr, sort_expr=None, reverse=False):
+    def group_by(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         """Creates a view that reorganizes the samples in the collection so
         that they are grouped by a specified field or expression.
 
@@ -3487,6 +3567,12 @@ class SampleCollection(object):
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            match_expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines which groups to include in the output view. If
+                provided, this expression will be evaluated on the list of
+                samples in each group
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -3499,7 +3585,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.GroupBy(field_or_expr, sort_expr=sort_expr, reverse=reverse)
+            fos.GroupBy(
+                field_or_expr,
+                match_expr=match_expr,
+                sort_expr=sort_expr,
+                reverse=reverse,
+            )
         )
 
     @view_stage
@@ -4456,6 +4547,146 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.SelectFrames(frame_ids, omit_empty=omit_empty)
         )
+
+    @view_stage
+    def use_group(self, name=None):
+        """Returns a view that treats the specific group slice as the primary
+        sample for each group in the collection.
+
+        .. note::
+
+            Use :meth:`select_group` if you want to write a view that extracts
+            a flattened list of samples from specific group(s).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="center")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1-left.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-center.jpg",
+                        group=group1.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-right.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-left.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-center.jpg",
+                        group=group2.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-right.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Use the "left" group
+            #
+
+            view = dataset.use_group("left")
+
+            #
+            # Use the default ("center") group
+            #
+
+            view = dataset.use_group()
+
+        Args:
+            name (None): the group name to use. If none is specified, the
+                default group name is used
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.UseGroup(name=name))
+
+    @view_stage
+    def select_group(self, name=None):
+        """Selects the samples in the collection with a given group name(s).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="center")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1-left.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-center.jpg",
+                        group=group1.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-right.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-left.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-center.jpg",
+                        group=group2.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-right.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Retrieve the samples with the "center" group name
+            #
+
+            view = dataset.select_group("center")
+
+            #
+            # Retrieve the samples with the "left" or "right" group names
+            #
+
+            view = dataset.select_group(["left", "right"])
+
+            #
+            # Retrieve a flattened list of all samples
+            #
+
+            view = dataset.select_group()
+
+        Args:
+            name (None): a group name or list of group names to select. By
+                default, a flattened list of all samples is returned
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.SelectGroup(name=name))
 
     @view_stage
     def select_labels(
@@ -5787,6 +6018,87 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
+    def quantiles(self, field_or_expr, quantiles, expr=None, safe=False):
+        """Computes the quantile(s) of the field values of a collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the quantiles of a numeric field
+            #
+
+            quantiles = dataset.quantiles("numeric_field", [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+            #
+            # Compute the quantiles of a numeric list field
+            #
+
+            quantiles = dataset.quantiles("numeric_list_field", [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+            #
+            # Compute the mean of a transformation of a numeric field
+            #
+
+            quantiles = dataset.quantiles(2 * (F("numeric_field") + 1), [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            quantiles: the quantile or iterable of quantiles to compute. Each
+                quantile must be a numeric value in ``[0, 1]``
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
+
+        Returns:
+            the quantile or list of quantiles
+        """
+        make = lambda field_or_expr: foa.Quantiles(
+            field_or_expr, quantiles, expr=expr, safe=safe
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
     def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
@@ -6767,7 +7079,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field = self._resolve_field(field)
+            _field, _ = self._parse_field(field, include_private=True)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
@@ -7454,6 +7766,14 @@ class SampleCollection(object):
 
         return fields_map
 
+    def _handle_db_field(self, field_name, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return db_fields_map.get(field_name, field_name)
+
+    def _handle_db_fields(self, field_names, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return [db_fields_map.get(f, f) for f in field_names]
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
@@ -7479,6 +7799,22 @@ class SampleCollection(object):
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             ).keys()
         ]
+
+    def _get_root_fields(self, fields):
+        root_fields = []
+        for field in fields:
+            if self.media_type == fom.VIDEO and field.startswith(
+                self._FRAMES_PREFIX
+            ):
+                # Converts `frames.root[.x.y]` to `frames.root`
+                root = ".".join(field.split(".", 2)[:2])
+            else:
+                # Converts `root[.x.y]` to `root`
+                root = field.split(".", 1)[0]
+
+            root_fields.append(root)
+
+        return root_fields
 
     def _validate_root_field(self, field_name, include_private=False):
         _ = self._get_root_field_type(
@@ -7707,8 +8043,9 @@ def _get_default_label_fields_for_exporter(
     if label_cls is None:
         if required:
             raise ValueError(
-                "Cannot select a default field when exporter does not provide "
-                "a `label_cls`"
+                "Unable to automatically select an appropriate label field to "
+                "export because the %s does not provide a `label_cls`"
+                % type(dataset_exporter)
             )
 
         return None
@@ -8096,6 +8433,26 @@ def _parse_field_name(
     )
 
 
+def _handle_id_field(schema, field_name, include_private=False):
+    if not include_private and field_name.startswith("_"):
+        return None
+
+    if field_name in schema:
+        return field_name
+
+    if field_name.startswith("_"):
+        _field_name = field_name[1:]
+    else:
+        _field_name = "_" + field_name
+
+    field = schema.get(_field_name, None)
+
+    if isinstance(field, fof.ObjectIdField):
+        return _field_name
+
+    return field_name
+
+
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
         return field_name, False, False
@@ -8425,10 +8782,10 @@ def _handle_existing_dirs(
                 etau.delete_file(_labels_path)
 
 
-def _add_mapped_fields_as_private_fields(schema):
+def _add_db_fields_to_schema(schema):
     additions = {}
     for field in schema.values():
-        if field.db_field:
+        if field.db_field != field.name:
             additions[field.db_field] = field
 
     schema.update(additions)

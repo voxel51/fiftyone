@@ -17,6 +17,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import VALUE
+from fiftyone.core.expressions import ViewExpression as E
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -521,6 +522,13 @@ class Count(Aggregation):
 
     def to_mongo(self, sample_collection):
         if self._field_name is None and self._expr is None:
+            if sample_collection.group_field is not None:
+                group_id = sample_collection.group_field + "._id"
+                return [
+                    {"$group": {"_id": "$" + group_id}},
+                    {"$count": "count"},
+                ]
+
             return [{"$count": "count"}]
 
         path, pipeline, _, _, _ = _parse_field_and_expr(
@@ -1323,6 +1331,171 @@ class Mean(Aggregation):
         pipeline.append({"$group": {"_id": None, "mean": {"$avg": value}}})
 
         return pipeline
+
+
+class Quantiles(Aggregation):
+    """Computes the quantile(s) of the field values of a collection.
+
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute the quantiles of a numeric field
+        #
+
+        aggregation = fo.Quantiles("numeric_field", [0.1, 0.5, 0.9])
+        quantiles = dataset.aggregate(aggregation)
+        print(quantiles)  # the quantiles
+
+        #
+        # Compute the quantiles of a numeric list field
+        #
+
+        aggregation = fo.Quantiles("numeric_list_field", [0.1, 0.5, 0.9])
+        quantiles = dataset.aggregate(aggregation)
+        print(quantiles)  # the quantiles
+
+        #
+        # Compute the mean of a transformation of a numeric field
+        #
+
+        aggregation = fo.Quantiles(2 * (F("numeric_field") + 1), [0.1, 0.5, 0.9])
+        quantiles = dataset.aggregate(aggregation)
+        print(quantiles)  # the quantiles
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        quantiles: the quantile or iterable of quantiles to compute. Each
+            quantile must be a numeric value in ``[0, 1]``
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
+    """
+
+    def __init__(self, field_or_expr, quantiles, expr=None, safe=False):
+        quantiles_list, is_scalar = self._parse_quantiles(quantiles)
+
+        super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._quantiles = quantiles
+
+        self._quantiles_list = quantiles_list
+        self._is_scalar = is_scalar
+
+    def _kwargs(self):
+        return [
+            ["field_or_expr", self._field_name],
+            ["quantiles", self._quantiles],
+            ["expr", self._expr],
+            ["safe", self._safe],
+        ]
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``None`` or ``[None, None, None]``
+        """
+        if self._is_scalar:
+            return None
+
+        return [None] * len(self._quantiles_list)
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the quantile or list of quantiles
+        """
+        if self._is_scalar:
+            return d["quantiles"][0]
+
+        return d["quantiles"]
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, _, id_to_str, _ = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
+        )
+
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
+        # Compute quantile
+        # Note that we don't need to explicitly handle empty `values` here
+        # because the `group` stage only outputs a document if there's at least
+        # one value to compute on!
+        array = F("values").sort(numeric=True)
+        idx = ((F() * array.length()).ceil() - 1).max(0)
+        quantile_expr = array.let_in(E(self._quantiles_list).map(array[idx]))
+
+        pipeline.extend(
+            [
+                {"$match": {"$expr": {"$isNumber": value}}},
+                {"$group": {"_id": None, "values": {"$push": value}}},
+                {"$project": {"quantiles": quantile_expr.to_mongo()}},
+            ]
+        )
+
+        return pipeline
+
+    def _parse_quantiles(self, quantiles):
+        is_scalar = not etau.is_container(quantiles)
+
+        if is_scalar:
+            quantiles = [quantiles]
+        else:
+            quantiles = list(quantiles)
+
+        if any(not etau.is_numeric(q) or q < 0 or q > 1 for q in quantiles):
+            raise ValueError(
+                "Quantiles must be numbers in [0, 1]; found %s" % quantiles
+            )
+
+        return quantiles, is_scalar
 
 
 class Std(Aggregation):
