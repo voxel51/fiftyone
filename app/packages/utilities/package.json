@@ -13,7 +13,6 @@
     "dev": "vite"
   },
   "prettier": "@fiftyone/prettier-config",
-  "private": true,
   "files": [
     "dist",
     "README.md"

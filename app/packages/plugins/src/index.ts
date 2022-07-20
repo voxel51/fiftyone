@@ -1,15 +1,21 @@
 import React, { FunctionComponent, useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { getFetchFunction } from "@fiftyone/utilities";
+import * as recoil from "recoil";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
     __fo_plugin_settings__: PluginSettings;
     React: any;
+    ReactDOM: any;
+    recoil: any;
   }
 }
 
 // required for plugins to use the same instance of React
 window.React = React;
+window.ReactDOM = ReactDOM;
+window.recoil = recoil;
 
 function usingRegistry() {
   if (!window.__fo_plugin_registry__)

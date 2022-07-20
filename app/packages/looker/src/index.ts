@@ -216,6 +216,7 @@ export abstract class Looker<
   protected dispatchEvent(eventType: string, detail: any): void {
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
+        // @ts-ignore
         new detail.constructor(detail.type, detail)
       );
       return;

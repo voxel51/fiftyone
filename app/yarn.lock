@@ -1977,7 +1977,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/components@*, @fiftyone/components@workspace:packages/components":
+"@fiftyone/components@workspace:packages/components":
   version: 0.0.0-use.local
   resolution: "@fiftyone/components@workspace:packages/components"
   dependencies:
@@ -2070,7 +2070,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/relay@*, @fiftyone/relay@workspace:packages/relay":
+"@fiftyone/relay@workspace:packages/relay":
   version: 0.0.0-use.local
   resolution: "@fiftyone/relay@workspace:packages/relay"
   dependencies:
@@ -2089,11 +2089,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/state@workspace:packages/state"
   dependencies:
-    "@fiftyone/components": "*"
     "@fiftyone/prettier-config": "*"
-    "@fiftyone/relay": "*"
-    "@fiftyone/utilities": "*"
-    "@microsoft/fetch-event-source": ^2.0.1
     lodash: ^4.17.21
     prettier: ^2.7.1
     typescript: ^4.7.4
