@@ -164,36 +164,16 @@ The fiftyone python server will then detect this as an installed plugin and the 
 
 ```jsx
 import * as fop from "@fiftyone/plugins";
-import * as fov from "@fiftyone/visualizer";
-import { Canvas, ThreeEvent, useLoader } from "@react-three/fiber";
-import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
-import { OrbitControls } from "@react-three/drei";
-
-// this is a example using existing react libraries
-// to build a bespoke PointCloud Visualizer
-function PointCloudMesh({ points }) {
-  return (
-    <primitive object={points}>
-      <pointsMaterial color={"orange"} size={0.0001} />
-    </primitive>
-  );
-}
+import * as fos from "@fiftyone/visualizer";
 
 function PointCloud({ src }) {
-  const points = useLoader(PCDLoader, src);
-
-  return (
-    <Canvas>
-      <PointCloudMesh points={points} />
-    </Canvas>
-  );
+  // TODO: implement your visualizer using React
 }
-// end of existing react library usage
 
 // this separate components shows where the fiftyone plugin
 // dependent code ends and the pure react code begins
 function CustomVisualizer({ sample }) {
-  const src = fov.getSampleSrc(sample.filepath);
+  const src = fos.getSampleSrc(sample.filepath);
   // now that we have all the data we need
   // we can delegate to code that doesn't depend
   // on the fiftyone plugin api
@@ -206,16 +186,7 @@ fop.registerComponent({
   // tell fiftyone you want to provide a Visualizer
   type: PluginComponentTypes.Visualizer,
   // activate this plugin when the mediaType is PointCloud
-  // and the modal is open
-  activators: [
-    // each activator is a function that returns true
-    // given contextual information (mode, mediaType, etc)
-    fop.activators.mediaTypes.pointCloud, // | video | image
-    fop.activators.vizualizerMode.modal, // | thumbnail
-    // you can also provide your own custom activators
-    // all must return true to activate the plugin
-    ({ sample }) => sample.myField === "myValue",
-  ],
+  activator: ({ dataset }) => dataset.mediaType === "PointCloud",
 });
 ```
 
@@ -223,24 +194,33 @@ fop.registerComponent({
 
 ```jsx
 import * as fop from "@fiftyone/plugins";
-import AwesomeMap from "great-react-mapping-library";
+import * as fos from "@fiftyone/plugins";
+import * as foa from "@fiftyone/aggregations";
+import AwesomeMap from "react-mapping-library";
 
-function CustomPlot({ dataset }) {
-  const [aggregate, points, loading] = fop.useAggregation();
+function CustomPlot() {
+  const dataset = useRecoilValue(fos.dataset);
+  const view = useRecoilValue(fos.view);
+  const filters = useRecoilValue(fos.filters);
+  const [aggregate, points, loading] = foa.useAggregation({
+    dataset,
+    filters,
+    view,
+  });
 
   React.useEffect(() => {
     aggregate(
       [
-        new fop.aggregations.Values({
+        new foa.aggregations.Values({
           fieldOrExpr: "id",
         }),
-        new fop.aggregations.Values({
+        new foa.aggregations.Values({
           fieldOrExpr: "location.point.coordinates",
         }),
       ],
       dataset.name
     );
-  }, []);
+  }, [dataset, filters, view]);
 
   if (loading) return <h1>Loading</h1>;
 
@@ -255,80 +235,42 @@ fop.registerComponent({
   // used for the plot selector button
   label: "Map",
   // only show the Map plot when the dataset has Geo data
-  activator: ({ dataset }) => dataset.sampleFields.geoPoints,
+  activator: ({ dataset }) => dataset.sampleFields.location,
 });
 ```
 
 ### Reacting to State Changes
 
 ```tsx
-import * as fop from '@fiftyone/plugins'
+import * as fos from '@fiftyone/state'
+import * as recoil from 'recoil'
 
 // this example demonstrates handling updates to
 // filters/sidebar, but applies to everything
 // listed under "state" below
 function MyPlugin() {
-  // fop.useValue() works just like useRecoilValue()
-  const activeFields = fop.useValue(fop.state.activeFields)
+  const activeFields = recoil.useRecoilValue(fos.activeFields)
 
   return <ul>{activeFields.map(f => <li>{f.name}</li>)}
 }
 ```
 
-### State
-
-Plugins can use the values listed below. Changes
-made by other components to this state will
-cause the plugin components to automatically update.
-
-Note: state is read-only.
-
-```ts
-type State = {
-  modal: Boolean;
-  activeFields: Field[];
-  pathFilter: Filter;
-  fullscreen: Boolean;
-  timeZone: String;
-  showSkeletons: Boolean;
-  defaultSkeleton: Skeleton;
-  skeletons: Skeletons[];
-  pointFilter: (path: string, value: Point) => boolean;
-  selectedLabels: Labels[];
-  thumbnail: Boolean;
-  frameRate: Number;
-  frameNumber: Number;
-  dataset: Dataset;
-  sample: Sample;
-  error: AppError;
-  config: PluginConfig;
-};
-```
-
-### Interactivity
+### Interactivity and State
 
 If your plugin only has internal state, you can use existing state management to achieve your desired ux. Eg. in a 3d Visualizer, you might want to use Thee.js and its object model, events, and state management. Or just use your own React hooks to maintain your plugin components internal state.
 
-Note: multiple plugins cooridinating custom state is not currently supported by the plugin api.
-
-If you want to allow users to interact with other aspects of fiftyone through your plugin, you can use the api below.
+If you want to allow users to interact with other aspects of fiftyone through your plugin, you can use the `@fiftyone/state` package.
 
 ```jsx
 // note: similar to react hooks, these must be used in the context
 // of a React component
 
 // select a dataset
-const selectLabel = fos.useSelectLabel();
+const selectLabel = fos.useOnSelectLabel();
 
 // in a callback
 selectLabel({ id: "labelId", field: "fieldName" });
 ```
-
-Available Hooks:
-
-- TBD
-
-Note: additional actions will be added. We would like to keep this list as minimal as possible.
 
 ## Reading Settings in Your Plugin
 
@@ -372,31 +314,33 @@ In a fiftyone plugin this same query can be performed using the `useAggregation(
 
 ```js
 import * as fop from "@fiftyone/plugins";
+import * as fos from "@fiftyone/state";
+import * as foa from "@fiftyone/aggregations";
+import * as recoil from "recoil";
 
 function useGeoDataNear() {
-  const dataset = fop.useState(fop.state.dataset);
-  const [origin, setOrigin] = React.useState({ lat: 0, lng: 0 });
-  const availableFields = findAvailableFields(dataset.fields);
-  const [aggregate, points, isLoading] = fop.useAggregation(dataset.name);
+  const dataset = useRecoilValue(fos.dataset);
+  const view = useRecoilValue(fos.view);
+  const filters = useRecoilValue(fos.filters);
+  const [aggregate, points, isLoading] = foa.useAggregation({
+    dataset,
+    filters,
+    view,
+  });
+  const availableFields = findAvailableFields(dataset.sampleFields);
   const [selectedField, setField] = React.useState(availableFields[0]);
 
   React.useEffect(() => {
     aggregate([
-      fop.aggregations.GeoNear({
-        point: origin,
-        locationField: selectedField,
-        maxDistance: 2,
-        query: {
-          category: "Parks",
-        },
+      new foa.aggregations.Values({
+        fieldOrExpr: "location.point.coordinates",
       }),
     ]);
-  }, [origin]);
+  }, []);
 
   return {
     points,
     isLoading,
-    setOrigin,
     setField,
     availableFields,
     selectedField,
@@ -404,19 +348,12 @@ function useGeoDataNear() {
 }
 
 function MapPlugin() {
-  const {
-    points,
-    isLoading,
-    setOrigin,
-    setField,
-    availableFields,
-    selectedField,
-  } = useGeoDataNear();
+  const { points, isLoading, setField, availableFields, selectedField } =
+    useGeoDataNear();
 
   return (
     <Map
       points={points}
-      onMoveCamera={(o) => setOrigin(o)}
       onSelectField={(f) => setField(f)}
       selectedField={selectedField}
       locationFields={availableFields}

@@ -2,6 +2,7 @@ import React, { FunctionComponent, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { getFetchFunction } from "@fiftyone/utilities";
 import * as recoil from "recoil";
+import * as fos from "@fiftyone/state";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -9,6 +10,7 @@ declare global {
     React: any;
     ReactDOM: any;
     recoil: any;
+    __fos__: any;
   }
 }
 
@@ -16,6 +18,7 @@ declare global {
 window.React = React;
 window.ReactDOM = ReactDOM;
 window.recoil = recoil;
+window.__fos__ = fos;
 
 function usingRegistry() {
   if (!window.__fo_plugin_registry__)

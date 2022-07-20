@@ -45,45 +45,6 @@ const ContentColumn = styled.div`
   flex-direction: column;
 `;
 
-interface SelectEvent {
-  detail: {
-    id: string;
-    field: string;
-    frameNumber?: number;
-  };
-}
-
-const useOnSelectLabel = () => {
-  const send = fos.useSetSelectedLabels();
-  return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-        const { sample } = get(fos.modal);
-        let labels = {
-          ...get(fos.selectedLabels),
-        };
-        if (labels[id]) {
-          delete labels[id];
-        } else {
-          labels[id] = {
-            field,
-            sampleId: sample._id,
-            frameNumber,
-          };
-        }
-
-        set(fos.selectedLabels, labels);
-        send(
-          Object.entries(labels).map(([labelId, data]) => ({
-            ...data,
-            labelId,
-          }))
-        );
-      },
-    []
-  );
-};
-
 const SampleModal = () => {
   const data = useRecoilValue(fos.modal);
   if (!data) {
@@ -97,7 +58,7 @@ const SampleModal = () => {
 
   const sampleSrc = fos.getSampleSrc(filepath, _id);
   const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
-  const onSelectLabel = useOnSelectLabel();
+  const onSelectLabel = fos.useOnSelectLabel();
   const tagText = fos.useTagText(true);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();

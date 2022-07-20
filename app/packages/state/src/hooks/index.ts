@@ -14,5 +14,6 @@ export { default as useSetSelected } from "./useSetSelected";
 export { default as useSetSelectedLabels } from "./useSetSelectedLabels";
 export { default as useSetView } from "./useSetView";
 export { default as useStateUpdate } from "./useStateUpdate";
+export * from "./useOnSelectLabel";
 export * from "./useStateUpdate";
 export { default as useTo } from "./useTo";
