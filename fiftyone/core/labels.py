@@ -326,10 +326,6 @@ class _HasID(Label):
     def _id(self):
         return ObjectId(self.id)
 
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
-
 
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`
