@@ -134,7 +134,7 @@ class Frames(object):
     @property
     def _sample_id(self):
         if self._dataset._is_clips:
-            return self._sample._doc.sample_id
+            return ObjectId(self._sample._doc.sample_id)
 
         return self._sample._id
 
@@ -911,14 +911,12 @@ class Frame(Document, metaclass=FrameSingleton):
 
     @property
     def sample_id(self):
-        if not self._in_db:
-            return None
-
-        return str(self._doc._sample_id)
+        return self._doc._sample_id
 
     @property
     def _sample_id(self):
-        return self._doc._sample_id
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
 
     def save(self):
         """Saves the frame to the database."""
@@ -977,3 +975,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None

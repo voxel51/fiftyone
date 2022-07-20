@@ -1385,6 +1385,34 @@ class DetectionsTests(unittest.TestCase):
 
         self._evaluate_open_images(dataset, kwargs)
 
+    @drop_datasets
+    def test_load_evaluation_view_select_fields(self):
+        dataset = self._make_detections_dataset()
+
+        dataset.clone_sample_field("predictions", "predictions2")
+
+        dataset.evaluate_detections(
+            "predictions", gt_field="ground_truth", eval_key="eval"
+        )
+        dataset.evaluate_detections(
+            "predictions2", gt_field="ground_truth", eval_key="eval2"
+        )
+
+        view = dataset.load_evaluation_view("eval", select_fields=True)
+
+        schema = view.get_field_schema()
+        self.assertNotIn("predictions2", schema)
+        self.assertNotIn("eval2_tp", schema)
+        self.assertNotIn("eval2_fp", schema)
+        self.assertNotIn("eval2_fn", schema)
+
+        sample = view.last()
+        detection = sample["ground_truth"].detections[0]
+
+        self.assertIsNotNone(detection["eval"])
+        with self.assertRaises(KeyError):
+            detection["eval2"]
+
 
 class VideoDetectionsTests(unittest.TestCase):
     def _make_video_detections_dataset(self):

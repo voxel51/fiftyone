@@ -42,7 +42,7 @@ class ClipView(fos.SampleView):
 
     @property
     def _sample_id(self):
-        return self._doc.sample_id
+        return ObjectId(self._doc.sample_id)
 
     def save(self):
         """Saves the clip to the database."""

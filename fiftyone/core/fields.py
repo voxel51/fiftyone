@@ -72,7 +72,17 @@ class IntField(mongoengine.fields.IntField, Field):
 class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return ObjectId(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return str(value)
 
 
 class UUIDField(mongoengine.fields.UUIDField, Field):
@@ -642,11 +652,6 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         fields = {}
 
         for name, field in self.document_type._fields.items():
-            # By convention, ObjectId fields are always exposed to users as
-            # public string values
-            if isinstance(field, ObjectIdField) and name.startswith("_"):
-                name = name[1:]
-
             if not include_private and name.startswith("_"):
                 continue
 

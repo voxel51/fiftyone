@@ -9,6 +9,7 @@ from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
 
+from bson import ObjectId
 import unittest
 import numpy as np
 
@@ -17,7 +18,7 @@ from fiftyone import ViewField as F, VALUE
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 
-from decorators import drop_datasets
+from decorators import drop_datasets, skip_windows
 
 
 class DatasetViewTests(unittest.TestCase):
@@ -175,10 +176,63 @@ class DatasetViewTests(unittest.TestCase):
         detections = dataset[sample_view.id].test_dets.detections
         self.assertListEqual(detections, [])
 
+    @drop_datasets
+    def test_view_ids(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+
+    @drop_datasets
+    def test_view_ids_video(self):
+        sample = fo.Sample(filepath="video.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+
+        self.assertIsNone(sample.id, str)
+        self.assertIsNone(sample._id, ObjectId)
+        self.assertIsNone(frame.id, str)
+        self.assertIsNone(frame._id, ObjectId)
+        self.assertIsNone(frame.sample_id, str)
+        self.assertIsNone(frame._sample_id, ObjectId)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample._id, ObjectId)
+        self.assertIsInstance(frame.id, str)
+        self.assertIsInstance(frame._id, ObjectId)
+        self.assertIsInstance(frame.sample_id, str)
+        self.assertIsInstance(frame._sample_id, ObjectId)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        self.assertIsInstance(sample_view.id, str)
+        self.assertIsInstance(sample_view._id, ObjectId)
+        self.assertIsInstance(frame_view.id, str)
+        self.assertIsInstance(frame_view._id, ObjectId)
+        self.assertIsInstance(frame_view.sample_id, str)
+        self.assertIsInstance(frame_view._sample_id, ObjectId)
+
 
 class ViewFieldTests(unittest.TestCase):
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
@@ -202,8 +256,8 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNone(sample1.predictions.field)
         self.assertIsNotNone(sample2.predictions.field)
 
+    @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
-    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
         sample1 = fo.Sample(
