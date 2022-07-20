@@ -696,19 +696,19 @@ class Group(EmbeddedDocument):
         name (None): the group name
     """
 
-    _id = ObjectIdField(default=ObjectId)
+    id = ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
     name = StringField()
 
     @property
-    def id(self):
-        return str(self._id)
+    def _id(self):
+        return ObjectId(self.id)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
-        return ("id",) + self._fields_ordered
+        return self._fields_ordered
 
     def element(self, name):
-        return self.__class__(_id=self._id, name=name)
+        return self.__class__(id=self.id, name=name)
 
 
 class GroupField(EmbeddedDocumentField):
