@@ -703,10 +703,6 @@ class Group(EmbeddedDocument):
     def _id(self):
         return ObjectId(self.id)
 
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
-
     def element(self, name):
         return self.__class__(id=self.id, name=name)
 
