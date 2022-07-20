@@ -35,6 +35,7 @@ import fiftyone.core.expressions as foex
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
@@ -402,12 +403,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @group_field.setter
     def group_field(self, field_name):
-        ftype = self._get_field_type(field_name)
-        if not issubclass(ftype, fof.GroupField):
-            raise ValueError(
-                "Cannot set group field to '%s' because the field has type %s"
-                % (field_name, ftype)
-            )
+        field = self.get_field(field_name)
+        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
+            field.document_type, fog.Group
+        ):
+            raise ValueError("Field '%s' is not a Group field" % field_name)
 
         self._group_field = field_name
 
@@ -979,7 +979,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
-        if issubclass(ftype, fof.GroupField):
+        if embedded_doc_type is not None and issubclass(
+            embedded_doc_type, fog.Group
+        ):
             self._add_group_field(field_name)
         else:
             self._sample_doc_cls.add_field(
@@ -1016,7 +1018,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.add_sample_field(field_name, **field_kwargs)
 
     def _add_implied_sample_field(self, field_name, value):
-        if isinstance(value, fof.Group):
+        if isinstance(value, fog.Group):
             self._add_group_field(field_name, default=value.name)
         else:
             self._sample_doc_cls.add_implied_field(field_name, value)
@@ -1051,7 +1053,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if issubclass(ftype, fof.GroupField):
+        if embedded_doc_type is not None and issubclass(
+            embedded_doc_type, fog.Group
+        ):
             raise ValueError(
                 "Cannot create frame-level group field '%s'. Group fields "
                 "must be top-level sample fields" % field_name
@@ -1093,7 +1097,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if isinstance(value, fof.Group):
+        if isinstance(value, fog.Group):
             raise ValueError(
                 "Cannot create frame-level group field '%s'. Group fields "
                 "must be top-level sample fields" % field_name
@@ -1121,8 +1125,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_doc_cls.add_field(
             field_name,
-            fof.GroupField,
-            embedded_doc_type=fof.Group,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fog.Group,
         )
 
         if self._group_field is None:
@@ -4642,7 +4646,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 value = sample[field_name]
 
-                if isinstance(value, fof.Group):
+                if isinstance(value, fog.Group):
                     self._expand_group_schema(sample, field_name)
 
                 if field_name in schema:
@@ -4651,7 +4655,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                if isinstance(value, fof.Group):
+                if isinstance(value, fog.Group):
                     self._add_group_field(field_name, default=value.name)
                 else:
                     self._sample_doc_cls.add_implied_field(field_name, value)
@@ -4692,7 +4696,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                if isinstance(value, fof.Group):
+                if isinstance(value, fog.Group):
                     raise ValueError(
                         "Cannot create frame-level group field '%s'; group "
                         "fields may only be top-level sample fields"
@@ -4741,7 +4745,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             non_existent_fields = set()
 
             for field_name, value in sample.iter_fields():
-                if isinstance(value, fof.Group):
+                if isinstance(value, fog.Group):
                     if self.media_type != fom.GROUP:
                         raise ValueError(
                             "Only datasets with media type '%s' may contain "
@@ -5120,7 +5124,9 @@ def _load_dataset(name, virtual=False):
 
 def _get_group_field(dataset):
     for field_name, field in dataset.get_field_schema().items():
-        if isinstance(field, fof.GroupField):
+        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+            field.document_type, fog.Group
+        ):
             return field_name
 
     return None
@@ -6309,7 +6315,7 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
 
 def _get_media_type(sample):
     for field, value in sample.iter_fields():
-        if isinstance(value, fof.Group):
+        if isinstance(value, fog.Group):
             return fom.GROUP
 
     return sample.media_type

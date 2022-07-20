@@ -64,8 +64,6 @@ from .core.fields import (
     GeoMultiPointField,
     GeoMultiLineStringField,
     GeoMultiPolygonField,
-    Group,
-    GroupField,
     IntField,
     IntDictField,
     KeypointsField,
@@ -77,6 +75,7 @@ from .core.fields import (
     VectorField,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,

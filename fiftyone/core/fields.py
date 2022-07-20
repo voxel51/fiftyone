@@ -688,35 +688,6 @@ class EmbeddedDocumentListField(
         )
 
 
-class Group(EmbeddedDocument):
-    """A named group membership.
-
-    Args:
-        id (None): the group ID
-        name (None): the group name
-    """
-
-    id = ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
-    name = StringField()
-
-    @property
-    def _id(self):
-        return ObjectId(self.id)
-
-    def element(self, name):
-        return self.__class__(id=self.id, name=name)
-
-
-class GroupField(EmbeddedDocumentField):
-    """A field that stores :class:`Group` memberships."""
-
-    def __init__(self, **kwargs):
-        super().__init__(field=Group(), **kwargs)
-
-    def __str__(self):
-        return etau.get_class_name(self)
-
-
 _ARRAY_FIELDS = (VectorField, ArrayField)
 
 # Fields whose values can be used without parsing when loaded from MongoDB
