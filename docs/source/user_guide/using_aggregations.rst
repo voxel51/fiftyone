@@ -282,6 +282,35 @@ collection:
     print(dataset.mean("predictions.detections.confidence"))
     # 0.34994137249820706
 
+.. _aggregations-quantiles:
+
+Quantiles
+_________
+
+You can use the
+:meth:`quantiles() <fiftyone.core.collections.SampleCollection.quantiles>`
+aggregation to compute the quantile(s) of the (non-``None``) values of a field
+in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute quantiles of the `uniqueness` field
+    print(dataset.quantiles("uniqueness", [0.25, 0.5, 0.75, 0.9]))
+    # [0.22027, 0.33771, 0.62554, 0.69488]
+
+    # Compute quantiles of detection confidence in the `predictions` field
+    quantiles = dataset.quantiles(
+        "predictions.detections.confidence",
+        [0.25, 0.5, 0.75, 0.9],
+    )
+    print(quantiles)
+    # [0.09231, 0.20251, 0.56273, 0.94354]
+
 .. _aggregations-std:
 
 Standard deviation

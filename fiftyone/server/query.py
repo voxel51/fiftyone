@@ -151,7 +151,7 @@ class Dataset(HasCollection):
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
         doc["default_mask_targets"] = _convert_targets(
-            doc.get("default_mask_targets", [])
+            doc.get("default_mask_targets", {})
         )
         doc["mask_targets"] = [
             NamedTargets(name, _convert_targets(targets))
