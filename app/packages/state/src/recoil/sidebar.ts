@@ -224,13 +224,7 @@ export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
 
   dataset.sampleFields
     .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
-    .reduce(
-      fieldsReducer([
-        EMBEDDED_DOCUMENT_FIELD,
-        "fiftyone.core.fields.GroupField",
-      ]),
-      []
-    )
+    .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
     .forEach((name) => {
       const fieldPaths = (fields[name].fields || [])
         .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
