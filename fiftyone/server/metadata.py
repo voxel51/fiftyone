@@ -30,6 +30,7 @@ _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 class MediaType(Enum):
     image = "image"
     group = "group"
+    point_cloud = "point-cloud"
     video = "video"
 
 

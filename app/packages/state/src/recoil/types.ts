@@ -1,6 +1,8 @@
 import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
+  export type MediaType = "image" | "group" | "point-cloud" | "video";
+
   export enum SPACE {
     FRAME = "FRAME",
     SAMPLE = "SAMPLE",
@@ -83,7 +85,7 @@ export namespace State {
     maskTargets: {
       [key: string]: Targets;
     };
-    mediaType: "image" | "group" | "video";
+    mediaType: MediaType;
     name: string;
     sampleFields: StrictField[];
     version: string;
@@ -95,7 +97,7 @@ export namespace State {
       field: string;
       groups: {
         name: string;
-        mediaType: "image" | "group" | "video";
+        mediaType: MediaType;
       }[];
     }[];
   }

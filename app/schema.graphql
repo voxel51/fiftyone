@@ -14,8 +14,6 @@ type AppConfig {
   useFrameNumber: Boolean!
 }
 
-scalar BSON
-
 scalar BSONArray
 
 type BrainRun implements Run {
@@ -123,8 +121,10 @@ type GroupField {
 type ImageSample implements Sample {
   width: Int!
   height: Int!
-  sample: BSON!
+  sample: JSON!
 }
+
+scalar JSON
 
 type KeypointSkeleton {
   labels: [String!]
@@ -134,6 +134,7 @@ type KeypointSkeleton {
 enum MediaType {
   image
   group
+  point_cloud
   video
 }
 
@@ -208,7 +209,7 @@ interface RunConfig {
 interface Sample {
   width: Int!
   height: Int!
-  sample: BSON!
+  sample: JSON!
 }
 
 type SampleField {
@@ -220,8 +221,8 @@ type SampleField {
 }
 
 input SampleFilter {
-  id: String
-  group: GroupElementFilter
+  id: String = null
+  group: GroupElementFilter = null
 }
 
 union SampleItem = ImageSample | VideoSample
@@ -264,7 +265,7 @@ type Target {
 type VideoSample implements Sample {
   width: Int!
   height: Int!
-  sample: BSON!
+  sample: JSON!
   frameRate: Float!
 }
 

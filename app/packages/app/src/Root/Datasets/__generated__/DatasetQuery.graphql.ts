@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<45f6fb914be57e1955277f62234819f2>>
+ * @generated SignedSource<<8dbec1783f7c13390dc2c727b92142e2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,12 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from "relay-runtime";
-export type MediaType = "group" | "image" | "video" | "%future added value";
+export type MediaType =
+  | "group"
+  | "image"
+  | "point_cloud"
+  | "video"
+  | "%future added value";
 export type DatasetQuery$variables = {
   name: string;
   view?: Array | null;
