@@ -22,6 +22,7 @@ from .core.aggregations import (
     Distinct,
     HistogramValues,
     Mean,
+    Quantiles,
     Std,
     Sum,
     Values,
@@ -63,6 +64,8 @@ from .core.fields import (
     GeoMultiPointField,
     GeoMultiLineStringField,
     GeoMultiPolygonField,
+    Group,
+    GroupField,
     IntField,
     IntDictField,
     KeypointsField,
@@ -159,6 +162,7 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroup,
     SelectLabels,
     SetField,
     Skip,
@@ -169,6 +173,7 @@ from .core.stages import (
     ToEvaluationPatches,
     ToClips,
     ToFrames,
+    UseGroup,
 )
 from .core.session import (
     close_app,

@@ -1,4 +1,3 @@
-import { RGB } from "@fiftyone/looker/src/state";
 import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
@@ -84,13 +83,21 @@ export namespace State {
     maskTargets: {
       [key: string]: Targets;
     };
-    mediaType: "image" | "video";
+    mediaType: "image" | "group" | "video";
     name: string;
     sampleFields: StrictField[];
     version: string;
     appSidebarGroups?: { name: string; paths: string[] }[];
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
+    groups: {
+      defaultGroup: string;
+      field: string;
+      groups: {
+        name: string;
+        mediaType: "image" | "group" | "video";
+      }[];
+    }[];
   }
 
   export interface Filter {}

@@ -25,7 +25,7 @@ import { v4 as uuid } from "uuid";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import { paginateGroup } from "@fiftyone/relay";
+import { DetailsOutlined } from "@material-ui/icons";
 
 const process = (
   next: MutableRefObject<number>,
@@ -208,7 +208,7 @@ const Group: React.FC<{
 }> = ({ queryRef }) => {
   const [height, setHeight] = useState(150);
   const data = usePreloadedQuery<foq.paginateGroupQuery>(
-    paginateGroup,
+    foq.paginateGroup,
     queryRef
   );
 
@@ -218,15 +218,16 @@ const Group: React.FC<{
       minHeight={100}
       maxHeight={300}
       enable={{
-        top: false,
+        top: true,
         right: false,
-        bottom: true,
+        bottom: false,
         left: false,
         topRight: false,
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
       }}
+      style={{ zIndex: 1000 }}
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}

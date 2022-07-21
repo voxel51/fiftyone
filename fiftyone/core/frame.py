@@ -915,7 +915,8 @@ class Frame(Document, metaclass=FrameSingleton):
 
     @property
     def _sample_id(self):
-        return ObjectId(self._doc._sample_id)
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
 
     def save(self):
         """Saves the frame to the database."""
@@ -974,3 +975,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None

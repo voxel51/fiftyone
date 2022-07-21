@@ -2,6 +2,7 @@ export * from "./aggregations";
 export * from "./atoms";
 export * from "./color";
 export * from "./filters";
+export * from "./groups";
 export * from "./looker";
 export * from "./pathFilters";
 export * from "./schema";

@@ -13,6 +13,7 @@ import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
 import { usePlugin, PluginComponentType } from "@fiftyone/plugins";
 import PinnedLooker from "./PinnedLooker/PinnedLooker";
+import { isGroup, isPinned } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -196,7 +197,7 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
-  const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
+  const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -206,7 +207,6 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          {groupQueryRef && <Group queryRef={groupQueryRef} />}
           <Looker
             key={`modal-${sampleSrc}`}
             lookerRef={lookerRef}
@@ -216,19 +216,11 @@ const SampleModal = () => {
             onNext={() => getIndex(index + 1)}
             style={{ flex: 1 }}
           />
+          {useRecoilValue(isGroup) && queryRef && <Group queryRef={queryRef} />}
         </ContentColumn>
-        <PinnedLooker>
-          <Looker
-            key={`modal2-${sampleSrc}`}
-            lookerRef={lookerRef}
-            onSelectLabel={onSelectLabel}
-            onClose={clearModal}
-            onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
-            onNext={() => getIndex(index + 1)}
-            style={{ flex: 1 }}
-            pinned={true}
-          />
-        </PinnedLooker>
+        {useRecoilValue(isPinned) && queryRef && (
+          <PinnedLooker queryRef={queryRef} />
+        )}
         <Sidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,

@@ -236,7 +236,7 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][str(obj._sample_id)][
+        cls._instances[obj._doc.collection_name][obj.sample_id][
             obj.frame_number
         ] = obj
 
@@ -251,7 +251,7 @@ class FrameSingleton(DocumentSingleton):
     def _reload_instance(cls, obj):
         # pylint: disable=no-value-for-parameter
         cls._reload_doc(
-            obj._doc.collection_name, str(obj._sample_id), obj.frame_number
+            obj._doc.collection_name, obj.sample_id, obj.frame_number
         )
 
     def _get_instances(cls, collection_name, sample_id):

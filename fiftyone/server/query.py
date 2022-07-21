@@ -30,7 +30,11 @@ from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-from fiftyone.server.samples import ImageSample, VideoSample, paginate_samples
+from fiftyone.server.samples import (
+    SampleFilter,
+    SampleItem,
+    paginate_samples,
+)
 from fiftyone.server.scalars import BSONArray
 
 ID = gql.scalar(
@@ -40,6 +44,19 @@ ID = gql.scalar(
 )
 DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
+
+
+@gql.type
+class Group:
+    name: str
+    media_type: MediaType
+
+
+@gql.type
+class GroupField:
+    field: str
+    groups: t.List[Group]
+    default_group: str
 
 
 @gql.type
@@ -125,6 +142,7 @@ class Dataset:
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
+    groups: t.List[GroupField]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
@@ -156,6 +174,17 @@ class Dataset:
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
         )
+        doc["groups"] = [
+            GroupField(
+                field,
+                [
+                    Group(name, media_type)
+                    for name, media_type in groups.items()
+                ],
+                doc["default_group_names"][field],
+            )
+            for field, groups in doc.get("groups", {}).items()
+        ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
@@ -264,10 +293,20 @@ class Query:
         view: BSONArray,
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
-    ) -> Connection[
-        gql.union("SampleItem", types=(ImageSample, VideoSample)), str
-    ]:
+    ) -> Connection[SampleItem, str]:
         return await paginate_samples(dataset, view, None, None, first, after)
+
+    @gql.field
+    async def sample(
+        self, dataset: str, view: BSONArray, filter: SampleFilter
+    ) -> t.Optional[SampleItem]:
+        samples = await paginate_samples(
+            dataset, view, None, None, 1, sample_filter=filter
+        )
+        if samples.edges:
+            return samples.edges[0].node
+
+        return None
 
     @gql.field
     def teams_submission(self) -> bool:

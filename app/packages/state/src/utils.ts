@@ -93,7 +93,7 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     frameFields: collapseFields(dataset.frameFields),
     sampleFields: collapseFields(dataset.sampleFields),
     maskTargets: targets,
-    mediaType: dataset.mediaType === "image" ? "image" : "video",
+    mediaType: dataset.mediaType,
   };
 };
 

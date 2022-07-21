@@ -315,17 +315,16 @@ class _HasID(Label):
     """
 
     id = fof.ObjectIdField(
-        default=ObjectId, required=True, unique=True, db_field="_id"
+        required=True,
+        unique=True,
+        default=lambda: str(ObjectId()),
+        db_field="_id",
     )
     tags = fof.ListField(fof.StringField())
 
     @property
     def _id(self):
         return ObjectId(self.id)
-
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return self._fields_ordered
 
 
 class _HasLabelList(object):
@@ -378,7 +377,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasID, _HasAttributesDict, Label):
+class Detection(_HasAttributesDict, _HasID, Label):
     """An object detection.
 
     Args:
@@ -591,7 +590,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasID, _HasAttributesDict, Label):
+class Polyline(_HasAttributesDict, _HasID, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -846,7 +845,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasID, _HasAttributesDict, Label):
+class Keypoint(_HasAttributesDict, _HasID, Label):
     """A list of keypoints in an image.
 
     Args:

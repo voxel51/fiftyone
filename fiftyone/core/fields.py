@@ -17,9 +17,8 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
+from fiftyone.core.odm.embedded_document import EmbeddedDocument
 import fiftyone.core.utils as fou
-
-foo = fou.lazy_import("fiftyone.core.odm")
 
 
 def parse_field_str(field_str):
@@ -687,6 +686,35 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+
+class Group(EmbeddedDocument):
+    """A named group membership.
+
+    Args:
+        id (None): the group ID
+        name (None): the group name
+    """
+
+    id = ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
+    name = StringField()
+
+    @property
+    def _id(self):
+        return ObjectId(self.id)
+
+    def element(self, name):
+        return self.__class__(id=self.id, name=name)
+
+
+class GroupField(EmbeddedDocumentField):
+    """A field that stores :class:`Group` memberships."""
+
+    def __init__(self, **kwargs):
+        super().__init__(field=Group(), **kwargs)
+
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)

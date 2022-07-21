@@ -29,6 +29,7 @@ _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 @gql.enum
 class MediaType(Enum):
     image = "image"
+    group = "group"
     video = "video"
 
 

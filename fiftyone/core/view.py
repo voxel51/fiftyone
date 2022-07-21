@@ -54,12 +54,13 @@ class DatasetView(foc.SampleCollection):
             view
     """
 
-    def __init__(self, dataset, _stages=None):
+    def __init__(self, dataset, _stages=None, _media_type=None):
         if _stages is None:
             _stages = []
 
         self.__dataset = dataset
         self.__stages = _stages
+        self.__media_type = _media_type
 
     def __eq__(self, other_view):
         if type(other_view) != type(self):
@@ -109,7 +110,11 @@ class DatasetView(foc.SampleCollection):
             )
 
     def __copy__(self):
-        return self.__class__(self.__dataset, _stages=deepcopy(self.__stages))
+        return self.__class__(
+            self.__dataset,
+            _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
+        )
 
     @property
     def _base_view(self):
@@ -153,8 +158,32 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def media_type(self):
-        """The media type of the underlying dataset."""
+        """The media type of the view."""
+        if self.__media_type is not None:
+            return self.__media_type
+
         return self._dataset.media_type
+
+    @property
+    def group_field(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_field
+
+    @property
+    def group_media_types(self):
+        if self.group_field is None:
+            return None
+
+        return self._dataset.group_media_types
+
+    @property
+    def default_group_name(self):
+        if self.group_field is None:
+            return None
+
+        return self._dataset.default_group_name
 
     @property
     def name(self):
@@ -875,7 +904,14 @@ class DatasetView(foc.SampleCollection):
             view = copy(self)
             view._stages.append(stage)
 
+            media_type = stage.get_media_type(self)
+            if media_type is not None:
+                view._set_media_type(media_type)
+
         return view
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     def _get_filtered_schema(self, schema, frames=False):
         if schema is None:
