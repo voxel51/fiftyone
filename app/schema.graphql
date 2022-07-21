@@ -119,9 +119,9 @@ type GroupField {
 }
 
 type ImageSample implements Sample {
+  sample: JSON!
   width: Int!
   height: Int!
-  sample: JSON!
 }
 
 scalar JSON
@@ -170,6 +170,10 @@ type NamedTargets {
   targets: [Target!]!
 }
 
+type PointCloudSample implements Sample {
+  sample: JSON!
+}
+
 type Query {
   datasets(
     search: String
@@ -208,8 +212,6 @@ interface RunConfig {
 }
 
 interface Sample {
-  width: Int!
-  height: Int!
   sample: JSON!
 }
 
@@ -226,7 +228,7 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | VideoSample
+union SampleItem = ImageSample | PointCloudSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -264,9 +266,9 @@ type Target {
 }
 
 type VideoSample implements Sample {
+  sample: JSON!
   width: Int!
   height: Int!
-  sample: JSON!
   frameRate: Float!
 }
 

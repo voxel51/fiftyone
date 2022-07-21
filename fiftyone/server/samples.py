@@ -26,22 +26,30 @@ from fiftyone.server.scalars import BSON, JSON, BSONArray
 
 @gql.interface
 class Sample:
-    width: int
-    height: int
     sample: JSON
 
 
 @gql.type
 class ImageSample(Sample):
+    width: int
+    height: int
+
+
+@gql.type
+class PointCloudSample(Sample):
     pass
 
 
 @gql.type
 class VideoSample(Sample):
+    width: int
+    height: int
     frame_rate: float
 
 
-SampleItem = gql.union("SampleItem", types=(ImageSample, VideoSample))
+SampleItem = gql.union(
+    "SampleItem", types=(ImageSample, PointCloudSample, VideoSample)
+)
 
 
 async def paginate_samples(
@@ -64,6 +72,18 @@ async def paginate_samples(
         sample_filter=sample_filter,
         group_id=group_id,
     )
+
+    media_type = None
+    if sample_filter:
+        media = view._dataset._doc.groups[view.group_field][
+            sample_filter.group.group
+        ]
+        if media == fom.IMAGE:
+            media_type = ImageSample
+        elif media == fom.VIDEO:
+            media_type = VideoSample
+        else:
+            media_type = PointCloudSample
 
     if view.media_type == fom.VIDEO:
         if isinstance(view, focl.ClipsView):
@@ -103,7 +123,9 @@ async def paginate_samples(
     edges = []
     for idx, doc in enumerate(samples):
         cls = (
-            VideoSample
+            media_type
+            if media_type is not None
+            else VideoSample
             if media_types[doc["filepath"]] == fom.VIDEO
             else ImageSample
         )
