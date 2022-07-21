@@ -7801,7 +7801,7 @@ class SampleCollection(object):
         ]
 
     def _get_root_fields(self, fields):
-        root_fields = []
+        root_fields = set()
         for field in fields:
             if self.media_type == fom.VIDEO and field.startswith(
                 self._FRAMES_PREFIX
@@ -7812,9 +7812,9 @@ class SampleCollection(object):
                 # Converts `root[.x.y]` to `root`
                 root = field.split(".", 1)[0]
 
-            root_fields.append(root)
+            root_fields.add(root)
 
-        return root_fields
+        return list(root_fields)
 
     def _validate_root_field(self, field_name, include_private=False):
         _ = self._get_root_field_type(
