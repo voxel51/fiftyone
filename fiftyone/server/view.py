@@ -51,7 +51,19 @@ def get_view(
                                 ]
                             }
                         }
-                    }
+                    },
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [
+                                    "$"
+                                    + sample_filter.group.group_field
+                                    + ".name",
+                                    sample_filter.group.group,
+                                ]
+                            }
+                        }
+                    },
                 ]
             )
         elif sample_filter.id:
