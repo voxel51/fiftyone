@@ -3603,122 +3603,12 @@ class Match(ViewStage):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
 
 
-class UseGroup(ViewStage):
-    """Returns a view that treats the specific group slice as the primary
-    sample for each group in the collection.
-
-    .. note::
-
-        Use :class:`SelectGroup` if you want to write a view that extracts a
-        flattened list of samples from specific group(s).
-
-    Examples::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset()
-        dataset.add_group_field("group", default="center")
-
-        group1 = fo.Group()
-        group2 = fo.Group()
-
-        dataset.add_samples(
-            [
-                fo.Sample(
-                    filepath="/path/to/image1-left.jpg",
-                    group=group1.element("left"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image1-center.jpg",
-                    group=group1.element("center"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image1-right.jpg",
-                    group=group1.element("right"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2-left.jpg",
-                    group=group2.element("left"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2-center.jpg",
-                    group=group2.element("center"),
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2-right.jpg",
-                    group=group2.element("right"),
-                ),
-            ]
-        )
-
-        #
-        # Use the "left" group
-        #
-
-        stage = fo.UseGroup("left")
-        view = dataset.add_stage(stage)
-
-        #
-        # Use the default ("center") group
-        #
-
-        stage = fo.UseGroup()
-        view = dataset.add_stage(stage)
-
-    Args:
-        name (None): a group name to use. If none is specified, the default
-            group name is used
-    """
-
-    def __init__(self, name=None):
-        self._name = name
-
-    @property
-    def name(self):
-        """The group name to use."""
-        return self._name
-
-    def to_mongo(self, sample_collection):
-        name = self._name
-        group_path = sample_collection.group_field + ".name"
-
-        if name is None:
-            name = sample_collection.default_group_name
-
-        return [{"$match": {"$expr": {"$eq": ["$" + group_path, name]}}}]
-
-    def validate(self, sample_collection):
-        if sample_collection.group_field is None:
-            raise ValueError(
-                "%s has no group fields" % type(sample_collection)
-            )
-
-    def _kwargs(self):
-        return [["name", self._name]]
-
-    @classmethod
-    def _params(cls):
-        return [
-            {
-                "name": "name",
-                "type": "NoneType|str|list<str>",
-                "placeholder": "name (default=None)",
-                "default": "None",
-            }
-        ]
-
-
-class SelectGroup(ViewStage):
-    """Selects the samples in a collection with a given group name(s).
+class SelectGroupSlice(ViewStage):
+    """Selects the samples in a group collection from the given slice(s).
 
     The returned view is a flattened non-grouped view containing only the
     slice(s) of interest.
 
-    .. note::
-
-        Use :class:`UseGroup` if you want to write a view that processes a
-        specific group slice without flattening the group.
-
     Examples::
 
         import fiftyone as fo
@@ -3733,87 +3623,89 @@ class SelectGroup(ViewStage):
             [
                 fo.Sample(
                     filepath="/path/to/image1-left.jpg",
-                    group=group1.element("left"),
+                    group=group1.slice("left"),
                 ),
                 fo.Sample(
                     filepath="/path/to/image1-center.jpg",
-                    group=group1.element("center"),
+                    group=group1.slice("center"),
                 ),
                 fo.Sample(
                     filepath="/path/to/image1-right.jpg",
-                    group=group1.element("right"),
+                    group=group1.slice("right"),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2-left.jpg",
-                    group=group2.element("left"),
+                    group=group2.slice("left"),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2-center.jpg",
-                    group=group2.element("center"),
+                    group=group2.slice("center"),
                 ),
                 fo.Sample(
                     filepath="/path/to/image2-right.jpg",
-                    group=group2.element("right"),
+                    group=group2.slice("right"),
                 ),
             ]
         )
 
         #
-        # Retrieve the samples with the "center" group name
+        # Retrieve the samples from the "center" group slice
         #
 
-        stage = fo.SelectGroup("center")
+        stage = fo.SelectGroupSlice("center")
         view = dataset.add_stage(stage)
 
         #
-        # Retrieve the samples with the "left" or "right" group names
+        # Retrieve the samples from the "left" or "right" group slices
         #
 
-        stage = fo.SelectGroup(["left", "right"])
+        stage = fo.SelectGroupSlice(["left", "right"])
         view = dataset.add_stage(stage)
 
         #
         # Retrieve a flattened list of all samples
         #
 
-        stage = fo.SelectGroup()
+        stage = fo.SelectGroupSlice()
         view = dataset.add_stage(stage)
 
     Args:
-        name (None): a group name or list of group names to select. By default,
-            a flattened list of all samples is returned
+        slice (None): a group slice or list of group slices to select. By
+            default, a flattened list of all samples is returned
     """
 
-    def __init__(self, name=None):
-        self._name = name
+    def __init__(self, slice=None):
+        self._slice = slice
 
     @property
-    def name(self):
-        """The group name(s) to select."""
-        return self._name
+    def slice(self):
+        """The group slice(s) to select."""
+        return self._slice
 
     def to_mongo(self, sample_collection):
-        if self._name is None:
+        if self._slice is None:
             return []
 
-        group_path = sample_collection.group_field + ".name"
+        group_path = sample_collection.group_field + ".slice"
 
-        if etau.is_container(self._name):
+        if etau.is_container(self._slice):
             return [
                 {
                     "$match": {
-                        "$expr": {"$in": ["$" + group_path, list(self._name)]}
+                        "$expr": {"$in": ["$" + group_path, list(self._slice)]}
                     }
                 }
             ]
 
-        return [{"$match": {"$expr": {"$eq": ["$" + group_path, self._name]}}}]
+        return [
+            {"$match": {"$expr": {"$eq": ["$" + group_path, self._slice]}}}
+        ]
 
     def get_media_type(self, sample_collection):
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
-        if self._name is None:
+        if self._slice is None:
             media_types = set(group_media_types.values())
 
             if len(media_types) > 1:
@@ -3824,50 +3716,50 @@ class SelectGroup(ViewStage):
 
             return next(iter(group_media_types.values()))
 
-        if etau.is_container(self._name):
-            names = list(self._name)
+        if etau.is_container(self._slice):
+            slices = list(self._slice)
 
             media_types = set()
-            for name in names:
-                if name not in group_media_types:
+            for _slice in slices:
+                if _slice not in group_media_types:
                     raise ValueError(
-                        "Group field '%s' has no name '%s'"
-                        % (group_field, name)
+                        "Group field '%s' has no slice '%s'"
+                        % (group_field, _slice)
                     )
 
-                media_types.add(group_media_types[name])
+                media_types.add(group_media_types[_slice])
 
             if len(media_types) > 1:
                 raise ValueError(
-                    "Cannot select names %s with different media types %s "
-                    "from group field '%s'" % (names, media_types, group_field)
+                    "Cannot select slices %s with different media types %s "
+                    "from group field '%s'"
+                    % (slices, media_types, group_field)
                 )
 
             return next(iter(media_types))
 
-        if self._name not in group_media_types:
+        if self._slice not in group_media_types:
             raise ValueError(
-                "Group field '%s' has no name '%s'" % (group_field, self._name)
+                "Group field '%s' has no slice '%s'"
+                % (group_field, self._slice)
             )
 
-        return group_media_types[self._name]
+        return group_media_types[self._slice]
 
     def validate(self, sample_collection):
-        if sample_collection.group_field is None:
-            raise ValueError(
-                "%s has no group fields" % type(sample_collection)
-            )
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
     def _kwargs(self):
-        return [["name", self._name]]
+        return [["slice", self._slice]]
 
     @classmethod
     def _params(cls):
         return [
             {
-                "name": "name",
+                "name": "slice",
                 "type": "NoneType|str|list<str>",
-                "placeholder": "name (default=None)",
+                "placeholder": "slice (default=None)",
                 "default": "None",
             }
         ]
@@ -6912,7 +6804,7 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
-    SelectGroup,
+    SelectGroupSlice,
     SelectLabels,
     SetField,
     Skip,
@@ -6923,7 +6815,6 @@ _STAGES = [
     ToEvaluationPatches,
     ToClips,
     ToFrames,
-    UseGroup,
 ]
 
 

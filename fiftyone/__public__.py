@@ -161,7 +161,7 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
-    SelectGroup,
+    SelectGroupSlice,
     SelectLabels,
     SetField,
     Skip,
@@ -172,7 +172,6 @@ from .core.stages import (
     ToEvaluationPatches,
     ToClips,
     ToFrames,
-    UseGroup,
 )
 from .core.session import (
     close_app,

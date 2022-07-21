@@ -172,6 +172,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_field
 
     @property
+    def group_slice(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_slice
+
+    @property
     def group_media_types(self):
         if self.group_field is None:
             return None
@@ -179,11 +186,11 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_media_types
 
     @property
-    def default_group_name(self):
+    def default_group_slice(self):
         if self.group_field is None:
             return None
 
-        return self._dataset.default_group_name
+        return self._dataset.default_group_slice
 
     @property
     def name(self):
@@ -811,6 +818,7 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
     ):
         _pipeline = []
         _view = self._base_view
@@ -823,11 +831,15 @@ class DatasetView(foc.SampleCollection):
 
         attach_frames |= self._needs_frames()
 
+        if media_type is None:
+            media_type = self.media_type
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            media_type=media_type,
         )
 
     def _aggregate(
@@ -836,12 +848,17 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
     ):
+        if media_type is None:
+            media_type = self.media_type
+
         _pipeline = self._pipeline(
             pipeline=pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            media_type=media_type,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 

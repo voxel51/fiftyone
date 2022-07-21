@@ -248,7 +248,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
-        self._group_field = _get_group_field(self)
+
+        self._group_field = None
+        self._group_slice = None
+        self._set_group_field()
 
         self._annotation_cache = {}
         self._brain_cache = {}
@@ -347,7 +350,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @media_type.setter
     def media_type(self, media_type):
-        if self:
+        if len(self) > 0:
             raise ValueError("Cannot set media type of a non-empty dataset")
 
         if media_type not in fom.MEDIA_TYPES:
@@ -363,6 +366,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._set_metadata(media_type)
 
     def _set_metadata(self, media_type):
+        if media_type == fom.GROUP:
+            # The media type of group datasets always stays as the generic
+            # `Metadata` type because the slices may have different types
+            return
+
         idx = None
         for i, field in enumerate(self._doc.sample_fields):
             if field.name == "metadata":
@@ -403,45 +411,84 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @group_field.setter
     def group_field(self, field_name):
-        field = self.get_field(field_name)
-        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
-            field.document_type, fog.Group
-        ):
-            raise ValueError("Field '%s' is not a Group field" % field_name)
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        self._set_group_field(field_name)
+
+    def _set_group_field(self, field_name=None):
+        if self._group_field is None and field_name is None:
+            return
+
+        if field_name is None:
+            field_name = _get_group_field(self)
+
+            if field_name is None:
+                raise ValueError("Dataset has no groups")
+        else:
+            field = self.get_field(field_name)
+            if not isinstance(
+                field, fof.EmbeddedDocumentField
+            ) or not issubclass(field.document_type, fog.Group):
+                raise ValueError(
+                    "Field '%s' is not a Group field" % field_name
+                )
 
         self._group_field = field_name
+        self._group_slice = self._doc.default_group_slices[field_name]
+
+    @property
+    def group_slice(self):
+        """The current group slice of the dataset, or None if the dataset is
+        not grouped.
+        """
+        return self._group_slice
+
+    @group_slice.setter
+    def group_slice(self, slice_name):
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if slice_name not in self._doc.groups[self._group_field]:
+            raise ValueError(
+                "Group field '%s' has no slice '%s'"
+                % (self._group_field, slice_name)
+            )
+
+        self._group_slice = slice_name
 
     @property
     def group_media_types(self):
         """A dict mapping group names to media types, or None if the dataset is
         not grouped.
         """
-        if self._group_field is None:
+        if self.media_type != fom.GROUP:
             return None
 
         return self._doc.groups[self._group_field]
 
     @property
-    def default_group_name(self):
-        """The default group name of the dataset, or None if the dataset is not
-        grouped.
+    def default_group_slice(self):
+        """The default group slice of the dataset, or None if the dataset is
+        not grouped.
         """
-        if self._group_field is None:
+        if self.media_type != fom.GROUP:
             return None
 
-        return self._doc.default_group_names[self._group_field]
+        return self._doc.default_group_slices[self._group_field]
 
-    @default_group_name.setter
-    def default_group_name(self, name):
-        if self._group_field is None:
+    @default_group_slice.setter
+    def default_group_slice(self, slice_name):
+        if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
 
-        if name not in self._doc.groups[self._group_field]:
+        if slice_name not in self._doc.groups[self._group_field]:
             raise ValueError(
-                "Group field '%s' has no name '%s'" % (self._group_field, name)
+                "Group field '%s' has no slice '%s'"
+                % (self._group_field, slice_name)
             )
 
-        self._doc.default_group_names[self._group_field] = name
+        self._doc.default_group_slices[self._group_field] = slice_name
         self._doc.save()
 
     @property
@@ -1129,17 +1176,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type=fog.Group,
         )
 
-        if self._group_field is None:
-            self._group_field = field_name
-
         if field_name not in self._doc.groups:
             self._doc.groups[field_name] = {}
 
-        self._doc.default_group_names[field_name] = default
+        self._doc.default_group_slices[field_name] = default
         self._doc.save()
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
+
+        if self._group_field is None:
+            self._set_group_field(field_name)
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -4457,8 +4504,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
     ):
-        if self.media_type != fom.VIDEO:
+        if media_type is None:
+            media_type = self.media_type
+
+        if media_type != fom.VIDEO:
             attach_frames = False
             detach_frames = False
             frames_only = False
@@ -4473,6 +4524,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline = self._frames_lookup_pipeline()
         else:
             _pipeline = []
+
+        if media_type == fom.GROUP:
+            pipeline.append(
+                {
+                    "$match": {
+                        "$expr": {
+                            "$eq": [
+                                "$" + self.group_field + ".name",
+                                self.group_slice,
+                            ]
+                        }
+                    }
+                }
+            )
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -4561,12 +4626,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            media_type=media_type,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)
@@ -4743,6 +4810,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
 
             non_existent_fields = set()
+            found_groups = set()
 
             for field_name, value in sample.iter_fields():
                 if isinstance(value, fog.Group):
@@ -4761,13 +4829,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     group_media_type = group_media_types.get(value.name, None)
                     if group_media_type is None:
                         raise ValueError(
-                            "Group field '%s' has no group name '%s'"
+                            "Group field '%s' has no slice '%s'"
                             % (field_name, value.name)
                         )
                     elif sample.media_type != group_media_type:
                         raise ValueError(
-                            "Sample media type '%s' does not match field '%s' "
-                            "group '%s' media type '%s'"
+                            "Sample media type '%s' does not match group '%s' "
+                            "slice '%s' media type '%s'"
                             % (
                                 sample.media_type,
                                 field_name,
@@ -4775,6 +4843,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                 group_media_type,
                             )
                         )
+
+                    found_groups.add(field_name)
 
                 field = schema.get(field_name, None)
                 if field is None:
@@ -4795,6 +4865,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Fields %s do not exist on dataset '%s'"
                     % (non_existent_fields, self.name)
                 )
+
+            if self.media_type == fom.GROUP:
+                missing_groups = set(self._doc.groups.keys()) - found_groups
+                if missing_groups:
+                    raise ValueError(
+                        "Found sample missing group field(s) %s"
+                        % missing_groups
+                    )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
@@ -4817,7 +4895,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
-        self._group_field = _get_group_field(self)
+        self._set_group_field()
 
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
@@ -5119,17 +5197,8 @@ def _load_dataset(name, virtual=False):
             ]
 
     dataset_doc.save()
+
     return dataset_doc, sample_doc_cls, frame_doc_cls
-
-
-def _get_group_field(dataset):
-    for field_name, field in dataset.get_field_schema().items():
-        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-            field.document_type, fog.Group
-        ):
-            return field_name
-
-    return None
 
 
 def _delete_dataset_doc(dataset_doc):
@@ -6319,6 +6388,16 @@ def _get_media_type(sample):
             return fom.GROUP
 
     return sample.media_type
+
+
+def _get_group_field(dataset):
+    for field_name, field in dataset.get_field_schema().items():
+        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+            field.document_type, fog.Group
+        ):
+            return field_name
+
+    return None
 
 
 def _get_sample_ids(arg):
