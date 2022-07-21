@@ -24,6 +24,14 @@ from fiftyone.server.utils import iter_label_fields
 _LABEL_TAGS = "_label_tags"
 
 
+def get_group(sample_collection, group_id):
+    group_field = sample_collection.group_field
+    id_field = group_field + "._id"
+    return sample_collection.mongo(
+        [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
+    )
+
+
 def get_view(
     dataset_name: str,
     stages=None,
@@ -32,11 +40,15 @@ def get_view(
     only_matches=True,
     similarity=None,
     sample_filter: t.Optional[SampleFilter] = None,
+    group_id: t.Optional[str] = None,
 ) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
     view.reload()
 
-    if sample_filter:
+    if group_id:
+        view = get_group(view, group_id)
+
+    elif sample_filter:
         if sample_filter.group:
             view = view.mongo(
                 [
@@ -69,7 +81,7 @@ def get_view(
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    if view.media_type == fom.GROUP:
+    if view.media_type == fom.GROUP and not group_id:
         view = view.use_group()
 
     if stages:

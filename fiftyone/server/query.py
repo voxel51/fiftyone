@@ -293,8 +293,11 @@ class Query:
         view: BSONArray,
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
+        group_id: t.Optional[str] = None,
     ) -> Connection[SampleItem, str]:
-        return await paginate_samples(dataset, view, None, None, first, after)
+        return await paginate_samples(
+            dataset, view, None, None, first, after, group_id=group_id
+        )
 
     @gql.field
     async def sample(

@@ -187,6 +187,7 @@ type Query {
     view: BSONArray!
     first: Int = 20
     after: String = null
+    groupId: String = null
   ): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!

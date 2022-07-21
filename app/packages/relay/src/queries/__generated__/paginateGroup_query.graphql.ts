@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dae5456d314bd7e6e7347c6e140b0937>>
+ * @generated SignedSource<<806b16efef4b1361ba30f63a7c91a41f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -83,6 +83,10 @@ const node: ReaderFragment = (function () {
       },
       {
         kind: "RootArgument",
+        name: "groupId",
+      },
+      {
+        kind: "RootArgument",
         name: "view",
       },
     ],
@@ -118,6 +122,11 @@ const node: ReaderFragment = (function () {
             kind: "Variable",
             name: "dataset",
             variableName: "dataset",
+          },
+          {
+            kind: "Variable",
+            name: "groupId",
+            variableName: "groupId",
           },
           {
             kind: "Variable",
@@ -223,6 +232,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "1baec3bb8a5ab767caef58ccff94602f";
+(node as any).hash = "083cbb69b2f9c504c6fb1808c2eeaf71";
 
 export default node;

@@ -27,6 +27,7 @@ export default (store: fos.LookerStore<any>) => {
               {
                 dataset,
                 view,
+                groupId: sample?.sample[groupField]._id,
                 pinnedSampleFilter: {
                   group: {
                     id: sample?.sample[groupField]._id,

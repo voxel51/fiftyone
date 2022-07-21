@@ -52,6 +52,7 @@ async def paginate_samples(
     first: int,
     after: t.Optional[str] = None,
     sample_filter: t.Optional[SampleFilter] = None,
+    group_id: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
@@ -61,6 +62,7 @@ async def paginate_samples(
         similarity=similarity,
         only_matches=True,
         sample_filter=sample_filter,
+        group_id=group_id,
     )
 
     if view.media_type == fom.VIDEO:

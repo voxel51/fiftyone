@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<94cc45a401bbcbc03d57545b7fb2b013>>
+ * @generated SignedSource<<4320c263e4e1e7fc2c8987afa3adcd83>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type paginateGroupQuery$variables = {
   count?: number | null;
   cursor?: string | null;
   dataset: string;
+  groupId: string;
   pinnedSampleFilter: SampleFilter;
   view: Array;
 };
@@ -55,59 +56,69 @@ const node: ConcreteRequest = (function () {
     v3 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "pinnedSampleFilter",
+      name: "groupId",
     },
     v4 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "view",
+      name: "pinnedSampleFilter",
     },
     v5 = {
+      defaultValue: null,
+      kind: "LocalArgument",
+      name: "view",
+    },
+    v6 = {
       kind: "Variable",
       name: "dataset",
       variableName: "dataset",
     },
-    v6 = {
+    v7 = {
       kind: "Variable",
       name: "view",
       variableName: "view",
     },
-    v7 = [
+    v8 = [
       {
         kind: "Variable",
         name: "after",
         variableName: "cursor",
       },
-      v5 /*: any*/,
+      v6 /*: any*/,
       {
         kind: "Variable",
         name: "first",
         variableName: "count",
       },
-      v6 /*: any*/,
+      {
+        kind: "Variable",
+        name: "groupId",
+        variableName: "groupId",
+      },
+      v7 /*: any*/,
     ],
-    v8 = {
+    v9 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "height",
       storageKey: null,
     },
-    v9 = {
+    v10 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "sample",
       storageKey: null,
     },
-    v10 = {
+    v11 = {
       alias: null,
       args: null,
       kind: "ScalarField",
       name: "width",
       storageKey: null,
     },
-    v11 = [
+    v12 = [
       {
         alias: null,
         args: null,
@@ -117,7 +128,7 @@ const node: ConcreteRequest = (function () {
       },
       {
         kind: "InlineFragment",
-        selections: [v8 /*: any*/, v9 /*: any*/, v10 /*: any*/],
+        selections: [v9 /*: any*/, v10 /*: any*/, v11 /*: any*/],
         type: "ImageSample",
         abstractKey: null,
       },
@@ -131,9 +142,9 @@ const node: ConcreteRequest = (function () {
             name: "frameRate",
             storageKey: null,
           },
-          v8 /*: any*/,
           v9 /*: any*/,
           v10 /*: any*/,
+          v11 /*: any*/,
         ],
         type: "VideoSample",
         abstractKey: null,
@@ -147,6 +158,7 @@ const node: ConcreteRequest = (function () {
         v2 /*: any*/,
         v3 /*: any*/,
         v4 /*: any*/,
+        v5 /*: any*/,
       ],
       kind: "Fragment",
       metadata: null,
@@ -170,17 +182,18 @@ const node: ConcreteRequest = (function () {
     operation: {
       argumentDefinitions: [
         v2 /*: any*/,
-        v4 /*: any*/,
+        v5 /*: any*/,
+        v3 /*: any*/,
         v0 /*: any*/,
         v1 /*: any*/,
-        v3 /*: any*/,
+        v4 /*: any*/,
       ],
       kind: "Operation",
       name: "paginateGroupQuery",
       selections: [
         {
           alias: null,
-          args: v7 /*: any*/,
+          args: v8 /*: any*/,
           concreteType: "SampleItemStrConnection",
           kind: "LinkedField",
           name: "samples",
@@ -208,7 +221,7 @@ const node: ConcreteRequest = (function () {
                   kind: "LinkedField",
                   name: "node",
                   plural: false,
-                  selections: v11 /*: any*/,
+                  selections: v12 /*: any*/,
                   storageKey: null,
                 },
               ],
@@ -244,8 +257,8 @@ const node: ConcreteRequest = (function () {
         },
         {
           alias: null,
-          args: v7 /*: any*/,
-          filters: ["dataset", "view"],
+          args: v8 /*: any*/,
+          filters: ["dataset", "view", "groupId"],
           handle: "connection",
           key: "paginateGroup_query_samples",
           kind: "LinkedHandle",
@@ -254,34 +267,34 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: [
-            v5 /*: any*/,
+            v6 /*: any*/,
             {
               kind: "Variable",
               name: "filter",
               variableName: "pinnedSampleFilter",
             },
-            v6 /*: any*/,
+            v7 /*: any*/,
           ],
           concreteType: null,
           kind: "LinkedField",
           name: "sample",
           plural: false,
-          selections: v11 /*: any*/,
+          selections: v12 /*: any*/,
           storageKey: null,
         },
       ],
     },
     params: {
-      cacheID: "86306967087ea005b3b6e1b0ac201bc0",
+      cacheID: "ec6776b076ff0dd6f5766f646b972f04",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: String = null\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $groupId: String!\n  $count: Int = 20\n  $cursor: String = null\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "46072fa862751349595f420fcb795ec6";
+(node as any).hash = "1409f20cead366ebe786d941ccb39c52";
 
 export default node;
