@@ -337,7 +337,7 @@ class DatasetView(foc.SampleCollection):
         index = 0
 
         try:
-            for d in self._aggregate(detach_frames=True):
+            for d in self._aggregate(detach_frames=True, detach_groups=True):
                 try:
                     doc = self._dataset._sample_dict_to_doc(d)
                     sample = sample_cls(
@@ -812,6 +812,19 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
+    def _needs_group_slices(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        group_slices = set()
+
+        for stage in self._stages:
+            _group_slices = stage._needs_group_slices(self)
+            if _group_slices:
+                group_slices.update(_group_slices)
+
+        return group_slices
+
     def _pipeline(
         self,
         pipeline=None,
@@ -819,6 +832,8 @@ class DatasetView(foc.SampleCollection):
         detach_frames=False,
         frames_only=False,
         media_type=None,
+        group_slices=None,
+        detach_groups=False,
     ):
         _pipeline = []
         _view = self._base_view
@@ -834,12 +849,17 @@ class DatasetView(foc.SampleCollection):
         if media_type is None:
             media_type = self.media_type
 
+        if media_type == fom.GROUP and group_slices is None:
+            group_slices = self._needs_group_slices()
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
             media_type=media_type,
+            group_slices=group_slices,
+            detach_groups=detach_groups,
         )
 
     def _aggregate(
@@ -849,6 +869,8 @@ class DatasetView(foc.SampleCollection):
         detach_frames=False,
         frames_only=False,
         media_type=None,
+        group_slices=None,
+        detach_groups=False,
     ):
         if media_type is None:
             media_type = self.media_type
@@ -859,6 +881,8 @@ class DatasetView(foc.SampleCollection):
             detach_frames=detach_frames,
             frames_only=frames_only,
             media_type=media_type,
+            group_slices=group_slices,
+            detach_groups=detach_groups,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 

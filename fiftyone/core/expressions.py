@@ -82,6 +82,41 @@ def is_frames_expr(expr):
     return False
 
 
+def get_group_slices(expr):
+    """Extracts the group slices from the given expression, if any.
+
+    Args:
+        expr: a :class:`ViewExpression` or an already serialized
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+
+    Returns:
+        a (possibly-empty) list of group slices
+    """
+    if isinstance(expr, ViewExpression):
+        expr = expr.to_mongo()
+
+    group_slices = set()
+    _do_get_group_slices(expr, group_slices)
+
+    return list(group_slices)
+
+
+def _do_get_group_slices(expr, group_slices):
+    if etau.is_str(expr):
+        if expr.startswith("$groups."):
+            group_slice = expr.split(".", 2)[1]
+            group_slices.add(group_slice)
+
+    if isinstance(expr, dict):
+        for k, v in expr.items():
+            _do_get_group_slices(k, group_slices)
+            _do_get_group_slices(v, group_slices)
+
+    if etau.is_container(expr):
+        for e in expr:
+            _do_get_group_slices(e, group_slices)
+
+
 class ViewExpression(object):
     """An expression defining a possibly-complex manipulation of a document.
 

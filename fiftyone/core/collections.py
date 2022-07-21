@@ -542,39 +542,14 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     def iter_groups(self):
-        """Returns an iterator over the samples in the collection.
+        """Returns an iterator over the groups in the collection.
 
         Returns:
             an iterator that emits dicts mapping group names to
             :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` instances, one per group
         """
-        if self.media_type != fom.GROUP:
-            raise ValueError("%s does not contain groups" % type(self))
-
-        group_field = self.group_field
-        group_view = self.group_by(F(group_field + "._id"))
-
-        curr_id = None
-        group = {}
-
-        # @todo when `self` is a dataset, return `Sample` not `SampleView`
-        for sample in group_view.iter_samples():
-            group_id = sample[group_field].id
-            if group_id == curr_id:
-                group[sample[group_field].name] = sample
-            elif curr_id is None:
-                curr_id = group_id
-                group[sample[group_field].name] = sample
-            else:
-                curr_id = group_id
-                yield group
-
-                group = {}
-                group[sample[group_field].name] = sample
-
-        if group:
-            yield group
+        raise NotImplementedError("Subclass must implement iter_groups()")
 
     def get_group(self, group_id):
         """Returns a dict containing the samples for the given group ID.
@@ -589,24 +564,7 @@ class SampleCollection(object):
         Raises:
             KeyError: if the group ID is not found
         """
-        if self.media_type != fom.GROUP:
-            raise ValueError("%s does not contain groups" % type(self))
-
-        group_field = self.group_field
-        group_view = self.match(F(group_field + "._id") == ObjectId(group_id))
-
-        group = {
-            sample[group_field].name: sample
-            for sample in group_view.iter_samples()
-        }
-
-        if not group:
-            raise KeyError(
-                "No group found with ID '%s' in field '%s'"
-                % (group_id, group_field)
-            )
-
-        return group
+        raise NotImplementedError("Subclass must implement get_group()")
 
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
@@ -4579,27 +4537,27 @@ class SampleCollection(object):
                 [
                     fo.Sample(
                         filepath="/path/to/image1-left.jpg",
-                        group=group1.slice("left"),
+                        group=group1.element("left"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image1-center.jpg",
-                        group=group1.slice("center"),
+                        group=group1.element("center"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image1-right.jpg",
-                        group=group1.slice("right"),
+                        group=group1.element("right"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-left.jpg",
-                        group=group2.slice("left"),
+                        group=group2.element("left"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-center.jpg",
-                        group=group2.slice("center"),
+                        group=group2.element("center"),
                     ),
                     fo.Sample(
                         filepath="/path/to/image2-right.jpg",
-                        group=group2.slice("right"),
+                        group=group2.element("right"),
                     ),
                 ]
             )
@@ -7455,6 +7413,8 @@ class SampleCollection(object):
         detach_frames=False,
         frames_only=False,
         media_type=None,
+        group_slices=None,
+        detach_groups=False,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
@@ -7469,6 +7429,10 @@ class SampleCollection(object):
                 *only* the frames in the collection
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
+            group_slices (None): a list of group slices to attach. Only
+                applicable for grouped collections
+            detach_groups (False): whether to detach the group documents at the
+                end of the pipeline. Only applicable to grouped collections
 
         Returns:
             the aggregation pipeline
@@ -7482,6 +7446,8 @@ class SampleCollection(object):
         detach_frames=False,
         frames_only=False,
         media_type=None,
+        group_slices=None,
+        detach_groups=False,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
@@ -7497,6 +7463,10 @@ class SampleCollection(object):
                 *only* the frames in the colection
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
+            group_slices (None): a list of group slices to attach. Only
+                applicable for grouped collections
+            detach_groups (False): whether to detach the group documents at the
+                end of the pipeline. Only applicable to grouped collections
 
         Returns:
             the aggregation result dict

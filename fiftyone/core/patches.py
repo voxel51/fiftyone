@@ -925,14 +925,14 @@ def _merge_matched_labels(dataset, src_collection, eval_key, field):
 
 
 def _write_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
     pipeline.append({"$out": dataset._sample_collection_name})
 
     src_collection._dataset._aggregate(pipeline=pipeline)
 
 
 def _add_samples(dataset, src_collection):
-    pipeline = src_collection._pipeline(detach_frames=True)
+    pipeline = src_collection._pipeline(detach_frames=True, detach_groups=True)
     pipeline.append(
         {
             "$merge": {
