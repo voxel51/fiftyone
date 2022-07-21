@@ -13,19 +13,6 @@ export default graphql`
   }
 `;
 
-export const paginateGroupWithPinnedSample = graphql`
-  query paginateGroupWithPinnedSampleQuery(
-    $dataset: String!
-    $view: BSONArray!
-    $count: Int = 20
-    $cursor: String = null
-    $pinnedSampleFilter: SampleFilter!
-  ) {
-    ...paginateGroup_query
-    ...paginateGroupPinnedSample_query
-  }
-`;
-
 export const paginateGroupPaginationFragment = graphql`
   fragment paginateGroup_query on Query
   @refetchable(queryName: "paginateGroupPageQuery") {

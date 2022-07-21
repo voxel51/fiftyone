@@ -197,7 +197,7 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
-  const groupQueryRef = useRecoilValue(fos.paginateGroupQueryRef);
+  const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -207,7 +207,6 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          {useRecoilValue(isGroup) && <Group queryRef={groupQueryRef} />}
           <Looker
             key={`modal-${sampleSrc}`}
             lookerRef={lookerRef}
@@ -217,17 +216,10 @@ const SampleModal = () => {
             onNext={() => getIndex(index + 1)}
             style={{ flex: 1 }}
           />
+          {useRecoilValue(isGroup) && queryRef && <Group queryRef={queryRef} />}
         </ContentColumn>
-        {useRecoilValue(isPinned) && (
-          <PinnedLooker>
-            <Looker
-              key={`modal2-${sampleSrc}`}
-              lookerRef={lookerRef}
-              onSelectLabel={onSelectLabel}
-              style={{ flex: 1 }}
-              pinned={true}
-            />
-          </PinnedLooker>
+        {useRecoilValue(isPinned) && queryRef && (
+          <PinnedLooker queryRef={queryRef} />
         )}
         <Sidebar render={renderEntry} modal={true} />
       </Container>

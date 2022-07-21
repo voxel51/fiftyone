@@ -1,16 +1,15 @@
-import React from "react";
-import { animated } from "@react-spring/web";
+import React, { Suspense } from "react";
 import styled from "styled-components";
 
-import { scrollbarStyles } from "../utils";
 import { Resizable } from "re-resizable";
 
 import { useTheme } from "@fiftyone/components";
-import { useFragment } from "react-relay";
+import { PreloadedQuery, useFragment, usePreloadedQuery } from "react-relay";
 import {
-  pageinateGroupPinnedSampleFragment,
-  pag,
   paginateGroupPinnedSample_query$key,
+  paginateGroup,
+  paginateGroupQuery,
+  pageinateGroupPinnedSampleFragment,
 } from "@fiftyone/relay";
 
 const Container = styled.div`
@@ -20,16 +19,21 @@ const Container = styled.div`
   width: 100%;
 `;
 
+const LookerContainer: React.FC<{
+  data: paginateGroupPinnedSample_query$key;
+}> = ({ data }) => {
+  const { sample } = useFragment(pageinateGroupPinnedSampleFragment, data);
+
+  return <div>{sample?.__typename}</div>;
+};
+
 const PinnedLooker: React.FC<
   React.PropsWithChildren<{
-    pinnedSampleFragment: paginateGroupPinnedSample_query$key;
+    queryRef: PreloadedQuery<paginateGroupQuery>;
   }>
-> = ({ children, pinnedSampleFragment }) => {
+> = ({ children, queryRef }) => {
   const theme = useTheme();
-  const { sample } = useFragment(
-    pageinateGroupPinnedSampleFragment,
-    pinnedSampleFragment
-  );
+  const data = usePreloadedQuery(paginateGroup, queryRef);
 
   const [width, setWidth] = React.useState(400);
   const shown = true;
@@ -42,7 +46,7 @@ const PinnedLooker: React.FC<
         top: false,
         right: true,
         bottom: false,
-        left: false,
+        left: true,
         topRight: false,
         bottomRight: false,
         bottomLeft: false,
@@ -55,7 +59,11 @@ const PinnedLooker: React.FC<
         borderRight: `1px solid ${theme.backgroundDarkBorder}`,
       }}
     >
-      <Container>{children}</Container>
+      <Container>
+        <Suspense>
+          <LookerContainer data={data} />
+        </Suspense>
+      </Container>
     </Resizable>
   );
 };

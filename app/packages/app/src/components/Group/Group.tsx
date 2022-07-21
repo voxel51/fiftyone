@@ -211,23 +211,22 @@ const Group: React.FC<{
     queryRef
   );
 
-  console.log(data);
-
   return (
     <Resizable
       size={{ height, width: "100%" }}
       minHeight={100}
       maxHeight={300}
       enable={{
-        top: false,
+        top: true,
         right: false,
-        bottom: true,
+        bottom: false,
         left: false,
         topRight: false,
         bottomRight: false,
         bottomLeft: false,
         topLeft: false,
       }}
+      style={{ zIndex: 1000 }}
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}
