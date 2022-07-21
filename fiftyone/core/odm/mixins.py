@@ -566,7 +566,7 @@ class DatasetMixin(object):
         field_roots = sample_collection._get_root_fields(
             field_names + new_field_names
         )
-        view.save(list(set(field_roots)))
+        view.save(field_roots)
 
     @classmethod
     def _clone_fields_simple(cls, field_names, new_field_names):
@@ -624,7 +624,7 @@ class DatasetMixin(object):
         # we limit the damage by projecting onto the modified fields
         #
         field_roots = sample_collection._get_root_fields(new_field_names)
-        view.save(list(set(field_roots)))
+        view.save(field_roots)
 
     @classmethod
     def _clear_fields_simple(cls, field_names):
@@ -659,7 +659,7 @@ class DatasetMixin(object):
         # we limit the damage by projecting onto the modified fields
         #
         field_roots = sample_collection._get_root_fields(field_names)
-        view.save(list(set(field_roots)))
+        view.save(field_roots)
 
     @classmethod
     def _delete_fields_simple(cls, field_names):
