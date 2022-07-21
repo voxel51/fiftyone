@@ -4,13 +4,21 @@ import styled from "styled-components";
 import { Resizable } from "re-resizable";
 
 import { useTheme } from "@fiftyone/components";
-import { PreloadedQuery, useFragment, usePreloadedQuery } from "react-relay";
+import {
+  PreloadedQuery,
+  usePaginationFragment,
+  usePreloadedQuery,
+} from "react-relay";
 import {
   paginateGroupPinnedSample_query$key,
   paginateGroup,
   paginateGroupQuery,
   pageinateGroupPinnedSampleFragment,
+  paginateGroupPaginationFragment,
+  paginateGroupQuery$data,
+  paginateGroup_query$key,
 } from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 
 const Container = styled.div`
   position: relative;
@@ -18,13 +26,36 @@ const Container = styled.div`
   height: 100%;
   width: 100%;
 `;
+import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
+import { useRecoilValue } from "recoil";
+
+function usePinnedVisualizerPlugin(fragmentRef) {
+  const { data, hasNext, loadNext } = usePaginationFragment(
+    paginateGroupPaginationFragment,
+    fragmentRef
+  );
+  const { samples } = data;
+  const {
+    node: { sample },
+  } = samples.edges.find(({ node: { sample } }) => {
+    return sample._media_type === "point-cloud";
+  });
+  console.log({ sample });
+  const dataset = useRecoilValue(fos.dataset);
+  const [visualizerPlugin] = useActivePlugins(PluginComponentType.Visualizer, {
+    dataset,
+    sample,
+    pinned: true,
+  });
+  if (visualizerPlugin) return visualizerPlugin.component;
+}
 
 const LookerContainer: React.FC<{
-  data: paginateGroupPinnedSample_query$key;
-}> = ({ data }) => {
-  const { sample } = useFragment(pageinateGroupPinnedSampleFragment, data);
+  fragmentRef: paginateGroup_query$key;
+}> = ({ fragmentRef }) => {
+  const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
 
-  return <div>{sample?.__typename}</div>;
+  return <Visualizer />;
 };
 
 const PinnedLooker: React.FC<
@@ -61,7 +92,7 @@ const PinnedLooker: React.FC<
     >
       <Container>
         <Suspense>
-          <LookerContainer data={data} />
+          <LookerContainer fragmentRef={data} />
         </Suspense>
       </Container>
     </Resizable>

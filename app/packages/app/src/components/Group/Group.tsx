@@ -63,11 +63,16 @@ const Column: React.FC<{
 }> = ({ fragmentRef }) => {
   const [id] = useState(() => uuid());
   const pageCount = useRef(0);
-  const {
-    data: { samples },
-    hasNext,
-    loadNext,
-  } = usePaginationFragment(foq.paginateGroupPaginationFragment, fragmentRef);
+  const { data, hasNext, loadNext } = usePaginationFragment(
+    foq.paginateGroupPaginationFragment,
+    fragmentRef
+  );
+  const samples = {
+    ...data.samples,
+    edges: data.samples.edges.filter(
+      (s) => s.node.sample._media_type !== "point-cloud"
+    ),
+  };
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const createLooker = fos.useCreateLooker(true, opts, true);

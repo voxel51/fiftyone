@@ -15,7 +15,7 @@ export const isPinned = selector<boolean>({
 
 export const pinnedSampleGroup = selector<string>({
   key: "pinnedSampleGroup",
-  get: () => "center",
+  get: () => "point-cloud",
 });
 
 export const groupField = selector<string>({

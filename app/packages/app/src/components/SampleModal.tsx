@@ -11,7 +11,7 @@ import Looker from "../components/Looker";
 import Group from "./Group/Group";
 import Sidebar, { Entries } from "./Sidebar";
 import * as fos from "@fiftyone/state";
-import { usePlugin, PluginComponentType } from "@fiftyone/plugins";
+
 import PinnedLooker from "./PinnedLooker/PinnedLooker";
 import { isGroup, isPinned } from "@fiftyone/state";
 
