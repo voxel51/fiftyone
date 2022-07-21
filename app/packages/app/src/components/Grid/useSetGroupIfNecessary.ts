@@ -17,7 +17,6 @@ export default (store: fos.LookerStore<any>) => {
         const sample = store.samples.get(sampleId);
 
         const groupField = await snapshot.getPromise(fos.groupField);
-        console.log(groupField, sample);
 
         if (await snapshot.getPromise(fos.isGroup))
           set(

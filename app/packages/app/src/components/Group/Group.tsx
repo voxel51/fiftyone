@@ -25,6 +25,7 @@ import { v4 as uuid } from "uuid";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import { DetailsOutlined } from "@material-ui/icons";
 
 const process = (
   next: MutableRefObject<number>,

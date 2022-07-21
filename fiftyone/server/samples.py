@@ -21,14 +21,14 @@ from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 import fiftyone.server.view as fosv
-from fiftyone.server.scalars import BSON, BSONArray
+from fiftyone.server.scalars import BSON, JSON, BSONArray
 
 
 @gql.interface
 class Sample:
     width: int
     height: int
-    sample: BSON
+    sample: JSON
 
 
 @gql.type
