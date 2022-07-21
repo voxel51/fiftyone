@@ -8,6 +8,7 @@ FiftyOne Server samples pagination
 import asyncio
 from dacite import Config, from_dict
 import strawberry as gql
+import strawberry.schema_directive as gqls
 import typing as t
 
 
@@ -15,18 +16,19 @@ import fiftyone.core.clips as focl
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+from fiftyone.server.filters import SampleFilter
 
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 import fiftyone.server.view as fosv
-from fiftyone.server.scalars import JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray
 
 
 @gql.interface
 class Sample:
     width: int
     height: int
-    sample: JSON
+    sample: BSON
 
 
 @gql.type
@@ -39,13 +41,17 @@ class VideoSample(Sample):
     frame_rate: float
 
 
+SampleItem = gql.union("SampleItem", types=(ImageSample, VideoSample))
+
+
 async def paginate_samples(
     dataset: str,
-    stages: JSONArray,
-    filters: JSON,
-    similarity: JSON,
+    stages: BSONArray,
+    filters: BSON,
+    similarity: BSON,
     first: int,
     after: t.Optional[str] = None,
+    sample_filter: t.Optional[SampleFilter] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
@@ -54,6 +60,7 @@ async def paginate_samples(
         count_label_tags=True,
         similarity=similarity,
         only_matches=True,
+        sample_filter=sample_filter,
     )
 
     if view.media_type == fom.VIDEO:

@@ -5,7 +5,9 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from numpy import full
+import typing as t
+from bson import ObjectId
+
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -15,6 +17,7 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.filters import SampleFilter
 from fiftyone.server.utils import iter_label_fields
 
 
@@ -28,22 +31,34 @@ def get_view(
     count_label_tags=False,
     only_matches=True,
     similarity=None,
+    sample_filter: t.Optional[SampleFilter] = None,
 ) -> fov.DatasetView:
-    """Get the view from request paramters
-
-    Args:
-        dataset_names: the dataset name
-        stages (None): an optional list of serialized
-            :class:`fiftyone.core.stages.ViewStage`s
-        filters (None): an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
-        similarity (None): sort by similarity paramters
-    """
     view = fod.load_dataset(dataset_name)
     view.reload()
+
+    if sample_filter:
+        if sample_filter.group:
+            view = view.mongo(
+                [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [
+                                    "$"
+                                    + sample_filter.group.group_field
+                                    + "._id",
+                                    ObjectId(sample_filter.group.id),
+                                ]
+                            }
+                        }
+                    }
+                ]
+            )
+        elif sample_filter.id:
+            view = fov.make_optimized_select_view(view, sample_filter.id)
+
+    if view.media_type == fom.GROUP:
+        view = view.use_group()
 
     if stages:
         view = fov.DatasetView._build(view, stages)

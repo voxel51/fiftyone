@@ -1,4 +1,3 @@
-import { Route } from "@fiftyone/components";
 import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
 import React, { useContext, useEffect } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
@@ -8,7 +7,7 @@ import DatasetComponent from "../../components/Dataset";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 
 import * as fos from "@fiftyone/state";
-import { RouterContext } from "@fiftyone/state";
+import { Route, RouterContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
 const Query = graphql`
@@ -17,6 +16,14 @@ const Query = graphql`
       id
       name
       mediaType
+      groups {
+        field
+        groups {
+          name
+          mediaType
+        }
+        defaultGroup
+      }
       sampleFields {
         ftype
         subfield

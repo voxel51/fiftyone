@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<40c595444669be3aac87923c21edf04d>>
+ * @generated SignedSource<<d88b040e8a624c1637122e29490dbbe1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from "relay-runtime";
-export type MediaType = "image" | "video" | "%future added value";
+export type MediaType = "group" | "image" | "video" | "%future added value";
 export type setViewMutation$variables = {
   dataset: string;
   session?: string | null;

@@ -14,6 +14,8 @@ type AppConfig {
   useFrameNumber: Boolean!
 }
 
+scalar BSON
+
 scalar BSONArray
 
 type BrainRun implements Run {
@@ -43,6 +45,7 @@ type Dataset {
   createdAt: Date
   lastLoadedAt: DateTime
   persistent: Boolean!
+  groups: [GroupField!]!
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
@@ -100,13 +103,28 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type Group {
+  name: String!
+  mediaType: MediaType!
+}
+
+input GroupElementFilter {
+  groupField: String!
+  id: String!
+  group: String!
+}
+
+type GroupField {
+  field: String!
+  groups: [Group!]!
+  defaultGroup: String!
+}
+
 type ImageSample implements Sample {
   width: Int!
   height: Int!
-  sample: JSON!
+  sample: BSON!
 }
-
-scalar JSON
 
 type KeypointSkeleton {
   labels: [String!]
@@ -115,6 +133,7 @@ type KeypointSkeleton {
 
 enum MediaType {
   image
+  group
   video
 }
 
@@ -168,6 +187,7 @@ type Query {
     first: Int = 20
     after: String = null
   ): SampleItemStrConnection!
+  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -188,7 +208,7 @@ interface RunConfig {
 interface Sample {
   width: Int!
   height: Int!
-  sample: JSON!
+  sample: BSON!
 }
 
 type SampleField {
@@ -197,6 +217,11 @@ type SampleField {
   subfield: String
   embeddedDocType: String
   dbField: String
+}
+
+input SampleFilter {
+  id: String
+  group: GroupElementFilter
 }
 
 union SampleItem = ImageSample | VideoSample
@@ -239,7 +264,7 @@ type Target {
 type VideoSample implements Sample {
   width: Int!
   height: Int!
-  sample: JSON!
+  sample: BSON!
   frameRate: Float!
 }
 

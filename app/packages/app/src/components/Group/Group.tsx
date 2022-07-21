@@ -25,7 +25,6 @@ import { v4 as uuid } from "uuid";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import { paginateGroup } from "@fiftyone/relay";
 
 const process = (
   next: MutableRefObject<number>,
@@ -208,9 +207,11 @@ const Group: React.FC<{
 }> = ({ queryRef }) => {
   const [height, setHeight] = useState(150);
   const data = usePreloadedQuery<foq.paginateGroupQuery>(
-    paginateGroup,
+    foq.paginateGroup,
     queryRef
   );
+
+  console.log(data);
 
   return (
     <Resizable

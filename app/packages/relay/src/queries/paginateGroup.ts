@@ -6,8 +6,23 @@ export default graphql`
     $view: BSONArray!
     $count: Int = 20
     $cursor: String = null
+    $pinnedSampleFilter: SampleFilter!
   ) {
     ...paginateGroup_query
+    ...paginateGroupPinnedSample_query
+  }
+`;
+
+export const paginateGroupWithPinnedSample = graphql`
+  query paginateGroupWithPinnedSampleQuery(
+    $dataset: String!
+    $view: BSONArray!
+    $count: Int = 20
+    $cursor: String = null
+    $pinnedSampleFilter: SampleFilter!
+  ) {
+    ...paginateGroup_query
+    ...paginateGroupPinnedSample_query
   }
 `;
 
@@ -32,6 +47,26 @@ export const paginateGroupPaginationFragment = graphql`
             width
           }
         }
+      }
+    }
+  }
+`;
+
+export const pageinateGroupPinnedSampleFragment = graphql`
+  fragment paginateGroupPinnedSample_query on Query
+  @refetchable(queryName: "paginateGroupPinnedSampleQuery") {
+    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
+      __typename
+      ... on ImageSample {
+        height
+        sample
+        width
+      }
+      ... on VideoSample {
+        frameRate
+        height
+        sample
+        width
       }
     }
   }

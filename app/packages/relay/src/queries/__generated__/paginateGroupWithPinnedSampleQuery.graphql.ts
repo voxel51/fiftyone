@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<94cc45a401bbcbc03d57545b7fb2b013>>
+ * @generated SignedSource<<0530ffe1ba685b535e3817191456676f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,21 +19,21 @@ export type GroupElementFilter = {
   groupField: string;
   id: string;
 };
-export type paginateGroupQuery$variables = {
+export type paginateGroupWithPinnedSampleQuery$variables = {
   count?: number | null;
   cursor?: string | null;
   dataset: string;
   pinnedSampleFilter: SampleFilter;
   view: Array;
 };
-export type paginateGroupQuery$data = {
+export type paginateGroupWithPinnedSampleQuery$data = {
   readonly " $fragmentSpreads": FragmentRefs<
     "paginateGroupPinnedSample_query" | "paginateGroup_query"
   >;
 };
-export type paginateGroupQuery = {
-  response: paginateGroupQuery$data;
-  variables: paginateGroupQuery$variables;
+export type paginateGroupWithPinnedSampleQuery = {
+  response: paginateGroupWithPinnedSampleQuery$data;
+  variables: paginateGroupWithPinnedSampleQuery$variables;
 };
 
 const node: ConcreteRequest = (function () {
@@ -150,7 +150,7 @@ const node: ConcreteRequest = (function () {
       ],
       kind: "Fragment",
       metadata: null,
-      name: "paginateGroupQuery",
+      name: "paginateGroupWithPinnedSampleQuery",
       selections: [
         {
           args: null,
@@ -176,7 +176,7 @@ const node: ConcreteRequest = (function () {
         v3 /*: any*/,
       ],
       kind: "Operation",
-      name: "paginateGroupQuery",
+      name: "paginateGroupWithPinnedSampleQuery",
       selections: [
         {
           alias: null,
@@ -272,16 +272,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "86306967087ea005b3b6e1b0ac201bc0",
+      cacheID: "95ca3c9a404b4b09850579175ed9c4c6",
       id: null,
       metadata: {},
-      name: "paginateGroupQuery",
+      name: "paginateGroupWithPinnedSampleQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: String = null\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupWithPinnedSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $count: Int = 20\n  $cursor: String = null\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "46072fa862751349595f420fcb795ec6";
+(node as any).hash = "676cef815470e5f705d0ee723a373c85";
 
 export default node;

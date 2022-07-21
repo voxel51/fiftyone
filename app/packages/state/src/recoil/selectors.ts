@@ -9,6 +9,7 @@ import { State } from "./types";
 export const datasetName = selector<string>({
   key: "datasetName",
   get: ({ get }) => {
+    console.log(get(atoms.dataset));
     return get(atoms.dataset)?.name;
   },
 });
