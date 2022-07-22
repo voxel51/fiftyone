@@ -251,7 +251,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_field = None
         self._group_slice = None
-        self._set_group_field()
+        if self.media_type == fom.GROUP:
+            self._set_group_field()
 
         self._annotation_cache = {}
         self._brain_cache = {}
@@ -417,9 +418,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._set_group_field(field_name)
 
     def _set_group_field(self, field_name=None):
-        if self._group_field is None and field_name is None:
-            return
-
         if field_name is None:
             field_name = _get_group_field(self)
 
@@ -431,7 +429,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field, fof.EmbeddedDocumentField
             ) or not issubclass(field.document_type, fog.Group):
                 raise ValueError(
-                    "Field '%s' is not a Group field" % field_name
+                    "Field '%s' is not a group field" % field_name
                 )
 
         self._group_field = field_name
@@ -487,6 +485,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.default_group_slice = slice_name
         self._doc.save()
+
+        if self._group_slice is None:
+            self._group_slice = slice_name
 
     @property
     def version(self):
@@ -5083,7 +5084,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
-        self._set_group_field()
+
+        if self.media_type == fom.GROUP:
+            self._set_group_field()
 
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
