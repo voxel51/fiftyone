@@ -4643,11 +4643,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline())
 
         if group_slices:
-            if groups_only:
-                # Attach all group slices now because we'll need them later
-                _pipeline.extend(self._groups_lookup_pipeline())
-            else:
-                _pipeline.extend(self._groups_lookup_pipeline(group_slices))
+            _pipeline.extend(self._groups_lookup_pipeline(group_slices))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -4660,11 +4656,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if detach_groups:
             _pipeline.append({"$project": {"groups": False}})
         elif groups_only:
-            if group_slices:
-                # Group slices were already attached, so just unwind them
-                _pipeline.extend(self._unwind_groups_pipeline())
-            else:
-                _pipeline.extend(self._groups_only_pipeline())
+            _pipeline.extend(self._groups_only_pipeline())
 
         return _pipeline
 

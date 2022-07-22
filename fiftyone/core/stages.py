@@ -3792,8 +3792,9 @@ class SelectGroupSlice(ViewStage):
             default, a flattened list of all samples is returned
     """
 
-    def __init__(self, slice=None):
+    def __init__(self, slice=None, _allow_mixed=False):
         self._slice = slice
+        self._allow_mixed = _allow_mixed
 
     @property
     def slice(self):
@@ -3828,6 +3829,9 @@ class SelectGroupSlice(ViewStage):
             media_types = set(group_media_types.values())
 
             if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
                 raise ValueError(
                     "Cannot select all groups when dataset contains multiple "
                     "media types %s" % media_types
@@ -3850,6 +3854,9 @@ class SelectGroupSlice(ViewStage):
                 media_types.add(group_media_types[_slice])
 
             if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
                 raise ValueError(
                     "Cannot select slices %s with different media types %s"
                     % (slices, media_types)

@@ -573,9 +573,14 @@ class SampleCollection(object):
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
-        return fosa.get_default_sample_fields(
+        field_names = fosa.get_default_sample_fields(
             include_private=include_private, use_db_fields=use_db_fields
         )
+
+        if self.media_type == fom.GROUP:
+            return field_names + (self.group_field,)
+
+        return field_names
 
     def _get_default_frame_fields(
         self, include_private=False, use_db_fields=False
@@ -4521,7 +4526,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_group_slice(self, slice=None):
+    def select_group_slice(self, slice=None, _allow_mixed=False):
         """Selects the samples in the group collection from the given slice(s).
 
         The returned view is a flattened non-grouped view containing only the
@@ -4591,7 +4596,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SelectGroupSlice(slice=slice))
+        return self._add_view_stage(
+            fos.SelectGroupSlice(slice=slice, _allow_mixed=_allow_mixed)
+        )
 
     @view_stage
     def select_labels(

@@ -774,6 +774,12 @@ def _write_generic_sample_dataset(
             if sample_collection is not None:
                 dataset_exporter.log_collection(sample_collection)
 
+            if (
+                isinstance(samples, foc.SampleCollection)
+                and samples.media_type == fomm.GROUP
+            ):
+                samples = samples.select_group_slice(_allow_mixed=True)
+
             for sample in pb(samples):
                 dataset_exporter.export_sample(sample)
 
@@ -1527,7 +1533,6 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata = None
         self._samples = None
         self._media_exporter = None
-        self._is_video_dataset = False
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -1548,15 +1553,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._media_exporter.setup()
 
     def log_collection(self, sample_collection):
-        self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
-
         self._metadata["name"] = sample_collection.name
         self._metadata["media_type"] = sample_collection.media_type
 
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if self._is_video_dataset:
+        if _contains_videos(sample_collection):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
@@ -1626,7 +1629,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if self.relative_filepaths:
             sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
 
-        if self._is_video_dataset:
+        if sample.media_type == fomm.VIDEO:
             # Serialize frame labels separately
             uuid = os.path.splitext(os.path.basename(out_filepath))[0]
             outpath = self._export_frame_labels(sample, uuid)
@@ -1715,7 +1718,14 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
     def export_samples(self, sample_collection):
         etau.ensure_dir(self.export_dir)
 
-        inpaths = sample_collection.values("filepath")
+        if sample_collection.media_type == fomm.GROUP:
+            _sample_collection = sample_collection.select_group_slice(
+                _allow_mixed=True
+            )
+        else:
+            _sample_collection = sample_collection
+
+        inpaths = _sample_collection.values("filepath")
 
         if self.export_media != False:
             if self.rel_dir is not None:
@@ -1740,7 +1750,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         logger.info("Exporting samples...")
 
-        coll, pipeline = fod._get_samples_pipeline(sample_collection)
+        coll, pipeline = fod._get_samples_pipeline(_sample_collection)
         num_samples = foo.count_documents(coll, pipeline)
         _samples = foo.aggregate(coll, pipeline)
 
@@ -1753,9 +1763,26 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             samples, self._samples_path, key="samples", num_docs=num_samples
         )
 
-        if sample_collection.media_type == fomm.VIDEO:
+        if _contains_videos(sample_collection):
             logger.info("Exporting frames...")
-            coll, pipeline = fod._get_frames_pipeline(sample_collection)
+
+            if sample_collection.media_type == fomm.GROUP and not isinstance(
+                sample_collection, fod.Dataset
+            ):
+                # Export frames for all video samples
+                media_types = sample_collection.group_media_types
+                video_slices = [
+                    name
+                    for name, media_type in media_types.items()
+                    if media_type == fomm.VIDEO
+                ]
+                _video_collection = sample_collection.select_group_slice(
+                    video_slices
+                )
+            else:
+                _video_collection = sample_collection
+
+            coll, pipeline = fod._get_frames_pipeline(_video_collection)
             num_frames = foo.count_documents(coll, pipeline)
             frames = foo.aggregate(coll, pipeline)
             foo.export_collection(
@@ -1813,6 +1840,19 @@ def _export_evaluation_results(sample_collection, eval_dir):
         results = sample_collection.load_evaluation_results(eval_key)
         if results is not None:
             etas.write_json(results, results_path)
+
+
+def _contains_videos(sample_collection):
+    if sample_collection.media_type == fomm.VIDEO:
+        return True
+
+    if (sample_collection.media_type == fomm.GROUP) and any(
+        media_type == fomm.VIDEO
+        for media_type in sample_collection.group_media_types.values()
+    ):
+        return True
+
+    return False
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
