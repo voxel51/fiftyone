@@ -26,6 +26,7 @@ from .document import Document
 from .utils import get_field_kwargs, get_implied_field_kwargs
 
 fod = fou.lazy_import("fiftyone.core.dataset")
+fog = fou.lazy_import("fiftyone.core.groups")
 
 
 logger = logging.getLogger(__name__)
@@ -269,9 +270,21 @@ class DatasetMixin(object):
 
         for field_name in add_fields:
             field = schema[field_name]
+            cls.validate_new_field(field)
             kwargs = get_field_kwargs(field)
             kwargs["db_field"] = _get_db_field(field, field_name)
             cls._add_field_schema(field_name, **kwargs)
+
+    @classmethod
+    def validate_new_field(cls, field):
+        if cls._is_frames_doc:
+            if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                field.document_type, fog.Group
+            ):
+                raise ValueError(
+                    "Cannot create frame-level group field '%s'; group "
+                    "fields may only be top-level sample fields" % field.name
+                )
 
     @classmethod
     def add_field(

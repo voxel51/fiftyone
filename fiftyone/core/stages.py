@@ -3823,6 +3823,7 @@ class SelectGroupSlice(ViewStage):
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
+        # All group slices
         if self._slice is None:
             media_types = set(group_media_types.values())
 
@@ -3834,6 +3835,7 @@ class SelectGroupSlice(ViewStage):
 
             return next(iter(group_media_types.values()))
 
+        # Multiple group slices
         if etau.is_container(self._slice):
             slices = list(self._slice)
 
@@ -3841,25 +3843,25 @@ class SelectGroupSlice(ViewStage):
             for _slice in slices:
                 if _slice not in group_media_types:
                     raise ValueError(
-                        "Group field '%s' has no slice '%s'"
-                        % (group_field, _slice)
+                        "%s has no group slice '%s'"
+                        % (type(sample_collection), _slice)
                     )
 
                 media_types.add(group_media_types[_slice])
 
             if len(media_types) > 1:
                 raise ValueError(
-                    "Cannot select slices %s with different media types %s "
-                    "from group field '%s'"
-                    % (slices, media_types, group_field)
+                    "Cannot select slices %s with different media types %s"
+                    % (slices, media_types)
                 )
 
             return next(iter(media_types))
 
+        # One group slice
         if self._slice not in group_media_types:
             raise ValueError(
-                "Group field '%s' has no slice '%s'"
-                % (group_field, self._slice)
+                "%s has no group slice '%s'"
+                % (type(sample_collection), self._slice)
             )
 
         return group_media_types[self._slice]

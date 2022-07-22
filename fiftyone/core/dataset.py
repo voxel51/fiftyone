@@ -435,7 +435,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
 
         self._group_field = field_name
-        self._group_slice = self._doc.default_group_slices[field_name]
+        self._group_slice = self._doc.default_group_slice
 
     @property
     def group_slice(self):
@@ -450,13 +450,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no groups")
 
         if slice_name is None:
-            slice_name = self._doc.default_group_slices[self._group_field]
+            slice_name = self._doc.default_group_slice
 
-        if slice_name not in self._doc.groups[self._group_field]:
-            raise ValueError(
-                "Group field '%s' has no slice '%s'"
-                % (self._group_field, slice_name)
-            )
+        if slice_name not in self._doc.groups:
+            raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._group_slice = slice_name
 
@@ -468,7 +465,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             return None
 
-        return self._doc.groups[self._group_field]
+        return self._doc.groups
 
     @property
     def default_group_slice(self):
@@ -478,20 +475,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             return None
 
-        return self._doc.default_group_slices[self._group_field]
+        return self._doc.default_group_slice
 
     @default_group_slice.setter
     def default_group_slice(self, slice_name):
         if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
 
-        if slice_name not in self._doc.groups[self._group_field]:
-            raise ValueError(
-                "Group field '%s' has no slice '%s'"
-                % (self._group_field, slice_name)
-            )
+        if slice_name not in self._doc.groups:
+            raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
-        self._doc.default_group_slices[self._group_field] = slice_name
+        self._doc.default_group_slice = slice_name
         self._doc.save()
 
     @property
@@ -1167,6 +1161,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload()
 
     def _add_group_field(self, field_name, default=None):
+        if self.group_field is not None:
+            raise ValueError("Datasets may only have one group field")
+
         if "." in field_name:
             raise ValueError(
                 "Invalid group field '%s'. Group fields must be top-level "
@@ -1179,17 +1176,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type=fog.Group,
         )
 
-        if field_name not in self._doc.groups:
-            self._doc.groups[field_name] = {}
+        if self._doc.groups is None:
+            self._doc.groups = {}
 
-        self._doc.default_group_slices[field_name] = default
+        self._doc.default_group_slice = default
         self._doc.save()
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
-
-        if self._group_field is None:
-            self._set_group_field(field_name)
+        self._set_group_field(field_name)
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -4648,8 +4643,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline())
 
         if group_slices:
-            # @todo if groups_only is True, attach all groups here?
-            _pipeline.extend(self._groups_lookup_pipeline(group_slices))
+            if groups_only:
+                # Attach all group slices now because we'll need them later
+                _pipeline.extend(self._groups_lookup_pipeline())
+            else:
+                _pipeline.extend(self._groups_lookup_pipeline(group_slices))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -4663,6 +4661,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.append({"$project": {"groups": False}})
         elif groups_only:
             if group_slices:
+                # Group slices were already attached, so just unwind them
                 _pipeline.extend(self._unwind_groups_pipeline())
             else:
                 _pipeline.extend(self._groups_only_pipeline())
@@ -4751,14 +4750,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
         ]
 
-    def _groups_lookup_pipeline(self, group_slices):
+    def _groups_lookup_pipeline(self, group_slices=None):
         from fiftyone import ViewField as F
 
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
-        expr = (F(id_field) == "$$group_id") & F(name_field).is_in(
-            list(group_slices)
-        )
+
+        expr = F(id_field) == "$$group_id"
+        if etau.is_str(group_slices):
+            expr &= F(name_field) == group_slices
+        elif etau.is_container(group_slices):
+            expr &= F(name_field).is_in(list(group_slices))
 
         return [
             {
@@ -4788,11 +4790,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [
             {
                 "$set": {
-                    "$map": {
-                        "input": {"$objectToArray": "$groups"},
-                        "as": "this",
-                        "in": {"$arrayElemAt": ["$$this", 0]},
-                    },
+                    "groups": {
+                        "$map": {
+                            "input": {"$objectToArray": "$groups"},
+                            "as": "this",
+                            "in": "$$this.v",
+                        }
+                    }
                 }
             },
             {"$unwind": "$groups"},
@@ -4925,7 +4929,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 value = sample[field_name]
 
                 if isinstance(value, fog.Group):
-                    self._expand_group_schema(sample, field_name)
+                    self._expand_group_schema(sample, field_name, value)
 
                 if field_name in schema:
                     continue
@@ -4944,18 +4948,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
-    def _expand_group_schema(self, sample, field_name):
-        value = sample[field_name]
+    def _expand_group_schema(self, sample, field_name, value):
+        if field_name != self.group_field:
+            raise ValueError("Dataset has no group field '%s'" % field_name)
 
-        if field_name not in self._doc.groups:
-            self._doc.groups[field_name] = {}
-
-        if value.name not in self._doc.groups[field_name]:
-            # @todo some weird MongoEngine  error occurs here if `copy()` is`
-            # not used here. Fix it?
-            group_media_types = self._doc.groups[field_name].copy()
-            group_media_types[value.name] = sample.media_type
-            self._doc.groups[field_name] = group_media_types
+        if value.name not in self._doc.groups:
+            self._doc.groups[value.name] = sample.media_type
             self._doc.save()
 
     def _expand_frame_schema(self, frames):
@@ -4973,13 +4971,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if value is None:
                     continue
-
-                if isinstance(value, fog.Group):
-                    raise ValueError(
-                        "Cannot create frame-level group field '%s'; group "
-                        "fields may only be top-level sample fields"
-                        % field_name
-                    )
 
                 self._frame_doc_cls.add_implied_field(field_name, value)
                 schema = self.get_frame_field_schema(include_private=True)
@@ -5021,7 +5012,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
 
             non_existent_fields = set()
-            found_groups = set()
+            found_group = False
 
             for field_name, value in sample.iter_fields():
                 if isinstance(value, fog.Group):
@@ -5031,31 +5022,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             "Group fields" % fom.GROUP
                         )
 
-                    group_media_types = self._doc.groups.get(field_name, None)
-                    if group_media_types is None:
+                    if field_name != self.group_field:
                         raise ValueError(
                             "Dataset has no group field '%s'" % field_name
                         )
 
-                    group_media_type = group_media_types.get(value.name, None)
+                    group_media_type = self._doc.groups.get(value.name, None)
                     if group_media_type is None:
                         raise ValueError(
-                            "Group field '%s' has no slice '%s'"
-                            % (field_name, value.name)
+                            "Dataset has no group slice '%s'" % value.name
                         )
                     elif sample.media_type != group_media_type:
                         raise ValueError(
-                            "Sample media type '%s' does not match group '%s' "
+                            "Sample media type '%s' does not match group "
                             "slice '%s' media type '%s'"
                             % (
                                 sample.media_type,
-                                field_name,
                                 value.name,
                                 group_media_type,
                             )
                         )
 
-                    found_groups.add(field_name)
+                    found_group = True
 
                 field = schema.get(field_name, None)
                 if field is None:
@@ -5077,13 +5065,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     % (non_existent_fields, self.name)
                 )
 
-            if self.media_type == fom.GROUP:
-                missing_groups = set(self._doc.groups.keys()) - found_groups
-                if missing_groups:
-                    raise ValueError(
-                        "Found sample missing group field(s) %s"
-                        % missing_groups
-                    )
+            if self.media_type == fom.GROUP and not found_group:
+                raise ValueError(
+                    "Found sample missing group field '%s'" % self.group_field
+                )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
