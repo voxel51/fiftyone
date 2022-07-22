@@ -330,39 +330,44 @@ class DatasetView(foc.SampleCollection):
                 yield sample
 
     def _iter_samples(self):
-        sample_cls = self._sample_cls
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
-        filtered_fields = self._get_filtered_fields()
-
+        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
             for d in self._aggregate(detach_frames=True, detach_groups=True):
-                try:
-                    doc = self._dataset._sample_dict_to_doc(d)
-                    sample = sample_cls(
-                        doc,
-                        self,
-                        selected_fields=selected_fields,
-                        excluded_fields=excluded_fields,
-                        filtered_fields=filtered_fields,
-                    )
-                    index += 1
-                    yield sample
+                sample = make_sample(d)
 
-                except Exception as e:
-                    raise ValueError(
-                        "Failed to load sample from the database. This is "
-                        "likely due to an invalid stage in the DatasetView"
-                    ) from e
-
+                index += 1
+                yield sample
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
             view = self.skip(index)
-            for sample in view.iter_samples():
+            for sample in view._iter_samples():
                 yield sample
+
+    def _make_sample_fcn(self):
+        sample_cls = self._sample_cls
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        filtered_fields = self._get_filtered_fields()
+
+        def make_sample(d):
+            try:
+                doc = self._dataset._sample_dict_to_doc(d)
+                return sample_cls(
+                    doc,
+                    self,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load sample from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
+
+        return make_sample
 
     def iter_groups(self, progress=False):
         """Returns an iterator over the groups in the view.
@@ -387,43 +392,32 @@ class DatasetView(foc.SampleCollection):
                 yield group
 
     def _iter_groups(self):
-        sample_cls = self._sample_cls
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
-        filtered_fields = self._get_filtered_fields()
+        make_sample = self._make_sample_fcn()
+        index = 0
 
         group_field = self.group_field
-        index = 0
         curr_id = None
         group = {}
 
         try:
             for d in self._aggregate(groups_only=True):
-                try:
-                    doc = self._dataset._sample_dict_to_doc(d)
-                    sample = sample_cls(
-                        doc,
-                        self,
-                        selected_fields=selected_fields,
-                        excluded_fields=excluded_fields,
-                        filtered_fields=filtered_fields,
-                    )
-                except Exception as e:
-                    raise ValueError(
-                        "Failed to load sample from the database. This is "
-                        "likely due to an invalid stage in the DatasetView"
-                    ) from e
+                sample = make_sample(d)
 
                 group_id = sample[group_field].id
-                if group_id == curr_id:
-                    group[sample[group_field].name] = sample
-                elif curr_id is None:
+                if curr_id is None:
+                    # First overall element
                     curr_id = group_id
+                    group[sample[group_field].name] = sample
+                elif group_id == curr_id:
+                    # Add element to group
                     group[sample[group_field].name] = sample
                 else:
-                    curr_id = group_id
+                    # Flush last group
                     index += 1
                     yield group
 
+                    # First element of new group
+                    curr_id = group_id
                     group = {}
                     group[sample[group_field].name] = sample
 
@@ -432,9 +426,8 @@ class DatasetView(foc.SampleCollection):
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
             view = self.skip(index)
-            for group in view.iter_groups():
+            for group in view._iter_groups():
                 yield group
 
     def get_group(self, group_id):

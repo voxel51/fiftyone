@@ -1585,33 +1585,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        pipeline = self._pipeline(detach_frames=True, detach_groups=True)
-
         if progress:
             with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples(pipeline)):
+                for sample in pb(self._iter_samples()):
                     yield sample
         else:
-            for sample in self._iter_samples(pipeline):
+            for sample in self._iter_samples():
                 yield sample
 
-    def _iter_samples(self, pipeline):
+    def _iter_samples(self, pipeline=None):
+        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
-            for d in foo.aggregate(self._sample_collection, pipeline):
-                doc = self._sample_dict_to_doc(d)
-                sample = fos.Sample.from_doc(doc, dataset=self)
+            for d in self._aggregate(
+                pipeline=pipeline,
+                detach_frames=True,
+                detach_groups=True,
+            ):
+                sample = make_sample(d)
                 index += 1
                 yield sample
 
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
-            pipeline.append({"$skip": index})
-            for sample in self._iter_samples(pipeline):
+            pipeline = [{"$skip": index}] + (pipeline or [])
+            for sample in self._iter_samples(pipeline=pipeline):
                 yield sample
+
+    def _make_sample_fcn(self):
+        def make_sample(d):
+            doc = self._sample_dict_to_doc(d)
+            return fos.Sample.from_doc(doc, dataset=self)
+
+        return make_sample
 
     def iter_groups(self, progress=False):
         """Returns an iterator over the groups in the dataset.
@@ -1627,38 +1635,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             raise ValueError("%s does not contain groups" % type(self))
 
-        pipeline = self._pipeline(groups_only=True)
-
         if progress:
             with fou.ProgressBar(total=len(self)) as pb:
-                for group in pb(self._iter_groups(pipeline)):
+                for group in pb(self._iter_groups()):
                     yield group
         else:
-            for group in self._iter_groups(pipeline):
+            for group in self._iter_groups():
                 yield group
 
-    def _iter_groups(self, pipeline):
-        group_field = self.group_field
+    def _iter_groups(self, pipeline=None):
+        make_sample = self._make_sample_fcn()
         index = 0
+
+        group_field = self.group_field
         curr_id = None
         group = {}
 
         try:
-            for d in foo.aggregate(self._sample_collection, pipeline):
-                doc = self._sample_dict_to_doc(d)
-                sample = fos.Sample.from_doc(doc, dataset=self)
+            for d in self._aggregate(pipeline=pipeline, groups_only=True):
+                sample = make_sample(d)
 
                 group_id = sample[group_field].id
-                if group_id == curr_id:
-                    group[sample[group_field].name] = sample
-                elif curr_id is None:
+                if curr_id is None:
+                    # First overall element
                     curr_id = group_id
+                    group[sample[group_field].name] = sample
+                elif group_id == curr_id:
+                    # Add element to group
                     group[sample[group_field].name] = sample
                 else:
-                    curr_id = group_id
+                    # Flush last group
                     index += 1
                     yield group
 
+                    # First element of new group
+                    curr_id = group_id
                     group = {}
                     group[sample[group_field].name] = sample
 
@@ -1667,9 +1678,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
-            pipeline.insert(0, {"$skip": index})
-            for group in self._groups(pipeline):
+            pipeline = [{"$skip": index}] + (pipeline or [])
+            for group in self._iter_groups(pipeline=pipeline):
                 yield group
 
     def get_group(self, group_id):
@@ -1699,10 +1709,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
         ]
 
-        pipeline = self._pipeline(pipeline=pipeline, groups_only=True)
-
         try:
-            return next(iter(self._iter_groups(pipeline)))
+            return next(iter(self._iter_groups(pipeline=pipeline)))
         except StopIteration:
             raise KeyError(
                 "No group found with ID '%s' in field '%s'"
