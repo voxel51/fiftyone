@@ -364,6 +364,108 @@ class DatasetView(foc.SampleCollection):
             for sample in view.iter_samples():
                 yield sample
 
+    def iter_groups(self, progress=False):
+        """Returns an iterator over the groups in the view.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+
+        Returns:
+            an iterator that emits dicts mapping slice names to
+            :class:`fiftyone.core.sample.SampleView` instances, one per group
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for group in pb(self._iter_groups()):
+                    yield group
+        else:
+            for group in self._iter_groups():
+                yield group
+
+    def _iter_groups(self):
+        sample_cls = self._sample_cls
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        filtered_fields = self._get_filtered_fields()
+
+        group_field = self.group_field
+        index = 0
+        curr_id = None
+        group = {}
+
+        try:
+            for d in self._aggregate(groups_only=True):
+                try:
+                    doc = self._dataset._sample_dict_to_doc(d)
+                    sample = sample_cls(
+                        doc,
+                        self,
+                        selected_fields=selected_fields,
+                        excluded_fields=excluded_fields,
+                        filtered_fields=filtered_fields,
+                    )
+                except Exception as e:
+                    raise ValueError(
+                        "Failed to load sample from the database. This is "
+                        "likely due to an invalid stage in the DatasetView"
+                    ) from e
+
+                group_id = sample[group_field].id
+                if group_id == curr_id:
+                    group[sample[group_field].name] = sample
+                elif curr_id is None:
+                    curr_id = group_id
+                    group[sample[group_field].name] = sample
+                else:
+                    curr_id = group_id
+                    index += 1
+                    yield group
+
+                    group = {}
+                    group[sample[group_field].name] = sample
+
+            if group:
+                yield group
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
+            view = self.skip(index)
+            for group in view.iter_groups():
+                yield group
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to
+            :class:`fiftyone.core.sample.SampleView` instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        id_field = group_field + "._id"
+
+        view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
+
+        try:
+            return next(iter(view._iter_groups()))
+        except StopIteration:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -833,6 +935,7 @@ class DatasetView(foc.SampleCollection):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         _pipeline = []
@@ -859,6 +962,7 @@ class DatasetView(foc.SampleCollection):
             frames_only=frames_only,
             media_type=media_type,
             group_slices=group_slices,
+            groups_only=groups_only,
             detach_groups=detach_groups,
         )
 
@@ -870,6 +974,7 @@ class DatasetView(foc.SampleCollection):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         if media_type is None:
@@ -882,6 +987,7 @@ class DatasetView(foc.SampleCollection):
             frames_only=frames_only,
             media_type=media_type,
             group_slices=group_slices,
+            groups_only=groups_only,
             detach_groups=detach_groups,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)

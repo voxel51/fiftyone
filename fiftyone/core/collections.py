@@ -544,8 +544,12 @@ class SampleCollection(object):
     def iter_groups(self):
         """Returns an iterator over the groups in the collection.
 
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+
         Returns:
-            an iterator that emits dicts mapping group names to
+            an iterator that emits dicts mapping group slice names to
             :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` instances, one per group
         """
@@ -7414,6 +7418,7 @@ class SampleCollection(object):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
@@ -7431,6 +7436,8 @@ class SampleCollection(object):
                 than the source dataset's media type
             group_slices (None): a list of group slices to attach. Only
                 applicable for grouped collections
+            groups_only (False): whether to generate a pipeline that contains
+                the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
 
@@ -7447,6 +7454,7 @@ class SampleCollection(object):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
@@ -7465,6 +7473,8 @@ class SampleCollection(object):
                 than the source dataset's media type
             group_slices (None): a list of group slices to attach. Only
                 applicable for grouped collections
+            groups_only (False): whether to generate a pipeline that contains
+                the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
 

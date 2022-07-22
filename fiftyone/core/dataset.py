@@ -1613,6 +1613,102 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in self._iter_samples(pipeline):
                 yield sample
 
+    def iter_groups(self, progress=False):
+        """Returns an iterator over the groups in the dataset.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+
+        Returns:
+            an iterator that emits dicts mapping group slice names to
+            :class:`fiftyone.core.sample.Sample` instances, one per group
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        pipeline = self._pipeline(groups_only=True)
+
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for group in pb(self._iter_groups(pipeline)):
+                    yield group
+        else:
+            for group in self._iter_groups(pipeline):
+                yield group
+
+    def _iter_groups(self, pipeline):
+        group_field = self.group_field
+        index = 0
+        curr_id = None
+        group = {}
+
+        try:
+            for d in foo.aggregate(self._sample_collection, pipeline):
+                doc = self._sample_dict_to_doc(d)
+                sample = fos.Sample.from_doc(doc, dataset=self)
+
+                group_id = sample[group_field].id
+                if group_id == curr_id:
+                    group[sample[group_field].name] = sample
+                elif curr_id is None:
+                    curr_id = group_id
+                    group[sample[group_field].name] = sample
+                else:
+                    curr_id = group_id
+                    index += 1
+                    yield group
+
+                    group = {}
+                    group[sample[group_field].name] = sample
+
+            if group:
+                yield group
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+
+            pipeline.insert(0, {"$skip": index})
+            for group in self._groups(pipeline):
+                yield group
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.sample.Sample`
+            instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        id_field = group_field + "._id"
+
+        pipeline = [
+            {
+                "$match": {
+                    "$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}
+                }
+            }
+        ]
+
+        pipeline = self._pipeline(pipeline=pipeline, groups_only=True)
+
+        try:
+            return next(iter(self._iter_groups(pipeline)))
+        except StopIteration:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
+
     def add_sample(self, sample, expand_schema=True, validate=True):
         """Adds the given sample to the dataset.
 
@@ -4509,6 +4605,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         if media_type is None:
@@ -4524,9 +4621,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if frames_only:
             attach_frames = True
+            detach_frames = False
 
         if media_type != fom.GROUP:
             group_slices = None
+            groups_only = False
+            detach_groups = False
+
+        if groups_only:
             detach_groups = False
 
         if attach_frames:
@@ -4538,6 +4640,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline())
 
         if group_slices:
+            # @todo if groups_only is True, attach all groups here?
             _pipeline.extend(self._groups_lookup_pipeline(group_slices))
 
         if pipeline is not None:
@@ -4546,16 +4649,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if detach_frames:
             _pipeline.append({"$project": {"frames": False}})
         elif frames_only:
-            _pipeline.extend(
-                [
-                    {"$project": {"frames": True}},
-                    {"$unwind": "$frames"},
-                    {"$replaceRoot": {"newRoot": "$frames"}},
-                ]
-            )
+            _pipeline.extend(self._unwind_frames_pipeline())
 
         if detach_groups:
             _pipeline.append({"$project": {"groups": False}})
+        elif groups_only:
+            if group_slices:
+                _pipeline.extend(self._unwind_groups_pipeline())
+            else:
+                _pipeline.extend(self._groups_only_pipeline())
 
         return _pipeline
 
@@ -4624,6 +4726,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
         ]
 
+    def _unwind_frames_pipeline(self):
+        return [
+            {"$project": {"frames": True}},
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+
     def _group_select_pipeline(self):
         name_field = self.group_field + ".name"
         return [
@@ -4667,6 +4776,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             },
         ]
 
+    def _unwind_groups_pipeline(self):
+        return [
+            {
+                "$set": {
+                    "$map": {
+                        "input": {"$objectToArray": "$groups"},
+                        "as": "this",
+                        "in": {"$arrayElemAt": ["$$this", 0]},
+                    },
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
+    def _groups_only_pipeline(self):
+        group_field = self.group_field
+        id_field = group_field + "._id"
+
+        return [
+            {"$project": {group_field: True}},
+            {
+                "$lookup": {
+                    "from": self._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": ["$" + id_field, "$$group_id"]
+                                }
+                            }
+                        }
+                    ],
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
     def _aggregate(
         self,
         pipeline=None,
@@ -4675,6 +4825,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frames_only=False,
         media_type=None,
         group_slices=None,
+        groups_only=False,
         detach_groups=False,
     ):
         _pipeline = self._pipeline(
@@ -4684,6 +4835,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frames_only=frames_only,
             media_type=media_type,
             group_slices=group_slices,
+            groups_only=groups_only,
             detach_groups=detach_groups,
         )
 
