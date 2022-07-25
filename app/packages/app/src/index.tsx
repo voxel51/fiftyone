@@ -24,6 +24,8 @@ import { useRouter } from "@fiftyone/state";
 import { EventsContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
+import "@fiftyone/point-clouds";
+
 enum AppReadyState {
   CONNECTING = 0,
   OPEN = 1,

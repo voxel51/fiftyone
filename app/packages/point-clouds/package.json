@@ -1,5 +1,5 @@
 {
-    "name": "point-clouds",
+    "name": "@fiftyone/point-clouds",
     "version": "0.0.0",
     "scripts": {
         "dev": "vite",
@@ -10,16 +10,14 @@
     "files": [
         "dist"
     ],
+    "main": "src/PointCloudPlugin.tsx",
     "dependencies": {
+        "@emotion/react": "^11.9.3",
         "@emotion/styled": "^11.9.3",
-        "@fiftyone/plugins": "../../fiftyone/app/packages/plugins",
-        "@fiftyone/utilities": "../../fiftyone/app/packages/utilities",
         "@mui/icons-material": "^5.8.4",
+        "@mui/material": "^5.9.2",
         "@react-three/drei": "^9.13.0",
         "@react-three/fiber": "^8.0.23",
-        "react": "^18.1.0",
-        "react-dom": "^18.0.0",
-        "recoil": "^0.7.4",
         "styled-components": "^5.3.5",
         "three": "^0.141.0"
     },

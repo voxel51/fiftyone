@@ -64,7 +64,6 @@ export async function loadPlugins() {
   window.__fo_plugin_settings__ = settings;
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
-    console.log(name, { pluginSetting });
     if (!pluginSetting || pluginSetting.enabled !== false) {
       await loadScript(name, scriptPath);
     }

@@ -3,7 +3,7 @@ import { Autorenew, Check } from "@material-ui/icons";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import Checkbox from "../Common/Checkbox";
-import { PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 
 import { Button } from "../utils";
 import Popout from "./Popout";
