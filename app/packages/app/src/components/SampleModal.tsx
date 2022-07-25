@@ -198,6 +198,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
   const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
+  const isGroupMode = useRecoilValue(isGroup) && queryRef;
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -215,8 +216,9 @@ const SampleModal = () => {
             onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
             onNext={() => getIndex(index + 1)}
             style={{ flex: 1 }}
+            isGroupMainView={isGroupMode}
           />
-          {useRecoilValue(isGroup) && queryRef && <Group queryRef={queryRef} />}
+          {isGroupMode && <Group queryRef={queryRef} />}
         </ContentColumn>
         {useRecoilValue(isPinned) && queryRef && (
           <PinnedLooker queryRef={queryRef} />
