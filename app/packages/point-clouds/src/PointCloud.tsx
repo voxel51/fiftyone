@@ -17,6 +17,7 @@ import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import { ShadeByIntensity, ShadeByZ } from "./shaders";
 import _ from "lodash";
+import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
@@ -348,22 +349,37 @@ const Container = styled.div`
 
 const ACTION_BAR_HEIGHT = "3.5em";
 const ActionBarContainer = styled.div`
-  width: 100%;
-  height: ${ACTION_BAR_HEIGHT};
   position: absolute;
   bottom: 0;
+  left: 0;
+  opacity: 1;
+  z-index: 20;
+  justify-items: center;
+  align-items: center;
+
+  color: #eee;
+
+  -webkit-transition: opacity 0.5s;
+  -moz-transition: opacity 0.5s;
+  -o-transition: opacity 0.5s;
+  -ms-transition: opacity 0.5s;
+  transition: opacity 0.5s;
+  width: 100%;
+
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;
-  box-shadow: 0 8px 15px 0 rgb(0 0 0 / 43%);
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  padding: 0 1rem;
 `;
 
 const ActionsBar = styled.div`
   position: relative;
   display: flex;
-  justify-content: ltr;
+  justify-content: end;
   row-gap: 0.5rem;
-  column-gap: 0.5rem;
+  column-gap: 0.75rem;
   align-items: center;
+  height: 2.3rem;
 `;
 
 const ActionPopOver = styled.div`
@@ -374,34 +390,23 @@ const ActionPopOver = styled.div`
 `;
 
 const ActionItem = styled.div`
-  padding-rigth: 1rem;
   display: flex;
   align-content: center;
   text-align: center;
-  width: 2rem;
-  height: 3.5rem;
+  cursor: pointer;
 `;
 
 const ViewButton = styled.div`
-  line-height: 1.5rem;
-  padding: 0.25rem 0.75rem;
-  cursor: pointer;
-  background-color: ${({ theme }) => theme.button};
+  line-height: 1rem;
+  padding: 0.2rem 0.4rem;
+  background-color: #fff;
+  color: #000;
   border-radius: 1rem;
   border: none;
   font-weight: bold;
   display: flex;
   justify-content: space-between;
   opacity: 1;
-
-  & > span {
-    text-align: center;
-    margin: 0 0.25rem;
-  }
-  & > svg {
-    display: inline-block;
-    height: 100%;
-  }
 `;
 
 function SetViewButton({ onChangeView, view, label, hint }) {
@@ -435,16 +440,38 @@ function ChooseColorSpace() {
   );
 }
 
-function ColorSpaceChoices() {
+// function ColorSpaceChoices() {
+//   return (
+//     <ActionPopOver>
+//       <h4>Color by:</h4>
+//       {pcState.COLOR_BY_CHOICES.map((p) => (
+//         <Choice {...p} />
+//       ))}
+//     </ActionPopOver>
+//   );
+// }
+
+const ColorSpaceChoices = ({ modal }) => {
+  const [current, setCurrent] = recoil.useRecoilState(pcState.colorBy);
+
   return (
-    <ActionPopOver>
-      <h4>Color by:</h4>
-      {pcState.COLOR_BY_CHOICES.map((p) => (
-        <Choice {...p} />
-      ))}
-    </ActionPopOver>
+    <>
+      <PopoutSectionTitle>Color by</PopoutSectionTitle>
+
+      <TabOption
+        active={current}
+        options={pcState.COLOR_BY_CHOICES.map(({ label, value }) => {
+          return {
+            text: value,
+            title: `Color by ${label}`,
+            onClick: () => current !== value && setCurrent(value),
+          };
+        })}
+      />
+    </>
   );
-}
+};
+
 function Choice({ label, value }) {
   const [current, setCurrent] = recoil.useRecoilState(pcState.colorBy);
   const selected = value === current;

@@ -20,13 +20,12 @@ import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
 import { Button } from "../utils";
-import { PopoutSectionTitle } from "../utils";
 
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useErrorHandler } from "react-error-boundary";
-import { useTheme } from "@fiftyone/components";
+import { useTheme, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 
 const getQueryIds = async (snapshot: Snapshot, brainKey?: string) => {
