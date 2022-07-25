@@ -388,6 +388,7 @@ interface LookerProps {
   onSelectLabel?: EventCallback;
   style?: React.CSSProperties;
   pinned: boolean;
+  isGroupMainView: boolean;
 }
 
 const Looker = ({
@@ -398,6 +399,7 @@ const Looker = ({
   onSelectLabel,
   style,
   pinned,
+  isGroupMainView,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
   const sampleData = useRecoilValue(fos.modal);
@@ -455,6 +457,7 @@ const Looker = ({
     state: fos,
     dataset: useRecoilValue(fos.dataset),
     pinned,
+    isGroupMainView,
   };
   const pluginIsActive = plugin && plugin.activator(pluginAPI);
   const PluginComponent = pluginIsActive && plugin.component;
