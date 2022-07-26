@@ -1,20 +1,20 @@
 import { useRecoilTransaction_UNSTABLE } from "recoil";
 
-import * as fos from "@fiftyone/state";
+import * as atoms from "../recoil";
 
 export default () => {
   return useRecoilTransaction_UNSTABLE(
     ({ set, get }) =>
       () => {
-        const fullscreen = get(fos.fullscreen);
+        const fullscreen = get(atoms.fullscreen);
         if (fullscreen) {
           return;
         }
-        const currentOptions = get(fos.savedLookerOptions);
-        set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
-        set(fos.selectedLabels, {});
-        set(fos.hiddenLabels, {});
-        set(fos.modal, null);
+        const currentOptions = get(atoms.savedLookerOptions);
+        set(atoms.savedLookerOptions, { ...currentOptions, showJSON: false });
+        set(atoms.selectedLabels, {});
+        set(atoms.hiddenLabels, {});
+        set(atoms.modal, null);
       },
     []
   );
