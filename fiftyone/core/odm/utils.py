@@ -83,7 +83,7 @@ def get_implied_field_kwargs(value):
             ],
         }
 
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return {"ftype": fof.BooleanField}
 
     if isinstance(value, numbers.Integral):
@@ -155,7 +155,7 @@ def get_implied_field_kwargs(value):
 
 
 def _get_list_value_type(value):
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return fof.BooleanField
 
     if isinstance(value, numbers.Integral):

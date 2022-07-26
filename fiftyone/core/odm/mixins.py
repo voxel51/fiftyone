@@ -1100,6 +1100,10 @@ def _serialize_value(value, extended=False):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
 
+    if isinstance(value, (bool, np.bool_)):
+        # BooleanField
+        return bool(value)
+
     if isinstance(value, numbers.Integral):
         # IntField
         return int(value)
