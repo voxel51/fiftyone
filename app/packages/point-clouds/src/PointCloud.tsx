@@ -136,18 +136,20 @@ function Cuboid({
   );
 }
 
-function Line({ points, color, opacity, onClick }) {
-  const geo = React.useMemo(
-    () =>
-      new THREE.BufferGeometry().setFromPoints(
-        points.map((p) => new THREE.Vector3(...p))
-      ),
-    []
-  );
+function Line({ rotation, points, color, opacity, onClick }) {
+  const geo = React.useMemo(() => {
+    const g = new THREE.BufferGeometry().setFromPoints(
+      points.map((p) => new THREE.Vector3(...p))
+    );
+    g.rotateX(rotation.x);
+    g.rotateY(rotation.y);
+    g.rotateZ(rotation.z);
+    return g;
+  }, []);
 
   return (
     <line onClick={onClick}>
-      <primitive object={geo} attach="geometry" />
+      <primitive object={geo} attach="geometry" rotation={rotation} />
       <lineBasicMaterial attach="material" color={color} />
     </line>
   );
@@ -157,6 +159,7 @@ function Polyline({
   opacity,
   filled,
   closed,
+  overlayRotation,
   points3d,
   color,
   selected,
@@ -166,15 +169,21 @@ function Polyline({
     // filled not yet supported
     return null;
   }
+  const rotationVec = new THREE.Vector3(...overlayRotation);
 
-  return points3d.map((points) => (
+  console.log("polyline points", points3d);
+
+  const lines = points3d.map((points) => (
     <Line
+      rotation={rotationVec}
       points={points}
       opacity={opacity}
       color={selected ? "orange" : color}
       onClick={onClick}
     />
   ));
+
+  return lines;
 }
 
 function CameraSetup({ cameraRef, settings }) {
@@ -263,7 +272,6 @@ export function PointCloud() {
           break;
         case "pov":
           camera.position.set(0, -10, 1);
-          // camera.rotation.set(0, 0, 0)
           break;
       }
       camera.updateProjectionMatrix();
@@ -314,6 +322,7 @@ export function PointCloud() {
           .filter((o) => o._cls === "Polyline" && o.points3d)
           .map((label, key) => (
             <Polyline
+              overlayRotation={overlayRotation}
               key={key}
               opacity={labelAlpha}
               {...label}
@@ -466,17 +475,6 @@ function ChooseColorSpace() {
     </Fragment>
   );
 }
-
-// function ColorSpaceChoices() {
-//   return (
-//     <ActionPopOver>
-//       <h4>Color by:</h4>
-//       {pcState.COLOR_BY_CHOICES.map((p) => (
-//         <Choice {...p} />
-//       ))}
-//     </ActionPopOver>
-//   );
-// }
 
 const ColorSpaceChoices = ({ modal }) => {
   const [current, setCurrent] = recoil.useRecoilState(pcState.colorBy);
