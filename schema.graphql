@@ -5,6 +5,7 @@ type AppConfig {
   gridZoom: Int!
   loopVideos: Boolean!
   notebookHeight: Int!
+  plugins: JSON
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!
@@ -43,6 +44,7 @@ type Dataset {
   createdAt: Date
   lastLoadedAt: DateTime
   persistent: Boolean!
+  groups: [GroupField!]!
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
@@ -100,10 +102,27 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type Group {
+  name: String!
+  mediaType: MediaType!
+}
+
+input GroupElementFilter {
+  groupField: String!
+  id: String!
+  group: String!
+}
+
+type GroupField {
+  field: String!
+  groups: [Group!]!
+  defaultGroup: String!
+}
+
 type ImageSample implements Sample {
+  sample: JSON!
   width: Int!
   height: Int!
-  sample: JSON!
 }
 
 scalar JSON
@@ -115,6 +134,8 @@ type KeypointSkeleton {
 
 enum MediaType {
   image
+  group
+  point_cloud
   video
 }
 
@@ -150,6 +171,10 @@ type NamedTargets {
   targets: [Target!]!
 }
 
+type PointCloudSample implements Sample {
+  sample: JSON!
+}
+
 type Query {
   datasets(
     search: String
@@ -167,7 +192,9 @@ type Query {
     view: BSONArray!
     first: Int = 20
     after: String = null
+    groupId: String = null
   ): SampleItemStrConnection!
+  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -186,8 +213,6 @@ interface RunConfig {
 }
 
 interface Sample {
-  width: Int!
-  height: Int!
   sample: JSON!
 }
 
@@ -199,7 +224,12 @@ type SampleField {
   dbField: String
 }
 
-union SampleItem = ImageSample | VideoSample
+input SampleFilter {
+  id: String = null
+  group: GroupElementFilter = null
+}
+
+union SampleItem = ImageSample | PointCloudSample | VideoSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -237,9 +267,9 @@ type Target {
 }
 
 type VideoSample implements Sample {
+  sample: JSON!
   width: Int!
   height: Int!
-  sample: JSON!
   frameRate: Float!
 }
 

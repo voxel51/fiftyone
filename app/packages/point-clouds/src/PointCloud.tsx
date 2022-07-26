@@ -177,9 +177,8 @@ function Polyline({
   ));
 }
 
-function CameraSetup({ cameraRef }) {
+function CameraSetup({ cameraRef, settings }) {
   const camera = useThree((state) => state.camera);
-  const settings = fop.usePluginSettings("point-clouds");
 
   React.useLayoutEffect(() => {
     if (settings.defaultCameraPosition) {
@@ -237,7 +236,6 @@ export function PointCloud() {
     });
 
   const handleSelect = (label) => {
-    console.log({ label });
     onSelectLabel({
       detail: { id: label._id, field: label.path[label.path.length - 1] },
     });
@@ -281,10 +279,24 @@ export function PointCloud() {
   const itemRotation = toEulerFromDegreesArray(
     _.get(settings, "overlay.itemRotation", [0, 0, 0])
   );
+  const [hovering, setHovering] = useState(true);
+
+  function handleMouseLeave() {
+    setHovering(false);
+    setAction(null);
+  }
+  function hanleMouseEnter() {
+    setHovering(true);
+  }
+
   return (
-    <Container onClick={() => setAction(null)}>
+    <Container
+      onClick={() => setAction(null)}
+      onMouseEnter={hanleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <Canvas>
-        <CameraSetup cameraRef={cameraRef} />
+        <CameraSetup cameraRef={cameraRef} settings={settings} />
         <mesh rotation={overlayRotation}>
           {overlays
             .filter((o) => o._cls === "Detection")
@@ -316,23 +328,25 @@ export function PointCloud() {
         />
         <axesHelper />
       </Canvas>
-      <ActionBarContainer>
-        <ActionsBar>
-          <ChooseColorSpace />
-          <SetViewButton
-            onChangeView={onChangeView}
-            view={"top"}
-            label={"T"}
-            hint="Top View"
-          />
-          <SetViewButton
-            onChangeView={onChangeView}
-            view={"pov"}
-            label={"P"}
-            hint="POV"
-          />
-        </ActionsBar>
-      </ActionBarContainer>
+      {hovering && (
+        <ActionBarContainer>
+          <ActionsBar>
+            <ChooseColorSpace />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"top"}
+              label={"T"}
+              hint="Top View"
+            />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"pov"}
+              label={"P"}
+              hint="POV"
+            />
+          </ActionsBar>
+        </ActionBarContainer>
+      )}
     </Container>
   );
 }
@@ -382,12 +396,25 @@ const ActionsBar = styled.div`
   height: 2.3rem;
 `;
 
-const ActionPopOver = styled.div`
-  width: 100%;
+const ActionPopOverDiv = styled.div`
+  width: 16rem;
   position: absolute;
-  bottom: ${ACTION_BAR_HEIGHT};
+  bottom: 2.5rem;
   background-color: hsl(210, 11%, 11%);
+  overflow: hidden;
 `;
+
+const ActionPopOverInner = styled.div`
+  padding: 0 0.25rem;
+`;
+
+function ActionPopOver({ children }) {
+  return (
+    <ActionPopOverDiv>
+      <ActionPopOverInner>{children}</ActionPopOverInner>
+    </ActionPopOverDiv>
+  );
+}
 
 const ActionItem = styled.div`
   display: flex;
@@ -455,7 +482,7 @@ const ColorSpaceChoices = ({ modal }) => {
   const [current, setCurrent] = recoil.useRecoilState(pcState.colorBy);
 
   return (
-    <>
+    <ActionPopOver>
       <PopoutSectionTitle>Color by</PopoutSectionTitle>
 
       <TabOption
@@ -468,7 +495,7 @@ const ColorSpaceChoices = ({ modal }) => {
           };
         })}
       />
-    </>
+    </ActionPopOver>
   );
 };
 

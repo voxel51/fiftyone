@@ -180,6 +180,11 @@ class PluginComponentRegistry {
 }
 
 export function usePluginSettings(pluginName: string): any {
+  const appConfig = recoil.useRecoilValue(fos.appConfig);
+  if (appConfig && appConfig.plugins) {
+    return appConfig.plugins[pluginName] || {};
+  }
+
   const settings =
     window.__fo_plugin_settings__ && window.__fo_plugin_settings__[pluginName];
   return settings || {};

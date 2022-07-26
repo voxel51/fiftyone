@@ -16,6 +16,7 @@ export namespace State {
     gridZoom: number;
     loopVideos: boolean;
     notebookHeight: number;
+    plugins?: { [pluginName: string]: object };
     showConfidence: boolean;
     showIndex: boolean;
     showLabel: boolean;
