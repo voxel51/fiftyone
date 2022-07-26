@@ -14,7 +14,6 @@ interface AppSample extends Sample {
 export interface SampleData {
   sample: AppSample;
   dimensions: Dimensions;
-  mediaFieldsMetadata: Map<string, Dimensions>;
   frameRate?: number;
   frameNumber?: number;
   url?: string;
@@ -182,6 +181,36 @@ export const appConfig = atom<State.Config>({
 
 export const colorscale = atom<RGB[]>({
   key: "colorscale",
+  default: null,
+});
+
+export const paginateGroupQueryRef = atom<
+  PreloadedQuery<paginateGroupQuery, {}>
+>({
+  key: "paginateGroupQueryRef",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
+export const patching = atom<boolean>({
+  key: "patching",
+  default: false,
+});
+
+export const savingFilters = atom<boolean>({
+  key: "savingFilters",
+  default: false,
+});
+
+export const similaritySorting = atom<boolean>({
+  key: "similaritySorting",
+  default: false,
+});
+
+export const similarityParameters = atom<
+  State.SortBySimilarityParameters & { queryIds: string[] }
+>({
+  key: "sortBySimilarityParameters",
   default: null,
 });
 

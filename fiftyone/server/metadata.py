@@ -37,43 +37,6 @@ class MediaType(Enum):
 async def get_metadata(
     filepath: str, media_type: MediaType, metadata: t.Optional[t.Dict] = None
 ):
-async def get_all_metadata(sample, media_fields):
-    results = await asyncio.gather(
-        *[
-            get_metadata(sample["filepath"]),
-            get_media_fields_metadata(media_fields, sample),
-        ]
-    )
-    return {
-        "sample": sample,
-        "metadata": results[0],
-        "media_fields_metadata": results[1],
-    }
-
-
-async def get_media_fields_metadata(media_fields, sample):
-    """Gets the metadata for a list of fields
-
-    Args:
-        media_fields: array of field names
-        sample: the sample to read the fields from
-    """
-    d = {}
-
-    for field_name in media_fields:
-        existing_metadata = None
-        # if field_name == 'filepath':
-        # this throws from some unknown reason
-        # existing_metadata = sample['metadata']
-        # if sample.media_path_metadata != None:
-        # existing_metadata = sample.media_path_metadata[field_name]
-        filepath = sample[field_name]
-        d[field_name] = await get_metadata(filepath, existing_metadata)
-
-    return d
-
-
-async def get_metadata(filepath, metadata=None):
     """Gets the metadata for the given local media file.
 
     Args:
