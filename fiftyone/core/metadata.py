@@ -224,11 +224,6 @@ def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     sample.metadata = _compute_sample_metadata(
         sample.filepath, sample.media_type, skip_failures=skip_failures
     )
-    media_fields = sample._sample_collection._dataset.app_config.media_fields
-    media_field_filepaths = [sample[field_name] for field_name in media_fields]
-    sample.media_fields_metadata = _compute_sample_media_field_metadata(
-        media_fields, media_field_filepaths, media_type
-    )
     if sample._in_db:
         sample.save()
 
@@ -250,7 +245,6 @@ def compute_metadata(
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
     """
-
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
@@ -298,15 +292,9 @@ def _compute_metadata(sample_collection, overwrite=False):
     if num_samples == 0:
         return
 
-    media_fields = sample_collection._dataset.app_config.media_fields
-
     logger.info("Computing %s metadata...", sample_collection.media_type)
     with fou.ProgressBar(total=num_samples) as pb:
-        if media_fields and len(media_fields) > 0:
-            selected = sample_collection.select_fields(media_fields)
-        else:
-            selected = sample_collection.select_fields()
-        for sample in pb(selected):
+        for sample in pb(sample_collection.select_fields()):
             compute_sample_metadata(sample, skip_failures=True)
 
 
@@ -315,18 +303,10 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
         sample_collection = sample_collection.exists("metadata", False)
 
     media_type = sample_collection.media_type
-    media_fields = sample_collection._dataset.app_config.media_fields
-    ids, *media_field_filepaths = sample_collection.values(
-        ["id"] + media_fields
-    )
-
+    ids, filepaths = sample_collection.values(["id", "filepath"])
     media_types = itertools.repeat(media_type)
-    repeated_media_fields = itertools.repeat(media_fields)
 
-    inputs = list(
-        zip(ids, media_types, repeated_media_fields, *media_field_filepaths)
-    )
-
+    inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
 
     if num_samples == 0:
@@ -344,30 +324,15 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
             ):
                 sample = view[sample_id]
                 sample.metadata = metadata
-                sample.media_fields_metadata = media_fields_metadata
                 sample.save()
 
 
-def _compute_sample_media_field_metadata(
-    media_fields, media_field_filepaths, media_type
-):
-    media_field_metadata = {}
-    for idx in range(len(media_fields)):
-        field_name = media_fields[idx]
-        field_path = media_field_filepaths[idx]
-        md = _compute_sample_metadata(field_path, media_type)
-        media_field_metadata[field_name] = md
-    return media_field_metadata
-
-
 def _do_compute_metadata(args):
-    sample_id, media_type, media_fields, media_fields_filepaths = args
-
-    media_field_metadata = _compute_sample_media_field_metadata(
-        media_fields, media_field_filepaths, media_type
+    sample_id, filepath, media_type = args
+    metadata = _compute_sample_metadata(
+        filepath, media_type, skip_failures=True
     )
-    metadata = media_field_metadata["filepath"]
-    return sample_id, metadata, media_field_metadata
+    return sample_id, metadata
 
 
 def _compute_sample_metadata(filepath, media_type, skip_failures=False):
