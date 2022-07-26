@@ -227,7 +227,7 @@ const SampleModal = () => {
           />
           {isGroupMode && <Group queryRef={queryRef} />}
         </ContentColumn>
-        {useRecoilValue(isPinned) && queryRef && (
+        {isGroupMode && useRecoilValue(isPinned) && (
           <PinnedLooker queryRef={queryRef} />
         )}
         <Sidebar render={renderEntry} modal={true} />
