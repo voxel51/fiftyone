@@ -44,6 +44,10 @@ def serialize_value(value, extended=False):
         # EmbeddedDocumentField
         return value.to_dict(extended=extended)
 
+    if isinstance(value, (bool, np.bool_)):
+        # BooleanField
+        return bool(value)
+
     if isinstance(value, numbers.Integral):
         # IntField
         return int(value)
@@ -176,7 +180,7 @@ def get_implied_field_kwargs(value):
             ],
         }
 
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return {"ftype": fof.BooleanField}
 
     if isinstance(value, numbers.Integral):
@@ -248,7 +252,7 @@ def get_implied_field_kwargs(value):
 
 
 def _get_list_value_type(value):
-    if isinstance(value, bool):
+    if isinstance(value, (bool, np.bool_)):
         return fof.BooleanField
 
     if isinstance(value, numbers.Integral):

@@ -1096,13 +1096,13 @@ class DatasetTests(unittest.TestCase):
             filepath="image.jpg",
             bool_field=True,
             int_field=1,
-            str_field="hi",
             float_field=1.0,
+            str_field="hi",
             date_field=date.today(),
             datetime_field=datetime.utcnow(),
             list_bool_field=[False, True],
-            list_float_field=[1.0, 2, 4.1],
             list_int_field=[1, 2, 3],
+            list_float_field=[1.0, 2, 4.1],
             list_str_field=["one", "two", "three"],
             list_date_field=[date.today(), date.today()],
             list_datetime_field=[datetime.utcnow(), datetime.utcnow()],
@@ -1112,14 +1112,29 @@ class DatasetTests(unittest.TestCase):
             array_field=np.random.randn(3, 4),
         )
 
+        d = sample.to_mongo_dict()
+
+        self.assertIsInstance(d["bool_field"], bool)
+        self.assertIsInstance(d["int_field"], int)
+        self.assertIsInstance(d["float_field"], float)
+        self.assertIsInstance(d["str_field"], str)
+        self.assertIsInstance(d["date_field"], datetime)
+        self.assertIsInstance(d["datetime_field"], datetime)
+        self.assertIsInstance(d["list_bool_field"][0], bool)
+        self.assertIsInstance(d["list_int_field"][0], int)
+        self.assertIsInstance(d["list_float_field"][0], float)
+        self.assertIsInstance(d["list_str_field"][0], str)
+        self.assertIsInstance(d["list_date_field"][0], datetime)
+        self.assertIsInstance(d["list_datetime_field"][0], datetime)
+
         dataset.add_sample(sample)
         schema = dataset.get_field_schema()
 
         # Scalars
         self.assertIsInstance(schema["bool_field"], fo.BooleanField)
         self.assertIsInstance(schema["int_field"], fo.IntField)
-        self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["float_field"], fo.FloatField)
+        self.assertIsInstance(schema["str_field"], fo.StringField)
         self.assertIsInstance(schema["date_field"], fo.DateField)
         self.assertIsInstance(schema["datetime_field"], fo.DateTimeField)
 
