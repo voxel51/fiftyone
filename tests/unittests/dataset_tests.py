@@ -512,6 +512,65 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
+    def test_field_names(self):
+        dataset = fo.Dataset()
+        dataset.add_sample_field("foo", fo.StringField)
+
+        # Field names cannot be empty
+
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field("foo", "")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field("foo", "")
+
+        # Field names cannot be private
+
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("_private", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_sample_field("foo", "_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_sample_field("foo", "_private")
+
+    @drop_datasets
+    def test_frame_field_names(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        dataset.add_frame_field("foo", fo.StringField)
+
+        # "frames" is a reserved keyword
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field("frames", fo.StringField)
+
+        # Field names cannot be empty
+
+        with self.assertRaises(ValueError):
+            dataset.add_frame_field("", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_frame_field("foo", "")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_frame_field("foo", "")
+
+        # Field names cannot be private
+
+        with self.assertRaises(ValueError):
+            dataset.add_frame_field("_private", fo.StringField)
+
+        with self.assertRaises(ValueError):
+            dataset.rename_frame_field("foo", "_private")
+
+        with self.assertRaises(ValueError):
+            dataset.clone_frame_field("foo", "_private")
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):

@@ -177,12 +177,6 @@ class _Document(object):
             ValueError: if ``field_name`` is not an allowed field name
             AttirubteError: if the field does not exist and ``create == False``
         """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
         self._doc.set_field(field_name, value, create=create)
 
     def update_fields(self, fields_dict, expand_schema=True):

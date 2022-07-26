@@ -59,4 +59,7 @@ from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
-from .utils import get_implied_field_kwargs
+from .utils import (
+    validate_field_name,
+    get_implied_field_kwargs,
+)
