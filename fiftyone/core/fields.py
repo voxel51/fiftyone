@@ -95,7 +95,9 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
 class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
-    pass
+    def validate(self, value):
+        if not isinstance(value, (bool, np.bool_)):
+            self.error("Boolean fields only accept boolean values")
 
 
 class DateField(mongoengine.fields.DateField, Field):
