@@ -27,6 +27,7 @@ const Query = graphql`
       appConfig {
         gridMediaField
         mediaFields
+        plugins
       }
       sampleFields {
         ftype

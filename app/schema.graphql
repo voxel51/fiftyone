@@ -41,6 +41,7 @@ enum ColorBy {
 type DatasetAppConfig {
   gridMediaField: String!
   mediaFields: [String!]!
+  plugins: JSON
 }
 
 type Dataset {

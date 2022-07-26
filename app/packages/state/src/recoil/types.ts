@@ -10,13 +10,14 @@ export namespace State {
 
   export type SidebarGroups = [string, string[]][];
 
+  export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
     notebookHeight: number;
-    plugins?: { [pluginName: string]: object };
+    plugins?: PluginConfig;
     showConfidence: boolean;
     showIndex: boolean;
     showLabel: boolean;
@@ -78,6 +79,7 @@ export namespace State {
   export interface DatasetAppConfig {
     gridMediaField?: string;
     mediaFields?: string[];
+    plugins?: PluginConfig;
   }
   export interface Dataset {
     id: string;

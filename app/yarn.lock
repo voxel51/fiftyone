@@ -2527,6 +2527,7 @@ __metadata:
     "@types/react": ^18.0.0
     "@types/react-dom": ^18.0.0
     "@vitejs/plugin-react": ^1.3.0
+    lodash: ^4.17.21
     nodemon: ^2.0.19
     rollup-plugin-external-globals: ^0.6.1
     styled-components: ^5.3.5

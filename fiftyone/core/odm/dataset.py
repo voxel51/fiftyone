@@ -362,6 +362,7 @@ class DatasetAppConfigDocument(EmbeddedDocument):
 
     grid_media_field = StringField()
     media_fields = ListField(StringField())
+    plugins = DictField()
 
 
 class DatasetDocument(Document):

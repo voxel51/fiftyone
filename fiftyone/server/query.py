@@ -139,6 +139,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class DatasetAppConfig:
     grid_media_field: str
     media_fields: t.List[str]
+    plugins: t.Optional[JSON]
 
 
 @gql.type
