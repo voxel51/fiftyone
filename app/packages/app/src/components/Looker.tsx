@@ -14,6 +14,7 @@ import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
+import { getMimeType } from "@fiftyone/utilities";
 
 const Header = styled.div`
   position: absolute;
@@ -402,27 +403,23 @@ const Looker = ({
   isGroupMainView,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, mediaFieldsMetadata, dimensions: originalDimensions, frameRate, frameNumber, url } = useRecoilValue(
-    fos.modal
-  );
+  const sampleData = useRecoilValue(fos.modal);
+  if (!sampleData) {
+    throw new Error("bad");
+  }
+  const { sample, url } = sampleData;
 
   const isClips = useRecoilValue(fos.isClipsView);
   const mimetype = getMimeType(sample);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField);
   const selectedMediaFieldName =
     selectedMediaField.modal || selectedMediaField.grid || "filepath";
-  const sampleSrc = getSampleSrc(
+  const sampleSrc = fos.getSampleSrc(
     sample[selectedMediaFieldName],
     sample._id,
     url
   );
-  const mediaFieldDimensions = mediaFieldsMetadata[selectedMediaFieldName]
-  const dimensions = mediaFieldDimensions
-    ? [mediaFieldDimensions.width, mediaFieldDimensions.height]
-    : originalDimensions
 
-
-  const { contents: options } = useRecoilValueLoadable(lookerOptions);
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
@@ -438,7 +435,7 @@ const Looker = ({
   }, [lookerOptions]);
 
   useEffect(() => {
-    !initialRef.current && looker.updateSample(sampleData.sample);
+    !initialRef.current && looker.updateSample(sample);
   }, [sampleData.sample]);
 
   useEffect(() => {
@@ -468,7 +465,7 @@ const Looker = ({
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const pluginAPI = {
     getSampleSrc: fos.getSampleSrc,
-    sample: sampleData.sample,
+    sample,
     onSelectLabel,
     useState: useRecoilValue,
     state: fos,

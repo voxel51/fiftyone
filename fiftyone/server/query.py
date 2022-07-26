@@ -142,7 +142,7 @@ class DatasetAppConfig:
 
 
 @gql.type
-class Dataset(HasCollection):
+class Dataset:
     id: gql.ID
     name: str
     created_at: t.Optional[date]
