@@ -1521,8 +1521,31 @@ class DatasetTests(unittest.TestCase):
 
         dataset.add_sample(sample)
 
-        sample_view = dataset.view().first()
+        # Verify that serialization still works when sample is in dataset
+        d = sample.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        #
+        # ObjectId fields can be selected and excluded as usual
+        #
+
+        view = dataset.select_fields("other_id")
+        sample_view = view.first()
+
         self.assertIsInstance(sample_view.other_id, str)
+
+        d = sample_view.to_mongo_dict()
+        self.assertIsInstance(d["_other_id"], ObjectId)
+
+        view = dataset.exclude_fields("other_id")
+        sample_view = view.first()
+
+        with self.assertRaises(AttributeError):
+            sample_view.other_id
+
+        d = sample_view.to_mongo_dict()
+        self.assertNotIn("other_id", d)
+        self.assertNotIn("_other_id", d)
 
         #
         # You cannot dynamically add ObjectId fields because they are presented

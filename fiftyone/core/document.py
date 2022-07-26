@@ -118,16 +118,20 @@ class _Document(object):
         """Whether the document has been inserted into the database."""
         return self._doc.in_db
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
         Args:
             include_private (False): whether to include private fields
+            use_db_fields (False): whether to return database fields
 
         Returns:
             a tuple of field names
         """
-        return self._doc._get_field_names(include_private=include_private)
+        return self._doc._get_field_names(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
 
     def has_field(self, field_name):
         """Determines whether the document has the given field.
@@ -614,14 +618,9 @@ class DocumentView(_Document):
         super().__init__(doc, dataset=view._dataset)
 
     def __repr__(self):
-        if self._selected_fields is not None:
-            select_fields = ("id",) + tuple(self._selected_fields)
-        else:
-            select_fields = None
-
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
-            select_fields=select_fields,
+            select_fields=self._selected_fields,
             exclude_fields=self._excluded_fields,
         )
 
@@ -638,7 +637,7 @@ class DocumentView(_Document):
         """
         return self._get_field_names(include_private=False)
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         field_names = super()._get_field_names(include_private=include_private)
 
         if self._selected_fields is not None:
@@ -651,7 +650,13 @@ class DocumentView(_Document):
                 fn for fn in field_names if fn not in self._excluded_fields
             )
 
+        if use_db_fields:
+            return self._to_db_fields(field_names)
+
         return field_names
+
+    def _to_db_fields(self, field_names):
+        return self._doc._to_db_fields(field_names)
 
     @property
     def selected_field_names(self):
@@ -741,9 +746,9 @@ class DocumentView(_Document):
         d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            # @todo handle ``name != db_field`` here
-            field_names = set(self._get_field_names(include_private=True))
-            field_names.add("_id")
+            field_names = set(
+                self._get_field_names(include_private=True, use_db_fields=True)
+            )
 
             d = {k: v for k, v in d.items() if k in field_names}
 

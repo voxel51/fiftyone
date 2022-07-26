@@ -593,7 +593,7 @@ class SampleView(_SampleMixin, DocumentView):
 
     def __repr__(self):
         if self._selected_fields is not None:
-            select_fields = ("id", "media_type") + tuple(self._selected_fields)
+            select_fields = ("media_type") + tuple(self._selected_fields)
         else:
             select_fields = None
 

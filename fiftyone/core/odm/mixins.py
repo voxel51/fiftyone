@@ -138,8 +138,11 @@ class DatasetMixin(object):
         collection_name = cls.__name__
         return fod._get_dataset_doc(collection_name, frames=cls._is_frames_doc)
 
-    def _get_field_names(self, include_private=False):
-        return self._get_fields_ordered(include_private=include_private)
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        return self._get_fields_ordered(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
 
     def has_field(self, field_name):
         # pylint: disable=no-member
@@ -959,15 +962,21 @@ class DatasetMixin(object):
 
     @classmethod
     def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
-        fields = cls._fields_ordered
+        field_names = cls._fields_ordered
 
         if not include_private:
-            fields = tuple(f for f in fields if not f.startswith("_"))
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
 
         if use_db_fields:
-            return tuple(cls._fields[f].db_field for f in fields)
+            field_names = cls._to_db_fields(field_names)
 
-        return fields
+        return field_names
+
+    @classmethod
+    def _to_db_fields(cls, field_names):
+        return tuple(cls._fields[f].db_field or f for f in field_names)
 
 
 class NoDatasetMixin(object):
@@ -992,11 +1001,33 @@ class NoDatasetMixin(object):
         else:
             self.set_field(name, value)
 
-    def _get_field_names(self, include_private=False):
-        if include_private:
-            return tuple(self._data.keys())
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = tuple(self._data.keys())
 
-        return tuple(f for f in self._data.keys() if not f.startswith("_"))
+        if not include_private:
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
+
+        if use_db_fields:
+            field_names = self._to_db_fields(field_names)
+
+        return field_names
+
+    def _to_db_fields(self, field_names):
+        db_fields = []
+
+        for field_name in field_names:
+            if field_name == "id":
+                db_fields.append("_id")
+            elif isinstance(
+                self._data.get(field_name, None), ObjectId
+            ) and not field_name.startswith("_"):
+                db_fields.append("_" + field_name)
+            else:
+                db_fields.append(field_name)
+
+        return tuple(db_fields)
 
     def _get_repr_fields(self):
         return self.field_names

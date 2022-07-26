@@ -124,11 +124,12 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
         Args:
             include_private (False): whether to include private fields
+            use_db_fields (False): whether to return database fields
 
         Returns:
             a tuple of field names
@@ -248,7 +249,7 @@ class MongoEngineBaseDocument(SerializableDocument):
 
         super().__delattr__(field_name)
 
-        # pylint: disable=no-member
+        # pylint: disable=no-member,attribute-defined-outside-init
         if field_name not in self.__class__._fields_ordered:
             self._fields_ordered = tuple(
                 f for f in self._fields_ordered if f != field_name
@@ -263,13 +264,40 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields[field_name].to_python(value)
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = self._fields_ordered
+
         if not include_private:
-            return tuple(
-                f for f in self._fields_ordered if not f.startswith("_")
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
             )
 
-        return self._fields_ordered
+        if use_db_fields:
+            field_names = self._to_db_fields(field_names)
+
+        return field_names
+
+    def _to_db_fields(self, field_names):
+        db_fields = []
+
+        for field_name in field_names:
+            if field_name == "id":
+                db_fields.append("_id")
+            else:
+                # pylint: disable=no-member
+                field = self._fields.get(field_name, None)
+                if field is None:
+                    value = self.get_field(field_name)
+                    if isinstance(
+                        value, ObjectId
+                    ) and not field_name.startswith("_"):
+                        db_fields.append("_" + field_name)
+                    else:
+                        db_fields.append(field_name)
+                else:
+                    db_fields.append(field.db_field or field_name)
+
+        return tuple(db_fields)
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
