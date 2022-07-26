@@ -96,6 +96,7 @@ const App: React.FC = ({}) => {
               const { colorscale, config, ...data } = JSON.parse(
                 msg.data
               ).state;
+              console.log({ config });
               const state = {
                 ...toCamelCase(data),
                 view: data.view,

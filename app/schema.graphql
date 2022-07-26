@@ -5,6 +5,7 @@ type AppConfig {
   gridZoom: Int!
   loopVideos: Boolean!
   notebookHeight: Int!
+  plugins: JSON
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!

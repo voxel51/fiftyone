@@ -35,7 +35,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.scalars import BSONArray, JSON
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -243,6 +243,7 @@ class AppConfig:
     grid_zoom: int
     loop_videos: bool
     notebook_height: int
+    plugins: t.Optional[JSON]
     show_confidence: bool
     show_index: bool
     show_label: bool

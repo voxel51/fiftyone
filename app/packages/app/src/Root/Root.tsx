@@ -232,6 +232,7 @@ const Root: Route<RootQuery> = ({ children, prepared }) => {
           gridZoom
           loopVideos
           notebookHeight
+          plugins
           showConfidence
           showIndex
           showLabel
