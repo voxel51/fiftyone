@@ -213,3 +213,8 @@ export const similarityParameters = atom<
   key: "sortBySimilarityParameters",
   default: null,
 });
+
+export const selectedMediaField = atom<State.MediaFieldSelection>({
+  key: "selectedMediaField",
+  default: { grid: null, modal: null },
+});

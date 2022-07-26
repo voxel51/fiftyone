@@ -14,6 +14,7 @@ import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
+import { getMimeType } from "@fiftyone/utilities";
 
 const Header = styled.div`
   position: absolute;
@@ -388,6 +389,7 @@ interface LookerProps {
   onSelectLabel?: EventCallback;
   style?: React.CSSProperties;
   pinned: boolean;
+  isGroupMainView: boolean;
 }
 
 const Looker = ({
@@ -398,12 +400,26 @@ const Looker = ({
   onSelectLabel,
   style,
   pinned,
+  isGroupMainView,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
   const sampleData = useRecoilValue(fos.modal);
   if (!sampleData) {
     throw new Error("bad");
   }
+  const { sample, url } = sampleData;
+
+  const isClips = useRecoilValue(fos.isClipsView);
+  const mimetype = getMimeType(sample);
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = fos.getSampleSrc(
+    sample[selectedMediaFieldName],
+    sample._id,
+    url
+  );
+
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
@@ -419,7 +435,7 @@ const Looker = ({
   }, [lookerOptions]);
 
   useEffect(() => {
-    !initialRef.current && looker.updateSample(sampleData.sample);
+    !initialRef.current && looker.updateSample(sample);
   }, [sampleData.sample]);
 
   useEffect(() => {
@@ -449,12 +465,13 @@ const Looker = ({
   const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const pluginAPI = {
     getSampleSrc: fos.getSampleSrc,
-    sample: sampleData.sample,
+    sample,
     onSelectLabel,
     useState: useRecoilValue,
     state: fos,
     dataset: useRecoilValue(fos.dataset),
     pinned,
+    isGroupMainView,
   };
   const pluginIsActive = plugin && plugin.activator(pluginAPI);
   const PluginComponent = pluginIsActive && plugin.component;

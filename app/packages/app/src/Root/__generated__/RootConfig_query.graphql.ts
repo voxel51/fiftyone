@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<014909aed6374effe231f2dc836b8367>>
+ * @generated SignedSource<<e5feb27d43e7b28b2b4e4d25d8e7abb0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type RootConfig_query$data = {
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly notebookHeight: number;
+    readonly plugins: object | null;
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;
@@ -97,6 +98,13 @@ return {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "plugins",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "showConfidence",
           "storageKey": null
         },
@@ -152,6 +160,6 @@ return {
 };
 })();
 
-(node as any).hash = "28b47d8c7639326428a23be097cd357e";
+(node as any).hash = "84d84de0717c65bc7a17e0afd6384e08";
 
 export default node;

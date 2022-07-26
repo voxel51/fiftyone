@@ -3,7 +3,7 @@ import { Autorenew, Check } from "@material-ui/icons";
 import { constSelector, useRecoilState, useRecoilValue } from "recoil";
 
 import Checkbox from "../Common/Checkbox";
-import { PopoutSectionTitle, TabOption } from "../utils";
+import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 
 import { Button } from "../utils";
 import Popout from "./Popout";
@@ -220,6 +220,47 @@ const Patches = ({ modal }) => {
   );
 };
 
+const MediaFields = ({ modal }) => {
+  const dataset = useRecoilValue(atoms.dataset)
+  const {gridMediaField} = dataset.appConfig
+  const [selectedField, setSelectedField] =
+    useRecoilState<State.MediaFieldSelection>(atoms.selectedMediaField);
+  const { appConfig } = useRecoilValue(atoms.dataset);
+  const selectedFieldName = modal
+    ? selectedField.modal || selectedField.grid
+    : selectedField.grid || gridMediaField;
+    
+  const fields = appConfig?.mediaFields || [];
+
+  if (fields.length <= 1) return null;
+
+  return (
+    <>
+      <PopoutSectionTitle>Media Field</PopoutSectionTitle>
+
+      <TabOption
+        active={selectedFieldName || 'filepath'}
+        rows={true}
+        options={fields.map((value: Field) => {
+          return {
+            text: value,
+            title: `View Media with "${selectedFieldName}"`,
+            onClick: () => {
+              selectedFieldName !== value &&
+                setSelectedField((current) => {
+                  if (modal) {
+                    return { ...current, modal: value };
+                  }
+                  return { modal: null, grid: value };
+                });
+            },
+          };
+        })}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   bounds: [number, number];
@@ -228,6 +269,7 @@ type OptionsProps = {
 const Options = ({ modal, bounds }: OptionsProps) => {
   return (
     <Popout modal={modal} bounds={bounds}>
+      <MediaFields modal={modal} />
       <ColorBy modal={modal} />
       <RefreshButton modal={modal} />
       <Opacity modal={modal} />

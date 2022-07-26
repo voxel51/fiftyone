@@ -35,7 +35,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.scalars import BSONArray, JSON
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -136,6 +136,13 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
+class DatasetAppConfig:
+    grid_media_field: str
+    media_fields: t.List[str]
+    plugins: t.Optional[JSON]
+
+
+@gql.type
 class Dataset:
     id: gql.ID
     name: str
@@ -155,6 +162,7 @@ class Dataset:
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
+    app_config: t.Optional[DatasetAppConfig]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -243,6 +251,7 @@ class AppConfig:
     grid_zoom: int
     loop_videos: bool
     notebook_height: int
+    plugins: t.Optional[JSON]
     show_confidence: bool
     show_index: bool
     show_label: bool

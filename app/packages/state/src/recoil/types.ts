@@ -10,12 +10,14 @@ export namespace State {
 
   export type SidebarGroups = [string, string[]][];
 
+  export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
     notebookHeight: number;
+    plugins?: PluginConfig;
     showConfidence: boolean;
     showIndex: boolean;
     showLabel: boolean;
@@ -74,6 +76,11 @@ export namespace State {
     name: string;
   }
 
+  export interface DatasetAppConfig {
+    gridMediaField?: string;
+    mediaFields?: string[];
+    plugins?: PluginConfig;
+  }
   export interface Dataset {
     id: string;
     brainMethods: BrainRun[];
@@ -100,6 +107,7 @@ export namespace State {
         mediaType: MediaType;
       }[];
     }[];
+    appConfig: DatasetAppConfig;
   }
 
   export interface Filter {}
@@ -148,5 +156,10 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
+  }
+
+  export interface MediaFieldSelection {
+    grid?: string;
+    modal?: string;
   }
 }

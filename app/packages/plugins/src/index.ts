@@ -3,10 +3,11 @@ import ReactDOM from "react-dom";
 import { getFetchFunction } from "@fiftyone/utilities";
 import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
+import { dataset } from "@fiftyone/state";
+import * as _ from "lodash";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
-    __fo_plugin_settings__: PluginSettings;
     React: any;
     ReactDOM: any;
     recoil: any;
@@ -64,7 +65,6 @@ export async function loadPlugins() {
   window.__fo_plugin_settings__ = settings;
   for (const { scriptPath, name } of plugins) {
     const pluginSetting = settings && settings[name];
-    console.log(name, { pluginSetting });
     if (!pluginSetting || pluginSetting.enabled !== false) {
       await loadScript(name, scriptPath);
     }
@@ -181,7 +181,16 @@ class PluginComponentRegistry {
 }
 
 export function usePluginSettings(pluginName: string): any {
-  const settings =
-    window.__fo_plugin_settings__ && window.__fo_plugin_settings__[pluginName];
-  return settings || {};
+  const dataset = recoil.useRecoilValue(fos.dataset);
+  const appConfig = recoil.useRecoilValue(fos.appConfig);
+  const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+  const appConfigPlugins = _.get(appConfig, "plugins", {});
+
+  const settings = _.merge(
+    _.get(appConfigPlugins, pluginName, {}),
+    _.get(datasetPlugins, pluginName, {})
+  );
+  console.log("plugin settings", settings);
+
+  return settings;
 }

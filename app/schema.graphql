@@ -5,6 +5,7 @@ type AppConfig {
   gridZoom: Int!
   loopVideos: Boolean!
   notebookHeight: Int!
+  plugins: JSON
   showConfidence: Boolean!
   showIndex: Boolean!
   showLabel: Boolean!
@@ -37,6 +38,12 @@ enum ColorBy {
   label
 }
 
+type DatasetAppConfig {
+  gridMediaField: String!
+  mediaFields: [String!]!
+  plugins: JSON
+}
+
 type Dataset {
   id: ID!
   name: String!
@@ -56,6 +63,7 @@ type Dataset {
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
+  appConfig: DatasetAppConfig!
 }
 
 type DatasetStrConnection {

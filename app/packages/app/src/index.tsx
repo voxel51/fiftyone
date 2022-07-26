@@ -24,6 +24,8 @@ import { useRouter } from "@fiftyone/state";
 import { EventsContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
+import "@fiftyone/point-clouds";
+
 enum AppReadyState {
   CONNECTING = 0,
   OPEN = 1,
@@ -94,6 +96,7 @@ const App: React.FC = ({}) => {
               const { colorscale, config, ...data } = JSON.parse(
                 msg.data
               ).state;
+              console.log({ config });
               const state = {
                 ...toCamelCase(data),
                 view: data.view,

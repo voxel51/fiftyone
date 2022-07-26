@@ -13,6 +13,7 @@ from mongoengine.fields import StringField as MongoStringField
 
 from fiftyone.core.fields import (
     Field,
+    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
@@ -357,6 +358,13 @@ class KeypointSkeleton(EmbeddedDocument):
     edges = ListField(ListField(IntField()))
 
 
+class DatasetAppConfigDocument(EmbeddedDocument):
+
+    grid_media_field = StringField()
+    media_fields = ListField(StringField())
+    plugins = DictField()
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -394,3 +402,4 @@ class DatasetDocument(Document):
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
+    app_config = EmbeddedDocumentField(document_type=DatasetAppConfigDocument)

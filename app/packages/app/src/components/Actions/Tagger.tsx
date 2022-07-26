@@ -27,7 +27,7 @@ import {
   tagStatistics,
 } from "./utils";
 import { Button } from "../utils";
-import { PopoutSectionTitle } from "../utils";
+import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
