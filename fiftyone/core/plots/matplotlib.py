@@ -614,27 +614,15 @@ def lines(
             plt.tight_layout()
             return fig
 
-        selection_mode = None
-        init_fcn = None
-
-        if link_field is None:
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            elif isinstance(samples, fop.PatchesView):
-                link_type = "labels"
-                link_field = samples._label_fields
-            else:
-                link_type = "samples"
-        elif link_field == "frames":
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            else:
-                link_type = "frames"
-                init_fcn = lambda view: view.to_frames()
-        else:
-            link_type = "labels"
-            selection_mode = "patches"
-            init_fcn = lambda view: view.to_patches(link_field)
+        (
+            link_type,
+            label_fields,
+            selection_mode,
+            init_fcn,
+        ) = InteractiveCollection.recommend_link_type(
+            label_field=link_field,
+            samples=samples,
+        )
 
         return InteractiveCollection(
             collection,
@@ -642,7 +630,7 @@ def lines(
             buttons=buttons,
             link_type=link_type,
             init_view=samples,
-            label_fields=link_field,
+            label_fields=label_fields,
             selection_mode=selection_mode,
             init_fcn=init_fcn,
         )
@@ -785,27 +773,15 @@ def scatterplot(
         if ids is not None and inds is not None:
             ids = ids[inds]
 
-        selection_mode = None
-        init_fcn = None
-
-        if link_field is None:
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            elif isinstance(samples, fop.PatchesView):
-                link_type = "labels"
-                link_field = samples._label_fields
-            else:
-                link_type = "samples"
-        elif link_field == "frames":
-            if isinstance(samples, fov.FramesView):
-                link_type = "frames"
-            else:
-                link_type = "frames"
-                init_fcn = lambda view: view.to_frames()
-        else:
-            link_type = "labels"
-            selection_mode = "patches"
-            init_fcn = lambda view: view.to_patches(link_field)
+        (
+            link_type,
+            label_fields,
+            selection_mode,
+            init_fcn,
+        ) = InteractiveCollection.recommend_link_type(
+            label_field=link_field,
+            samples=samples,
+        )
 
         return InteractiveCollection(
             collection,
@@ -813,7 +789,7 @@ def scatterplot(
             buttons=buttons,
             link_type=link_type,
             init_view=samples,
-            label_fields=link_field,
+            label_fields=label_fields,
             selection_mode=selection_mode,
             init_fcn=init_fcn,
         )
