@@ -18,6 +18,7 @@ const Container = styled(Resizable)`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  overflow: hidden;
 `;
 
 const Nav = styled.div`

@@ -497,7 +497,7 @@ const InteractiveSidebar = ({
     );
 
     let entry = items.current[down.current].entry;
-    if (down.current === after && entry.kind === EntryKind.GROUP) {
+    if (down.current === after && entry.kind === fos.EntryKind.GROUP) {
       const ai = lastOrder.current.indexOf(after) - 1;
       after = ai >= 0 ? lastOrder.current[ai] : null;
     }
