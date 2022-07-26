@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 import numbers
 
@@ -58,6 +59,9 @@ class Field(mongoengine.fields.BaseField):
 
     def __str__(self):
         return etau.get_class_name(self)
+
+    def copy(self):
+        return deepcopy(self)
 
 
 class IntField(mongoengine.fields.IntField, Field):

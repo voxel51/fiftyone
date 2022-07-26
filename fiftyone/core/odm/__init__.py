@@ -59,8 +59,9 @@ from .sample import (
     NoDatasetSampleDocument,
 )
 from .utils import (
-    get_field_kwargs,
-    get_implied_field_kwargs,
     serialize_value,
     deserialize_value,
+    validate_field_name,
+    get_field_kwargs,
+    get_implied_field_kwargs,
 )

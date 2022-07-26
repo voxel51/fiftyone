@@ -21,6 +21,7 @@ import pytz
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
@@ -115,6 +116,51 @@ def deserialize_value(value):
         return fou.deserialize_numpy_array(value)
 
     return value
+
+
+def validate_field_name(field_name, media_type=None, is_frame_field=False):
+    """Verifies that the given field name is valid.
+
+    Args:
+        field_name: the field name
+        media_type (None): the media type of the sample, if known
+        is_frame_field (False): whether this is a frame-level field
+
+    Raises:
+        ValueError: if the field name is invalid
+    """
+    if not isinstance(field_name, str):
+        raise ValueError(
+            "Invalid field name '%s'. Field names must be strings; found "
+            "%s" % (field_name, type(field_name))
+        )
+
+    if not field_name:
+        raise ValueError(
+            "Invalid field name '%s'. Field names cannot be empty" % field_name
+        )
+
+    if field_name.startswith("_"):
+        raise ValueError(
+            "Invalid field name: '%s'. Field names cannot start with '_'"
+            % field_name
+        )
+
+    if "$" in field_name:
+        raise ValueError(
+            "Invalid field name: '%s'. Field names cannot contain '$'"
+            % field_name
+        )
+
+    if (
+        media_type == fom.VIDEO
+        and not is_frame_field
+        and field_name == "frames"
+    ):
+        raise ValueError(
+            "Invalid field name '%s'. 'frames' is a reserved keyword for "
+            "video datasets" % field_name
+        )
 
 
 def get_field_kwargs(field):
