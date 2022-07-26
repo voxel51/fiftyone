@@ -738,6 +738,9 @@ class DocumentView(_Document):
                 self._get_field_names(include_private=include_private)
             )
 
+            if include_private:
+                field_names.add("_id")
+
             d = {k: v for k, v in d.items() if k in field_names}
 
         return d

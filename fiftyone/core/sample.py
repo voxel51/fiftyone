@@ -627,6 +627,10 @@ class SampleView(_SampleMixin, DocumentView):
             field_names = set(
                 self._get_field_names(include_private=include_private)
             )
+
+            if include_private:
+                field_names.add("_id")
+
             if include_frames and self.media_type == fomm.VIDEO:
                 field_names.add("frames")
 
