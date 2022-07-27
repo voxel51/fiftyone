@@ -9,6 +9,7 @@ import datetime
 import os
 import unittest
 
+from bson import Binary, ObjectId
 from mongoengine.errors import ValidationError
 import numpy as np
 
@@ -114,6 +115,30 @@ class SampleTests(unittest.TestCase):
         value = 53
         sample.test_field = value
         self.assertEqual(sample.test_field, value)
+
+    @drop_datasets
+    def test_bson_fields(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            sample_id=ObjectId(),
+            embedding=np.random.randn(4),
+        )
+
+        d = sample.to_mongo_dict(include_id=True)
+        self.assertIsNone(d["_id"])
+        self.assertIsInstance(d["embedding"], Binary)
+        self.assertIsInstance(d["_sample_id"], ObjectId)
+
+        d = sample.to_dict()
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertIsInstance(sample2["embedding"], np.ndarray)
+
+        d = sample.to_dict(include_private=True)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertIsInstance(sample2["sample_id"], str)
+        self.assertIsInstance(sample2["embedding"], np.ndarray)
 
 
 class SampleInDatasetTests(unittest.TestCase):

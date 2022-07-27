@@ -1511,7 +1511,7 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("other_id", fo.ObjectIdField)
 
-        # ObjectIds are presented to user as
+        # ObjectIds are presented to user as strings
         sample = fo.Sample(filepath="image.jpg", other_id=ObjectId())
         self.assertIsInstance(sample.other_id, str)
 
@@ -1559,6 +1559,54 @@ class DatasetTests(unittest.TestCase):
         # ValidationError: StringField cannot except ObjectId values
         with self.assertRaises(Exception):
             dataset.add_sample(sample)
+
+    @drop_datasets
+    def test_embedded_document_fields1(self):
+        sample = fo.Sample(
+            "image.jpg",
+            detection=fo.Detection(
+                polylines=fo.Polylines(polylines=[fo.Polyline()])
+            ),
+        )
+
+        self.assertEqual(len(sample.detection.polylines.polylines), 1)
+
+        d = sample.to_dict()
+        sample2 = fo.Sample.from_dict(d)
+
+        self.assertEqual(len(sample2.detection.polylines.polylines), 1)
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.view()
+        sample_view = view.first()
+
+        self.assertEqual(len(sample_view.detection.polylines.polylines), 1)
+
+    @drop_datasets
+    def test_embedded_document_fields2(self):
+        sample = fo.Sample(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        sample["detection"] = fo.Detection(
+            polylines=fo.Polylines(polylines=[fo.Polyline()])
+        )
+        sample.save()
+
+        self.assertEqual(len(sample.detection.polylines.polylines), 1)
+
+        d = sample.to_dict()
+        sample2 = fo.Sample.from_dict(d)
+
+        self.assertEqual(len(sample2.detection.polylines.polylines), 1)
+
+        view = dataset.view()
+        sample_view = view.first()
+
+        self.assertEqual(len(sample_view.detection.polylines.polylines), 1)
 
     @skip_windows  # TODO: don't skip on Windows
     @drop_datasets
