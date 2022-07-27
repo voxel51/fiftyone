@@ -5478,38 +5478,56 @@ def _add_collection_with_new_ids(
     include_info=True,
     overwrite_info=False,
 ):
-    if sample_collection.media_type != fom.VIDEO:
-        # New sample IDs are automatically regenerated upon insert
-        view = sample_collection.mongo([{"$project": {"_id": False}}])
-        return dataset.add_collection(
-            view,
-            include_info=include_info,
-            overwrite_info=overwrite_info,
-        )
-
-    #
-    # For video datasets, we must take greater care, because sample IDs are
-    # used as foreign keys in the frame documents
-    #
-
     dataset._merge_doc(
         sample_collection,
         merge_info=include_info,
         overwrite_info=overwrite_info,
     )
 
+    if sample_collection.media_type != fom.VIDEO:
+        pipeline = sample_collection._pipeline() + [
+            {"$unset": "_id"},
+            {
+                "$merge": {
+                    "into": dataset._sample_collection_name,
+                    "whenMatched": "keepExisting",
+                    "whenNotMatched": "insert",
+                }
+            },
+        ]
+        sample_collection._dataset._aggregate(pipeline=pipeline)
+
+        return
+
+    #
+    # For video datasets, we must take greater care, because sample IDs are
+    # used as foreign keys in the frame documents
+    #
+
     old_ids = sample_collection.values("_id")
 
     sample_pipeline = sample_collection._pipeline(detach_frames=True) + [
         {"$unset": "_id"},
-        {"$merge": dataset._sample_collection_name},
+        {
+            "$merge": {
+                "into": dataset._sample_collection_name,
+                "whenMatched": "keepExisting",
+                "whenNotMatched": "insert",
+            }
+        },
     ]
     sample_collection._dataset._aggregate(pipeline=sample_pipeline)
 
     frame_pipeline = sample_collection._pipeline(frames_only=True) + [
         {"$set": {"_tmp": "$_sample_id", "_sample_id": {"$rand": {}}}},
         {"$unset": "_id"},
-        {"$merge": dataset._frame_collection_name},
+        {
+            "$merge": {
+                "into": dataset._frame_collection_name,
+                "whenMatched": "keepExisting",
+                "whenNotMatched": "insert",
+            }
+        },
     ]
     sample_collection._dataset._aggregate(pipeline=frame_pipeline)
 
