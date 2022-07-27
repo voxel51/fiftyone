@@ -556,9 +556,12 @@ class SampleFieldTests(unittest.TestCase):
         sample1 = dataset[id1]
         sample2 = dataset[id2]
 
-        # add field (default duplicate)
+        # Re-adding an existing field is allowed
+        dataset.add_sample_field("filepath", fo.StringField)
+
+        # But the types must match
         with self.assertRaises(ValueError):
-            dataset.add_sample_field("filepath", fo.StringField)
+            dataset.add_sample_field("filepath", fo.IntField)
 
         # delete default field
         with self.assertRaises(ValueError):
