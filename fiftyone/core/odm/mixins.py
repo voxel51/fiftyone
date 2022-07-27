@@ -6,17 +6,9 @@ Mixins and helpers for dataset backing documents.
 |
 """
 from collections import OrderedDict
-from datetime import date, datetime
-import json
-import logging
-import numbers
-import six
 
-from bson import json_util
-from bson.binary import Binary
-import numpy as np
+from bson import ObjectId
 
-import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.utils as fou
 
@@ -24,15 +16,13 @@ from .database import get_db_conn
 from .dataset import create_field, SampleFieldDocument
 from .document import Document
 from .utils import (
-    get_field_kwargs,
-    get_implied_field_kwargs,
+    serialize_value,
+    deserialize_value,
     validate_field_name,
+    get_implied_field_kwargs,
 )
 
 fod = fou.lazy_import("fiftyone.core.dataset")
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_default_fields(cls, include_private=False, use_db_fields=False):
@@ -133,7 +123,7 @@ class DatasetMixin(object):
 
     @property
     def field_names(self):
-        return self._get_fields_ordered(include_private=False)
+        return self._get_field_names(include_private=False)
 
     @classmethod
     def _doc_name(cls):
@@ -148,8 +138,11 @@ class DatasetMixin(object):
         collection_name = cls.__name__
         return fod._get_dataset_doc(collection_name, frames=cls._is_frames_doc)
 
-    def _get_field_names(self, include_private=False):
-        return self._get_fields_ordered(include_private=include_private)
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        return self._get_fields_ordered(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
 
     def has_field(self, field_name):
         # pylint: disable=no-member
@@ -255,6 +248,11 @@ class DatasetMixin(object):
 
         add_fields = []
         for field_name, field in schema.items():
+            if isinstance(field, fof.ObjectIdField) and field_name.startswith(
+                "_"
+            ):
+                field_name = field_name[1:]
+
             if field_name == "id":
                 continue
 
@@ -964,15 +962,21 @@ class DatasetMixin(object):
 
     @classmethod
     def _get_fields_ordered(cls, include_private=False, use_db_fields=False):
-        fields = cls._fields_ordered
+        field_names = cls._fields_ordered
 
         if not include_private:
-            fields = tuple(f for f in fields if not f.startswith("_"))
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
 
         if use_db_fields:
-            return tuple(cls._fields[f].db_field for f in fields)
+            field_names = cls._to_db_fields(field_names)
 
-        return fields
+        return field_names
+
+    @classmethod
+    def _to_db_fields(cls, field_names):
+        return tuple(cls._fields[f].db_field or f for f in field_names)
 
 
 class NoDatasetMixin(object):
@@ -997,11 +1001,33 @@ class NoDatasetMixin(object):
         else:
             self.set_field(name, value)
 
-    def _get_field_names(self, include_private=False):
-        if include_private:
-            return tuple(self._data.keys())
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = tuple(self._data.keys())
 
-        return tuple(f for f in self._data.keys() if not f.startswith("_"))
+        if not include_private:
+            field_names = tuple(
+                f for f in field_names if not f.startswith("_")
+            )
+
+        if use_db_fields:
+            field_names = self._to_db_fields(field_names)
+
+        return field_names
+
+    def _to_db_fields(self, field_names):
+        db_fields = []
+
+        for field_name in field_names:
+            if field_name == "id":
+                db_fields.append("_id")
+            elif isinstance(
+                self._data.get(field_name, None), ObjectId
+            ) and not field_name.startswith("_"):
+                db_fields.append("_" + field_name)
+            else:
+                db_fields.append(field_name)
+
+        return tuple(db_fields)
 
     def _get_repr_fields(self):
         return self.field_names
@@ -1084,11 +1110,13 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            # @todo `use_db_field` hack
+            # Store ObjectIds in private fields in the DB
             if k == "id":
                 k = "_id"
+            elif isinstance(v, ObjectId) and not k.startswith("_"):
+                k = "_" + k
 
-            d[k] = _serialize_value(v, extended=extended)
+            d[k] = serialize_value(v, extended=extended)
 
         return d
 
@@ -1096,11 +1124,14 @@ class NoDatasetMixin(object):
     def from_dict(cls, d, extended=False):
         kwargs = {}
         for k, v in d.items():
-            # @todo `use_db_field` hack
+            v = deserialize_value(v)
+
             if k == "_id":
                 k = "id"
+            elif isinstance(v, ObjectId) and k.startswith("_"):
+                k = k[1:]
 
-            kwargs[k] = _deserialize_value(v)
+            kwargs[k] = v
 
         return cls(**kwargs)
 
@@ -1112,70 +1143,6 @@ class NoDatasetMixin(object):
 
     def delete(self):
         pass
-
-
-def _serialize_value(value, extended=False):
-    if hasattr(value, "to_dict") and callable(value.to_dict):
-        # EmbeddedDocumentField
-        return value.to_dict(extended=extended)
-
-    if isinstance(value, (bool, np.bool_)):
-        # BooleanField
-        return bool(value)
-
-    if isinstance(value, numbers.Integral):
-        # IntField
-        return int(value)
-
-    if isinstance(value, numbers.Number):
-        # FloatField
-        return float(value)
-
-    if type(value) is date:
-        # DateField
-        return datetime(value.year, value.month, value.day)
-
-    if isinstance(value, np.ndarray):
-        # VectorField/ArrayField
-        binary = fou.serialize_numpy_array(value)
-        if not extended:
-            return binary
-
-        # @todo improve this
-        return json.loads(json_util.dumps(Binary(binary)))
-
-    if isinstance(value, (list, tuple)):
-        # ListField
-        return [_serialize_value(v, extended=extended) for v in value]
-
-    if isinstance(value, dict):
-        # DictField
-        return {
-            k: _serialize_value(v, extended=extended) for k, v in value.items()
-        }
-
-    return value
-
-
-def _deserialize_value(value):
-    if isinstance(value, dict):
-        if "_cls" in value:
-            # Serialized embedded document
-            _cls = getattr(fo, value["_cls"])
-            return _cls.from_dict(value)
-
-        if "$binary" in value:
-            # Serialized array in extended format
-            binary = json_util.loads(json.dumps(value))
-            return fou.deserialize_numpy_array(binary)
-
-        return value
-
-    if isinstance(value, six.binary_type):
-        # Serialized array in non-extended format
-        return fou.deserialize_numpy_array(value)
-
-    return value
 
 
 def _get_db_field(field, new_field_name):

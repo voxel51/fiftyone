@@ -7,7 +7,7 @@ FiftyOne Label-related unit tests.
 """
 import unittest
 
-from bson import ObjectId
+from bson import Binary, ObjectId
 import numpy as np
 
 import fiftyone as fo
@@ -50,6 +50,42 @@ class LabelTests(unittest.TestCase):
             label = sample_view[field]
             self.assertIsInstance(label.id, str)
             self.assertIsInstance(label._id, ObjectId)
+
+    @drop_datasets
+    def test_dynamic_fields(self):
+        detection = fo.Detection(
+            foo="bar",
+            embedding=np.random.randn(4),
+            custom_id=ObjectId(),
+        )
+
+        d = detection.to_dict()
+
+        self.assertIsInstance(d["_id"], ObjectId)
+        self.assertIsInstance(d["foo"], str)
+        self.assertIsInstance(d["embedding"], Binary)
+        self.assertIsInstance(d["_custom_id"], ObjectId)
+
+        detection2 = fo.Detection.from_dict(d)
+
+        self.assertEqual(detection2.id, detection.id)
+        self.assertEqual(detection2["foo"], detection["foo"])
+        self.assertIsInstance(detection2["embedding"], np.ndarray)
+        self.assertEqual(detection2["custom_id"], detection["custom_id"])
+
+        d = detection.to_dict(extended=True)
+
+        self.assertIsInstance(d["_id"], dict)
+        self.assertIsInstance(d["foo"], str)
+        self.assertIsInstance(d["embedding"], dict)
+        self.assertIsInstance(d["_custom_id"], dict)
+
+        detection2 = fo.Detection.from_dict(d, extended=True)
+
+        self.assertEqual(detection2.id, detection.id)
+        self.assertEqual(detection2["foo"], detection["foo"])
+        self.assertIsInstance(detection2.embedding, np.ndarray)
+        self.assertEqual(detection2["custom_id"], detection["custom_id"])
 
 
 if __name__ == "__main__":

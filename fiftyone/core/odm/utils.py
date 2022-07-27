@@ -7,18 +7,115 @@ Utilities for documents.
 """
 from collections import defaultdict
 from datetime import date, datetime
+import json
 import numbers
 import six
 
+from bson import json_util
+from bson.binary import Binary
 from bson.objectid import ObjectId
+from bson.son import SON
 from mongoengine.fields import StringField
 import numpy as np
+import pytz
 
+import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+
+def serialize_value(value, extended=False):
+    """Serializes the given value.
+
+    Args:
+        value: the value
+        extended (False): whether to serialize extended JSON constructs such as
+            ObjectIDs, Binary, etc. into JSON format
+
+    Returns:
+        the serialized value
+    """
+    if isinstance(value, SON):
+        return value
+
+    if hasattr(value, "to_dict") and callable(value.to_dict):
+        # EmbeddedDocumentField
+        return value.to_dict(extended=extended)
+
+    if isinstance(value, (bool, np.bool_)):
+        # BooleanField
+        return bool(value)
+
+    if isinstance(value, numbers.Integral):
+        # IntField
+        return int(value)
+
+    if isinstance(value, numbers.Number):
+        # FloatField
+        return float(value)
+
+    if isinstance(value, ObjectId) and extended:
+        return {"$oid": str(value)}
+
+    if type(value) is date:
+        # DateField
+        return datetime(value.year, value.month, value.day, tzinfo=pytz.utc)
+
+    if isinstance(value, np.ndarray):
+        # VectorField/ArrayField
+        binary = Binary(fou.serialize_numpy_array(value))
+        if not extended:
+            return binary
+
+        # @todo can we optimize this?
+        return json.loads(json_util.dumps(binary))
+
+    if isinstance(value, (list, tuple)):
+        # ListField
+        return [serialize_value(v, extended=extended) for v in value]
+
+    if isinstance(value, dict):
+        # DictField
+        return {
+            k: serialize_value(v, extended=extended) for k, v in value.items()
+        }
+
+    return value
+
+
+def deserialize_value(value):
+    """Deserializes the given value.
+
+    Args:
+        value: the serialized value
+
+    Returns:
+        the value
+    """
+    if isinstance(value, dict):
+        if "_cls" in value:
+            # Serialized embedded document
+            _cls = getattr(fo, value["_cls"])
+            return _cls.from_dict(value)
+
+        if "$binary" in value:
+            # Serialized array in extended format
+            binary = json_util.loads(json.dumps(value))
+            return fou.deserialize_numpy_array(binary)
+
+        if "$oid" in value:
+            return ObjectId(value["$oid"])
+
+        return value
+
+    if isinstance(value, six.binary_type):
+        # Serialized array in non-extended format
+        return fou.deserialize_numpy_array(value)
+
+    return value
 
 
 def validate_field_name(field_name, media_type=None, is_frame_field=False):
@@ -141,6 +238,9 @@ def get_implied_field_kwargs(value):
     if isinstance(value, six.string_types):
         return {"ftype": fof.StringField}
 
+    if isinstance(value, ObjectId):
+        return {"ftype": fof.ObjectIdField}
+
     if isinstance(value, datetime):
         return {"ftype": fof.DateTimeField}
 
@@ -191,9 +291,6 @@ def get_implied_field_kwargs(value):
 
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
-
-    if isinstance(value, ObjectId):
-        return {"ftype": fof.ObjectIdField}
 
     raise TypeError(
         "Cannot infer an appropriate field type for value '%s'" % value

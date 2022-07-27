@@ -733,7 +733,14 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.reload()
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the view.
 
         Args:
@@ -744,11 +751,15 @@ class DatasetView(foc.SampleCollection):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -758,6 +769,8 @@ class DatasetView(foc.SampleCollection):
         """
         d = super().to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )

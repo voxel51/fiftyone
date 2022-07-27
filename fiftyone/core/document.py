@@ -36,6 +36,9 @@ class _Document(object):
 
         return self._doc == other._doc
 
+    def __contains__(self, name):
+        return self.has_field(name)
+
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
@@ -118,16 +121,20 @@ class _Document(object):
         """Whether the document has been inserted into the database."""
         return self._doc.in_db
 
-    def _get_field_names(self, include_private=False):
+    def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
         Args:
             include_private (False): whether to include private fields
+            use_db_fields (False): whether to return database fields
 
         Returns:
             a tuple of field names
         """
-        return self._doc._get_field_names(include_private=include_private)
+        return self._doc._get_field_names(
+            include_private=include_private,
+            use_db_fields=use_db_fields,
+        )
 
     def has_field(self, field_name):
         """Determines whether the document has the given field.
@@ -159,7 +166,6 @@ class _Document(object):
                 "%s has no field '%s'" % (self.__class__.__name__, field_name)
             )
 
-        # @todo `use_db_field` hack
         if isinstance(value, ObjectId):
             value = str(value)
 
@@ -345,15 +351,20 @@ class _Document(object):
         """
         raise NotImplementedError("subclass must implement copy()")
 
-    def to_dict(self):
+    def to_dict(self, include_private=False):
         """Serializes the document to a JSON dictionary.
 
-        The document ID and private fields are excluded in this representation.
+        Args:
+            include_private (False): whether to include private fields
 
         Returns:
             a JSON dict
         """
         d = self._doc.to_dict(extended=True)
+
+        if include_private:
+            return d
+
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_mongo_dict(self, include_id=False):
@@ -459,7 +470,7 @@ class Document(_Document):
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates a :class:`Document` backed by the given database document.
+        """Creates a document backed by the given database document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.document.Document`
@@ -610,14 +621,9 @@ class DocumentView(_Document):
         super().__init__(doc, dataset=view._dataset)
 
     def __repr__(self):
-        if self._selected_fields is not None:
-            select_fields = ("id",) + tuple(self._selected_fields)
-        else:
-            select_fields = None
-
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
-            select_fields=select_fields,
+            select_fields=self._selected_fields,
             exclude_fields=self._excluded_fields,
         )
 
@@ -632,7 +638,10 @@ class DocumentView(_Document):
         This may be a subset of all fields of the document if fields have been
         selected or excluded.
         """
-        field_names = super().field_names
+        return self._get_field_names(include_private=False)
+
+    def _get_field_names(self, include_private=False, use_db_fields=False):
+        field_names = super()._get_field_names(include_private=include_private)
 
         if self._selected_fields is not None:
             field_names = tuple(
@@ -644,7 +653,13 @@ class DocumentView(_Document):
                 fn for fn in field_names if fn not in self._excluded_fields
             )
 
+        if use_db_fields:
+            return self._to_db_fields(field_names)
+
         return field_names
+
+    def _to_db_fields(self, field_names):
+        return self._doc._to_db_fields(field_names)
 
     @property
     def selected_field_names(self):
@@ -718,11 +733,18 @@ class DocumentView(_Document):
 
         super().clear_field(field_name)
 
-    def to_dict(self):
-        d = super().to_dict()
+    def to_dict(self, include_private=False):
+        d = super().to_dict(include_private=include_private)
 
         if self._selected_fields or self._excluded_fields:
-            d = {k: v for k, v in d.items() if k in self.field_names}
+            field_names = set(
+                self._get_field_names(
+                    include_private=include_private,
+                    use_db_fields=True,
+                )
+            )
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 
@@ -730,11 +752,11 @@ class DocumentView(_Document):
         d = super().to_mongo_dict(include_id=include_id)
 
         if self._selected_fields or self._excluded_fields:
-            d = {
-                k: v
-                for k, v in d.items()
-                if k in self.field_names or k == "_id"
-            }
+            field_names = set(
+                self._get_field_names(include_private=True, use_db_fields=True)
+            )
+
+            d = {k: v for k, v in d.items() if k in field_names}
 
         return d
 

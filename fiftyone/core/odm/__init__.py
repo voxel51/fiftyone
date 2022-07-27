@@ -52,7 +52,6 @@ from .frame import (
 )
 from .mixins import (
     get_default_fields,
-    get_field_kwargs,
     validate_fields_match,
 )
 from .sample import (
@@ -60,6 +59,9 @@ from .sample import (
     NoDatasetSampleDocument,
 )
 from .utils import (
+    serialize_value,
+    deserialize_value,
     validate_field_name,
+    get_field_kwargs,
     get_implied_field_kwargs,
 )
