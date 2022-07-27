@@ -467,7 +467,7 @@ class Document(_Document):
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates a :class:`Document` backed by the given database document.
+        """Creates a document backed by the given database document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.document.Document`
@@ -735,11 +735,11 @@ class DocumentView(_Document):
 
         if self._selected_fields or self._excluded_fields:
             field_names = set(
-                self._get_field_names(include_private=include_private)
+                self._get_field_names(
+                    include_private=include_private,
+                    use_db_fields=True,
+                )
             )
-
-            if include_private:
-                field_names.add("_id")
 
             d = {k: v for k, v in d.items() if k in field_names}
 

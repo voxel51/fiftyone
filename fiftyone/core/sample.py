@@ -500,22 +500,26 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         super().save()
 
     @classmethod
-    def from_frame(cls, frame, filepath):
-        """Creates an image :class:`Sample` from the given
-        :class:`fiftyone.core.frame.Frame`.
+    def from_frame(cls, frame, filepath=None):
+        """Creates a sample from the given frame.
 
         Args:
             frame: a :class:`fiftyone.core.frame.Frame`
-            filepath: the path to the corresponding image frame on disk
+            filepath (None): the path to the corresponding image frame on disk,
+                if not available
 
         Returns:
             a :class:`Sample`
         """
-        return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
+        kwargs = {k: v for k, v in frame.iter_fields()}
+        if filepath is not None:
+            kwargs["filepath"] = filepath
+
+        return cls(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates a :class:`Sample` backed by the given document.
+        """Creates a sample backed by the given document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.sample.DatasetSampleDocument` or
@@ -530,6 +534,30 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         if sample.media_type == fomm.VIDEO:
             sample._frames = fofr.Frames(sample)
+
+        return sample
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
+
+        Returns:
+            a :class:`Sample`
+        """
+        media_type = d.pop("_media_type", None)
+        if media_type is None:
+            media_type = fomm.get_media_type(d.get("filepath", ""))
+
+        if media_type == fomm.VIDEO:
+            frames = d.pop("frames", {})
+
+        sample = super().from_dict(d)
+
+        if sample.media_type == fomm.VIDEO:
+            for fn, fd in frames.items():
+                sample.frames[int(fn)] = fofr.Frame.from_dict(fd)
 
         return sample
 
@@ -625,11 +653,11 @@ class SampleView(_SampleMixin, DocumentView):
 
         if self.selected_field_names or self.excluded_field_names:
             field_names = set(
-                self._get_field_names(include_private=include_private)
+                self._get_field_names(
+                    include_private=include_private,
+                    use_db_fields=True,
+                )
             )
-
-            if include_private:
-                field_names.add("_id")
 
             if include_frames and self.media_type == fomm.VIDEO:
                 field_names.add("frames")
