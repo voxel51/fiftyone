@@ -2242,20 +2242,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.save()
 
-    def clone(self, name=None):
-        """Creates a clone of the dataset containing deep copies of all samples
-        and dataset-level information in this dataset.
+    def clone(self, name=None, persistent=False):
+        """Creates a copy of the dataset.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source dataset. The source *media files*, however,
+        are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`Dataset`
         """
-        return self._clone(name=name)
+        return self._clone(name=name, persistent=persistent)
 
-    def _clone(self, name=None, view=None):
+    def _clone(self, name=None, persistent=False, view=None):
         if name is None:
             name = get_default_dataset_name()
 
@@ -2264,7 +2268,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_dataset_or_view(sample_collection, name)
+        return _clone_dataset_or_view(sample_collection, name, persistent)
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -4969,7 +4973,7 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_dataset_or_view(dataset_or_view, name):
+def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if dataset_exists(name):
         raise ValueError("Dataset '%s' already exists" % name)
 
@@ -4993,7 +4997,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.name = name
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
-    dataset_doc.persistent = False
+    dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
 

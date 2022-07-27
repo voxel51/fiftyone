@@ -712,17 +712,26 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None):
-        """Creates a new dataset containing only the contents of the view.
+    def clone(self, name=None, persistent=False):
+        """Creates a new dataset containing a copy of the contents of the view.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source collection. The source *media files*,
+        however, are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
+                :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
         """
-        return self._dataset._clone(name=name, view=self)
+        return self._dataset._clone(
+            name=name,
+            persistent=persistent,
+            view=self,
+        )
 
     def reload(self):
         """Reloads the underlying dataset from the database.

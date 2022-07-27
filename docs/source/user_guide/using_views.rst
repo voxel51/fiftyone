@@ -2086,7 +2086,7 @@ excluded from a view you created:
 
 Alternatively, you can use
 :meth:`clone() <fiftyone.core.view.DatasetView.clone>` to create a new
-|Dataset| that contains only the contents of a |DatasetView|:
+|Dataset| that contains a copy of (only) the contents of a |DatasetView|:
 
 .. code-block:: python
     :linenos:
