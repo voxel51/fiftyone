@@ -581,10 +581,10 @@ class SampleFieldTests(unittest.TestCase):
         sample1 = dataset[id1]
         sample2 = dataset[id2]
 
-        # Re-adding an existing field is allowed
+        # redeclaring an existing field is allowed
         dataset.add_sample_field("filepath", fo.StringField)
 
-        # But the types must match
+        # but the types must match
         with self.assertRaises(ValueError):
             dataset.add_sample_field("filepath", fo.IntField)
 
@@ -594,6 +594,7 @@ class SampleFieldTests(unittest.TestCase):
 
         field_name = "field1"
         ftype = fo.StringField
+        wrong_ftype = fo.IntField
         field_test_value = "test_field_value"
 
         # access non-existent field
@@ -635,9 +636,12 @@ class SampleFieldTests(unittest.TestCase):
             self.assertIsNone(getattr(sample, field_name))
             self.assertIsNone(sample.to_dict()[field_name])
 
-        # add field (duplicate)
+        # redeclaring an existing field is allowed
+        dataset.add_sample_field(field_name, ftype)
+
+        # but the types must match
         with self.assertRaises(ValueError):
-            dataset.add_sample_field(field_name, ftype)
+            dataset.add_sample_field(field_name, wrong_ftype)
 
         # delete field
         dataset.delete_sample_field(field_name)
