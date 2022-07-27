@@ -844,7 +844,7 @@ def _init_frames(
             "on disk but are not recorded on the dataset",
             len(missing_filepaths),
         )
-        src_dataset._add_frame_field_if_necessary("filepath", fof.StringField)
+        src_dataset.add_frame_field("filepath", fof.StringField)
         ops = [
             UpdateOne(
                 {"_sample_id": _sample_id, "frame_number": fn},

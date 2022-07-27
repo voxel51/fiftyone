@@ -981,7 +981,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         **kwargs,
     ):
-        """Adds a new sample field to the dataset.
+        """Adds a new sample field to the dataset, if necessary.
 
         Args:
             field_name: the field name
@@ -995,13 +995,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+
+        Raises:
+            ValueError: if a field with the given name exists but has an
+                incompatible type
         """
         if embedded_doc_type is not None and issubclass(
             embedded_doc_type, fog.Group
         ):
-            self._add_group_field(field_name)
+            expanded = self._add_group_field(field_name)
         else:
-            self._sample_doc_cls.add_field(
+            expanded = self._sample_doc_cls.add_field(
                 field_name,
                 ftype,
                 embedded_doc_type=embedded_doc_type,
@@ -1009,38 +1013,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 **kwargs,
             )
 
-        self._reload()
-
-    def _add_sample_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-
-        schema = self.get_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
-            )
-        else:
-            self.add_sample_field(field_name, **field_kwargs)
+        if expanded:
+            self._reload()
 
     def _add_implied_sample_field(self, field_name, value):
         if isinstance(value, fog.Group):
-            self._add_group_field(field_name, default=value.name)
+            expanded = self._add_group_field(field_name, default=value.name)
         else:
-            self._sample_doc_cls.add_implied_field(field_name, value)
+            expanded = self._sample_doc_cls.add_implied_field(
+                field_name,
+                value,
+            )
 
-        self._reload()
+        if expanded:
+            self._reload()
 
     def add_frame_field(
         self,
@@ -1050,7 +1036,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         subfield=None,
         **kwargs,
     ):
-        """Adds a new frame-level field to the dataset.
+        """Adds a new frame-level field to the dataset, if necessary.
 
         Only applicable to video datasets.
 
@@ -1066,65 +1052,58 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the contained field. Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
+
+        Raises:
+            ValueError: if a field with the given name exists but has an
+                incompatible type
         """
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        self._frame_doc_cls.add_field(
+        expanded = self._frame_doc_cls.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
             **kwargs,
         )
-        self._reload()
 
-    def _add_frame_field_if_necessary(
-        self,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        **kwargs,
-    ):
-        field_kwargs = dict(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-            **kwargs,
-        )
-
-        schema = self.get_frame_field_schema()
-        if field_name in schema:
-            foo.validate_fields_match(
-                field_name, field_kwargs, schema[field_name]
-            )
-        else:
-            self.add_frame_field(field_name, **field_kwargs)
+        if expanded:
+            self._reload()
 
     def _add_implied_frame_field(self, field_name, value):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        self._frame_doc_cls.add_implied_field(field_name, value)
-        self._reload()
+        expanded = self._frame_doc_cls.add_implied_field(field_name, value)
+
+        if expanded:
+            self._reload()
 
     def add_group_field(self, field_name, default=None):
-        """Adds a group field to the dataset.
+        """Adds a group field to the dataset, if necessary.
 
         Args:
             field_name: the field name
             default (None): a default group slice for the field
+
+        Raises:
+            ValueError: if a group field with another name already exists
         """
-        self._add_group_field(field_name, default=default)
-        self._reload()
+        expanded = self._add_group_field(field_name, default=default)
+
+        if expanded:
+            self._reload()
 
     def _add_group_field(self, field_name, default=None):
-        self._sample_doc_cls.add_field(
+        expanded = self._sample_doc_cls.add_field(
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
         )
+
+        if not expanded:
+            return False
 
         if self._doc.group_media_types is None:
             self._doc.group_media_types = {}
@@ -1137,6 +1116,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
+
+        return True
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
