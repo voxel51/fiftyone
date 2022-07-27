@@ -238,6 +238,9 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.Field` instances
             expand_schema (True): whether to add new fields to the schema
 
+        Returns:
+            True/False whether any new fields were added
+
         Raises:
             ValueError: if a field in the schema is not compliant with an
                 existing field of the same name or a new field is found but
@@ -277,13 +280,14 @@ class DatasetMixin(object):
             )
 
         if not add_fields:
-            return
+            return False
 
         for field_name in add_fields:
             field = schema[field_name].copy()
             cls._add_field_schema(field_name, field, dataset_doc)
 
         dataset_doc.save()
+        return True
 
     @classmethod
     def add_field(
@@ -295,7 +299,7 @@ class DatasetMixin(object):
         fields=None,
         **kwargs,
     ):
-        """Adds a new field to the document.
+        """Adds a new field to the document, if necessary.
 
         Args:
             field_name: the field name
@@ -313,6 +317,13 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
                 Only applicable when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
+
+        Returns:
+            True/False whether a new field was added
+
+        Raises:
+            ValueError: if a field with the given name exists but has an
+                incompatible type
         """
         field = create_field(
             field_name,
@@ -323,7 +334,7 @@ class DatasetMixin(object):
             **kwargs,
         )
 
-        cls.merge_field_schema({field_name: field}, expand_schema=True)
+        return cls.merge_field_schema({field_name: field}, expand_schema=True)
 
     @classmethod
     def add_implied_field(cls, field_name, value):
@@ -333,10 +344,17 @@ class DatasetMixin(object):
         Args:
             field_name: the field name
             value: the field value
+
+        Returns:
+            True/False whether a new field was added
+
+        Raises:
+            ValueError: if a field with the given name exists but has an
+                incompatible type
         """
         field = create_field(field_name, **get_implied_field_kwargs(value))
 
-        cls.merge_field_schema({field_name: field}, expand_schema=True)
+        return cls.merge_field_schema({field_name: field}, expand_schema=True)
 
     @classmethod
     def _rename_fields(cls, field_names, new_field_names):
