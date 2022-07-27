@@ -310,7 +310,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         if not extended:
             return d
 
-        # @todo is there a way to avoid bson -> str -> json dict?
+        # @todo can we optimize this?
         return json.loads(json_util.dumps(d))
 
     def to_mongo(self, *args, **kwargs):
@@ -355,7 +355,7 @@ class MongoEngineBaseDocument(SerializableDocument):
                 pass
 
         # Construct any necessary extended JSON components like ObjectIds
-        # @todo is there a way to avoid json -> str -> bson?
+        # @todo can we optimize this?
         d = json_util.loads(json_util.dumps(d))
 
         # pylint: disable=no-member
