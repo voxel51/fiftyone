@@ -27,25 +27,24 @@ class FiftyOneTeamsConfig(EnvConfig):
         self.audience = self.parse_string(
             d,
             "audience",
-            default="https://voxelapi.dev.fiftyone.ai",
+            default="api.fiftyone.ai",
             env_var="FIFTYONE_TEAMS_AUDIENCE",
         )
         self.client_id = self.parse_string(
             d,
             "client_id",
-            default="bHQ8tHZw6f8qOMYU2KU5oj4SCGm5y78E",
+            default="69dStE2hz7Ciifd1wBO4fzxxpFRR8aQc",
             env_var="FIFTYONE_TEAMS_CLIENT_ID",
         )
         self.domain = self.parse_string(
             d,
             "domain",
-            default="dev-fiftyone.us.auth0.com",
+            default="login.fiftyone.ai",
             env_var="FIFTYONE_TEAMS_DOMAIN",
         )
         self.organization = self.parse_string(
             d,
             "organization",
-            default="org_6nvHI0NrwCmc2fXp",
             env_var="FIFTYONE_TEAMS_ORGANIZATION",
         )
 
