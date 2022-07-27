@@ -7072,7 +7072,14 @@ class SampleCollection(object):
         """Reloads the collection from the database."""
         raise NotImplementedError("Subclass must implement reload()")
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the collection.
 
         Args:
@@ -7083,11 +7090,15 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -7099,10 +7110,13 @@ class SampleCollection(object):
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
         is_video = self.media_type == fom.VIDEO
-        write_frame_labels = is_video and frame_labels_dir is not None
+        write_frame_labels = (
+            is_video and include_frames and frame_labels_dir is not None
+        )
 
         d = {
             "name": self.name,
+            "version": self._dataset.version,
             "media_type": self.media_type,
             "num_samples": len(self),
             "sample_fields": self._serialize_field_schema(),
@@ -7134,7 +7148,10 @@ class SampleCollection(object):
         # Serialize samples
         samples = []
         for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+            sd = sample.to_dict(
+                include_frames=include_frames,
+                include_private=include_private,
+            )
 
             if write_frame_labels:
                 frames = {"frames": sd.pop("frames", {})}
@@ -7152,7 +7169,14 @@ class SampleCollection(object):
 
         return d
 
-    def to_json(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_json(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON string representation of the collection.
 
         The samples will be written as a list in a top-level ``samples`` field
@@ -7166,11 +7190,15 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -7179,6 +7207,8 @@ class SampleCollection(object):
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -7188,6 +7218,8 @@ class SampleCollection(object):
         self,
         json_path,
         rel_dir=None,
+        include_private=False,
+        include_frames=False,
         frame_labels_dir=None,
         pretty_print=False,
     ):
@@ -7202,16 +7234,22 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )

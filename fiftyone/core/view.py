@@ -843,17 +843,26 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None):
-        """Creates a new dataset containing only the contents of the view.
+    def clone(self, name=None, persistent=False):
+        """Creates a new dataset containing a copy of the contents of the view.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source collection. The source *media files*,
+        however, are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
+                :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
         """
-        return self._dataset._clone(name=name, view=self)
+        return self._dataset._clone(
+            name=name,
+            persistent=persistent,
+            view=self,
+        )
 
     def reload(self):
         """Reloads the underlying dataset from the database.
@@ -864,7 +873,14 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.reload()
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the view.
 
         Args:
@@ -875,11 +891,15 @@ class DatasetView(foc.SampleCollection):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -889,6 +909,8 @@ class DatasetView(foc.SampleCollection):
         """
         d = super().to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )

@@ -1623,7 +1623,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if out_filepath is None:
             out_filepath = sample.filepath
 
-        sd = sample.to_dict()
+        sd = sample.to_dict(include_private=True)
         sd["filepath"] = out_filepath
 
         if self.relative_filepaths:
