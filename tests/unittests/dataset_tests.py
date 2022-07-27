@@ -1910,6 +1910,206 @@ class DatasetTests(unittest.TestCase):
             )
 
 
+class DatasetSerializationTests(unittest.TestCase):
+    @drop_datasets
+    def test_serialize_sample(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        d = sample.to_dict()
+        self.assertNotIn("id", d)
+        self.assertNotIn("_id", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+
+        d = sample.to_dict(include_private=True)
+        self.assertIn("_id", d)
+        self.assertIn("_media_type", d)
+        self.assertIn("_rand", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_video_sample(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        d = sample.to_dict()
+        self.assertNotIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(sample2["foo"], "bar")
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = sample.to_dict(include_frames=True)
+        self.assertIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 1)
+        self.assertEqual(sample2.frames[1]["foo"], "bar")
+
+        d = sample.to_dict(include_frames=True, include_private=True)
+        self.assertIn("frames", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 1)
+        self.assertEqual(sample2.frames[1]["foo"], "bar")
+
+        d = frame.to_dict()
+        self.assertNotIn("id", d)
+        self.assertNotIn("_id", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertEqual(frame2["foo"], "bar")
+
+        d = frame.to_dict(include_private=True)
+        self.assertIn("_id", d)
+        self.assertIn("_sample_id", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertEqual(frame2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_dataset(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        d = dataset.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(sample2["foo"], "bar")
+
+        d = dataset.to_dict(include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(sample2["foo"], "bar")
+
+    @drop_datasets
+    def test_serialize_video_dataset(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        d = dataset.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 0)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = dataset.to_dict(include_frames=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 1)
+        self.assertEqual(len(sample2.frames), 1)
+
+        d = dataset.to_dict(include_frames=True, include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertEqual(len(dataset2), 1)
+        self.assertEqual(dataset2.count("frames"), 1)
+        self.assertEqual(len(sample2.frames), 1)
+
+    @drop_datasets
+    def test_serialize_view(self):
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+
+        d = sample_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertNotIn("foo", sample2)
+
+        d = view.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_field_schema())
+        self.assertNotIn("foo", sample2)
+
+        d = view.to_dict(include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_field_schema())
+        self.assertNotIn("foo", sample2)
+
+    @drop_datasets
+    def test_serialize_video_view(self):
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        frame = fo.Frame(foo="bar")
+        sample.frames[1] = frame
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        d = frame_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        frame2 = fo.Frame.from_dict(d)
+        self.assertNotIn("foo", frame2)
+
+        d = sample_view.to_dict()
+        self.assertNotIn("foo", d)
+
+        sample2 = fo.Sample.from_dict(d)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = sample_view.to_dict(include_frames=True)
+        sample2 = fo.Sample.from_dict(d)
+        frame2 = sample2.frames.first()
+        self.assertNotIn("foo", frame2)
+
+        d = view.to_dict()
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertEqual(dataset2.count("frames"), 0)
+        self.assertEqual(len(sample2.frames), 0)
+
+        d = view.to_dict(include_frames=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertNotIn("foo", frame2)
+
+        d = view.to_dict(include_frames=True, include_private=True)
+        dataset2 = fo.Dataset.from_dict(d)
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertNotIn("foo", dataset2.get_frame_field_schema())
+        self.assertNotIn("foo", frame2)
+
+
 class DatasetDeletionTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):

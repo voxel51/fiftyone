@@ -36,6 +36,9 @@ class _Document(object):
 
         return self._doc == other._doc
 
+    def __contains__(self, name):
+        return self.has_field(name)
+
     def __getattr__(self, name):
         try:
             return super().__getattr__(name)
