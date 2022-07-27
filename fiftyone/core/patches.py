@@ -17,6 +17,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
 
@@ -495,6 +496,8 @@ def make_patches_dataset(
             "Frame label patches cannot be directly extracted; you must first "
             "convert your video dataset to frames via `to_frames()`"
         )
+
+    fova.validate_image_collection(sample_collection)
 
     if etau.is_str(other_fields):
         other_fields = [other_fields]
