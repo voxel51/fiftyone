@@ -162,6 +162,16 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
             "video datasets" % field_name
         )
 
+    if (
+        media_type == fom.GROUP
+        and not is_frame_field
+        and field_name == "groups"
+    ):
+        raise ValueError(
+            "Invalid field name '%s'. 'groups' is a reserved keyword for "
+            "grouped datasets" % field_name
+        )
+
 
 def get_field_kwargs(field):
     """Constructs the field keyword arguments dictionary for the given

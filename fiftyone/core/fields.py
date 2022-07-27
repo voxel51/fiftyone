@@ -18,7 +18,6 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.odm.embedded_document import EmbeddedDocument
 import fiftyone.core.utils as fou
 
 

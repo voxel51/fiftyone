@@ -8,10 +8,10 @@ Sample groups.
 from bson import ObjectId
 
 import fiftyone.core.fields as fof
-from fiftyone.core.odm import EmbeddedDocument
+import fiftyone.core.odm as foo
 
 
-class Group(EmbeddedDocument):
+class Group(foo.EmbeddedDocument):
     """A named group membership.
 
     Args:
@@ -28,3 +28,17 @@ class Group(EmbeddedDocument):
 
     def element(self, name):
         return self.__class__(id=self.id, name=name)
+
+
+def is_group_field(field):
+    """Determines whether the given field is a group field.
+
+    Args:
+        field: a :class:`fiftyone.core.fields.Field`
+
+    Returns:
+        True/False
+    """
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, Group
+    )

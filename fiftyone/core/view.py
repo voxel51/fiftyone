@@ -166,6 +166,7 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def group_field(self):
+        """The group field of the view, or None if the view is not grouped."""
         if self.media_type != fom.GROUP:
             return None
 
@@ -173,6 +174,9 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def group_slice(self):
+        """The current group slice of the view, or None if the view is not
+        grouped.
+        """
         if self.media_type != fom.GROUP:
             return None
 
@@ -180,14 +184,20 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def group_media_types(self):
-        if self.group_field is None:
+        """A dict mapping group slices to media types, or None if the view is
+        not grouped.
+        """
+        if self.media_type != fom.GROUP:
             return None
 
         return self._dataset.group_media_types
 
     @property
     def default_group_slice(self):
-        if self.group_field is None:
+        """The default group slice of the view, or None if the view is not
+        grouped.
+        """
+        if self.media_type != fom.GROUP:
             return None
 
         return self._dataset.default_group_slice

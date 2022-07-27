@@ -249,10 +249,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
-        self._group_field = None
-        self._group_slice = None
-        if self.media_type == fom.GROUP:
-            self._set_group_field()
+        self._group_slice = doc.default_group_slice
 
         self._annotation_cache = {}
         self._brain_cache = {}
@@ -405,35 +402,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def group_field(self):
-        """The current group field of the dataset, or None if the dataset is
-        not grouped.
+        """The group field of the dataset, or None if the dataset is not
+        grouped.
         """
-        return self._group_field
-
-    @group_field.setter
-    def group_field(self, field_name):
-        if self.media_type != fom.GROUP:
-            raise ValueError("Dataset has no groups")
-
-        self._set_group_field(field_name)
-
-    def _set_group_field(self, field_name=None):
-        if field_name is None:
-            field_name = _get_group_field(self)
-
-            if field_name is None:
-                raise ValueError("Dataset has no groups")
-        else:
-            field = self.get_field(field_name)
-            if not isinstance(
-                field, fof.EmbeddedDocumentField
-            ) or not issubclass(field.document_type, fog.Group):
-                raise ValueError(
-                    "Field '%s' is not a group field" % field_name
-                )
-
-        self._group_field = field_name
-        self._group_slice = self._doc.default_group_slice
+        return self._doc.group_field
 
     @property
     def group_slice(self):
@@ -450,20 +422,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if slice_name is None:
             slice_name = self._doc.default_group_slice
 
-        if slice_name not in self._doc.groups:
+        if slice_name not in self._doc.group_media_types:
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._group_slice = slice_name
 
     @property
     def group_media_types(self):
-        """A dict mapping group names to media types, or None if the dataset is
-        not grouped.
+        """A dict mapping group slices to media types, or None if the dataset
+        is not grouped.
         """
         if self.media_type != fom.GROUP:
             return None
 
-        return self._doc.groups
+        return self._doc.group_media_types
 
     @property
     def default_group_slice(self):
@@ -480,7 +452,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
 
-        if slice_name not in self._doc.groups:
+        if slice_name not in self._doc.group_media_types:
             raise ValueError("Dataset has no group slice '%s'" % slice_name)
 
         self._doc.default_group_slice = slice_name
@@ -1098,14 +1070,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if embedded_doc_type is not None and issubclass(
-            embedded_doc_type, fog.Group
-        ):
-            raise ValueError(
-                "Cannot create frame-level group field '%s'. Group fields "
-                "must be top-level sample fields" % field_name
-            )
-
         self._frame_doc_cls.add_field(
             field_name,
             ftype,
@@ -1142,12 +1106,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if isinstance(value, fog.Group):
-            raise ValueError(
-                "Cannot create frame-level group field '%s'. Group fields "
-                "must be top-level sample fields" % field_name
-            )
-
         self._frame_doc_cls.add_implied_field(field_name, value)
         self._reload()
 
@@ -1156,36 +1114,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_name: the field name
-            default (None): a default group name for the field
+            default (None): a default group slice for the field
         """
         self._add_group_field(field_name, default=default)
         self._reload()
 
     def _add_group_field(self, field_name, default=None):
-        if self.group_field is not None:
-            raise ValueError("Datasets may only have one group field")
-
-        if "." in field_name:
-            raise ValueError(
-                "Invalid group field '%s'. Group fields must be top-level "
-                "sample fields" % field_name
-            )
-
         self._sample_doc_cls.add_field(
             field_name,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fog.Group,
         )
 
-        if self._doc.groups is None:
-            self._doc.groups = {}
+        if self._doc.group_media_types is None:
+            self._doc.group_media_types = {}
 
-        self._doc.default_group_slice = default
+        if self._doc.default_group_slice is None:
+            self._doc.default_group_slice = default
+
+        self._doc.group_field = field_name
         self._doc.save()
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
-        self._set_group_field(field_name)
 
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
@@ -4946,11 +4897,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._reload()
 
     def _expand_group_schema(self, sample, field_name, value):
-        if field_name != self.group_field:
+        if self.group_field is not None and field_name != self.group_field:
             raise ValueError("Dataset has no group field '%s'" % field_name)
 
-        if value.name not in self._doc.groups:
-            self._doc.groups[value.name] = sample.media_type
+        slice_name = value.name
+        if slice_name not in self._doc.group_media_types:
+            self._doc.group_media_types[slice_name] = sample.media_type
+
+            # If dataset doesn't yet have a default group slice, use the first
+            # observed value
+            if self._doc.default_group_slice is None:
+                self._doc.default_group_slice = slice_name
+                self._slice_name = slice_name
+
             self._doc.save()
 
     def _expand_frame_schema(self, frames):
@@ -5024,7 +4983,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             "Dataset has no group field '%s'" % field_name
                         )
 
-                    group_media_type = self._doc.groups.get(value.name, None)
+                    group_media_type = self._doc.group_media_types.get(
+                        value.name,
+                        None,
+                    )
                     if group_media_type is None:
                         raise ValueError(
                             "Dataset has no group slice '%s'" % value.name
@@ -5089,8 +5051,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
-        if self.media_type == fom.GROUP:
-            self._set_group_field()
+        if self._group_slice is None:
+            self._group_slice = doc.default_group_slice
 
     def _reload_docs(self, hard=False):
         fos.Sample._reload_docs(self._sample_collection_name, hard=hard)

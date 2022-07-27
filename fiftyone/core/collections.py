@@ -172,8 +172,8 @@ class SampleCollection(object):
 
     @property
     def group_field(self):
-        """The current group field of the collection, or None if the collection
-        is not grouped.
+        """The group field of the collection, or None if the collection is not
+        grouped.
         """
         raise NotImplementedError("Subclass must implement group_field")
 
@@ -186,8 +186,8 @@ class SampleCollection(object):
 
     @property
     def group_media_types(self):
-        """A dict mapping group names to media types, or None if the collection
-        is not grouped.
+        """A dict mapping group slices to media types, or None if the
+        collection is not grouped.
         """
         raise NotImplementedError("Subclass must implement group_media_types")
 
