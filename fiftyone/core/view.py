@@ -502,7 +502,7 @@ class DatasetView(foc.SampleCollection):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
 
-        Only applicable for video datasets.
+        Only applicable for views that contain videos.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -516,7 +516,7 @@ class DatasetView(foc.SampleCollection):
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
-            the dataset is not a video dataset
+            the view does not contain videos
         """
         field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
@@ -588,7 +588,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -619,7 +619,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -705,7 +705,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -735,7 +735,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 

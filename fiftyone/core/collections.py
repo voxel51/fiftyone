@@ -675,7 +675,7 @@ class SampleCollection(object):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the collection.
 
-        Only applicable for video collections.
+        Only applicable for collections that contain videos.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -689,7 +689,7 @@ class SampleCollection(object):
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
-            the collection is not a video collection
+            the collection does not contain videos
         """
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
@@ -7109,9 +7109,9 @@ class SampleCollection(object):
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
-        is_video = self.media_type == fom.VIDEO
+        contains_videos = self._contains_videos()
         write_frame_labels = (
-            is_video and include_frames and frame_labels_dir is not None
+            contains_videos and include_frames and frame_labels_dir is not None
         )
 
         d = {
@@ -7122,7 +7122,7 @@ class SampleCollection(object):
             "sample_fields": self._serialize_field_schema(),
         }
 
-        if is_video:
+        if contains_videos:
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
@@ -7681,6 +7681,18 @@ class SampleCollection(object):
                 group_slices.add(group_slice)
 
         return list(group_slices)
+
+    def _contains_videos(self):
+        if self.media_type == fom.VIDEO:
+            return True
+
+        if (self.media_type == fom.GROUP) and any(
+            media_type == fom.VIDEO
+            for media_type in self.group_media_types.values()
+        ):
+            return True
+
+        return False
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)

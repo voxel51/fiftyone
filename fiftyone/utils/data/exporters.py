@@ -1559,7 +1559,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         schema = sample_collection._serialize_field_schema()
         self._metadata["sample_fields"] = schema
 
-        if _contains_videos(sample_collection):
+        if sample_collection._contains_videos():
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
@@ -1763,7 +1763,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             samples, self._samples_path, key="samples", num_docs=num_samples
         )
 
-        if _contains_videos(sample_collection):
+        if sample_collection._contains_videos():
             logger.info("Exporting frames...")
 
             if sample_collection.media_type == fomm.GROUP and not isinstance(
@@ -1840,19 +1840,6 @@ def _export_evaluation_results(sample_collection, eval_dir):
         results = sample_collection.load_evaluation_results(eval_key)
         if results is not None:
             etas.write_json(results, results_path)
-
-
-def _contains_videos(sample_collection):
-    if sample_collection.media_type == fomm.VIDEO:
-        return True
-
-    if (sample_collection.media_type == fomm.GROUP) and any(
-        media_type == fomm.VIDEO
-        for media_type in sample_collection.group_media_types.values()
-    ):
-        return True
-
-    return False
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
