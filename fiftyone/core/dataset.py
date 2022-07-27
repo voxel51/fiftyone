@@ -360,15 +360,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == self._doc.media_type:
             return
 
-        self._doc.media_type = media_type
-        self._set_metadata(media_type)
-
-    def _set_metadata(self, media_type):
         if media_type == fom.GROUP:
-            # The media type of group datasets always stays as the generic
-            # `Metadata` type because the slices may have different types
-            return
+            raise ValueError(
+                "You cannot directly set a dataset's media type to 'group'. "
+                "Instead, use add_group_field() or just add a sample with a "
+                "group field to the dataset"
+            )
 
+        self._set_media_type(media_type)
+
+    def _set_media_type(self, media_type):
+        self._doc.media_type = media_type
+
+        if media_type != fom.GROUP:
+            self._update_metadata_field(media_type)
+
+            if media_type == fom.VIDEO:
+                self._declare_frame_fields()
+
+            self._doc.save()
+            self.reload()
+        else:
+            # The `metadata` field of group datasets always stays as the
+            # generic `Metadata` type because slices may have different types
+            self._doc.save()
+
+    def _update_metadata_field(self, media_type):
         idx = None
         for i, field in enumerate(self._doc.sample_fields):
             if field.name == "metadata":
@@ -390,15 +407,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_doc = foo.SampleFieldDocument.from_field(field)
             self._doc.sample_fields[idx] = field_doc
 
-        if media_type == fom.VIDEO:
-            # pylint: disable=no-member
-            self._doc.frame_fields = [
-                foo.SampleFieldDocument.from_field(field)
-                for field in self._frame_doc_cls._fields.values()
-            ]
-
-        self._doc.save()
-        self.reload()
+    def _declare_frame_fields(self):
+        # pylint: disable=no-member
+        self._doc.frame_fields = [
+            foo.SampleFieldDocument.from_field(field)
+            for field in self._frame_doc_cls._fields.values()
+        ]
 
     @property
     def group_field(self):
@@ -1105,6 +1119,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not expanded:
             return False
 
+        self._doc.media_type = fom.GROUP
+
         if self._doc.group_media_types is None:
             self._doc.group_media_types = {}
 
@@ -1113,6 +1129,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.group_field = field_name
         self._doc.save()
+
+        self._group_slice = self._doc.default_group_slice
 
         self.create_index(field_name + "._id")
         self.create_index(field_name + ".name")
@@ -1749,7 +1767,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
-            self.media_type = _get_media_type(samples[0])
+            media_type = _get_media_type(samples[0])
+            self._set_media_type(media_type)
 
         if expand_schema:
             self._expand_schema(samples)
@@ -4848,7 +4867,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expanded = False
         schema = self.get_field_schema(include_private=True)
         for sample in samples:
-            if self.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO:
                 expanded |= self._expand_frame_schema(sample.frames)
 
             for field_name in sample._get_field_names(include_private=True):
@@ -4882,8 +4901,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Dataset has no group field '%s'" % field_name)
 
         slice_name = value.name
+        media_type = sample.media_type
+
         if slice_name not in self._doc.group_media_types:
-            self._doc.group_media_types[slice_name] = sample.media_type
+            # If this is the first video slice, we need to initialize the frame
+            # field schema
+            if media_type == fom.VIDEO and not any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self._doc.group_media_types.values()
+            ):
+                self._declare_frame_fields()
+
+            self._doc.group_media_types[slice_name] = media_type
 
             # If dataset doesn't yet have a default group slice, use the first
             # observed value
@@ -4964,22 +4993,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             "Dataset has no group field '%s'" % field_name
                         )
 
-                    group_media_type = self._doc.group_media_types.get(
+                    slice_media_type = self._doc.group_media_types.get(
                         value.name,
                         None,
                     )
-                    if group_media_type is None:
+                    if slice_media_type is None:
                         raise ValueError(
                             "Dataset has no group slice '%s'" % value.name
                         )
-                    elif sample.media_type != group_media_type:
+                    elif sample.media_type != slice_media_type:
                         raise ValueError(
                             "Sample media type '%s' does not match group "
                             "slice '%s' media type '%s'"
                             % (
                                 sample.media_type,
                                 value.name,
-                                group_media_type,
+                                slice_media_type,
                             )
                         )
 
