@@ -66,12 +66,14 @@ const Column: React.FC<{
     foq.paginateGroupPaginationFragment,
     fragmentRef
   );
+  console.log(data);
   const samples = {
     ...data.samples,
     edges: data.samples.edges.filter(
       (s) => s.node.sample._media_type !== "point-cloud"
     ),
   };
+
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const createLooker = fos.useCreateLooker(true, opts, true);

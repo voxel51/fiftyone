@@ -17,7 +17,6 @@ class OneOf:
 
 @gql.input
 class GroupElementFilter:
-    group_field: str
     id: str
     group: str
 

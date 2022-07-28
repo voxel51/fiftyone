@@ -74,10 +74,8 @@ async def paginate_samples(
     )
 
     media_type = None
-    if sample_filter:
-        media = view._dataset._doc.groups[view.group_field][
-            sample_filter.group.group
-        ]
+    if sample_filter and sample_filter.group:
+        media = view._dataset._doc.group_media_types[sample_filter.group.group]
         if media == fom.IMAGE:
             media_type = ImageSample
         elif media == fom.VIDEO:

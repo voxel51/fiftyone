@@ -25,8 +25,7 @@ _LABEL_TAGS = "_label_tags"
 
 
 def get_group(sample_collection, group_id):
-    group_field = sample_collection.group_field
-    id_field = group_field + "._id"
+    id_field = sample_collection.group_field + "._id"
     return sample_collection.mongo(
         [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
     )
@@ -56,9 +55,7 @@ def get_view(
                         "$match": {
                             "$expr": {
                                 "$eq": [
-                                    "$"
-                                    + sample_filter.group.group_field
-                                    + "._id",
+                                    "$" + view._dataset.group_field + "._id",
                                     ObjectId(sample_filter.group.id),
                                 ]
                             }
@@ -68,9 +65,7 @@ def get_view(
                         "$match": {
                             "$expr": {
                                 "$eq": [
-                                    "$"
-                                    + sample_filter.group.group_field
-                                    + ".name",
+                                    "$" + view._dataset.group_field + ".name",
                                     sample_filter.group.group,
                                 ]
                             }

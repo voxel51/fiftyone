@@ -6,17 +6,14 @@ import { Resizable } from "re-resizable";
 import { useTheme } from "@fiftyone/components";
 import {
   PreloadedQuery,
-  usePaginationFragment,
   usePreloadedQuery,
+  useRefetchableFragment,
 } from "react-relay";
 import {
   paginateGroupPinnedSample_query$key,
   paginateGroup,
   paginateGroupQuery,
-  pageinateGroupPinnedSampleFragment,
-  paginateGroupPaginationFragment,
-  paginateGroupQuery$data,
-  paginateGroup_query$key,
+  paginateGroupPinnedSampleFragment,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 
@@ -30,20 +27,17 @@ import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
 import { useRecoilState, useRecoilValue } from "recoil";
 import SidebarSourceSelector from "../SidebarSourceSelector";
 
-function usePinnedVisualizerPlugin(fragmentRef) {
+function usePinnedVisualizerPlugin(
+  fragmentRef: paginateGroupPinnedSample_query$key
+) {
   const [resolvedSample, setResolvedSample] = useRecoilState(
     fos.resolvedPinnedSample
   );
-  const { data, hasNext, loadNext } = usePaginationFragment(
-    paginateGroupPaginationFragment,
+  const [{ sample }, refetch] = useRefetchableFragment(
+    paginateGroupPinnedSampleFragment,
     fragmentRef
   );
-  const { samples } = data;
-  const {
-    node: { sample },
-  } = samples.edges.find(({ node: { sample } }) => {
-    return sample._media_type === "point-cloud";
-  });
+
   useEffect(() => {
     setResolvedSample(sample);
   }, [sample]);
@@ -57,7 +51,7 @@ function usePinnedVisualizerPlugin(fragmentRef) {
 }
 
 const LookerContainer: React.FC<{
-  fragmentRef: paginateGroup_query$key;
+  fragmentRef: paginateGroupPinnedSample_query$key;
 }> = ({ fragmentRef }) => {
   const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
 

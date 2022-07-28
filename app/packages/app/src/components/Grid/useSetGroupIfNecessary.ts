@@ -32,7 +32,6 @@ export default (store: fos.LookerStore<any>) => {
                   group: {
                     id: sample?.sample[groupField]._id,
                     group: await snapshot.getPromise(fos.pinnedSampleGroup),
-                    groupField,
                   },
                 },
               },

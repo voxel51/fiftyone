@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4320c263e4e1e7fc2c8987afa3adcd83>>
+ * @generated SignedSource<<e2e883b91d45d9b4baee720b7743dfe8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,6 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   group: string;
-  groupField: string;
   id: string;
 };
 export type paginateGroupQuery$variables = {
@@ -181,11 +180,11 @@ const node: ConcreteRequest = (function () {
     kind: "Request",
     operation: {
       argumentDefinitions: [
+        v0 /*: any*/,
+        v1 /*: any*/,
         v2 /*: any*/,
         v5 /*: any*/,
         v3 /*: any*/,
-        v0 /*: any*/,
-        v1 /*: any*/,
         v4 /*: any*/,
       ],
       kind: "Operation",
@@ -285,16 +284,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "ec6776b076ff0dd6f5766f646b972f04",
+      cacheID: "9b90b1cc31ef37422aff6dd7dd2a6e5b",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $groupId: String!\n  $count: Int = 20\n  $cursor: String = null\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $groupId: String!\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "1409f20cead366ebe786d941ccb39c52";
+(node as any).hash = "062857b2fc7060a6768bb5f2d6abbfd7";
 
 export default node;

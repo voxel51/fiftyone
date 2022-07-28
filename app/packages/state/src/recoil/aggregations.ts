@@ -154,8 +154,6 @@ export const aggregations = selectorFamily<
         return null;
       }
 
-      console.log({ sample });
-
       const { aggregations: data } = (await getFetchFunction()(
         "POST",
         "/aggregations",
