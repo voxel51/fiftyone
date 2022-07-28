@@ -44,8 +44,9 @@ type Dataset {
   createdAt: Date
   lastLoadedAt: DateTime
   persistent: Boolean!
-  groupMediaTypes: JSON
+  groupMediaTypes: [Group!]
   groupField: String
+  defaultGroupSlice: String
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
@@ -110,8 +111,12 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
+type Group {
+  name: String!
+  mediaType: MediaType!
+}
+
 input GroupElementFilter {
-  groupField: String!
   id: String!
   group: String!
 }

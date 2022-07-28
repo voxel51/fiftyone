@@ -99,7 +99,7 @@ export namespace State {
     appSidebarGroups?: { name: string; paths: string[] }[];
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
-    groups: {
+    groupMediaTypes?: {
       name: string;
       mediaType: MediaType;
     }[];

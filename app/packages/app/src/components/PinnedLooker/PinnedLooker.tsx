@@ -54,7 +54,7 @@ const LookerContainer: React.FC<{
   fragmentRef: paginateGroupPinnedSample_query$key;
 }> = ({ fragmentRef }) => {
   const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
-
+  if (!Visualizer) return null;
   return (
     <SidebarSourceSelector id="pinned">
       <Visualizer />
