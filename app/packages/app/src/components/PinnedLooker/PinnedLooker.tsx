@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import styled from "styled-components";
 
 import { Resizable } from "re-resizable";
@@ -27,9 +27,13 @@ const Container = styled.div`
   width: 100%;
 `;
 import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import SidebarSourceSelector from "../SidebarSourceSelector";
 
 function usePinnedVisualizerPlugin(fragmentRef) {
+  const [resolvedSample, setResolvedSample] = useRecoilState(
+    fos.resolvedPinnedSample
+  );
   const { data, hasNext, loadNext } = usePaginationFragment(
     paginateGroupPaginationFragment,
     fragmentRef
@@ -40,7 +44,9 @@ function usePinnedVisualizerPlugin(fragmentRef) {
   } = samples.edges.find(({ node: { sample } }) => {
     return sample._media_type === "point-cloud";
   });
-  console.log({ sample });
+  useEffect(() => {
+    setResolvedSample(sample);
+  }, [sample]);
   const dataset = useRecoilValue(fos.dataset);
   const [visualizerPlugin] = useActivePlugins(PluginComponentType.Visualizer, {
     dataset,
@@ -55,7 +61,11 @@ const LookerContainer: React.FC<{
 }> = ({ fragmentRef }) => {
   const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
 
-  return <Visualizer />;
+  return (
+    <SidebarSourceSelector id="pinned">
+      <Visualizer />
+    </SidebarSourceSelector>
+  );
 };
 
 const PinnedLooker: React.FC<

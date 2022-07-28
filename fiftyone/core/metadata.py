@@ -292,7 +292,7 @@ def _compute_metadata(sample_collection, overwrite=False):
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", sample_collection.media_type)
+    logger.info("Computing metadata...")
     with fou.ProgressBar(total=num_samples) as pb:
         for sample in pb(sample_collection.select_fields()):
             compute_sample_metadata(sample, skip_failures=True)
@@ -302,9 +302,15 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
-    media_type = sample_collection.media_type
-    ids, filepaths = sample_collection.values(["id", "filepath"])
-    media_types = itertools.repeat(media_type)
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slice(
+            _allow_mixed=True
+        )
+
+    ids, filepaths, media_types = sample_collection.values(
+        ["id", "filepath", "_media_type"],
+        _allow_missing=True,
+    )
 
     inputs = list(zip(ids, filepaths, media_types))
     num_samples = len(inputs)
@@ -312,7 +318,7 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if num_samples == 0:
         return
 
-    logger.info("Computing %s metadata...", media_type)
+    logger.info("Computing metadata...")
 
     view = sample_collection.select_fields()
     with fou.ProgressBar(total=num_samples) as pb:

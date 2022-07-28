@@ -600,8 +600,11 @@ class Frames(object):
 
         return d
 
-    def _to_frames_dict(self):
-        return {str(fn): frame.to_dict() for fn, frame in self.items()}
+    def _to_frames_dict(self, include_private=False):
+        return {
+            str(fn): frame.to_dict(include_private=include_private)
+            for fn, frame in self.items()
+        }
 
     def _save_deletions(self):
         if self._delete_all:
