@@ -14,6 +14,7 @@ import * as fos from "@fiftyone/state";
 
 import PinnedLooker from "./PinnedLooker/PinnedLooker";
 import { isGroup, isPinned } from "@fiftyone/state";
+import SidebarSourceSelector from "./SidebarSourceSelector";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -215,16 +216,18 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          <Looker
-            key={`modal-${sampleSrc}`}
-            lookerRef={lookerRef}
-            onSelectLabel={onSelectLabel}
-            onClose={clearModal}
-            onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
-            onNext={() => getIndex(index + 1)}
-            style={{ flex: 1 }}
-            isGroupMainView={isGroupMode}
-          />
+          <SidebarSourceSelector id="main">
+            <Looker
+              key={`modal-${sampleSrc}`}
+              lookerRef={lookerRef}
+              onSelectLabel={onSelectLabel}
+              onClose={clearModal}
+              onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
+              onNext={() => getIndex(index + 1)}
+              style={{ flex: 1 }}
+              isGroupMainView={isGroupMode}
+            />
+          </SidebarSourceSelector>
           {isGroupMode && <Group queryRef={queryRef} />}
         </ContentColumn>
         {isGroupMode && useRecoilValue(isPinned) && (

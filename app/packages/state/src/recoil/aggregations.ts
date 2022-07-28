@@ -3,6 +3,7 @@ import {
   GetRecoilValue,
   RecoilValueReadOnly,
   selectorFamily,
+  useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
 
@@ -147,17 +148,20 @@ export const aggregations = selectorFamily<
       }
 
       const dataset = get(selectors.datasetName);
+      const sample = get(selectors.sidebarSourceSample);
 
       if (!dataset) {
         return null;
       }
+
+      console.log({ sample });
 
       const { aggregations: data } = (await getFetchFunction()(
         "POST",
         "/aggregations",
         {
           filters,
-          sample_ids: modal ? get(atoms.modal).sample._id : null,
+          sample_ids: modal ? sample._id : null,
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
