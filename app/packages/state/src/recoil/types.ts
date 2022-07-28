@@ -100,13 +100,11 @@ export namespace State {
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
     groups: {
-      defaultGroup: string;
-      field: string;
-      groups: {
-        name: string;
-        mediaType: MediaType;
-      }[];
+      name: string;
+      mediaType: MediaType;
     }[];
+    defaultGroupSlice: string;
+    groupField: string;
     appConfig: DatasetAppConfig;
   }
 

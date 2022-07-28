@@ -53,13 +53,6 @@ class Group:
 
 
 @gql.type
-class GroupField:
-    field: str
-    groups: t.List[Group]
-    default_group: str
-
-
-@gql.type
 class Target:
     target: int
     value: str
@@ -149,8 +142,9 @@ class Dataset:
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
-    group_media_types: t.Optional[JSON]
+    group_media_types: t.Optional[t.List[Group]]
     group_field: t.Optional[str]
+    default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
@@ -183,16 +177,9 @@ class Dataset:
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
         )
-        doc["groups"] = [
-            GroupField(
-                field,
-                [
-                    Group(name, media_type)
-                    for name, media_type in groups.items()
-                ],
-                doc["default_group_names"][field],
-            )
-            for field, groups in doc.get("groups", {}).items()
+        doc["group_media_types"] = [
+            Group(name, media_type)
+            for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc

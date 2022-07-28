@@ -355,7 +355,7 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_DISABLE_PLUGINS",
             default=False,
         )
-        self.plugins = d["plugins"]
+        self.plugins = d.get("plugins", {})
 
         self._init()
 

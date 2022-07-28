@@ -2413,6 +2413,7 @@ __metadata:
     recharts: 2.0.9
     recoil: 0.7.2
     recoil-relay: ^0.0.0
+    relay-compiler: ^14.1.0
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
     styled-components: ^5.3.3
@@ -10304,6 +10305,15 @@ __metadata:
   bin:
     relay-compiler: cli.js
   checksum: 3ff56e2b2337085023b16b7444ba62b67bacb9d82691cd0bc6fe456548efdbf8125bff7e086ba277fd9af1aa55deb28372be7cea9b40e2b13ecc56f194c2e3f8
+  languageName: node
+  linkType: hard
+
+"relay-compiler@npm:^14.1.0":
+  version: 14.1.0
+  resolution: "relay-compiler@npm:14.1.0"
+  bin:
+    relay-compiler: cli.js
+  checksum: 2c7bf680c6e60e4436af56cc463e9c81389265bb5371ea7d54c0eb45c6af2bbccbe0d57eee838c499d9b7625330be0927d4deb1926ab8e8984a8f306f8ea0ccc
   languageName: node
   linkType: hard
 

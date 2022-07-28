@@ -20,5 +20,5 @@ export const pinnedSampleGroup = selector<string>({
 
 export const groupField = selector<string>({
   key: "groupField",
-  get: () => "group",
+  get: ({ get }) => get(dataset).groupField,
 });
