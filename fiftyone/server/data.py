@@ -14,17 +14,15 @@ import starlette.responses as strp
 import strawberry.types as gqlt
 from strawberry.dataloader import DataLoader
 
-from fiftyone.server.mixins import HasCollection
 
-
-HasCollectionType = t.TypeVar("HasCollectionType", bound=HasCollection)
+T = t.TypeVar("T")
 
 
 @dataclass
 class Context:
     db: mtr.AsyncIOMotorDatabase
     session: mtr.AsyncIOMotorClientSession
-    dataloaders: t.Dict[HasCollection, DataLoader[str, HasCollection]]
+    dataloaders: t.Dict[t.Type[t.Any], DataLoader[str, t.Type[t.Any]]]
     request: strq.Request
     response: strp.Response
 

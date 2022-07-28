@@ -1,44 +1,17 @@
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-  TransactionInterface_UNSTABLE,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import html2canvas from "html2canvas";
 
 import { getFetchFunction, sendEvent, toCamelCase } from "@fiftyone/utilities";
 
-import * as aggregationAtoms from "../recoil/aggregations";
-import * as atoms from "../recoil/atoms";
-import * as filterAtoms from "../recoil/filters";
-import * as selectors from "../recoil/selectors";
-import { State } from "../recoil/types";
-import * as viewAtoms from "../recoil/view";
-import { resolveGroups, sidebarGroupsDefinition } from "../components/Sidebar";
-import { savingFilters } from "../components/Actions/ActionsRow";
-import { viewsAreEqual } from "./view";
-import { similaritySorting } from "../components/Actions/Similar";
-import { patching } from "../components/Actions/Patcher";
-import { useSendEvent, useTo } from "@fiftyone/components";
-import { useMutation } from "react-relay";
+import * as fos from "@fiftyone/state";
 import {
-  setDataset,
-  setDatasetMutation,
-  setSelected,
-  setSelectedLabels,
-  setSelectedLabelsMutation,
-  setSelectedMutation,
-  setView,
-  setViewMutation,
-} from "../mutations";
-import { useErrorHandler } from "react-error-boundary";
-import { transformDataset } from "../Root/Datasets";
-import { getDatasetName } from "./generic";
-import { RouterContext } from "@fiftyone/components";
-import { RGB } from "@fiftyone/looker";
-import { DatasetQuery } from "../Root/Datasets/__generated__/DatasetQuery.graphql";
-import { _activeFields } from "../recoil/schema";
+  State,
+  StateResolver,
+  transformDataset,
+  useStateUpdate,
+} from "@fiftyone/state";
 
 export const useEventHandler = (
   target,
@@ -156,7 +129,7 @@ export const useWindowSize = () => {
 export const useScreenshot = (
   context: "ipython" | "colab" | "databricks" | undefined
 ) => {
-  const subscription = useRecoilValue(selectors.stateSubscription);
+  const subscription = useRecoilValue(fos.stateSubscription);
 
   const fitSVGs = useCallback(() => {
     const svgElements = document.body.querySelectorAll("svg");
@@ -275,17 +248,6 @@ export const useScreenshot = (
   return run;
 };
 
-interface StateUpdate {
-  colorscale?: RGB[];
-  config?: State.Config;
-  dataset?: State.Dataset;
-  state?: Partial<State.Description>;
-}
-
-export type StateResolver =
-  | StateUpdate
-  | ((t: TransactionInterface_UNSTABLE) => StateUpdate);
-
 export const useUnprocessedStateUpdate = () => {
   const update = useStateUpdate();
   return (resolve: StateResolver) => {
@@ -299,199 +261,11 @@ export const useUnprocessedStateUpdate = () => {
           ? (transformDataset(toCamelCase(dataset)) as State.Dataset)
           : null,
         config: config ? (toCamelCase(config) as State.Config) : undefined,
-        state: { ...toCamelCase(state), view: state.view } as State.Description,
+        state: {
+          ...toCamelCase(state),
+          view: state.view,
+        } as State.Description,
       };
     });
   };
-};
-
-export const useStateUpdate = () => {
-  return useRecoilTransaction_UNSTABLE(
-    (t) => (resolve: StateResolver) => {
-      const { colorscale, config, dataset, state } =
-        resolve instanceof Function ? resolve(t) : resolve;
-
-      const { get, reset, set } = t;
-
-      if (state) {
-        const view = get(viewAtoms.view);
-
-        if (!viewsAreEqual(view, state.view || [])) {
-          set(viewAtoms.view, state.view || []);
-          set(filterAtoms.filters, {});
-        }
-      }
-
-      colorscale !== undefined && set(atoms.colorscale, colorscale);
-
-      config !== undefined && set(atoms.appConfig, config);
-      state?.viewCls !== undefined && set(viewAtoms.viewCls, state.viewCls);
-
-      state?.selected && set(atoms.selectedSamples, new Set(state.selected));
-      state?.selectedLabels &&
-        set(
-          atoms.selectedLabels,
-          Object.fromEntries(
-            (state.selectedLabels || []).map(({ labelId, ...data }) => [
-              labelId,
-              data,
-            ])
-          )
-        );
-
-      const colorPool = get(atoms.colorPool);
-      if (
-        config &&
-        JSON.stringify(config.colorPool) !== JSON.stringify(colorPool)
-      ) {
-        set(atoms.colorPool, config.colorPool);
-      }
-
-      if (dataset) {
-        dataset.brainMethods = Object.values(dataset.brainMethods || {});
-        dataset.evaluations = Object.values(dataset.evaluations || {});
-
-        const groups = resolveGroups(dataset);
-        const currentSidebar = get(sidebarGroupsDefinition(false));
-
-        if (JSON.stringify(groups) !== JSON.stringify(currentSidebar)) {
-          set(sidebarGroupsDefinition(false), groups);
-          set(
-            aggregationAtoms.aggregationsTick,
-            get(aggregationAtoms.aggregationsTick) + 1
-          );
-        }
-
-        const previousDataset = get(atoms.dataset);
-        if (!previousDataset || previousDataset.id !== dataset.id) {
-          reset(_activeFields({ modal: false }));
-        }
-
-        set(atoms.dataset, dataset);
-      }
-
-      set(atoms.modal, null);
-
-      [true, false].forEach((i) =>
-        [true, false].forEach((j) =>
-          set(atoms.tagging({ modal: i, labels: j }), false)
-        )
-      );
-      set(patching, false);
-      set(similaritySorting, false);
-      set(savingFilters, false);
-    },
-    []
-  );
-};
-
-export const useSetDataset = () => {
-  const { to } = useTo({
-    state: { selected: [], selectedLabels: [], view: [], viewCls: null },
-    variables: { view: [] },
-  });
-  const send = useSendEvent();
-  const [commit] = useMutation<setDatasetMutation>(setDataset);
-  const subscription = useRecoilValue(selectors.stateSubscription);
-  const onError = useErrorHandler();
-
-  return (name?: string) => {
-    to(name ? `/datasets/${encodeURI(name)}` : "/");
-
-    send((session) =>
-      commit({
-        onError,
-        variables: { subscription, session, name },
-      })
-    );
-  };
-};
-
-export const useSetSelected = () => {
-  const send = useSendEvent();
-  const subscription = useRecoilValue(selectors.stateSubscription);
-  const [commit] = useMutation<setSelectedMutation>(setSelected);
-  const onError = useErrorHandler();
-
-  return (selected: string[]) =>
-    send((session) =>
-      commit({
-        onError,
-        variables: { subscription, session, selected },
-      })
-    );
-};
-
-export const useSetSelectedLabels = () => {
-  const send = useSendEvent();
-  const subscription = useRecoilValue(selectors.stateSubscription);
-  const [commit] = useMutation<setSelectedLabelsMutation>(setSelectedLabels);
-  const onError = useErrorHandler();
-
-  return (selectedLabels: State.SelectedLabel[]) =>
-    send((session) =>
-      commit({
-        onError,
-        variables: { subscription, session, selectedLabels },
-      })
-    );
-};
-
-export const useSetView = () => {
-  const send = useSendEvent(true);
-  const context = useContext(RouterContext);
-  const updateState = useStateUpdate();
-  const subscription = useRecoilValue(selectors.stateSubscription);
-  const [commit] = useMutation<setViewMutation>(setView);
-  const onError = useErrorHandler();
-
-  return (view) => {
-    send((session) => {
-      commit({
-        variables: {
-          subscription,
-          session,
-          view,
-          dataset: getDatasetName(context),
-        },
-        onError,
-        onCompleted: ({ setView: { dataset, view } }) => {
-          updateState({
-            dataset: transformDataset(dataset),
-            state: {
-              view,
-              viewCls: dataset.viewCls,
-              selected: [],
-              selectedLabels: [],
-            },
-          });
-        },
-      });
-    });
-  };
-};
-
-export const useSelectSample = () => {
-  const setSelected = useSetSelected();
-
-  return useRecoilTransaction_UNSTABLE(
-    ({ set, get }) =>
-      async (sampleId: string) => {
-        const selected = new Set(get(atoms.selectedSamples));
-        selected.has(sampleId)
-          ? selected.delete(sampleId)
-          : selected.add(sampleId);
-        set(atoms.selectedSamples, selected);
-        setSelected([...selected]);
-      },
-    []
-  );
-};
-
-export const useReset = () => {
-  return useRecoilTransaction_UNSTABLE(({ set }) => () => {
-    set(atoms.selectedSamples, new Set());
-    set(atoms.selectedLabels, {});
-    set(viewAtoms.view, []);
-  });
 };

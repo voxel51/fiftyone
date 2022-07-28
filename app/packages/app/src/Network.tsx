@@ -1,19 +1,12 @@
-import {
-  ErrorBoundary,
-  Loading,
-  RouterContext,
-  RouteRenderer,
-  RoutingContext,
-  useRouter,
-} from "@fiftyone/components";
+import { ErrorBoundary, Loading, RouteRenderer } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 import React, { Suspense, useContext, useEffect } from "react";
 import { Environment, RelayEnvironmentProvider } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { modal, refresher } from "./recoil/atoms";
 
 const Renderer: React.FC = () => {
-  const context = useContext(RouterContext);
+  const context = useContext(fos.RouterContext);
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
@@ -24,24 +17,24 @@ const Renderer: React.FC = () => {
 
 const Network: React.FC<{
   environment: Environment;
-  context: RoutingContext<any>;
+  context: fos.RoutingContext<any>;
 }> = ({ environment, context }) => {
   return (
     <RelayEnvironmentProvider environment={environment}>
-      <RouterContext.Provider value={context}>
+      <fos.RouterContext.Provider value={context}>
         <ErrorBoundary>
           <Renderer />
         </ErrorBoundary>
-      </RouterContext.Provider>
+      </fos.RouterContext.Provider>
     </RelayEnvironmentProvider>
   );
 };
 
 export const NetworkRenderer = ({ makeRoutes }) => {
-  const refreshRouter = useRecoilValue(refresher);
-  const { context, environment } = useRouter(makeRoutes, [refreshRouter]);
+  const refreshRouter = useRecoilValue(fos.refresher);
+  const { context, environment } = fos.useRouter(makeRoutes, [refreshRouter]);
 
-  const isModalActive = Boolean(useRecoilValue(modal));
+  const isModalActive = Boolean(useRecoilValue(fos.modal));
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", isModalActive);

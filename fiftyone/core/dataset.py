@@ -40,6 +40,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 from fiftyone.core.odm.dataset import SampleFieldDocument
+from fiftyone.core.odm.dataset import DatasetAppConfigDocument
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -246,6 +247,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
+        if self._doc.app_config == None:
+            self._doc.app_config = DatasetAppConfigDocument(
+                grid_media_field="filepath", media_fields=["filepath"]
+            )
+
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
@@ -384,6 +390,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
             self._doc.save()
+
+    @property
+    def app_config(self):
+        return self._doc.app_config
+
+    @app_config.setter
+    def app_config(self, config):
+        self._doc.app_config = config
 
     def _update_metadata_field(self, media_type):
         idx = None

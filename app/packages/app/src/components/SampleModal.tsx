@@ -6,19 +6,15 @@ import { useRecoilValue, useRecoilTransaction_UNSTABLE } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
-import FieldsSidebar, {
-  disabledPaths,
-  Entries,
-  EntryKind,
-  SidebarEntry,
-  useTagText,
-} from "../components/Sidebar";
 import Looker from "../components/Looker";
-import * as atoms from "../recoil/atoms";
-import * as schemaAtoms from "../recoil/schema";
-import { State } from "../recoil/types";
-import { getSampleSrc, useClearModal } from "../recoil/utils";
-import { useSetSelectedLabels } from "../utils/hooks";
+
+import Group from "./Group/Group";
+import Sidebar, { Entries } from "./Sidebar";
+import * as fos from "@fiftyone/state";
+
+import PinnedLooker from "./PinnedLooker/PinnedLooker";
+import { isGroup, isPinned } from "@fiftyone/state";
+import SidebarSourceSelector from "./SidebarSourceSelector";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -47,64 +43,40 @@ const ContentColumn = styled.div`
   width: 1px;
   position: relative;
   overflow: visible;
+  display: flex;
+  flex-direction: column;
 `;
 
-interface SelectEvent {
-  detail: {
-    id: string;
-    field: string;
-    frameNumber?: number;
-  };
-}
-
-const useOnSelectLabel = () => {
-  const send = useSetSelectedLabels();
-  return useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => ({ detail: { id, field, frameNumber } }: SelectEvent) => {
-      const { sample } = get(atoms.modal);
-      let labels = {
-        ...get(atoms.selectedLabels),
-      };
-      if (labels[id]) {
-        delete labels[id];
-      } else {
-        labels[id] = {
-          field,
-          sampleId: sample._id,
-          frameNumber,
-        };
-      }
-
-      set(atoms.selectedLabels, labels);
-      send(
-        Object.entries(labels).map(([labelId, data]) => ({ ...data, labelId }))
-      );
-    },
-    []
-  );
-};
-
 const SampleModal = () => {
-  const {
-    sample: { filepath, _id },
-    index,
-    getIndex,
-  } = useRecoilValue(atoms.modal);
-  const sampleSrc = getSampleSrc(filepath, _id);
-  const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
-  const onSelectLabel = useOnSelectLabel();
-  const tagText = useTagText(true);
-  const labelPaths = useRecoilValue(
-    schemaAtoms.labelPaths({ expanded: false })
-  );
-  const clearModal = useClearModal();
-  const disabled = useRecoilValue(disabledPaths);
+  const data = useRecoilValue(fos.modal);
+  if (!data) {
+    throw new Error("no modal data");
+  }
 
+  const {
+    sample,
+    navigation: { index, getIndex },
+  } = data;
+  const { filepath, _id } = sample;
+
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = fos.getSampleSrc(
+    sample[selectedMediaFieldName],
+    sample._id
+  );
+  const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
+  const onSelectLabel = fos.useOnSelectLabel();
+  const tagText = fos.useTagText(true);
+  const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
+  const clearModal = fos.useClearModal();
+  const disabled = useRecoilValue(fos.disabledPaths);
   const renderEntry = useCallback(
     (
       key: string,
       group: string,
-      entry: SidebarEntry,
+      entry: fos.SidebarEntry,
       controller: Controller,
       trigger: (
         event: React.MouseEvent<HTMLDivElement>,
@@ -113,7 +85,7 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case EntryKind.PATH:
+        case fos.EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
           const isLabel = labelPaths.includes(entry.path);
@@ -130,7 +102,9 @@ const SampleModal = () => {
                     modal={true}
                     tag={entry.path.split(".").slice(1).join(".")}
                     tagKey={
-                      isLabelTag ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                      isLabelTag
+                        ? fos.State.TagKey.LABEL
+                        : fos.State.TagKey.SAMPLE
                     }
                   />
                 )}
@@ -170,7 +144,7 @@ const SampleModal = () => {
             ),
             disabled: isTag || isLabelTag || isOther,
           };
-        case EntryKind.GROUP:
+        case fos.EntryKind.GROUP:
           const isTags = entry.name === "tags";
           const isLabelTags = entry.name === "label tags";
 
@@ -180,7 +154,9 @@ const SampleModal = () => {
                 <Entries.TagGroup
                   entryKey={key}
                   tagKey={
-                    isLabelTags ? State.TagKey.LABEL : State.TagKey.SAMPLE
+                    isLabelTags
+                      ? fos.State.TagKey.LABEL
+                      : fos.State.TagKey.SAMPLE
                   }
                   modal={true}
                   key={key}
@@ -197,7 +173,7 @@ const SampleModal = () => {
               ),
             disabled: false,
           };
-        case EntryKind.EMPTY:
+        case fos.EntryKind.EMPTY:
           return {
             children: (
               <Entries.Empty
@@ -213,7 +189,7 @@ const SampleModal = () => {
             ),
             disabled: true,
           };
-        case EntryKind.INPUT:
+        case fos.EntryKind.INPUT:
           return {
             children: <Entries.Filter modal={true} key={key} />,
             disabled: true,
@@ -225,10 +201,12 @@ const SampleModal = () => {
     [tagText]
   );
 
-  const screen = useRecoilValue(atoms.fullscreen)
+  const screen = useRecoilValue(fos.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef();
+  const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
+  const isGroupMode = useRecoilValue(isGroup) && queryRef;
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -238,16 +216,24 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          <Looker
-            key={`modal-${sampleSrc}`}
-            lookerRef={lookerRef}
-            onSelectLabel={onSelectLabel}
-            onClose={clearModal}
-            onPrevious={index > 0 ? () => getIndex(index - 1) : null}
-            onNext={() => getIndex(index + 1)}
-          />
+          <SidebarSourceSelector id="main">
+            <Looker
+              key={`modal-${sampleSrc}`}
+              lookerRef={lookerRef}
+              onSelectLabel={onSelectLabel}
+              onClose={clearModal}
+              onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
+              onNext={() => getIndex(index + 1)}
+              style={{ flex: 1 }}
+              isGroupMainView={isGroupMode}
+            />
+          </SidebarSourceSelector>
+          {isGroupMode && <Group queryRef={queryRef} />}
         </ContentColumn>
-        <FieldsSidebar render={renderEntry} modal={true} />
+        {isGroupMode && useRecoilValue(isPinned) && (
+          <PinnedLooker queryRef={queryRef} />
+        )}
+        <Sidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,
     document.getElementById("modal")

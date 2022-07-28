@@ -8,13 +8,8 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as colorAtoms from "../../recoil/color";
-import * as filterAtoms from "../../recoil/filters";
-import * as schemaAtoms from "../../recoil/schema";
-import * as selectors from "../../recoil/selectors";
+import * as fos from "@fiftyone/state";
 
-import * as numericAtoms from "./numericState";
 import ExcludeOption from "./Exclude";
 import RangeSlider from "../Common/RangeSlider";
 import Checkbox from "../Common/Checkbox";
@@ -61,18 +56,16 @@ const getNonfiniteGetter = (params: {
   defaultRange?: [number, number];
 }) => {
   const counts = useRecoilValue(
-    aggregationAtoms.nonfiniteCounts({
+    fos.nonfiniteCounts({
       modal: params.modal,
       path: params.path,
       extended: false,
     })
   );
 
-  return (
-    key: aggregationAtoms.Nonfinite
-  ): [aggregationAtoms.Nonfinite, NonfiniteState] => {
+  return (key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] => {
     const [value, setValue] = useRecoilState(
-      numericAtoms.nonfiniteAtom({ ...params, key })
+      fos.nonfiniteAtom({ ...params, key })
     );
 
     return [
@@ -81,7 +74,7 @@ const getNonfiniteGetter = (params: {
         count: counts[key],
         setValue,
         value,
-        subcountAtom: aggregationAtoms.nonfiniteCount({
+        subcountAtom: fos.nonfiniteCount({
           ...params,
           extended: true,
           key,
@@ -91,7 +84,7 @@ const getNonfiniteGetter = (params: {
   };
 };
 
-const FLOAT_NONFINITES: aggregationAtoms.Nonfinite[] = ["inf", "ninf", "nan"];
+const FLOAT_NONFINITES: fos.Nonfinite[] = ["inf", "ninf", "nan"];
 
 const useNonfinites = ({
   fieldType,
@@ -101,7 +94,7 @@ const useNonfinites = ({
   defaultRange?: [number, number];
   modal: boolean;
   path: string;
-}): [aggregationAtoms.Nonfinite, NonfiniteState][] => {
+}): [fos.Nonfinite, NonfiniteState][] => {
   const get = getNonfiniteGetter(rest);
   const data = [get("none")];
 
@@ -129,17 +122,15 @@ const NumericFieldFilter = ({
   named = true,
   title,
 }: Props) => {
-  const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
+  const color = useRecoilValue(fos.pathColor({ modal, path }));
   const name = path.split(".").slice(-1)[0];
 
-  const setFilter = useSetRecoilState(filterAtoms.filter({ modal, path }));
-  const bounds = useRecoilValue(
-    numericAtoms.boundsAtom({ path, defaultRange })
-  );
+  const setFilter = useSetRecoilState(fos.filter({ modal, path }));
+  const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
 
-  const ftype = useRecoilValue(schemaAtoms.fieldType({ path }));
+  const ftype = useRecoilValue(fos.fieldType({ path }));
   const hasDefaultRange = useRecoilValue(
-    numericAtoms.isDefaultRange({ modal, path, defaultRange })
+    fos.isDefaultRange({ modal, path, defaultRange })
   );
   const hasBounds = bounds.every((b) => b !== null);
   const nonfinites = useNonfinites({
@@ -149,16 +140,14 @@ const NumericFieldFilter = ({
     fieldType: ftype,
   });
 
-  const isFiltered = useRecoilValue(
-    filterAtoms.fieldIsFiltered({ modal, path })
-  );
+  const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
 
   const bounded = useRecoilValue(
-    aggregationAtoms.boundedCount({ modal, path, extended: false })
+    fos.boundedCount({ modal, path, extended: false })
   );
 
   const one = bounds[0] === bounds[1];
-  const timeZone = useRecoilValue(selectors.timeZone);
+  const timeZone = useRecoilValue(fos.timeZone);
 
   if (!hasBounds && nonfinites.length === 1 && nonfinites[0][0] === "none")
     return null;
@@ -178,8 +167,8 @@ const NumericFieldFilter = ({
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
-            valueAtom={numericAtoms.rangeAtom({ modal, path, defaultRange })}
-            boundsAtom={numericAtoms.boundsAtom({
+            valueAtom={fos.rangeAtom({ modal, path, defaultRange })}
+            boundsAtom={fos.boundsAtom({
               path,
               defaultRange,
             })}
@@ -193,7 +182,7 @@ const NumericFieldFilter = ({
             name={bounds[0]}
             setValue={() => {}}
             count={bounded}
-            subcountAtom={aggregationAtoms.boundedCount({
+            subcountAtom={fos.boundedCount({
               modal,
               path,
               extended: true,
@@ -223,7 +212,7 @@ const NumericFieldFilter = ({
           ))}
         {isFiltered && nonfinites.length > 0 && hasBounds && (
           <ExcludeOption
-            excludeAtom={numericAtoms.excludeAtom({
+            excludeAtom={fos.excludeAtom({
               path,
               modal,
               defaultRange,

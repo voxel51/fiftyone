@@ -1,4 +1,4 @@
-import { useRouter, Loading, EventsContext, Theme } from "@fiftyone/components";
+import { Loading, Theme } from "@fiftyone/components";
 import { darkTheme, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -6,15 +6,25 @@ import { RecoilRoot, useRecoilValue } from "recoil";
 
 import Setup from "./components/Setup";
 
-import { useReset, useScreenshot } from "./utils/hooks";
+import { useScreenshot } from "./utils/hooks";
 
 import "./index.css";
-import { State } from "./recoil/types";
-import { stateSubscription } from "./recoil/selectors";
 import makeRoutes from "./makeRoutes";
-import { getDatasetName } from "./utils/generic";
-import { modal, refresher, useRefresh } from "./recoil/atoms";
 import Network from "./Network";
+import {
+  modal,
+  refresher,
+  State,
+  stateSubscription,
+  useRefresh,
+  useReset,
+} from "@fiftyone/state";
+import { usePlugins } from "@fiftyone/plugins";
+import { useRouter } from "@fiftyone/state";
+import { EventsContext } from "@fiftyone/state";
+import { getDatasetName } from "@fiftyone/state";
+
+import "@fiftyone/point-clouds";
 
 enum AppReadyState {
   CONNECTING = 0,
@@ -86,6 +96,7 @@ const App: React.FC = ({}) => {
               const { colorscale, config, ...data } = JSON.parse(
                 msg.data
               ).state;
+              console.log({ config });
               const state = {
                 ...toCamelCase(data),
                 view: data.view,
@@ -137,10 +148,15 @@ const App: React.FC = ({}) => {
     return () => controller.abort();
   }, []);
 
+  const plugins = usePlugins();
+  const loadingElement = <Loading>Pixelating...</Loading>;
+
   switch (readyState) {
     case AppReadyState.CONNECTING:
-      return <Loading>Pixelating...</Loading>;
+      return loadingElement;
     case AppReadyState.OPEN:
+      if (plugins.isLoading) return loadingElement;
+      if (plugins.error) return <div>Plugin error...</div>;
       return <Network environment={environment} context={context} />;
     default:
       return <Setup />;

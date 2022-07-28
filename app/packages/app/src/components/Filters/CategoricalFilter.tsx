@@ -12,20 +12,15 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import * as atoms from "../../recoil/atoms";
-import * as aggregationAtoms from "../../recoil/aggregations";
-import * as colorAtoms from "../../recoil/color";
-import { genSort, getDatasetName } from "../../utils/generic";
+import { genSort } from "../../utils/generic";
 
 import Checkbox from "../Common/Checkbox";
 import { Button } from "../utils";
 
 import ExcludeOption from "./Exclude";
 import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
-import { view } from "../../recoil/view";
 import { Selector, useTheme } from "@fiftyone/components";
-import { selectedValuesAtom } from "./stringState";
-import { field } from "../../recoil/schema";
+import * as fos from "@fiftyone/state";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
@@ -55,7 +50,7 @@ type V = { value: string | number | null | boolean; count: number };
 const nullSort = ({
   count,
   asc,
-}: atoms.SortResults): ((aa: V, bb: V) => number) => {
+}: fos.SortResults): ((aa: V, bb: V) => number) => {
   return ({ count: aac, value: aav }, { count: bbc, value: bbv }): number => {
     let a = [aav, aac];
     let b = [bbv, bbc];
@@ -103,7 +98,7 @@ const Wrapper = ({
 
   const selectedSet = new Set(selected);
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const sorting = useRecoilValue(atoms.sortFilterResults(modal));
+  const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
     value,
@@ -161,7 +156,7 @@ const Wrapper = ({
             }
             setSelected([...selectedSet].sort());
           }}
-          subcountAtom={aggregationAtoms.count({
+          subcountAtom={fos.count({
             modal,
             path,
             extended: true,
@@ -183,7 +178,7 @@ const Wrapper = ({
             color={color}
             onClick={() => {
               setSelected([]);
-              setExcluded(false);
+              setExcluded && setExcluded(false);
             }}
             style={{
               margin: "0.25rem -0.5rem",
@@ -215,20 +210,18 @@ const categoricalSearchResults = selectorFamily<
     ({ path, modal }) =>
     async ({ get }) => {
       const search = get(categoricalSearch({ modal, path }));
-      const sorting = get(atoms.sortFilterResults(modal));
+      const sorting = get(fos.sortFilterResults(modal));
       let sampleId = null;
-      const selected = get(selectedValuesAtom({ path, modal }));
+      const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
       if (modal) {
-        sampleId = get(atoms.modal)?.sample._id;
+        sampleId = get(fos.modal)?.sample._id;
       }
 
-      const noneCount = get(
-        aggregationAtoms.noneCount({ path, modal, extended: false })
-      );
+      const noneCount = get(fos.noneCount({ path, modal, extended: false }));
 
       const data = await getFetchFunction()("POST", "/values", {
-        dataset: get(atoms.dataset).name,
-        view: get(view),
+        dataset: get(fos.dataset).name,
+        view: get(fos.view),
         path,
         search,
         selected,
@@ -287,12 +280,12 @@ const useOnSelect = (
   );
 };
 
-interface Props {
-  selectedValuesAtom: RecoilState<V["value"][]>;
+interface Props<T extends V = V> {
+  selectedValuesAtom: RecoilState<T["value"][]>;
   excludeAtom?: RecoilState<boolean>;
   countsAtom: RecoilValue<{
     count: number;
-    results: [V, number][];
+    results: [T["value"], number][];
   }>;
   modal: boolean;
   path: string;
@@ -325,19 +318,19 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
     (path) =>
     ({ get }) => {
       const { CountValues } = get(
-        aggregationAtoms.aggregations({ modal: false, extended: false })
-      )[path] as aggregationAtoms.CategoricalAggregations;
+        fos.aggregations({ modal: false, extended: false })
+      )[path] as fos.CategoricalAggregations;
 
       if (!CountValues) {
         const keys = path.split(".");
         let parent = keys[0];
 
-        let f = get(field(parent));
+        let f = get(fos.field(parent));
         if (!f && parent === "frames") {
           parent = `frames.${keys[1]}`;
         }
 
-        if (VALID_KEYPOINTS.includes(get(field(parent)).embeddedDocType)) {
+        if (VALID_KEYPOINTS.includes(get(fos.field(parent)).embeddedDocType)) {
           return true;
         }
       }
@@ -349,7 +342,7 @@ export const isKeypointLabel = selectorFamily<boolean, string>({
   },
 });
 
-const CategoricalFilter = ({
+const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
@@ -357,9 +350,9 @@ const CategoricalFilter = ({
   modal,
   named = true,
   title,
-}: Props) => {
+}: Props<T>) => {
   const name = path.split(".").slice(-1)[0];
-  const color = useRecoilValue(colorAtoms.pathColor({ modal, path }));
+  const color = useRecoilValue(fos.pathColor({ modal, path }));
   const countsLoadable = useRecoilValueLoadable(countsAtom);
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
@@ -367,7 +360,7 @@ const CategoricalFilter = ({
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
 
-  if (countsLoadable.state === "loading") return null;
+  if (countsLoadable.state !== "hasValue") return null;
 
   const { count, results } = countsLoadable.contents;
 

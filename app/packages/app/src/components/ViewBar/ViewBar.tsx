@@ -5,14 +5,13 @@ import { useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
-import * as schemaAtoms from "../../recoil/schema";
-import * as viewAtoms from "../../recoil/view";
-import { useOutsideClick, useSetView } from "../../utils/hooks";
+import { useOutsideClick } from "../../utils/hooks";
 import { ExternalLink } from "../../utils/generic";
 
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
-import { useSetState } from "../../recoil/utils";
+
+import * as fos from "@fiftyone/state";
 
 const ViewBarDiv = styled.div`
   position: relative;
@@ -70,10 +69,10 @@ const viewBarKeyMap = {
 
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
-  const view = useRecoilValue(viewAtoms.view);
-  const setView = useSetView();
+  const view = useRecoilValue(fos.view);
+  const setView = fos.useSetView();
 
-  const fieldPaths = useRecoilValue(schemaAtoms.fieldPaths({}));
+  const fieldPaths = useRecoilValue(fos.fieldPaths({}));
 
   useEffect(() => {
     send({

@@ -1,34 +1,20 @@
 import React, { useState, useRef, MutableRefObject, useEffect } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
-import {
-  useRecoilValue,
-  useRecoilCallback,
-  selector,
-  useRecoilValueLoadable,
-} from "recoil";
+import { useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
 import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler, useSelectSample } from "../utils/hooks";
-import { getMimeType } from "../utils/generic";
+import { useEventHandler } from "../utils/hooks";
 
-import { pathFilter } from "./Filters";
-import * as atoms from "../recoil/atoms";
-import * as colorAtoms from "../recoil/color";
-import * as filterAtoms from "../recoil/filters";
-import * as schemaAtoms from "../recoil/schema";
-import * as selectors from "../recoil/selectors";
-import { State } from "../recoil/types";
-import * as viewAtoms from "../recoil/view";
-import { getSampleSrc, lookerType } from "../recoil/utils";
 import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
-import { Field, LIST_FIELD } from "@fiftyone/utilities";
 import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
-import { skeletonFilter } from "./Filters/utils";
+import * as fos from "@fiftyone/state";
+import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
+import { getMimeType } from "@fiftyone/utilities";
 
 const Header = styled.div`
   position: absolute;
@@ -151,7 +137,7 @@ const ContentItem = ({
 };
 
 const useTarget = (field, target) => {
-  const getTarget = useRecoilValue(selectors.getTarget);
+  const getTarget = useRecoilValue(fos.getTarget);
   return getTarget(field, target);
 };
 
@@ -269,7 +255,7 @@ const PolylineInfo = ({ detail }) => {
 };
 
 const Border = ({ color, id }) => {
-  const selectedLabels = useRecoilValue(selectors.selectedLabelIds);
+  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   return (
     <BorderDiv
       style={{
@@ -361,91 +347,35 @@ const TooltipInfo = React.memo(({ looker }: { looker: any }) => {
 
 type EventCallback = (event: CustomEvent) => void;
 
-const lookerOptions = selector({
-  key: "lookerOptions",
-  get: ({ get }) => {
-    const showConfidence = get(
-      selectors.appConfigOption({ modal: true, key: "showConfidence" })
-    );
-    const showIndex = get(
-      selectors.appConfigOption({ modal: true, key: "showIndex" })
-    );
-    const showLabel = get(
-      selectors.appConfigOption({ modal: true, key: "showLabel" })
-    );
-    const showTooltip = get(
-      selectors.appConfigOption({ modal: true, key: "showTooltip" })
-    );
-    const useFrameNumber = get(
-      selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
-    );
-    const video = get(selectors.isVideoDataset)
-      ? {
-          loop: get(
-            selectors.appConfigOption({ modal: true, key: "loopVideos" })
-          ),
-        }
-      : {};
-    const zoom = get(viewAtoms.isPatchesView)
-      ? get(atoms.cropToContent(true))
-      : false;
-
-    return {
-      activePaths: get(schemaAtoms.activeFields({ modal: true })),
-      showConfidence,
-      showControls: true,
-      showIndex,
-      showLabel,
-      useFrameNumber,
-      showTooltip,
-      ...video,
-      zoom,
-      filter: get(pathFilter(true)),
-      ...get(atoms.savedLookerOptions),
-      selectedLabels: [...get(selectors.selectedLabelIds)],
-      fullscreen: get(atoms.fullscreen),
-      showOverlays: get(atoms.showOverlays),
-      timeZone: get(selectors.timeZone),
-      coloring: get(colorAtoms.coloring(true)),
-      alpha: get(atoms.alpha(true)),
-      showSkeletons: get(
-        selectors.appConfigOption({ key: "showSkeletons", modal: true })
-      ),
-      defaultSkeleton: get(atoms.dataset).defaultSkeleton,
-      skeletons: Object.fromEntries(
-        get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
-      ),
-      pointFilter: get(skeletonFilter(true)),
-    };
-  },
-});
-3;
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
-    ({ snapshot, set }) => async (event: CustomEvent) => {
-      const currentOptions = await snapshot.getPromise(
-        atoms.savedLookerOptions
-      );
-      set(atoms.savedLookerOptions, { ...currentOptions, ...event.detail });
-    }
+    ({ snapshot, set }) =>
+      async (event: CustomEvent) => {
+        const currentOptions = await snapshot.getPromise(
+          fos.savedLookerOptions
+        );
+        set(fos.savedLookerOptions, { ...currentOptions, ...event.detail });
+      }
   );
 };
 
 const useFullscreen = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
-    set(atoms.fullscreen, event.detail);
+    set(fos.fullscreen, event.detail);
   });
 };
 
 const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
-    set(atoms.showOverlays, event.detail);
+    set(fos.showOverlays, event.detail);
   });
 };
 
 const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(atoms.selectedLabels, {}),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, {}),
     []
   );
 };
@@ -458,6 +388,8 @@ interface LookerProps {
   onPrevious?: EventCallback;
   onSelectLabel?: EventCallback;
   style?: React.CSSProperties;
+  pinned: boolean;
+  isGroupMainView: boolean;
 }
 
 const Looker = ({
@@ -467,70 +399,44 @@ const Looker = ({
   onPrevious,
   onSelectLabel,
   style,
+  pinned,
+  isGroupMainView,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
-  const { sample, dimensions, frameRate, frameNumber, url } = useRecoilValue(
-    atoms.modal
-  );
-  const isClips = useRecoilValue(viewAtoms.isClipsView);
+  const sampleData = useRecoilValue(fos.modal);
+  if (!sampleData) {
+    throw new Error("bad");
+  }
+  const { sample, url } = sampleData;
+
+  const isClips = useRecoilValue(fos.isClipsView);
   const mimetype = getMimeType(sample);
-  const sampleSrc = getSampleSrc(sample.filepath, sample._id, url);
-  const { contents: options } = useRecoilValueLoadable(lookerOptions);
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
+  const selectedMediaFieldName =
+    selectedMediaField.modal || selectedMediaField.grid || "filepath";
+  const sampleSrc = fos.getSampleSrc(
+    sample[selectedMediaFieldName],
+    sample._id,
+    url
+  );
+
   const theme = useTheme();
-  const getLookerConstructor = useRecoilValue(lookerType);
   const initialRef = useRef<boolean>(true);
-  const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
-  );
-  const frameFieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.FRAME, filtered: true })
-  );
-  const view = useRecoilValue(viewAtoms.view);
-  const dataset = useRecoilValue(selectors.datasetName);
-
-  const hasFrames = Boolean(Object.keys(frameFieldSchema).length);
-
-  const [looker] = useState(() => {
-    const constructor = getLookerConstructor(mimetype);
-    const etc = isClips ? { support: sample.support } : {};
-
-    return new constructor(
-      sample,
-      {
-        src: sampleSrc,
-        dimensions,
-        frameRate,
-        frameNumber,
-        sampleId: sample._id,
-        thumbnail: false,
-        fieldSchema: hasFrames
-          ? {
-              ...fieldSchema,
-              frames: {
-                fields: frameFieldSchema,
-                ftype: LIST_FIELD,
-              } as Field,
-            }
-          : fieldSchema,
-        view,
-        dataset,
-        ...etc,
-      },
-      {
-        ...options,
-        hasNext: Boolean(onNext),
-        hasPrevious: Boolean(onPrevious),
-      }
-    );
+  const lookerOptions = fos.useLookerOptions(true);
+  const createLooker = fos.useCreateLooker(false, {
+    ...lookerOptions,
+    hasNext: Boolean(onNext),
+    hasPrevious: Boolean(onPrevious),
   });
+  const [looker] = useState(() => createLooker.current(sampleData));
 
   useEffect(() => {
-    !initialRef.current && looker.updateOptions(options);
-  }, [options]);
+    !initialRef.current && looker.updateOptions(lookerOptions);
+  }, [lookerOptions]);
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sample]);
+  }, [sampleData.sample]);
 
   useEffect(() => {
     return () => looker && looker.destroy();
@@ -549,22 +455,38 @@ const Looker = ({
   onClose && useEventHandler(looker, "close", onClose);
   onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = useSelectSample();
-  const selected = useRecoilValue(atoms.selectedSamples);
+  const onSelect = fos.useSelectSample();
+  const selected = useRecoilValue(fos.selectedSamples);
 
   useEffect(() => {
     initialRef.current = false;
   }, []);
 
+  const [plugin] = usePlugin(PluginComponentType.Visualizer);
+  const pluginAPI = {
+    getSampleSrc: fos.getSampleSrc,
+    sample,
+    onSelectLabel,
+    useState: useRecoilValue,
+    state: fos,
+    dataset: useRecoilValue(fos.dataset),
+    pinned,
+    isGroupMainView,
+  };
+  const pluginIsActive = plugin && plugin.activator(pluginAPI);
+  const PluginComponent = pluginIsActive && plugin.component;
+
   useEffect(() => {
-    looker.attach(id);
+    if (!pluginIsActive) {
+      looker.attach(id);
+    }
   }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
-  const isSelected = selected.has(sample._id);
+  const isSelected = selected.has(sampleData.sample._id);
 
-  const select = () => onSelect(sample._id);
+  const select = () => onSelect(sampleData.sample._id);
 
   return (
     <div
@@ -573,11 +495,13 @@ const Looker = ({
         width: "100%",
         height: "100%",
         background: theme.backgroundDark,
+        borderTop: `1px solid ${theme.backgroundDarkBorder}`,
+        position: "relative",
         ...style,
       }}
       onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
-      {options.showControls && (
+      {lookerOptions.showControls && (
         <Header
           ref={headerRef}
           onClick={() => event.target === headerRef.current && select()}
@@ -589,9 +513,10 @@ const Looker = ({
             style={{ color: theme.brand }}
             onClick={select}
           />
-          <ModalActionsRow lookerRef={lookerRef} />
+          {!pinned && <ModalActionsRow lookerRef={lookerRef} />}
         </Header>
       )}
+      {PluginComponent && <PluginComponent api={pluginAPI} />}
       {<TooltipInfo looker={looker} />}
     </div>
   );

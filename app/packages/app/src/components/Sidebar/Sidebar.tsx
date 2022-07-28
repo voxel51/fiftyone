@@ -6,12 +6,11 @@ import { move } from "@fiftyone/utilities";
 
 import { useEventHandler } from "../../utils/hooks";
 import { scrollbarStyles } from "../utils";
-import { EntryKind, SidebarEntry, useEntries } from "./utils";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
-import { disabledPaths } from "./recoil";
 import { replace } from "./Entries/GroupEntries";
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const MARGIN = 3;
 
@@ -32,14 +31,14 @@ const fn = (
       el,
       controller: { springs },
     } = items[key];
-    if (entry.kind === EntryKind.GROUP) {
+    if (entry.kind === fos.EntryKind.GROUP) {
       groupActive = key === activeKey;
     }
     let shown = true;
 
-    if (entry.kind === EntryKind.PATH) {
+    if (entry.kind === fos.EntryKind.PATH) {
       shown = entry.shown;
-    } else if (entry.kind === EntryKind.EMPTY) {
+    } else if (entry.kind === fos.EntryKind.EMPTY) {
       shown = entry.shown;
     }
 
@@ -75,21 +74,21 @@ const fn = (
       el,
       controller: { springs },
     } = items[key];
-    if (entry.kind === EntryKind.GROUP) {
+    if (entry.kind === fos.EntryKind.GROUP) {
       groupActive = key === activeKey;
       groupRaised = lastTouched === key;
       paths = 0;
     }
 
     const dragging =
-      (activeKey === key || groupActive) && entry.kind !== EntryKind.INPUT;
+      (activeKey === key || groupActive) && entry.kind !== fos.EntryKind.INPUT;
     const raise = dragging || groupRaised || key === lastTouched;
     let shown = true;
 
-    if (entry.kind === EntryKind.PATH) {
+    if (entry.kind === fos.EntryKind.PATH) {
       shown = entry.shown;
       paths++;
-    } else if (entry.kind === EntryKind.EMPTY) {
+    } else if (entry.kind === fos.EntryKind.EMPTY) {
       shown = paths === 0 && entry.shown;
     }
 
@@ -124,35 +123,35 @@ const fn = (
   return { results, minHeight: y };
 };
 
-export const getEntryKey = (entry: SidebarEntry) => {
-  if (entry.kind === EntryKind.GROUP) {
+export const getEntryKey = (entry: fos.SidebarEntry) => {
+  if (entry.kind === fos.EntryKind.GROUP) {
     return JSON.stringify([entry.name]);
   }
 
-  if (entry.kind === EntryKind.PATH) {
+  if (entry.kind === fos.EntryKind.PATH) {
     return JSON.stringify(["", entry.path]);
   }
 
-  if (entry.kind === EntryKind.EMPTY) {
+  if (entry.kind === fos.EntryKind.EMPTY) {
     return JSON.stringify([entry.group, ""]);
   }
-  if (entry.kind === EntryKind.INPUT) {
+  if (entry.kind === fos.EntryKind.INPUT) {
     return `input-${entry.type}`;
   }
 
   throw new Error("invalid entry");
 };
 
-const isShown = (entry: SidebarEntry) => {
-  if (entry.kind === EntryKind.PATH && !entry.shown) {
+const isShown = (entry: fos.SidebarEntry) => {
+  if (entry.kind === fos.EntryKind.PATH && !entry.shown) {
     return false;
   }
 
-  if (entry.kind === EntryKind.EMPTY && !entry.shown) {
+  if (entry.kind === fos.EntryKind.EMPTY && !entry.shown) {
     return false;
   }
 
-  if (entry.kind === EntryKind.INPUT) {
+  if (entry.kind === fos.EntryKind.INPUT) {
     return true;
   }
 
@@ -211,9 +210,9 @@ const measureGroups = (
     const key = order[i];
     const entry = items[key].entry;
 
-    if (entry.kind === EntryKind.INPUT && entry.type === "add") break;
+    if (entry.kind === fos.EntryKind.INPUT && entry.type === "add") break;
 
-    if (entry.kind === EntryKind.GROUP) {
+    if (entry.kind === fos.EntryKind.GROUP) {
       data.push(current);
       current = { top: current.top + current.height, height: 0, key };
       data[data.length - 1].height -= MARGIN;
@@ -236,11 +235,11 @@ const measureGroups = (
 };
 
 const isDisabledEntry = (
-  entry: SidebarEntry,
+  entry: fos.SidebarEntry,
   disabled: Set<string>,
   excludeGroups: boolean = false
 ) => {
-  if (entry.kind === EntryKind.PATH) {
+  if (entry.kind === fos.EntryKind.PATH) {
     return (
       entry.path.startsWith("tags.") ||
       entry.path.startsWith("_label_tags.") ||
@@ -248,11 +247,11 @@ const isDisabledEntry = (
     );
   }
 
-  if (entry.kind === EntryKind.EMPTY) {
+  if (entry.kind === fos.EntryKind.EMPTY) {
     return entry.group === "tags" || entry.group === "label tags";
   }
 
-  if (excludeGroups && entry.kind === EntryKind.GROUP) {
+  if (excludeGroups && entry.kind === fos.EntryKind.GROUP) {
     return (
       entry.name === "tags" ||
       entry.name === "label tags" ||
@@ -260,7 +259,7 @@ const isDisabledEntry = (
     );
   }
 
-  if (entry.kind === EntryKind.INPUT) {
+  if (entry.kind === fos.EntryKind.INPUT) {
     return true;
   }
 
@@ -280,7 +279,7 @@ const getAfterKey = (
 
   const up = direction === Direction.UP;
   const baseTop = items[order[0]].el.parentElement.getBoundingClientRect().y;
-  const isGroup = items[activeKey].entry.kind === EntryKind.GROUP;
+  const isGroup = items[activeKey].entry.kind === fos.EntryKind.GROUP;
   let { data, activeHeight } = isGroup
     ? measureGroups(activeKey, items, order)
     : measureEntries(activeKey, items, order);
@@ -331,7 +330,7 @@ const getAfterKey = (
     index++;
     try {
       while (
-        [EntryKind.PATH, EntryKind.EMPTY].includes(
+        [fos.EntryKind.PATH, fos.EntryKind.EMPTY].includes(
           items[order[index]].entry.kind
         )
       )
@@ -358,7 +357,7 @@ type InteractiveItems = {
   [key: string]: {
     el: HTMLDivElement;
     controller: Controller;
-    entry: SidebarEntry;
+    entry: fos.SidebarEntry;
     active: boolean;
   };
 };
@@ -399,7 +398,7 @@ const Container = animated(styled.div`
 type RenderEntry = (
   key: string,
   group: string,
-  entry: SidebarEntry,
+  entry: fos.SidebarEntry,
   controller: Controller,
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -425,10 +424,10 @@ const InteractiveSidebar = ({
   const container = useRef<HTMLDivElement>();
   const scroll = useRef<number>(0);
   const maxScrollHeight = useRef<number>();
-  const [width, setWidth] = useRecoilState(sidebarWidth(modal));
-  const shown = useRecoilValue(sidebarVisible(modal));
-  const [entries, setEntries] = useEntries(modal);
-  const disabled = useRecoilValue(disabledPaths);
+  const [width, setWidth] = useRecoilState(fos.sidebarWidth(modal));
+  const shown = useRecoilValue(fos.sidebarVisible(modal));
+  const [entries, setEntries] = fos.useEntries(modal);
+  const disabled = useRecoilValue(fos.disabledPaths);
   const cb = useRef<() => void>();
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
@@ -442,11 +441,11 @@ const InteractiveSidebar = ({
   order.current = [...entries].map((entry) => getEntryKey(entry));
   for (const entry of entries) {
     const key = getEntryKey(entry);
-    if (entry.kind === EntryKind.GROUP) {
+    if (entry.kind === fos.EntryKind.GROUP) {
       group = entry.name;
     }
 
-    if (entry.kind === EntryKind.GROUP && entry.name in replace) {
+    if (entry.kind === fos.EntryKind.GROUP && entry.name in replace) {
       const oldKey = getEntryKey({ ...entry, name: replace[entry.name] });
       items.current[key] = items.current[oldKey];
 
@@ -454,7 +453,7 @@ const InteractiveSidebar = ({
         Object.entries(items.current).filter(([k]) => k !== oldKey)
       );
       items.current[key].entry = entry;
-    } else if (entry.kind === EntryKind.EMPTY && entry.group in replace) {
+    } else if (entry.kind === fos.EntryKind.EMPTY && entry.group in replace) {
       const oldKey = getEntryKey({ ...entry, group: replace[entry.group] });
       items.current[key] = items.current[oldKey];
 
@@ -505,7 +504,7 @@ const InteractiveSidebar = ({
 
     let from = lastOrder.current.indexOf(down.current);
     let to = after ? lastOrder.current.indexOf(after) : 0;
-    if (entry.kind === EntryKind.PATH) {
+    if (entry.kind === fos.EntryKind.PATH) {
       to = Math.max(to, 1);
       return move(lastOrder.current, from, to);
     }
@@ -518,7 +517,10 @@ const InteractiveSidebar = ({
       if (from >= order.current.length) break;
 
       entry = items.current[lastOrder.current[from]].entry;
-    } while (entry.kind !== EntryKind.GROUP && entry.kind !== EntryKind.INPUT);
+    } while (
+      entry.kind !== fos.EntryKind.GROUP &&
+      entry.kind !== fos.EntryKind.INPUT
+    );
 
     if (after === null) {
       return [
@@ -624,7 +626,7 @@ const InteractiveSidebar = ({
       lastDirection.current = Direction.UP;
     }
 
-    if (![EntryKind.PATH, EntryKind.GROUP].includes(entry.kind)) return;
+    if (![fos.EntryKind.PATH, fos.EntryKind.GROUP].includes(entry.kind)) return;
     const realDelta = y - start.current;
     const newOrder = getNewOrder(lastDirection.current);
     const { results, minHeight } = fn(
@@ -675,6 +677,7 @@ const InteractiveSidebar = ({
   const [observer] = useState<ResizeObserver>(
     () => new ResizeObserver(placeItems)
   );
+  const theme = useTheme();
 
   return shown ? (
     <Resizable
@@ -694,6 +697,14 @@ const InteractiveSidebar = ({
       onResizeStop={(e, direction, ref, { width: delta }) => {
         setWidth(width + delta);
       }}
+      style={{
+        borderLeft: modal
+          ? `1px solid ${theme.backgroundDarkBorder}`
+          : undefined,
+        borderRight: !modal
+          ? `1px solid ${theme.backgroundDarkBorder}`
+          : undefined,
+      }}
     >
       <SidebarColumn
         ref={container}
@@ -709,12 +720,11 @@ const InteractiveSidebar = ({
         <Container style={containerController.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;
-            if (entry.kind === EntryKind.GROUP) {
+            if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
-            const { shadow, cursor, ...springs } = items.current[
-              key
-            ].controller.springs;
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
             const { children } = render(
               key,
               group,
@@ -723,7 +733,7 @@ const InteractiveSidebar = ({
               trigger
             );
             const style = {};
-            if (entry.kind === EntryKind.INPUT) {
+            if (entry.kind === fos.EntryKind.INPUT) {
               style.zIndex = 0;
             }
 

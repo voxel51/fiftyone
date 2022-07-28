@@ -62,6 +62,7 @@ import {
   Dimensions,
   Sample,
   MaskTargets,
+  Coloring,
 } from "./state";
 import {
   addToBuffers,
@@ -81,24 +82,23 @@ import { getFrameNumber } from "./elements/util";
 import { getColor } from "./color";
 import { Events } from "./elements/base";
 
-export { zoomAspectRatio } from "./zoom";
-export { freeVideos } from "./elements/util";
 export { createColorGenerator, getRGB } from "./color";
+export { freeVideos } from "./elements/util";
+export type {
+  Coloring,
+  FrameConfig,
+  FrameOptions,
+  ImageConfig,
+  ImageOptions,
+  Point,
+  VideoConfig,
+  VideoOptions,
+} from "./state";
+
+export { zoomAspectRatio } from "./zoom";
 
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
-
-export interface Coloring {
-  by: "instance" | "field" | "label";
-  pool: string[];
-  scale: RGB[];
-  seed: number;
-  targets: string[];
-  defaultMaskTargets?: MaskTargets;
-  maskTargets: {
-    [field: string]: MaskTargets;
-  };
-}
 
 const workerCallbacks = {
   requestColor: [
@@ -216,6 +216,7 @@ export abstract class Looker<
   protected dispatchEvent(eventType: string, detail: any): void {
     if (detail instanceof Event) {
       this.eventTarget.dispatchEvent(
+        // @ts-ignore
         new detail.constructor(detail.type, detail)
       );
       return;

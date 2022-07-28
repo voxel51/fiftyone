@@ -28,9 +28,14 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-from fiftyone.server.mixins import HasCollection
+from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
-from fiftyone.server.scalars import BSONArray
+from fiftyone.server.samples import (
+    SampleFilter,
+    SampleItem,
+    paginate_samples,
+)
+from fiftyone.server.scalars import BSONArray, JSON
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -41,10 +46,17 @@ DATASET_FILTER = [{"sample_collection_name": {"$regex": "^samples\\."}}]
 DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
-@gql.enum
-class MediaType(Enum):
-    image = "image"
-    video = "video"
+@gql.type
+class Group:
+    name: str
+    media_type: MediaType
+
+
+@gql.type
+class GroupField:
+    field: str
+    groups: t.List[Group]
+    default_group: str
 
 
 @gql.type
@@ -124,12 +136,20 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 
 @gql.type
-class Dataset(HasCollection):
+class DatasetAppConfig:
+    grid_media_field: str
+    media_fields: t.List[str]
+    plugins: t.Optional[JSON]
+
+
+@gql.type
+class Dataset:
     id: gql.ID
     name: str
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
+    groups: t.List[GroupField]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
@@ -142,10 +162,7 @@ class Dataset(HasCollection):
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
     skeletons: t.List[NamedKeypointSkeleton]
-
-    @staticmethod
-    def get_collection_name() -> str:
-        return "datasets"
+    app_config: t.Optional[DatasetAppConfig]
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -165,6 +182,17 @@ class Dataset(HasCollection):
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
         )
+        doc["groups"] = [
+            GroupField(
+                field,
+                [
+                    Group(name, media_type)
+                    for name, media_type in groups.items()
+                ],
+                doc["default_group_names"][field],
+            )
+            for field, groups in doc.get("groups", {}).items()
+        ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
         return doc
 
@@ -203,7 +231,9 @@ class Dataset(HasCollection):
         return dataset
 
 
-dataset_dataloader = get_dataloader_resolver(Dataset, "name", DATASET_FILTER)
+dataset_dataloader = get_dataloader_resolver(
+    Dataset, "datasets", "name", DATASET_FILTER
+)
 
 
 @gql.enum
@@ -221,6 +251,7 @@ class AppConfig:
     grid_zoom: int
     loop_videos: bool
     notebook_height: int
+    plugins: t.Optional[JSON]
     show_confidence: bool
     show_index: bool
     show_label: bool
@@ -258,13 +289,36 @@ class Query:
         return fo.config.do_not_track
 
     dataset = gql.field(resolver=Dataset.resolver)
-    datasets: Connection[Dataset] = gql.field(
+    datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
-            Dataset,
-            "created_at",
-            DATASET_FILTER_STAGE,
+            Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
         )
     )
+
+    @gql.field
+    async def samples(
+        self,
+        dataset: str,
+        view: BSONArray,
+        first: t.Optional[int] = 20,
+        after: t.Optional[str] = None,
+        group_id: t.Optional[str] = None,
+    ) -> Connection[SampleItem, str]:
+        return await paginate_samples(
+            dataset, view, None, None, first, after, group_id=group_id
+        )
+
+    @gql.field
+    async def sample(
+        self, dataset: str, view: BSONArray, filter: SampleFilter
+    ) -> t.Optional[SampleItem]:
+        samples = await paginate_samples(
+            dataset, view, None, None, 1, sample_filter=filter
+        )
+        if samples.edges:
+            return samples.edges[0].node
+
+        return None
 
     @gql.field
     def teams_submission(self) -> bool:

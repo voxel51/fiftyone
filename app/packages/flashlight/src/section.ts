@@ -16,6 +16,7 @@ export default class SectionElement implements Section {
   private width: number;
   private height: number;
   private hidden: boolean;
+  private horizontal: boolean;
   readonly index: number;
   readonly itemIndex: number;
   private readonly section: HTMLDivElement = document.createElement("div");
@@ -30,10 +31,12 @@ export default class SectionElement implements Section {
     itemIndex: number,
     rows: RowData[],
     render: Render,
-    onItemClick?: (event: MouseEvent, id: string) => void
+    horizontal: boolean,
+    onItemClick?: (id: string) => void
   ) {
     this.index = index;
     this.itemIndex = itemIndex;
+    this.horizontal = horizontal;
     this.render = render;
 
     this.section.classList.add(flashlightSection);
@@ -46,10 +49,10 @@ export default class SectionElement implements Section {
           if (onItemClick) {
             itemElement.addEventListener("click", (event) => {
               event.preventDefault();
-              onItemClick(event, itemData.id);
+              onItemClick(itemData.id);
             });
             itemElement.addEventListener("contextmenu", (event) => {
-              onItemClick(event, itemData.id);
+              onItemClick(itemData.id);
             });
           }
 
@@ -66,7 +69,12 @@ export default class SectionElement implements Section {
 
   set(top: number, width: number) {
     if (this.top !== top) {
-      this.section.style.top = `${top}px`;
+      const setting = `${top}px`;
+      if (this.horizontal) {
+        this.section.style.left = setting;
+      } else {
+        this.section.style.top = setting;
+      }
 
       this.top = top;
     }
@@ -79,13 +87,24 @@ export default class SectionElement implements Section {
           const height =
             (width - (items.length - 1 + extraMargins) * MARGIN) /
             rowAspectRatio;
+
           let left = 0;
           items.forEach(([item, { aspectRatio }]) => {
+            if (this.horizontal) {
+              aspectRatio = 1 / aspectRatio;
+            }
             const itemWidth = height * aspectRatio;
-            item.style.height = `${height}px`;
-            item.style.width = `${itemWidth}px`;
-            item.style.left = `${left}px`;
-            item.style.top = `${localTop}px`;
+            if (this.horizontal) {
+              item.style.width = `${height}px`;
+              item.style.height = `${itemWidth}px`;
+              item.style.top = `${left}px`;
+              item.style.left = `${localTop}px`;
+            } else {
+              item.style.height = `${height}px`;
+              item.style.width = `${itemWidth}px`;
+              item.style.left = `${left}px`;
+              item.style.top = `${localTop}px`;
+            }
 
             left += itemWidth + MARGIN;
           });
@@ -95,8 +114,13 @@ export default class SectionElement implements Section {
       );
 
       if (this.width !== width) {
-        this.section.style.height = `${localTop}px`;
-        this.section.style.width = `${width}px`;
+        if (this.horizontal) {
+          this.section.style.width = `${localTop}px`;
+          this.section.style.height = `${width}px`;
+        } else {
+          this.section.style.height = `${localTop}px`;
+          this.section.style.width = `${width}px`;
+        }
       }
 
       this.width = width;
@@ -126,9 +150,18 @@ export default class SectionElement implements Section {
             (this.width - (items.length - 1 + extraMargins) * MARGIN) /
             rowAspectRatio;
           items.forEach(([item, { id, aspectRatio }]) => {
+            if (this.horizontal) {
+              aspectRatio = 1 / aspectRatio;
+            }
             const width = height * aspectRatio;
 
-            this.render(id, item, [width, height], false, true);
+            this.render(
+              id,
+              item,
+              this.horizontal ? [height, width] : [width, height],
+              false,
+              true
+            );
           });
         }
       );
@@ -161,9 +194,18 @@ export default class SectionElement implements Section {
             (this.width - (items.length - 1 + extraMargins) * MARGIN) /
             rowAspectRatio;
           items.forEach(([item, { id, aspectRatio }]) => {
+            if (this.horizontal) {
+              aspectRatio = 1 / aspectRatio;
+            }
             const width = height * aspectRatio;
 
-            this.render(id, item, [width, height], soft, false);
+            this.render(
+              id,
+              item,
+              this.horizontal ? [height, width] : [width, height],
+              soft,
+              false
+            );
           });
         }
       );
@@ -177,9 +219,15 @@ export default class SectionElement implements Section {
           (this.width - (items.length - 1 + extraMargins) * MARGIN) /
           rowAspectRatio;
         items.forEach(([_, { aspectRatio, id }]) => {
+          if (this.horizontal) {
+            aspectRatio = 1 / aspectRatio;
+          }
           const itemWidth = height * aspectRatio;
 
-          resizer(id, [itemWidth, height]);
+          resizer(
+            id,
+            this.horizontal ? [height, itemWidth] : [itemWidth, height]
+          );
         });
       }
     );

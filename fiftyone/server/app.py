@@ -70,6 +70,14 @@ app = Starlette(
     + [
         Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
         Mount(
+            "/plugins",
+            app=Static(
+                directory=os.environ.get('FIFTYONE_PLUGINS_DIR'),
+                html=True,
+            ),
+            name="plugins",
+        ),
+        Mount(
             "/",
             app=Static(
                 directory=os.path.join(os.path.dirname(__file__), "static"),

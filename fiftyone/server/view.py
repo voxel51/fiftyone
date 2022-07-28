@@ -5,7 +5,9 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from numpy import full
+import typing as t
+from bson import ObjectId
+
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -15,35 +17,72 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.filters import SampleFilter
 from fiftyone.server.utils import iter_label_fields
 
 
 _LABEL_TAGS = "_label_tags"
 
 
+def get_group(sample_collection, group_id):
+    group_field = sample_collection.group_field
+    id_field = group_field + "._id"
+    return sample_collection.mongo(
+        [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
+    )
+
+
 def get_view(
-    dataset_name,
+    dataset_name: str,
     stages=None,
     filters=None,
     count_label_tags=False,
     only_matches=True,
     similarity=None,
-):
-    """Get the view from request paramters
-
-    Args:
-        dataset_names: the dataset name
-        stages (None): an optional list of serialized
-            :class:`fiftyone.core.stages.ViewStage`s
-        filters (None): an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
-        similarity (None): sort by similarity paramters
-    """
+    sample_filter: t.Optional[SampleFilter] = None,
+    group_id: t.Optional[str] = None,
+) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
     view.reload()
+
+    if group_id:
+        view = get_group(view, group_id)
+
+    elif sample_filter:
+        if sample_filter.group:
+            view = view.mongo(
+                [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [
+                                    "$"
+                                    + sample_filter.group.group_field
+                                    + "._id",
+                                    ObjectId(sample_filter.group.id),
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [
+                                    "$"
+                                    + sample_filter.group.group_field
+                                    + ".name",
+                                    sample_filter.group.group,
+                                ]
+                            }
+                        }
+                    },
+                ]
+            )
+        elif sample_filter.id:
+            view = fov.make_optimized_select_view(view, sample_filter.id)
+
+    if view.media_type == fom.GROUP and not group_id:
+        view = view.use_group()
 
     if stages:
         view = fov.DatasetView._build(view, stages)

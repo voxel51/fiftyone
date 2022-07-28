@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  atom,
-  RecoilState,
-  selector,
-  Snapshot,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+import { selector, Snapshot, useRecoilCallback, useRecoilValue } from "recoil";
 import { useSpring } from "@react-spring/web";
 
 import {
@@ -18,11 +11,7 @@ import {
   toSnakeCase,
 } from "@fiftyone/utilities";
 
-import * as atoms from "../../recoil/atoms";
-import * as schemaAtoms from "../../recoil/schema";
-import * as selectors from "../../recoil/selectors";
-import * as viewAtoms from "../../recoil/view";
-import { StateResolver, useUnprocessedStateUpdate } from "../../utils/hooks";
+import { useUnprocessedStateUpdate } from "../../utils/hooks";
 import {
   OBJECT_PATCHES,
   EVALUATION_PATCHES,
@@ -32,23 +21,16 @@ import {
 import Popout from "./Popout";
 import { ActionOption } from "./Common";
 import { SwitcherDiv, SwitchDiv } from "./utils";
-import { State } from "../../recoil/types";
-import { filters } from "../../recoil/filters";
-import { similarityParameters } from "./Similar";
 import { useTheme } from "@fiftyone/components";
-
-export const patching = atom<boolean>({
-  key: "patching",
-  default: false,
-});
+import * as fos from "@fiftyone/state";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
   get: ({ get }) => {
-    const paths = get(schemaAtoms.labelFields({}));
+    const paths = get(fos.labelFields({}));
     return paths.filter((p) =>
       get(
-        schemaAtoms.meetsType({
+        fos.meetsType({
           path: p,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: PATCHES_FIELDS,
@@ -63,15 +45,15 @@ export const clipsFields = selector<string[]>({
   get: ({ get }) =>
     [
       ...get(
-        schemaAtoms.fieldPaths({
-          space: State.SPACE.FRAME,
+        fos.fieldPaths({
+          space: fos.State.SPACE.FRAME,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: CLIPS_FRAME_FIELDS,
         })
       ),
       ...get(
-        schemaAtoms.fieldPaths({
-          space: State.SPACE.SAMPLE,
+        fos.fieldPaths({
+          space: fos.State.SPACE.SAMPLE,
           ftype: EMBEDDED_DOCUMENT_FIELD,
           embeddedDocType: CLIPS_SAMPLE_FIELDS,
         })
@@ -82,24 +64,24 @@ export const clipsFields = selector<string[]>({
 const evaluationKeys = selector<string[]>({
   key: "evaluationKeys",
   get: ({ get }) => {
-    return get(atoms.dataset).evaluations.map(({ key }) => key);
+    return get(fos.dataset).evaluations.map(({ key }) => key);
   },
 });
 
 export const sendPatch = async (
   snapshot: Snapshot,
-  updateState: (resolve: StateResolver) => void,
+  updateState: (resolve: fos.StateResolver) => void,
   addStage?: object
 ) => {
-  const similarity = await snapshot.getPromise(similarityParameters);
-  const subscription = await snapshot.getPromise(selectors.stateSubscription);
+  const similarity = await snapshot.getPromise(fos.similarityParameters);
+  const subscription = await snapshot.getPromise(fos.stateSubscription);
 
   return getFetchFunction()("POST", "/pin", {
-    filters: await snapshot.getPromise(filters),
-    view: await snapshot.getPromise(viewAtoms.view),
-    dataset: await snapshot.getPromise(selectors.datasetName),
-    sample_ids: await snapshot.getPromise(atoms.selectedSamples),
-    labels: toSnakeCase(await snapshot.getPromise(atoms.selectedLabels)),
+    filters: await snapshot.getPromise(fos.filters),
+    view: await snapshot.getPromise(fos.view),
+    dataset: await snapshot.getPromise(fos.datasetName),
+    sample_ids: await snapshot.getPromise(fos.selectedSamples),
+    labels: toSnakeCase(await snapshot.getPromise(fos.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
     similarity: similarity ? toSnakeCase(similarity) : null,
     subscription,
@@ -109,16 +91,17 @@ export const sendPatch = async (
 const useToPatches = () => {
   const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
-    ({ set, snapshot }) => async (field) => {
-      set(patching, true);
-      sendPatch(snapshot, updateState, {
-        _cls: "fiftyone.core.stages.ToPatches",
-        kwargs: [
-          ["field", field],
-          ["_state", null],
-        ],
-      }).then(() => set(patching, false));
-    },
+    ({ set, snapshot }) =>
+      async (field) => {
+        set(fos.patching, true);
+        sendPatch(snapshot, updateState, {
+          _cls: "fiftyone.core.stages.ToPatches",
+          kwargs: [
+            ["field", field],
+            ["_state", null],
+          ],
+        }).then(() => set(fos.patching, false));
+      },
     []
   );
 };
@@ -126,16 +109,17 @@ const useToPatches = () => {
 const useToClips = () => {
   const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
-    ({ set, snapshot }) => async (field) => {
-      set(patching, true);
-      sendPatch(snapshot, updateState, {
-        _cls: "fiftyone.core.stages.ToClips",
-        kwargs: [
-          ["field_or_expr", field],
-          ["_state", null],
-        ],
-      }).then(() => set(patching, false));
-    },
+    ({ set, snapshot }) =>
+      async (field) => {
+        set(fos.patching, true);
+        sendPatch(snapshot, updateState, {
+          _cls: "fiftyone.core.stages.ToClips",
+          kwargs: [
+            ["field_or_expr", field],
+            ["_state", null],
+          ],
+        }).then(() => set(fos.patching, false));
+      },
     []
   );
 };
@@ -143,16 +127,17 @@ const useToClips = () => {
 const useToEvaluationPatches = () => {
   const updateState = useUnprocessedStateUpdate();
   return useRecoilCallback(
-    ({ set, snapshot }) => async (evaluation: string) => {
-      set(patching, true);
-      sendPatch(snapshot, updateState, {
-        _cls: "fiftyone.core.stages.ToEvaluationPatches",
-        kwargs: [
-          ["eval_key", evaluation],
-          ["_state", null],
-        ],
-      }).then(() => set(patching, false));
-    },
+    ({ set, snapshot }) =>
+      async (evaluation: string) => {
+        set(fos.patching, true);
+        sendPatch(snapshot, updateState, {
+          _cls: "fiftyone.core.stages.ToEvaluationPatches",
+          kwargs: [
+            ["eval_key", evaluation],
+            ["_state", null],
+          ],
+        }).then(() => set(fos.patching, false));
+      },
     []
   );
 };
@@ -251,9 +236,8 @@ type PatcherProps = {
 const Patcher = ({ bounds, close }: PatcherProps) => {
   const theme = useTheme();
   const isVideo =
-    useRecoilValue(selectors.isVideoDataset) &&
-    useRecoilValue(viewAtoms.isRootView);
-  const isClips = useRecoilValue(viewAtoms.isClipsView);
+    useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
+  const isClips = useRecoilValue(fos.isClipsView);
   const [labels, setLabels] = useState(true);
 
   const labelProps = useSpring({

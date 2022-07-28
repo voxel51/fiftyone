@@ -38,13 +38,6 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 
-import * as atoms from "../../../recoil/atoms";
-import * as aggregationAtoms from "../../../recoil/aggregations";
-import * as colorAtoms from "../../../recoil/color";
-import * as filterAtoms from "../../../recoil/filters";
-import * as schemaAtoms from "../../../recoil/schema";
-import * as selectors from "../../../recoil/selectors";
-
 import {
   BooleanFieldFilter,
   NumericFieldFilter,
@@ -56,12 +49,15 @@ import RegularEntry from "./RegularEntry";
 import { NameAndCountContainer, PillButton } from "../../utils";
 import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
+import * as fos from "@fiftyone/state";
 
 const canExpand = selectorFamily<boolean, { path: string; modal: boolean }>({
   key: "sidebarCanExpand",
-  get: ({ modal, path }) => ({ get }) => {
-    return get(aggregationAtoms.count({ path, extended: false, modal })) > 0;
-  },
+  get:
+    ({ modal, path }) =>
+    ({ get }) => {
+      return get(fos.count({ path, extended: false, modal })) > 0;
+    },
 });
 
 const FILTERS = {
@@ -177,28 +173,32 @@ const getFilterData = (
 
 const hiddenPathLabels = selectorFamily<string[], string>({
   key: "hiddenPathLabels",
-  get: (path) => ({ get }) => {
-    const data = get(selectors.pathHiddenLabelsMap);
-    const sampleId = get(atoms.modal).sample._id;
+  get:
+    (path) =>
+    ({ get }) => {
+      const data = get(fos.pathHiddenLabelsMap);
+      const sampleId = get(fos.modal).sample._id;
 
-    if (data[sampleId]) {
-      return data[sampleId][path] || [];
-    }
+      if (data[sampleId]) {
+        return data[sampleId][path] || [];
+      }
 
-    return [];
-  },
-  set: (path) => ({ set, get }, value) => {
-    const data = get(selectors.pathHiddenLabelsMap);
-    const sampleId = get(atoms.modal).sample._id;
+      return [];
+    },
+  set:
+    (path) =>
+    ({ set, get }, value) => {
+      const data = get(fos.pathHiddenLabelsMap);
+      const sampleId = get(fos.modal).sample._id;
 
-    set(selectors.pathHiddenLabelsMap, {
-      ...data,
-      [sampleId]: {
-        ...data[sampleId],
-        [path]: value instanceof DefaultValue ? [] : value,
-      },
-    });
-  },
+      set(fos.pathHiddenLabelsMap, {
+        ...data,
+        [sampleId]: {
+          ...data[sampleId],
+          [path]: value instanceof DefaultValue ? [] : value,
+        },
+      });
+    },
 });
 
 const useHidden = (path: string) => {
@@ -256,27 +256,27 @@ const FilterableEntry = React.memo(
     );
     const theme = useTheme();
     const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-    const skeleton = useRecoilValue(selectors.getSkeleton);
-    const expandedPath = useRecoilValue(schemaAtoms.expandPath(path));
+    const skeleton = useRecoilValue(fos.getSkeleton);
+    const expandedPath = useRecoilValue(fos.expandPath(path));
     const color = disabled
       ? theme.backgroundDark
-      : useRecoilValue(colorAtoms.pathColor({ path, modal }));
+      : useRecoilValue(fos.pathColor({ path, modal }));
     const fields = useRecoilValue(
-      schemaAtoms.fields({
+      fos.fields({
         path: expandedPath,
         ftype: VALID_PRIMITIVE_TYPES,
       })
     );
-    const field = useRecoilValue(schemaAtoms.field(path));
+    const field = useRecoilValue(fos.field(path));
     const data = useMemo(
       () => getFilterData(expandedPath, modal, field, fields, skeleton),
       [field, fields, expandedPath, modal, skeleton]
     );
     const fieldIsFiltered = useRecoilValue(
-      filterAtoms.fieldIsFiltered({ path, modal })
+      fos.fieldIsFiltered({ path, modal })
     );
     const [active, setActive] = useRecoilState(
-      schemaAtoms.activeField({ modal, path })
+      fos.activeField({ modal, path })
     );
     const expandable = useRecoilValueLoadable(canExpand({ modal, path }));
     const hidden = modal ? useHidden(path) : null;

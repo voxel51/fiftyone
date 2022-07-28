@@ -10,10 +10,10 @@ import { Slider as SliderUnstyled } from "@material-ui/core";
 
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
-import * as selectors from "../../recoil/selectors";
 import { getFormatter, getStep } from "./utils";
 import { getDateTimeRangeFormattersWithPrecision } from "../../utils/generic";
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -80,7 +80,7 @@ const SliderStyled = styled(SliderUnstyled)`
   }
 ` as typeof SliderUnstyled;
 
-type SliderValue = number | undefined;
+type SliderValue = number | undefined | null;
 
 export type Range = [SliderValue, SliderValue];
 
@@ -115,7 +115,7 @@ const BaseSlider = <T extends Range | number>({
 
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
-      ? useRecoilValue(selectors.timeZone)
+      ? useRecoilValue(fos.timeZone)
       : null;
   const [clicking, setClicking] = useState(false);
 

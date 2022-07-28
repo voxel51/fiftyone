@@ -16,6 +16,7 @@ import {
   State,
   ItemIndexMap,
 } from "./state";
+export type { Render, Response } from "./state";
 import { createScrollReader } from "./zooming";
 
 import {
@@ -24,7 +25,7 @@ import {
   flashlightPixels,
 } from "./styles.module.css";
 import tile from "./tile";
-import { argMin } from "./util";
+import { argMin, getDims } from "./util";
 
 export interface FlashlightOptions extends Optional<Options> {}
 
@@ -32,6 +33,7 @@ export interface FlashlightConfig<K> {
   get: Get<K>;
   render: Render;
   initialRequestKey: K;
+  horizontal: boolean;
   options: FlashlightOptions;
   onItemClick?: OnItemClick;
   onResize?: OnResize;
@@ -57,8 +59,6 @@ export default class Flashlight<K> {
     this.element.classList.add(flashlight);
     this.state = this.getEmptyState(config);
 
-    let attached = false;
-
     document.addEventListener("visibilitychange", () => this.render());
 
     this.resizeObserver = new ResizeObserver(
@@ -67,12 +67,16 @@ export default class Flashlight<K> {
           contentRect: { width, height },
         },
       ]: ResizeObserverEntry[]) => {
-        this.state.containerHeight = height;
-
-        if (!attached) {
-          attached = true;
+        if (!this.isAttached()) {
           return;
         }
+        if (this.config.horizontal) {
+          const tmp = height;
+          height = width;
+          width = tmp;
+        }
+
+        this.state.containerHeight = height;
 
         width = width - 16;
         requestAnimationFrame(() => {
@@ -95,6 +99,7 @@ export default class Flashlight<K> {
 
     createScrollReader(
       this.element,
+      this.config.horizontal,
       (zooming) => this.render(zooming),
       () => {
         if (this.state.resizing) {
@@ -104,7 +109,7 @@ export default class Flashlight<K> {
         return (
           (this.state.width /
             (this.state.containerHeight *
-              this.state.options.rowAspectRatioThreshold)) *
+              Math.max(this.state.options.rowAspectRatioThreshold, 1))) *
           500
         );
       }
@@ -126,10 +131,10 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(this.config);
     this.showPixels();
 
-    const {
-      width,
-      height,
-    } = this.container.parentElement.getBoundingClientRect();
+    const { width, height } = getDims(
+      this.config.horizontal,
+      this.container.parentElement
+    );
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
@@ -137,7 +142,7 @@ export default class Flashlight<K> {
   }
 
   isAttached() {
-    return Boolean(this.container.parentElement);
+    return Boolean(this.element.parentElement);
   }
   private showPixels() {
     !this.pixelsSet && this.container.classList.add(flashlightPixels);
@@ -154,7 +159,10 @@ export default class Flashlight<K> {
       element = document.getElementById(element);
     }
 
-    const { width, height } = element.getBoundingClientRect();
+    const { width, height } = getDims(this.config.horizontal, element);
+    if (width === 0) {
+      return;
+    }
     this.state.width = width - 16;
     this.state.containerHeight = height;
 
@@ -167,6 +175,13 @@ export default class Flashlight<K> {
     this.updateOptions(options, false);
 
     this.get();
+  }
+
+  detach(): void {
+    if (this.isAttached()) {
+      this.resizeObserver.unobserve(this.element.parentElement);
+      this.element.parentNode.removeChild(this.element);
+    }
   }
 
   updateOptions(options: Optional<Options>, newWidth?: boolean) {
@@ -204,7 +219,7 @@ export default class Flashlight<K> {
         this.state.currentRowRemainder = [];
       }
 
-      this.state.height = 60;
+      this.state.height = this.config.options.offset;
       this.state.sections = [];
       this.state.shownSections = new Set();
       this.state.clean = new Set();
@@ -215,18 +230,31 @@ export default class Flashlight<K> {
           this.state.itemIndexMap[rows[0].items[0].id],
           rows,
           this.state.render,
+          this.config.horizontal,
           this.getOnItemClick()
         );
+
         sectionElement.set(this.state.height, this.state.width);
         this.state.sections.push(sectionElement);
 
         this.state.height += sectionElement.getHeight();
       });
-      newContainer.style.height = `${this.state.height}px`;
+      if (this.config.horizontal) {
+        newContainer.style.width = `${this.state.height}px`;
+      } else {
+        newContainer.style.height = `${this.state.height}px`;
+      }
 
       for (const section of this.state.sections) {
         if (section.itemIndex >= activeItemIndex) {
-          this.container.parentElement.scrollTop = section.getTop();
+          const top = section.getTop();
+
+          if (this.config.horizontal) {
+            this.container.parentElement.scrollLeft = top;
+          } else {
+            this.container.parentElement.scrollTop = top;
+          }
+
           this.render();
           return;
         }
@@ -237,11 +265,19 @@ export default class Flashlight<K> {
         section.set(this.state.height, this.state.width);
         this.state.height += section.getHeight();
       });
-      this.container.style.height = `${this.state.height}px`;
+      if (this.config.horizontal) {
+        this.container.style.width = `${this.state.height}px`;
+      } else {
+        this.container.style.height = `${this.state.height}px`;
+      }
       const activeSection = this.state.sections[this.state.activeSection];
       if (activeSection) {
-        this.container.parentElement.scrollTop =
-          this.state.activeSection === 0 ? 0 : activeSection.getTop();
+        const top = this.state.activeSection === 0 ? 0 : activeSection.getTop();
+        if (this.config.horizontal) {
+          this.container.parentElement.scrollLeft = top;
+        } else {
+          this.container.parentElement.scrollTop = top;
+        }
       }
 
       this.render();
@@ -261,14 +297,18 @@ export default class Flashlight<K> {
   }
 
   get(): Promise<void> | null {
-    if (this.loading || this.state.currentRequestKey === null) {
+    if (
+      this.loading ||
+      this.state.currentRequestKey === null ||
+      !this.isAttached()
+    ) {
       return null;
     }
 
     this.loading = true;
     let ctx = this.ctx;
     return this.state
-      .get(this.state.currentRequestKey)
+      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
       .then(({ items, nextRequestKey }) => {
         if (ctx !== this.ctx) {
           return;
@@ -303,6 +343,7 @@ export default class Flashlight<K> {
             this.state.itemIndexMap[rows[0].items[0].id],
             rows,
             this.state.render,
+            this.config.horizontal,
             this.getOnItemClick()
           );
           sectionElement.set(this.state.height, this.state.width);
@@ -313,7 +354,11 @@ export default class Flashlight<K> {
         });
 
         if (sections.length) {
-          this.container.style.height = `${this.state.height}px`;
+          if (this.config.horizontal) {
+            this.container.style.width = `${this.state.height}px`;
+          } else {
+            this.container.style.height = `${this.state.height}px`;
+          }
         }
 
         const headSection = this.state.sections[this.state.sections.length - 1];
@@ -400,7 +445,9 @@ export default class Flashlight<K> {
       return;
     }
 
-    const top = this.element.scrollTop;
+    const top = this.config.horizontal
+      ? this.element.scrollLeft
+      : this.element.scrollTop;
 
     const index = argMin(
       this.state.sections.map((section) => Math.abs(section.getTop() - top))
@@ -455,6 +502,7 @@ export default class Flashlight<K> {
   private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
     let { rows, remainder } = tile(
       items,
+      this.config.horizontal,
       this.state.options.rowAspectRatioThreshold,
       Boolean(this.state.currentRequestKey)
     );
@@ -475,7 +523,7 @@ export default class Flashlight<K> {
       currentRequestKey: config.initialRequestKey,
       containerHeight: null,
       width: null,
-      height: 60,
+      height: config.options.offset || 0,
       ...config,
       currentRemainder: [],
       currentRowRemainder: [],
@@ -485,6 +533,7 @@ export default class Flashlight<K> {
       firstSection: 0,
       lastSection: 0,
       options: {
+        offset: 0,
         rowAspectRatioThreshold: 5,
         ...config.options,
       },
@@ -500,13 +549,13 @@ export default class Flashlight<K> {
     };
   }
 
-  private getOnItemClick(): (event: MouseEvent, id: string) => void | null {
+  private getOnItemClick(): (id: string) => void | null {
     if (!this.state.onItemClick) {
       return null;
     }
 
-    return (event, id) =>
-      this.state.onItemClick(event, id, { ...this.state.itemIndexMap });
+    return (id) =>
+      this.state.onItemClick(this.get, id, { ...this.state.itemIndexMap });
   }
 
   private createContainer(): HTMLDivElement {
@@ -517,7 +566,7 @@ export default class Flashlight<K> {
 
   private resetResize(): void {
     this.state.resized = new Set();
-    this.state.height = 60;
+    this.state.height = this.config.options.offset || 0;
     this.state.resizing = true;
     this.resizeTimeout && clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {

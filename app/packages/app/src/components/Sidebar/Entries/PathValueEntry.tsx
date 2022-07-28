@@ -13,13 +13,10 @@ import React, { useLayoutEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
-import * as atoms from "../../../recoil/atoms";
-import * as colorAtoms from "../../../recoil/color";
-import * as schemaAtoms from "../../../recoil/schema";
-import * as selectors from "../../../recoil/selectors";
 import { prettify } from "../../../utils/generic";
 
 import { NameAndCountContainer } from "../../utils";
+import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
 
@@ -79,12 +76,10 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
-  const timeZone = useRecoilValue(selectors.timeZone);
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const timeZone = useRecoilValue(fos.timeZone);
   const none = value === null || value === undefined;
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(
-    schemaAtoms.field(path)
-  );
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 
   const formatted = format({ ftype, value, timeZone });
 
@@ -150,14 +145,12 @@ const ListValueEntry = ({
   }, [data]);
   const expandable = values && values.length;
   const count = prettify(values.length);
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
-  const { ftype, subfield, embeddedDocType } = useRecoilValue(
-    schemaAtoms.field(path)
-  );
+  const { ftype, subfield, embeddedDocType } = useRecoilValue(fos.field(path));
 
   const canExpand = Boolean(values.length);
 
@@ -230,8 +223,8 @@ const PathValueEntry = ({
 }) => {
   const keys = path.split(".");
 
-  let field = useRecoilValue(schemaAtoms.field(keys[0]));
-  let { sample: data } = useRecoilValue(atoms.modal);
+  let field = useRecoilValue(fos.field(keys[0]));
+  let { sample: data } = useRecoilValue(fos.modal);
 
   for (let index = 0; index < keys.length; index++) {
     if (!data) {
@@ -261,7 +254,7 @@ const PathValueEntry = ({
   return (
     <ListValueEntry
       entryKey={entryKey}
-      data={(data as unknown) as unknown[]}
+      data={data as unknown as unknown[]}
       path={path}
       trigger={trigger}
     />

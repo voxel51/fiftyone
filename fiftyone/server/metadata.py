@@ -5,12 +5,15 @@ FiftyOne Server JIT metadata utilities
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from enum import Enum
 import logging
 import shutil
 import struct
+import typing as t
 
 import asyncio
 import aiofiles
+import strawberry as gql
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -23,17 +26,27 @@ logger = logging.getLogger(__name__)
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
 
-async def get_metadata(filepath, metadata=None):
+@gql.enum
+class MediaType(Enum):
+    image = "image"
+    group = "group"
+    point_cloud = "point-cloud"
+    video = "video"
+
+
+async def get_metadata(
+    filepath: str, media_type: MediaType, metadata: t.Optional[t.Dict] = None
+):
     """Gets the metadata for the given local media file.
 
     Args:
         filepath: the path to the file
+        media_type: the file's media type
         metadata (None): a pre-existing metadata dict to use if possible
 
     Returns:
         metadata dict
     """
-    media_type = fom.get_media_type(filepath)
     is_video = media_type == fom.VIDEO
 
     d = {}
