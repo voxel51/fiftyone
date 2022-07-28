@@ -54,7 +54,7 @@ export interface ResultsProps<T> {
   active?: number;
   results: T[];
   onSelect: (value: T) => void;
-  total: number;
+  total?: number;
   component: React.FC<{ value: T; className: string }>;
   toKey: (value: T) => string;
 }
@@ -69,7 +69,10 @@ const Results = <T extends unknown>({
 }: ResultsProps<T>) => {
   return (
     <div className={style.container}>
-      <div className={style.scrollContainer}>
+      <div
+        className={style.scrollContainer}
+        style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
+      >
         {results.map((result, i) => (
           <Result
             active={i === active}
@@ -80,15 +83,17 @@ const Results = <T extends unknown>({
           />
         ))}
       </div>
-      <div className={style.footer}>
-        {Boolean(total) && (
-          <>
-            {results.length} of {total.toLocaleString()} result
-            {total > 1 ? "s" : ""}
-          </>
-        )}
-        {!Boolean(total) && <>No results</>}
-      </div>
+      {total !== undefined && (
+        <div className={style.footer}>
+          {Boolean(total) && (
+            <>
+              {results.length} of {total.toLocaleString()} result
+              {total > 1 ? "s" : ""}
+            </>
+          )}
+          {!Boolean(total) && <>No results</>}
+        </div>
+      )}
     </div>
   );
 };

@@ -12,7 +12,6 @@
 .scrollContainer {
   overflow: auto;
   max-height: 250px;
-  padding-bottom: 26.5px;
 }
 
 .result {

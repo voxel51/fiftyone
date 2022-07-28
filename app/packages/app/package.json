@@ -15,6 +15,7 @@
     "dependencies": {
         "@fiftyone/flashlight": "*",
         "@fiftyone/looker": "*",
+        "@fiftyone/map": "*",
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@material-ui/core": "4.11.4",

@@ -9,6 +9,7 @@ import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { Map } from "@fiftyone/map";
 
 import * as fos from "@fiftyone/state";
 
@@ -165,14 +166,17 @@ const HorizontalNav = ({}: Props) => {
           />
         </NavButtons>
       </Nav>
+
       {expanded ? (
-        <ActivePlot
-          key={activePlot}
-          active={activePlot}
-          pluginPlotLabels={pluginPlotLabels}
-          distributionPlots={DISTRIBUTION_PLOTS}
-          pluginPlots={pluginPlots}
-        />
+        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+          <ActivePlot
+            key={activePlot}
+            active={activePlot}
+            pluginPlotLabels={pluginPlotLabels}
+            distributionPlots={DISTRIBUTION_PLOTS}
+            pluginPlots={pluginPlots}
+          />
+        </div>
       ) : null}
     </Container>
   );
@@ -197,7 +201,7 @@ function ActivePlot({
       view: useRecoilValue(fos.view),
       filters: useRecoilValue(fos.filters),
     };
-    return <plugin.component {...pluginProps} />;
+    return <Map {...pluginProps} />;
   }
 
   return null;

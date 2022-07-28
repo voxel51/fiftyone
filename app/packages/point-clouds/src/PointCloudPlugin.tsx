@@ -13,7 +13,6 @@ registerComponent({
     if (isGroupMainView) return false;
     const settings = usePluginSettings("point-clouds");
     const field = getFilepathField(sample, settings.filepathFields);
-    console.log({ field });
     return field !== null;
   },
 });

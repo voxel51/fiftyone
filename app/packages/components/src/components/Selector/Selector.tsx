@@ -10,7 +10,7 @@ import Results from "../Results/Results";
 import style from "./Selector.module.css";
 
 interface UseSearch<T extends unknown> {
-  (search: string): { values: T[]; total: number };
+  (search: string): { values: T[]; total?: number };
 }
 
 const SelectorResults = <T extends unknown>({
