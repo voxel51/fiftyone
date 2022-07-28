@@ -174,6 +174,14 @@ def annotate(
             fields=samples._label_fields,
         )
 
+    supported_media_types = (fomm.IMAGE, fomm.VIDEO)
+    if samples.media_type == fomm.GROUP:
+        raise fomm.SelectGroupSliceError(supported_media_types)
+    elif samples.media_type not in supported_media_types:
+        raise fomm.MediaTypeError(
+            "Unsupported media type '%s'" % samples.media_type
+        )
+
     if not samples:
         raise ValueError(
             "%s is empty; there is nothing to annotate"

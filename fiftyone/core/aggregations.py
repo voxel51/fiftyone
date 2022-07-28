@@ -168,7 +168,7 @@ class Aggregation(object):
         Returns:
             True/False
         """
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos(only_active_slice=True):
             return False
 
         if self._field_name is not None:
@@ -539,7 +539,10 @@ class Count(Aggregation):
             unwind=self._unwind,
         )
 
-        if sample_collection.media_type != fom.VIDEO or path != "frames":
+        if (
+            not sample_collection._contains_videos(only_active_slice=True)
+            or path != "frames"
+        ):
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         pipeline.append({"$count": "count"})

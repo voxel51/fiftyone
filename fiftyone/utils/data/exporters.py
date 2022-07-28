@@ -1770,14 +1770,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 sample_collection, fod.Dataset
             ):
                 # Export frames for all video samples
-                media_types = sample_collection.group_media_types
-                video_slices = [
-                    name
-                    for name, media_type in media_types.items()
-                    if media_type == fomm.VIDEO
-                ]
-                _video_collection = sample_collection.select_group_slice(
-                    video_slices
+                _video_collection = sample_collection._select_group_slices(
+                    fomm.VIDEO
                 )
             else:
                 _video_collection = sample_collection

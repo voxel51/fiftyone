@@ -613,7 +613,7 @@ class SampleCollection(object):
         field = None
         resolved_keys = []
 
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
+        if self._contains_videos() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
@@ -741,7 +741,7 @@ class SampleCollection(object):
         Returns:
             True/False
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return False
 
         return field_name in self.get_frame_field_schema()
@@ -765,7 +765,7 @@ class SampleCollection(object):
             existing_fields = set(
                 self.get_field_schema(include_private=include_private).keys()
             )
-            if self.media_type == fom.VIDEO:
+            if self._contains_videos():
                 existing_fields.add("frames")
 
             for field in fields:
@@ -6353,6 +6353,15 @@ class SampleCollection(object):
         if label_fields is None:
             label_fields = self._get_label_fields()
 
+        if self.media_type == fom.IMAGE:
+            return foua.draw_labeled_images(
+                self,
+                output_dir,
+                label_fields=label_fields,
+                config=config,
+                **kwargs,
+            )
+
         if self.media_type == fom.VIDEO:
             return foua.draw_labeled_videos(
                 self,
@@ -6362,12 +6371,11 @@ class SampleCollection(object):
                 **kwargs,
             )
 
-        return foua.draw_labeled_images(
-            self,
-            output_dir,
-            label_fields=label_fields,
-            config=config,
-            **kwargs,
+        if self.media_type == fom.GROUP:
+            raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % self.media_type
         )
 
     def export(
@@ -6910,7 +6918,7 @@ class SampleCollection(object):
 
             index_info[key] = info
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
@@ -7061,7 +7069,7 @@ class SampleCollection(object):
 
     def _get_default_indexes(self, frames=False):
         if frames:
-            if self.media_type == fom.VIDEO:
+            if self._contains_videos():
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
@@ -7118,9 +7126,14 @@ class SampleCollection(object):
             "name": self.name,
             "version": self._dataset.version,
             "media_type": self.media_type,
-            "num_samples": len(self),
-            "sample_fields": self._serialize_field_schema(),
         }
+
+        if self.media_type == fom.GROUP:
+            d["group_field"] = self.group_field
+            d["group_media_types"] = self.group_media_types
+            d["default_group_slice"] = self.default_group_slice
+
+        d["sample_fields"] = self._serialize_field_schema()
 
         if contains_videos:
             d["frame_fields"] = self._serialize_frame_field_schema()
@@ -7145,15 +7158,20 @@ class SampleCollection(object):
         if self.default_skeleton:
             d["default_skeleton"] = self._serialize_default_skeleton()
 
+        if self.media_type == fom.GROUP:
+            view = self.select_group_slice(_allow_mixed=True)
+        else:
+            view = self
+
         # Serialize samples
         samples = []
-        for sample in self.iter_samples(progress=True):
+        for sample in view.iter_samples(progress=True):
             sd = sample.to_dict(
                 include_frames=include_frames,
                 include_private=include_private,
             )
 
-            if write_frame_labels:
+            if write_frame_labels and sample.media_type == fom.VIDEO:
                 frames = {"frames": sd.pop("frames", {})}
                 filename = sample.id + ".json"
                 sd["frames"] = filename
@@ -7629,7 +7647,7 @@ class SampleCollection(object):
         if etau.is_str(fields):
             fields = [fields]
 
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return fields, []
 
         return fou.split_frame_fields(fields)
@@ -7662,7 +7680,7 @@ class SampleCollection(object):
         return field_name, is_frame_field
 
     def _is_frame_field(self, field_name):
-        return (self.media_type == fom.VIDEO) and (
+        return self._contains_videos() and (
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == self._FRAMES_PREFIX[:-1]
         )
@@ -7682,15 +7700,29 @@ class SampleCollection(object):
 
         return list(group_slices)
 
-    def _contains_videos(self):
+    def _select_group_slices(self, media_type):
+        slice_names = [
+            slice_name
+            for slice_name, slice_media_type in self.group_media_types.items()
+            if slice_media_type == media_type
+        ]
+        return self.select_group_slice(slice_names)
+
+    def _contains_videos(self, only_active_slice=False):
         if self.media_type == fom.VIDEO:
             return True
 
-        if (self.media_type == fom.GROUP) and any(
-            media_type == fom.VIDEO
-            for media_type in self.group_media_types.values()
-        ):
-            return True
+        if self.media_type == fom.GROUP:
+            if only_active_slice:
+                return (
+                    self.group_media_types.get(self.group_slice, None)
+                    == fom.VIDEO
+                )
+
+            return any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self.group_media_types.values()
+            )
 
         return False
 
@@ -7778,7 +7810,7 @@ class SampleCollection(object):
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             fields.extend(self._get_frame_label_fields())
 
         return fields
@@ -7791,7 +7823,7 @@ class SampleCollection(object):
         )
 
     def _get_frame_label_fields(self):
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         return [
@@ -7804,7 +7836,7 @@ class SampleCollection(object):
     def _get_root_fields(self, fields):
         root_fields = set()
         for field in fields:
-            if self.media_type == fom.VIDEO and field.startswith(
+            if self._contains_videos() and field.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`

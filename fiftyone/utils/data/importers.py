@@ -348,10 +348,13 @@ def _build_parse_sample_fcn(
         # the appropriate types, even if all of the imported samples have
         # `None` values
         #
+        # @todo add support for pre-declaring frame field schemas?
+        #
         if expand_schema and dataset_importer.has_sample_field_schema:
             dataset._apply_field_schema(
                 dataset_importer.get_sample_field_schema()
             )
+
             expand_schema = False
 
         def parse_sample(sample):
@@ -1259,7 +1262,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._samples = None
         self._iter_samples = None
         self._num_samples = None
-        self._is_video_dataset = False
+        self._media_type = None
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -1269,25 +1272,32 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        d = next(self._iter_samples)
+        sd = next(self._iter_samples)
 
         # Convert filepath to absolute path
-        d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
+        sd["filepath"] = os.path.join(self.dataset_dir, sd["filepath"])
 
-        if self._is_video_dataset:
-            labels_relpath = d.pop("frames")
-            labels_path = os.path.join(self.dataset_dir, labels_relpath)
+        if (self._media_type == fomm.VIDEO) or (
+            self._media_type == fomm.GROUP
+            and fomm.get_media_type(sd["filepath"]) == fomm.VIDEO
+        ):
+            labels_path = os.path.join(self.dataset_dir, sd.pop("frames"))
 
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
             self._import_frame_labels(sample, labels_path)
         else:
-            sample = Sample.from_dict(d)
+            sample = Sample.from_dict(sd)
 
         return sample
 
     @property
     def has_sample_field_schema(self):
-        if self._is_video_dataset:
+        if self._media_type == fomm.VIDEO:
+            # Must return False so frame field schema is inferred
+            return False
+
+        if self._media_type == fomm.GROUP:
+            # Need to let importer infer group media types
             return False
 
         return "sample_fields" in self._metadata
@@ -1300,10 +1310,10 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.isfile(metadata_path):
             metadata = etas.read_json(metadata_path)
-            media_type = metadata.get("media_type", fomm.IMAGE)
+            self._media_type = metadata.get("media_type", None)
             self._metadata = metadata
-            self._is_video_dataset = media_type == fomm.VIDEO
         else:
+            self._media_type = None
             self._metadata = {}
 
         self._anno_dir = os.path.join(self.dataset_dir, "annotations")

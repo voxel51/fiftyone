@@ -280,6 +280,9 @@ class DatasetView(foc.SampleCollection):
             ("Num %s:" % self._elements_str, self.count()),
         ]
 
+        if self.media_type == fom.GROUP:
+            elements.insert(2, ("Group slice:", self.group_slice))
+
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
 
@@ -290,7 +293,7 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             lines.extend(
                 [
                     "Frame fields:",
@@ -930,7 +933,7 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return False
 
         for stage in self._stages:
@@ -1141,7 +1144,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_missing_fields(self, frames=False):
         if frames:
-            if self.media_type != fom.VIDEO:
+            if not self._contains_videos():
                 return set()
 
             dataset_schema = self._dataset.get_frame_field_schema()
