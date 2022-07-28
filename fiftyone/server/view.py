@@ -81,9 +81,6 @@ def get_view(
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    if view.media_type == fom.GROUP and not group_id:
-        view = view.use_group()
-
     if stages:
         view = fov.DatasetView._build(view, stages)
 
