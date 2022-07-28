@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<70930286c6b27df9e86870bda6371ed7>>
+ * @generated SignedSource<<69388ce0a99ad1928ae3600bc72a5cc0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,10 @@ export type paginateGroupPinnedSample_query$data = {
         readonly height: number;
         readonly sample: object;
         readonly width: number;
+      }
+    | {
+        readonly __typename: "PointCloudSample";
+        readonly sample: object;
       }
     | {
         readonly __typename: "VideoSample";
@@ -126,6 +130,12 @@ const node: ReaderFragment = (function () {
           },
           {
             kind: "InlineFragment",
+            selections: [v1 /*: any*/],
+            type: "PointCloudSample",
+            abstractKey: null,
+          },
+          {
+            kind: "InlineFragment",
             selections: [
               {
                 alias: null,
@@ -150,6 +160,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "352b83af7f916730f87b23113c220e1e";
+(node as any).hash = "c1db0455fe9f0230194677dad094ceeb";
 
 export default node;

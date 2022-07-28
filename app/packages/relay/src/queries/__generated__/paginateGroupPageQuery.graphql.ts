@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<926ca1085774d7f21286898a050fba02>>
+ * @generated SignedSource<<3af239bb7a508790623b5df9c7dc7113>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -169,6 +169,12 @@ const node: ConcreteRequest = (function () {
                     },
                     {
                       kind: "InlineFragment",
+                      selections: [v3 /*: any*/],
+                      type: "PointCloudSample",
+                      abstractKey: null,
+                    },
+                    {
+                      kind: "InlineFragment",
                       selections: [
                         {
                           alias: null,
@@ -230,16 +236,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "bd88f15cc820fe117d067a083f3f4803",
+      cacheID: "87ca01ebf79c4dcce408699462aaaf76",
       id: null,
       metadata: {},
       name: "paginateGroupPageQuery",
       operationKind: "query",
-      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $groupId: String\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $groupId: String\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "083cbb69b2f9c504c6fb1808c2eeaf71";
+(node as any).hash = "ae1faa21de4f426b6d35adfb1526e57d";
 
 export default node;

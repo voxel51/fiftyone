@@ -37,6 +37,7 @@ function usePinnedVisualizerPlugin(
     paginateGroupPinnedSampleFragment,
     fragmentRef
   );
+  console.log(sample);
 
   useEffect(() => {
     setResolvedSample(sample);
