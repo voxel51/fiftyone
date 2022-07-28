@@ -38,19 +38,14 @@ enum ColorBy {
   label
 }
 
-type DatasetAppConfig {
-  gridMediaField: String!
-  mediaFields: [String!]!
-  plugins: JSON
-}
-
 type Dataset {
   id: ID!
   name: String!
   createdAt: Date
   lastLoadedAt: DateTime
   persistent: Boolean!
-  groups: [GroupField!]!
+  groupMediaTypes: JSON
+  groupField: String
   mediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
@@ -63,7 +58,13 @@ type Dataset {
   viewCls: String
   defaultSkeleton: KeypointSkeleton
   skeletons: [NamedKeypointSkeleton!]!
-  appConfig: DatasetAppConfig!
+  appConfig: DatasetAppConfig
+}
+
+type DatasetAppConfig {
+  gridMediaField: String!
+  mediaFields: [String!]!
+  plugins: JSON
 }
 
 type DatasetStrConnection {
@@ -109,21 +110,10 @@ type EvaluationRunConfig implements RunConfig {
   method: String
 }
 
-type Group {
-  name: String!
-  mediaType: MediaType!
-}
-
 input GroupElementFilter {
   groupField: String!
   id: String!
   group: String!
-}
-
-type GroupField {
-  field: String!
-  groups: [Group!]!
-  defaultGroup: String!
 }
 
 type ImageSample implements Sample {

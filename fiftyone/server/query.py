@@ -149,7 +149,8 @@ class Dataset:
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
-    groups: t.List[GroupField]
+    group_media_types: t.Optional[JSON]
+    group_field: t.Optional[str]
     media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
