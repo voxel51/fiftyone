@@ -1,7 +1,7 @@
 import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
-  export type MediaType = "image" | "group" | "point-cloud" | "video";
+  export type MediaType = "image" | "group" | "point_cloud" | "video";
 
   export enum SPACE {
     FRAME = "FRAME",
