@@ -209,6 +209,19 @@ const SampleModal = () => {
   const isGroupMode = useRecoilValue(isGroup) && queryRef;
   const isPinnedMode = useRecoilValue(isPinned);
 
+  const lookerEl = (
+    <Looker
+      key={`modal-${sampleSrc}`}
+      lookerRef={lookerRef}
+      onSelectLabel={onSelectLabel}
+      onClose={clearModal}
+      onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
+      onNext={() => getIndex(index + 1)}
+      style={{ flex: 1 }}
+      isGroupMainView={isGroupMode}
+    />
+  );
+
   return ReactDOM.createPortal(
     <ModalWrapper
       ref={wrapperRef}
@@ -217,18 +230,13 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          <SidebarSourceSelector id="main">
-            <Looker
-              key={`modal-${sampleSrc}`}
-              lookerRef={lookerRef}
-              onSelectLabel={onSelectLabel}
-              onClose={clearModal}
-              onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
-              onNext={() => getIndex(index + 1)}
-              style={{ flex: 1 }}
-              isGroupMainView={isGroupMode}
-            />
-          </SidebarSourceSelector>
+          {isGroupMode ? (
+            <SidebarSourceSelector id="main" groupMode={isGroupMode}>
+              {lookerEl}
+            </SidebarSourceSelector>
+          ) : (
+            lookerEl
+          )}
           {isGroupMode && <Group queryRef={queryRef} />}
         </ContentColumn>
         {isGroupMode && isPinnedMode && <PinnedLooker queryRef={queryRef} />}

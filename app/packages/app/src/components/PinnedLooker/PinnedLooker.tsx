@@ -57,7 +57,7 @@ const LookerContainer: React.FC<{
   const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
   if (!Visualizer) return null;
   return (
-    <SidebarSourceSelector id="pinned">
+    <SidebarSourceSelector id="pinned" groupMode={true}>
       <Visualizer />
     </SidebarSourceSelector>
   );

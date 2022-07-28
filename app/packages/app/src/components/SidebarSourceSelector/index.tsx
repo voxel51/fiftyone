@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import React from "react";
 import { useTheme } from "@fiftyone/components";
 
-export default function SidebarSourceSelector({ id, children }) {
+export default function SidebarSourceSelector({ id, groupMode, children }) {
   const [current, setCurrent] = useRecoilState(fos.sidebarSource);
   const theme = useTheme();
   function handleClick() {
@@ -11,6 +11,8 @@ export default function SidebarSourceSelector({ id, children }) {
   }
   const isCurrent = current === id;
   const color = isCurrent ? theme.brand : theme.button;
+
+  if (!groupMode) return children;
 
   return (
     <div
