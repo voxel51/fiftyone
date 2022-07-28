@@ -98,7 +98,11 @@ async def paginate_samples(
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
-        view._pipeline(attach_frames=True, detach_frames=False),
+        view._pipeline(
+            attach_frames=True,
+            detach_frames=False,
+            groups_only=group_id is not None,
+        ),
     ).to_list(first + 1)
 
     more = False
