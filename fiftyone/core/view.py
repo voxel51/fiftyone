@@ -166,24 +166,41 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def group_field(self):
+        """The group field of the view, or None if the view is not grouped."""
         if self.media_type != fom.GROUP:
             return None
 
         return self._dataset.group_field
 
     @property
+    def group_slice(self):
+        """The current group slice of the view, or None if the view is not
+        grouped.
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_slice
+
+    @property
     def group_media_types(self):
-        if self.group_field is None:
+        """A dict mapping group slices to media types, or None if the view is
+        not grouped.
+        """
+        if self.media_type != fom.GROUP:
             return None
 
         return self._dataset.group_media_types
 
     @property
-    def default_group_name(self):
-        if self.group_field is None:
+    def default_group_slice(self):
+        """The default group slice of the view, or None if the view is not
+        grouped.
+        """
+        if self.media_type != fom.GROUP:
             return None
 
-        return self._dataset.default_group_name
+        return self._dataset.default_group_slice
 
     @property
     def name(self):
@@ -323,39 +340,134 @@ class DatasetView(foc.SampleCollection):
                 yield sample
 
     def _iter_samples(self):
+        make_sample = self._make_sample_fcn()
+        index = 0
+
+        try:
+            for d in self._aggregate(detach_frames=True, detach_groups=True):
+                sample = make_sample(d)
+
+                index += 1
+                yield sample
+        except CursorNotFound:
+            # The cursor has timed out so we yield from a new one after
+            # skipping to the last offset
+            view = self.skip(index)
+            for sample in view._iter_samples():
+                yield sample
+
+    def _make_sample_fcn(self):
         sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
+        def make_sample(d):
+            try:
+                doc = self._dataset._sample_dict_to_doc(d)
+                return sample_cls(
+                    doc,
+                    self,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load sample from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
+
+        return make_sample
+
+    def iter_groups(self, progress=False):
+        """Returns an iterator over the groups in the view.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+
+        Returns:
+            an iterator that emits dicts mapping slice names to
+            :class:`fiftyone.core.sample.SampleView` instances, one per group
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        if progress:
+            with fou.ProgressBar(total=len(self)) as pb:
+                for group in pb(self._iter_groups()):
+                    yield group
+        else:
+            for group in self._iter_groups():
+                yield group
+
+    def _iter_groups(self):
+        make_sample = self._make_sample_fcn()
         index = 0
 
+        group_field = self.group_field
+        curr_id = None
+        group = {}
+
         try:
-            for d in self._aggregate(detach_frames=True):
-                try:
-                    doc = self._dataset._sample_dict_to_doc(d)
-                    sample = sample_cls(
-                        doc,
-                        self,
-                        selected_fields=selected_fields,
-                        excluded_fields=excluded_fields,
-                        filtered_fields=filtered_fields,
-                    )
+            for d in self._aggregate(groups_only=True):
+                sample = make_sample(d)
+
+                group_id = sample[group_field].id
+                if curr_id is None:
+                    # First overall element
+                    curr_id = group_id
+                    group[sample[group_field].name] = sample
+                elif group_id == curr_id:
+                    # Add element to group
+                    group[sample[group_field].name] = sample
+                else:
+                    # Flush last group
                     index += 1
-                    yield sample
+                    yield group
 
-                except Exception as e:
-                    raise ValueError(
-                        "Failed to load sample from the database. This is "
-                        "likely due to an invalid stage in the DatasetView"
-                    ) from e
+                    # First element of new group
+                    curr_id = group_id
+                    group = {}
+                    group[sample[group_field].name] = sample
 
+            if group:
+                yield group
         except CursorNotFound:
             # The cursor has timed out so we yield from a new one after
             # skipping to the last offset
-
             view = self.skip(index)
-            for sample in view.iter_samples():
-                yield sample
+            for group in view._iter_groups():
+                yield group
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to
+            :class:`fiftyone.core.sample.SampleView` instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("%s does not contain groups" % type(self))
+
+        group_field = self.group_field
+        id_field = group_field + "._id"
+
+        view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
+
+        try:
+            return next(iter(view._iter_groups()))
+        except StopIteration:
+            raise KeyError(
+                "No group found with ID '%s' in field '%s'"
+                % (group_id, group_field)
+            )
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -390,7 +502,7 @@ class DatasetView(foc.SampleCollection):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
 
-        Only applicable for video datasets.
+        Only applicable for views that contain videos.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -404,7 +516,7 @@ class DatasetView(foc.SampleCollection):
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
-            the dataset is not a video dataset
+            the view does not contain videos
         """
         field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
@@ -476,7 +588,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -507,7 +619,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -593,7 +705,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -623,7 +735,7 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clear embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to views that contain videos.
 
         .. note::
 
@@ -741,17 +853,26 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._save(view=self, fields=fields)
 
-    def clone(self, name=None):
-        """Creates a new dataset containing only the contents of the view.
+    def clone(self, name=None, persistent=False):
+        """Creates a new dataset containing a copy of the contents of the view.
+
+        Dataset clones contain deep copies of all samples and dataset-level
+        information in the source collection. The source *media files*,
+        however, are not copied.
 
         Args:
             name (None): a name for the cloned dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_name` is used
+                :func:`get_default_dataset_name` is used
+            persistent (False): whether the cloned dataset should be persistent
 
         Returns:
             the new :class:`fiftyone.core.dataset.Dataset`
         """
-        return self._dataset._clone(name=name, view=self)
+        return self._dataset._clone(
+            name=name,
+            persistent=persistent,
+            view=self,
+        )
 
     def reload(self):
         """Reloads the underlying dataset from the database.
@@ -762,7 +883,14 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.reload()
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the view.
 
         Args:
@@ -773,11 +901,15 @@ class DatasetView(foc.SampleCollection):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -787,6 +919,8 @@ class DatasetView(foc.SampleCollection):
         """
         d = super().to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -805,12 +939,29 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
+    def _needs_group_slices(self):
+        if self.media_type != fom.GROUP:
+            return None
+
+        group_slices = set()
+
+        for stage in self._stages:
+            _group_slices = stage._needs_group_slices(self)
+            if _group_slices:
+                group_slices.update(_group_slices)
+
+        return group_slices
+
     def _pipeline(
         self,
         pipeline=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
+        group_slices=None,
+        groups_only=False,
+        detach_groups=False,
     ):
         _pipeline = []
         _view = self._base_view
@@ -823,11 +974,21 @@ class DatasetView(foc.SampleCollection):
 
         attach_frames |= self._needs_frames()
 
+        if media_type is None:
+            media_type = self.media_type
+
+        if media_type == fom.GROUP and group_slices is None:
+            group_slices = self._needs_group_slices()
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            media_type=media_type,
+            group_slices=group_slices,
+            groups_only=groups_only,
+            detach_groups=detach_groups,
         )
 
     def _aggregate(
@@ -836,12 +997,23 @@ class DatasetView(foc.SampleCollection):
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        media_type=None,
+        group_slices=None,
+        groups_only=False,
+        detach_groups=False,
     ):
+        if media_type is None:
+            media_type = self.media_type
+
         _pipeline = self._pipeline(
             pipeline=pipeline,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
+            media_type=media_type,
+            group_slices=group_slices,
+            groups_only=groups_only,
+            detach_groups=detach_groups,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 

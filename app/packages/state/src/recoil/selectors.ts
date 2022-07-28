@@ -312,3 +312,24 @@ export const similarityKeys = selector<{
     eviction: "most-recent",
   },
 });
+
+export const sidebarSourceSample = selector<Sample>({
+  key: "sidebarSourceSample",
+  get: ({ get }) => {
+    const sidebarSource = get(atoms.sidebarSource);
+    const modal = get(atoms.modal);
+    const resolvedSidebarSample = get(atoms.resolvedPinnedSample);
+    let result;
+
+    switch (sidebarSource) {
+      case "main":
+        result = modal?.sample;
+        break;
+      case "pinned":
+        result = resolvedSidebarSample;
+        break;
+    }
+
+    return result || modal?.sample;
+  },
+});

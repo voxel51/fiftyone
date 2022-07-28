@@ -77,7 +77,10 @@ def create_field(
         a :class:`fiftyone.core.fields.Field` instance
     """
     if db_field is None:
-        db_field = name
+        if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
+            db_field = "_" + name
+        else:
+            db_field = name
 
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
@@ -101,7 +104,6 @@ def create_field(
                         fields=fields or [],
                         parent=parent,
                     )
-
                 else:
                     subfield = subfield()
 
@@ -378,8 +380,9 @@ class DatasetDocument(Document):
     frame_collection_name = StringField()
     persistent = BooleanField(default=False)
     media_type = StringField()
-    groups = DictField(DictField(StringField()))
-    default_group_names = DictField(StringField())
+    group_field = StringField()
+    group_media_types = DictField(StringField())
+    default_group_slice = StringField()
     tags = ListField(StringField())
     info = DictField()
     classes = DictField(ClassesField())

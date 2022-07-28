@@ -2,11 +2,11 @@ import { graphql } from "react-relay";
 
 export default graphql`
   query paginateGroupQuery(
+    $count: Int = 20
+    $cursor: String = null
     $dataset: String!
     $view: BSONArray!
     $groupId: String!
-    $count: Int = 20
-    $cursor: String = null
     $pinnedSampleFilter: SampleFilter!
   ) {
     ...paginateGroup_query
@@ -45,7 +45,7 @@ export const paginateGroupPaginationFragment = graphql`
   }
 `;
 
-export const pageinateGroupPinnedSampleFragment = graphql`
+export const paginateGroupPinnedSampleFragment = graphql`
   fragment paginateGroupPinnedSample_query on Query
   @refetchable(queryName: "paginateGroupPinnedSampleQuery") {
     sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {

@@ -6,5 +6,5 @@ export * from "./__generated__/paginateGroupPinnedSample_query.graphql";
 export {
   default as paginateGroup,
   paginateGroupPaginationFragment,
-  pageinateGroupPinnedSampleFragment,
+  paginateGroupPinnedSampleFragment,
 } from "./paginateGroup";

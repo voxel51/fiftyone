@@ -10,9 +10,11 @@ registerComponent({
   component: PointCloud,
   type: PluginComponentType.Visualizer,
   activator: ({ sample, pinned, isGroupMainView }) => {
-    if (isGroupMainView) return false;
+    if (!sample) return false;
     const settings = usePluginSettings("point-clouds");
     const field = getFilepathField(sample, settings.filepathFields);
+
+    if (isGroupMainView) return false;
     return field !== null;
   },
 });

@@ -3099,6 +3099,36 @@ which samples to merge:
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
 
+.. _cloning-datasets:
+
+Cloning datasets
+________________
+
+You can use :meth:`clone() <fiftyone.core.dataset.Dataset.clone>` to create a
+copy of a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset2 = dataset.clone()
+    dataset2.add_sample_field("new_field", fo.StringField)
+
+    # The source dataset is unaffected
+    assert "new_field" not in dataset.get_field_schema()
+
+Dataset clones contain deep copies of all samples and dataset-level information
+in the source dataset. The source *media files*, however, are not copied.
+
+.. note::
+
+    Did you know? You can also
+    :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
+
 .. _batch-updates:
 
 Batch updates

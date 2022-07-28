@@ -15,10 +15,18 @@ export const isPinned = selector<boolean>({
 
 export const pinnedSampleGroup = selector<string>({
   key: "pinnedSampleGroup",
-  get: () => "point-cloud",
+  // get: () => "point-cloud",
+  get: ({ get }) => {
+    const { groupMediaTypes } = get(dataset);
+    for (const { name, mediaType } of groupMediaTypes) {
+      if (mediaType === "point_cloud") {
+        return name;
+      }
+    }
+  },
 });
 
 export const groupField = selector<string>({
   key: "groupField",
-  get: () => "group",
+  get: ({ get }) => get(dataset).groupField,
 });

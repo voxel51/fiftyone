@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7ac9e6543460e1d90996373da611f28a>>
+ * @generated SignedSource<<c87c736e88a5e3301805729d217a4e98>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,6 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   group: string;
-  groupField: string;
   id: string;
 };
 export type paginateGroupPinnedSampleQuery$variables = {

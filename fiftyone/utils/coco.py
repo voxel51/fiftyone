@@ -177,7 +177,7 @@ def add_coco_labels(
             logger.warning(
                 "Ignoring %d labels with nonexistent COCO IDs (eg %s)",
                 len(bad_ids),
-                bad_ids[0],
+                next(iter(bad_ids)),
             )
 
         sample_ids = [id_map[coco_id] for coco_id in coco_ids]

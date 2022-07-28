@@ -218,3 +218,13 @@ export const selectedMediaField = atom<State.MediaFieldSelection>({
   key: "selectedMediaField",
   default: { grid: null, modal: null },
 });
+
+export const sidebarSource = atom({
+  key: "sidebarSource",
+  default: "main",
+});
+
+export const resolvedPinnedSample = atom<Sample>({
+  key: "resolvedPinnedSample",
+  default: null,
+});

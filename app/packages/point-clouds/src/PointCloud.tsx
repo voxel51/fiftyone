@@ -222,6 +222,7 @@ export function PointCloud() {
   // instead of being hardcoded
   const settings = fop.usePluginSettings("point-clouds");
   const { sample } = recoil.useRecoilValue(fos.modal);
+
   const modal = true;
   const filepathFieldName = getFilepathField(sample, settings.filepathFields);
   // @ts-ignore

@@ -581,9 +581,7 @@ def make_frames_dataset(
         sample_collection._dataset._doc.app_sidebar_groups
     )
     dataset.media_type = fom.IMAGE
-    dataset.add_sample_field(
-        "sample_id", fof.ObjectIdField, db_field="_sample_id"
-    )
+    dataset.add_sample_field("sample_id", fof.ObjectIdField)
 
     frame_schema = sample_collection.get_frame_field_schema()
     dataset._sample_doc_cls.merge_field_schema(frame_schema)
@@ -846,7 +844,7 @@ def _init_frames(
             "on disk but are not recorded on the dataset",
             len(missing_filepaths),
         )
-        src_dataset._add_frame_field_if_necessary("filepath", fof.StringField)
+        src_dataset.add_frame_field("filepath", fof.StringField)
         ops = [
             UpdateOne(
                 {"_sample_id": _sample_id, "frame_number": fn},

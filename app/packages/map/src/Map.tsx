@@ -56,23 +56,24 @@ const Plot: React.FC<{
   samples: string[];
   style: string;
 }> = ({ coordinates, id, samples, style }) => {
-  const initialized = useRef(false);
-  const deferred = deferrer(initialized);
   const bounds = useMemo(
     () =>
       coordinates.reduce(
         (bounds, latLng) => bounds.extend([latLng[1], latLng[0]]),
         new mapboxgl.LngLatBounds()
       ),
-    []
+    [coordinates]
   );
 
   const layout = useMemo(() => {
+    if (!coordinates.length) {
+      return null;
+    }
     const center = bounds.getCenter();
 
     return {
       mapbox: {
-        style,
+        style: MAP_STYLES[style],
         center: {
           lat: center.lat,
           lon: center.lng,
@@ -98,51 +99,35 @@ const Plot: React.FC<{
   );
 
   useEffect(() => {
-    Plotly.newPlot(id, data, layout, {
-      mapboxAccessToken: MAPBOX_ACCESS_TOKEN,
-    }).then((plot) => {
-      const map = plot._fullLayout.mapbox._subplot.map;
-
-      map.once("zoomend", () => {
-        let zoom = map.getZoom();
-        plot._fullLayout.mapbox._subplot.viewInitial.zoom = zoom;
-        Plotly.relayout(id, { "mapbox.zoom": zoom });
-      });
-
-      map.fitBounds([bounds.getNorthEast(), bounds.getSouthWest()], {
-        padding: 20,
-      });
-
-      plot.on("plotly_click", (event) => {
-        let sampleID = samples[event.points[0].pointIndex];
-        console.log(`Clicked sample: ${sampleID}`);
-      });
-
-      plot.on("plotly_selected", (event) => {
-        let sampleIDs = event.points.map(
-          (point) => sampleIDs[point.pointIndex]
-        );
-        console.log(`Selected ${sampleIDs.length} samples: ${sampleIDs}`);
-      });
-    });
-  }, [id]);
-
-  useEffect(
-    deferred(() => {
-      Plotly.update(id, data, layout).then((plot) => {
+    layout &&
+      Plotly.react(id, data, layout, {
+        mapboxAccessToken: MAPBOX_ACCESS_TOKEN,
+      }).then((plot) => {
         const map = plot._fullLayout.mapbox._subplot.map;
+
+        map.once("zoomend", () => {
+          let zoom = map.getZoom();
+          plot._fullLayout.mapbox._subplot.viewInitial.zoom = zoom;
+          Plotly.relayout(id, { "mapbox.zoom": zoom });
+        });
 
         map.fitBounds([bounds.getNorthEast(), bounds.getSouthWest()], {
           padding: 20,
         });
-      });
-    }),
-    [id, bounds, data, layout]
-  );
 
-  useEffect(() => {
-    initialized.current = true;
-  }, []);
+        plot.on("plotly_click", (event) => {
+          let sampleID = samples[event.points[0].pointIndex];
+          console.log(`Clicked sample: ${sampleID}`);
+        });
+
+        plot.on("plotly_selected", (event) => {
+          let sampleIDs = event.points.map(
+            (point) => sampleIDs[point.pointIndex]
+          );
+          console.log(`Selected ${sampleIDs.length} samples: ${sampleIDs}`);
+        });
+      });
+  }, [id, data, layout]);
 
   return <div className={map} id={id}></div>;
 };
@@ -185,16 +170,8 @@ const Map: React.FC<{
 
   return (
     <div className={container}>
-      {loading ? (
-        <Loading>Pixelating</Loading>
-      ) : (
-        <Plot
-          id={id}
-          coordinates={coordinates}
-          samples={samples}
-          style={style}
-        />
-      )}
+      <Plot id={id} coordinates={coordinates} samples={samples} style={style} />
+      {loading && <Loading style={{}}>Pixelating...</Loading>}
       <div className={options}>
         <foc.Selector
           placeholder={"Map Style"}

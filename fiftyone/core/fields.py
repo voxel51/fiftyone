@@ -5,6 +5,7 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 from datetime import date, datetime
 import numbers
 
@@ -17,7 +18,6 @@ import pytz
 import eta.core.utils as etau
 
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.odm.embedded_document import EmbeddedDocument
 import fiftyone.core.utils as fou
 
 
@@ -58,6 +58,9 @@ class Field(mongoengine.fields.BaseField):
     def __str__(self):
         return etau.get_class_name(self)
 
+    def copy(self):
+        return deepcopy(self)
+
 
 class IntField(mongoengine.fields.IntField, Field):
     """A 32 bit integer field."""
@@ -94,7 +97,9 @@ class UUIDField(mongoengine.fields.UUIDField, Field):
 class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
-    pass
+    def validate(self, value):
+        if not isinstance(value, (bool, np.bool_)):
+            self.error("Boolean fields only accept boolean values")
 
 
 class DateField(mongoengine.fields.DateField, Field):
@@ -686,35 +691,6 @@ class EmbeddedDocumentListField(
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
-
-
-class Group(EmbeddedDocument):
-    """A named group membership.
-
-    Args:
-        id (None): the group ID
-        name (None): the group name
-    """
-
-    id = ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
-    name = StringField()
-
-    @property
-    def _id(self):
-        return ObjectId(self.id)
-
-    def element(self, name):
-        return self.__class__(id=self.id, name=name)
-
-
-class GroupField(EmbeddedDocumentField):
-    """A field that stores :class:`Group` memberships."""
-
-    def __init__(self, **kwargs):
-        super().__init__(field=Group(), **kwargs)
-
-    def __str__(self):
-        return etau.get_class_name(self)
 
 
 _ARRAY_FIELDS = (VectorField, ArrayField)

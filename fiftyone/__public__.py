@@ -64,8 +64,6 @@ from .core.fields import (
     GeoMultiPointField,
     GeoMultiLineStringField,
     GeoMultiPolygonField,
-    Group,
-    GroupField,
     IntField,
     IntDictField,
     KeypointsField,
@@ -77,6 +75,7 @@ from .core.fields import (
     VectorField,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,
@@ -162,7 +161,7 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
-    SelectGroup,
+    SelectGroupSlice,
     SelectLabels,
     SetField,
     Skip,
@@ -173,7 +172,6 @@ from .core.stages import (
     ToEvaluationPatches,
     ToClips,
     ToFrames,
-    UseGroup,
 )
 from .core.session import (
     close_app,

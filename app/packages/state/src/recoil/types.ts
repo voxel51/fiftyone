@@ -1,7 +1,7 @@
 import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
-  export type MediaType = "image" | "group" | "point-cloud" | "video";
+  export type MediaType = "image" | "group" | "point_cloud" | "video";
 
   export enum SPACE {
     FRAME = "FRAME",
@@ -99,14 +99,12 @@ export namespace State {
     appSidebarGroups?: { name: string; paths: string[] }[];
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
-    groups: {
-      defaultGroup: string;
-      field: string;
-      groups: {
-        name: string;
-        mediaType: MediaType;
-      }[];
+    groupMediaTypes?: {
+      name: string;
+      mediaType: MediaType;
     }[];
+    defaultGroupSlice: string;
+    groupField: string;
     appConfig: DatasetAppConfig;
   }
 

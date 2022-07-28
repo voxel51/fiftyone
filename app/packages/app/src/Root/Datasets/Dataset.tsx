@@ -16,13 +16,11 @@ const Query = graphql`
       id
       name
       mediaType
-      groups {
-        field
-        groups {
-          name
-          mediaType
-        }
-        defaultGroup
+      defaultGroupSlice
+      groupField
+      groupMediaTypes {
+        name
+        mediaType
       }
       appConfig {
         gridMediaField

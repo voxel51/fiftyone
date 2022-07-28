@@ -32,15 +32,9 @@ const useGeoLocations = ({
     [points]
   );
 
-  if (loading) {
-    return { loading };
-  }
-
-  const [samples] = points;
-
   return {
-    loading: false,
-    samples,
+    loading,
+    samples: points ? points[0] : [],
     coordinates,
   };
 };

@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import styled from "styled-components";
 
 import { Resizable } from "re-resizable";
@@ -6,17 +6,14 @@ import { Resizable } from "re-resizable";
 import { useTheme } from "@fiftyone/components";
 import {
   PreloadedQuery,
-  usePaginationFragment,
   usePreloadedQuery,
+  useRefetchableFragment,
 } from "react-relay";
 import {
   paginateGroupPinnedSample_query$key,
   paginateGroup,
   paginateGroupQuery,
-  pageinateGroupPinnedSampleFragment,
-  paginateGroupPaginationFragment,
-  paginateGroupQuery$data,
-  paginateGroup_query$key,
+  paginateGroupPinnedSampleFragment,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 
@@ -27,20 +24,24 @@ const Container = styled.div`
   width: 100%;
 `;
 import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import SidebarSourceSelector from "../SidebarSourceSelector";
 
-function usePinnedVisualizerPlugin(fragmentRef) {
-  const { data, hasNext, loadNext } = usePaginationFragment(
-    paginateGroupPaginationFragment,
+function usePinnedVisualizerPlugin(
+  fragmentRef: paginateGroupPinnedSample_query$key
+) {
+  const [resolvedSample, setResolvedSample] = useRecoilState(
+    fos.resolvedPinnedSample
+  );
+  const [{ sample }, refetch] = useRefetchableFragment(
+    paginateGroupPinnedSampleFragment,
     fragmentRef
   );
-  const { samples } = data;
-  const {
-    node: { sample },
-  } = samples.edges.find(({ node: { sample } }) => {
-    return sample._media_type === "point-cloud";
-  });
-  console.log({ sample });
+
+  console.log(sample);
+  useEffect(() => {
+    setResolvedSample(sample);
+  }, [sample]);
   const dataset = useRecoilValue(fos.dataset);
   const [visualizerPlugin] = useActivePlugins(PluginComponentType.Visualizer, {
     dataset,
@@ -51,11 +52,15 @@ function usePinnedVisualizerPlugin(fragmentRef) {
 }
 
 const LookerContainer: React.FC<{
-  fragmentRef: paginateGroup_query$key;
+  fragmentRef: paginateGroupPinnedSample_query$key;
 }> = ({ fragmentRef }) => {
   const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
-
-  return <Visualizer />;
+  if (!Visualizer) return null;
+  return (
+    <SidebarSourceSelector id="pinned">
+      <Visualizer />
+    </SidebarSourceSelector>
+  );
 };
 
 const PinnedLooker: React.FC<

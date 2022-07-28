@@ -15,6 +15,9 @@ POINT_CLOUD = "point-cloud"
 GROUP = "group"
 MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, GROUP}
 
+# Special media types
+MIXED = "mixed"
+
 
 def get_media_type(filepath):
     """Gets the media type for the given filepath.

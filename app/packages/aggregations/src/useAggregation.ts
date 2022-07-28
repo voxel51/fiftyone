@@ -38,7 +38,5 @@ export default function useAggregation({
     setLoading(false);
   };
 
-  console.log(result, isLoading);
-
   return [aggregate, result, isLoading];
 }
