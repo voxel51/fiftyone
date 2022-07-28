@@ -434,8 +434,12 @@ details:
     by this argument nor `label_schema`, the observed labels on your dataset
     are used
 -   **attributes** (*True*): specifies the label attributes of each label field
-    to include (other than their `label`, which is always included) in the
-    annotation export. Can be any of the following:
+    to include (other than their `label_id`, which is always included) in the
+    annotation export. If attributes are specified in `label_schema`, this 
+    argument will only include additional attributes depending on the value.  
+    To only export attributes set in `label_schema`, set this argument to 
+    `False`.
+    Can be any of the following:
 
     -   `True`: export all label attributes
     -   `False`: don't export any custom label attributes
