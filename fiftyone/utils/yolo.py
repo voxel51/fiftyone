@@ -1095,7 +1095,11 @@ def _write_yaml_file(d, path, **kwargs):
 
 def _read_file_lines(path):
     with open(path, "r") as f:
-        lines = [l.strip() for l in f.read().splitlines()]
+        try:
+            lines = [l.strip() for l in f.read().splitlines()]
+        except UnicodeDecodeError:
+            logger.warning("Error while decoding file %s, ignoring", path)
+            return []
         return [l for l in lines if l]
 
 
