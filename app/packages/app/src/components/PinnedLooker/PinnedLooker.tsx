@@ -16,6 +16,7 @@ import {
   paginateGroupPinnedSampleFragment,
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import _ from "lodash";
 
 const Container = styled.div`
   position: relative;
@@ -33,11 +34,11 @@ function usePinnedVisualizerPlugin(
   const [resolvedSample, setResolvedSample] = useRecoilState(
     fos.resolvedPinnedSample
   );
-  const [{ sample }, refetch] = useRefetchableFragment(
+  const [{ sample: sampleData }, refetch] = useRefetchableFragment(
     paginateGroupPinnedSampleFragment,
     fragmentRef
   );
-  console.log(sample);
+  const sample = sampleData?.sample;
 
   useEffect(() => {
     setResolvedSample(sample);
@@ -48,16 +49,22 @@ function usePinnedVisualizerPlugin(
     sample,
     pinned: true,
   });
-  if (visualizerPlugin) return visualizerPlugin.component;
+  const slice = _.get(sample, [dataset.groupField, "name"].join("."), null);
+
+  return {
+    Visualizer: visualizerPlugin.component,
+    slice,
+  };
 }
 
 const LookerContainer: React.FC<{
   fragmentRef: paginateGroupPinnedSample_query$key;
 }> = ({ fragmentRef }) => {
-  const Visualizer = usePinnedVisualizerPlugin(fragmentRef);
+  const { Visualizer, slice } = usePinnedVisualizerPlugin(fragmentRef);
+
   if (!Visualizer) return null;
   return (
-    <SidebarSourceSelector id="pinned" groupMode={true}>
+    <SidebarSourceSelector id="pinned" slice={slice} groupMode={true}>
       <Visualizer />
     </SidebarSourceSelector>
   );

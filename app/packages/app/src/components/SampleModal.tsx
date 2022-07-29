@@ -15,6 +15,7 @@ import * as fos from "@fiftyone/state";
 import PinnedLooker from "./PinnedLooker/PinnedLooker";
 import { isGroup, isPinned } from "@fiftyone/state";
 import SidebarSourceSelector from "./SidebarSourceSelector";
+import _ from "lodash";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -221,6 +222,12 @@ const SampleModal = () => {
       isGroupMainView={isGroupMode}
     />
   );
+  const dataset = useRecoilValue(fos.dataset);
+  const slice = _.get(
+    data.sample,
+    [dataset.groupField, "name"].join("."),
+    null
+  );
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -231,7 +238,11 @@ const SampleModal = () => {
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
           {isGroupMode ? (
-            <SidebarSourceSelector id="main" groupMode={isGroupMode}>
+            <SidebarSourceSelector
+              id="main"
+              slice={slice}
+              groupMode={isGroupMode}
+            >
               {lookerEl}
             </SidebarSourceSelector>
           ) : (
