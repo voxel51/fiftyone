@@ -24,11 +24,23 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.audience = self.parse_string(
+            d,
+            "audience",
+            default="api.fiftyone.ai",
+            env_var="FIFTYONE_TEAMS_AUDIENCE",
+        )
         self.client_id = self.parse_string(
             d,
             "client_id",
             default="69dStE2hz7Ciifd1wBO4fzxxpFRR8aQc",
             env_var="FIFTYONE_TEAMS_CLIENT_ID",
+        )
+        self.domain = self.parse_string(
+            d,
+            "domain",
+            default="login.fiftyone.ai",
+            env_var="FIFTYONE_TEAMS_DOMAIN",
         )
         self.organization = self.parse_string(
             d,
