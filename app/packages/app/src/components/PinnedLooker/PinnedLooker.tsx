@@ -54,18 +54,19 @@ function usePinnedVisualizerPlugin(
   return {
     Visualizer: visualizerPlugin.component,
     slice,
+    sample,
   };
 }
 
 const LookerContainer: React.FC<{
   fragmentRef: paginateGroupPinnedSample_query$key;
 }> = ({ fragmentRef }) => {
-  const { Visualizer, slice } = usePinnedVisualizerPlugin(fragmentRef);
+  const { Visualizer, slice, sample } = usePinnedVisualizerPlugin(fragmentRef);
 
   if (!Visualizer) return null;
   return (
     <SidebarSourceSelector id="pinned" slice={slice} groupMode={true}>
-      <Visualizer />
+      <Visualizer sampleOverride={sample} />
     </SidebarSourceSelector>
   );
 };
