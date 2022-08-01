@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c87c736e88a5e3301805729d217a4e98>>
+ * @generated SignedSource<<8836ccba61bdb66b29f5f1f817a3284a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -131,6 +131,12 @@ const node: ConcreteRequest = (function () {
             },
             {
               kind: "InlineFragment",
+              selections: [v2 /*: any*/],
+              type: "PointCloudSample",
+              abstractKey: null,
+            },
+            {
+              kind: "InlineFragment",
               selections: [
                 {
                   alias: null,
@@ -152,16 +158,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "bfd5a860aae7daf8e686f327e2a97da0",
+      cacheID: "cd3e643121466f00a91f1a0bd731f7c9",
       id: null,
       metadata: {},
       name: "paginateGroupPinnedSampleQuery",
       operationKind: "query",
-      text: "query paginateGroupPinnedSampleQuery(\n  $dataset: String!\n  $pinnedSampleFilter: SampleFilter!\n  $view: BSONArray!\n) {\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n",
+      text: "query paginateGroupPinnedSampleQuery(\n  $dataset: String!\n  $pinnedSampleFilter: SampleFilter!\n  $view: BSONArray!\n) {\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on PointCloudSample {\n      sample\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "352b83af7f916730f87b23113c220e1e";
+(node as any).hash = "c1db0455fe9f0230194677dad094ceeb";
 
 export default node;

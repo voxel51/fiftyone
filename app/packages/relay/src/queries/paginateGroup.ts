@@ -33,6 +33,9 @@ export const paginateGroupPaginationFragment = graphql`
             sample
             width
           }
+          ... on PointCloudSample {
+            sample
+          }
           ... on VideoSample {
             frameRate
             height
@@ -54,6 +57,9 @@ export const paginateGroupPinnedSampleFragment = graphql`
         height
         sample
         width
+      }
+      ... on PointCloudSample {
+        sample
       }
       ... on VideoSample {
         frameRate
