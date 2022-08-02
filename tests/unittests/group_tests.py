@@ -251,6 +251,75 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(frame.field, 1)
 
+    @drop_datasets
+    def test_clone(self):
+        dataset = _make_group_dataset()
+
+        dataset2 = dataset.clone()
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+        self.assertEqual(len(dataset2), 2)
+        self.assertEqual(dataset2.count("frames"), 2)
+        self.assertEqual(
+            len(dataset2.select_group_slice(_allow_mixed=True)),
+            6,
+        )
+
+        sample = dataset2.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+        view = dataset.limit(1)
+
+        dataset3 = view.clone()
+
+        self.assertEqual(dataset3.media_type, "group")
+        self.assertEqual(dataset3.group_slice, "ego")
+        self.assertEqual(dataset3.default_group_slice, "ego")
+        self.assertEqual(len(dataset3), 1)
+        self.assertEqual(dataset3.count("frames"), 2)
+        self.assertEqual(
+            len(dataset3.select_group_slice(_allow_mixed=True)),
+            3,
+        )
+
+        sample = dataset3.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+        view = dataset.select_group_slice("ego")
+
+        dataset4 = view.clone()
+
+        self.assertEqual(dataset4.media_type, "video")
+        self.assertIsNone(dataset4.group_slice)
+        self.assertIsNone(dataset4.default_group_slice)
+        self.assertEqual(len(dataset4), 2)
+        self.assertEqual(dataset4.count("frames"), 2)
+
+        sample = dataset4.first()
+
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
 
 class GroupImportExportTests(unittest.TestCase):
     def setUp(self):

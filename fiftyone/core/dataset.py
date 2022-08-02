@@ -4656,9 +4656,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type == fom.GROUP and not manual_group_select:
             _pipeline.extend(self._group_select_pipeline())
 
-        if pipeline is not None:
-            _pipeline.extend(pipeline)
-
         if attach_frames:
             _pipeline.extend(self._attach_frames_pipeline())
 
@@ -4666,6 +4663,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(
                 self._attach_groups_pipeline(group_slices=group_slices)
             )
+
+        if pipeline is not None:
+            _pipeline.extend(pipeline)
 
         if detach_frames:
             _pipeline.append({"$project": {"frames": False}})
@@ -5467,6 +5467,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if dataset_exists(name):
         raise ValueError("Dataset '%s' already exists" % name)
 
+    contains_videos = dataset_or_view._contains_videos()
+
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
         view = dataset_or_view
@@ -5476,8 +5478,6 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset._reload()
 
-    contains_videos = dataset._contains_videos()
-
     sample_collection_name = _make_sample_collection_name()
     frame_collection_name = _make_frame_collection_name(sample_collection_name)
 
@@ -5486,12 +5486,19 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     #
 
     dataset_doc = dataset._doc.copy()
+
     dataset_doc.name = name
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
+
+    dataset_doc.media_type = dataset_or_view.media_type
+    if dataset_doc.media_type != fom.GROUP:
+        dataset_doc.group_field = None
+        dataset_doc.group_media_types = {}
+        dataset_doc.default_group_slice = None
 
     # Run results get special treatment at the end
     dataset_doc.annotation_runs.clear()
@@ -5546,6 +5553,11 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
 
 def _get_samples_pipeline(sample_collection):
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slice(
+            _allow_mixed=True
+        )
+
     coll = sample_collection._dataset._sample_collection
     pipeline = sample_collection._pipeline(
         detach_frames=True, detach_groups=True
@@ -5575,6 +5587,10 @@ def _get_frames_pipeline(sample_collection):
     elif view is not None:
         # The view may modify the frames, so we route the frames though
         # the sample collection
+
+        if view.media_type == fom.GROUP:
+            view = view._select_group_slices(fom.VIDEO)
+
         coll = dataset._sample_collection
         pipeline = view._pipeline(frames_only=True)
     else:

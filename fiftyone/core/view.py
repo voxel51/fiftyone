@@ -963,7 +963,7 @@ class DatasetView(foc.SampleCollection):
 
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
-        _group_slices_idx = None
+        _attach_groups_idx = None
 
         for idx, stage in enumerate(self._stages):
             # Determine if stage needs frames attached
@@ -985,14 +985,17 @@ class DatasetView(foc.SampleCollection):
                 # Determine if stage needs group slices attached
                 _stage_group_slices = stage._needs_group_slices(_view)
                 if _stage_group_slices:
-                    if _group_slices_idx is None:
-                        _group_slices_idx = idx
+                    if _attach_groups_idx is None:
+                        _attach_groups_idx = idx
 
                     _group_slices.update(_stage_group_slices)
 
             # Generate stage's pipeline
             _pipelines.append(stage.to_mongo(_view))
             _view = _view.add_stage(stage)
+
+        if _attach_frames_idx is None and attach_frames or frames_only:
+            _attach_frames_idx = len(_pipelines)
 
         # Insert frame lookup pipeline if needed
         if _attach_frames_idx is not None:
@@ -1001,7 +1004,7 @@ class DatasetView(foc.SampleCollection):
             _pipelines.insert(_attach_frames_idx, _pipeline)
 
         # Insert group lookup pipline if needed
-        if _group_slices_idx is not None:
+        if _attach_groups_idx is not None:
             if group_slices:
                 _group_slices.update(group_slices)
 
@@ -1009,7 +1012,7 @@ class DatasetView(foc.SampleCollection):
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )
-            _pipelines.insert(_group_slices_idx, _pipeline)
+            _pipelines.insert(_attach_groups_idx, _pipeline)
 
         if pipeline is not None:
             _pipelines.append(pipeline)
