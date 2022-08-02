@@ -11,8 +11,11 @@ def up(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    if "groups" not in dataset_dict:
-        dataset_dict["groups"] = {}
+    if "group_field" not in dataset_dict:
+        dataset_dict["group_field"] = None
+
+    if "group_media_types" not in dataset_dict:
+        dataset_dict["group_media_types"] = {}
 
     if "default_group_slice" not in dataset_dict:
         dataset_dict["default_group_slice"] = None
@@ -27,14 +30,14 @@ def down(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    groups = dataset_dict.pop("groups", None)
+    group_field = dataset_dict.pop("group_field", None)
+    group_media_types = dataset_dict.pop("group_media_types", None)
     default_group_slice = dataset_dict.pop("default_group_slice", None)
 
-    if groups or default_group_slice:
+    if group_field or group_media_types or default_group_slice:
         raise ValueError(
-            "Cannot migrate dataset '%s' with group fields %s below v0.17.0 "
-            "because groups were not supported before this release"
-            % (dataset_name, list(groups.keys()))
+            "Cannot migrate dataset '%s' below v0.17.0 because groups were "
+            "not supported before this release" % dataset_name
         )
 
     dataset_dict.pop("app_config", None)

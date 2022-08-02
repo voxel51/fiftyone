@@ -16,6 +16,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,10 @@ DOWN = "down"
 UP = "up"
 
 
-def Version(version: str) -> V:
-    """Version proxy to ensure only base versions are used (strip rc versions)"""
+def Version(version):
+    """A ``packaging.version.Version`` proxy that excludes things like RC
+    version info.
+    """
     return V(V(version).base_version)
 
 
@@ -61,13 +64,19 @@ def get_dataset_revision(name):
     return dataset_doc.get("version", None)
 
 
-def migrate_all(destination=None, verbose=False):
+def migrate_all(destination=None, error_level=0, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
 
     Args:
         destination (None): the destination revision. By default, the
             ``fiftyone`` package version is used
+        error_level (0): the error level to use if an individual dataset cannot
+            be migrated. Valid values are:
+
+            -   0: raise error if a dataset cannot be migrated
+            -   1: log warning if a dataset cannot be migrated
+            -   2: ignore datasets that cannot be migrated
         verbose (False): whether to log incremental migrations that are run
     """
     if destination is None:
@@ -77,7 +86,10 @@ def migrate_all(destination=None, verbose=False):
 
     for name in fo.list_datasets():
         migrate_dataset_if_necessary(
-            name, destination=destination, verbose=verbose
+            name,
+            destination=destination,
+            error_level=error_level,
+            verbose=verbose,
         )
 
 
@@ -162,7 +174,12 @@ def needs_migration(name=None, head=None, destination=None):
     return runner.has_revisions
 
 
-def migrate_dataset_if_necessary(name, destination=None, verbose=False):
+def migrate_dataset_if_necessary(
+    name,
+    destination=None,
+    error_level=0,
+    verbose=False,
+):
     """Migrates the dataset from its current revision to the specified
     destination revision.
 
@@ -170,8 +187,20 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         name: the name of the dataset
         destination (None): the destination revision. By default, the
             ``fiftyone`` package version is used
+        error_level (0): the error level to use. Valid values are:
+
+            -   0: raise error if the dataset cannot be migrated
+            -   1: log warning if the dataset cannot be migrated
+            -   2: ignore datasets that cannot be migrated
         verbose (False): whether to log incremental migrations that are run
     """
+    try:
+        _migrate_dataset_if_necessary(name, destination, verbose)
+    except Exception as e:
+        fou.handle_error(e, error_level=error_level)
+
+
+def _migrate_dataset_if_necessary(name, destination, verbose):
     if _migrations_disabled():
         return
 

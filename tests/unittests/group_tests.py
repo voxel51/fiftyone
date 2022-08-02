@@ -68,7 +68,7 @@ class GroupTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_group_basics(self):
+    def test_basics(self):
         dataset = _make_group_dataset()
 
         self.assertEqual(dataset.media_type, "group")
@@ -107,7 +107,7 @@ class GroupTests(unittest.TestCase):
         self.assertIn("right", group)
 
     @drop_datasets
-    def test_group_field_operations(self):
+    def test_field_operations(self):
         dataset = _make_group_dataset()
 
         self.assertDictEqual(
@@ -132,7 +132,7 @@ class GroupTests(unittest.TestCase):
         dataset.rename_sample_field("still_group_field", "group_field")
 
     @drop_datasets
-    def test_group_views(self):
+    def test_views(self):
         dataset = _make_group_dataset()
 
         # Group fields cannot be excluded
@@ -210,8 +210,208 @@ class GroupTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             view = dataset.select_group_slice()
 
+    @drop_datasets
+    def test_aggregations(self):
+        dataset = _make_group_dataset()
 
-class GroupExportTests(unittest.TestCase):
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+
+        self.assertListEqual(dataset.distinct("field"), [2, 5])
+        self.assertListEqual(
+            dataset.select_group_slice(["left", "right"]).distinct("field"),
+            [1, 3, 4, 6],
+        )
+        self.assertListEqual(
+            dataset.select_group_slice(_allow_mixed=True).distinct("field"),
+            [1, 2, 3, 4, 5, 6],
+        )
+        self.assertListEqual(dataset.distinct("frames.field"), [1, 2])
+
+        view = dataset.limit(1)
+
+        self.assertEqual(view.count(), 1)
+        self.assertEqual(view.count("frames"), 2)
+
+        self.assertListEqual(view.distinct("field"), [2])
+        self.assertListEqual(
+            view.select_group_slice(["left", "right"]).distinct("field"),
+            [1, 3],
+        )
+        self.assertListEqual(
+            view.select_group_slice(_allow_mixed=True).distinct("field"),
+            [1, 2, 3],
+        )
+        self.assertListEqual(view.distinct("frames.field"), [1, 2])
+
+        view = dataset.limit(1).select_group_slice("ego")
+
+        self.assertEqual(view.count(), 1)
+        self.assertEqual(view.count("frames"), 2)
+
+        self.assertListEqual(view.distinct("field"), [2])
+        self.assertListEqual(view.distinct("frames.field"), [1, 2])
+
+    @drop_datasets
+    def test_set_values(self):
+        dataset = _make_group_dataset()
+
+        dataset.set_values("new_field", [3, 4])
+
+        self.assertListEqual(dataset.values("new_field"), [3, 4])
+        self.assertListEqual(
+            dataset.select_group_slice("left").values("new_field"),
+            [None, None],
+        )
+
+        sample = dataset.first()
+
+        self.assertEqual(sample.new_field, 3)
+
+        sample = dataset.select_group_slice("left").first()
+
+        self.assertIsNone(sample.new_field)
+
+        view = dataset.select_group_slice(["left", "right"])
+
+        view.set_values("new_field", [10, 20, 30, 40])
+
+        self.assertListEqual(
+            dataset.select_group_slice(_allow_mixed=True).values("new_field"),
+            [10, 3, 20, 30, 4, 40],
+        )
+
+        sample = dataset.select_group_slice("left").first()
+
+        self.assertEqual(sample.new_field, 10)
+
+        view = dataset.limit(1)
+
+        view.set_values("frames.new_field", [[3, 4]])
+
+        self.assertListEqual(dataset.values("new_field"), [3, 4])
+
+        self.assertListEqual(
+            dataset.limit(1).values("frames.new_field", unwind=True), [3, 4]
+        )
+
+        sample = dataset.first()
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.new_field, 3)
+
+    @drop_datasets
+    def test_to_dict(self):
+        dataset = _make_group_dataset()
+
+        d = dataset.to_dict()
+
+        dataset2 = fo.Dataset.from_dict(d)
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+        self.assertIn("group_field", dataset2.get_field_schema())
+        self.assertEqual(len(dataset2), 2)
+
+        sample = dataset2.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 0)
+
+        d = dataset.to_dict(include_frames=True)
+
+        dataset3 = fo.Dataset.from_dict(d)
+
+        self.assertEqual(dataset3.media_type, "group")
+        self.assertEqual(dataset3.group_slice, "ego")
+        self.assertEqual(dataset3.default_group_slice, "ego")
+        self.assertIn("group_field", dataset3.get_field_schema())
+        self.assertEqual(len(dataset3), 2)
+        self.assertEqual(dataset3.count("frames"), 2)
+
+        sample = dataset3.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+    @drop_datasets
+    def test_clone(self):
+        dataset = _make_group_dataset()
+
+        dataset2 = dataset.clone()
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+        self.assertEqual(len(dataset2), 2)
+        self.assertEqual(dataset2.count("frames"), 2)
+        self.assertEqual(
+            len(dataset2.select_group_slice(_allow_mixed=True)),
+            6,
+        )
+
+        sample = dataset2.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+        view = dataset.limit(1)
+
+        dataset3 = view.clone()
+
+        self.assertEqual(dataset3.media_type, "group")
+        self.assertEqual(dataset3.group_slice, "ego")
+        self.assertEqual(dataset3.default_group_slice, "ego")
+        self.assertEqual(len(dataset3), 1)
+        self.assertEqual(dataset3.count("frames"), 2)
+        self.assertEqual(
+            len(dataset3.select_group_slice(_allow_mixed=True)),
+            3,
+        )
+
+        sample = dataset3.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+        view = dataset.select_group_slice("ego")
+
+        dataset4 = view.clone()
+
+        self.assertEqual(dataset4.media_type, "video")
+        self.assertIsNone(dataset4.group_slice)
+        self.assertIsNone(dataset4.default_group_slice)
+        self.assertEqual(len(dataset4), 2)
+        self.assertEqual(dataset4.count("frames"), 2)
+
+        sample = dataset4.first()
+
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.field, 1)
+
+
+class GroupImportExportTests(unittest.TestCase):
     def setUp(self):
         temp_dir = etau.TempDir()
         tmp_dir = temp_dir.__enter__()
@@ -232,7 +432,7 @@ class GroupExportTests(unittest.TestCase):
         return os.path.join(self._tmp_dir, self._new_name())
 
     @drop_datasets
-    def test_export(self):
+    def test_fiftyone_dataset(self):
         dataset = _make_group_dataset()
 
         export_dir = self._new_dir()
@@ -248,7 +448,68 @@ class GroupExportTests(unittest.TestCase):
             dataset_type=fo.types.FiftyOneDataset,
         )
 
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+        self.assertIn("group_field", dataset2.get_field_schema())
+        self.assertIn("field", dataset2.get_frame_field_schema())
         self.assertEqual(len(dataset2), 2)
+
+        sample = dataset.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        group_id = sample.group_field.id
+        group = dataset.get_group(group_id)
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertIn("ego", group)
+        self.assertIn("right", group)
+
+    @drop_datasets
+    def test_legacy_fiftyone_dataset(self):
+        dataset = _make_group_dataset()
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        # LegacyFiftyOneDataset doesn't know how to load this info...
+        dataset2.default_group_slice = "ego"
+        dataset2.group_slice = "ego"
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+        self.assertIn("group_field", dataset2.get_field_schema())
+        self.assertIn("field", dataset2.get_frame_field_schema())
+        self.assertEqual(len(dataset2), 2)
+
+        sample = dataset.first()
+
+        self.assertEqual(sample.group_field.name, "ego")
+        self.assertEqual(sample.media_type, "video")
+        self.assertEqual(len(sample.frames), 2)
+
+        group_id = sample.group_field.id
+        group = dataset.get_group(group_id)
+
+        self.assertIsInstance(group, dict)
+        self.assertIn("left", group)
+        self.assertIn("ego", group)
+        self.assertIn("right", group)
 
 
 def _make_group_dataset():
@@ -292,6 +553,12 @@ def _make_group_dataset():
     ]
 
     dataset.add_samples(samples)
+
+    sample = dataset.first()
+    sample.frames[1] = fo.Frame(field=1)
+    sample.frames[2] = fo.Frame(field=2)
+    sample.save()
+
     return dataset
 
 

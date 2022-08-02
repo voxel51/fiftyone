@@ -613,7 +613,7 @@ class SampleCollection(object):
         field = None
         resolved_keys = []
 
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
+        if self._contains_videos() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
@@ -741,7 +741,7 @@ class SampleCollection(object):
         Returns:
             True/False
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return False
 
         return field_name in self.get_frame_field_schema()
@@ -765,7 +765,7 @@ class SampleCollection(object):
             existing_fields = set(
                 self.get_field_schema(include_private=include_private).keys()
             )
-            if self.media_type == fom.VIDEO:
+            if self._contains_videos():
                 existing_fields.add("frames")
 
             for field in fields:
@@ -6353,6 +6353,15 @@ class SampleCollection(object):
         if label_fields is None:
             label_fields = self._get_label_fields()
 
+        if self.media_type == fom.IMAGE:
+            return foua.draw_labeled_images(
+                self,
+                output_dir,
+                label_fields=label_fields,
+                config=config,
+                **kwargs,
+            )
+
         if self.media_type == fom.VIDEO:
             return foua.draw_labeled_videos(
                 self,
@@ -6362,12 +6371,11 @@ class SampleCollection(object):
                 **kwargs,
             )
 
-        return foua.draw_labeled_images(
-            self,
-            output_dir,
-            label_fields=label_fields,
-            config=config,
-            **kwargs,
+        if self.media_type == fom.GROUP:
+            raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % self.media_type
         )
 
     def export(
@@ -6910,7 +6918,7 @@ class SampleCollection(object):
 
             index_info[key] = info
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
@@ -7061,7 +7069,7 @@ class SampleCollection(object):
 
     def _get_default_indexes(self, frames=False):
         if frames:
-            if self.media_type == fom.VIDEO:
+            if self._contains_videos():
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
@@ -7118,9 +7126,14 @@ class SampleCollection(object):
             "name": self.name,
             "version": self._dataset.version,
             "media_type": self.media_type,
-            "num_samples": len(self),
-            "sample_fields": self._serialize_field_schema(),
         }
+
+        if self.media_type == fom.GROUP:
+            d["group_field"] = self.group_field
+            d["group_media_types"] = self.group_media_types
+            d["default_group_slice"] = self.default_group_slice
+
+        d["sample_fields"] = self._serialize_field_schema()
 
         if contains_videos:
             d["frame_fields"] = self._serialize_frame_field_schema()
@@ -7145,15 +7158,20 @@ class SampleCollection(object):
         if self.default_skeleton:
             d["default_skeleton"] = self._serialize_default_skeleton()
 
+        if self.media_type == fom.GROUP:
+            view = self.select_group_slice(_allow_mixed=True)
+        else:
+            view = self
+
         # Serialize samples
         samples = []
-        for sample in self.iter_samples(progress=True):
+        for sample in view.iter_samples(progress=True):
             sd = sample.to_dict(
                 include_frames=include_frames,
                 include_private=include_private,
             )
 
-            if write_frame_labels:
+            if write_frame_labels and sample.media_type == fom.VIDEO:
                 frames = {"frames": sd.pop("frames", {})}
                 filename = sample.id + ".json"
                 sd["frames"] = filename
@@ -7408,11 +7426,15 @@ class SampleCollection(object):
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
+        group_slices = set()
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
             attach_frames |= aggregation._needs_frames(self)
+            _group_slices = aggregation._needs_group_slices(self)
+            if _group_slices:
+                group_slices.update(_group_slices)
 
             try:
                 assert len(_pipeline) == 1
@@ -7424,13 +7446,16 @@ class SampleCollection(object):
                 )
 
         return self._pipeline(
-            pipeline=[{"$project": project}], attach_frames=attach_frames
+            pipeline=[{"$project": project}],
+            attach_frames=attach_frames,
+            group_slices=group_slices,
         )
 
     def _build_big_pipeline(self, aggregation):
         return self._pipeline(
             pipeline=aggregation.to_mongo(self, big_field="values"),
             attach_frames=aggregation._needs_frames(self),
+            group_slices=aggregation._needs_group_slices(self),
         )
 
     def _build_faceted_pipelines(self, aggs_map):
@@ -7439,6 +7464,7 @@ class SampleCollection(object):
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
             )
 
         return pipelines
@@ -7458,33 +7484,39 @@ class SampleCollection(object):
     def _pipeline(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            media_type (None): the media type of the collection, if different
+                than the source dataset's media type
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                video datasets
             detach_frames (False): whether to detach the frame documents at the
                 end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
-            media_type (None): the media type of the collection, if different
-                than the source dataset's media type
-            group_slices (None): a list of group slices to attach. Only
-                applicable for grouped collections
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
             groups_only (False): whether to generate a pipeline that contains
-                the flattened group documents for the collection
+                *only* the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
+            manual_group_select (False): whether the pipeline has manually
+                handled the initial group selection. Only applicable to grouped
+                collections
 
         Returns:
             the aggregation pipeline
@@ -7494,13 +7526,14 @@ class SampleCollection(object):
     def _aggregate(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
@@ -7508,20 +7541,25 @@ class SampleCollection(object):
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            media_type (None): the media type of the collection, if different
+                than the source dataset's media type
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                video datasets
             detach_frames (False): whether to detach the frame documents at the
                 end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
-            media_type (None): the media type of the collection, if different
-                than the source dataset's media type
-            group_slices (None): a list of group slices to attach. Only
-                applicable for grouped collections
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
             groups_only (False): whether to generate a pipeline that contains
-                the flattened group documents for the collection
+                *only* the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
+            manual_group_select (False): whether the pipeline has manually
+                handled the initial group selection. Only applicable to grouped
+                collections
 
         Returns:
             the aggregation result dict
@@ -7629,7 +7667,7 @@ class SampleCollection(object):
         if etau.is_str(fields):
             fields = [fields]
 
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return fields, []
 
         return fou.split_frame_fields(fields)
@@ -7662,7 +7700,7 @@ class SampleCollection(object):
         return field_name, is_frame_field
 
     def _is_frame_field(self, field_name):
-        return (self.media_type == fom.VIDEO) and (
+        return self._contains_videos() and (
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == self._FRAMES_PREFIX[:-1]
         )
@@ -7674,6 +7712,9 @@ class SampleCollection(object):
         )
 
     def _get_group_slices(self, field_names):
+        if etau.is_str(field_names):
+            field_names = [field_names]
+
         group_slices = set()
         for field_name in field_names:
             if field_name.startswith(self._GROUPS_PREFIX):
@@ -7682,15 +7723,29 @@ class SampleCollection(object):
 
         return list(group_slices)
 
-    def _contains_videos(self):
+    def _select_group_slices(self, media_type):
+        slice_names = [
+            slice_name
+            for slice_name, slice_media_type in self.group_media_types.items()
+            if slice_media_type == media_type
+        ]
+        return self.select_group_slice(slice_names)
+
+    def _contains_videos(self, only_active_slice=False):
         if self.media_type == fom.VIDEO:
             return True
 
-        if (self.media_type == fom.GROUP) and any(
-            media_type == fom.VIDEO
-            for media_type in self.group_media_types.values()
-        ):
-            return True
+        if self.media_type == fom.GROUP:
+            if only_active_slice:
+                return (
+                    self.group_media_types.get(self.group_slice, None)
+                    == fom.VIDEO
+                )
+
+            return any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self.group_media_types.values()
+            )
 
         return False
 
@@ -7778,7 +7833,7 @@ class SampleCollection(object):
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             fields.extend(self._get_frame_label_fields())
 
         return fields
@@ -7791,7 +7846,7 @@ class SampleCollection(object):
         )
 
     def _get_frame_label_fields(self):
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         return [
@@ -7804,7 +7859,7 @@ class SampleCollection(object):
     def _get_root_fields(self, fields):
         root_fields = set()
         for field in fields:
-            if self.media_type == fom.VIDEO and field.startswith(
+            if self._contains_videos() and field.startswith(
                 self._FRAMES_PREFIX
             ):
                 # Converts `frames.root[.x.y]` to `frames.root`
