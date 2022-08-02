@@ -176,6 +176,7 @@ class PluginComponentRegistry {
         results.push(registration);
       }
     }
+
     return results;
   }
 }
@@ -190,7 +191,6 @@ export function usePluginSettings(pluginName: string): any {
     _.get(appConfigPlugins, pluginName, {}),
     _.get(datasetPlugins, pluginName, {})
   );
-  console.log("plugin settings", settings);
 
   return settings;
 }

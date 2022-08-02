@@ -61,6 +61,16 @@ def get_view(
                             }
                         }
                     },
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": [
+                                    "$" + view._dataset.group_field + ".name",
+                                    sample_filter.group.group,
+                                ]
+                            }
+                        }
+                    },
                 ]
             )
         elif sample_filter.id:

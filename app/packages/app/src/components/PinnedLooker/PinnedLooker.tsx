@@ -49,6 +49,7 @@ function usePinnedVisualizerPlugin(
     sample,
     pinned: true,
   });
+
   const slice = _.get(sample, [dataset.groupField, "name"].join("."), null);
 
   return {

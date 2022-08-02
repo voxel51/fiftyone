@@ -227,7 +227,6 @@ export function PointCloud({ sampleOverride }) {
   const modal = true;
   const filepathFieldName = getFilepathField(sample, settings.filepathFields);
   // @ts-ignore
-  console.log({ sample, filepathFieldName });
   const src = fos.getSampleSrc(sample[filepathFieldName]);
   const points = useLoader(PCDLoader, src);
   const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);

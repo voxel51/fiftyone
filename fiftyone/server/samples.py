@@ -101,7 +101,7 @@ async def paginate_samples(
         view._pipeline(
             attach_frames=True,
             detach_frames=False,
-            groups_only=group_id is not None
+            manual_group_select=group_id is not None
             or (sample_filter and sample_filter.group is not None),
         ),
     ).to_list(first + 1)
