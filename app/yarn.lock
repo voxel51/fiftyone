@@ -2511,8 +2511,12 @@ __metadata:
     "@fiftyone/plugins": "*"
     "@fiftyone/state": "*"
     "@mapbox/mapbox-gl-draw": ^1.3.0
+    "@turf/boolean-contains": ^6.5.0
     "@types/mapbox-gl": ^2.7.4
+    "@types/mapbox__mapbox-gl-draw": ^1.2.5
     "@types/react-map-gl": ^6.1.3
+    "@types/robust-point-in-polygon": ^1.0.2
+    lodash.throttle: ^4.1.1
     mapbox-gl: ^2.9.2
     react-map-gl: ^7.0.18
     typescript: ^4.7.4
@@ -3722,6 +3726,74 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@turf/bbox@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/bbox@npm:6.5.0"
+  dependencies:
+    "@turf/helpers": ^6.5.0
+    "@turf/meta": ^6.5.0
+  checksum: 537be56ae0c5ad44e71a691717b35745e947e19a6bd9f20fdac2ab4318caf98cd88472d7dbf576e8b32ead5da034d273ffb3f4559d6d386820ddcb88a1f7fedd
+  languageName: node
+  linkType: hard
+
+"@turf/boolean-contains@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/boolean-contains@npm:6.5.0"
+  dependencies:
+    "@turf/bbox": ^6.5.0
+    "@turf/boolean-point-in-polygon": ^6.5.0
+    "@turf/boolean-point-on-line": ^6.5.0
+    "@turf/helpers": ^6.5.0
+    "@turf/invariant": ^6.5.0
+  checksum: 85d062c298ae758ed9afdea1595505f4cbf1cfb9e17c2c1add46b6478c52e5724b7782a57a43e31352d488a92191a92a1fd993deed952764d36c5e983b8ce4c7
+  languageName: node
+  linkType: hard
+
+"@turf/boolean-point-in-polygon@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/boolean-point-in-polygon@npm:6.5.0"
+  dependencies:
+    "@turf/helpers": ^6.5.0
+    "@turf/invariant": ^6.5.0
+  checksum: 624e54d9956b8f9d955285065f44c80ae66cd4a87e5d893f85871009b62ad9721cca520245a56f8c4401467767c153dda58f67fec0968e3971c7bb3a39617105
+  languageName: node
+  linkType: hard
+
+"@turf/boolean-point-on-line@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/boolean-point-on-line@npm:6.5.0"
+  dependencies:
+    "@turf/helpers": ^6.5.0
+    "@turf/invariant": ^6.5.0
+  checksum: 469bc39dfe8cdd50be654d3dc1ed94c130e27d5724461333edc6d32352d31c955a1e4f2785994f0a255162fd6075657e49c90b9c805a644e88e05e2a51ead6bc
+  languageName: node
+  linkType: hard
+
+"@turf/helpers@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/helpers@npm:6.5.0"
+  checksum: d57f746351357838c654e0a9b98be3285a14b447504fd6d59753d90c6d437410bb24805d61c65b612827f07f6c2ade823bb7e56e41a1a946217abccfbd64c117
+  languageName: node
+  linkType: hard
+
+"@turf/invariant@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/invariant@npm:6.5.0"
+  dependencies:
+    "@turf/helpers": ^6.5.0
+  checksum: f45109ee41429d4aab49db9cfcc68f832cadf18b16c1b2c7031f0a6e52545bc4d64d0efd0a980f4d05f22532ed89d6e915aeaab9db44865898d4d030221d968e
+  languageName: node
+  linkType: hard
+
+"@turf/meta@npm:^6.5.0":
+  version: 6.5.0
+  resolution: "@turf/meta@npm:6.5.0"
+  dependencies:
+    "@turf/helpers": ^6.5.0
+  checksum: c6bb936aa92bf3365e87a50dc65f248e070c5767a36fac390754c00c89bf2d1583418686ab19a10332bfa9340b8cac6aaf2c55dad7f5fcf77f1a2dda75ccf363
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.1.14":
   version: 7.1.19
   resolution: "@types/babel__core@npm:7.1.19"
@@ -3945,6 +4017,16 @@ __metadata:
   dependencies:
     "@types/geojson": "*"
   checksum: 13fd2fb546dcd56dc7d66199801a790ea1cba0997ebdd111617e1a7ef08465205ec8e6c4ece286cb273e2aa66f2e4fa8df751ac55851bf95399ca61daa308259
+  languageName: node
+  linkType: hard
+
+"@types/mapbox__mapbox-gl-draw@npm:^1.2.5":
+  version: 1.2.5
+  resolution: "@types/mapbox__mapbox-gl-draw@npm:1.2.5"
+  dependencies:
+    "@types/geojson": "*"
+    "@types/mapbox-gl": "*"
+  checksum: a575430f55534f6bdd3e328d4636f1614d76f95ae72045987340ccad64e4299c3d41496c00110d512ac8b08707b64f5248a08b1269a3dfc60da762652e8f48b8
   languageName: node
   linkType: hard
 
@@ -4190,6 +4272,13 @@ __metadata:
   dependencies:
     "@types/node": "*"
   checksum: e99fc7cc6265407987b30deda54c1c24bb1478803faf6037557a774b2f034c5b097ffd65847daa87e82a61a250d919f35c3588654b0fdaa816906650f596d1b0
+  languageName: node
+  linkType: hard
+
+"@types/robust-point-in-polygon@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@types/robust-point-in-polygon@npm:1.0.2"
+  checksum: 23afc6b3679dfe208b08f86db1c887a941df0329136fe85706285602675b727589068675c358c288fe1ba9747ce7a4713bb0df2e173df5cb6817ecc2d29bfec2
   languageName: node
   linkType: hard
 
@@ -8846,6 +8935,13 @@ __metadata:
   version: 4.4.0
   resolution: "lodash.pick@npm:4.4.0"
   checksum: 2c36cab7da6b999a20bd3373b40e31a3ef81fa264f34a6979c852c5bc8ac039379686b27380f0cb8e3781610844fafec6949c6fbbebc059c98f8fa8570e3675f
+  languageName: node
+  linkType: hard
+
+"lodash.throttle@npm:^4.1.1":
+  version: 4.1.1
+  resolution: "lodash.throttle@npm:4.1.1"
+  checksum: 129c0a28cee48b348aef146f638ef8a8b197944d4e9ec26c1890c19d9bf5a5690fe11b655c77a4551268819b32d27f4206343e30c78961f60b561b8608c8c805
   languageName: node
   linkType: hard
 

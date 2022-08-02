@@ -6,7 +6,11 @@ const useGeoLocations = ({
   dataset,
   filters,
   view,
-}): { loading: boolean; coordinates?: any; samples?: string[] } => {
+}): {
+  loading: boolean;
+  coordinates: [number, number][];
+  samples: string[];
+} => {
   const [aggregate, points, loading] = foa.useAggregation({
     dataset,
     filters,
@@ -28,7 +32,7 @@ const useGeoLocations = ({
   }, [dataset, filters, view, path]);
 
   const coordinates = React.useMemo(
-    () => (points && points.length ? points[1].map((c) => [c[1], c[0]]) : []),
+    () => (points && points.length ? points[1] : []),
     [points]
   );
 

@@ -4,6 +4,10 @@
   position: relative;
 }
 
+.container canvas {
+  outline: none;
+}
+
 .options {
   position: absolute;
   top: 1rem;

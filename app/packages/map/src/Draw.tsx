@@ -3,37 +3,41 @@ import { useControl } from "react-map-gl";
 
 import type { MapRef, ControlPosition } from "react-map-gl";
 
-type DrawControlProps = ConstructorParameters<typeof MapboxDraw>[0] & {
+type DrawControlProps = {
   position?: ControlPosition;
 
   onCreate?: (evt: { features: object[] }) => void;
   onUpdate?: (evt: { features: object[]; action: string }) => void;
   onDelete?: (evt: { features: object[] }) => void;
-};
+} & ConstructorParameters<typeof MapboxDraw>[0];
 
-export default function DrawControl(props: DrawControlProps) {
+export default function DrawControl({
+  position,
+  onCreate,
+
+  ...props
+}: DrawControlProps) {
   useControl<MapboxDraw>(
     ({ map }: { map: MapRef }) => {
-      map.on("draw.create", props.onCreate);
-      map.on("draw.update", props.onUpdate);
-      map.on("draw.delete", props.onDelete);
-      return new MapboxDraw(props);
+      const draw = new MapboxDraw(props);
+      map.on("draw.create", (event) => {
+        onCreate(event);
+
+        draw.delete(event.features[0].id);
+      });
+
+      map.on("render", () => {
+        if (draw.getMode() !== "draw_polygon") {
+          draw.changeMode("draw_polygon");
+        }
+      });
+
+      return draw;
     },
     ({ map }: { map: MapRef }) => {
-      map.off("draw.create", props.onCreate);
-      map.off("draw.update", props.onUpdate);
-      map.off("draw.delete", props.onDelete);
-    },
-    {
-      position: props.position,
+      map.off("draw.create", onCreate);
     }
   );
 
   return null;
 }
-
-DrawControl.defaultProps = {
-  onCreate: () => {},
-  onUpdate: () => {},
-  onDelete: () => {},
-};

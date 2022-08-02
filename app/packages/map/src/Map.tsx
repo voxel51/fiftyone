@@ -1,16 +1,18 @@
 import { container, options } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { State } from "@fiftyone/state";
+import { State, useSetView } from "@fiftyone/state";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
 import { debounce } from "lodash";
 import Map, { Layer, MapRef, Source } from "react-map-gl";
 import useResizeObserver from "use-resize-observer";
 import "mapbox-gl/dist/mapbox-gl.css";
+import contains from "@turf/boolean-contains";
 
 import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
+import { Loading } from "@fiftyone/components";
 
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoiYmVuamFtaW5wa2FuZSIsImEiOiJjbDV3bG1qbmUwazVkM2JxdjA2Mmwza3JpIn0.WnOukHfx7LBTOiOEYth-uQ";
@@ -24,6 +26,16 @@ const MAP_STYLES = {
 };
 
 const STYLES = Object.keys(MAP_STYLES);
+
+const computeBounds = (coordinates: [number, number][]) =>
+  coordinates.reduce(
+    (bounds, latLng) => bounds.extend(latLng),
+    new LngLatBounds()
+  );
+
+const fitBounds = (map: MapRef, coordinates: [number, number][]) => {
+  map.fitBounds(computeBounds(coordinates), { animate: false });
+};
 
 const useSearch = (search: string) => {
   const values = STYLES.filter((style) => style.includes(search));
@@ -89,14 +101,7 @@ const Plot: React.FC<{
     onResize,
   });
 
-  const bounds = React.useMemo(
-    () =>
-      coordinates.reduce(
-        (bounds, latLng) => bounds.extend([latLng[1], latLng[0]]),
-        new LngLatBounds()
-      ),
-    [coordinates]
-  );
+  const bounds = React.useMemo(() => computeBounds(coordinates), [coordinates]);
 
   const data = React.useMemo<
     GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
@@ -105,7 +110,8 @@ const Plot: React.FC<{
       type: "FeatureCollection",
       features: coordinates.map((point, index) => ({
         type: "Feature",
-        geometry: { type: "Point", coordinates: point.reverse() },
+        properties: { id: samples[index] },
+        geometry: { type: "Point", coordinates: point },
       })),
     };
   }, [coordinates, samples]);
@@ -131,15 +137,24 @@ const Plot: React.FC<{
     });
 
     const pointer = () => (map.getCanvas().style.cursor = "pointer");
-    const noPointer = () => (map.getCanvas().style.cursor = "");
+    const crosshair = () => (map.getCanvas().style.cursor = "crosshair");
+    const drag = () => (map.getCanvas().style.cursor = "grabbing");
     map.on("mouseenter", "cluster", pointer);
-    map.on("mouseleave", "cluster", noPointer);
+    map.on("mouseleave", "cluster", crosshair);
     map.on("mouseenter", "point", () => pointer);
-    map.on("mouseleave", "point", () => noPointer);
+    map.on("mouseleave", "point", () => crosshair);
+    map.on("dragstart", drag);
+    map.on("dragend", crosshair);
   }, []);
 
-  if (!coordinates.length) {
-    return;
+  const setView = useSetView();
+
+  React.useEffect(() => {
+    mapRef.current && fitBounds(mapRef.current, coordinates);
+  }, [coordinates]);
+
+  if (!coordinates.length && !loading) {
+    return <Loading>No data</Loading>;
   }
 
   return (
@@ -155,10 +170,10 @@ const Plot: React.FC<{
             bounds,
             fitBoundsOptions: { animate: false, padding: 30 },
           }}
-          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
-          onClick={(event) => {
-            console.log(event);
+          onStyleData={() => {
+            mapRef.current.getCanvas().style.cursor = "crosshair";
           }}
+          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
           onLoad={onLoad}
         >
           <Source
@@ -210,13 +225,46 @@ const Plot: React.FC<{
             />
           </Source>
           <DrawControl
-            position="top-left"
             displayControlsDefault={false}
-            controls={{
-              polygon: true,
-              trash: true,
+            defaultMode={"draw_polygon"}
+            onCreate={(event) => {
+              const {
+                features: [polygon],
+              } = event;
+              const selected = new Set<string>();
+              const newCoordinates = [];
+              for (let index = 0; index < coordinates.length; index++) {
+                if (
+                  contains(
+                    polygon as GeoJSON.Feature<GeoJSON.Polygon>,
+                    data.features[index]
+                  )
+                ) {
+                  selected.add(data.features[index].properties.id);
+                  newCoordinates.push(
+                    data.features[index].geometry.coordinates
+                  );
+                }
+              }
+
+              if (!selected.size) {
+                return;
+              }
+
+              setView((current) => {
+                return [
+                  ...current,
+                  {
+                    _cls: "fiftyone.core.stages.Select",
+                    kwargs: [
+                      ["sample_ids", [...selected]],
+                      ["ordered", false],
+                    ],
+                  },
+                ];
+              });
+              fitBounds(mapRef.current, newCoordinates);
             }}
-            defaultMode="draw_polygon"
           />
         </Map>
       )}
