@@ -1280,7 +1280,7 @@ class Exists(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._field])
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -1425,7 +1425,7 @@ class FilterField(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._field])
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -1987,7 +1987,7 @@ class FilterLabels(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._labels_field])
+        return sample_collection._get_group_slices(self._labels_field)
 
     def _kwargs(self):
         return [
@@ -2427,7 +2427,7 @@ class FilterKeypoints(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._field])
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -2962,7 +2962,7 @@ class GroupBy(ViewStage):
         field_or_expr = self._get_mongo_field_or_expr()
 
         if etau.is_str(field_or_expr):
-            return sample_collection._get_group_slices([field_or_expr])
+            return sample_collection._get_group_slices(field_or_expr)
 
         return foe.get_group_slices(field_or_expr)
 
@@ -3210,7 +3210,7 @@ class LimitLabels(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._field])
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -3352,7 +3352,7 @@ class MapLabels(ViewStage):
         if sample_collection.media_type != fom.GROUP:
             return None
 
-        return sample_collection._get_group_slices([self._field])
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -3521,7 +3521,7 @@ class SetField(ViewStage):
             return None
 
         group_slices = set()
-        group_slices.update(sample_collection._get_group_slices([self._field]))
+        group_slices.update(sample_collection._get_group_slices(self._field))
         group_slices.update(foe.get_group_slices(self._get_mongo_expr()))
 
         return list(group_slices)
@@ -5811,9 +5811,7 @@ class SortBy(ViewStage):
         group_slices = set()
         for expr, _ in field_or_expr:
             if etau.is_str(expr):
-                group_slices.update(
-                    sample_collection._get_group_slices([expr])
-                )
+                group_slices.update(sample_collection._get_group_slices(expr))
             else:
                 group_slices.update(foe.get_group_slices(expr))
 

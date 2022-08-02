@@ -7426,11 +7426,15 @@ class SampleCollection(object):
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
+        group_slices = set()
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
             attach_frames |= aggregation._needs_frames(self)
+            _group_slices = aggregation._needs_group_slices(self)
+            if _group_slices:
+                group_slices.update(_group_slices)
 
             try:
                 assert len(_pipeline) == 1
@@ -7442,13 +7446,16 @@ class SampleCollection(object):
                 )
 
         return self._pipeline(
-            pipeline=[{"$project": project}], attach_frames=attach_frames
+            pipeline=[{"$project": project}],
+            attach_frames=attach_frames,
+            group_slices=group_slices,
         )
 
     def _build_big_pipeline(self, aggregation):
         return self._pipeline(
             pipeline=aggregation.to_mongo(self, big_field="values"),
             attach_frames=aggregation._needs_frames(self),
+            group_slices=aggregation._needs_group_slices(self),
         )
 
     def _build_faceted_pipelines(self, aggs_map):
@@ -7457,6 +7464,7 @@ class SampleCollection(object):
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
             )
 
         return pipelines
@@ -7700,6 +7708,9 @@ class SampleCollection(object):
         )
 
     def _get_group_slices(self, field_names):
+        if etau.is_str(field_names):
+            field_names = [field_names]
+
         group_slices = set()
         for field_name in field_names:
             if field_name.startswith(self._GROUPS_PREFIX):

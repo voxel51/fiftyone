@@ -172,14 +172,34 @@ class Aggregation(object):
             return False
 
         if self._field_name is not None:
-            expr = F(self._field_name)
-        else:
-            expr = self._expr
+            return sample_collection._is_frame_field(self._field_name)
 
-        if expr is not None:
-            return foe.is_frames_expr(expr)
+        if self._expr is not None:
+            return foe.is_frames_expr(self._expr)
 
         return False
+
+    def _needs_group_slices(self, sample_collection):
+        """Whether the aggregation requires group slice(s) to be attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
+
+        Returns:
+            None, or a list of group slices
+        """
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._field_name is not None:
+            return sample_collection._get_group_slices(self._field_name)
+
+        if self._expr is not None:
+            return foe.get_group_slices(self._expr)
+
+        return None
 
     def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`Aggregation`.
