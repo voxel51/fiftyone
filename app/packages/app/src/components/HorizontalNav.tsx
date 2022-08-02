@@ -12,6 +12,7 @@ import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { Map } from "@fiftyone/map";
 
 import * as fos from "@fiftyone/state";
+import { fieldSchema, fullSchema, State } from "@fiftyone/state";
 
 export type Props = {};
 
@@ -98,8 +99,11 @@ const HorizontalNav = ({}: Props) => {
 
   const height = expanded ? openedHeight : closedHeight;
   const elementNames = useRecoilValue(fos.elementNames);
-  const dataset = useRecoilValue(fos.dataset);
-  const pluginPlots = useActivePlugins(PluginComponentType.Plot, { dataset });
+
+  const schema = useRecoilValue(
+    fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+  const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
 
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];

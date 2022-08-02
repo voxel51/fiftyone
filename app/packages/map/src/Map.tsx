@@ -2,6 +2,7 @@ import { container, options } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
 import { State, useSetView } from "@fiftyone/state";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
 import { debounce } from "lodash";
@@ -24,6 +25,7 @@ const MAP_STYLES = {
   Outdoors: "outdoors-v11",
   Satellite: "satellite-v9",
 };
+const fitBoundsOptions = { animate: false, padding: 30 };
 
 const STYLES = Object.keys(MAP_STYLES);
 
@@ -34,7 +36,7 @@ const computeBounds = (coordinates: [number, number][]) =>
   );
 
 const fitBounds = (map: MapRef, coordinates: [number, number][]) => {
-  map.fitBounds(computeBounds(coordinates), { animate: false });
+  map.fitBounds(computeBounds(coordinates), fitBoundsOptions);
 };
 
 const useSearch = (search: string) => {
@@ -115,13 +117,22 @@ const Plot: React.FC<{
       })),
     };
   }, [coordinates, samples]);
+  const [draw] = React.useState(
+    () =>
+      new MapboxDraw({
+        displayControlsDefault: false,
+        defaultMode: "draw_polygon",
+      })
+  );
 
   const onLoad = React.useCallback(() => {
     const map = mapRef.current.getMap();
     map.on("click", "cluster", (event) => {
+      event.preventDefault();
       const features = map.queryRenderedFeatures(event.point, {
         layers: ["cluster"],
       });
+      draw.changeMode("simple_select");
 
       const clusterId = features[0].properties.cluster_id;
       const source = map.getSource("points") as GeoJSONSource;
@@ -168,13 +179,20 @@ const Plot: React.FC<{
           mapStyle={`mapbox://styles/mapbox/${MAP_STYLES[style]}`}
           initialViewState={{
             bounds,
-            fitBoundsOptions: { animate: false, padding: 30 },
+            fitBoundsOptions,
           }}
           onStyleData={() => {
             mapRef.current.getCanvas().style.cursor = "crosshair";
           }}
           mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
           onLoad={onLoad}
+          onRender={() => {
+            try {
+              if (draw.getMode() !== "draw_polygon") {
+                draw.changeMode("draw_polygon");
+              }
+            } catch {}
+          }}
         >
           <Source
             id="points"
@@ -225,8 +243,7 @@ const Plot: React.FC<{
             />
           </Source>
           <DrawControl
-            displayControlsDefault={false}
-            defaultMode={"draw_polygon"}
+            draw={draw}
             onCreate={(event) => {
               const {
                 features: [polygon],
@@ -278,17 +295,19 @@ const Plot: React.FC<{
           containerStyle={selectorStyle}
           overflow={true}
         />
-        <foc.Selector
-          placeholder={"Field"}
-          value={activeField}
-          onSelect={setActiveField}
-          useSearch={() => {
-            return { values: fields };
-          }}
-          component={Value}
-          containerStyle={selectorStyle}
-          overflow={true}
-        />
+        {fields.length > 1 && (
+          <foc.Selector
+            placeholder={"Field"}
+            value={activeField}
+            onSelect={setActiveField}
+            useSearch={() => {
+              return { values: fields };
+            }}
+            component={Value}
+            containerStyle={selectorStyle}
+            overflow={true}
+          />
+        )}
       </div>
     </div>
   );
