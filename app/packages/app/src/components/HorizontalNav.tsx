@@ -1,7 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { capitalize } from "@material-ui/core";
 import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 
 import { PillButton } from "./utils";
@@ -92,6 +97,7 @@ const DISTRIBUTION_PLOTS = [
 const HorizontalNav = ({}: Props) => {
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
+  const reset = useResetRecoilState(fos.activePlot);
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
@@ -107,6 +113,14 @@ const HorizontalNav = ({}: Props) => {
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
 
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
+  const hasPlot = buttonLabels.includes(activePlot);
+
+  useEffect(() => {
+    if (!hasPlot) {
+      reset();
+      setExpanded(false);
+    }
+  }, [hasPlot]);
 
   return (
     <>
