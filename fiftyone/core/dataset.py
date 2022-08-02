@@ -4742,7 +4742,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _unwind_frames_pipeline(self):
         """A pipeline that returns (only) the unwound ``frames`` documents."""
         return [
-            {"$project": {"frames": True}},
             {"$unwind": "$frames"},
             {"$replaceRoot": {"newRoot": "$frames"}},
         ]
