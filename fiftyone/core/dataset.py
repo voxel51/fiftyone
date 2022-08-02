@@ -4602,28 +4602,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _pipeline(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
         if media_type is None:
             media_type = self.media_type
 
-        if not self._contains_videos(only_active_slice=True):
+        if media_type == fom.VIDEO:
+            contains_videos = True
+        else:
+            contains_videos = self._contains_videos(only_active_slice=True)
+
+        if not contains_videos:
             attach_frames = False
             detach_frames = False
             frames_only = False
 
-        if not attach_frames:
+        if frames_only:
+            if attach_frames == False:
+                attach_frames = True
+
             detach_frames = False
 
-        if frames_only:
-            attach_frames = True
+        if attach_frames == False:
             detach_frames = False
+
+        # Special syntax: frames were already attached in `pipeline`
+        if attach_frames == -1:
+            attach_frames = False
 
         if media_type != fom.GROUP:
             group_slices = None
@@ -4633,19 +4645,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if groups_only:
             detach_groups = False
 
-        if attach_frames:
-            _pipeline = self._frames_lookup_pipeline()
-        else:
-            _pipeline = []
+        # Special syntax: group slices were already attached in `pipeline`
+        if group_slices == -1:
+            group_slices = None
 
-        if media_type == fom.GROUP:
+        _pipeline = []
+
+        # If this is a grouped dataset, always start the pipeline by selecting
+        # `group_slice`, unless the caller manually overrides this
+        if self.media_type == fom.GROUP and not manual_group_select:
             _pipeline.extend(self._group_select_pipeline())
-
-        if group_slices:
-            _pipeline.extend(self._groups_lookup_pipeline(group_slices))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
+
+        if attach_frames:
+            _pipeline.extend(self._attach_frames_pipeline())
+
+        if group_slices:
+            _pipeline.extend(
+                self._attach_groups_pipeline(group_slices=group_slices)
+            )
 
         if detach_frames:
             _pipeline.append({"$project": {"frames": False}})
@@ -4659,7 +4679,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _frames_lookup_pipeline(self):
+    def _attach_frames_pipeline(self):
+        """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
             return [
                 {
@@ -4725,6 +4746,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
     def _unwind_frames_pipeline(self):
+        """A pipeline that returns (only) the unwound ``frames`` documents."""
         return [
             {"$project": {"frames": True}},
             {"$unwind": "$frames"},
@@ -4732,6 +4754,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
     def _group_select_pipeline(self):
+        """A pipeline that selects only ``group_slice`` documents from the
+        pipeline.
+        """
         name_field = self.group_field + ".name"
         return [
             {
@@ -4741,7 +4766,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             }
         ]
 
-    def _groups_lookup_pipeline(self, group_slices=None):
+    def _attach_groups_pipeline(self, group_slices=None):
+        """A pipeline that attaches the reuested group slice(s) for each
+        document and stores them in under ``groups.<slice>`` keys.
+        """
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
@@ -4777,6 +4805,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
     def _groups_only_pipeline(self, group_slices=None):
+        """A pipeline that looks up the requested group slices for each
+        document and returns (only) the unwound group slices.
+        """
         id_field = self.group_field + "._id"
         name_field = self.group_field + ".name"
 
@@ -4821,23 +4852,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _aggregate(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
+            media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
-            media_type=media_type,
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,
+            manual_group_select=manual_group_select,
         )
 
         return foo.aggregate(self._sample_collection, _pipeline)

@@ -3802,6 +3802,15 @@ class SelectGroupSlice(ViewStage):
         return self._slice
 
     def to_mongo(self, sample_collection):
+        if isinstance(sample_collection, fod.Dataset) or (
+            isinstance(sample_collection, fov.DatasetView)
+            and len(sample_collection._stages) == 0
+        ):
+            return self._make_root_pipeline(sample_collection)
+
+        return self._make_pipeline(sample_collection)
+
+    def _make_root_pipeline(self, sample_collection):
         group_path = sample_collection.group_field + ".name"
 
         if etau.is_container(self._slice):
@@ -3819,6 +3828,32 @@ class SelectGroupSlice(ViewStage):
             ]
 
         return []
+
+    def _make_pipeline(self, sample_collection):
+        group_field = sample_collection.group_field
+        id_field = group_field + "._id"
+        name_field = group_field + ".name"
+
+        expr = F(id_field) == "$$group_id"
+
+        if etau.is_container(self._slice):
+            expr &= F(name_field).is_in(list(self._slice))
+        elif self._slice is not None:
+            expr &= F(name_field) == self._slice
+
+        return [
+            {"$project": {group_field: True}},
+            {
+                "$lookup": {
+                    "from": sample_collection._dataset._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [{"$match": {"$expr": expr.to_mongo()}}],
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
 
     def get_media_type(self, sample_collection):
         group_field = sample_collection.group_field
