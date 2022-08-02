@@ -68,7 +68,7 @@ class GroupTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_group_basics(self):
+    def test_basics(self):
         dataset = _make_group_dataset()
 
         self.assertEqual(dataset.media_type, "group")
@@ -107,7 +107,7 @@ class GroupTests(unittest.TestCase):
         self.assertIn("right", group)
 
     @drop_datasets
-    def test_group_field_operations(self):
+    def test_field_operations(self):
         dataset = _make_group_dataset()
 
         self.assertDictEqual(
@@ -132,7 +132,7 @@ class GroupTests(unittest.TestCase):
         dataset.rename_sample_field("still_group_field", "group_field")
 
     @drop_datasets
-    def test_group_views(self):
+    def test_views(self):
         dataset = _make_group_dataset()
 
         # Group fields cannot be excluded
@@ -209,6 +209,96 @@ class GroupTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             view = dataset.select_group_slice()
+
+    @drop_datasets
+    def test_aggregations(self):
+        dataset = _make_group_dataset()
+
+        self.assertEqual(dataset.count(), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+
+        self.assertListEqual(dataset.distinct("field"), [2, 5])
+        self.assertListEqual(
+            dataset.select_group_slice(["left", "right"]).distinct("field"),
+            [1, 3, 4, 6],
+        )
+        self.assertListEqual(
+            dataset.select_group_slice(_allow_mixed=True).distinct("field"),
+            [1, 2, 3, 4, 5, 6],
+        )
+        self.assertListEqual(dataset.distinct("frames.field"), [1, 2])
+
+        view = dataset.limit(1)
+
+        self.assertEqual(view.count(), 1)
+        self.assertEqual(view.count("frames"), 2)
+
+        self.assertListEqual(view.distinct("field"), [2])
+        self.assertListEqual(
+            view.select_group_slice(["left", "right"]).distinct("field"),
+            [1, 3],
+        )
+        self.assertListEqual(
+            view.select_group_slice(_allow_mixed=True).distinct("field"),
+            [1, 2, 3],
+        )
+        self.assertListEqual(view.distinct("frames.field"), [1, 2])
+
+        view = dataset.limit(1).select_group_slice("ego")
+
+        self.assertEqual(view.count(), 1)
+        self.assertEqual(view.count("frames"), 2)
+
+        self.assertListEqual(view.distinct("field"), [2])
+        self.assertListEqual(view.distinct("frames.field"), [1, 2])
+
+    @drop_datasets
+    def test_set_values(self):
+        dataset = _make_group_dataset()
+
+        dataset.set_values("new_field", [3, 4])
+
+        self.assertListEqual(dataset.values("new_field"), [3, 4])
+        self.assertListEqual(
+            dataset.select_group_slice("left").values("new_field"),
+            [None, None],
+        )
+
+        sample = dataset.first()
+
+        self.assertEqual(sample.new_field, 3)
+
+        sample = dataset.select_group_slice("left").first()
+
+        self.assertIsNone(sample.new_field)
+
+        view = dataset.select_group_slice(["left", "right"])
+
+        view.set_values("new_field", [10, 20, 30, 40])
+
+        self.assertListEqual(
+            dataset.select_group_slice(_allow_mixed=True).values("new_field"),
+            [10, 3, 20, 30, 4, 40],
+        )
+
+        sample = dataset.select_group_slice("left").first()
+
+        self.assertEqual(sample.new_field, 10)
+
+        view = dataset.limit(1)
+
+        view.set_values("frames.new_field", [[3, 4]])
+
+        self.assertListEqual(dataset.values("new_field"), [3, 4])
+
+        self.assertListEqual(
+            dataset.limit(1).values("frames.new_field", unwind=True), [3, 4]
+        )
+
+        sample = dataset.first()
+        frame = sample.frames.first()
+
+        self.assertEqual(frame.new_field, 3)
 
     @drop_datasets
     def test_to_dict(self):
