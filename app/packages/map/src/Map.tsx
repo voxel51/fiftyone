@@ -1,33 +1,27 @@
-import { container, map, options } from "./Map.module.css";
+import { container, options } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import mapboxgl from "mapbox-gl";
-import Plotly from "plotly.js-dist";
-import React, {
-  useCallback,
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-} from "react";
-import { v4 as uuid } from "uuid";
+import { State } from "@fiftyone/state";
+import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
+import React from "react";
+import { debounce } from "lodash";
+import Map, { Layer, MapRef, Source } from "react-map-gl";
+import useResizeObserver from "use-resize-observer";
+import "mapbox-gl/dist/mapbox-gl.css";
+
 import useGeoLocations from "./useGeoLocations";
-import { Loading, useTheme } from "@fiftyone/components";
-import { deferrer, State } from "@fiftyone/state";
+import DrawControl from "./Draw";
 
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoiYmVuamFtaW5wa2FuZSIsImEiOiJjbDV3bG1qbmUwazVkM2JxdjA2Mmwza3JpIn0.WnOukHfx7LBTOiOEYth-uQ";
 
 const MAP_STYLES = {
-  Street: "streets",
-  Light: "light",
-  Dark: "dark",
-  Satellite: "satellite",
-  "Satellite Streets": "satellite-streets",
+  Street: "streets-v11",
+  Dark: "dark-v10",
+  Light: "light-v10",
+  Outdoors: "outdoors-v11",
+  Satellite: "satellite-v9",
 };
-
-const COLOR = "red";
-const SIZE = 10;
 
 const STYLES = Object.keys(MAP_STYLES);
 
@@ -37,12 +31,12 @@ const useSearch = (search: string) => {
   return { values };
 };
 
-const Value: React.FC<{ value: string }> = ({ value }) => {
+const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
 };
 
 const useGeoFields = (dataset: State.Dataset): string[] => {
-  return useMemo(() => {
+  return React.useMemo(() => {
     return dataset.sampleFields
       .filter((f) => f.embeddedDocType === "fiftyone.core.labels.GeoLocation")
       .map(({ name }) => name)
@@ -51,115 +45,24 @@ const useGeoFields = (dataset: State.Dataset): string[] => {
 };
 
 const Plot: React.FC<{
-  coordinates: [number, number][];
-  id: string;
-  samples: string[];
-  style: string;
-}> = ({ coordinates, id, samples, style }) => {
-  const bounds = useMemo(
-    () =>
-      coordinates.reduce(
-        (bounds, latLng) => bounds.extend([latLng[1], latLng[0]]),
-        new mapboxgl.LngLatBounds()
-      ),
-    [coordinates]
-  );
-
-  const layout = useMemo(() => {
-    if (!coordinates.length) {
-      return null;
-    }
-    const center = bounds.getCenter();
-
-    return {
-      mapbox: {
-        style: MAP_STYLES[style],
-        center: {
-          lat: center.lat,
-          lon: center.lng,
-        },
-      },
-      margin: { r: 0, t: 0, b: 0, l: 0 },
-    };
-  }, [bounds, coordinates]);
-
-  const data = useMemo(
-    () => [
-      {
-        type: "scattermapbox",
-        lat: coordinates.map((latLng) => latLng[0]),
-        lon: coordinates.map((latLng) => latLng[1]),
-        marker: {
-          color: COLOR,
-          size: SIZE,
-        },
-      },
-    ],
-    [coordinates]
-  );
-
-  useEffect(() => {
-    layout &&
-      Plotly.react(id, data, layout, {
-        mapboxAccessToken: MAPBOX_ACCESS_TOKEN,
-      }).then((plot) => {
-        const map = plot._fullLayout.mapbox._subplot.map;
-
-        map.once("zoomend", () => {
-          let zoom = map.getZoom();
-          plot._fullLayout.mapbox._subplot.viewInitial.zoom = zoom;
-          Plotly.relayout(id, { "mapbox.zoom": zoom });
-        });
-
-        map.fitBounds([bounds.getNorthEast(), bounds.getSouthWest()], {
-          padding: 20,
-        });
-
-        plot.on("plotly_click", (event) => {
-          let sampleID = samples[event.points[0].pointIndex];
-          console.log(`Clicked sample: ${sampleID}`);
-        });
-
-        plot.on("plotly_selected", (event) => {
-          let sampleIDs = event.points.map(
-            (point) => sampleIDs[point.pointIndex]
-          );
-          console.log(`Selected ${sampleIDs.length} samples: ${sampleIDs}`);
-        });
-      });
-  }, [id, data, layout]);
-
-  return <div className={map} id={id}></div>;
-};
-
-const Map: React.FC<{
   dataset: State.Dataset;
   filters: State.Filters;
   view: State.Stage[];
 }> = ({ dataset, filters, view }) => {
-  const [id] = useState(() => uuid());
-  const theme = useTheme();
+  const theme = foc.useTheme();
 
   const fields = useGeoFields(dataset);
 
-  const [activeField, setActiveField] = useState(() => fields[0]);
+  const [activeField, setActiveField] = React.useState(() => fields[0]);
 
-  const { loading, coordinates, samples } = useGeoLocations({
+  let { loading, coordinates, samples } = useGeoLocations({
     dataset,
     filters,
     view,
     path: activeField,
   });
 
-  const [style, setStyle] = useState("streets");
-
-  const mapStyleChange = useCallback(
-    (style: string) => {
-      Plotly.relayout(id, { "mapbox.style": MAP_STYLES[style] });
-      setStyle(style);
-    },
-    [id, style]
-  );
+  const [style, setStyle] = React.useState("Dark");
 
   const selectorStyle = {
     background: theme.backgroundTransparent,
@@ -168,15 +71,160 @@ const Map: React.FC<{
     padding: "0.25rem",
   };
 
+  const mapRef = React.useRef<MapRef>();
+  const onResize = React.useMemo(
+    () =>
+      debounce(
+        () => {
+          mapRef.current && mapRef.current.resize();
+        },
+        0,
+        {
+          trailing: true,
+        }
+      ),
+    []
+  );
+  const { ref } = useResizeObserver<HTMLDivElement>({
+    onResize,
+  });
+
+  const bounds = React.useMemo(
+    () =>
+      coordinates.reduce(
+        (bounds, latLng) => bounds.extend([latLng[1], latLng[0]]),
+        new LngLatBounds()
+      ),
+    [coordinates]
+  );
+
+  const data = React.useMemo<
+    GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
+  >(() => {
+    return {
+      type: "FeatureCollection",
+      features: coordinates.map((point, index) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: point.reverse() },
+      })),
+    };
+  }, [coordinates, samples]);
+
+  const onLoad = React.useCallback(() => {
+    const map = mapRef.current.getMap();
+    map.on("click", "cluster", (event) => {
+      const features = map.queryRenderedFeatures(event.point, {
+        layers: ["cluster"],
+      });
+
+      const clusterId = features[0].properties.cluster_id;
+      const source = map.getSource("points") as GeoJSONSource;
+      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
+        if (error) return;
+
+        const point = features[0].geometry as GeoJSON.Point;
+        mapRef.current.easeTo({
+          center: point.coordinates as [number, number],
+          zoom: zoom,
+        });
+      });
+    });
+
+    const pointer = () => (map.getCanvas().style.cursor = "pointer");
+    const noPointer = () => (map.getCanvas().style.cursor = "");
+    map.on("mouseenter", "cluster", pointer);
+    map.on("mouseleave", "cluster", noPointer);
+    map.on("mouseenter", "point", () => pointer);
+    map.on("mouseleave", "point", () => noPointer);
+  }, []);
+
+  if (!coordinates.length) {
+    return;
+  }
+
   return (
-    <div className={container}>
-      <Plot id={id} coordinates={coordinates} samples={samples} style={style} />
-      {loading && <Loading style={{}}>Pixelating...</Loading>}
+    <div className={container} ref={ref}>
+      {loading && !coordinates.length ? (
+        <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
+      ) : (
+        <Map
+          ref={mapRef}
+          mapLib={mapbox}
+          mapStyle={`mapbox://styles/mapbox/${MAP_STYLES[style]}`}
+          initialViewState={{
+            bounds,
+            fitBoundsOptions: { animate: false, padding: 30 },
+          }}
+          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
+          onClick={(event) => {
+            console.log(event);
+          }}
+          onLoad={onLoad}
+        >
+          <Source
+            id="points"
+            type="geojson"
+            data={data}
+            cluster={true}
+            clusterMaxZoom={12}
+          >
+            <Layer
+              id={"cluster"}
+              filter={["has", "point_count"]}
+              paint={{
+                // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
+                "circle-color": theme.brand,
+                "circle-opacity": 0.7,
+                "circle-radius": [
+                  "step",
+                  ["get", "point_count"],
+                  20,
+                  10,
+                  30,
+                  25,
+                  40,
+                ],
+              }}
+              type={"circle"}
+            />
+            <Layer
+              id={"cluster-count"}
+              filter={["has", "point_count"]}
+              layout={{
+                "text-field": "{point_count_abbreviated}",
+                "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                "text-size": 12,
+              }}
+              paint={{ "text-color": theme.font }}
+              type={"symbol"}
+            />
+            <Layer
+              id={"point"}
+              filter={["!", ["has", "point_count"]]}
+              paint={{
+                "circle-color": theme.brand,
+                "circle-opacity": 0.7,
+                "circle-radius": 4,
+              }}
+              type={"circle"}
+            />
+          </Source>
+          <DrawControl
+            position="top-left"
+            displayControlsDefault={false}
+            controls={{
+              polygon: true,
+              trash: true,
+            }}
+            defaultMode="draw_polygon"
+          />
+        </Map>
+      )}
       <div className={options}>
         <foc.Selector
           placeholder={"Map Style"}
           value={style}
-          onSelect={mapStyleChange}
+          onSelect={setStyle}
           useSearch={useSearch}
           component={Value}
           containerStyle={selectorStyle}
@@ -198,4 +246,4 @@ const Map: React.FC<{
   );
 };
 
-export default Map;
+export default Plot;

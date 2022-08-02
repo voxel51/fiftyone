@@ -16,14 +16,15 @@ import * as fos from "@fiftyone/state";
 export type Props = {};
 
 const Container = styled(Resizable)`
-  padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
   overflow: hidden;
+  position: relative;
+  width: 100%;
 `;
 
 const Nav = styled.div`
-  padding: 0 1rem;
+  padding: 1rem 1rem 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -93,7 +94,7 @@ const HorizontalNav = ({}: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
-  const closedHeight = 64;
+  const closedHeight = 0;
 
   const height = expanded ? openedHeight : closedHeight;
   const elementNames = useRecoilValue(fos.elementNames);
@@ -104,23 +105,7 @@ const HorizontalNav = ({}: Props) => {
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
 
   return (
-    <Container
-      size={{ height: maximized ? windowHeight - 73 : height }}
-      minHeight={closedHeight}
-      enable={{
-        top: false,
-        right: false,
-        bottom: expanded && !maximized,
-        left: false,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
-      onResizeStop={(e, direction, ref, d) => {
-        setOpenedHeight(height + d.height);
-      }}
-    >
+    <>
       <Nav>
         <PlotsButtons>
           {buttonLabels.map((e) => (
@@ -166,9 +151,27 @@ const HorizontalNav = ({}: Props) => {
           />
         </NavButtons>
       </Nav>
-
-      {expanded ? (
-        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {expanded && (
+        <Container
+          size={{
+            height: maximized ? windowHeight - 73 : height,
+            width: "100%",
+          }}
+          minHeight={closedHeight}
+          enable={{
+            top: false,
+            right: false,
+            bottom: expanded && !maximized,
+            left: false,
+            topRight: false,
+            bottomRight: false,
+            bottomLeft: false,
+            topLeft: false,
+          }}
+          onResizeStop={(e, direction, ref, d) => {
+            setOpenedHeight(height + d.height);
+          }}
+        >
           <ActivePlot
             key={activePlot}
             active={activePlot}
@@ -176,9 +179,9 @@ const HorizontalNav = ({}: Props) => {
             distributionPlots={DISTRIBUTION_PLOTS}
             pluginPlots={pluginPlots}
           />
-        </div>
-      ) : null}
-    </Container>
+        </Container>
+      )}
+    </>
   );
 };
 

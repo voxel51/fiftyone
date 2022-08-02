@@ -1,13 +1,7 @@
 .container {
   height: 100%;
-  display: flex;
-  flex-direction: flex-column;
-  flex-shrink: 1;
-}
-
-.map {
-  display: flex;
-  flex-grow: 1;
+  width: 100%;
+  position: relative;
 }
 
 .options {
