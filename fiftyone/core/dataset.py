@@ -4624,18 +4624,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             detach_frames = False
             frames_only = False
 
-        if frames_only:
-            if attach_frames == False:
+        # We check for exactly False here, because `attach_frames == None` is a
+        # special syntax that means that frames were already attached
+        if attach_frames == False:
+            if frames_only:
                 attach_frames = True
 
             detach_frames = False
 
-        if attach_frames == False:
+        if frames_only:
             detach_frames = False
-
-        # Special syntax: frames were already attached in `pipeline`
-        if attach_frames == -1:
-            attach_frames = False
 
         if media_type != fom.GROUP:
             group_slices = None
@@ -4644,10 +4642,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if groups_only:
             detach_groups = False
-
-        # Special syntax: group slices were already attached in `pipeline`
-        if group_slices == -1:
-            group_slices = None
 
         _pipeline = []
 
@@ -4833,6 +4827,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
     def _unwind_groups_pipeline(self):
+        """A pipeline that returns (only) the unwound ``groups`` documents."""
         return [
             {
                 "$set": {

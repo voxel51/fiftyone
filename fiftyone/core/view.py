@@ -999,7 +999,7 @@ class DatasetView(foc.SampleCollection):
 
         # Insert frame lookup pipeline if needed
         if _attach_frames_idx is not None:
-            attach_frames = -1  # special syntax: frames already attached
+            attach_frames = None  # special syntax: frames already attached
             _pipeline = self._dataset._attach_frames_pipeline()
             _pipelines.insert(_attach_frames_idx, _pipeline)
 
@@ -1008,7 +1008,7 @@ class DatasetView(foc.SampleCollection):
             if group_slices:
                 _group_slices.update(group_slices)
 
-            group_slices = -1  # special syntax: groups already attached
+            group_slices = None
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices
             )

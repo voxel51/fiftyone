@@ -7500,20 +7500,22 @@ class SampleCollection(object):
                 append to the current pipeline
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                video datasets
             detach_frames (False): whether to detach the frame documents at the
                 end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
-            group_slices (None): a list of group slices to attach. Only
-                applicable for grouped collections
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
             groups_only (False): whether to generate a pipeline that contains
-                the flattened group documents for the collection
+                *only* the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
             manual_group_select (False): whether the pipeline has manually
-                handled initial group selection. Only applicable to grouped
+                handled the initial group selection. Only applicable to grouped
                 collections
 
         Returns:
@@ -7541,20 +7543,22 @@ class SampleCollection(object):
                 append to the current pipeline
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                video datasets
             detach_frames (False): whether to detach the frame documents at the
                 end of the pipeline. Only applicable to video datasets
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
-            group_slices (None): a list of group slices to attach. Only
-                applicable for grouped collections
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
             groups_only (False): whether to generate a pipeline that contains
-                the flattened group documents for the collection
+                *only* the flattened group documents for the collection
             detach_groups (False): whether to detach the group documents at the
                 end of the pipeline. Only applicable to grouped collections
             manual_group_select (False): whether the pipeline has manually
-                handled initial group selection. Only applicable to grouped
+                handled the initial group selection. Only applicable to grouped
                 collections
 
         Returns:
