@@ -17,6 +17,9 @@ def up(db, dataset_name):
     if "default_group_slice" not in dataset_dict:
         dataset_dict["default_group_slice"] = None
 
+    if "app_config" not in dataset_dict:
+        dataset_dict["app_config"] = None
+
     db.datasets.replace_one(match_d, dataset_dict)
 
 
@@ -33,5 +36,7 @@ def down(db, dataset_name):
             "because groups were not supported before this release"
             % (dataset_name, list(groups.keys()))
         )
+
+    dataset_dict.pop("app_config", None)
 
     db.datasets.replace_one(match_d, dataset_dict)
