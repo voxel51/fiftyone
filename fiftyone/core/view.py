@@ -184,6 +184,16 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_slice
 
     @property
+    def group_slices(self):
+        """The list of group slices of the view, or None if the view is not
+        grouped.
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_slices
+
+    @property
     def group_media_types(self):
         """A dict mapping group slices to media types, or None if the view is
         not grouped.

@@ -442,6 +442,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._group_slice = slice_name
 
     @property
+    def group_slices(self):
+        """The list of group slices of the dataset, or None if the dataset is
+        not grouped.
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return list(self._doc.group_media_types.keys())
+
+    @property
     def group_media_types(self):
         """A dict mapping group slices to media types, or None if the dataset
         is not grouped.
@@ -1535,6 +1545,56 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fofr.Frame._reload_docs(self._frame_collection_name)
 
         self._reload()
+
+    def rename_group_slice(self, name, new_name):
+        """Renames the group slice with the given name.
+
+        Args:
+            name: the group slice name
+            new_name: the new group slice name
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        group_path = self.group_field + ".name"
+        self.select_group_slice(name).set_field(group_path, new_name).save()
+
+        new_media_type = self._doc.group_media_types.pop(name)
+        self._doc.group_media_types[new_name] = new_media_type
+
+        if self._doc.default_group_slice == name:
+            self._doc.default_group_slice = new_name
+
+        if self.group_slice == name:
+            self.group_slice = new_name
+
+        self._doc.save()
+
+    def delete_group_slice(self, name):
+        """Deletes all samples in the given group slice from the dataset.
+
+        Args:
+            name: a group slice name
+        """
+        if self.media_type != fom.GROUP:
+            raise ValueError("Dataset has no groups")
+
+        if name not in self._doc.group_media_types:
+            raise ValueError("Dataset has no group slice '%s'" % name)
+
+        self.delete_samples(self.select_group_slice(name))
+
+        self._doc.group_media_types.pop(name)
+
+        new_default = next(iter(self._doc.group_media_types.keys()), None)
+
+        if self._doc.default_group_slice == name:
+            self._doc.default_group_slice = new_default
+
+        if self._group_slice == name:
+            self._group_slice = new_default
+
+        self._doc.save()
 
     def iter_samples(self, progress=False):
         """Returns an iterator over the samples in the dataset.
@@ -4973,7 +5033,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # observed value
             if self._doc.default_group_slice is None:
                 self._doc.default_group_slice = slice_name
-                self._slice_name = slice_name
+                self._group_slice = slice_name
 
             self._doc.save()
 
@@ -5598,7 +5658,7 @@ def _get_frames_pipeline(sample_collection):
 def _save_view(view, fields=None):
     dataset = view._dataset
 
-    contains_videos = dataset._contains_videos()
+    contains_videos = view._contains_videos()
     all_fields = fields is None
 
     if fields is None:
@@ -5621,6 +5681,9 @@ def _save_view(view, fields=None):
 
     save_samples = sample_fields or all_fields
     save_frames = frame_fields or all_fields
+
+    # Must retrieve IDs now in case view changes after saving
+    sample_ids = view.values("id")
 
     #
     # Save samples
@@ -5680,8 +5743,6 @@ def _save_view(view, fields=None):
     #
     # Reload in-memory documents
     #
-
-    sample_ids = view.values("id")
 
     if save_samples:
         fos.Sample._reload_docs(
