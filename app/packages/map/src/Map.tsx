@@ -1,7 +1,7 @@
 import { container, options } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { State, useSetView } from "@fiftyone/state";
+import { State, useSetExtendedSelection } from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
@@ -58,6 +58,20 @@ const useGeoFields = (dataset: State.Dataset): string[] => {
   }, [dataset]);
 };
 
+const createSourceData = (
+  coordinates: [number, number][],
+  samples: string[]
+): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+  return {
+    type: "FeatureCollection",
+    features: coordinates.map((point, index) => ({
+      type: "Feature",
+      properties: { id: samples[index] },
+      geometry: { type: "Point", coordinates: point },
+    })),
+  };
+};
+
 const Plot: React.FC<{
   dataset: State.Dataset;
   filters: State.Filters;
@@ -105,18 +119,11 @@ const Plot: React.FC<{
 
   const bounds = React.useMemo(() => computeBounds(coordinates), [coordinates]);
 
-  const data = React.useMemo<
-    GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
-  >(() => {
-    return {
-      type: "FeatureCollection",
-      features: coordinates.map((point, index) => ({
-        type: "Feature",
-        properties: { id: samples[index] },
-        geometry: { type: "Point", coordinates: point },
-      })),
-    };
-  }, [coordinates, samples]);
+  const data = React.useMemo(
+    () => createSourceData(coordinates, samples),
+    [coordinates, samples]
+  );
+
   const [draw] = React.useState(
     () =>
       new MapboxDraw({
@@ -158,7 +165,7 @@ const Plot: React.FC<{
     map.on("dragend", crosshair);
   }, []);
 
-  const setView = useSetView();
+  const setSelection = useSetExtendedSelection();
 
   React.useEffect(() => {
     mapRef.current && fitBounds(mapRef.current, coordinates);
@@ -250,6 +257,7 @@ const Plot: React.FC<{
               } = event;
               const selected = new Set<string>();
               const newCoordinates = [];
+              const newSamples = [];
               for (let index = 0; index < coordinates.length; index++) {
                 if (
                   contains(
@@ -263,23 +271,16 @@ const Plot: React.FC<{
                   );
                 }
               }
+              const source = mapRef.current.getSource("points");
+              if (source.type === "geojson") {
+                source.setData(createSourceData(newCoordinates, newSamples));
+              }
 
               if (!selected.size) {
                 return;
               }
 
-              setView((current) => {
-                return [
-                  ...current,
-                  {
-                    _cls: "fiftyone.core.stages.Select",
-                    kwargs: [
-                      ["sample_ids", [...selected]],
-                      ["ordered", false],
-                    ],
-                  },
-                ];
-              });
+              setSelection([...selected]);
               fitBounds(mapRef.current, newCoordinates);
             }}
           />

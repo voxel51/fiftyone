@@ -207,11 +207,9 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
-  key: "sortBySimilarityParameters",
-  default: null,
+export const extendedStages = atom<{ [key: string]: any }>({
+  key: "extendedStages",
+  default: {},
 });
 
 export const selectedMediaField = atom<State.MediaFieldSelection>({

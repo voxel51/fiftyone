@@ -22,15 +22,15 @@ class Samples(HTTPEndpoint):
         stages = data.get("view", None)
         page = data.get("page", 1)
         page_length = data.get("page_length", 20)
-        similarity = data.get("similarity", None)
+        extended = data.get("extended", None)
 
         results = await paginate_samples(
             dataset,
             stages,
             filters,
-            similarity,
             page_length,
             (page - 1) * page_length - 1,
+            extended_stages=extended,
         )
 
         return {

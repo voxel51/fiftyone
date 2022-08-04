@@ -73,7 +73,6 @@ export const sendPatch = async (
   updateState: (resolve: fos.StateResolver) => void,
   addStage?: object
 ) => {
-  const similarity = await snapshot.getPromise(fos.similarityParameters);
   const subscription = await snapshot.getPromise(fos.stateSubscription);
 
   return getFetchFunction()("POST", "/pin", {
@@ -83,7 +82,7 @@ export const sendPatch = async (
     sample_ids: await snapshot.getPromise(fos.selectedSamples),
     labels: toSnakeCase(await snapshot.getPromise(fos.selectedLabels)),
     add_stages: addStage ? [addStage] : null,
-    similarity: similarity ? toSnakeCase(similarity) : null,
+    extended: await snapshot.getPromise(fos.extendedStages),
     subscription,
   }).then((data) => updateState(data));
 };

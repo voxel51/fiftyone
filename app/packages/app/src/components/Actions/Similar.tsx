@@ -1,14 +1,10 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useState } from "react";
 import {
   atom,
   selectorFamily,
   Snapshot,
   useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
   useRecoilValue,
   useResetRecoilState,
 } from "recoil";
@@ -81,14 +77,20 @@ const useSortBySimilarity = (close) => {
             dataset: await snapshot.getPromise(fos.datasetName),
             view,
             filters: await snapshot.getPromise(fos.filters),
-            similarity: toSnakeCase({
+            extended: toSnakeCase({
               ...parameters,
               queryIds,
             }),
           });
 
           update(({ set }) => {
-            set(fos.similarityParameters, { ...parameters, queryIds });
+            set(fos.extendedStages, (current) => ({
+              ...current,
+              "fiftyone.core.stages.SortBySimilarity": toSnakeCase({
+                ...parameters,
+                queryIds,
+              }),
+            }));
             set(fos.modal, null);
             set(fos.similaritySorting, false);
             set(fos.aggregationsTick, (cur) => cur + 1);
@@ -198,6 +200,7 @@ interface SortBySimilarityProps {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const current = useRecoilValue(fos.similarityParameters);
+    console.log(current);
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current
@@ -210,8 +213,15 @@ const SortBySimilarity = React.memo(
         setState((state) => ({ ...state, [name]: value })),
       []
     );
+
     const hasSorting = Boolean(current);
-    const reset = useResetRecoilState(fos.similarityParameters);
+    const reset = useRecoilTransaction_UNSTABLE(({ set }) => () => {
+      set(fos.extendedStages, (current) => {
+        const copy = { ...current };
+        delete copy["fiftyone.core.stages.SortBySimilarity"];
+        return copy;
+      });
+    });
     const hasSimilarityKeys =
       useRecoilValue(availableSimilarityKeys(modal)).length > 0;
 

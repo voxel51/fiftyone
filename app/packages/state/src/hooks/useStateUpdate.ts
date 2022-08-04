@@ -21,6 +21,7 @@ import {
   patching,
   similaritySorting,
   savingFilters,
+  extendedStages,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -50,7 +51,8 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view, state.view || [])) {
           set(viewAtoms.view, state.view || []);
-          set(filters, {});
+          reset(extendedStages);
+          reset(filters);
         }
       }
 
@@ -94,6 +96,8 @@ const useStateUpdate = () => {
         const previousDataset = get(datasetAtom);
         if (!previousDataset || previousDataset.id !== dataset.id) {
           reset(_activeFields({ modal: false }));
+          reset(extendedStages);
+          reset(filters);
         }
 
         set(datasetAtom, dataset);

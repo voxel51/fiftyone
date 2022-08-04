@@ -1,10 +1,11 @@
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+import { toCamelCase } from "@fiftyone/utilities";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -313,7 +314,7 @@ export const similarityKeys = selector<{
   },
 });
 
-export const sidebarSourceSample = selector<Sample>({
+export const sidebarSourceSample = selector({
   key: "sidebarSourceSample",
   get: ({ get }) => {
     const sidebarSource = get(atoms.sidebarSource);
@@ -332,4 +333,37 @@ export const sidebarSourceSample = selector<Sample>({
 
     return result || modal?.sample;
   },
+});
+
+export const similarityParameters = selector<
+  State.SortBySimilarityParameters & { queryIds: string[] }
+>({
+  key: "similarityParameters",
+  get: ({ get }) => {
+    const value = get(atoms.extendedStages)[
+      "fiftyone.core.stages.SortBySimilarity"
+    ];
+
+    if (!value) {
+      return undefined;
+    }
+
+    return toCamelCase(value) as State.SortBySimilarityParameters & {
+      queryIds: string[];
+    };
+  },
+});
+
+export const extendedSelection = selector<string[]>({
+  key: "extendedSelection",
+  get: ({ get }) =>
+    get(atoms.extendedStages)["fiftyone.core.stages.Select"].sample_ids,
+  set: ({ set }, newValue) =>
+    set(atoms.extendedStages, (current) => ({
+      ...current,
+      "fiftyone.core.stages.Select":
+        newValue instanceof DefaultValue || !newValue.length
+          ? undefined
+          : { sample_ids: newValue, ordered: false },
+    })),
 });
