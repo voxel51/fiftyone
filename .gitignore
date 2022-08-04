@@ -22,5 +22,3 @@ dist/
 /docs/source/api/
 
 /docker/README.pdf
-
-deployment/helm/app*.yaml
