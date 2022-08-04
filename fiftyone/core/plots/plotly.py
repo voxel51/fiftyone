@@ -1998,7 +1998,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
     This wrapper responds to selection and deselection events (if available)
     triggered on the figure's traces via Plotly's lasso and box selector tools.
 
-    Traces whose ``customdata`` attribute contain numpy arrays are assumed to
+    Traces whose ``customdata`` attribute contain lists/arrays are assumed to
     contain the IDs of the points in the trace. Traces with no ``customdata``
     are allowed, but will not have any selection events.
 
@@ -2022,7 +2022,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
 
     def _init_traces(self):
         for idx, trace in enumerate(self._traces):
-            trace_ids = trace.customdata
+            trace_ids = np.asarray(trace.customdata)
             if trace_ids.ndim > 1:
                 trace_ids = trace_ids[:, 0]
 
@@ -2063,7 +2063,7 @@ class InteractiveScatter(PlotlyInteractivePlot):
         self._traces = [
             trace
             for trace in widget.data
-            if isinstance(trace.customdata, np.ndarray)
+            if etau.is_container(trace.customdata)
         ]
         self._init_traces()
         return widget
