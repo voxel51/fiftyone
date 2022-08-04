@@ -139,8 +139,9 @@ below for your environment:
 
   .. group-tab:: Jupyter notebooks
 
-    To use interactive plots in Jupyter notebooks, ensure that you have the
-    ``notebook`` and ``ipywidgets`` packages installed:
+    To use interactive plots in Jupyter notebooks, ensure that you have
+    sufficiently new versions of the ``notebook`` and ``ipywidgets`` packages
+    installed:
 
     .. code-block:: shell
 
@@ -148,28 +149,18 @@ below for your environment:
 
   .. group-tab:: JupyterLab
 
-    To use interactive plots in JupyterLab, ensure that you have the
-    ``jupyterlab`` and ``ipywidgets`` packages installed:
+    To use interactive plots in JupyterLab, ensure that you have sufficiently
+    new versions of the ``jupyterlab`` and ``ipywidgets`` packages installed:
 
     .. code-block:: shell
 
-        pip install jupyterlab "ipywidgets>=7.5"
+        pip install "jupyterlab>=3" "ipywidgets>=7.6"
 
-    In additional, you'll need to run the following commands to install the
-    required JupyterLab extensions:
-
-    .. code-block:: shell
-
-        jupyter labextension install jupyterlab-plotly@4.14.3
-        jupyter labextension install @jupyter-widgets/jupyterlab-manager plotlywidget@4.14.3
-        jupyter lab build
-
-    The above instructions assume that you have ``plotly==4.14.3`` installed.
-    If you have a different version (``pip show plotly``), substitute the
-    appropriate version number in the commands above.
-
-    If you run into any issues in JupyterLab, refer to
-    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_.
+    If you run into any issues in JupyterLab, especially if you are trying to
+    use JupyterLab 2.X rather than 3.0+, you may need to manually install the
+    `jupyterlab-plotly` extension. Refer to
+    `this troubleshooting guide <https://plotly.com/python/troubleshooting>`_
+    for more details.
 
 If you wish to use the ``matplotlib`` backend for any interactive plots, refer
 to :ref:`this section <matplotlib-in-notebooks>` for setup instructions.
