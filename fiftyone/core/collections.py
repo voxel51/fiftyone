@@ -185,6 +185,13 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement group_slice")
 
     @property
+    def group_slices(self):
+        """The list of group slices of the collection, or None if the
+        collection is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_slices")
+
+    @property
     def group_media_types(self):
         """A dict mapping group slices to media types, or None if the
         collection is not grouped.

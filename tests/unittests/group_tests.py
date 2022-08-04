@@ -110,6 +110,10 @@ class GroupTests(unittest.TestCase):
     def test_field_operations(self):
         dataset = _make_group_dataset()
 
+        self.assertSetEqual(
+            set(dataset.group_slices),
+            {"left", "right", "ego"},
+        )
         self.assertDictEqual(
             dataset.group_media_types,
             {"left": "image", "ego": "video", "right": "image"},
@@ -130,6 +134,64 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(dataset.group_field, "still_group_field")
 
         dataset.rename_sample_field("still_group_field", "group_field")
+
+    @drop_datasets
+    def test_slice_operations(self):
+        dataset = _make_group_dataset()
+
+        self.assertSetEqual(
+            set(dataset.group_slices),
+            {"left", "right", "ego"},
+        )
+        self.assertEqual(dataset.default_group_slice, "ego")
+        self.assertEqual(dataset.group_slice, "ego")
+
+        dataset.rename_group_slice("ego", "still_ego")
+
+        self.assertSetEqual(
+            set(dataset.group_slices),
+            {"left", "right", "still_ego"},
+        )
+        self.assertEqual(dataset.default_group_slice, "still_ego")
+        self.assertEqual(dataset.group_slice, "still_ego")
+        self.assertEqual(len(dataset.select_group_slice(_allow_mixed=True)), 6)
+
+        sample = dataset.first()
+        self.assertEqual(sample.group_field.name, "still_ego")
+
+        dataset.delete_group_slice("still_ego")
+
+        self.assertSetEqual(set(dataset.group_slices), {"left", "right"})
+        self.assertIn(dataset.default_group_slice, ["left", "right"])
+        self.assertEqual(dataset.group_slice, dataset.default_group_slice)
+        self.assertEqual(len(dataset.select_group_slice()), 4)
+
+        dataset.delete_group_slice("left")
+
+        self.assertSetEqual(set(dataset.group_slices), {"right"})
+        self.assertEqual(dataset.default_group_slice, "right")
+        self.assertEqual(dataset.group_slice, "right")
+        self.assertEqual(len(dataset.select_group_slice()), 2)
+
+        dataset.delete_group_slice("right")
+
+        self.assertEqual(dataset.group_slices, [])
+        self.assertIsNone(dataset.default_group_slice)
+        self.assertIsNone(dataset.group_slice)
+        self.assertEqual(len(dataset.select_group_slice()), 0)
+
+        group = fo.Group()
+        sample = fo.Sample(
+            filepath="ego-video.mp4",
+            group_field=group.element("ego"),
+        )
+
+        dataset.add_sample(sample)
+
+        self.assertEqual(dataset.group_slices, ["ego"])
+        self.assertEqual(dataset.default_group_slice, "ego")
+        self.assertEqual(dataset.group_slice, "ego")
+        self.assertEqual(len(dataset.select_group_slice()), 1)
 
     @drop_datasets
     def test_views(self):

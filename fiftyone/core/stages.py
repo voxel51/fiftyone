@@ -3872,7 +3872,7 @@ class SelectGroupSlice(ViewStage):
                     "media types %s" % media_types
                 )
 
-            return next(iter(group_media_types.values()))
+            return next(iter(group_media_types.values()), None)
 
         # Multiple group slices
         if etau.is_container(self._slice):
