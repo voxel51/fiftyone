@@ -2574,6 +2574,61 @@ class QuickstartVideoDataset(FiftyOneDataset):
         return dataset_type, num_samples, None
 
 
+class QuickstartGroupsDataset(FiftyOneDataset):
+    """A small dataset with grouped image and point cloud data.
+
+    The dataset consists of 200 scenes from the train split of the KITTI
+    dataset, each containing left camera, right camera, point cloud, and 2D/3D
+    object annotation data.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        523.1 MB
+    """
+
+    _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"
+    _ARCHIVE_NAME = "quickstart-groups.zip"
+    _DIR_IN_ARCHIVE = "quickstart-groups"
+
+    @property
+    def name(self):
+        return "quickstart-groups"
+
+    @property
+    def tags(self):
+        return ("image", "point-cloud", "quickstart")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        classes = importer._get_classes(dataset_dir)
+        num_samples = importer._get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class UCF101Dataset(FiftyOneDataset):
     """UCF101 is an action recognition data set of realistic action videos,
     collected from YouTube, having 101 action categories. This data set is an
@@ -2680,6 +2735,7 @@ AVAILABLE_DATASETS = {
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
+    "quickstart-groups": QuickstartGroupsDataset,
     "ucf101": UCF101Dataset,
 }
 
