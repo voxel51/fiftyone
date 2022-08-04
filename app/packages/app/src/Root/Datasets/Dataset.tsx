@@ -8,12 +8,12 @@ import DatasetComponent from "../../components/Dataset";
 import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
-import transformDataset from "./transformDataset";
-import { filters } from "../../recoil/filters";
-import { State } from "../../recoil/types";
 import * as viewAtoms from "../../recoil/view";
-import { similarityParameters } from "../../components/Actions/Similar";
 import { getDatasetName } from "../../utils/generic";
+import { filters } from "../../recoil/filters";
+import { similarityParameters } from "../../components/Actions/Similar";
+import transformDataset from "./transformDataset";
+import { State } from "../../recoil/types";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -107,8 +107,6 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
     update(({ reset }) => {
       reset(filters);
       reset(similarityParameters);
-      const state =
-        router.state && router.state.state ? router?.state.state || {} : {};
       return {
         colorscale:
           router.state && router.state.colorscale
@@ -119,16 +117,11 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
             ? (toCamelCase(router.state.config) as State.Config)
             : undefined,
         dataset: transformDataset(dataset),
-        state: {
-          ...state,
-          view,
-        },
-        variables: {
-          view: viewRef.current,
-        },
+        state:
+          router.state && router.state.state ? router?.state.state || {} : {},
       };
     });
-  }, [dataset, router]);
+  }, [dataset]);
 
   if (!name) {
     return null;
