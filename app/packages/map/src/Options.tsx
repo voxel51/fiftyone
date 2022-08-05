@@ -2,6 +2,7 @@ import { link, options } from "./Options.module.css";
 
 import { Link, Selector, useTheme } from "@fiftyone/components";
 import { Close, CropFree, Help } from "@material-ui/icons";
+import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
   activeField,
@@ -10,6 +11,7 @@ import {
   mapStyle,
   STYLES,
 } from "./state";
+import useEventHandler from "./useEventHandler";
 
 const useSearch = (search: string) => {
   const values = STYLES.filter((style) => style.includes(search));
@@ -22,9 +24,10 @@ const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
 };
 
 const Options: React.FC<{
+  clearSelectionData: () => void;
   fitData: () => void;
   fitSelectionData: () => void;
-}> = ({ fitSelectionData, fitData }) => {
+}> = ({ clearSelectionData, fitSelectionData, fitData }) => {
   const theme = useTheme();
   const [style, setStyle] = useRecoilState(mapStyle);
   const fields = useRecoilValue(geoFields);
@@ -37,6 +40,22 @@ const Options: React.FC<{
     borderTopRightRadius: 3,
     padding: "0.25rem",
   };
+  const reset = React.useCallback(() => {
+    clearSelectionData();
+    setSelection(false);
+    fitData();
+  }, [clearSelectionData, fitData, setSelection]);
+
+  useEventHandler(window, "keydown", ({ key }: KeyboardEvent) => {
+    switch (key) {
+      case "Escape":
+        reset();
+        break;
+      case "f":
+        fitSelectionData();
+        break;
+    }
+  });
 
   return (
     <div className={options}>
@@ -68,16 +87,11 @@ const Options: React.FC<{
       <div>
         {selection && (
           <Link className={link} title={"Reset (Esc)"}>
-            <Close
-              onClick={() => {
-                setSelection(false);
-                fitData();
-              }}
-            />
+            <Close onClick={reset} />
           </Link>
         )}
 
-        <Link className={link} title={"Fit data (F)"}>
+        <Link className={link} title={"Fit data (f)"}>
           <CropFree onClick={fitSelectionData} />
         </Link>
 

@@ -1,7 +1,7 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { State, useRefresh, useSetExtendedSelection } from "@fiftyone/state";
+import { State, useSetExtendedSelection } from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
@@ -263,6 +263,7 @@ const Plot: React.FC<{
             )
           )
         }
+        clearSelectionData={() => setSelectionData(undefined)}
       />
     </div>
   );
