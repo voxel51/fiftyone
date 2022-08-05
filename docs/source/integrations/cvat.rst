@@ -2358,6 +2358,42 @@ instance.
 
 The sections below highlight some common actions that you may want to perform.
 
+Using the CVAT API
+------------------
+
+You can use the
+:meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
+to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+instance, which is a wrapper around the
+`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
+that provides convenient methods for performing common actions on your CVAT
+tasks.
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_api"
+
+    view.annotate(anno_key, label_field="ground_truth")
+
+    results = dataset.load_annotation_results(anno_key)
+
+    # A context manager that closes TCP connections on exit
+    with results:
+        api = results.connect_to_api()
+
+        # Launch CVAT in your browser
+        api.launch_editor(api.base_url)
+
+        # Get info about all tasks currently on the CVAT server
+        response = api.get(api.tasks_url).json()
+
 Viewing task statuses
 ---------------------
 
@@ -2417,10 +2453,12 @@ for that annotation run:
 
     **Pro tip**: Various methods available on the
     :class:`results <fiftyone.utils.cvat.CVATAnnotationResults>` object, like
-    those shown above, accept an `api` argument. This allows you to provide a
+    those shown above, can be performed more efficiently with the
+    :meth:`use_api() <fiftyone.utils.cvat.CVATAnnotationResults.use_api>`
+    method. This allows you to provide a
     :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` object as
-    defined in the next section. The benefit is that this allows you to avoid
-    authentication in each
+    defined in the previous section. The benefit is that this allows you to
+    avoid authentication in each
     method and significantly speeds up these calls if there are
     multiple being performed at a time.
 
@@ -2430,41 +2468,10 @@ for that annotation run:
         api = results.connect_to_api()
 
         for anno_key in dataset.list_annotation_runs():
-            result = dataset.load_annotation_results(anno_key)
-            results.print_status(api=api)
+            results = dataset.load_annotation_results(anno_key)
+            results.use_api(api)
+            results.print_status()
 
-Using the CVAT API
-------------------
-
-You can use the
-:meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
-`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
-that provides convenient methods for performing common actions on your CVAT
-tasks.
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "cvat_api"
-
-    view.annotate(anno_key, label_field="ground_truth")
-
-    results = dataset.load_annotation_results(anno_key)
-    api = results.connect_to_api()
-
-    # Launch CVAT in your browser
-    api.launch_editor(api.base_url)
-
-    # Get info about all tasks currently on the CVAT server
-    response = api.get(api.tasks_url).json()
 
 Deleting tasks
 --------------

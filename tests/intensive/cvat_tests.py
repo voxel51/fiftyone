@@ -218,16 +218,16 @@ class CVATTests(unittest.TestCase):
             backend="cvat",
             label_field="ground_truth",
         )
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        shape_id = dataset.first().ground_truth.detections[0].id
-        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().ground_truth.detections[0].id
+            self.assertIsNotNone(_get_shape(api, task_id, shape_id))
 
-        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
-            "sample_id"
-        ]
-        self.assertEqual(sample_id, dataset.first().id)
-        api.close()
+            sample_id = list(list(results.frame_id_map.values())[0].values())[
+                0
+            ]["sample_id"]
+            self.assertEqual(sample_id, dataset.first().id)
 
         dataset.load_annotations(anno_key, cleanup=True)
 
@@ -251,16 +251,16 @@ class CVATTests(unittest.TestCase):
             backend="cvat",
             label_field="frames.detections",
         )
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        shape_id = dataset.first().frames[1].detections.detections[0].id
-        self.assertIsNotNone(_get_shape(api, task_id, shape_id))
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().frames[1].detections.detections[0].id
+            self.assertIsNotNone(_get_shape(api, task_id, shape_id))
 
-        sample_id = list(list(results.frame_id_map.values())[0].values())[0][
-            "sample_id"
-        ]
-        self.assertEqual(sample_id, dataset.first().id)
-        api.close()
+            sample_id = list(list(results.frame_id_map.values())[0].values())[
+                0
+            ]["sample_id"]
+            self.assertEqual(sample_id, dataset.first().id)
 
         dataset.load_annotations(anno_key, cleanup=True)
 
@@ -296,42 +296,46 @@ class CVATTests(unittest.TestCase):
             attributes=attributes,
         )
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        deleted_label_id = previous_label_ids[0]
-        updated_label_id = previous_label_ids[1]
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            deleted_label_id = previous_label_ids[0]
+            updated_label_id = previous_label_ids[1]
 
-        _delete_shape(api, task_id, deleted_label_id)
-        _create_annotation(api, task_id, shape=True)
-        _update_shape(
-            api, task_id, updated_label_id, attributes=[("test", "1")]
-        )
+            _delete_shape(api, task_id, deleted_label_id)
+            _create_annotation(api, task_id, shape=True)
+            _update_shape(
+                api, task_id, updated_label_id, attributes=[("test", "1")]
+            )
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        label_ids = dataset.values("ground_truth.detections.id", unwind=True)
+            dataset.load_annotations(anno_key, cleanup=True)
+            label_ids = dataset.values(
+                "ground_truth.detections.id", unwind=True
+            )
 
-        self.assertEqual(len(label_ids), len(previous_label_ids))
+            self.assertEqual(len(label_ids), len(previous_label_ids))
 
-        added_label_ids = list(set(label_ids) - set(previous_label_ids))
-        self.assertEqual(len(added_label_ids), 1)
-        deleted_label_ids = list(set(previous_label_ids) - set(label_ids))
-        self.assertEqual(len(deleted_label_ids), 1)
+            added_label_ids = list(set(label_ids) - set(previous_label_ids))
+            self.assertEqual(len(added_label_ids), 1)
+            deleted_label_ids = list(set(previous_label_ids) - set(label_ids))
+            self.assertEqual(len(deleted_label_ids), 1)
 
-        updated_sample = dataset.filter_labels(
-            "ground_truth", F("_id") == ObjectId(updated_label_id)
-        ).first()
-        prev_updated_sample = previous_dataset.filter_labels(
-            "ground_truth", F("_id") == ObjectId(updated_label_id)
-        ).first()
+            updated_sample = dataset.filter_labels(
+                "ground_truth", F("_id") == ObjectId(updated_label_id)
+            ).first()
+            prev_updated_sample = previous_dataset.filter_labels(
+                "ground_truth", F("_id") == ObjectId(updated_label_id)
+            ).first()
 
-        self.assertEqual(len(updated_sample.ground_truth.detections), 1)
-        self.assertEqual(len(prev_updated_sample.ground_truth.detections), 1)
-        self.assertEqual(
-            updated_sample.ground_truth.detections[0].id,
-            prev_updated_sample.ground_truth.detections[0].id,
-        )
-        self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
-        api.close()
+            self.assertEqual(len(updated_sample.ground_truth.detections), 1)
+            self.assertEqual(
+                len(prev_updated_sample.ground_truth.detections), 1
+            )
+            self.assertEqual(
+                updated_sample.ground_truth.detections[0].id,
+                prev_updated_sample.ground_truth.detections[0].id,
+            )
+            self.assertEqual(updated_sample.ground_truth.detections[0].test, 1)
 
     def test_multiple_fields(self):
         dataset = foz.load_zoo_dataset(
@@ -359,11 +363,11 @@ class CVATTests(unittest.TestCase):
             classes=["Person"],
         )
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        api.close()
+            dataset.load_annotations(anno_key, cleanup=True)
 
         def _remove_bbox(dataset, label_field):
             view = dataset.set_field(
@@ -423,31 +427,33 @@ class CVATTests(unittest.TestCase):
             issue_tracker=bug_tracker,
         )
         task_ids = results.task_ids
-        api = results.connect_to_api()
-        self.assertEqual(len(task_ids), 2)
-        for task_id in task_ids:
-            task_json = api.get(api.task_url(task_id)).json()
-            self.assertEqual(task_json["bug_tracker"], bug_tracker)
-            self.assertEqual(task_json["segment_size"], 1)
-            if user is not None:
-                self.assertEqual(task_json["assignee"]["username"], user)
-            for job in api.get(api.jobs_url(task_id)).json():
-                job_json = api.get(job["url"]).json()
+        with results:
+            api = results.connect_to_api()
+            self.assertEqual(len(task_ids), 2)
+            for task_id in task_ids:
+                task_json = api.get(api.task_url(task_id)).json()
+                self.assertEqual(task_json["bug_tracker"], bug_tracker)
+                self.assertEqual(task_json["segment_size"], 1)
                 if user is not None:
-                    self.assertEqual(job_json["assignee"]["username"], user)
-                    if api.server_version == 1:
+                    self.assertEqual(task_json["assignee"]["username"], user)
+                for job in api.get(api.jobs_url(task_id)).json():
+                    job_json = api.get(job["url"]).json()
+                    if user is not None:
                         self.assertEqual(
-                            job_json["reviewer"]["username"], user
+                            job_json["assignee"]["username"], user
                         )
+                        if api.server_version == 1:
+                            self.assertEqual(
+                                job_json["reviewer"]["username"], user
+                            )
 
-        results.print_status()
-        status = results.get_status()
-        self.assertEqual(
-            status["ground_truth"][task_ids[0]]["assignee"]["username"],
-            user,
-        )
-        dataset.load_annotations(anno_key, cleanup=True)
-        api.close()
+            results.print_status()
+            status = results.get_status()
+            self.assertEqual(
+                status["ground_truth"][task_ids[0]]["assignee"]["username"],
+                user,
+            )
+            dataset.load_annotations(anno_key, cleanup=True)
 
     def test_project(self):
         dataset = (
@@ -465,78 +471,79 @@ class CVATTests(unittest.TestCase):
             label_field="ground_truth",
             project_name=project_name,
         )
-        api = results.connect_to_api()
-        project_id = api.get_project_id(project_name)
-        self.assertIsNotNone(project_id)
-        if project_id not in results.project_ids:
-            # Delete project if it exists
-            api.delete_project(project_id)
-            anno_key_retry = "anno_key_retry"
-            results = dataset.annotate(
-                anno_key_retry,
+        with results:
+            api = results.connect_to_api()
+            project_id = api.get_project_id(project_name)
+            self.assertIsNotNone(project_id)
+            if project_id not in results.project_ids:
+                # Delete project if it exists
+                api.delete_project(project_id)
+                anno_key_retry = "anno_key_retry"
+                results = dataset.annotate(
+                    anno_key_retry,
+                    backend="cvat",
+                    label_field="ground_truth",
+                    project_name=project_name,
+                )
+                api = results.connect_to_api()
+                project_id = api.get_project_id(project_name)
+                self.assertIsNotNone(project_id)
+                self.assertIn(project_id, results.project_ids)
+
+            anno_key2 = "anno_key2"
+            results2 = dataset.annotate(
+                anno_key2,
                 backend="cvat",
                 label_field="ground_truth",
                 project_name=project_name,
             )
-            api = results.connect_to_api()
-            project_id = api.get_project_id(project_name)
-            self.assertIsNotNone(project_id)
-            self.assertIn(project_id, results.project_ids)
+            self.assertNotIn(project_id, results2.project_ids)
+            self.assertIsNotNone(api.get_project_id(project_name))
 
-        anno_key2 = "anno_key2"
-        results2 = dataset.annotate(
-            anno_key2,
-            backend="cvat",
-            label_field="ground_truth",
-            project_name=project_name,
-        )
-        self.assertNotIn(project_id, results2.project_ids)
-        self.assertIsNotNone(api.get_project_id(project_name))
-
-        # Test upload without schema
-        anno_key3 = "anno_key3"
-        results3 = dataset.annotate(
-            anno_key3,
-            backend="cvat",
-            project_name=project_name,
-        )
-
-        with self.assertRaises(ValueError):
-            label_schema = {
-                "ground_truth": {
-                    "attributes": {"occluded": {"type": "occluded"}}
-                }
-            }
-            anno_key3 = "occluded_failure"
-            dataset.annotate(
+            # Test upload without schema
+            anno_key3 = "anno_key3"
+            results3 = dataset.annotate(
                 anno_key3,
-                label_schema=label_schema,
+                backend="cvat",
                 project_name=project_name,
             )
 
-        with self.assertRaises(ValueError):
-            label_schema = {
-                "ground_truth": {
-                    "attributes": {"group_id": {"type": "group_id"}}
+            with self.assertRaises(ValueError):
+                label_schema = {
+                    "ground_truth": {
+                        "attributes": {"occluded": {"type": "occluded"}}
+                    }
                 }
-            }
-            anno_key4 = "group_id_failure"
-            dataset.annotate(
-                anno_key4,
-                label_schema=label_schema,
-                project_name=project_name,
-            )
+                anno_key3 = "occluded_failure"
+                dataset.annotate(
+                    anno_key3,
+                    label_schema=label_schema,
+                    project_name=project_name,
+                )
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        self.assertIsNotNone(api.get_project_id(project_name))
+            with self.assertRaises(ValueError):
+                label_schema = {
+                    "ground_truth": {
+                        "attributes": {"group_id": {"type": "group_id"}}
+                    }
+                }
+                anno_key4 = "group_id_failure"
+                dataset.annotate(
+                    anno_key4,
+                    label_schema=label_schema,
+                    project_name=project_name,
+                )
 
-        dataset.load_annotations(anno_key2, cleanup=True)
-        self.assertIsNotNone(api.get_project_id(project_name))
-        api.delete_project(project_id)
-        api.close()
-        api = results.connect_to_api()
-        self.assertIsNone(api.get_project_id(project_name))
-        api.close()
+            dataset.load_annotations(anno_key, cleanup=True)
+            self.assertIsNotNone(api.get_project_id(project_name))
+
+            dataset.load_annotations(anno_key2, cleanup=True)
+            self.assertIsNotNone(api.get_project_id(project_name))
+            api.delete_project(project_id)
+
+        with results:
+            api = results.connect_to_api()
+            self.assertIsNone(api.get_project_id(project_name))
 
     def test_example_add_new_label_fields(self):
 
@@ -555,43 +562,43 @@ class CVATTests(unittest.TestCase):
         )
         self.assertIsNotNone(dataset.get_annotation_info(anno_key))
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        _create_annotation(api, task_id, tag="dog")
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(api, task_id, tag="dog")
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        tags = view.first().new_classifications.classifications
-        num_tags = len(tags)
-        self.assertEqual(num_tags, 1)
-        self.assertEqual(tags[0].label, "dog")
+            dataset.load_annotations(anno_key, cleanup=True)
+            tags = view.first().new_classifications.classifications
+            num_tags = len(tags)
+            self.assertEqual(num_tags, 1)
+            self.assertEqual(tags[0].label, "dog")
 
-        # Test label schema
+            # Test label schema
 
-        anno_key = "cvat_new_field_schema"
+            anno_key = "cvat_new_field_schema"
 
-        label_schema = {
-            "new_classifications_2": {
-                "type": "classifications",
-                "classes": ["dog", "cat", "person"],
+            label_schema = {
+                "new_classifications_2": {
+                    "type": "classifications",
+                    "classes": ["dog", "cat", "person"],
+                }
             }
-        }
 
-        results = view.annotate(anno_key, label_schema=label_schema)
-        self.assertIsNotNone(dataset.get_annotation_info(anno_key))
-        api.close()
+            results = view.annotate(anno_key, label_schema=label_schema)
+            self.assertIsNotNone(dataset.get_annotation_info(anno_key))
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        _create_annotation(api, task_id, tag="person")
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(api, task_id, tag="person")
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        tags = view.first().new_classifications_2.classifications
-        num_tags = len(tags)
-        self.assertEqual(num_tags, 1)
-        self.assertEqual(tags[0].label, "person")
+            dataset.load_annotations(anno_key, cleanup=True)
+            tags = view.first().new_classifications_2.classifications
+            num_tags = len(tags)
+            self.assertEqual(num_tags, 1)
+            self.assertEqual(tags[0].label, "person")
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        api.close()
+            dataset.load_annotations(anno_key, cleanup=True)
 
     def test_example_restricting_label_edits(self):
         dataset = foz.load_zoo_dataset("quickstart").clone()
@@ -635,28 +642,29 @@ class CVATTests(unittest.TestCase):
         self.assertIsNotNone(dataset.get_annotation_info(anno_key))
 
         task_id = results.task_ids[0]
-        api = results.connect_to_api()
+        with results:
+            api = results.connect_to_api()
 
-        # Delete label
-        deleted_id = previous_person_labels[0].id
-        _delete_shape(api, task_id, deleted_id)
+            # Delete label
+            deleted_id = previous_person_labels[0].id
+            _delete_shape(api, task_id, deleted_id)
 
-        # Add label
-        _create_annotation(api, task_id, shape="person")
+            # Add label
+            _create_annotation(api, task_id, shape="person")
 
-        # Edit label and bounding box
-        edited_id = previous_person_labels[1].id
-        _update_shape(
-            api,
-            task_id,
-            edited_id,
-            label="test",
-            points=[10, 20, 30, 40],
-            attributes=[("sex", "male")],
-        )
+            # Edit label and bounding box
+            edited_id = previous_person_labels[1].id
+            _update_shape(
+                api,
+                task_id,
+                edited_id,
+                label="test",
+                points=[10, 20, 30, 40],
+                attributes=[("sex", "male")],
+            )
 
-        dataset.load_annotations(anno_key, cleanup=True)
-        api.close()
+            dataset.load_annotations(anno_key, cleanup=True)
+
         labels = view.values("ground_truth.detections", unwind=True)
         person_labels = view.filter_labels(
             "ground_truth", F("label") == "person"
@@ -695,23 +703,23 @@ class CVATTests(unittest.TestCase):
         )
 
         task_id = results.task_ids[0]
-        api = results.connect_to_api()
+        with results:
+            api = results.connect_to_api()
 
-        # Create overlapping tracks of different type
-        _create_annotation(
-            api,
-            task_id,
-            track=(0, 30),
-            _type="polygon",
-            points=[10, 20, 40, 30, 50, 60],
-        )
-        _create_annotation(
-            api,
-            task_id,
-            track=(20, 40),
-        )
+            # Create overlapping tracks of different type
+            _create_annotation(
+                api,
+                task_id,
+                track=(0, 30),
+                _type="polygon",
+                points=[10, 20, 40, 30, 50, 60],
+            )
+            _create_annotation(
+                api,
+                task_id,
+                track=(20, 40),
+            )
 
-        api.close()
         imported_dataset = fo.Dataset()
         with etau.TempDir() as tmp:
             fouc.import_annotations(
@@ -775,12 +783,12 @@ class CVATTests(unittest.TestCase):
             backend="cvat",
             label_field="ground_truth",
         )
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        api.delete_task(task_id)
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            api.delete_task(task_id)
 
-        status = results.get_status()
-        api.close()
+            status = results.get_status()
 
         dataset.load_annotations(anno_key, cleanup=True)
         self.assertListEqual(
@@ -809,27 +817,28 @@ class CVATTests(unittest.TestCase):
             anno_key, label_schema=label_schema, backend="cvat"
         )
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        shape_id = dataset.first().ground_truth.detections[0].id
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().ground_truth.detections[0].id
 
-        _update_shape(api, task_id, shape_id, occluded=True)
+            _update_shape(api, task_id, shape_id, occluded=True)
 
-        dataset.load_annotations(anno_key, cleanup=True)
+            dataset.load_annotations(anno_key, cleanup=True)
 
-        id_occ_map = dict(
-            zip(
-                *dataset.values(
-                    [
-                        "ground_truth.detections.id",
-                        "ground_truth.detections.occluded",
-                    ],
-                    unwind=True,
+            id_occ_map = dict(
+                zip(
+                    *dataset.values(
+                        [
+                            "ground_truth.detections.id",
+                            "ground_truth.detections.occluded",
+                        ],
+                        unwind=True,
+                    )
                 )
             )
-        )
-        self.assertTrue(id_occ_map.pop(shape_id))
-        self.assertFalse(any(id_occ_map.values()))
+            self.assertTrue(id_occ_map.pop(shape_id))
+            self.assertFalse(any(id_occ_map.values()))
 
     def test_map_view_stage(self):
         dataset = (
@@ -865,13 +874,14 @@ class CVATTests(unittest.TestCase):
             backend="cvat",
             label_field="ground_truth",
         )
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        deleted_id = prev_ids[0]
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            deleted_id = prev_ids[0]
 
-        self.assertIsNotNone(_get_shape(api, task_id, deleted_id))
-        _create_annotation(api, task_id, shape=labels[0].upper())
-        _delete_shape(api, task_id, deleted_id)
+            self.assertIsNotNone(_get_shape(api, task_id, deleted_id))
+            _create_annotation(api, task_id, shape=labels[0].upper())
+            _delete_shape(api, task_id, deleted_id)
 
         dataset.load_annotations(anno_key, cleanup=True)
         loaded_ids = dataset.values("ground_truth.detections.id", unwind=True)
@@ -934,22 +944,23 @@ class CVATTests(unittest.TestCase):
             },
         }
         results = dataset.annotate(anno_key, label_schema=label_schema)
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        _create_annotation(
-            api,
-            task_id,
-            shape="test",
-            _type="points",
-            points=[10, 20, 40, 30, 50, 60],
-        )
-        _create_annotation(
-            api,
-            task_id,
-            shape="test2",
-            _type="polygon",
-            points=[10, 20, 40, 30, 50, 60],
-        )
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            _create_annotation(
+                api,
+                task_id,
+                shape="test",
+                _type="points",
+                points=[10, 20, 40, 30, 50, 60],
+            )
+            _create_annotation(
+                api,
+                task_id,
+                shape="test2",
+                _type="polygon",
+                points=[10, 20, 40, 30, 50, 60],
+            )
 
         dest_field = {
             "ground_truth": "test_field_1",
@@ -990,19 +1001,20 @@ class CVATTests(unittest.TestCase):
         anno_key = "test_dest_field"
         results = dataset.annotate(anno_key, label_field="ground_truth")
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        shape_id = dataset.first().ground_truth.detections[0].id
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().ground_truth.detections[0].id
 
-        _delete_shape(api, task_id, shape_id)
-        _create_annotation(api, task_id, shape=True)
-        _create_annotation(
-            api,
-            task_id,
-            shape=True,
-            _type="points",
-            points=[10, 20, 40, 30, 50, 60],
-        )
+            _delete_shape(api, task_id, shape_id)
+            _create_annotation(api, task_id, shape=True)
+            _create_annotation(
+                api,
+                task_id,
+                shape=True,
+                _type="points",
+                points=[10, 20, 40, 30, 50, 60],
+            )
 
         dataset.load_annotations(
             anno_key,
@@ -1079,12 +1091,13 @@ class CVATTests(unittest.TestCase):
             anno_key, label_schema=label_schema, backend="cvat"
         )
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
-        shape_id = dataset.first().ground_truth.detections[0].id
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
+            shape_id = dataset.first().ground_truth.detections[0].id
 
-        test_group_id = 2
-        _update_shape(api, task_id, shape_id, group_id=test_group_id)
+            test_group_id = 2
+            _update_shape(api, task_id, shape_id, group_id=test_group_id)
 
         dataset.load_annotations(anno_key, cleanup=True)
 
@@ -1139,16 +1152,17 @@ class CVATTests(unittest.TestCase):
             anno_key, label_schema=label_schema, backend="cvat"
         )
 
-        api = results.connect_to_api()
-        task_id = results.task_ids[0]
+        with results:
+            api = results.connect_to_api()
+            task_id = results.task_ids[0]
 
-        test_group_id = 2
-        _create_annotation(
-            api,
-            task_id,
-            track=(0, 1),
-            group_id=test_group_id,
-        )
+            test_group_id = 2
+            _create_annotation(
+                api,
+                task_id,
+                track=(0, 1),
+                group_id=test_group_id,
+            )
 
         dataset.load_annotations(anno_key, cleanup=True)
 
