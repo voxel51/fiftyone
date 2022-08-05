@@ -1,9 +1,14 @@
 import { RouterContext } from "@fiftyone/state";
-import React, { useCallback, useContext, useTransition } from "react";
+import React, {
+  MouseEventHandler,
+  useCallback,
+  useContext,
+  useTransition,
+} from "react";
 
 const Link: React.FC<
   React.PropsWithChildren<{
-    to?: string;
+    to?: string | MouseEventHandler;
     title: string;
     className?: string;
     style?: React.CSSProperties;
@@ -14,9 +19,9 @@ const Link: React.FC<
 
   return (
     <a
-      href={to}
+      href={typeof to === "string" ? to : undefined}
       onClick={
-        to
+        typeof to === "string"
           ? useCallback<React.MouseEventHandler<HTMLAnchorElement>>(
               (event) => {
                 event.preventDefault();
@@ -26,6 +31,8 @@ const Link: React.FC<
               },
               [to, router]
             )
+          : to instanceof Function
+          ? to
           : undefined
       }
       style={style}

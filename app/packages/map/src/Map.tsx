@@ -262,7 +262,7 @@ const Plot: React.FC<{
         fitSelectionData={() =>
           fitBounds(
             mapRef.current,
-            selectionData.features.map(
+            (selectionData || data).features.map(
               ({ geometry: { coordinates } }) => coordinates as [number, number]
             )
           )

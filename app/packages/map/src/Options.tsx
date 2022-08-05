@@ -86,13 +86,13 @@ const Options: React.FC<{
 
       <div>
         {selection && (
-          <Link className={link} title={"Reset (Esc)"}>
-            <Close onClick={reset} />
+          <Link to={reset} className={link} title={"Reset (Esc)"}>
+            <Close />
           </Link>
         )}
 
-        <Link className={link} title={"Fit data (f)"}>
-          <CenterFocusWeak onClick={fitSelectionData} />
+        <Link to={fitSelectionData} className={link} title={"Fit data (f)"}>
+          <CenterFocusWeak />
         </Link>
 
         <Link className={link} to={"https://docs.voxel51.com"} title={"Help"}>
