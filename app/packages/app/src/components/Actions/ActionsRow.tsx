@@ -280,27 +280,27 @@ const Hidden = () => {
 
 const SaveFilters = () => {
   const hasFiltersValue = useRecoilValue(fos.hasFilters(false));
-  const similarity = useRecoilValue(fos.similarityParameters);
+  const extended = Object.keys(useRecoilValue(fos.extendedStages)).length > 0;
   const loading = useRecoilValue(fos.savingFilters);
   const updateState = useUnprocessedStateUpdate();
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ snapshot, set, reset }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         if (loading) {
           return;
         }
         set(fos.savingFilters, true);
-        sendPatch(snapshot, updateState, null).then(() => {
+        sendPatch(snapshot, updateState, undefined).then(() => {
           set(fos.savingFilters, false);
-          set(fos.similarityParameters, null);
+          reset(fos.extendedStages);
         });
       },
     []
   );
 
-  return hasFiltersValue || similarity ? (
+  return hasFiltersValue || extended ? (
     <ActionDiv>
       <PillButton
         open={false}

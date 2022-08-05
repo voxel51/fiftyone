@@ -357,7 +357,7 @@ export const similarityParameters = selector<
 export const extendedSelection = selector<string[]>({
   key: "extendedSelection",
   get: ({ get }) =>
-    get(atoms.extendedStages)["fiftyone.core.stages.Select"].sample_ids,
+    get(atoms.extendedStages)["fiftyone.core.stages.Select"]?.sample_ids || [],
   set: ({ set }, newValue) =>
     set(atoms.extendedStages, (current) => ({
       ...current,

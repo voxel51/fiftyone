@@ -2523,6 +2523,9 @@ __metadata:
     use-resize-observer: ^9.0.2
     vite: ^3.0.0
     vite-plugin-externals: ^0.5.0
+  peerDependencies:
+    "@material-ui/icons": "*"
+    recoil: "*"
   languageName: unknown
   linkType: soft
 

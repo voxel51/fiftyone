@@ -40,7 +40,7 @@ class Pin(HTTPEndpoint):
                 view = view.add_stage(stage)
 
         if extended:
-            view = view.sort_by_similarity(**extended)
+            view = fosv.extend_view(view, extended, True)
 
         state = fose.get_state()
         state.selected = []

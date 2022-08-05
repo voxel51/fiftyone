@@ -1,7 +1,7 @@
-import { container, options } from "./Map.module.css";
+import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { State, useSetExtendedSelection } from "@fiftyone/state";
+import { State, useRefresh, useSetExtendedSelection } from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
@@ -14,20 +14,14 @@ import contains from "@turf/boolean-contains";
 import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
 import { Loading } from "@fiftyone/components";
+import { useRecoilValue } from "recoil";
+import { activeField, hasSelection, mapStyle, MAP_STYLES } from "./state";
+import Options from "./Options";
 
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoiYmVuamFtaW5wa2FuZSIsImEiOiJjbDV3bG1qbmUwazVkM2JxdjA2Mmwza3JpIn0.WnOukHfx7LBTOiOEYth-uQ";
 
-const MAP_STYLES = {
-  Street: "streets-v11",
-  Dark: "dark-v10",
-  Light: "light-v10",
-  Outdoors: "outdoors-v11",
-  Satellite: "satellite-v9",
-};
 const fitBoundsOptions = { animate: false, padding: 30 };
-
-const STYLES = Object.keys(MAP_STYLES);
 
 const computeBounds = (coordinates: [number, number][]) =>
   coordinates.reduce(
@@ -37,25 +31,6 @@ const computeBounds = (coordinates: [number, number][]) =>
 
 const fitBounds = (map: MapRef, coordinates: [number, number][]) => {
   map.fitBounds(computeBounds(coordinates), fitBoundsOptions);
-};
-
-const useSearch = (search: string) => {
-  const values = STYLES.filter((style) => style.includes(search));
-
-  return { values };
-};
-
-const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
-  return <>{value}</>;
-};
-
-const useGeoFields = (dataset: State.Dataset): string[] => {
-  return React.useMemo(() => {
-    return dataset.sampleFields
-      .filter((f) => f.embeddedDocType === "fiftyone.core.labels.GeoLocation")
-      .map(({ name }) => name)
-      .sort();
-  }, [dataset]);
 };
 
 const createSourceData = (
@@ -79,25 +54,16 @@ const Plot: React.FC<{
 }> = ({ dataset, filters, view }) => {
   const theme = foc.useTheme();
 
-  const fields = useGeoFields(dataset);
-
-  const [activeField, setActiveField] = React.useState(() => fields[0]);
-
   let { loading, coordinates, samples } = useGeoLocations({
     dataset,
     filters,
     view,
-    path: activeField,
+    path: useRecoilValue(activeField),
   });
 
-  const [style, setStyle] = React.useState("Dark");
-
-  const selectorStyle = {
-    background: theme.backgroundTransparent,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-    padding: "0.25rem",
-  };
+  const style = useRecoilValue(mapStyle);
+  const [selectionData, setSelectionData] =
+    React.useState<GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>>();
 
   const mapRef = React.useRef<MapRef>();
   const onResize = React.useMemo(
@@ -119,10 +85,10 @@ const Plot: React.FC<{
 
   const bounds = React.useMemo(() => computeBounds(coordinates), [coordinates]);
 
-  const data = React.useMemo(
-    () => createSourceData(coordinates, samples),
-    [coordinates, samples]
-  );
+  const selection = useRecoilValue(hasSelection);
+  const data = React.useMemo(() => {
+    return createSourceData(coordinates, samples);
+  }, [coordinates, samples, selection]);
 
   const [draw] = React.useState(
     () =>
@@ -156,7 +122,7 @@ const Plot: React.FC<{
 
     const pointer = () => (map.getCanvas().style.cursor = "pointer");
     const crosshair = () => (map.getCanvas().style.cursor = "crosshair");
-    const drag = () => (map.getCanvas().style.cursor = "grabbing");
+    const drag = () => (map.getCanvas().style.cursor = "all-scroll");
     map.on("mouseenter", "cluster", pointer);
     map.on("mouseleave", "cluster", crosshair);
     map.on("mouseenter", "point", () => pointer);
@@ -204,7 +170,7 @@ const Plot: React.FC<{
           <Source
             id="points"
             type="geojson"
-            data={data}
+            data={selectionData || data}
             cluster={true}
             clusterMaxZoom={12}
           >
@@ -273,7 +239,7 @@ const Plot: React.FC<{
               }
               const source = mapRef.current.getSource("points");
               if (source.type === "geojson") {
-                source.setData(createSourceData(newCoordinates, newSamples));
+                setSelectionData(createSourceData(newCoordinates, newSamples));
               }
 
               if (!selected.size) {
@@ -286,30 +252,18 @@ const Plot: React.FC<{
           />
         </Map>
       )}
-      <div className={options}>
-        <foc.Selector
-          placeholder={"Map Style"}
-          value={style}
-          onSelect={setStyle}
-          useSearch={useSearch}
-          component={Value}
-          containerStyle={selectorStyle}
-          overflow={true}
-        />
-        {fields.length > 1 && (
-          <foc.Selector
-            placeholder={"Field"}
-            value={activeField}
-            onSelect={setActiveField}
-            useSearch={() => {
-              return { values: fields };
-            }}
-            component={Value}
-            containerStyle={selectorStyle}
-            overflow={true}
-          />
-        )}
-      </div>
+
+      <Options
+        fitData={() => fitBounds(mapRef.current, coordinates)}
+        fitSelectionData={() =>
+          fitBounds(
+            mapRef.current,
+            selectionData.features.map(
+              ({ geometry: { coordinates } }) => coordinates as [number, number]
+            )
+          )
+        }
+      />
     </div>
   );
 };

@@ -222,7 +222,7 @@ function ActivePlot({
       view: useRecoilValue(fos.view),
       filters: useRecoilValue(fos.filters),
     };
-    return <Map {...pluginProps} />;
+    return <Map key={"Map"} {...pluginProps} />;
   }
 
   return null;

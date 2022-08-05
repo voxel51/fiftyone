@@ -35,5 +35,9 @@
     "fiftyone": {
         "script": "dist/index.umd.js"
     },
-    "packageManager": "yarn@3.2.1"
+    "packageManager": "yarn@3.2.1",
+    "peerDependencies": {
+        "@material-ui/icons": "*",
+        "recoil": "*"
+    }
 }

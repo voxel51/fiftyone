@@ -130,19 +130,23 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
-    if extended_stages is not None:
-        for cls, d in extended_stages.items():
-            kwargs = [[k, v] for k, v in d.items()]
-            stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
-            if sort or not isinstance(
-                stage, (fosg.SortBySimilarity, fosg.SortBy)
-            ):
-                view = view.add_stage(stage)
+    if extended_stages:
+        view = extend_view(view, extended_stages, sort)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
+
+    return view
+
+
+def extend_view(view, extended_stages, sort):
+    for cls, d in extended_stages.items():
+        kwargs = [[k, v] for k, v in d.items()]
+        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
+        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
+            view = view.add_stage(stage)
 
     return view
 

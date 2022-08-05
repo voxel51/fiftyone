@@ -2,16 +2,13 @@
   height: 100%;
   width: 100%;
   position: relative;
+  pointer-events: none;
+}
+
+.container > div * {
+  pointer-events: all;
 }
 
 .container canvas {
   outline: none;
-}
-
-.options {
-  position: absolute;
-  top: 1rem;
-  left: 3rem;
-  display: flex;
-  column-gap: 1rem;
 }
