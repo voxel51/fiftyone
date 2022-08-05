@@ -957,7 +957,7 @@ are:
 
 .. note::
 
-    **Pro tip**: if you are editing existing labels and only uploading a subset
+    **Pro tip**: If you are editing existing labels and only uploading a subset
     of their attributes to CVAT,
     :ref:`restricting label deletions <cvat-restricting-edits>` by setting
     `allow_deletions=False` provides a helpful guarantee that no labels will be
@@ -965,7 +965,7 @@ are:
 
 .. note::
 
-    **Pro tip**: when working with annotation schemas that include
+    **Pro tip**: When working with annotation schemas that include
     :ref:`per-class attributes <cvat-label-schema>`, be sure that any class
     label changes that you would reasonably make all share the same attribute
     schemas so that unwanted `label_id` changes are not caused by CVAT.
@@ -2415,7 +2415,7 @@ for that annotation run:
 
 .. note::
 
-    Pro tip: Various methods available on the
+    **Pro tip**: Various methods available on the
     :class:`results <fiftyone.utils.cvat.CVATAnnotationResults>` object, like
     those shown above, accept an `api` argument. This allows you to provide a
     :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` object as
