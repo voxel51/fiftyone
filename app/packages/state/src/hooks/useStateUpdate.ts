@@ -22,6 +22,8 @@ import {
   similaritySorting,
   savingFilters,
   extendedStages,
+  similarityParameters,
+  extendedSelection,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -96,7 +98,8 @@ const useStateUpdate = () => {
         const previousDataset = get(datasetAtom);
         if (!previousDataset || previousDataset.id !== dataset.id) {
           reset(_activeFields({ modal: false }));
-          reset(extendedStages);
+          reset(similarityParameters);
+          reset(extendedSelection);
           reset(filters);
         }
 

@@ -84,13 +84,10 @@ const useSortBySimilarity = (close) => {
           });
 
           update(({ set }) => {
-            set(fos.extendedStages, (current) => ({
-              ...current,
-              "fiftyone.core.stages.SortBySimilarity": toSnakeCase({
-                ...parameters,
-                queryIds,
-              }),
-            }));
+            set(fos.similarityParameters, {
+              ...parameters,
+              queryIds,
+            });
             set(fos.modal, null);
             set(fos.similaritySorting, false);
             set(fos.aggregationsTick, (cur) => cur + 1);
@@ -200,7 +197,6 @@ interface SortBySimilarityProps {
 const SortBySimilarity = React.memo(
   ({ modal, bounds, close }: SortBySimilarityProps) => {
     const current = useRecoilValue(fos.similarityParameters);
-    console.log(current);
     const [state, setState] = useState<fos.State.SortBySimilarityParameters>(
       () =>
         current

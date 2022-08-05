@@ -1,11 +1,11 @@
-import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
-import { toCamelCase } from "@fiftyone/utilities";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -335,35 +335,29 @@ export const sidebarSourceSample = selector({
   },
 });
 
-export const similarityParameters = selector<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
-  key: "similarityParameters",
+export const extendedStagesUnsorted = selector({
+  key: "extendedStagesUnsorted",
   get: ({ get }) => {
-    const value = get(atoms.extendedStages)[
-      "fiftyone.core.stages.SortBySimilarity"
-    ];
-
-    if (!value) {
-      return undefined;
-    }
-
-    return toCamelCase(value) as State.SortBySimilarityParameters & {
-      queryIds: string[];
+    const sampleIds = get(atoms.extendedSelection);
+    return {
+      "fiftyone.core.stages.Select":
+        sampleIds && sampleIds.length
+          ? { sample_ids: sampleIds, ordered: false }
+          : undefined,
     };
   },
 });
 
-export const extendedSelection = selector<string[]>({
-  key: "extendedSelection",
-  get: ({ get }) =>
-    get(atoms.extendedStages)["fiftyone.core.stages.Select"]?.sample_ids || [],
-  set: ({ set }, newValue) =>
-    set(atoms.extendedStages, (current) => ({
-      ...current,
-      "fiftyone.core.stages.Select":
-        newValue instanceof DefaultValue || !newValue.length
-          ? undefined
-          : { sample_ids: newValue, ordered: false },
-    })),
+export const extendedStages = selector({
+  key: "extendedStages",
+  get: ({ get }) => {
+    const similarity = get(atoms.similarityParameters);
+
+    return {
+      ...get(extendedStagesUnsorted),
+      "fiftyone.core.stages.SortBySimilarity": similarity
+        ? toSnakeCase(similarity)
+        : undefined,
+    };
+  },
 });

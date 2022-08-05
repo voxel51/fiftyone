@@ -163,6 +163,7 @@ export const aggregations = selectorFamily<
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
+          extended: get(selectors.extendedStagesUnsorted),
         }
       )) as { aggregations: AggregationsData };
 

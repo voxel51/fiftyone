@@ -27,7 +27,7 @@ export const geoFields = selector<string[]>({
 
 export const hasSelection = selector<boolean>({
   key: "hasSelection",
-  get: ({ get }) => get(extendedSelection).length > 0,
+  get: ({ get }) => get(extendedSelection)?.length > 0,
   set: ({ reset }, newValue) => {
     if (newValue === true) {
       throw new Error("not allowed");

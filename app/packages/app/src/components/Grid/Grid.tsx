@@ -125,7 +125,7 @@ const Grid: React.FC<{}> = () => {
       fos.filterView(useRecoilValue(fos.view)),
       useRecoilValue(fos.refresher),
       fos.tagging,
-      useRecoilValue(fos.similarityParameters),
+      useRecoilValue(fos.extendedStages),
     ]
   );
 

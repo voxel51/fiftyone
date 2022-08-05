@@ -2371,6 +2371,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/app@workspace:packages/app"
   dependencies:
+    "@fiftyone/components": "*"
     "@fiftyone/flashlight": "*"
     "@fiftyone/looker": "*"
     "@fiftyone/map": "*"
