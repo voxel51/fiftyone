@@ -360,6 +360,7 @@ contains |GeoLocation| data in its ``location`` field:
     from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
+    fob.compute_uniqueness(dataset)
 
     # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
@@ -437,8 +438,6 @@ notebook:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-geo")
-
-    # Index the dataset by visual uniqueness
     fob.compute_uniqueness(dataset)
 
     session = fo.launch_app(dataset)
@@ -989,7 +988,6 @@ For example, you can save a :ref:`histogram view plot <view-plots>`:
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.brain as fob
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
@@ -1012,6 +1010,8 @@ Or you can save an :ref:`embedding scatterplot <embeddings-plots>`:
 
 .. code-block:: python
     :linenos:
+
+    import fiftyone.brain as fob
 
     results = fob.compute_visualization(dataset)
 
