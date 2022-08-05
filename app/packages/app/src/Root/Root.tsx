@@ -19,7 +19,6 @@ import {
   Header,
   SlackLink,
   iconContainer,
-  Link,
 } from "@fiftyone/components";
 
 import gaConfig from "../ga";
@@ -35,7 +34,10 @@ import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { clone, isElectron } from "@fiftyone/utilities";
 import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
+import { getDatasetName, isGroup, Route, RouterContext } from "@fiftyone/state";
+
+import DatasetSelector from "../components/DatasetSelector";
+import GroupSlice from "../components/GroupSliceSelector";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
@@ -81,22 +83,11 @@ const getUseSearch = (prepared: PreloadedQuery<RootQuery>) => {
 
     return useMemo(() => {
       return {
-        total: data.datasets.total,
+        total: data.datasets.total === null ? undefined : data.datasets.total,
         values: data.datasets.edges.map((edge) => edge.node.name),
       };
     }, [data]);
   };
-};
-
-const DatasetLink: React.FC<{ value: string; className: string }> = ({
-  className,
-  value,
-}) => {
-  return (
-    <Link title={value} className={className}>
-      {value}
-    </Link>
-  );
 };
 
 export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
@@ -159,26 +150,21 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   );
   const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
   const refresh = fos.useRefresh();
-  const setDataset = fos.useSetDataset();
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
+  const isGroupDataset = useRecoilValue(isGroup);
 
   return (
     <>
       <Header
         title={"FiftyOne"}
-        onRefresh={() => {
-          refresh();
-        }}
-        datasetSelectorProps={{
-          component: DatasetLink,
-          onSelect: (name) => {
-            name !== dataset && setDataset(name);
-          },
-          placeholder: "Select dataset",
-          useSearch,
-          value: dataset || "",
-        }}
+        onRefresh={refresh}
+        navChildren={
+          <>
+            <DatasetSelector useSearch={useSearch} />
+            {isGroupDataset && <GroupSlice />}
+          </>
+        }
       >
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}

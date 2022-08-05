@@ -11,6 +11,7 @@ from starlette.requests import Request
 
 
 from fiftyone.server.decorators import route
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.samples import paginate_samples
 
 
@@ -23,6 +24,7 @@ class Samples(HTTPEndpoint):
         page = data.get("page", 1)
         page_length = data.get("page_length", 20)
         similarity = data.get("similarity", None)
+        slice = data.get("slice", None)
 
         results = await paginate_samples(
             dataset,
@@ -31,6 +33,7 @@ class Samples(HTTPEndpoint):
             similarity,
             page_length,
             (page - 1) * page_length - 1,
+            sample_filter=SampleFilter(group=GroupElementFilter(slice=slice)),
         )
 
         return {

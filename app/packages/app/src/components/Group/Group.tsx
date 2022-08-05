@@ -221,12 +221,12 @@ const Group: React.FC<{
   return (
     <Resizable
       size={{ height, width: "100%" }}
-      minHeight={100}
+      minHeight={200}
       maxHeight={300}
       enable={{
-        top: true,
+        top: false,
         right: false,
-        bottom: false,
+        bottom: true,
         left: false,
         topRight: false,
         bottomRight: false,

@@ -6,7 +6,7 @@ export default graphql`
     $cursor: String = null
     $dataset: String!
     $view: BSONArray!
-    $groupId: String!
+    $filter: SampleFilter!
     $pinnedSampleFilter: SampleFilter!
   ) {
     ...paginateGroup_query
@@ -22,7 +22,7 @@ export const paginateGroupPaginationFragment = graphql`
       view: $view
       first: $count
       after: $cursor
-      groupId: $groupId
+      filter: $filter
     ) @connection(key: "paginateGroup_query_samples") {
       edges {
         cursor

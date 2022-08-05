@@ -117,8 +117,8 @@ type Group {
 }
 
 input GroupElementFilter {
-  id: String!
-  group: String!
+  id: String = null
+  slice: String = null
 }
 
 type ImageSample implements Sample {
@@ -194,7 +194,7 @@ type Query {
     view: BSONArray!
     first: Int = 20
     after: String = null
-    groupId: String = null
+    filter: SampleFilter = null
   ): SampleItemStrConnection!
   sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
   teamsSubmission: Boolean!

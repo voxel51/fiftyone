@@ -17,8 +17,8 @@ class OneOf:
 
 @gql.input
 class GroupElementFilter:
-    id: str
-    group: str
+    id: t.Optional[str] = None
+    slice: t.Optional[str] = None
 
 
 @gql.input(directives=[OneOf])  # oneof not working

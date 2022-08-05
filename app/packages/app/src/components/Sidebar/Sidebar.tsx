@@ -11,9 +11,6 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Info } from "../SidebarSourceSelector";
-import _ from "lodash";
-
 const MARGIN = 3;
 
 const fn = (
@@ -682,8 +679,6 @@ const InteractiveSidebar = ({
   const theme = useTheme();
   const sourceSample = useRecoilValue(fos.sidebarSourceSample);
   const dataset = useRecoilValue(fos.dataset);
-  const slice =
-    modal && _.get(sourceSample, [dataset.groupField, "name"].join("."), null);
 
   return shown ? (
     <Resizable
@@ -723,11 +718,6 @@ const InteractiveSidebar = ({
           down.current && animate(last.current);
         }}
       >
-        {slice && (
-          <div style={{ height: "3rem" }}>
-            <Info inSidebar={true} current={true} text={slice} />
-          </div>
-        )}
         <Container style={containerController.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;

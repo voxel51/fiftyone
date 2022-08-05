@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6d26936659556d3b4433024cd4281d0b>>
+ * @generated SignedSource<<d5608ec81ba07cd93a7728c934c70e46>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,14 +15,14 @@ export type SampleFilter = {
   id?: string | null;
 };
 export type GroupElementFilter = {
-  group: string;
-  id: string;
+  id?: string | null;
+  slice?: string | null;
 };
 export type paginateGroupQuery$variables = {
   count?: number | null;
   cursor?: string | null;
   dataset: string;
-  groupId: string;
+  filter: SampleFilter;
   pinnedSampleFilter: SampleFilter;
   view: Array;
 };
@@ -55,7 +55,7 @@ const node: ConcreteRequest = (function () {
     v3 = {
       defaultValue: null,
       kind: "LocalArgument",
-      name: "groupId",
+      name: "filter",
     },
     v4 = {
       defaultValue: null,
@@ -86,13 +86,13 @@ const node: ConcreteRequest = (function () {
       v6 /*: any*/,
       {
         kind: "Variable",
-        name: "first",
-        variableName: "count",
+        name: "filter",
+        variableName: "filter",
       },
       {
         kind: "Variable",
-        name: "groupId",
-        variableName: "groupId",
+        name: "first",
+        variableName: "count",
       },
       v7 /*: any*/,
     ],
@@ -263,7 +263,7 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v8 /*: any*/,
-          filters: ["dataset", "view", "groupId"],
+          filters: ["dataset", "view", "filter"],
           handle: "connection",
           key: "paginateGroup_query_samples",
           kind: "LinkedHandle",
@@ -290,16 +290,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "3247d0f73038ec0a34cba0fdbba2cdbd",
+      cacheID: "7293d4d57a3922bf2f082bdc67388c77",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $groupId: String!\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on PointCloudSample {\n      sample\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on PointCloudSample {\n      sample\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "062857b2fc7060a6768bb5f2d6abbfd7";
+(node as any).hash = "e04660582e3fd8867f7144bee2881f52";
 
 export default node;

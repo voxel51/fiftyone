@@ -1,10 +1,8 @@
-import { useRecoilState, atom } from "recoil";
+import { useRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useTheme } from "@fiftyone/components";
 import styled from "styled-components";
-
-import { LocationOn } from "@material-ui/icons";
 
 export default function SidebarSourceSelector({
   id,
@@ -16,7 +14,7 @@ export default function SidebarSourceSelector({
 
   const [current, setCurrent] = useRecoilState(fos.sidebarSource);
   const theme = useTheme();
-  const timer = React.useRef();
+  const timer = React.useRef<number>();
   const setHovering = (state) => {
     if (timer.current) {
       clearTimeout(timer.current);
@@ -41,7 +39,9 @@ export default function SidebarSourceSelector({
   return (
     <div
       style={{
-        border: `solid 1px ${color}`,
+        border: `3px solid ${theme.backgroundDarkBorder}`,
+        borderRadius: 2,
+        boxShadow: `0 2px 20px ${theme.backgroundDark}`,
         height: "100%",
       }}
       onClick={handleClick}
@@ -55,7 +55,7 @@ export default function SidebarSourceSelector({
 }
 
 const InfoContainer = styled.header`
-  background: ${(theme) => theme.backgroundDark};
+  background: ${({ theme }) => theme.backgroundDark};
   padding: 0.5rem;
   position: absolute;
   height: 50px;
@@ -78,12 +78,18 @@ export function Info({ text, hovering, current, inSidebar }) {
         }}
       >
         {current && (
-          <LocationOn
+          <svg
             style={{
               position: "relative",
               top: "5px",
+              width: 24,
             }}
-          />
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill={theme.brand}
+          >
+            <path d="M16,12V4H17V2H7V4H8V12L6,14V16H11.2V22H12.8V16H18V14L16,12Z" />
+          </svg>
         )}
         {text}
       </h3>

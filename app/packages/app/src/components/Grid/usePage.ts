@@ -1,11 +1,10 @@
 import { Get } from "@fiftyone/flashlight/src/state";
 import { zoomAspectRatio } from "@fiftyone/looker";
+import { Lookers, LookerStore, SampleData } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { MutableRefObject, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback } from "recoil";
-import { Lookers, LookerStore } from "../../hooks/useLookerStore";
-import { SampleData } from "../../recoil/atoms";
 import { pageParameters } from "./recoil";
 
 const usePage = (

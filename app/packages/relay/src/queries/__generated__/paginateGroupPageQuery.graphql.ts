@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3af239bb7a508790623b5df9c7dc7113>>
+ * @generated SignedSource<<acf9ef71f2167e6ed8bdf9baf1bd5942>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,11 +10,19 @@
 
 import { ConcreteRequest, Query } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
+export type SampleFilter = {
+  group?: GroupElementFilter | null;
+  id?: string | null;
+};
+export type GroupElementFilter = {
+  id?: string | null;
+  slice?: string | null;
+};
 export type paginateGroupPageQuery$variables = {
   count?: number | null;
   cursor?: string | null;
   dataset: string;
-  groupId?: string | null;
+  filter?: SampleFilter | null;
   view: Array;
 };
 export type paginateGroupPageQuery$data = {
@@ -45,7 +53,7 @@ const node: ConcreteRequest = (function () {
       {
         defaultValue: null,
         kind: "LocalArgument",
-        name: "groupId",
+        name: "filter",
       },
       {
         defaultValue: null,
@@ -66,13 +74,13 @@ const node: ConcreteRequest = (function () {
       },
       {
         kind: "Variable",
-        name: "first",
-        variableName: "count",
+        name: "filter",
+        variableName: "filter",
       },
       {
         kind: "Variable",
-        name: "groupId",
-        variableName: "groupId",
+        name: "first",
+        variableName: "count",
       },
       {
         kind: "Variable",
@@ -227,7 +235,7 @@ const node: ConcreteRequest = (function () {
         {
           alias: null,
           args: v1 /*: any*/,
-          filters: ["dataset", "view", "groupId"],
+          filters: ["dataset", "view", "filter"],
           handle: "connection",
           key: "paginateGroup_query_samples",
           kind: "LinkedHandle",
@@ -236,16 +244,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "87ca01ebf79c4dcce408699462aaaf76",
+      cacheID: "0e3590e0db68b1616988a2a80ab79fe8",
       id: null,
       metadata: {},
       name: "paginateGroupPageQuery",
       operationKind: "query",
-      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $groupId: String\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, groupId: $groupId) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $filter: SampleFilter\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "ae1faa21de4f426b6d35adfb1526e57d";
+(node as any).hash = "c119b0885661da12d5f2a27f16f94f3e";
 
 export default node;

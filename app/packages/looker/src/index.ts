@@ -61,7 +61,6 @@ import {
   BufferRange,
   Dimensions,
   Sample,
-  MaskTargets,
   Coloring,
 } from "./state";
 import {

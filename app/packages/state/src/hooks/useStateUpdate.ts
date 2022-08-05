@@ -21,6 +21,7 @@ import {
   patching,
   similaritySorting,
   savingFilters,
+  groupSlice,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -94,6 +95,7 @@ const useStateUpdate = () => {
         const previousDataset = get(datasetAtom);
         if (!previousDataset || previousDataset.id !== dataset.id) {
           reset(_activeFields({ modal: false }));
+          set(groupSlice, dataset.defaultGroupSlice);
         }
 
         set(datasetAtom, dataset);

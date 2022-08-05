@@ -58,7 +58,6 @@ const SampleModal = () => {
     sample,
     navigation: { index, getIndex },
   } = data;
-  const { filepath, _id } = sample;
 
   const selectedMediaField = useRecoilValue(fos.selectedMediaField);
   const selectedMediaFieldName =
@@ -205,7 +204,7 @@ const SampleModal = () => {
   const screen = useRecoilValue(fos.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
-  const wrapperRef = useRef();
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
   const isGroupMode = useRecoilValue(isGroup) && queryRef;
   const isPinnedMode = useRecoilValue(isPinned);
@@ -237,24 +236,39 @@ const SampleModal = () => {
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          {isGroupMode ? (
-            <SidebarSourceSelector
-              id="main"
-              slice={slice}
-              groupMode={isGroupMode}
-            >
-              {lookerEl}
-            </SidebarSourceSelector>
-          ) : (
-            lookerEl
-          )}
           {isGroupMode && <Group queryRef={queryRef} />}
+
+          <div
+            style={{
+              position: "relative",
+              flexGrow: 1,
+              display: "flex",
+              width: "100%",
+            }}
+          >
+            <div style={{ flexGrow: 1, position: "relative" }}>
+              {isGroupMode ? (
+                <SidebarSourceSelector
+                  id="main"
+                  slice={slice}
+                  groupMode={isGroupMode}
+                >
+                  {lookerEl}
+                </SidebarSourceSelector>
+              ) : (
+                lookerEl
+              )}
+            </div>
+            {isGroupMode && isPinnedMode && (
+              <PinnedLooker queryRef={queryRef} />
+            )}
+          </div>
         </ContentColumn>
-        {isGroupMode && isPinnedMode && <PinnedLooker queryRef={queryRef} />}
+
         <Sidebar render={renderEntry} modal={true} />
       </Container>
     </ModalWrapper>,
-    document.getElementById("modal")
+    document.getElementById("modal") as HTMLDivElement
   );
 };
 

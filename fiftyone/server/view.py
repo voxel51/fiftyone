@@ -5,6 +5,7 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from tokenize import group
 import typing as t
 from bson import ObjectId
 
@@ -39,40 +40,18 @@ def get_view(
     only_matches=True,
     similarity=None,
     sample_filter: t.Optional[SampleFilter] = None,
-    group_id: t.Optional[str] = None,
 ) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
     view.reload()
 
-    if group_id:
-        view = get_group(view, group_id)
-
-    elif sample_filter:
+    if sample_filter is not None:
         if sample_filter.group:
-            view = view.mongo(
-                [
-                    {
-                        "$match": {
-                            "$expr": {
-                                "$eq": [
-                                    "$" + view._dataset.group_field + "._id",
-                                    ObjectId(sample_filter.group.id),
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "$match": {
-                            "$expr": {
-                                "$eq": [
-                                    "$" + view._dataset.group_field + ".name",
-                                    sample_filter.group.group,
-                                ]
-                            }
-                        }
-                    },
-                ]
-            )
+            if sample_filter.group.slice:
+                view.group_slice = sample_filter.group.slice
+
+            if sample_filter.group.id:
+                view = get_group(view, sample_filter.group.id)
+
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 

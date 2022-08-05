@@ -51,6 +51,12 @@ SampleItem = gql.union(
     "SampleItem", types=(ImageSample, PointCloudSample, VideoSample)
 )
 
+MEDIA_TYPES = {
+    fom.IMAGE: ImageSample,
+    fom.POINT_CLOUD: PointCloudSample,
+    fom.VIDEO: VideoSample,
+}
+
 
 async def paginate_samples(
     dataset: str,
@@ -60,7 +66,6 @@ async def paginate_samples(
     first: int,
     after: t.Optional[str] = None,
     sample_filter: t.Optional[SampleFilter] = None,
-    group_id: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
         dataset,
@@ -70,20 +75,15 @@ async def paginate_samples(
         similarity=similarity,
         only_matches=True,
         sample_filter=sample_filter,
-        group_id=group_id,
     )
 
-    media_type = None
-    if sample_filter and sample_filter.group:
-        media = view._dataset._doc.group_media_types[sample_filter.group.group]
-        if media == fom.IMAGE:
-            media_type = ImageSample
-        elif media == fom.VIDEO:
-            media_type = VideoSample
-        else:
-            media_type = PointCloudSample
+    media = view.media_type
+    if media == fom.GROUP:
+        media = view.group_media_types[view.group_slice]
 
-    if view.media_type == fom.VIDEO:
+    media_type = MEDIA_TYPES[media]
+
+    if media_type == fom.VIDEO:
         if isinstance(view, focl.ClipsView):
             expr = F("frame_number") == F("$support")[0]
         else:
@@ -101,8 +101,9 @@ async def paginate_samples(
         view._pipeline(
             attach_frames=True,
             detach_frames=False,
-            manual_group_select=group_id is not None
-            or (sample_filter and sample_filter.group is not None),
+            manual_group_select=sample_filter
+            and sample_filter.group
+            and (sample_filter.group.id and not sample_filter.group.slice),
         ),
     ).to_list(first + 1)
 

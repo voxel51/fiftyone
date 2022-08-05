@@ -7,7 +7,7 @@ export interface ResultProps<T> {
   active: boolean;
   result: T;
   onClick: () => void;
-  component: React.FC<{ value: T }>;
+  component: React.FC<{ value: T; className?: string }>;
 }
 
 const NONSTRING_VALUES: any[] = [false, true, null];

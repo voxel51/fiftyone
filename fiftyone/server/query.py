@@ -5,6 +5,7 @@ FiftyOne Server queries
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from re import S
 import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
@@ -290,10 +291,10 @@ class Query:
         view: BSONArray,
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
-        group_id: t.Optional[str] = None,
+        filter: t.Optional[SampleFilter] = None,
     ) -> Connection[SampleItem, str]:
         return await paginate_samples(
-            dataset, view, None, None, first, after, group_id=group_id
+            dataset, view, None, None, first, after, sample_filter=filter
         )
 
     @gql.field

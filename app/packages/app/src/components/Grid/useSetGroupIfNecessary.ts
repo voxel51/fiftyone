@@ -27,11 +27,15 @@ export default (store: fos.LookerStore<any>) => {
               {
                 dataset,
                 view,
-                groupId: sample?.sample[groupField]._id,
+                filter: {
+                  group: {
+                    id: sample?.sample[groupField]._id,
+                  },
+                },
                 pinnedSampleFilter: {
                   group: {
                     id: sample?.sample[groupField]._id,
-                    group: await snapshot.getPromise(fos.pinnedSampleGroup),
+                    slice: await snapshot.getPromise(fos.pinnedGroupSlice),
                   },
                 },
               },

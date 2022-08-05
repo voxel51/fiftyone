@@ -2,6 +2,7 @@ import { toSnakeCase } from "@fiftyone/utilities";
 import { atom, selector, selectorFamily } from "recoil";
 
 import * as fos from "@fiftyone/state";
+import { groupSlice } from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
@@ -42,6 +43,7 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
         dataset: get(fos.datasetName),
         similarity: similarity && !modal ? toSnakeCase(similarity) : null,
         zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
+        slice: get(groupSlice),
       };
     },
 });
