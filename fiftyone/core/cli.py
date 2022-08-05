@@ -2248,8 +2248,8 @@ class ModelZooRequirementsCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2388,8 +2388,8 @@ class ModelZooApplyCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2457,8 +2457,8 @@ class ModelZooEmbedCommand(Command):
             metavar="LEVEL",
             type=int,
             help=(
-                "the error level in {0, 1, 2} to use when installing or "
-                "ensuring model requirements"
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "installing or ensuring model requirements"
             ),
         )
 
@@ -2550,6 +2550,16 @@ class MigrateCommand(Command):
             help="the name of a specific dataset to migrate",
         )
         parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            default=1,
+            help=(
+                "the error level (0=error, 1=warn, 2=ignore) to use when "
+                "migrating individual datasets"
+            ),
+        )
+        parser.add_argument(
             "--verbose",
             action="store_true",
             help="whether to log incremental migrations that are performed",
@@ -2575,17 +2585,25 @@ class MigrateCommand(Command):
             return
 
         if args.all:
-            fom.migrate_all(destination=args.version, verbose=args.verbose)
+            fom.migrate_all(
+                destination=args.version,
+                error_level=args.error_level,
+                verbose=args.verbose,
+            )
             return
 
         fom.migrate_database_if_necessary(
-            destination=args.version, verbose=args.verbose
+            destination=args.version,
+            verbose=args.verbose,
         )
 
         if args.dataset_name:
             for name in args.dataset_name:
                 fom.migrate_dataset_if_necessary(
-                    name, destination=args.version, verbose=args.verbose
+                    name,
+                    destination=args.version,
+                    error_level=args.error_level,
+                    verbose=args.verbose,
                 )
 
 

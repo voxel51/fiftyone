@@ -66,6 +66,7 @@ const Column: React.FC<{
     foq.paginateGroupPaginationFragment,
     fragmentRef
   );
+
   const samples = {
     ...data.samples,
     edges: data.samples.edges.filter(

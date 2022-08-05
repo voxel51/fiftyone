@@ -248,6 +248,11 @@ def compute_metadata(
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slice(
+            _allow_mixed=True
+        )
+
     if num_workers <= 1:
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
@@ -301,11 +306,6 @@ def _compute_metadata(sample_collection, overwrite=False):
 def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
-
-    if sample_collection.media_type == fom.GROUP:
-        sample_collection = sample_collection.select_group_slice(
-            _allow_mixed=True
-        )
 
     ids, filepaths, media_types = sample_collection.values(
         ["id", "filepath", "_media_type"],

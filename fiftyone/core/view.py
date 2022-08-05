@@ -7,6 +7,7 @@ Dataset views.
 """
 from collections import OrderedDict
 from copy import copy, deepcopy
+import itertools
 import numbers
 
 from bson import ObjectId
@@ -183,6 +184,16 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.group_slice
 
     @property
+    def group_slices(self):
+        """The list of group slices of the view, or None if the view is not
+        grouped.
+        """
+        if self.media_type != fom.GROUP:
+            return None
+
+        return self._dataset.group_slices
+
+    @property
     def group_media_types(self):
         """A dict mapping group slices to media types, or None if the view is
         not grouped.
@@ -280,6 +291,9 @@ class DatasetView(foc.SampleCollection):
             ("Num %s:" % self._elements_str, self.count()),
         ]
 
+        if self.media_type == fom.GROUP:
+            elements.insert(2, ("Group slice:", self.group_slice))
+
         elements = fou.justify_headings(elements)
         lines = ["%s %s" % tuple(e) for e in elements]
 
@@ -290,7 +304,7 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             lines.extend(
                 [
                     "Frame fields:",
@@ -930,7 +944,7 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _needs_frames(self):
-        if self.media_type != fom.VIDEO:
+        if not self._dataset._contains_videos():
             return False
 
         for stage in self._stages:
@@ -939,46 +953,84 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
-    def _needs_group_slices(self):
-        if self.media_type != fom.GROUP:
-            return None
-
-        group_slices = set()
-
-        for stage in self._stages:
-            _group_slices = stage._needs_group_slices(self)
-            if _group_slices:
-                group_slices.update(_group_slices)
-
-        return group_slices
-
     def _pipeline(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
-        _pipeline = []
+        _pipelines = []
         _view = self._base_view
-        for stage in self._stages:
-            _pipeline.extend(stage.to_mongo(_view))
-            _view._stages.append(stage)
+
+        _contains_videos = self._dataset._contains_videos()
+        _attach_frames_idx = None
+
+        _contains_groups = self._dataset.media_type == fom.GROUP
+        _group_slices = set()
+        _attach_groups_idx = None
+
+        for idx, stage in enumerate(self._stages):
+            # Determine if stage needs frames attached
+            if (
+                _contains_videos
+                and _attach_frames_idx is None
+                and stage._needs_frames(_view)
+            ):
+                _attached_frames_idx = idx
+
+            if _contains_groups:
+                # Special case: report a manual override if the first stage
+                # transforms a grouped collection into a non-grouped collection
+                if idx == 0:
+                    _media_type = stage.get_media_type(_view)
+                    if _media_type not in (None, fom.GROUP):
+                        manual_group_select = True
+
+                # Determine if stage needs group slices attached
+                _stage_group_slices = stage._needs_group_slices(_view)
+                if _stage_group_slices:
+                    if _attach_groups_idx is None:
+                        _attach_groups_idx = idx
+
+                    _group_slices.update(_stage_group_slices)
+
+            # Generate stage's pipeline
+            _pipelines.append(stage.to_mongo(_view))
+            _view = _view.add_stage(stage)
+
+        if _attach_frames_idx is None and attach_frames or frames_only:
+            _attach_frames_idx = len(_pipelines)
+
+        # Insert frame lookup pipeline if needed
+        if _attach_frames_idx is not None:
+            attach_frames = None  # special syntax: frames already attached
+            _pipeline = self._dataset._attach_frames_pipeline()
+            _pipelines.insert(_attach_frames_idx, _pipeline)
+
+        # Insert group lookup pipline if needed
+        if _attach_groups_idx is not None:
+            if group_slices:
+                _group_slices.update(group_slices)
+
+            group_slices = None
+            _pipeline = self._dataset._attach_groups_pipeline(
+                group_slices=_group_slices
+            )
+            _pipelines.insert(_attach_groups_idx, _pipeline)
 
         if pipeline is not None:
-            _pipeline.extend(pipeline)
+            _pipelines.append(pipeline)
 
-        attach_frames |= self._needs_frames()
+        _pipeline = list(itertools.chain.from_iterable(_pipelines))
 
         if media_type is None:
             media_type = self.media_type
-
-        if media_type == fom.GROUP and group_slices is None:
-            group_slices = self._needs_group_slices()
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
@@ -989,31 +1041,31 @@ class DatasetView(foc.SampleCollection):
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,
+            manual_group_select=manual_group_select,
         )
 
     def _aggregate(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
-        media_type=None,
         group_slices=None,
         groups_only=False,
         detach_groups=False,
+        manual_group_select=False,
     ):
-        if media_type is None:
-            media_type = self.media_type
-
         _pipeline = self._pipeline(
             pipeline=pipeline,
+            media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
-            media_type=media_type,
             group_slices=group_slices,
             groups_only=groups_only,
             detach_groups=detach_groups,
+            manual_group_select=manual_group_select,
         )
         return foo.aggregate(self._dataset._sample_collection, _pipeline)
 
@@ -1141,7 +1193,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_missing_fields(self, frames=False):
         if frames:
-            if self.media_type != fom.VIDEO:
+            if not self._contains_videos():
                 return set()
 
             dataset_schema = self._dataset.get_frame_field_schema()

@@ -217,11 +217,12 @@ export function getFilepathField(sample, fields) {
   return null;
 }
 
-export function PointCloud() {
+export function PointCloud({ sampleOverride }) {
   // NOTE: "pcd_filepath" should come from a plugin setting
   // instead of being hardcoded
   const settings = fop.usePluginSettings("point-clouds");
-  const { sample } = recoil.useRecoilValue(fos.modal);
+  const { sample: defaultSample } = recoil.useRecoilValue(fos.modal);
+  const sample = sampleOverride || defaultSample;
 
   const modal = true;
   const filepathFieldName = getFilepathField(sample, settings.filepathFields);
