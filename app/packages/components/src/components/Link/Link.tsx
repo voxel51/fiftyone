@@ -12,14 +12,16 @@ const Link: React.FC<
     title: string;
     className?: string;
     style?: React.CSSProperties;
+    href?: string;
+    target?: React.HTMLAttributeAnchorTarget;
   }>
-> = ({ children, className, style, title, to }) => {
+> = ({ children, className, href, style, target, title, to }) => {
   const router = useContext(RouterContext);
   const [pending, startTransition] = useTransition();
 
   return (
     <a
-      href={typeof to === "string" ? to : undefined}
+      href={typeof to === "string" ? to : href}
       onClick={
         typeof to === "string"
           ? useCallback<React.MouseEventHandler<HTMLAnchorElement>>(
@@ -37,6 +39,7 @@ const Link: React.FC<
       }
       style={style}
       className={className}
+      target={target}
       title={title}
     >
       {children}

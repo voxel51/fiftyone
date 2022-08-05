@@ -12,6 +12,7 @@ import {
   STYLES,
 } from "./state";
 import useEventHandler from "./useEventHandler";
+import { useExternalLink } from "@fiftyone/utilities";
 
 const useSearch = (search: string) => {
   const values = STYLES.filter((style) => style.includes(search));
@@ -95,7 +96,13 @@ const Options: React.FC<{
           <CenterFocusWeak />
         </Link>
 
-        <Link className={link} to={"https://docs.voxel51.com"} title={"Help"}>
+        <Link
+          className={link}
+          href={"https://docs.voxel51.com"}
+          title={"Help"}
+          to={useExternalLink("https://docs.voxel51.com")}
+          target={"_blank"}
+        >
           <Help />
         </Link>
       </div>
