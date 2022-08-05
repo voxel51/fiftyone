@@ -1,5 +1,7 @@
 import { dataset, extendedSelection } from "@fiftyone/state";
-import { atom, DefaultValue, selector } from "recoil";
+import { atom, selector } from "recoil";
+
+export interface Settings {}
 
 const defaultActiveField = selector<string>({
   key: "@fiftyone/map/state.defaultActiveField",

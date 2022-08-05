@@ -189,7 +189,7 @@ export function usePluginSettings(pluginName: string): any {
     _.get(appConfigPlugins, pluginName, {}),
     _.get(datasetPlugins, pluginName, {})
   );
-  console.log("plugin settings", settings);
+  console.info("plugin settings", settings);
 
   return settings;
 }

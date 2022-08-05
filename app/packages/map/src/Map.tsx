@@ -17,6 +17,7 @@ import { Loading } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
 import { activeField, hasSelection, mapStyle, MAP_STYLES } from "./state";
 import Options from "./Options";
+import { usePluginSettings } from "@fiftyone/plugins";
 
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoiYmVuamFtaW5wa2FuZSIsImEiOiJjbDV3bG1qbmUwazVkM2JxdjA2Mmwza3JpIn0.WnOukHfx7LBTOiOEYth-uQ";
@@ -60,6 +61,9 @@ const Plot: React.FC<{
     view,
     path: useRecoilValue(activeField),
   });
+  const settings = { ...usePluginSettings("map") };
+  const pointRadius = settings["point-radius"];
+  delete settings["point-radius"];
 
   const style = useRecoilValue(mapStyle);
   const [selectionData, setSelectionData] =
@@ -178,7 +182,6 @@ const Plot: React.FC<{
               id={"cluster"}
               filter={["has", "point_count"]}
               paint={{
-                // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
                 "circle-color": theme.brand,
                 "circle-opacity": 0.7,
                 "circle-radius": [
@@ -190,6 +193,7 @@ const Plot: React.FC<{
                   25,
                   40,
                 ],
+                ...settings,
               }}
               type={"circle"}
             />
@@ -208,9 +212,9 @@ const Plot: React.FC<{
               id={"point"}
               filter={["!", ["has", "point_count"]]}
               paint={{
-                "circle-color": theme.brand,
-                "circle-opacity": 0.7,
-                "circle-radius": 4,
+                "circle-color": settings.color || theme.brand,
+                "circle-opacity": settings.opacity || 0.7,
+                "circle-radius": pointRadius || 4,
               }}
               type={"circle"}
             />

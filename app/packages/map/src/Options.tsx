@@ -1,7 +1,7 @@
 import { link, options } from "./Options.module.css";
 
 import { Link, Selector, useTheme } from "@fiftyone/components";
-import { Close, Crop, Help } from "@material-ui/icons";
+import { CenterFocusWeak, Close, Help } from "@material-ui/icons";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
@@ -92,7 +92,7 @@ const Options: React.FC<{
         )}
 
         <Link className={link} title={"Fit data (f)"}>
-          <Crop onClick={fitSelectionData} />
+          <CenterFocusWeak onClick={fitSelectionData} />
         </Link>
 
         <Link className={link} to={"https://docs.voxel51.com"} title={"Help"}>
