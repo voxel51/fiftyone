@@ -10,7 +10,7 @@
 .options > div {
   display: flex;
   column-gap: 1rem;
-  margin: 0 3rem;
+  margin: 0 1rem;
 }
 
 .link {
