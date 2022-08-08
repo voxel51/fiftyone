@@ -20,6 +20,7 @@ import {
   DATE_TIME_FIELD,
   getFetchFunction,
 } from "@fiftyone/utilities";
+import { extendedStagesUnsorted } from "@fiftyone/state";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -219,7 +220,8 @@ const distributions = selectorFamily<Distribution[], string>({
           limit: LIMIT,
           view: get(fos.view),
           dataset: get(fos.datasetName),
-          get: get(fos.filters),
+          filters: get(fos.filters),
+          extended: get(extendedStagesUnsorted),
         }
       );
 
