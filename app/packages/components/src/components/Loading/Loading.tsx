@@ -1,10 +1,12 @@
 import React from "react";
 
-import style from "./Loading.module.css";
+import { loading } from "./Loading.module.css";
 
-const Loading: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+const Loading: React.FC<
+  React.PropsWithChildren<{ style?: React.CSSProperties }>
+> = ({ children, style }) => {
   return (
-    <div className={style.loading}>
+    <div className={loading} style={style}>
       <div>{children}</div>
     </div>
   );

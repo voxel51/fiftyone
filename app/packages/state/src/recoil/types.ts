@@ -131,7 +131,7 @@ export namespace State {
 
   export interface Stage {
     _cls: string;
-    kwargs: [string, object][];
+    kwargs: [string, any][];
   }
 
   export interface SelectedLabelData {

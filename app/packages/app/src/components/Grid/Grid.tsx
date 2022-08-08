@@ -126,6 +126,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.groupSlice),
       useRecoilValue(fos.refresher),
       fos.tagging,
+      useRecoilValue(fos.extendedStages),
     ]
   );
 

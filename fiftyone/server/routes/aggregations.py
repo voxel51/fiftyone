@@ -34,8 +34,11 @@ class Aggregations(HTTPEndpoint):
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
         hidden_labels = data.get("hidden_labels", None)
+        extended = data.get("extended", None)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, extended_stages=extended
+        )
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)

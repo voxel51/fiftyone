@@ -62,9 +62,9 @@ async def paginate_samples(
     dataset: str,
     stages: BSONArray,
     filters: BSON,
-    similarity: BSON,
     first: int,
     after: t.Optional[str] = None,
+    extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     view = fosv.get_view(
@@ -72,7 +72,8 @@ async def paginate_samples(
         stages=stages,
         filters=filters,
         count_label_tags=True,
-        similarity=similarity,
+        extended_stages=extended_stages,
+        sort=True,
         only_matches=True,
         sample_filter=sample_filter,
     )

@@ -36,10 +36,12 @@ def get_view(
     dataset_name: str,
     stages=None,
     filters=None,
+    extended_stages=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
     sample_filter: t.Optional[SampleFilter] = None,
+    group_id: t.Optional[str] = None,
+    sort: t.Optional[bool] = False,
 ) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
     view.reload()
@@ -58,13 +60,14 @@ def get_view(
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity or count_label_tags:
+    if filters or extended_stages or count_label_tags:
         view = get_extended_view(
             view,
             filters,
             count_label_tags=count_label_tags,
             only_matches=only_matches,
-            similarity=similarity,
+            extended_stages=extended_stages,
+            sort=sort,
         )
 
     return view
@@ -75,7 +78,8 @@ def get_extended_view(
     filters=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
+    extended_stages=None,
+    sort=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -86,7 +90,8 @@ def get_extended_view(
             with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
-        similarity (None): sort by similarity paramters
+        extended_stages (None): extended view stages
+        sort (False): wheter to include sort extended stages
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -115,13 +120,23 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
-    if similarity:
-        view = view.sort_by_similarity(**similarity)
+    if extended_stages:
+        view = extend_view(view, extended_stages, sort)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
+
+    return view
+
+
+def extend_view(view, extended_stages, sort):
+    for cls, d in extended_stages.items():
+        kwargs = [[k, v] for k, v in d.items()]
+        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
+        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
+            view = view.add_stage(stage)
 
     return view
 

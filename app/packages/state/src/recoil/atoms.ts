@@ -207,13 +207,6 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const similarityParameters = atom<
-  State.SortBySimilarityParameters & { queryIds: string[] }
->({
-  key: "sortBySimilarityParameters",
-  default: null,
-});
-
 export const selectedMediaField = atom<State.MediaFieldSelection>({
   key: "selectedMediaField",
   default: { grid: null, modal: null },
@@ -226,5 +219,17 @@ export const sidebarSource = atom({
 
 export const resolvedPinnedSample = atom<Sample>({
   key: "resolvedPinnedSample",
+  default: null,
+});
+
+export const extendedSelection = atom<string[]>({
+  key: "extendedSelection",
+  default: null,
+});
+
+export const similarityParameters = atom<
+  State.SortBySimilarityParameters & { queryIds: string[] }
+>({
+  key: "similarityParameters",
   default: null,
 });

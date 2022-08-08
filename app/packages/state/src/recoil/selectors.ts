@@ -5,6 +5,7 @@ import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 
 import * as atoms from "./atoms";
 import { State } from "./types";
+import { toSnakeCase } from "@fiftyone/utilities";
 
 export const datasetName = selector<string>({
   key: "datasetName",
@@ -313,7 +314,7 @@ export const similarityKeys = selector<{
   },
 });
 
-export const sidebarSourceSample = selector<Sample>({
+export const sidebarSourceSample = selector({
   key: "sidebarSourceSample",
   get: ({ get }) => {
     const sidebarSource = get(atoms.sidebarSource);
@@ -331,5 +332,32 @@ export const sidebarSourceSample = selector<Sample>({
     }
 
     return result || modal?.sample;
+  },
+});
+
+export const extendedStagesUnsorted = selector({
+  key: "extendedStagesUnsorted",
+  get: ({ get }) => {
+    const sampleIds = get(atoms.extendedSelection);
+    return {
+      "fiftyone.core.stages.Select":
+        sampleIds && sampleIds.length
+          ? { sample_ids: sampleIds, ordered: false }
+          : undefined,
+    };
+  },
+});
+
+export const extendedStages = selector({
+  key: "extendedStages",
+  get: ({ get }) => {
+    const similarity = get(atoms.similarityParameters);
+
+    return {
+      ...get(extendedStagesUnsorted),
+      "fiftyone.core.stages.SortBySimilarity": similarity
+        ? toSnakeCase(similarity)
+        : undefined,
+    };
   },
 });

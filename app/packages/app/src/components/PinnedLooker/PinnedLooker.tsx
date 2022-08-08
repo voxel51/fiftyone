@@ -34,6 +34,7 @@ function usePinnedVisualizerPlugin(
   const [resolvedSample, setResolvedSample] = useRecoilState(
     fos.resolvedPinnedSample
   );
+
   const [{ sample: sampleData }, refetch] = useRefetchableFragment(
     paginateGroupPinnedSampleFragment,
     fragmentRef

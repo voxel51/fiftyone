@@ -23,11 +23,12 @@ class Frames(HTTPEndpoint):
         start_frame = int(data.get("frameNumber", 1))
         frame_count = int(data.get("frameCount", 1))
         num_frames = int(data.get("numFrames"))
+        extended = data.get("extended", None)
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
 
-        view = fosv.get_view(dataset, stages=stages)
+        view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
 
         end_frame = min(num_frames + start_frame, frame_count)

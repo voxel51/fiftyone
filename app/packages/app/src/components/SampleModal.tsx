@@ -2,7 +2,7 @@ import React, { useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { Controller } from "@react-spring/core";
 import styled from "styled-components";
-import { useRecoilValue, useRecoilTransaction_UNSTABLE } from "recoil";
+import { useRecoilValue } from "recoil";
 
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 
@@ -15,6 +15,7 @@ import * as fos from "@fiftyone/state";
 import PinnedLooker from "./PinnedLooker/PinnedLooker";
 import { isGroup, isPinned } from "@fiftyone/state";
 import SidebarSourceSelector from "./SidebarSourceSelector";
+
 import _ from "lodash";
 
 const ModalWrapper = styled.div`

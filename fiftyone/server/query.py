@@ -294,7 +294,7 @@ class Query:
         filter: t.Optional[SampleFilter] = None,
     ) -> Connection[SampleItem, str]:
         return await paginate_samples(
-            dataset, view, None, None, first, after, sample_filter=filter
+            dataset, view, None, first, after, sample_filter=filter
         )
 
     @gql.field
@@ -302,7 +302,7 @@ class Query:
         self, dataset: str, view: BSONArray, filter: SampleFilter
     ) -> t.Optional[SampleItem]:
         samples = await paginate_samples(
-            dataset, view, None, None, 1, sample_filter=filter
+            dataset, view, None, 1, sample_filter=filter
         )
         if samples.edges:
             return samples.edges[0].node

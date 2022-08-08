@@ -2,8 +2,8 @@ import { setView, setViewMutation } from "@fiftyone/relay";
 import { useContext } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useMutation } from "react-relay";
-import { useRecoilValue } from "recoil";
-import { stateSubscription } from "../recoil";
+import { useRecoilTransaction_UNSTABLE, useRecoilValue } from "recoil";
+import { State, stateSubscription, view } from "../recoil";
 import { RouterContext } from "../routing";
 import { getDatasetName, transformDataset } from "../utils";
 import useSendEvent from "./useSendEvent";
@@ -18,30 +18,41 @@ const useSetView = () => {
 
   const onError = useErrorHandler();
 
-  return (view) => {
-    send((session) => {
-      commit({
-        variables: {
-          subscription,
-          session,
-          view,
-          dataset: getDatasetName(context),
-        },
-        onError,
-        onCompleted: ({ setView: { dataset, view } }) => {
-          updateState({
-            dataset: transformDataset(dataset),
-            state: {
-              view,
-              viewCls: dataset.viewCls,
-              selected: [],
-              selectedLabels: [],
+  return useRecoilTransaction_UNSTABLE(
+    ({ get }) =>
+      (
+        viewOrUpdater:
+          | State.Stage[]
+          | ((current: State.Stage[]) => State.Stage[])
+      ) => {
+        send((session) => {
+          const value =
+            viewOrUpdater instanceof Function
+              ? viewOrUpdater(get(view))
+              : viewOrUpdater;
+          commit({
+            variables: {
+              subscription,
+              session,
+              view: value,
+              dataset: getDatasetName(context),
+            },
+            onError,
+            onCompleted: ({ setView: { dataset, view: value } }) => {
+              updateState({
+                dataset: transformDataset(dataset),
+                state: {
+                  view: value,
+                  viewCls: dataset.viewCls,
+                  selected: [],
+                  selectedLabels: [],
+                },
+              });
             },
           });
-        },
-      });
-    });
-  };
+        });
+      }
+  );
 };
 
 export default useSetView;

@@ -1,0 +1,26 @@
+.options {
+  position: absolute;
+  top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  column-gap: 1rem;
+  width: 100%;
+}
+
+.options > div {
+  display: flex;
+  column-gap: 1rem;
+  margin: 0 1rem;
+}
+
+.link {
+  display: flex;
+  color: var(--brand);
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px var(--brand) solid;
+  background: var(--background-transparent);
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  padding: 0.25rem;
+}

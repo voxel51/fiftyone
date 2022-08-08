@@ -22,6 +22,9 @@ import {
   similaritySorting,
   savingFilters,
   groupSlice,
+  extendedStages,
+  similarityParameters,
+  extendedSelection,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -51,7 +54,8 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view, state.view || [])) {
           set(viewAtoms.view, state.view || []);
-          set(filters, {});
+          reset(extendedStages);
+          reset(filters);
         }
       }
 
@@ -96,6 +100,9 @@ const useStateUpdate = () => {
         if (!previousDataset || previousDataset.id !== dataset.id) {
           reset(_activeFields({ modal: false }));
           set(groupSlice, dataset.defaultGroupSlice);
+          reset(similarityParameters);
+          reset(extendedSelection);
+          reset(filters);
         }
 
         set(datasetAtom, dataset);

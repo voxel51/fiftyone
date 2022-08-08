@@ -27,8 +27,9 @@ class Values(HTTPEndpoint):
         limit = data.get("limit", foc.LIST_LIMIT)
         sample_id = data.get("sample_id", None)
         stages = data.get("view", [])
+        extended = data.get("extended", None)
 
-        view = fosv.get_view(dataset, stages)
+        view = fosv.get_view(dataset, stages, extended_stages=extended)
 
         if sample_id is not None:
             view = view.select(sample_id)

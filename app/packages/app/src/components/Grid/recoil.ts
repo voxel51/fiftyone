@@ -1,4 +1,3 @@
-import { toSnakeCase } from "@fiftyone/utilities";
 import { atom, selector, selectorFamily } from "recoil";
 
 import * as fos from "@fiftyone/state";
@@ -36,12 +35,11 @@ export const pageParameters = selectorFamily<PageParameters, boolean>({
   get:
     (modal) =>
     ({ get }) => {
-      const similarity = get(fos.similarityParameters);
       return {
         filters: get(modal ? fos.modalFilters : fos.filters),
         view: get(fos.view),
         dataset: get(fos.datasetName),
-        similarity: similarity && !modal ? toSnakeCase(similarity) : null,
+        extended: get(fos.extendedStages),
         zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
         slice: get(groupSlice),
       };

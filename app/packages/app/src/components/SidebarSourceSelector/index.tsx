@@ -49,6 +49,7 @@ export default function SidebarSourceSelector({
       onMouseLeave={() => setHovering(false)}
     >
       <Info hovering={hovering} current={isCurrent} text={slice} />
+
       {children}
     </div>
   );

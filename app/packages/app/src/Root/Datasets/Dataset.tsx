@@ -107,9 +107,7 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = fos.useStateUpdate();
 
   useEffect(() => {
-    update(({ reset }) => {
-      reset(fos.filters);
-      reset(fos.similarityParameters);
+    update(() => {
       return {
         colorscale:
           router.state && router.state.colorscale

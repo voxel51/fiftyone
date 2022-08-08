@@ -1,6 +1,6 @@
-import React from 'react'
-import Aggregation from './Aggregation'
-import {getFetchFunction} from '@fiftyone/utilities';
+import React from "react";
+import Aggregation from "./Aggregation";
+import { getFetchFunction } from "@fiftyone/utilities";
 
 const AGGREGATE_ROUTE = "/aggregate";
 
@@ -19,12 +19,12 @@ export default function useAggregation({
 }: AggregationParams = {}) {
   const [isLoading, setLoading] = React.useState(true);
   const [result, setResult] = React.useState(null);
-  // const dataset = useRecoilValue(atoms.dataset)
 
   const aggregate = async (
     aggregations: Aggregation[],
     datasetName?: string
   ) => {
+    setLoading(true);
     const jsonAggregations = aggregations.map((a) => a.toJSON());
 
     const resBody = (await getFetchFunction()("POST", AGGREGATE_ROUTE, {

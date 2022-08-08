@@ -3,7 +3,6 @@ import ReactDOM from "react-dom";
 import { getFetchFunction } from "@fiftyone/utilities";
 import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
-import { dataset } from "@fiftyone/state";
 import * as _ from "lodash";
 declare global {
   interface Window {
@@ -54,7 +53,7 @@ type PluginFetchResult = {
   settings?: PluginSettings;
 };
 async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
-  // return getFetchFunction()('GET', '/plugins')
+  return getFetchFunction()("GET", "/plugins");
   const res = await fetch("/plugins", { method: "GET" });
   return res.json();
 }

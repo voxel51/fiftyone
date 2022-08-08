@@ -1,7 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { capitalize } from "@material-ui/core";
 import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 
 import { PillButton } from "./utils";
@@ -9,20 +14,23 @@ import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { Map } from "@fiftyone/map";
 
 import * as fos from "@fiftyone/state";
+import { fieldSchema, fullSchema, State } from "@fiftyone/state";
 
 export type Props = {};
 
 const Container = styled(Resizable)`
-  padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
   overflow: hidden;
+  position: relative;
+  width: 100%;
 `;
 
 const Nav = styled.div`
-  padding: 0 1rem;
+  padding: 1rem 1rem 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -89,37 +97,33 @@ const DISTRIBUTION_PLOTS = [
 const HorizontalNav = ({}: Props) => {
   const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
+  const reset = useResetRecoilState(fos.activePlot);
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
-  const closedHeight = 64;
+  const closedHeight = 0;
 
   const height = expanded ? openedHeight : closedHeight;
   const elementNames = useRecoilValue(fos.elementNames);
-  const dataset = useRecoilValue(fos.dataset);
-  const pluginPlots = useActivePlugins(PluginComponentType.Plot, { dataset });
+
+  const schema = useRecoilValue(
+    fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+  );
+  const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
 
   const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
+  const hasPlot = buttonLabels.includes(activePlot);
+
+  useEffect(() => {
+    if (!hasPlot) {
+      reset();
+      setExpanded(false);
+    }
+  }, [hasPlot]);
 
   return (
-    <Container
-      size={{ height: maximized ? windowHeight - 73 : height }}
-      minHeight={closedHeight}
-      enable={{
-        top: false,
-        right: false,
-        bottom: expanded && !maximized,
-        left: false,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
-      onResizeStop={(e, direction, ref, d) => {
-        setOpenedHeight(height + d.height);
-      }}
-    >
+    <>
       <Nav>
         <PlotsButtons>
           {buttonLabels.map((e) => (
@@ -165,16 +169,37 @@ const HorizontalNav = ({}: Props) => {
           />
         </NavButtons>
       </Nav>
-      {expanded ? (
-        <ActivePlot
-          key={activePlot}
-          active={activePlot}
-          pluginPlotLabels={pluginPlotLabels}
-          distributionPlots={DISTRIBUTION_PLOTS}
-          pluginPlots={pluginPlots}
-        />
-      ) : null}
-    </Container>
+      {expanded && (
+        <Container
+          size={{
+            height: maximized ? windowHeight - 73 : height,
+            width: "100%",
+          }}
+          minHeight={closedHeight}
+          enable={{
+            top: false,
+            right: false,
+            bottom: expanded && !maximized,
+            left: false,
+            topRight: false,
+            bottomRight: false,
+            bottomLeft: false,
+            topLeft: false,
+          }}
+          onResizeStop={(e, direction, ref, d) => {
+            setOpenedHeight(height + d.height);
+          }}
+        >
+          <ActivePlot
+            key={activePlot}
+            active={activePlot}
+            pluginPlotLabels={pluginPlotLabels}
+            distributionPlots={DISTRIBUTION_PLOTS}
+            pluginPlots={pluginPlots}
+          />
+        </Container>
+      )}
+    </>
   );
 };
 
