@@ -2655,7 +2655,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        523.1 MB
+        522.9 MB
     """
 
     _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"
