@@ -1,7 +1,35 @@
 import { dataset, extendedSelection } from "@fiftyone/state";
 import { atom, selector } from "recoil";
 
-export interface Settings {}
+export interface Settings {
+  clustering?: boolean;
+  clusters?: {
+    textPaint: mapboxgl.SymbolPaint;
+    paint: mapboxgl.CirclePaint;
+  };
+  pointPaint?: mapboxgl.CirclePaint;
+  mapboxAccessToken: string;
+}
+
+export const defaultSettings = Object.freeze({
+  clustering: true,
+  clusters: {
+    paint: {
+      "circle-color": "rgb(244, 113, 6)",
+      "circle-opacity": 0.7,
+      // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
+      "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40],
+    },
+    textPaint: {
+      "text-color": "white",
+    },
+  },
+  pointPaint: {
+    "circle-color": "rgb(244, 113, 6)",
+    "circle-opacity": 0.7,
+    "circle-radius": 4,
+  },
+}) as Required<Omit<Settings, "mapboxAccessToken">>;
 
 const defaultActiveField = selector<string>({
   key: "@fiftyone/map/state.defaultActiveField",

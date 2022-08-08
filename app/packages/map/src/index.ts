@@ -1,10 +1,15 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
+import { State } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
 import Map from "./Map";
 
 export { default as Map } from "./Map";
 
-registerComponent({
+registerComponent<{
+  dataset: State.Dataset;
+  filters: State.Filters;
+  view: State.Stage[];
+}>({
   name: "Map",
   label: "Map",
   component: Map,
@@ -18,4 +23,5 @@ function hasGeoField({ schema }: { schema: Schema }) {
       return true;
     }
   }
+  return false;
 }
