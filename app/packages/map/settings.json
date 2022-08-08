@@ -1,9 +1,0 @@
-{
-    "map": {
-        "circle-color": "rgb(244, 113, 6)",
-        "circle-opacity": 0.7,
-        // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
-        "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40],
-        "point-radius": 4
-    }
-}

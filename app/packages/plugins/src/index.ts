@@ -4,6 +4,7 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import * as _ from "lodash";
+import { State } from "@fiftyone/state";
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
@@ -26,7 +27,9 @@ function usingRegistry() {
   return window.__fo_plugin_registry__;
 }
 
-export function registerComponent(registration: PluginComponentRegistration) {
+export function registerComponent<T>(
+  registration: PluginComponentRegistration<T>
+) {
   if (!registration.activator) {
     registration.activator = () => true;
   }
@@ -130,10 +133,10 @@ export enum PluginComponentType {
 }
 
 type PluginActivator = (props: any) => boolean;
-interface PluginComponentRegistration {
+interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
   label?: string;
-  component: FunctionComponent;
+  component: FunctionComponent<T>;
   type: PluginComponentType;
   activator: PluginActivator;
 }
@@ -180,16 +183,20 @@ class PluginComponentRegistry {
   }
 }
 
-export function usePluginSettings(pluginName: string): any {
+export function usePluginSettings<T>(
+  pluginName: string,
+  defaults?: Partial<T>
+): T {
   const dataset = recoil.useRecoilValue(fos.dataset);
   const appConfig = recoil.useRecoilValue(fos.appConfig);
   const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
   const appConfigPlugins = _.get(appConfig, "plugins", {});
 
-  const settings = _.merge(
+  const settings = _.merge<T | {}, Partial<T>, Partial<T>>(
+    { ...defaults },
     _.get(appConfigPlugins, pluginName, {}),
     _.get(datasetPlugins, pluginName, {})
   );
 
-  return settings;
+  return settings as T;
 }

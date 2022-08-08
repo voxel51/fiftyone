@@ -25,6 +25,7 @@ import {
   extendedStages,
   similarityParameters,
   extendedSelection,
+  extendedStagesUnsorted,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";
@@ -54,7 +55,8 @@ const useStateUpdate = () => {
 
         if (!viewsAreEqual(view, state.view || [])) {
           set(viewAtoms.view, state.view || []);
-          reset(extendedStages);
+          reset(extendedSelection);
+          reset(similarityParameters);
           reset(filters);
         }
       }
