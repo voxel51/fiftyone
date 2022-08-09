@@ -3247,8 +3247,9 @@ class SampleCollection(object):
                 one label after filtering (True) or include all samples (False)
             trajectories (False): whether to match entire object trajectories
                 for which the object matches the given filter on at least one
-                frame. Only applicable to video datasets and frame-level label
-                fields whose objects have their ``index`` attributes populated
+                frame. Only applicable to datasets that contain videos and
+                frame-level label fields whose objects have their ``index``
+                attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -7112,11 +7113,12 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
-                to video datasets when a ``frame_labels_dir`` is provided
+                to datasets that contain videos when a ``frame_labels_dir`` is
+                provided
 
         Returns:
             a JSON dict
@@ -7222,8 +7224,8 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -7266,8 +7268,8 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
@@ -7509,9 +7511,10 @@ class SampleCollection(object):
                 than the source dataset's media type
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
-                video datasets
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
             group_slices (None): a list of group slices to attach immediately
@@ -7552,9 +7555,10 @@ class SampleCollection(object):
                 than the source dataset's media type
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
-                video datasets
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
             group_slices (None): a list of group slices to attach immediately

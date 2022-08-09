@@ -1065,7 +1065,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds a new frame-level field to the dataset, if necessary.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name
@@ -1183,7 +1183,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to rename embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1283,7 +1283,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1297,7 +1297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_mapping: a dict mapping field names to new field names into
@@ -1388,7 +1388,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1405,7 +1405,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: the field name or iterable of field names
@@ -1483,7 +1483,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1501,7 +1501,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: a field name or iterable of field names
@@ -2603,7 +2603,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self.delete_frame_fields(del_frame_fields)
 
     def clear_frames(self):
-        """Removes all frame labels from the video dataset.
+        """Removes all frame labels from the dataset.
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
@@ -4538,7 +4538,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
-                provided JSON dict. Only applicable to video datasets
+                provided JSON dict. Only applicable to datasets that contain
+                videos
 
         Returns:
             a :class:`Dataset`
