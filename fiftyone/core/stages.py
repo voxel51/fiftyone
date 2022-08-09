@@ -24,6 +24,7 @@ from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -5171,6 +5172,107 @@ class SelectFrames(ViewStage):
         fova.validate_video_collection(sample_collection)
 
 
+class SelectGroups(ViewStage):
+    """Selects the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Select some specific groups by ID
+        #
+
+        group_ids = dataset.take(10).values("group.id")
+
+        stage = fo.SelectGroups(group_ids)
+        view = dataset.add_stage(stage)
+
+        assert set(view.values("group.id")) == set(group_ids)
+
+        stage = fo.SelectGroups(group_ids, ordered=True)
+        view = dataset.add_stage(stage)
+
+        assert view.values("group.id") == group_ids
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        ordered (False): whether to sort the groups in the returned view to
+            match the order of the provided IDs
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+        self._ordered = ordered
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to select."""
+        return self._group_ids
+
+    @property
+    def ordered(self):
+        """Whether to sort the groups in the same order as the IDs."""
+        return self._ordered
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        if not self._ordered:
+            return [{"$match": {id_path: {"$in": ids}}}]
+
+        return [
+            {
+                "$set": {
+                    "_select_order": {"$indexOfArray": [ids, "$" + id_path]}
+                }
+            },
+            {"$match": {"_select_order": {"$gt": -1}}},
+            {"$sort": {"_select_order": 1}},
+            {"$unset": "_select_order"},
+        ]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids], ["ordered", self._ordered]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            },
+            {
+                "name": "ordered",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "ordered (default=False)",
+            },
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+
 class SelectLabels(ViewStage):
     """Selects only the specified labels from a collection.
 
@@ -6830,6 +6932,43 @@ def _parse_frame_ids(arg):
     return arg
 
 
+def _parse_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
+
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
+
+        return arg.values(arg.group_field + ".id")
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
+
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
+
+
 def _get_rng(seed):
     if seed is None:
         return random
@@ -7035,6 +7174,7 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
     SelectGroupSlice,
     SelectLabels,
     SetField,

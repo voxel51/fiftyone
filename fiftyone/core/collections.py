@@ -4534,6 +4534,56 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def select_groups(self, group_ids, ordered=False):
+        """Selects the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Select some specific groups by ID
+            #
+
+            group_ids = dataset.take(10).values("group.id")
+
+            view = dataset.select_groups(group_ids)
+
+            assert set(view.values("group.id")) == set(group_ids)
+
+            view = dataset.select_groups(group_ids, ordered=True)
+
+            assert view.values("group.id") == group_ids
+
+        Args:
+            groups_ids: the groups to select. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+            ordered (False): whether to sort the groups in the returned view to
+                match the order of the provided IDs
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectGroups(group_ids, ordered=ordered)
+        )
+
+    @view_stage
     def select_group_slice(self, slice=None, _allow_mixed=False):
         """Selects the samples in the group collection from the given slice(s).
 
