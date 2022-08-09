@@ -235,9 +235,9 @@ You can reset the active group slice to the default value by setting
     # Resets to `default_group_slice`
     dataset.group_slice = None
 
-.. _groups-field-schemas:
+.. _groups-adding-fields:
 
-Field schemas
+Adding fields
 -------------
 
 You are free to add arbitrary sample- and frame-level fields to your grouped
@@ -439,6 +439,60 @@ over dicts containing all samples in each group:
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'right'}>,
         }>,
     }
+
+.. _groups-example-datasets:
+
+Example grouped datasets
+________________________
+
+The :ref:`FiftyOne Dataset Zoo <dataset-zoo>` contains grouped datasets that
+you can use out-of-the-box to test drive FiftyOne's group-related features.
+
+The fastest way to get started is by loading the
+:ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset, which
+consists of 200 scenes (groups) from the train split of the KITTI dataset, each
+containing left camera, right camera, point cloud, and 2D/3D object annotation
+data:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    print(dataset.group_media_types)
+    # {'left': 'image', 'right': 'image', 'pcd': 'point-cloud'}
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:        quickstart-groups
+    Media type:  group
+    Group slice: left
+    Num groups:  200
+    Persistent:  False
+    Tags:        []
+    Sample fields:
+        id:           fiftyone.core.fields.ObjectIdField
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        group:        fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.groups.Group)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+You can also load the full :ref:`kitti-multiview <dataset-zoo-kitti-multiview>`
+dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
 
 .. _groups-views:
 
