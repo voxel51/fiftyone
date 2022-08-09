@@ -47,16 +47,22 @@ on your data quickly and easily.
     :button_link: app.html
 
 .. customcalloutitem::
-    :header: Interactive plots
-    :description: Use FiftyOne's powerful interactive plotting features to uncover patterns and improve your data.
-    :button_text: Dive into interactive plotting
-    :button_link: plots.html
+    :header: Grouped datasets
+    :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
+    :button_text: Learn more about grouped datasets
+    :button_link: groups.html
 
 .. customcalloutitem::
     :header: Using aggregations
     :description: Efficiently compute aggregate statistics about your FiftyOne datasets and views.
     :button_text: Learn more about using aggregations
     :button_link: using_aggregations.html
+
+.. customcalloutitem::
+    :header: Interactive plots
+    :description: Use FiftyOne's powerful interactive plotting features to uncover patterns and improve your data.
+    :button_text: Dive into interactive plotting
+    :button_link: plots.html
 
 .. customcalloutitem::
     :header: Annotating datasets
@@ -124,8 +130,9 @@ on your data quickly and easily.
     Using datasets <using_datasets>
     Dataset views <using_views>
     Using the App <app>
-    Interactive plots <plots>
+    Grouped datasets <groups>
     Using aggregations <using_aggregations>
+    Interactive plots <plots>
     Annotating datasets <annotation>
     Evaluating models <evaluation>
     Exporting datasets <export_datasets>
