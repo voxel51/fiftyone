@@ -2199,6 +2199,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame_ids = _get_frame_ids(frames_or_ids)
         self._clear_frames(frame_ids=frame_ids)
 
+    def delete_groups(self, groups_or_ids):
+        """Deletes the given groups(s) from the dataset.
+
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
+
+        Args:
+            groups_or_ids: the group(s) to delete. Can be any of the
+                following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        group_ids = _get_group_ids(groups_or_ids)
+        self._clear_groups(group_ids=group_ids)
+
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
     ):
@@ -2586,7 +2611,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, sample_ids=sample_ids
         )
 
-        self._clear_frames(sample_ids=sample_ids)
+        if contains_videos:
+            self._clear_frames(sample_ids=sample_ids)
+
+    def _clear_groups(self, view=None, group_ids=None):
+        if view is not None:
+            if view.media_type != fom.GROUP:
+                raise ValueError("%s is not a grouped collection" % type(view))
+
+            group_ids = view.values(view.group_field + ".id")
+
+        sample_ids = self.select_group_slice(_allow_mixed=True).values("id")
+
+        self._clear(sample_ids=sample_ids)
 
     def _keep(self, view=None, sample_ids=None):
         if view is not None:
@@ -6790,6 +6827,43 @@ def _get_frame_ids_for_sample(sample):
         return view.values("frames.id", unwind=True)
 
     return [frame.id for frame in sample.frames.values()]
+
+
+def _get_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
+
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
+
+        return arg.values(arg.group_field + ".id")
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
+
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
 
 
 def _parse_fields(field_names):
