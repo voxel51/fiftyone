@@ -1427,9 +1427,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reload_docs(self._sample_collection_name)
 
     def _clear_frame_fields(self, field_names, view=None):
-        if not self._contains_videos():
+        sample_collection = self if view is None else view
+        if not sample_collection._contains_videos():
             raise ValueError(
-                "Only datasets that contain videos have frame fields"
+                "%s has no frame fields" % type(sample_collection)
             )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1438,7 +1439,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._clear_fields(fields, view)
 
         if embedded_fields:
-            sample_collection = self if view is None else view
             self._frame_doc_cls._clear_embedded_fields(
                 embedded_fields, sample_collection
             )
@@ -2567,7 +2567,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear(self, view=None, sample_ids=None):
         if view is not None:
+            contains_videos = view._contains_videos()
+
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slice(_allow_mixed=True)
+
             sample_ids = view.values("id")
+        else:
+            contains_videos = self._contains_videos()
 
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -2611,7 +2618,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_frames()
 
     def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
-        if not self._contains_videos():
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos():
             return
 
         if self._is_clips:
@@ -2633,6 +2641,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view._select_group_slices(fom.VIDEO)
+
             sample_ids = view.values("id")
 
         if sample_ids is not None:
@@ -2646,7 +2657,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def _keep_frames(self, view=None, frame_ids=None):
-        if not self._contains_videos():
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos():
             return
 
         if self._is_clips:
@@ -5657,9 +5669,12 @@ def _get_frames_pipeline(sample_collection):
 
 
 def _save_view(view, fields=None):
+    # Note: for grouped views, only the active slice's contents are saved,
+    # since views cannot edit other slices
+
     dataset = view._dataset
 
-    contains_videos = view._contains_videos()
+    contains_videos = view._contains_videos(only_active_slice=True)
     all_fields = fields is None
 
     if fields is None:
