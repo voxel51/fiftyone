@@ -128,7 +128,9 @@ const Tag = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
@@ -180,7 +182,9 @@ const Selected = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -239,7 +243,7 @@ const Selected = ({
 
 const Options = ({ modal }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
@@ -294,7 +298,8 @@ const SaveFilters = () => {
         set(fos.savingFilters, true);
         sendPatch(snapshot, updateState, undefined).then(() => {
           set(fos.savingFilters, false);
-          reset(fos.extendedStages);
+          reset(fos.similarityParameters);
+          reset(fos.extendedSelection);
         });
       },
     []
@@ -373,7 +378,7 @@ export const GridActionsRow = () => {
 export const ModalActionsRow = ({
   lookerRef,
 }: {
-  lookerRef?: MutableRefObject<VideoLooker>;
+  lookerRef?: MutableRefObject<VideoLooker | undefined>;
 }) => {
   const isVideo = useRecoilValue(fos.isVideoDataset);
 

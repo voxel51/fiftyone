@@ -18,32 +18,18 @@ import {
 import * as fos from "@fiftyone/state";
 import _ from "lodash";
 
-const Container = styled.div`
-  position: relative;
-
-  height: 100%;
-  width: 100%;
-`;
 import { useActivePlugins, PluginComponentType } from "@fiftyone/plugins";
-import { useRecoilState, useRecoilValue } from "recoil";
-import SidebarSourceSelector from "../SidebarSourceSelector";
+import { useRecoilValue } from "recoil";
+import { groupSlice } from "@fiftyone/state";
 
 function usePinnedVisualizerPlugin(
   fragmentRef: paginateGroupPinnedSample_query$key
 ) {
-  const [resolvedSample, setResolvedSample] = useRecoilState(
-    fos.resolvedPinnedSample
-  );
-
-  const [{ sample: sampleData }, refetch] = useRefetchableFragment(
+  const [{ sample }] = useRefetchableFragment(
     paginateGroupPinnedSampleFragment,
     fragmentRef
   );
-  const sample = sampleData?.sample;
 
-  useEffect(() => {
-    setResolvedSample(sample);
-  }, [sample]);
   const dataset = useRecoilValue(fos.dataset);
   const [visualizerPlugin] = useActivePlugins(PluginComponentType.Visualizer, {
     dataset,
@@ -51,7 +37,7 @@ function usePinnedVisualizerPlugin(
     pinned: true,
   });
 
-  const slice = _.get(sample, [dataset.groupField, "name"].join("."), null);
+  const slice = useRecoilValue(groupSlice);
 
   return {
     Visualizer: visualizerPlugin.component,
@@ -65,11 +51,10 @@ const LookerContainer: React.FC<{
 }> = ({ fragmentRef }) => {
   const { Visualizer, slice, sample } = usePinnedVisualizerPlugin(fragmentRef);
 
-  if (!Visualizer) return null;
   return (
-    <SidebarSourceSelector id="pinned" slice={slice} groupMode={true}>
+    <>
       <Visualizer sampleOverride={sample} />
-    </SidebarSourceSelector>
+    </>
   );
 };
 
@@ -82,7 +67,6 @@ const PinnedLooker: React.FC<
   const data = usePreloadedQuery(paginateGroup, queryRef);
 
   const [width, setWidth] = React.useState(400);
-  const shown = true;
   return (
     <Resizable
       size={{ height: "100%", width }}
@@ -105,11 +89,9 @@ const PinnedLooker: React.FC<
         borderRight: `1px solid ${theme.backgroundDarkBorder}`,
       }}
     >
-      <Container>
-        <Suspense>
-          <LookerContainer fragmentRef={data} />
-        </Suspense>
-      </Container>
+      <Suspense>
+        <LookerContainer fragmentRef={data} />
+      </Suspense>
     </Resizable>
   );
 };

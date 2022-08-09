@@ -5,35 +5,13 @@ import { useRecoilValue, useRecoilCallback } from "recoil";
 import { animated, useSpring } from "@react-spring/web";
 import { v4 as uuid } from "uuid";
 
-import { ContentDiv, ContentHeader } from "./utils";
-import { useEventHandler } from "../utils/hooks";
+import { ContentDiv, ContentHeader } from "../utils";
+import { useEventHandler } from "../../utils/hooks";
 
-import { ModalActionsRow } from "./Actions";
 import { useErrorHandler } from "react-error-boundary";
-import { Checkbox } from "@material-ui/core";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
-import { getMimeType } from "@fiftyone/utilities";
-
-const Header = styled.div`
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  display: flex;
-  padding: 0.5rem;
-  justify-content: space-between;
-  overflow: visible;
-  width: 100%;
-  z-index: 1000;
-
-  background-image: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0),
-    30%,
-    ${({ theme }) => theme.backgroundDark}
-  );
-`;
+import { useOnSelectLabel } from "@fiftyone/state";
 
 const TagBlock = styled.div`
   margin: 0;
@@ -386,39 +364,15 @@ interface LookerProps {
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   onNext?: EventCallback;
   onPrevious?: EventCallback;
-  onSelectLabel?: EventCallback;
-  style?: React.CSSProperties;
-  pinned: boolean;
-  isGroupMainView: boolean;
 }
 
-const Looker = ({
-  lookerRef,
-  onClose,
-  onNext,
-  onPrevious,
-  onSelectLabel,
-  style,
-  pinned,
-  isGroupMainView,
-}: LookerProps) => {
+const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const [id] = useState(() => uuid());
   const sampleData = useRecoilValue(fos.modal);
   if (!sampleData) {
     throw new Error("bad");
   }
-  const { sample, url } = sampleData;
-
-  const isClips = useRecoilValue(fos.isClipsView);
-  const mimetype = getMimeType(sample);
-  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
-  const selectedMediaFieldName =
-    selectedMediaField.modal || selectedMediaField.grid || "filepath";
-  const sampleSrc = fos.getSampleSrc(
-    sample[selectedMediaFieldName],
-    sample._id,
-    url
-  );
+  const { sample } = sampleData;
 
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
@@ -444,8 +398,7 @@ const Looker = ({
 
   const handleError = useErrorHandler();
   lookerRef && (lookerRef.current = looker);
-  const moveRef = useRef<HTMLElement>();
-  const headerRef = useRef<HTMLElement>();
+
   useEventHandler(looker, "options", useLookerOptionsUpdate());
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
@@ -453,40 +406,18 @@ const Looker = ({
   onNext && useEventHandler(looker, "next", onNext);
   onPrevious && useEventHandler(looker, "previous", onPrevious);
   onClose && useEventHandler(looker, "close", onClose);
-  onSelectLabel && useEventHandler(looker, "select", onSelectLabel);
+  useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const onSelect = fos.useSelectSample();
-  const selected = useRecoilValue(fos.selectedSamples);
 
   useEffect(() => {
     initialRef.current = false;
   }, []);
 
-  const [plugin] = usePlugin(PluginComponentType.Visualizer);
-  const pluginAPI = {
-    getSampleSrc: fos.getSampleSrc,
-    sample,
-    onSelectLabel,
-    useState: useRecoilValue,
-    state: fos,
-    dataset: useRecoilValue(fos.dataset),
-    pinned,
-    isGroupMainView,
-  };
-  const pluginIsActive = plugin && plugin.activator(pluginAPI);
-  const PluginComponent = pluginIsActive && plugin.component;
-
   useEffect(() => {
-    if (!pluginIsActive) {
-      looker.attach(id);
-    }
+    looker.attach(id);
   }, [id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
-
-  const isSelected = selected.has(sampleData.sample._id);
-
-  const select = () => onSelect(sampleData.sample._id);
 
   return (
     <div
@@ -495,28 +426,9 @@ const Looker = ({
         width: "100%",
         height: "100%",
         background: theme.backgroundDark,
-        borderTop: `1px solid ${theme.backgroundDarkBorder}`,
         position: "relative",
-        ...style,
       }}
-      onMouseMove={(event) => (moveRef.current = event.target as HTMLElement)}
     >
-      {lookerOptions.showControls && (
-        <Header
-          ref={headerRef}
-          onClick={() => event.target === headerRef.current && select()}
-        >
-          <Checkbox
-            disableRipple
-            title={isSelected ? "Select sample" : "Selected"}
-            checked={isSelected}
-            style={{ color: theme.brand }}
-            onClick={select}
-          />
-          {!pinned && <ModalActionsRow lookerRef={lookerRef} />}
-        </Header>
-      )}
-      {PluginComponent && <PluginComponent api={pluginAPI} />}
       {<TooltipInfo looker={looker} />}
     </div>
   );

@@ -1,4 +1,11 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  FrameOptions,
+  ImageLooker,
+  ImageOptions,
+  VideoLooker,
+  VideoOptions,
+} from "@fiftyone/looker";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 
 import * as atoms from "./atoms";
@@ -73,7 +80,9 @@ export const lookerOptions = selectorFamily<
     },
 });
 
-export const useLookerOptions = (modal: boolean) => {
+export const useLookerOptions = (
+  modal: boolean
+): Partial<Omit<FrameOptions | ImageOptions | VideoOptions, "selected">> => {
   const loaded = useRecoilValueLoadable(
     lookerOptions({ modal, withFilter: true })
   );

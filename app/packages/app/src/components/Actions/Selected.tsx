@@ -13,6 +13,7 @@ import { useEventHandler } from "../../utils/hooks";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import * as fos from "@fiftyone/state";
+import { State } from "@fiftyone/state";
 
 const useClearSampleSelection = (close) => {
   return useRecoilTransaction_UNSTABLE(
@@ -69,7 +70,7 @@ const toLabelMap = (
   Object.fromEntries(labels.map(({ labelId, ...rest }) => [labelId, rest]));
 
 const useSelectVisible = (
-  visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]>,
+  visibleAtom?: RecoilValueReadOnly<fos.State.SelectedLabel[]> | null,
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
@@ -77,7 +78,7 @@ const useSelectVisible = (
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
     set(fos.selectedLabels, {
       ...selected,
-      ...toLabelMap(visible),
+      ...toLabelMap(visible || []),
     });
   });
 };
@@ -144,14 +145,18 @@ const toIds = (labels: State.SelectedLabel[]) =>
   new Set([...labels].map(({ labelId }) => labelId));
 
 const useModalActions = (
-  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>,
+  lookerRef: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >,
   close
 ) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
 
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
-  const visibleSampleLabels = lookerRef.current.getCurrentSampleLabels();
+  const visibleSampleLabels = lookerRef.current
+    ? lookerRef.current.getCurrentSampleLabels()
+    : [];
   const isVideo =
     useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
   const visibleFrameLabels =
@@ -236,7 +241,9 @@ const useModalActions = (
 interface SelectionActionsProps {
   modal: boolean;
   close: () => void;
-  lookerRef: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
   bounds: any;
 }
 

@@ -233,3 +233,8 @@ export const similarityParameters = atom<
   key: "similarityParameters",
   default: null,
 });
+
+export const modalTopBarVisible = atom<boolean>({
+  key: "modalTopBarVisible",
+  default: true,
+});

@@ -1,3 +1,4 @@
+export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as Header } from "./Header";

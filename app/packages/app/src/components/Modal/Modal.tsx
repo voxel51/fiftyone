@@ -1,22 +1,15 @@
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
+import { Controller } from "@react-spring/core";
+import _ from "lodash";
 import React, { useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
-import { Controller } from "@react-spring/core";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
-
-import Looker from "../components/Looker";
-
-import Group from "./Group/Group";
-import Sidebar, { Entries } from "./Sidebar";
-import * as fos from "@fiftyone/state";
-
-import PinnedLooker from "./PinnedLooker/PinnedLooker";
-import { isGroup, isPinned } from "@fiftyone/state";
-import SidebarSourceSelector from "./SidebarSourceSelector";
-
-import _ from "lodash";
+import Sidebar, { Entries } from "../Sidebar";
+import Group from "./Group";
+import Sample from "./Sample";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -50,25 +43,6 @@ const ContentColumn = styled.div`
 `;
 
 const SampleModal = () => {
-  const data = useRecoilValue(fos.modal);
-  if (!data) {
-    throw new Error("no modal data");
-  }
-
-  const {
-    sample,
-    navigation: { index, getIndex },
-  } = data;
-
-  const selectedMediaField = useRecoilValue(fos.selectedMediaField);
-  const selectedMediaFieldName =
-    selectedMediaField.modal || selectedMediaField.grid || "filepath";
-  const sampleSrc = fos.getSampleSrc(
-    sample[selectedMediaFieldName],
-    sample._id
-  );
-  const lookerRef = useRef<VideoLooker & ImageLooker & FrameLooker>();
-  const onSelectLabel = fos.useOnSelectLabel();
   const tagText = fos.useTagText(true);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
@@ -206,64 +180,16 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const queryRef = useRecoilValue(fos.paginateGroupQueryRef);
-  const isGroupMode = useRecoilValue(isGroup) && queryRef;
-  const isPinnedMode = useRecoilValue(isPinned);
-
-  const lookerEl = (
-    <Looker
-      key={`modal-${sampleSrc}`}
-      lookerRef={lookerRef}
-      onSelectLabel={onSelectLabel}
-      onClose={clearModal}
-      onPrevious={index > 0 ? () => getIndex(index - 1) : undefined}
-      onNext={() => getIndex(index + 1)}
-      style={{ flex: 1 }}
-      isGroupMainView={isGroupMode}
-    />
-  );
-  const dataset = useRecoilValue(fos.dataset);
-  const slice = _.get(
-    data.sample,
-    [dataset.groupField, "name"].join("."),
-    null
-  );
+  const groupQuery = useRecoilValue(fos.paginateGroupQueryRef);
 
   return ReactDOM.createPortal(
     <ModalWrapper
       ref={wrapperRef}
-      key={0}
       onClick={(event) => event.target === wrapperRef.current && clearModal()}
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
         <ContentColumn>
-          {isGroupMode && <Group queryRef={queryRef} />}
-
-          <div
-            style={{
-              position: "relative",
-              flexGrow: 1,
-              display: "flex",
-              width: "100%",
-            }}
-          >
-            <div style={{ flexGrow: 1, position: "relative" }}>
-              {isGroupMode ? (
-                <SidebarSourceSelector
-                  id="main"
-                  slice={slice}
-                  groupMode={isGroupMode}
-                >
-                  {lookerEl}
-                </SidebarSourceSelector>
-              ) : (
-                lookerEl
-              )}
-            </div>
-            {isGroupMode && isPinnedMode && (
-              <PinnedLooker queryRef={queryRef} />
-            )}
-          </div>
+          {groupQuery ? <Group queryRef={groupQuery} /> : <Sample />}
         </ContentColumn>
 
         <Sidebar render={renderEntry} modal={true} />

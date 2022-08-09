@@ -28,23 +28,6 @@ export const groupSlices = selector<string[]>({
   },
 });
 
-export const isPinned = selector<boolean>({
-  key: "isPinned",
-  get: () => true,
-});
-
-export const pinnedGroupSlice = selector<string>({
-  key: "pinnedGroupSlice",
-  get: ({ get }) => {
-    const { groupMediaTypes } = get(dataset);
-    for (const { name, mediaType } of groupMediaTypes) {
-      if (mediaType === "point_cloud") {
-        return name;
-      }
-    }
-  },
-});
-
 export const groupField = selector<string>({
   key: "groupField",
   get: ({ get }) => get(dataset).groupField,

@@ -32,6 +32,7 @@ import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Lookers } from "@fiftyone/state";
 
 const IconDiv = styled.div`
   position: absolute;
@@ -329,7 +330,11 @@ const samplePlaceholder = (elementNames) => {
   return `+ tag ${elementNames.singular}`;
 };
 
-const useTagCallback = (modal, targetLabels, lookerRef = null) => {
+const useTagCallback = (
+  modal,
+  targetLabels,
+  lookerRef?: React.MutableRefObject<Lookers | undefined>
+) => {
   const refreshers = [true, false]
     .map((modal) =>
       [true, false].map((extended) =>
@@ -391,7 +396,9 @@ const useTagCallback = (modal, targetLabels, lookerRef = null) => {
           samples.forEach((sample) => {
             if (modalData.sample._id === sample._id) {
               set(fos.modal, { ...modalData, sample });
-              lookerRef.current.updateSample(sample);
+              lookerRef &&
+                lookerRef.current &&
+                lookerRef.current.updateSample(sample);
             }
             const current = fos.getSample(sample._id);
 
@@ -470,7 +477,9 @@ type TaggerProps = {
   modal: boolean;
   bounds: any;
   close: () => void;
-  lookerRef?: MutableRefObject<VideoLooker | ImageLooker | FrameLooker>;
+  lookerRef?: MutableRefObject<
+    VideoLooker | ImageLooker | FrameLooker | undefined
+  >;
 };
 
 const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {

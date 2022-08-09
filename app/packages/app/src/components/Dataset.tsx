@@ -5,7 +5,7 @@ import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
-import SampleModal from "./SampleModal";
+import Modal from "./Modal";
 
 const Container = styled.div`
   height: 100%;
@@ -27,7 +27,7 @@ function Dataset() {
 
   return (
     <>
-      {isModalActive && <SampleModal />}
+      {isModalActive && <Modal />}
       <Container>
         <HorizontalNav key={"nav"} />
         <Body key={"body"}>
