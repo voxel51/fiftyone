@@ -136,6 +136,48 @@ class GroupTests(unittest.TestCase):
         dataset.rename_sample_field("still_group_field", "group_field")
 
     @drop_datasets
+    def test_delete_samples(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        self.assertEqual(len(view), 6)
+
+        sample = view.shuffle(seed=51).first()
+
+        dataset.delete_samples(sample.id)
+        self.assertEqual(len(view), 5)
+
+        dataset.delete_groups(sample.group_field.id)
+        self.assertEqual(len(view), 3)
+
+        group = next(iter(dataset.iter_groups()))
+
+        dataset.delete_groups(group)
+
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_keep(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        self.assertEqual(len(view), 6)
+
+        dataset.limit(1).keep()
+
+        self.assertEqual(len(view), 3)
+
+        dataset.select_group_slice("ego").keep()
+        sample = view.first()
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(sample.group_field.name, "ego")
+
+        dataset.clear()
+
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
     def test_slice_operations(self):
         dataset = _make_group_dataset()
 

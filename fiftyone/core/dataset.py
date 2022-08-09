@@ -2617,19 +2617,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _clear_groups(self, view=None, group_ids=None):
         if view is not None:
             if view.media_type != fom.GROUP:
-                raise ValueError("%s is not a grouped collection" % type(view))
+                raise ValueError("DatasetView is not grouped")
 
-            group_ids = view.values(view.group_field + ".id")
+            group_ids = set(view.values(view.group_field + ".id"))
 
-        sample_ids = self.select_group_slice(_allow_mixed=True).values("id")
+        if group_ids is not None:
+            if self.media_type != fom.GROUP:
+                raise ValueError("Dataset is not grouped")
+
+            F = foex.ViewField
+            oids = [ObjectId(_id) for _id in group_ids]
+            view = self.select_group_slice(_allow_mixed=True).match(
+                F(self.group_field + "._id").is_in(oids)
+            )
+            sample_ids = view.values("id")
+        else:
+            sample_ids = None
 
         self._clear(sample_ids=sample_ids)
 
     def _keep(self, view=None, sample_ids=None):
-        if view is not None:
-            clear_view = self.exclude(view)
+        if self.media_type == fom.GROUP:
+            clear_view = self.select_group_slice(_allow_mixed=True)
         else:
-            clear_view = self.exclude(sample_ids)
+            clear_view = self.view()
+
+        if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slice(_allow_mixed=True)
+
+            clear_view = clear_view.exclude(view)
+        elif sample_ids is not None:
+            clear_view = clear_view.exclude(sample_ids)
+        else:
+            clear_view = None
 
         self._clear(view=clear_view)
 
