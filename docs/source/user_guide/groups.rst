@@ -608,7 +608,32 @@ collection via the special `"groups.<slice>.field.name"` syntax:
 
     print(view)
 
-.. _groups-select-slices:
+.. _groups-selecting-groups:
+
+Selecting groups
+----------------
+
+You can use
+:meth:`select_groups() <fiftyone.core.collections.SampleCollection.select_groups>`
+to create a view that contains certain group(s) of interest by their IDs:
+
+.. code-block:: python
+    :linenos:
+
+    # Select two groups at random
+    view = dataset.take(2)
+
+    group_ids = view.values("group.id")
+
+    # Select the same groups (default: unordered)
+    same_groups = dataset.select_groups(group_ids)
+    assert set(view.values("id")) == set(same_groups.values("id"))
+
+    # Select the same groups (ordered)
+    same_order = dataset.select_groups(group_ids, ordered=True)
+    assert view.values("id") == same_order.values("id")
+
+.. _groups-selecting-slices:
 
 Selecting slices
 ----------------
