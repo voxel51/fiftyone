@@ -617,8 +617,14 @@ class SampleCollection(object):
         if not keys:
             return None, None
 
-        field = None
         resolved_keys = []
+
+        if self._is_group_field(path):
+            if len(keys) < 3:
+                return path, None
+
+            resolved_keys.extend(keys[:2])
+            keys = keys[2:]
 
         if self._contains_videos() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
@@ -629,6 +635,8 @@ class SampleCollection(object):
             resolved_keys.append("frames")
         else:
             schema = self.get_field_schema()
+
+        field = None
 
         for idx, field_name in enumerate(keys):
             field_name = _handle_id_field(
@@ -817,6 +825,7 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()
@@ -1320,6 +1329,12 @@ class SampleCollection(object):
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         if isinstance(values, dict):
             if key_field is None:
                 raise ValueError(
@@ -1414,6 +1429,7 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(self, field_name, values):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
@@ -1661,6 +1677,12 @@ class SampleCollection(object):
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -7766,7 +7788,17 @@ class SampleCollection(object):
             or field_name == self._FRAMES_PREFIX[:-1]
         )
 
-    def _is_groups_field(self, field_name):
+    def _handle_group_field(self, field_name):
+        is_group_field = self._is_group_field(field_name)
+        if is_group_field:
+            try:
+                field_name = field_name.split(".", 2)[2]
+            except IndexError:
+                field_name = ""
+
+        return field_name, is_group_field
+
+    def _is_group_field(self, field_name):
         return (self.media_type == fom.GROUP) and (
             field_name.startswith(self._GROUPS_PREFIX)
             or field_name == self._GROUPS_PREFIX[:-1]
@@ -7884,10 +7916,12 @@ class SampleCollection(object):
         return fields_map
 
     def _handle_db_field(self, field_name, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return db_fields_map.get(field_name, field_name)
 
     def _handle_db_fields(self, field_names, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(f, f) for f in field_names]
 
@@ -7939,6 +7973,7 @@ class SampleCollection(object):
         )
 
     def _get_root_field_type(self, field_name, include_private=False):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         if is_frame_field:
@@ -7959,6 +7994,7 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()
