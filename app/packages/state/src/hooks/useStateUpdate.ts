@@ -22,10 +22,8 @@ import {
   similaritySorting,
   savingFilters,
   groupSlice,
-  extendedStages,
   similarityParameters,
   extendedSelection,
-  extendedStagesUnsorted,
 } from "../recoil";
 
 import * as viewAtoms from "../recoil/view";

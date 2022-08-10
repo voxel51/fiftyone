@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<69388ce0a99ad1928ae3600bc72a5cc0>>
+ * @generated SignedSource<<6f88e9b02d50fed236913f744d0be4b4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,8 +33,7 @@ export type paginateGroupPinnedSample_query$data = {
         // This will never be '%other', but we need some
         // value in case none of the concrete values match.
         readonly __typename: "%other";
-      }
-    | null;
+      };
   readonly " $fragmentType": "paginateGroupPinnedSample_query";
 };
 export type paginateGroupPinnedSample_query$key = {
@@ -92,67 +91,72 @@ const node: ReaderFragment = (function () {
     name: "paginateGroupPinnedSample_query",
     selections: [
       {
-        alias: null,
-        args: [
-          {
-            kind: "Variable",
-            name: "dataset",
-            variableName: "dataset",
-          },
-          {
-            kind: "Variable",
-            name: "filter",
-            variableName: "pinnedSampleFilter",
-          },
-          {
-            kind: "Variable",
-            name: "view",
-            variableName: "view",
-          },
-        ],
-        concreteType: null,
-        kind: "LinkedField",
-        name: "sample",
-        plural: false,
-        selections: [
-          {
-            alias: null,
-            args: null,
-            kind: "ScalarField",
-            name: "__typename",
-            storageKey: null,
-          },
-          {
-            kind: "InlineFragment",
-            selections: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
-            type: "ImageSample",
-            abstractKey: null,
-          },
-          {
-            kind: "InlineFragment",
-            selections: [v1 /*: any*/],
-            type: "PointCloudSample",
-            abstractKey: null,
-          },
-          {
-            kind: "InlineFragment",
-            selections: [
-              {
-                alias: null,
-                args: null,
-                kind: "ScalarField",
-                name: "frameRate",
-                storageKey: null,
-              },
-              v0 /*: any*/,
-              v1 /*: any*/,
-              v2 /*: any*/,
-            ],
-            type: "VideoSample",
-            abstractKey: null,
-          },
-        ],
-        storageKey: null,
+        kind: "RequiredField",
+        field: {
+          alias: null,
+          args: [
+            {
+              kind: "Variable",
+              name: "dataset",
+              variableName: "dataset",
+            },
+            {
+              kind: "Variable",
+              name: "filter",
+              variableName: "pinnedSampleFilter",
+            },
+            {
+              kind: "Variable",
+              name: "view",
+              variableName: "view",
+            },
+          ],
+          concreteType: null,
+          kind: "LinkedField",
+          name: "sample",
+          plural: false,
+          selections: [
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "__typename",
+              storageKey: null,
+            },
+            {
+              kind: "InlineFragment",
+              selections: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
+              type: "ImageSample",
+              abstractKey: null,
+            },
+            {
+              kind: "InlineFragment",
+              selections: [v1 /*: any*/],
+              type: "PointCloudSample",
+              abstractKey: null,
+            },
+            {
+              kind: "InlineFragment",
+              selections: [
+                {
+                  alias: null,
+                  args: null,
+                  kind: "ScalarField",
+                  name: "frameRate",
+                  storageKey: null,
+                },
+                v0 /*: any*/,
+                v1 /*: any*/,
+                v2 /*: any*/,
+              ],
+              type: "VideoSample",
+              abstractKey: null,
+            },
+          ],
+          storageKey: null,
+        },
+        action: "THROW",
+        path: "sample",
       },
     ],
     type: "Query",
@@ -160,6 +164,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "c1db0455fe9f0230194677dad094ceeb";
+(node as any).hash = "0cd8aaca0d72d16e15ffa8b22ceb1d71";
 
 export default node;

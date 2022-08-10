@@ -24,6 +24,7 @@ export const paginateGroupPaginationFragment = graphql`
       after: $cursor
       filter: $filter
     ) @connection(key: "paginateGroup_query_samples") {
+      total
       edges {
         cursor
         node {
@@ -51,7 +52,8 @@ export const paginateGroupPaginationFragment = graphql`
 export const paginateGroupPinnedSampleFragment = graphql`
   fragment paginateGroupPinnedSample_query on Query
   @refetchable(queryName: "paginateGroupPinnedSampleQuery") {
-    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {
+    sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter)
+      @required(action: THROW) {
       __typename
       ... on ImageSample {
         height

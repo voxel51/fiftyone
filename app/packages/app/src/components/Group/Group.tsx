@@ -1,4 +1,4 @@
-import { Loading } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import Flashlight, { Response } from "@fiftyone/flashlight";
 import { Resizable } from "re-resizable";
 import React, {
@@ -217,6 +217,7 @@ const Group: React.FC<{
     foq.paginateGroup,
     queryRef
   );
+  const theme = useTheme();
 
   return (
     <Resizable
@@ -233,7 +234,10 @@ const Group: React.FC<{
         bottomLeft: false,
         topLeft: false,
       }}
-      style={{ zIndex: 1000 }}
+      style={{
+        zIndex: 1000,
+        borderBottom: `1px solid ${theme.backgroundDarkBorder}`,
+      }}
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}

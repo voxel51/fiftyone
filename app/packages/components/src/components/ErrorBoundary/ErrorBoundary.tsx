@@ -21,11 +21,12 @@ const Errors: React.FC<Props> = ({ error, resetErrorBoundary }) => {
   useLayoutEffect(() => {
     document.getElementById("modal")?.classList.remove("modalon");
   }, []);
-  const [_, copy] = useCopyToClipboard();
 
+  const [_, copy] = useCopyToClipboard();
   if (error instanceof NotFoundError) {
     return <Loading>{error.message}</Loading>;
   }
+
   let stacks = [""];
 
   if ("errors" in error) {

@@ -2601,6 +2601,7 @@ __metadata:
     "@microsoft/fetch-event-source": ^2.0.1
     lodash: ^4.17.21
     prettier: ^2.7.1
+    recoil-relay: ^0.1.0
     typescript: ^4.7.4
     vite: ^3.0.0
   peerDependencies:
@@ -10624,6 +10625,17 @@ __metadata:
   version: 0.0.0
   resolution: "recoil-relay@npm:0.0.0"
   checksum: 455eb4d86801bf913fb1b94164dd8ca670c472107f065550da61bfcd64f57145d96e43664a9a279abeab2cf03766d5e67b0477c3d97e21f07239e80ee29dec4a
+  languageName: node
+  linkType: hard
+
+"recoil-relay@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "recoil-relay@npm:0.1.0"
+  peerDependencies:
+    react-relay: ">=13.2.0"
+    recoil: ">=0.7.3"
+    relay-runtime: ">=13.2.0"
+  checksum: c210bf9c3b0a2c7ce2fb130b6eb2b5d1d63680fca549b013c0b00b40b81dc15c3ff43389e6f069a17a7bdbb710f4a055bd754342eb445ce094d9b27ad006bfb6
   languageName: node
   linkType: hard
 

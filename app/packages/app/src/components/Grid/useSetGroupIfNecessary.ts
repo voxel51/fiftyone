@@ -35,7 +35,7 @@ export default (store: fos.LookerStore<any>) => {
                 pinnedSampleFilter: {
                   group: {
                     id: sample?.sample[groupField]._id,
-                    slice: await snapshot.getPromise(fos.pinnedGroupSlice),
+                    slice: await snapshot.getPromise(fos.pinnedSlice),
                   },
                 },
               },

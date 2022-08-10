@@ -314,24 +314,13 @@ export const similarityKeys = selector<{
   },
 });
 
-export const sidebarSourceSample = selector({
-  key: "sidebarSourceSample",
+export const sidebarSampleId = selector({
+  key: "sidebarSampleId",
   get: ({ get }) => {
-    const sidebarSource = get(atoms.sidebarSource);
+    const override = get(atoms.sidebarOverride);
     const modal = get(atoms.modal);
-    const resolvedSidebarSample = get(atoms.resolvedPinnedSample);
-    let result;
 
-    switch (sidebarSource) {
-      case "main":
-        result = modal?.sample;
-        break;
-      case "pinned":
-        result = resolvedSidebarSample;
-        break;
-    }
-
-    return result || modal?.sample;
+    return override || modal.sample?._id;
   },
 });
 

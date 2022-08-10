@@ -677,8 +677,6 @@ const InteractiveSidebar = ({
     () => new ResizeObserver(placeItems)
   );
   const theme = useTheme();
-  const sourceSample = useRecoilValue(fos.sidebarSourceSample);
-  const dataset = useRecoilValue(fos.dataset);
 
   return shown ? (
     <Resizable

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<53d21fe69ed4089f3c5f3a5381647758>>
+ * @generated SignedSource<<89394cc19df61541e5ea62c9de42b167>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,6 +38,7 @@ export type paginateGroup_query$data = {
             readonly __typename: "%other";
           };
     }>;
+    readonly total: number | null;
   };
   readonly " $fragmentType": "paginateGroup_query";
 };
@@ -146,6 +147,13 @@ const node: ReaderFragment = (function () {
           {
             alias: null,
             args: null,
+            kind: "ScalarField",
+            name: "total",
+            storageKey: null,
+          },
+          {
+            alias: null,
+            args: null,
             concreteType: "SampleItemStrEdge",
             kind: "LinkedField",
             name: "edges",
@@ -242,6 +250,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "c119b0885661da12d5f2a27f16f94f3e";
+(node as any).hash = "08b32b9de7bd07c30e2562e82bd225fe";
 
 export default node;

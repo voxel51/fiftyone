@@ -208,6 +208,7 @@ function CameraSetup({ cameraRef, settings }) {
 
 export function getFilepathField(sample, fields) {
   fields = fields || ["filepath"];
+
   for (const fieldName of fields) {
     const filepath = sample[fieldName];
     if (typeof filepath === "string" && filepath.endsWith(".pcd")) {
@@ -221,6 +222,7 @@ export function PointCloud({ sampleOverride }) {
   // NOTE: "pcd_filepath" should come from a plugin setting
   // instead of being hardcoded
   const settings = fop.usePluginSettings("point-clouds");
+
   const { sample: defaultSample } = recoil.useRecoilValue(fos.modal);
   const sample = sampleOverride || defaultSample;
 

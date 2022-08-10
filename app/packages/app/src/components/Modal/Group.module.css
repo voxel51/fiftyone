@@ -1,4 +1,13 @@
+.groupContainer {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .group {
+  border-top: 1px solid var(--background-dark-border);
   position: relative;
   flex-grow: 1;
   display: flex;
@@ -6,6 +15,7 @@
 }
 
 .groupSample {
+  position: relative;
   width: 100%;
   height: 100%;
 }
