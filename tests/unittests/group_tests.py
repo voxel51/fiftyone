@@ -315,6 +315,61 @@ class GroupTests(unittest.TestCase):
             view = dataset.select_group_slice()
 
     @drop_datasets
+    def test_attached_groups(self):
+        dataset = _make_group_dataset()
+
+        detections = [
+            fo.Detections(detections=[fo.Detection(label="left")]),
+            fo.Detections(detections=[fo.Detection(label="ego")]),
+            fo.Detections(detections=[fo.Detection(label="right")]),
+            fo.Detections(detections=[fo.Detection(label="LEFT")]),
+            fo.Detections(detections=[fo.Detection(label="EGO")]),
+            fo.Detections(detections=[fo.Detection(label="RIGHT")]),
+        ]
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        view.set_values("ground_truth", detections)
+
+        dataset.group_slice = "left"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["left", "LEFT"],
+        )
+
+        dataset.group_slice = "right"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["right", "RIGHT"],
+        )
+
+        dataset.group_slice = "ego"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["ego", "EGO"],
+        )
+
+        field = dataset.get_field("field")
+        self.assertIsInstance(field, fo.IntField)
+
+        field = dataset.get_field("groups.left.field")
+        self.assertIsInstance(field, fo.IntField)
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsInstance(field, fo.StringField)
+
+        field = dataset.get_field("groups.right.ground_truth.detections.label")
+        self.assertIsInstance(field, fo.StringField)
+
+        # Verify that `groups.left.ground_truth` is correctly recognized as a
+        # Detections field
+        view = dataset.filter_labels(
+            "groups.left.ground_truth",
+            F("label") == F("label").upper(),
+        )
+
+        self.assertEqual(len(view), 1)
+
+    @drop_datasets
     def test_aggregations(self):
         dataset = _make_group_dataset()
 

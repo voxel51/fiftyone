@@ -3728,6 +3728,12 @@ class SelectGroupSlice(ViewStage):
     The returned view is a flattened non-grouped view containing only the
     slice(s) of interest.
 
+    .. note::
+
+        This stage performs a ``$lookup`` that pulls the requested slice(s) for
+        each sample in the input collection from the source dataset. As a
+        result, this stage always emits *unfiltered samples*.
+
     Examples::
 
         import fiftyone as fo
