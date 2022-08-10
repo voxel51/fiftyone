@@ -256,7 +256,8 @@ datasets just as you would with ungrouped datasets:
 You can also use methods like
 :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
 and :meth:`save() <fiftyone.core.view.DatasetView.save>` to perform bulk
-edits to the *active slice* of a grouped dataset.
+edits to the :ref:`active slice <groups-dataset-properties>` of a grouped
+dataset.
 
 Note that all slices of a grouped dataset share the same schema, and hence
 any fields you add to samples from a particular slice will be implicitly
@@ -369,7 +370,7 @@ Iterating over grouped datasets
 -------------------------------
 
 When you directly iterate over a grouped dataset, you will get samples from the
-dataset's *active slice*:
+dataset's :ref:`active slice <groups-dataset-properties>`:
 
 .. code-block:: python
     :linenos:
@@ -587,7 +588,7 @@ of grouped datasets:
 
 Remember that, by default, as per when :ref:`iterating over <groups-iteration>`
 grouped datasets, any filtering operations will only be applied to the
-*active slice* of grouped datasets.
+:ref:`active slice <groups-dataset-properties>` of grouped datasets.
 
 However, you can write views that reference specific slice(s) of a grouped
 collection via the special `"groups.<slice>.field.name"` syntax:
@@ -702,6 +703,88 @@ the fact that their data is sourced from a grouped dataset!
     another_view = image_view.match(F("metadata.width") >= 640)
 
     # Add fields/tags, run evaluation, export, etc
+
+.. _groups-aggregations:
+
+Aggregations on grouped datasets
+________________________________
+
+You can use the entire :ref:`aggregations framework <using-aggregations>` to
+efficiently compute statistics on grouoped datasets, just like you do with
+ungrouped datasets.
+
+Remember that, as when :ref:`iterating over <groups-iteration>` or
+:ref:`writing views <groups-views>` into grouped datasets, aggregations will
+only include samples from the :ref:`active slice <dataset-group-properties>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Expression that computes the area of a bounding box, in pixels
+    bbox_width = F("bounding_box")[2] * F("$metadata.width")
+    bbox_height = F("bounding_box")[3] * F("$metadata.height")
+    bbox_area = bbox_width * bbox_height
+
+    print(dataset.group_slice)
+    # left
+
+    print(dataset.count("ground_truth.detections"))
+    # 1438
+
+    print(dataset.mean("ground_truth.detections[]", expr=bbox_area))
+    # 8878.752327468706
+
+You can customize the dataset's active slice by setting the
+:meth:`group_slice <fiftyone.core.dataset.Dataset.group_slice>` property to
+another slice name:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.group_slice = "right"
+
+    print(dataset.count("ground_truth.detections"))
+    # 1438
+
+    print(dataset.bounds("ground_truth.detections[]", expr=bbox_area))
+    # 9457.586300995526
+
+As usual, you can combine views and aggregations to refine your statistics to
+any subset of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.count_values("ground_truth.detections.label"))
+    # {'Pedestrian': 128, 'Car': 793, ...}
+
+    view1 = dataset.take(5)
+    print(view1.count_values("ground_truth.detections.label"))
+    # {'Pedestrian': 1, 'Car': 23, ...}
+
+    view2 = dataset.filter_labels("ground_truth", F("label") == "Pedestrian")
+    print(view2.count_values("ground_truth.detections.label"))
+    # {'Pedestrian': 128}
+
+In particular, if you would like to compute statistics across multiple group
+slices, you can :ref:`select them <groups-selecting-slices>`!
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.count())  # 200
+    print(dataset.count("ground_truth.detections"))  # 1438
+
+    view3 = dataset.select_group_slice(["left", "right"])
+
+    print(view3.count())  # 400
+    print(view3.count("ground_truth.detections"))  # 2876
 
 .. _groups-exporting:
 
