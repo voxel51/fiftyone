@@ -149,10 +149,14 @@ class Dataset(HasCollection):
 
     @staticmethod
     def modifier(doc: dict) -> dict:
-
         doc["id"] = doc.pop("_id")
-        doc["mask_targets"] = []
-        doc["default_mask_targets"] = []
+        doc["default_mask_targets"] = _convert_targets(
+            doc.get("default_mask_targets", {})
+        )
+        doc["mask_targets"] = [
+            NamedTargets(name, _convert_targets(targets))
+            for name, targets in doc.get("mask_targets", {}).items()
+        ]
         doc["sample_fields"] = _flatten_fields([], doc["sample_fields"])
         doc["frame_fields"] = _flatten_fields([], doc["frame_fields"])
         doc["brain_methods"] = list(doc.get("brain_methods", {}).values())
@@ -326,3 +330,7 @@ def _flatten_fields(
             result = result + _flatten_fields(field_path, fields)
 
     return result
+
+
+def _convert_targets(targets: t.Dict[str, str]) -> Target:
+    return [Target(value=v, target=int(k)) for k, v in targets.items()]

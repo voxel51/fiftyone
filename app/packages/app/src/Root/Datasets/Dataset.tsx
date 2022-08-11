@@ -1,6 +1,6 @@
 import { Route, RouterContext } from "@fiftyone/components";
 import { NotFoundError, toCamelCase } from "@fiftyone/utilities";
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { graphql, usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 
@@ -8,11 +8,12 @@ import DatasetComponent from "../../components/Dataset";
 import { useStateUpdate } from "../../utils/hooks";
 import { DatasetQuery } from "./__generated__/DatasetQuery.graphql";
 import { datasetName } from "../../recoil/selectors";
-import transformDataset from "./transformDataset";
-import { filters } from "../../recoil/filters";
-import { State } from "../../recoil/types";
-import { similarityParameters } from "../../components/Actions/Similar";
+import * as viewAtoms from "../../recoil/view";
 import { getDatasetName } from "../../utils/generic";
+import { filters } from "../../recoil/filters";
+import { similarityParameters } from "../../components/Actions/Similar";
+import transformDataset from "./transformDataset";
+import { State } from "../../recoil/types";
 
 const Query = graphql`
   query DatasetQuery($name: String!, $view: BSONArray = null) {
@@ -93,6 +94,9 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
   const router = useContext(RouterContext);
   const name = useRecoilValue(datasetName);
+  const view = useRecoilValue(viewAtoms.view);
+  const viewRef = useRef(view);
+  viewRef.current = view;
   if (!dataset) {
     throw new NotFoundError(`/datasets/${getDatasetName(router)}`);
   }
@@ -114,10 +118,10 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
             : undefined,
         dataset: transformDataset(dataset),
         state:
-          router.state && router.state.state ? router?.state.state : undefined,
+          router.state && router.state.state ? router?.state.state || {} : {},
       };
     });
-  }, [dataset, router]);
+  }, [dataset]);
 
   if (!name) {
     return null;

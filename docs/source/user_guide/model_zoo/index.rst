@@ -390,7 +390,7 @@ and the output ``labels`` can be any of the following:
     )
 
 In the above snippets, the ``label_key`` function maps label dict keys to field
-names, and is defined from ``label_field`` as follows::
+names, and is defined from ``label_field`` as follows:
 
 .. code-block:: python
     :linenos:
