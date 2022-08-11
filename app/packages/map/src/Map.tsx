@@ -189,7 +189,7 @@ const Plot: React.FC<{
             type="geojson"
             data={selectionData || data}
             cluster={settings.clustering}
-            clusterMaxZoom={12}
+            clusterMaxZoom={settings.clusterMaxZoom}
           >
             {settings.clustering && (
               <Layer
