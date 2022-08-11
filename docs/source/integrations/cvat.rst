@@ -2366,18 +2366,19 @@ Using the CVAT API
 ------------------
 
 You can use the
-:meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
+:func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
 to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
 instance, which is a wrapper around the
 `CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
 that provides convenient methods for performing common actions on your CVAT
-tasks.
+tasks:
 
 .. code:: python
     :linenos:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
+    import fiftyone.utils.annotations as foua
 
     dataset = foz.load_zoo_dataset("quickstart")
     view = dataset.take(1)
@@ -2386,12 +2387,11 @@ tasks.
 
     view.annotate(anno_key, label_field="ground_truth")
 
-    results = dataset.load_annotation_results(anno_key)
+    api = foua.connect_to_api()
 
-    # A context manager that closes TCP connections on exit
-    with results:
-        api = results.connect_to_api()
-
+    # The context manager is optional and simply ensures that TCP connections
+    # are always closed
+    with api:
         # Launch CVAT in your browser
         api.launch_editor(api.base_url)
 
@@ -2455,27 +2455,24 @@ for that annotation run:
 
 .. note::
 
-    **Pro tip**: Various methods available on the
-    :class:`results <fiftyone.utils.cvat.CVATAnnotationResults>` object, like
-    those shown above, can be performed more efficiently with the
-    :meth:`use_api() <fiftyone.utils.cvat.CVATAnnotationResults.use_api>`
-    method. This allows you to provide a
-    :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` object as
-    defined in the previous section. The benefit is that this allows you to
-    avoid authentication in each
-    method and significantly speeds up these calls if there are
-    multiple being performed at a time.
+    **Pro tip**: If you are iterating over many annotation runs, you can use
+    :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>` and
+    :meth:`use_api() <fiftyone.utils.cvat.CVATAnnotationResults.use_api>` as
+    shown below to reuse a single
+    :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance
+    and avoid reauthenticating with CVAT for each run:
 
     .. code-block:: python
         :linenos:
 
-        api = results.connect_to_api()
+        import fiftyone.utils.annotations as foua
+
+        api = foua.connect_to_api()
 
         for anno_key in dataset.list_annotation_runs():
             results = dataset.load_annotation_results(anno_key)
             results.use_api(api)
             results.print_status()
-
 
 Deleting tasks
 --------------
