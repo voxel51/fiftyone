@@ -954,7 +954,7 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         if isinstance(target, (fol.Classification, fol.Classifications)):
             return target
 
-        is_list = etau.is_container(target)
+        is_list = isinstance(target, (list, tuple))
 
         if not is_list:
             target = [target]
