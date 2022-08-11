@@ -38,10 +38,10 @@ def random_split(sample_collection, split_fracs, seed=None):
         # Generate a random sample in-memory
         #
 
-        test, train = four.random_split(dataset, [0.5, 0.5])
+        view1, view2 = four.random_split(dataset, [0.5, 0.5])
 
-        assert len(test) + len(train) == len(dataset)
-        assert set(test.values("id")).isdisjoint(set(train.values("id")))
+        assert len(view1) + len(view2) == len(dataset)
+        assert set(view1.values("id")).isdisjoint(set(view2.values("id")))
 
     Args:
         sample_collection: a
@@ -63,7 +63,7 @@ def random_split(sample_collection, split_fracs, seed=None):
         one of the following
 
         -   ``None``, if ``split_fracs`` is a dict
-        -   a list of :class:`fiftyone.core.view.DatasetView` instances, if
+        -   a tuple of :class:`fiftyone.core.view.DatasetView` instances, if
             ``split_fracs`` is a list
     """
     use_tags = isinstance(split_fracs, dict)
@@ -81,7 +81,7 @@ def random_split(sample_collection, split_fracs, seed=None):
     rs = np.random.RandomState(seed=seed)  # pylint: disable=no-member
     rs.shuffle(sample_ids)
 
-    split_ids = np.split(sample_ids, threshs)
+    split_ids = np.split(sample_ids, threshs[:-1])
 
     if use_tags:
         for ids, tag in zip(split_ids, tags):
@@ -89,7 +89,7 @@ def random_split(sample_collection, split_fracs, seed=None):
 
         return
 
-    return [sample_collection.select(ids) for ids in split_ids]
+    return tuple(sample_collection.select(ids) for ids in split_ids)
 
 
 def weighted_sample(
