@@ -13,6 +13,8 @@ export interface Settings {
 
 export const defaultSettings = Object.freeze({
   clustering: true,
+  // https://docs.mapbox.com/help/glossary/zoom-level/
+  clusterMaxZoom: 11,
   clusters: {
     paint: {
       "circle-color": "rgb(244, 113, 6)",
