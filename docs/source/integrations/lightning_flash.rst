@@ -84,7 +84,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash import Trainer
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
@@ -95,7 +95,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1, "pred": 0.1}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split
@@ -167,7 +167,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash.image.detection.output import FiftyOneDetectionLabelsOutput
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load your FiftyOne dataset
@@ -180,7 +180,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "test": 0.1, "val": 0.1}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split
@@ -343,7 +343,7 @@ method, which is implemented for each of the Flash tasks shown below.
             from flash.video import VideoClassificationData, VideoClassifier
 
             import fiftyone as fo
-            import fiftyone.utils.splits as fous
+            import fiftyone.utils.random as four
             import fiftyone.zoo as foz
 
             # 1 Load the data
@@ -365,7 +365,7 @@ method, which is implemented for each of the Flash tasks shown below.
 
             # Create splits from the dataset
             splits = {"train": 0.7, "pred": 0.3}
-            fous.random_split(dataset, splits)
+            four.random_split(dataset, splits)
 
             # Here we use views into one dataset,
             # but you can also use a different dataset for each split
