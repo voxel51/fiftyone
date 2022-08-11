@@ -1079,7 +1079,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds a new frame-level field to the dataset, if necessary.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name
@@ -1197,7 +1197,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to rename embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1297,7 +1297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1311,7 +1311,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_mapping: a dict mapping field names to new field names into
@@ -1402,7 +1402,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1419,7 +1419,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: the field name or iterable of field names
@@ -1441,9 +1441,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reload_docs(self._sample_collection_name)
 
     def _clear_frame_fields(self, field_names, view=None):
-        if not self._contains_videos():
+        sample_collection = self if view is None else view
+        if not sample_collection._contains_videos():
             raise ValueError(
-                "Only datasets that contain videos have frame fields"
+                "%s has no frame fields" % type(sample_collection)
             )
 
         fields, embedded_fields = _parse_fields(field_names)
@@ -1452,7 +1453,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._clear_fields(fields, view)
 
         if embedded_fields:
-            sample_collection = self if view is None else view
             self._frame_doc_cls._clear_embedded_fields(
                 embedded_fields, sample_collection
             )
@@ -1497,7 +1497,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -1515,7 +1515,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         frame fields.
 
-        Only applicable to video datasets.
+        Only applicable to datasets that contain videos.
 
         Args:
             field_names: a field name or iterable of field names
@@ -2213,6 +2213,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame_ids = _get_frame_ids(frames_or_ids)
         self._clear_frames(frame_ids=frame_ids)
 
+    def delete_groups(self, groups_or_ids):
+        """Deletes the given groups(s) from the dataset.
+
+        If reference to a sample exists in memory, the sample will be updated
+        such that ``sample.in_dataset`` is False.
+
+        Args:
+            groups_or_ids: the group(s) to delete. Can be any of the
+                following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+        """
+        group_ids = _get_group_ids(groups_or_ids)
+        self._clear_groups(group_ids=group_ids)
+
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
     ):
@@ -2581,7 +2606,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear(self, view=None, sample_ids=None):
         if view is not None:
+            contains_videos = view._contains_videos()
+
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slice(_allow_mixed=True)
+
             sample_ids = view.values("id")
+        else:
+            contains_videos = self._contains_videos()
 
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -2593,13 +2625,46 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, sample_ids=sample_ids
         )
 
-        self._clear_frames(sample_ids=sample_ids)
+        if contains_videos:
+            self._clear_frames(sample_ids=sample_ids)
+
+    def _clear_groups(self, view=None, group_ids=None):
+        if view is not None:
+            if view.media_type != fom.GROUP:
+                raise ValueError("DatasetView is not grouped")
+
+            group_ids = set(view.values(view.group_field + ".id"))
+
+        if group_ids is not None:
+            if self.media_type != fom.GROUP:
+                raise ValueError("Dataset is not grouped")
+
+            F = foex.ViewField
+            oids = [ObjectId(_id) for _id in group_ids]
+            view = self.select_group_slice(_allow_mixed=True).match(
+                F(self.group_field + "._id").is_in(oids)
+            )
+            sample_ids = view.values("id")
+        else:
+            sample_ids = None
+
+        self._clear(sample_ids=sample_ids)
 
     def _keep(self, view=None, sample_ids=None):
-        if view is not None:
-            clear_view = self.exclude(view)
+        if self.media_type == fom.GROUP:
+            clear_view = self.select_group_slice(_allow_mixed=True)
         else:
-            clear_view = self.exclude(sample_ids)
+            clear_view = self.view()
+
+        if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view.select_group_slice(_allow_mixed=True)
+
+            clear_view = clear_view.exclude(view)
+        elif sample_ids is not None:
+            clear_view = clear_view.exclude(sample_ids)
+        else:
+            clear_view = None
 
         self._clear(view=clear_view)
 
@@ -2617,7 +2682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self.delete_frame_fields(del_frame_fields)
 
     def clear_frames(self):
-        """Removes all frame labels from the video dataset.
+        """Removes all frame labels from the dataset.
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
@@ -2625,7 +2690,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._clear_frames()
 
     def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
-        if not self._contains_videos():
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos():
             return
 
         if self._is_clips:
@@ -2647,6 +2713,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         if view is not None:
+            if view.media_type == fom.GROUP:
+                view = view._select_group_slices(fom.VIDEO)
+
             sample_ids = view.values("id")
 
         if sample_ids is not None:
@@ -2660,7 +2729,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def _keep_frames(self, view=None, frame_ids=None):
-        if not self._contains_videos():
+        sample_collection = view if view is not None else self
+        if not sample_collection._contains_videos():
             return
 
         if self._is_clips:
@@ -4552,7 +4622,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
-                provided JSON dict. Only applicable to video datasets
+                provided JSON dict. Only applicable to datasets that contain
+                videos
 
         Returns:
             a :class:`Dataset`
@@ -5670,9 +5741,12 @@ def _get_frames_pipeline(sample_collection):
 
 
 def _save_view(view, fields=None):
+    # Note: for grouped views, only the active slice's contents are saved,
+    # since views cannot edit other slices
+
     dataset = view._dataset
 
-    contains_videos = view._contains_videos()
+    contains_videos = view._contains_videos(only_active_slice=True)
     all_fields = fields is None
 
     if fields is None:
@@ -6788,6 +6862,43 @@ def _get_frame_ids_for_sample(sample):
         return view.values("frames.id", unwind=True)
 
     return [frame.id for frame in sample.frames.values()]
+
+
+def _get_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
+
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
+
+        return arg.values(arg.group_field + ".id")
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
+
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
 
 
 def _parse_fields(field_names):

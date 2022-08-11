@@ -58,6 +58,8 @@ This page lists all of the datasets available in the Dataset Zoo.
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`KITTI <dataset-zoo-kitti>`                                   | image, detection                                                          |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
+    | :ref:`KITTI Multiview <dataset-zoo-kitti-multiview>`               | image, point-cloud, detection                                             |
+    +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`Labeled Faces in the Wild <dataset-zoo-lfw>`                 | image, classification, facial-recognition                                 |
     +--------------------------------------------------------------------+---------------------------------------------------------------------------+
     | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                                                     |
@@ -603,13 +605,6 @@ pixels. This version contains image-level labels only.
 -   Supported splits: ``N/A``
 -   ZooDataset class:
     :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech101Dataset>`
-
-.. note::
-
-    As of FiftyOne v0.7.1, this dataset is available directly without requiring
-    the TensorFlow backend. The splits have been removed, per
-    `the author's organization <http://www.vision.caltech.edu/Image_Datasets/Caltech101>`_
-    as well.
 
 **Example usage**
 
@@ -2473,13 +2468,11 @@ KITTI
 KITTI contains a suite of vision tasks built using an autonomous
 driving platform.
 
-The full benchmark contains many tasks such as stereo, optical flow, visual
-odometry, etc. This dataset contains the object detection dataset,
-including the monocular images and bounding boxes.
+This dataset contains the left camera images and the associated 2D object
+detections.
 
-The training split contains 7,481 images annotated with 2D and 3D bounding
-boxes (currently only the 2D detections are loaded), and the test split
-contains 7,518 unlabeled images.
+The training split contains 7,481 annotated images, and the test split contains
+7,518 unlabeled images.
 
 A full description of the annotations can be found in the README of the
 object development kit on the KITTI homepage.
@@ -2488,18 +2481,11 @@ object development kit on the KITTI homepage.
 
 -   Dataset name: ``kitti``
 -   Dataset source: http://www.cvlibs.net/datasets/kitti
--   Dataset size: 11.71 GB
+-   Dataset size: 12.57 GB
 -   Tags: ``image, detection``
 -   Supported splits: ``train, test``
 -   ZooDataset class:
     :class:`KITTIDataset <fiftyone.zoo.datasets.base.KITTIDataset>`
-
-.. note::
-
-    As of FiftyOne v0.7.1, this dataset is available directly without requiring
-    the TensorFlow backend. The splits have been updated to match
-    `the author's organization <http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=2d>`_
-    as well.
 
 **Example usage**
 
@@ -2527,6 +2513,64 @@ object development kit on the KITTI homepage.
 
 .. image:: /images/dataset_zoo/kitti-train.png
    :alt: kitti-train
+   :align: center
+
+.. _dataset-zoo-kitti-multiview:
+
+KITTI Multiview
+---------------
+
+KITTI contains a suite of vision tasks built using an autonomous
+driving platform.
+
+This dataset contains the following multiview data for each scene:
+
+-   Left camera images annotated with 2D object detections
+-   Right camera images annotated with 2D object detections
+-   Velodyne LIDAR point clouds annotated with 3D object detections
+
+The training split contains 7,481 annotated scenes, and the test split contains
+7,518 unlabeled scenes.
+
+A full description of the annotations can be found in the README of the
+object development kit on the KITTI homepage.
+
+**Details**
+
+-   Dataset name: ``kitti-multiview``
+-   Dataset source: http://www.cvlibs.net/datasets/kitti
+-   Dataset size: 53.34 GB
+-   Tags: ``image, point-cloud, detection``
+-   Supported splits: ``train, test``
+-   ZooDataset class:
+    :class:`KITTIMultiviewDataset <fiftyone.zoo.datasets.base.KITTIMultiviewDataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load kitti-multiview --split train
+
+        fiftyone app launch kitti-multiview-train
+
+.. image:: /images/dataset_zoo/kitti-multiview-train.png
+   :alt: kitti-multiview-train
    :align: center
 
 .. _dataset-zoo-lfw:
@@ -3033,7 +3077,7 @@ annotation data.
 **Details**
 
 -   Dataset name: ``quickstart-groups``
--   Dataset size: 523.1 MB
+-   Dataset size: 522.9 MB
 -   Tags: ``image, point-cloud, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
