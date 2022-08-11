@@ -1,3 +1,4 @@
+import React from "react";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import { useControl } from "react-map-gl";
 
@@ -9,10 +10,12 @@ interface DrawControlProps {
 }
 
 export default function DrawControl({ draw, onCreate }: DrawControlProps) {
+  const create = React.useRef(onCreate);
+  create.current = onCreate;
   useControl<MapboxDraw>(
     ({ map }: { map: MapRef }) => {
       map.on("draw.create", (event) => {
-        onCreate(event);
+        create.current(event);
 
         draw.delete(event.features[0].id);
       });
@@ -20,7 +23,7 @@ export default function DrawControl({ draw, onCreate }: DrawControlProps) {
       return draw;
     },
     ({ map }: { map: MapRef }) => {
-      map.off("draw.create", onCreate);
+      map.off("draw.create", create.current);
     }
   );
 

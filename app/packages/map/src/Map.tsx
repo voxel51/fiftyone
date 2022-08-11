@@ -242,16 +242,18 @@ const Plot: React.FC<{
               const selected = new Set<string>();
               const newCoordinates = [];
               const newSamples = [];
-              for (let index = 0; index < coordinates.length; index++) {
+              const selection = selectionData || data;
+
+              for (let index = 0; index < selection.features.length; index++) {
                 if (
                   contains(
                     polygon as GeoJSON.Feature<GeoJSON.Polygon>,
-                    data.features[index]
+                    selection.features[index]
                   )
                 ) {
                   selected.add(data.features[index].properties.id);
                   newCoordinates.push(
-                    data.features[index].geometry.coordinates
+                    selection.features[index].geometry.coordinates
                   );
                 }
               }
