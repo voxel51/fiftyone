@@ -2266,7 +2266,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return sorted(self._doc.views.keys())
 
-    def save_view(self, name, view, overwrite=False):
+    def save_view(
+        self,
+        name,
+        view,
+        overwrite=False,
+        color="#ffffff",
+        description="new view!",
+    ):
         """Saves the given view into this dataset under the given name so it
         can be loaded later via :meth:`load_view`.
 
@@ -2290,7 +2297,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite (False): whether to overwrite an existing saved view with
                 the same name
         """
-        if view._root_dataset is not self:
+        if view._root_dataset.name is not self.name:
             raise ValueError("Cannot save view into a different dataset")
 
         if name in self._doc.views:
@@ -2308,6 +2315,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
+            description=description,
+            color=color,
         )
         view_doc.save()
 
@@ -4792,7 +4801,8 @@ def _list_datasets(include_private=False):
         query = {"sample_collection_name": {"$regex": "^samples\\."}}
 
     # We don't want an error here if `name == None`
-    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+    def _sort(l):
+        return sorted(l, key=lambda x: (x is None, x))
 
     return _sort(conn.datasets.find(query).distinct("name"))
 
@@ -4939,7 +4949,8 @@ def _make_sample_collection_name(patches=False, frames=False, clips=False):
     else:
         prefix = "samples"
 
-    create_name = lambda timestamp: ".".join([prefix, timestamp])
+    def create_name(timestamp):
+        return ".".join([prefix, timestamp])
 
     name = create_name(now.strftime("%Y.%m.%d.%H.%M.%S"))
     if name in conn.list_collection_names():
@@ -5607,7 +5618,10 @@ def _merge_samples_python(
 
     if key_fcn is None:
         id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
-        key_fcn = lambda sample: sample[key_field]
+
+        def key_fcn(sample):
+            return sample[key_field]
+
     else:
         id_map = {}
         logger.info("Indexing dataset...")

@@ -21,3 +21,6 @@ class ViewDocument(Document):
 
     dataset_id = ObjectIdField()
     view_stages = ListField(StringField())
+
+    color = StringField()
+    description = StringField()

@@ -12,6 +12,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { sidebarVisible, sidebarWidth } from "../../recoil/atoms";
 import { disabledPaths } from "./recoil";
 import { replace } from "./Entries/GroupEntries";
+import { Box } from "@material-ui/core";
 
 const MARGIN = 3;
 
@@ -695,6 +696,7 @@ const InteractiveSidebar = ({
         setWidth(width + delta);
       }}
     >
+      <Box style={{ padding: 16 }}>Save views here?</Box>
       <SidebarColumn
         ref={container}
         onScroll={({ target }) => {
@@ -712,9 +714,8 @@ const InteractiveSidebar = ({
             if (entry.kind === EntryKind.GROUP) {
               group = entry.name;
             }
-            const { shadow, cursor, ...springs } = items.current[
-              key
-            ].controller.springs;
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
             const { children } = render(
               key,
               group,
