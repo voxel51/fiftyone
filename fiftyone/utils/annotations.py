@@ -1905,12 +1905,15 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     def connect_to_api(self):
-        """Returns an API instance connected to the annotation server.
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
 
         Some annotation backends may not expose this functionality.
 
         Returns:
-            an :class:`AnnotationAPI`, or ``None``
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
         """
         if self._api is None:
             # pylint: disable=assignment-from-none
@@ -1919,6 +1922,12 @@ class AnnotationBackend(foa.AnnotationMethod):
         return self._api
 
     def _connect_to_api(self):
+        """Returns a new API instance connected to the annotation backend.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
         return None
 
     def use_api(self, api):
@@ -2086,14 +2095,15 @@ class AnnotationResults(foa.AnnotationResults):
         raise NotImplementedError("subclass must implement load_credentials()")
 
     def connect_to_api(self):
-        """Returns an API instance connected to the annotation server.
+        """Returns an API instance connected to the annotation backend.
 
-        Existing instances are reused, if available.
+        Existing API instances are reused, if available.
 
         Some annotation backends may not expose this functionality.
 
         Returns:
-            a :class:`AnnotationAPI`, or ``None``
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
         """
         return self._backend.connect_to_api()
 
