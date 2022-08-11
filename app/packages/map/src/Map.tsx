@@ -255,13 +255,14 @@ const Plot: React.FC<{
                   );
                 }
               }
-              const source = mapRef.current.getSource("points");
-              if (source.type === "geojson") {
-                setSelectionData(createSourceData(newCoordinates, newSamples));
-              }
 
               if (!selected.size) {
                 return;
+              }
+
+              const source = mapRef.current.getSource("points");
+              if (source.type === "geojson") {
+                setSelectionData(createSourceData(newCoordinates, newSamples));
               }
 
               setSelection([...selected]);
