@@ -3609,7 +3609,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session = requests.Session()
 
         if self._headers:
-            # pylint: disable=E1121
+            # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
         self._server_version = 2
