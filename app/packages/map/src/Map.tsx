@@ -26,9 +26,6 @@ import {
 import Options from "./Options";
 import { usePluginSettings } from "@fiftyone/plugins";
 
-const MAPBOX_ACCESS_TOKEN =
-  "pk.eyJ1IjoiYmVuamFtaW5wa2FuZSIsImEiOiJjbDV3bG1qbmUwazVkM2JxdjA2Mmwza3JpIn0.WnOukHfx7LBTOiOEYth-uQ";
-
 const fitBoundsOptions = { animate: false, padding: 30 };
 
 const computeBounds = (coordinates: [number, number][]) =>
@@ -153,6 +150,10 @@ const Plot: React.FC<{
     mapRef.current && fitBounds(mapRef.current, coordinates);
   }, [coordinates]);
 
+  if (!settings.mapboxAccessToken) {
+    return <Loading>No Mapbox token provided</Loading>;
+  }
+
   if (!coordinates.length && !loading) {
     return <Loading>No data</Loading>;
   }
@@ -173,7 +174,7 @@ const Plot: React.FC<{
           onStyleData={() => {
             mapRef.current.getCanvas().style.cursor = "crosshair";
           }}
-          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
+          mapboxAccessToken={settings.mapboxAccessToken}
           onLoad={onLoad}
           onRender={() => {
             try {
@@ -191,41 +192,38 @@ const Plot: React.FC<{
             clusterMaxZoom={12}
           >
             {settings.clustering && (
-              <>
-                <Layer
-                  id={"cluster"}
-                  filter={["has", "point_count"]}
-                  paint={{
-                    "circle-color": theme.brand,
-                    "circle-opacity": 0.7,
-                    "circle-radius": [
-                      "step",
-                      ["get", "point_count"],
-                      20,
-                      10,
-                      30,
-                      25,
-                      40,
-                    ],
-                    ...settings.clusters.paint,
-                  }}
-                  type={"circle"}
-                />
-                <Layer
-                  id={"cluster-count"}
-                  filter={["has", "point_count"]}
-                  layout={{
-                    "text-field": "{point_count_abbreviated}",
-                    "text-font": [
-                      "DIN Offc Pro Medium",
-                      "Arial Unicode MS Bold",
-                    ],
-                    "text-size": 12,
-                  }}
-                  paint={settings.clusters.textPaint}
-                  type={"symbol"}
-                />
-              </>
+              <Layer
+                id={"cluster"}
+                filter={["has", "point_count"]}
+                paint={{
+                  "circle-color": theme.brand,
+                  "circle-opacity": 0.7,
+                  "circle-radius": [
+                    "step",
+                    ["get", "point_count"],
+                    20,
+                    10,
+                    30,
+                    25,
+                    40,
+                  ],
+                  ...settings.clusters.paint,
+                }}
+                type={"circle"}
+              />
+            )}
+            {settings.clustering && (
+              <Layer
+                id={"cluster-count"}
+                filter={["has", "point_count"]}
+                layout={{
+                  "text-field": "{point_count_abbreviated}",
+                  "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                  "text-size": 12,
+                }}
+                paint={settings.clusters.textPaint}
+                type={"symbol"}
+              />
             )}
 
             <Layer
