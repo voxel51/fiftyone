@@ -483,6 +483,10 @@ more details:
     -   a list of label attributes to export
     -   a dict mapping attribute names to dicts specifying the `type`,
         `values`, and `default` for each attribute
+
+    If a `label_schema` is also provided, this parameter determines which
+    attributes are included for all fields that do not explicitly define their
+    per-field attributes (in addition to any per-class attributes)
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 -   **allow_additions** (*True*): whether to allow new labels to be added. Only
