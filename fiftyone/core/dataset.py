@@ -2304,7 +2304,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _view_doc = self._get_view_doc(name, pop=True)
             _view_doc.delete()
 
+        index = max([v.index or 0 for v in self._doc.views], default=-1) + 1
         now = datetime.utcnow()
+
         view_doc = foo.ViewDocument(
             dataset_id=self._doc.id,
             name=name,
@@ -2315,7 +2317,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
-            index=len(self._doc.views),
+            index=index,
             created_at=now,
             last_modified_at=now,
         )
@@ -2444,10 +2446,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.views[idx]
 
     def _ordered_views(self):
-        return sorted(self._doc.views, key=lambda v: v.index)
+        return sorted(self._doc.views, key=lambda v: v.index or 0)
 
     def _reorder_views(self, new_order):
-        index_map = {o: i for i, o in enumerate(new_order)}
+        old_indexes = set(v.index for v in self._doc.views)
+        new_indexes = set(new_order)
+        if old_indexes != new_indexes:
+            raise ValueError(
+                "New indexes %s don't match old indexes %s"
+                % (new_indexes, old_indexes)
+            )
+
+        index_map = {old: new for new, old in enumerate(new_order)}
 
         for view_doc in self._doc.views:
             view_doc.index = index_map[view_doc.index]

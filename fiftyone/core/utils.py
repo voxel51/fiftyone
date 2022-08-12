@@ -1496,15 +1496,32 @@ def to_url_name(name):
         -   Whitespace and ``+`` are converted to ``-``
         -   All other characters are omitted
         -   All consecutive ``-`` characters are reduced to a single ``-``
-        -   All leading a trailing ``-`` are stripped
+        -   All leading and trailing ``-`` are stripped
         -   The resulting string must be ``[1, 100]`` characters in length
+
+    Examples::
+
+        Input name                       | URL-friendly name
+        ---------------------------------+-----------------------
+        coco_2017                        | coco_2017
+        c+o+c+o 2-0-1-7                  | c-o-c-o-2-0-1-7
+        cat.DOG                          | cat.DOG
+        ---name----                      | name
+        Brian's #$&@ (Awesome?) Dataset! | Brians-Awesome-Dataset
+        sPaM     aNd  EgGs               | sPaM-aNd-EgGs
 
     Args:
         name: a string
 
     Returns:
         a URL-friendly string
+
+    Raises:
+        ValueError: if the name cannot be made URL-friendly
     """
+    if not etau.is_str(name):
+        raise ValueError("Expected string; found %s: %s" % (type(name), name))
+
     safe = []
     last = ""
     for c in name:
