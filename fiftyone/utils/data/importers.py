@@ -1329,11 +1329,6 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         # Import views
         views = self._metadata.get("views", None)
         if views:
-            for name in views.keys():
-                if dataset.has_view(name):
-                    logger.warning("Overwriting existing view '%s'", name)
-                    dataset.delete_view(name)
-
             _import_views(dataset, views)
 
         # Import annotation runs
@@ -1673,15 +1668,20 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
 
 def _import_views(dataset, views):
-    for name, d in views.items():
+    for d in views:
         if etau.is_str(d):
             d = json_util.loads(d)
+
+        name = d["name"]
+        if dataset.has_view(name):
+            logger.warning("Overwriting existing view '%s'", name)
+            dataset.delete_view(name)
 
         d.pop("_id", None)
         view_doc = foo.ViewDocument.from_dict(d)
         view_doc.save()
 
-        dataset._doc.views[name] = view_doc
+        dataset._doc.views.append(view_doc)
 
     dataset._doc.save()
 

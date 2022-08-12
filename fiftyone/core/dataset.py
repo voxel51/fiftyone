@@ -6,7 +6,6 @@ FiftyOne datasets.
 |
 """
 from collections import defaultdict
-from copy import deepcopy
 from datetime import datetime
 import fnmatch
 import itertools
@@ -26,13 +25,9 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foa
-import fiftyone.core.annotation as foan
-import fiftyone.core.brain as fob
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
-import fiftyone.core.expressions as foex
-import fiftyone.core.evaluation as foe
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
@@ -268,7 +263,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(id_filepath_slice, slice):
             return self.view()[id_filepath_slice]
 
-        if isinstance(id_filepath_slice, foex.ViewExpression):
+        if isinstance(id_filepath_slice, foe.ViewExpression):
             return self.view()[id_filepath_slice]
 
         if etau.is_container(id_filepath_slice):
@@ -2264,9 +2259,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of saved view names
         """
-        return sorted(self._doc.views.keys())
+        return [view_doc.name for view_doc in self._doc.views]
 
-    def save_view(self, name, view, overwrite=False):
+    def save_view(
+        self,
+        name,
+        view,
+        description=None,
+        color=None,
+        overwrite=False,
+    ):
         """Saves the given view into this dataset under the given name so it
         can be loaded later via :meth:`load_view`.
 
@@ -2293,26 +2295,89 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
 
-        if name in self._doc.views:
+        if self.has_view(name):
             if not overwrite:
                 raise ValueError(
                     "Saved view with name '%s' already exists" % name
                 )
 
-            _view_doc = self._doc.views.pop(name)
+            _view_doc = self._get_view_doc(name, pop=True)
             _view_doc.delete()
 
+        now = datetime.utcnow()
         view_doc = foo.ViewDocument(
             dataset_id=self._doc.id,
+            name=name,
+            url_name=fou.to_url_name(name),
+            description=description,
+            color=color,
             view_stages=[
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
+            created_at=now,
+            last_modified_at=now,
         )
         view_doc.save()
 
-        self._doc.views[name] = view_doc
+        self._doc.views.append(view_doc)
         self._doc.save()
+
+    def get_view_info(self, name):
+        """Loads the editable information about the saved view with the given
+        name.
+
+        Args:
+            name: the name of a saved view
+
+        Returns:
+            a dict of editable info
+        """
+        view_doc = self._get_view_doc(name)
+        return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
+
+    def update_view_info(self, name, info):
+        """Updates the editable information for the saved view with the given
+        name.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.limit(10)
+
+            dataset.save_view("test", view)
+
+            info = dataset.get_view_info("test")
+            info["name"] = "a new name"
+
+            dataset.update_view_info("test", info)
+
+        Args:
+            name: the name of a saved view
+            info: a dict whose keys are a subset of the keys returned by
+                :meth:`get_view_info`
+        """
+        view_doc = self._get_view_doc(name)
+
+        invalid_fields = set(info.keys()) - set(view_doc._EDITABLE_FIELDS)
+        if invalid_fields:
+            raise ValueError("Cannot edit fields %s" % invalid_fields)
+
+        edited = False
+        for key, value in info.items():
+            if value != view_doc[key]:
+                view_doc[key] = value
+
+                edited = True
+                if key == "name":
+                    view_doc.url_name = fou.to_url_name(value)
+
+        if edited:
+            view_doc.last_modified_at = datetime.utcnow()
+            view_doc.save()
 
     def load_view(self, name):
         """Loads the saved view with the given name.
@@ -2337,12 +2402,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        if name not in self._doc.views:
+        view_doc = self._get_view_doc(name)
+
+        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
+        view = fov.DatasetView._build(self, stage_dicts)
+
+        view_doc.last_loaded_at = datetime.utcnow()
+        view_doc.save()
+
+        return view
+
+    def _get_view_doc(self, name, pop=False):
+        idx = None
+        for i, view_doc in enumerate(self._doc.views):
+            if name == view_doc.name:
+                idx = i
+                break
+
+        if idx is None:
             raise ValueError("Dataset has no saved view '%s'" % name)
 
-        view_doc = self._doc.views[name]
-        stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
-        return fov.DatasetView._build(self, stage_dicts)
+        if pop:
+            return self._doc.views.pop(idx)
+
+        return self._doc.views[idx]
 
     def delete_view(self, name):
         """Deletes the saved view with the given name.
@@ -2350,10 +2433,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             name: the name of a saved view
         """
-        if name not in self._doc.views:
-            raise ValueError("Dataset has no saved view '%s'" % name)
-
-        view_doc = self._doc.views.pop(name)
+        view_doc = self._get_view_doc(name, pop=True)
         view_doc.delete()
         self._doc.save()
 
@@ -5085,7 +5165,7 @@ def _load_dataset(name, virtual=False):
 
 
 def _delete_dataset_doc(dataset_doc):
-    for view_doc in dataset_doc.views.values():
+    for view_doc in dataset_doc.views:
         view_doc.delete()
 
     for run_doc in dataset_doc.annotation_runs.values():
@@ -5482,11 +5562,11 @@ def _clone_extras(dst_dataset, src_doc):
     dst_doc = dst_dataset._doc
 
     # Clone saved views
-    for name, _view_doc in src_doc.views.items():
+    for _view_doc in src_doc.views:
         view_doc = _clone_view_doc(_view_doc)
         view_doc.save()
 
-        dst_doc.views[name] = view_doc
+        dst_doc.views.append(view_doc)
 
     # Clone annotation runs
     for anno_key, _run_doc in src_doc.annotation_runs.items():

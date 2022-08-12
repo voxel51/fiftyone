@@ -22,7 +22,9 @@ import ntpath
 import os
 import posixpath
 import platform
+import re
 import signal
+import string
 import struct
 import subprocess
 import sys
@@ -1468,3 +1470,78 @@ class ResponseStream(object):
                 current_position += self._bytes.write(next(self._iterator))
             except StopIteration:
                 break
+
+
+_SAFE_CHARS = set(string.ascii_letters) | set(string.digits) | set("-_.")
+_WHITESAPCE_CHARS = set(string.whitespace) | set("+")
+_URL_NAME_LENGTH_RANGE = (1, 100)
+
+
+def _sanitize_char(c):
+    if c in _SAFE_CHARS:
+        return c
+
+    if c in _WHITESAPCE_CHARS:
+        return "-"
+
+    return ""
+
+
+def to_url_name(name):
+    """Returns a URL-friendly version of the given string.
+
+    The following strategy is used to generate URL-friendly strings:
+
+        -   The characters ``A-Za-z0-9-_.`` are left unchanged
+        -   Whitespace and ``+`` are converted to ``-``
+        -   All other characters are omitted
+        -   All consecutive ``-`` characters are reduced to a single ``-``
+        -   All leading a trailing ``-`` are stripped
+        -   The resulting string must be ``[1, 100]`` characters in length
+
+    Args:
+        name: a string
+
+    Returns:
+        a URL-friendly string
+    """
+    safe = []
+    last = ""
+    for c in name:
+        s = _sanitize_char(c)
+        if s and (s != "-" or last != "-"):
+            safe.append(s)
+            last = s
+
+    url_name = "".join(safe).strip("-")
+
+    if len(url_name) < _URL_NAME_LENGTH_RANGE[0]:
+        raise ValueError(
+            "'%s' has invalid URL-friendly name '%s'; length %d < %d"
+            % (name, url_name, len(url_name), _URL_NAME_LENGTH_RANGE[0])
+        )
+
+    if len(url_name) > _URL_NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' has invalid URL-friendly name '%s'; length %d > %d"
+            % (name, url_name, len(url_name), _URL_NAME_LENGTH_RANGE[1])
+        )
+
+    return url_name
+
+
+def validate_hex_color(value):
+    """Validates that the given value is a hex color string.
+
+    Args:
+        value: a value
+
+    Raises:
+        ValueError: if ``value`` is not a hex color string
+    """
+    if not etau.is_str(value) or not re.search(
+        r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
+    ):
+        raise ValueError(
+            "%s is not a valid hex color string (ex: '#FF6D04')" % value
+        )

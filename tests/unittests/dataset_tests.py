@@ -1560,7 +1560,7 @@ class DatasetExtrasTests(unittest.TestCase):
         # Verify that saved views are deleted when a dataset is deleted
         #
 
-        view_id = dataset2._doc.views["test"].id
+        view_id = dataset2._doc.views[0].id
 
         db = foo.get_db_conn()
 
