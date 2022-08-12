@@ -8,6 +8,7 @@ Dataset view documents.
 from fiftyone.core.fields import (
     ColorField,
     DateTimeField,
+    IntField,
     ListField,
     ObjectIdField,
     StringField,
@@ -28,6 +29,7 @@ class ViewDocument(Document):
     description = StringField()
     color = ColorField()
     view_stages = ListField(StringField())
+    index = IntField()
     created_at = DateTimeField()
     last_modified_at = DateTimeField()
     last_loaded_at = DateTimeField()

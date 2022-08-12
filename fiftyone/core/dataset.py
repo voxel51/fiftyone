@@ -2315,6 +2315,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
+            index=len(self._doc.views),
             created_at=now,
             last_modified_at=now,
         )
@@ -2412,6 +2413,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return view
 
+    def delete_view(self, name):
+        """Deletes the saved view with the given name.
+
+        Args:
+            name: the name of a saved view
+        """
+        view_doc = self._get_view_doc(name, pop=True)
+        view_doc.delete()
+        self._doc.save()
+
+    def delete_views(self):
+        """Deletes all saved views from this dataset."""
+        for name in self.list_views():
+            self.delete_view(name)
+
     def _get_view_doc(self, name, pop=False):
         idx = None
         for i, view_doc in enumerate(self._doc.views):
@@ -2427,20 +2443,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._doc.views[idx]
 
-    def delete_view(self, name):
-        """Deletes the saved view with the given name.
+    def _ordered_views(self):
+        return sorted(self._doc.views, key=lambda v: v.index)
 
-        Args:
-            name: the name of a saved view
-        """
-        view_doc = self._get_view_doc(name, pop=True)
-        view_doc.delete()
-        self._doc.save()
+    def _reorder_views(self, new_order):
+        index_map = {o: i for i, o in enumerate(new_order)}
 
-    def delete_views(self):
-        """Deletes all saved views from this dataset."""
-        for name in self.list_views():
-            self.delete_view(name)
+        for view_doc in self._doc.views:
+            view_doc.index = index_map[view_doc.index]
+            view_doc.save()
 
     def clone(self, name=None):
         """Creates a clone of the dataset containing deep copies of all samples
