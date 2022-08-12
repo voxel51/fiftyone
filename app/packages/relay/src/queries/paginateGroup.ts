@@ -50,8 +50,7 @@ export const paginateGroupPaginationFragment = graphql`
 `;
 
 export const paginateGroupPinnedSampleFragment = graphql`
-  fragment paginateGroupPinnedSample_query on Query
-  @refetchable(queryName: "paginateGroupPinnedSampleQuery") {
+  fragment paginateGroupPinnedSample_query on Query {
     sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter)
       @required(action: THROW) {
       __typename

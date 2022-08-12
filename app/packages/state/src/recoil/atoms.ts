@@ -184,14 +184,6 @@ export const colorscale = atom<RGB[]>({
   default: null,
 });
 
-export const paginateGroupQueryRef = atom<
-  PreloadedQuery<paginateGroupQuery, {}>
->({
-  key: "paginateGroupQueryRef",
-  default: null,
-  dangerouslyAllowMutability: true,
-});
-
 export const patching = atom<boolean>({
   key: "patching",
   default: false,
@@ -212,7 +204,7 @@ export const selectedMediaField = atom<State.MediaFieldSelection>({
   default: { grid: null, modal: null },
 });
 
-export const sidebarOverride = atom<string>({
+export const sidebarOverride = atom<{ id: string; slice: string }>({
   key: "sidebarOverride",
   default: null,
 });

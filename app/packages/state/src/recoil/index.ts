@@ -5,6 +5,7 @@ export * from "./filters";
 export * from "./groups";
 export * from "./looker";
 export * from "./pathFilters";
+export * from "./relay";
 export * from "./schema";
 export * from "./selectors";
 export * from "./sidebar";

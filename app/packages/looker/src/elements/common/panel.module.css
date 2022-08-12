@@ -3,6 +3,7 @@
  */
 
 .lookerPanel {
+  margin: 3rem;
   padding: 1rem;
   line-height: 1;
   font-weight: bold;
@@ -30,9 +31,11 @@
   top: 0;
   left: 0;
   height: 100%;
+  width: 100%;
   display: flex;
   justify-content: center;
   position: absolute;
+  overflow: hidden;
   z-index: 10000;
 }
 

@@ -2416,7 +2416,7 @@ __metadata:
     react-uuid: ^1.0.2
     recharts: 2.0.9
     recoil: 0.7.2
-    recoil-relay: ^0.0.0
+    recoil-relay: ^0.1.0
     relay-compiler: ^14.1.0
     resize-observer-polyfill: ^1.5.1
     rollup-plugin-polyfill-node: ^0.6.2
@@ -2601,7 +2601,6 @@ __metadata:
     "@microsoft/fetch-event-source": ^2.0.1
     lodash: ^4.17.21
     prettier: ^2.7.1
-    recoil-relay: ^0.1.0
     typescript: ^4.7.4
     vite: ^3.0.0
   peerDependencies:
@@ -2609,6 +2608,7 @@ __metadata:
     react-error-boundary: "*"
     react-relay: "*"
     recoil: "*"
+    recoil-relay: "*"
   languageName: unknown
   linkType: soft
 
@@ -10618,13 +10618,6 @@ __metadata:
     react: ^16.0.0 || ^17.0.0
     react-dom: ^16.0.0 || ^17.0.0
   checksum: a2e4a93b841760954ee5a86690e02935305f0bef9d0c2e55011389dce106e05e6d6d8d5a12f36523954d48966385060b2864c65b7c7c982a9f39bfe8550cee80
-  languageName: node
-  linkType: hard
-
-"recoil-relay@npm:^0.0.0":
-  version: 0.0.0
-  resolution: "recoil-relay@npm:0.0.0"
-  checksum: 455eb4d86801bf913fb1b94164dd8ca670c472107f065550da61bfcd64f57145d96e43664a9a279abeab2cf03766d5e67b0477c3d97e21f07239e80ee29dec4a
   languageName: node
   linkType: hard
 

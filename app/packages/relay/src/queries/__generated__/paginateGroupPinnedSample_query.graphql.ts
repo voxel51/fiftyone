@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6f88e9b02d50fed236913f744d0be4b4>>
+ * @generated SignedSource<<f2c08002d96137b5d90f738f51b9fda5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ReaderFragment, RefetchableFragment } from "relay-runtime";
+import { Fragment, ReaderFragment } from "relay-runtime";
 import { FragmentRefs } from "relay-runtime";
 export type paginateGroupPinnedSample_query$data = {
   readonly sample:
@@ -40,8 +40,6 @@ export type paginateGroupPinnedSample_query$key = {
   readonly " $data"?: paginateGroupPinnedSample_query$data;
   readonly " $fragmentSpreads": FragmentRefs<"paginateGroupPinnedSample_query">;
 };
-
-import paginateGroupPinnedSampleQuery_graphql from "./paginateGroupPinnedSampleQuery.graphql";
 
 const node: ReaderFragment = (function () {
   var v0 = {
@@ -81,13 +79,7 @@ const node: ReaderFragment = (function () {
       },
     ],
     kind: "Fragment",
-    metadata: {
-      refetch: {
-        connection: null,
-        fragmentPathInResult: [],
-        operation: paginateGroupPinnedSampleQuery_graphql,
-      },
-    },
+    metadata: null,
     name: "paginateGroupPinnedSample_query",
     selections: [
       {
@@ -164,6 +156,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "0cd8aaca0d72d16e15ffa8b22ceb1d71";
+(node as any).hash = "953180e69cc1badfc564250241ef6838";
 
 export default node;

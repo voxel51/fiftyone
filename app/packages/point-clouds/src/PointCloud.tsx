@@ -1,5 +1,12 @@
 import * as fop from "@fiftyone/plugins";
-import React, { useState, useRef, useEffect, Fragment } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  Fragment,
+  MutableRefObject,
+  useCallback,
+} from "react";
 import {
   Canvas,
   ThreeEvent,
@@ -18,6 +25,7 @@ import * as fos from "@fiftyone/state";
 import { ShadeByIntensity, ShadeByZ } from "./shaders";
 import _ from "lodash";
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import { colorMap } from "@fiftyone/state";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
@@ -218,13 +226,10 @@ export function getFilepathField(sample, fields) {
   return null;
 }
 
-export function PointCloud({ sampleOverride }) {
+export function PointCloud({ sampleOverride: sample }) {
   // NOTE: "pcd_filepath" should come from a plugin setting
   // instead of being hardcoded
   const settings = fop.usePluginSettings("point-clouds");
-
-  const { sample: defaultSample } = recoil.useRecoilValue(fos.modal);
-  const sample = sampleOverride || defaultSample;
 
   const modal = true;
   const filepathFieldName = getFilepathField(sample, settings.filepathFields);
@@ -236,13 +241,11 @@ export function PointCloud({ sampleOverride }) {
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
   const cameraRef = React.useRef();
+  const getColor = recoil.useRecoilValue(fos.colorMap(true));
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
-      const color = recoil.useRecoilValue(
-        fos.pathColor({ path: l.path.join("."), modal: true })
-      );
-      return { ...l, color };
+      return { ...l, color: getColor(l.path.join(".")) };
     })
     .filter((l) => {
       return pathFilter(l.path.join("."), l);
@@ -255,9 +258,6 @@ export function PointCloud({ sampleOverride }) {
   };
 
   const colorBy = recoil.useRecoilValue(pcState.colorBy);
-  const [currentAction, setAction] = recoil.useRecoilState(
-    pcState.currentAction
-  );
 
   function onChangeView(view) {
     const camera = cameraRef.current as any;
@@ -291,22 +291,23 @@ export function PointCloud({ sampleOverride }) {
   const itemRotation = toEulerFromDegreesArray(
     _.get(settings, "overlay.itemRotation", [0, 0, 0])
   );
-  const [hovering, setHovering] = useState(true);
+  const [hovering, setHovering] = useState(false);
+  const setActiion = recoil.useSetRecoilState(pcState.currentAction);
 
-  function handleMouseLeave() {
+  const timeout: MutableRefObject<number | null> = useRef<number>(null);
+  const clear = useCallback(() => {
+    timeout.current && clearTimeout(timeout.current);
     setHovering(false);
-    setAction(null);
-  }
-  function hanleMouseEnter() {
-    setHovering(true);
-  }
+    setActiion(null);
+  }, []);
+  const update = useCallback(() => {
+    !hovering && setHovering(true);
+    timeout.current && clearTimeout(timeout.current);
+    timeout.current = setTimeout(clear, 3000);
+  }, [clear, hovering]);
 
   return (
-    <Container
-      onClick={() => setAction(null)}
-      onMouseEnter={hanleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas>
         <CameraSetup cameraRef={cameraRef} settings={settings} />
         <mesh rotation={overlayRotation}>
@@ -374,7 +375,6 @@ const Container = styled.div`
   position: relative;
 `;
 
-const ACTION_BAR_HEIGHT = "3.5em";
 const ActionBarContainer = styled.div`
   position: absolute;
   bottom: 0;
@@ -393,6 +393,8 @@ const ActionBarContainer = styled.div`
   transition: opacity 0.5s;
   width: 100%;
 
+  opacity: 0.9;
+  height: 37px;
   background-color: hsl(210, 11%, 11%);
   border: 1px solid #191c1f;
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);

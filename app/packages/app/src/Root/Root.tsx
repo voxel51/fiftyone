@@ -34,10 +34,9 @@ import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { clone, isElectron } from "@fiftyone/utilities";
 import { RGB } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { getDatasetName, isGroup, Route, RouterContext } from "@fiftyone/state";
+import { getDatasetName, Route, RouterContext } from "@fiftyone/state";
 
 import DatasetSelector from "../components/DatasetSelector";
-import GroupSlice from "../components/GroupSliceSelector";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
@@ -152,19 +151,13 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const refresh = fos.useRefresh();
   const context = useContext(RouterContext);
   const dataset = getDatasetName(context);
-  const isGroupDataset = useRecoilValue(isGroup);
 
   return (
     <>
       <Header
         title={"FiftyOne"}
         onRefresh={refresh}
-        navChildren={
-          <>
-            <DatasetSelector useSearch={useSearch} />
-            {isGroupDataset && <GroupSlice />}
-          </>
-        }
+        navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}

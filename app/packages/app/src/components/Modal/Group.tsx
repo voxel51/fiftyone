@@ -3,30 +3,30 @@ import {
   groupContainer,
   groupSample,
   groupSampleActive,
+  mainGroup,
 } from "./Group.module.css";
 
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
+  groupField,
   hasPinnedSlice,
   modal,
+  pinnedSliceSampleFragment,
+  sidebarOverride,
   useClearModal,
   useOnSelectLabel,
 } from "@fiftyone/state";
 import React, {
+  MouseEventHandler,
   MutableRefObject,
   Suspense,
   useCallback,
   useRef,
   useState,
 } from "react";
-import {
-  PreloadedQuery,
-  usePreloadedQuery,
-  useRefetchableFragment,
-} from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useFragment } from "react-relay";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
 import Sample from "./Sample";
 import classNames from "classnames";
@@ -34,7 +34,6 @@ import { GroupBar, GroupSampleBar } from "./Bars";
 import { VideoLooker } from "@fiftyone/looker";
 import Looker from "./Looker";
 import {
-  paginateGroup,
   paginateGroupPinnedSampleFragment,
   paginateGroupPinnedSample_query$key,
 } from "@fiftyone/relay";
@@ -44,23 +43,44 @@ import { Loading, useTheme } from "@fiftyone/components";
 const GroupSample: React.FC<
   React.PropsWithChildren<{
     sampleId: string;
+    slice: string;
     pinned: boolean;
-    visibleBar: boolean;
+    onClick: MouseEventHandler;
   }>
-> = ({ children, pinned, sampleId, visibleBar }) => {
+> = ({ children, onClick, pinned, sampleId, slice }) => {
   const [hovering, setHovering] = useState(false);
+
+  const timeout: MutableRefObject<number | null> = useRef<number>(null);
+  const clear = useCallback(() => {
+    timeout.current && clearTimeout(timeout.current);
+    setHovering(false);
+  }, []);
+  const update = useCallback(() => {
+    !hovering && setHovering(true);
+    timeout.current && clearTimeout(timeout.current);
+    timeout.current = setTimeout(clear, 3000);
+  }, [clear, hovering]);
   return (
     <div
       className={
         pinned ? classNames(groupSample, groupSampleActive) : groupSample
       }
+      onMouseEnter={update}
+      onMouseMove={update}
+      onMouseLeave={clear}
+      onClickCapture={onClick}
     >
       {children}
-      {(visibleBar || hovering) && (
-        <GroupSampleBar sampleId={sampleId} pinned={pinned} />
+      {hovering && (
+        <GroupSampleBar sampleId={sampleId} pinned={pinned} slice={slice} />
       )}
     </div>
   );
+};
+
+const useSlice = (sample: any): string => {
+  const field = useRecoilValue(groupField);
+  return sample[field].name;
 };
 
 const MainSample: React.FC<{
@@ -72,22 +92,21 @@ const MainSample: React.FC<{
     throw new Error("no data");
   }
 
-  const {
-    sample: { _id },
-    navigation,
-  } = data;
+  const { sample, navigation } = data;
   const clearModal = useClearModal();
-
-  const options = fos.useLookerOptions(true);
+  const pinned = !useRecoilValue(sidebarOverride);
+  const reset = useResetRecoilState(sidebarOverride);
+  const slice = useSlice(sample);
 
   return (
     <GroupSample
-      sampleId={_id}
-      pinned={true}
-      visibleBar={Boolean(options.showControls)}
+      sampleId={sample._id}
+      slice={slice}
+      pinned={pinned}
+      onClick={reset}
     >
       <Looker
-        key={_id}
+        key={sample._id}
         lookerRef={lookerRef}
         onNext={() => navigation.getIndex(navigation.index + 1)}
         onClose={clearModal}
@@ -101,48 +120,13 @@ const MainSample: React.FC<{
   );
 };
 
-const Pinned: React.FC<{
-  queryRef: PreloadedQuery<foq.paginateGroupQuery>;
-}> = ({ queryRef }) => {
-  const data = usePreloadedQuery(paginateGroup, queryRef);
-  const theme = useTheme();
-
-  const [width, setWidth] = React.useState(400);
-
-  return (
-    <Resizable
-      size={{ height: "100%", width }}
-      minWidth={200}
-      maxWidth={600}
-      enable={{
-        top: false,
-        right: true,
-        bottom: false,
-        left: true,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
-      onResizeStop={(e, direction, ref, { width: delta }) => {
-        setWidth(width + delta);
-      }}
-      style={{
-        borderLeft: `1px solid ${theme.backgroundDarkBorder}`,
-      }}
-    >
-      <PinnedSample fragmentRef={data} />
-    </Resizable>
-  );
-};
-
 const withVisualizerPlugin = <
   T extends { fragmentRef: paginateGroupPinnedSample_query$key }
 >(
   Component: React.FC<T>
 ) => {
   return (props: T) => {
-    const [{ sample }] = useRefetchableFragment(
+    const { sample } = useFragment(
       paginateGroupPinnedSampleFragment,
       props.fragmentRef
     );
@@ -178,51 +162,94 @@ const PluggableSample: React.FC<{
   return <Loading>No visualizer was found</Loading>;
 });
 
-const PinnedSample: React.FC<{
-  fragmentRef: paginateGroupPinnedSample_query$key;
-}> = ({ fragmentRef }) => {
-  const [{ sample }] = useRefetchableFragment(
+const PinnedSample: React.FC = () => {
+  const fragmentRef = useRecoilValue(pinnedSliceSampleFragment);
+  const { sample } = useFragment(
     paginateGroupPinnedSampleFragment,
     fragmentRef
   );
 
+  const [pinned, setPinned] = useRecoilState(sidebarOverride);
+
+  if (sample.__typename === "%other") {
+    throw new Error("bad sample");
+  }
+
+  const slice = useSlice(sample.sample);
+
   return (
-    <GroupSample sampleId={sample.sample._id} pinned={false} visibleBar={false}>
+    <GroupSample
+      sampleId={sample.sample._id}
+      pinned={Boolean(pinned)}
+      onClick={() => setPinned({ slice, id: sample.sample._id })}
+      slice={slice}
+    >
       <PluggableSample fragmentRef={fragmentRef} />
     </GroupSample>
   );
 };
 
-const DualView: React.FC<{
-  queryRef: PreloadedQuery<foq.paginateGroupQuery>;
-}> = ({ queryRef }) => {
+const DualView: React.FC = () => {
   const lookerRef = useRef<VideoLooker>();
+  const theme = useTheme();
+
+  const [width, setWidth] = React.useState(400);
 
   return (
     <div className={groupContainer}>
-      <GroupBar lookerRef={lookerRef} queryRef={queryRef} />
-      <div className={group}>
-        <MainSample lookerRef={lookerRef} />
-        <Pinned queryRef={queryRef} />
+      <GroupBar lookerRef={lookerRef} />
+      <div className={mainGroup}>
+        <Resizable
+          size={{ height: "100% !important", width: `calc(100%-${width}px)` }}
+          minWidth={"30%"}
+          maxWidth={"70%"}
+          enable={{
+            top: false,
+            right: true,
+            bottom: false,
+            left: false,
+            topRight: false,
+            bottomRight: false,
+            bottomLeft: false,
+            topLeft: false,
+          }}
+          onResizeStop={(e, direction, ref, { width: delta }) => {
+            setWidth(width - delta);
+          }}
+          style={{
+            position: "relative",
+            borderRight: `1px solid ${theme.backgroundDarkBorder}`,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <GroupList />
+
+          <MainSample lookerRef={lookerRef} />
+        </Resizable>
+
+        <Suspense fallback={<Loading>Pixelating...</Loading>}>
+          <Loading>Pixelating...</Loading>
+        </Suspense>
       </div>
     </div>
   );
 };
 
-const Group: React.FC<{ queryRef: PreloadedQuery<foq.paginateGroupQuery> }> = ({
-  queryRef,
-}) => {
+const Group: React.FC = () => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
 
   return (
     <>
-      <GroupList queryRef={queryRef} />
       {hasPinned ? (
         <Suspense>
-          <DualView queryRef={queryRef} />
+          <DualView />
         </Suspense>
       ) : (
-        <Sample />
+        <>
+          <GroupList /> <Sample />
+        </>
       )}
     </>
   );

@@ -8,8 +8,10 @@ import { Slider } from "./Common/RangeSlider";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 import { useTheme } from "@fiftyone/components";
 import { gridZoom, gridZoomRange } from "./Grid";
+import GroupSliceSelector from "./GroupSliceSelector";
 
 import * as fos from "@fiftyone/state";
+import { isGroup } from "@fiftyone/state";
 
 const SamplesHeader = styled.div`
   position: absolute;
@@ -28,7 +30,7 @@ const SamplesHeader = styled.div`
   margin-left: -1rem;
 `;
 
-const CountDiv = styled.div`
+const RightDiv = styled.div`
   display: flex;
   justify-content: center;
   align-content: center;
@@ -59,13 +61,13 @@ const Count = () => {
   );
 
   return (
-    <CountDiv>
+    <RightDiv>
       <div>
         <PathEntryCounts modal={false} path={""} />
         &nbsp;
         {total === 1 ? element.singular : element.plural}
       </div>
-    </CountDiv>
+    </RightDiv>
   );
 };
 
@@ -73,14 +75,20 @@ const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
+  const group = useRecoilValue(isGroup);
 
   return (
     <SamplesHeader>
       <GridActionsRow />
       <RightContainer>
-        <Suspense fallback={<CountDiv>{"Loading..."}</CountDiv>}>
+        <Suspense fallback={<RightDiv>{"Loading..."}</RightDiv>}>
           <Count />
         </Suspense>
+        {group && (
+          <RightDiv>
+            <GroupSliceSelector />
+          </RightDiv>
+        )}
         <SliderContainer>
           <div style={{ flexGrow: 1 }} title={"Zoom"}>
             <Slider

@@ -1,4 +1,3 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import _ from "lodash";
@@ -180,7 +179,7 @@ const SampleModal = () => {
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const groupQuery = useRecoilValue(fos.paginateGroupQueryRef);
+  const isGroup = useRecoilValue(fos.isGroup);
 
   return ReactDOM.createPortal(
     <ModalWrapper
@@ -188,9 +187,7 @@ const SampleModal = () => {
       onClick={(event) => event.target === wrapperRef.current && clearModal()}
     >
       <Container style={{ ...screen, zIndex: 10001 }}>
-        <ContentColumn>
-          {groupQuery ? <Group queryRef={groupQuery} /> : <Sample />}
-        </ContentColumn>
+        <ContentColumn>{isGroup ? <Group /> : <Sample />}</ContentColumn>
 
         <Sidebar render={renderEntry} modal={true} />
       </Container>

@@ -159,6 +159,7 @@ export const aggregations = selectorFamily<
         {
           filters,
           sample_ids: modal ? get(selectors.sidebarSampleId) : null,
+          slice: get(atoms.sidebarOverride)?.slice,
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,

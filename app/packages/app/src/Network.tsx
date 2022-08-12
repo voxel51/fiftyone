@@ -1,9 +1,11 @@
 import { ErrorBoundary, Loading, RouteRenderer } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { RelayEnvironmentKey } from "@fiftyone/state";
 
 import React, { Suspense, useContext, useEffect } from "react";
-import { Environment, RelayEnvironmentProvider } from "react-relay";
+import { Environment } from "react-relay";
 import { useRecoilValue } from "recoil";
+import { RecoilRelayEnvironmentProvider } from "recoil-relay";
 
 const Renderer: React.FC = () => {
   const context = useContext(fos.RouterContext);
@@ -20,13 +22,16 @@ const Network: React.FC<{
   context: fos.RoutingContext<any>;
 }> = ({ environment, context }) => {
   return (
-    <RelayEnvironmentProvider environment={environment}>
+    <RecoilRelayEnvironmentProvider
+      environment={environment}
+      environmentKey={RelayEnvironmentKey}
+    >
       <fos.RouterContext.Provider value={context}>
         <ErrorBoundary>
           <Renderer />
         </ErrorBoundary>
       </fos.RouterContext.Provider>
-    </RelayEnvironmentProvider>
+    </RecoilRelayEnvironmentProvider>
   );
 };
 

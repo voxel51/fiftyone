@@ -25,6 +25,7 @@ import { v4 as uuid } from "uuid";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
+import { groupPaginationFragment, groupQuery } from "@fiftyone/state";
 
 const process = (
   next: MutableRefObject<number>,
@@ -57,14 +58,13 @@ const process = (
     };
   });
 
-const Column: React.FC<{
-  fragmentRef: foq.paginateGroup_query$key;
-}> = ({ fragmentRef }) => {
+const Column: React.FC = () => {
   const [id] = useState(() => uuid());
   const pageCount = useRef(0);
+
   const { data, hasNext, loadNext } = usePaginationFragment(
     foq.paginateGroupPaginationFragment,
-    fragmentRef
+    useRecoilValue(groupPaginationFragment)
   );
 
   const samples = {
@@ -209,14 +209,9 @@ const Column: React.FC<{
   );
 };
 
-const Group: React.FC<{
-  queryRef: PreloadedQuery<foq.paginateGroupQuery>;
-}> = ({ queryRef }) => {
+const Group: React.FC = () => {
   const [height, setHeight] = useState(150);
-  const data = usePreloadedQuery<foq.paginateGroupQuery>(
-    foq.paginateGroup,
-    queryRef
-  );
+
   const theme = useTheme();
 
   return (
@@ -243,7 +238,7 @@ const Group: React.FC<{
       }}
     >
       <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <Column fragmentRef={data} />
+        <Loading>Pixelating...</Loading>
       </Suspense>
     </Resizable>
   );

@@ -21,7 +21,8 @@
         "react": "*",
         "react-error-boundary": "*",
         "react-relay": "*",
-        "recoil": "*"
+        "recoil": "*",
+        "recoil-relay": "*"
     },
     "devDependencies": {
         "@fiftyone/prettier-config": "*",
@@ -33,7 +34,6 @@
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "^2.0.1",
-        "lodash": "^4.17.21",
-        "recoil-relay": "^0.1.0"
+        "lodash": "^4.17.21"
     }
 }

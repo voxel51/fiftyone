@@ -1,19 +1,16 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
-import {
-  paginateGroup,
-  paginateGroupPaginationFragment,
-  paginateGroupQuery,
-  paginateGroup_query$key,
-} from "@fiftyone/relay";
+import { paginateGroupPaginationFragment } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { Checkbox } from "@material-ui/core";
-import React, { Suspense, useRef } from "react";
 import {
-  PreloadedQuery,
-  usePaginationFragment,
-  usePreloadedQuery,
-} from "react-relay";
+  defaultGroupSlice,
+  groupPaginationFragment,
+  hasPinnedSlice,
+  sidebarOverride,
+} from "@fiftyone/state";
+import { Checkbox } from "@material-ui/core";
+import React, { useRef } from "react";
+import { usePaginationFragment } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
@@ -63,38 +60,37 @@ export const SampleBar: React.FC<{
   ) : null;
 };
 
-const GroupCount: React.FC<{
-  queryRef: PreloadedQuery<paginateGroupQuery>;
-}> = ({ queryRef }) => {
-  const data = usePreloadedQuery(paginateGroup, queryRef);
-
-  const {
-    data: { samples },
-  } = usePaginationFragment(
-    paginateGroupPaginationFragment,
-    data as paginateGroup_query$key
-  );
-
-  return <>{samples.total}</>;
-};
-
 export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
-  queryRef: PreloadedQuery<paginateGroupQuery>;
-}> = ({ lookerRef, queryRef }) => {
+}> = ({ lookerRef }) => {
+  const override = useRecoilValue(sidebarOverride);
+  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const hasPinned = useRecoilValue(hasPinnedSlice);
   return (
     <Bar
       style={{
         position: "relative",
-        backgroundImage: "none",
-        background: "var(--background)",
-        fontWeight: "bold",
+        top: "unset",
+        left: "unset",
+        borderBottom: `1px solid var(--background-dark-border)`,
       }}
     >
       <div>
-        <Suspense>
-          <GroupCount queryRef={queryRef} />
-        </Suspense>
+        {hasPinned && (
+          <div
+            style={{
+              color: "var(--font)",
+              display: "flex",
+              fontSize: "1.2rem",
+              fontWeight: "bold",
+              alignItems: "center",
+              columnGap: "0.25rem",
+            }}
+          >
+            <Pin />
+            {override ? override.slice : defaultSlice} is pinned
+          </div>
+        )}
       </div>
       <ModalActionsRow lookerRef={lookerRef} />
     </Bar>
@@ -104,10 +100,25 @@ export const GroupBar: React.FC<{
 export const GroupSampleBar: React.FC<{
   pinned: boolean;
   sampleId: string;
-}> = ({ pinned, sampleId }) => {
+  slice: string;
+}> = ({ pinned, sampleId, slice }) => {
   return (
     <SelectableBar sampleId={sampleId}>
-      <div>{<Pin />}</div>
+      {pinned && (
+        <div
+          style={{
+            color: "var(--font)",
+            display: "flex",
+            fontSize: "1.2rem",
+            fontWeight: "bold",
+            alignItems: "center",
+            columnGap: "0.25rem",
+          }}
+        >
+          {slice}
+          <Pin />
+        </div>
+      )}
     </SelectableBar>
   );
 };

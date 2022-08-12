@@ -1,12 +1,10 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { useCallback } from "react";
-import useSetGroupIfNecessary from "./useSetGroupIfNecessary";
 
 import * as fos from "@fiftyone/state";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   const expandSample = fos.useExpandSample();
-  const setGroupIfNecessary = useSetGroupIfNecessary(store);
   const clear = fos.useClearModal();
 
   return useCallback<
@@ -40,12 +38,8 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         });
       };
 
-      const expand = (index: number, sample?: fos.SampleData) => {
-        if (sample) {
-          setGroupIfNecessary(sample.sample._id);
-          expandSample(sample, { index, getIndex });
-        }
-      };
+      const expand = (index: number, sample?: fos.SampleData) =>
+        sample && expandSample(sample, { index, getIndex });
 
       const sample = store.samples.get(sampleId);
 
