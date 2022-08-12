@@ -76,7 +76,12 @@ const Column: React.FC = () => {
 
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
-  const createLooker = fos.useCreateLooker(true, opts, true);
+  const groupField = useRecoilValue(fos.groupField);
+  const createLooker = fos.useCreateLooker(
+    true,
+    { ...opts, thumbnailTitle: (sample) => sample[groupField].name },
+    true
+  );
 
   const hasNextRef = useRef(true);
   hasNextRef.current = hasNext;
@@ -238,7 +243,7 @@ const Group: React.FC = () => {
       }}
     >
       <Suspense fallback={<Loading>Pixelating...</Loading>}>
-        <Loading>Pixelating...</Loading>
+        <Column />
       </Suspense>
     </Resizable>
   );

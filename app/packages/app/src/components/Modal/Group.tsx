@@ -12,6 +12,7 @@ import {
   groupField,
   hasPinnedSlice,
   modal,
+  pinnedSlice,
   pinnedSliceSampleFragment,
   sidebarOverride,
   useClearModal,
@@ -170,18 +171,17 @@ const PinnedSample: React.FC = () => {
   );
 
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
+  const slice = useRecoilValue(pinnedSlice) as string;
 
   if (sample.__typename === "%other") {
     throw new Error("bad sample");
   }
 
-  const slice = useSlice(sample.sample);
-
   return (
     <GroupSample
       sampleId={sample.sample._id}
       pinned={Boolean(pinned)}
-      onClick={() => setPinned({ slice, id: sample.sample._id })}
+      onClick={() => setPinned(sample.sample._id)}
       slice={slice}
     >
       <PluggableSample fragmentRef={fragmentRef} />
@@ -193,14 +193,14 @@ const DualView: React.FC = () => {
   const lookerRef = useRef<VideoLooker>();
   const theme = useTheme();
 
-  const [width, setWidth] = React.useState(400);
+  const [width, setWidth] = React.useState(1000);
 
   return (
     <div className={groupContainer}>
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
         <Resizable
-          size={{ height: "100% !important", width: `calc(100%-${width}px)` }}
+          size={{ height: "100% !important", width }}
           minWidth={"30%"}
           maxWidth={"70%"}
           enable={{
@@ -214,7 +214,7 @@ const DualView: React.FC = () => {
             topLeft: false,
           }}
           onResizeStop={(e, direction, ref, { width: delta }) => {
-            setWidth(width - delta);
+            setWidth(width + delta);
           }}
           style={{
             position: "relative",
@@ -230,7 +230,7 @@ const DualView: React.FC = () => {
         </Resizable>
 
         <Suspense fallback={<Loading>Pixelating...</Loading>}>
-          <Loading>Pixelating...</Loading>
+          <PinnedSample />
         </Suspense>
       </div>
     </div>

@@ -48,7 +48,7 @@ const useStateUpdate = () => {
 
       const { get, reset, set } = t;
 
-      if (state) {
+      if (state?.view) {
         const view = get(viewAtoms.view);
 
         if (!viewsAreEqual(view, state.view || [])) {

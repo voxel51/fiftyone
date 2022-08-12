@@ -24,7 +24,10 @@ export const isGroup = selector<boolean>({
 
 export const defaultGroupSlice = selector<string>({
   key: "defaultGroupSlice",
-  get: ({ get }) => get(dataset).defaultGroupSlice,
+  get: ({ get }) => {
+    console.log(get(dataset));
+    return get(dataset).defaultGroupSlice;
+  },
 });
 
 export const groupSlice = atom<string>({

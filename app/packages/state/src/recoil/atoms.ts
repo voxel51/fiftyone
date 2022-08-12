@@ -204,7 +204,7 @@ export const selectedMediaField = atom<State.MediaFieldSelection>({
   default: { grid: null, modal: null },
 });
 
-export const sidebarOverride = atom<{ id: string; slice: string }>({
+export const sidebarOverride = atom<string>({
   key: "sidebarOverride",
   default: null,
 });

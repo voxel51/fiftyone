@@ -212,6 +212,10 @@ class Dataset:
 
             dataset.view_cls = etau.get_class_name(view)
 
+        if view.media_type != ds.media_type:
+            dataset.id = ObjectId()
+            dataset.media_type = view.media_type
+
         # old dataset docs, e.g. from imports have frame fields attached even for
         # image datasets. we need to remove them
         if dataset.media_type != fom.VIDEO:
@@ -335,20 +339,26 @@ def serialize_dataset(dataset: fod.Dataset, view: fov.DatasetView) -> t.Dict:
     data = from_dict(Dataset, doc, config=Config(check_types=False))
     data.view_cls = None
 
-    if view is not None and view._dataset != dataset:
-        d = view._dataset._serialize()
-        data.media_type = d["media_type"]
-        data.id = view._dataset._doc.id
-        data.sample_fields = [
-            from_dict(SampleField, s)
-            for s in _flatten_fields([], d["sample_fields"])
-        ]
-        data.frame_fields = [
-            from_dict(SampleField, s)
-            for s in _flatten_fields([], d["frame_fields"])
-        ]
+    if view is not None:
+        if view._dataset != dataset:
+            d = view._dataset._serialize()
+            data.media_type = d["media_type"]
 
-        data.view_cls = etau.get_class_name(view)
+            data.id = view._dataset._doc.id
+            data.sample_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["sample_fields"])
+            ]
+            data.frame_fields = [
+                from_dict(SampleField, s)
+                for s in _flatten_fields([], d["frame_fields"])
+            ]
+
+            data.view_cls = etau.get_class_name(view)
+
+        if view.media_type != data.media_type:
+            data.id = ObjectId()
+            data.media_type = view.media_type
 
     # old dataset docs, e.g. from imports have frame fields attached even for
     # image datasets. we need to remove them

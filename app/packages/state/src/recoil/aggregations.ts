@@ -171,9 +171,6 @@ export const aggregations = selectorFamily<
 
       return data;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 }) as (param: {
   modal: boolean;
   extended: boolean;

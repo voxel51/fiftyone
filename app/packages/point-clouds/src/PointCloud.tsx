@@ -226,6 +226,17 @@ export function getFilepathField(sample, fields) {
   return null;
 }
 
+export const usePathFilter = (): Partial => {
+  const fn = useRef((path: string, value: any) => true);
+  const loaded = recoil.useRecoilValueLoadable(fos.pathFilter(true));
+
+  if (loaded.state === "hasValue") {
+    fn.current = loaded.contents;
+  }
+
+  return fn.current;
+};
+
 export function PointCloud({ sampleOverride: sample }) {
   // NOTE: "pcd_filepath" should come from a plugin setting
   // instead of being hardcoded
@@ -237,7 +248,7 @@ export function PointCloud({ sampleOverride: sample }) {
   const src = fos.getSampleSrc(sample[filepathFieldName]);
   const points = useLoader(PCDLoader, src);
   const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
-  const pathFilter = recoil.useRecoilValue(fos.pathFilter(modal));
+  const pathFilter = usePathFilter();
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
   const cameraRef = React.useRef();
@@ -247,9 +258,7 @@ export function PointCloud({ sampleOverride: sample }) {
     .map((l) => {
       return { ...l, color: getColor(l.path.join(".")) };
     })
-    .filter((l) => {
-      return pathFilter(l.path.join("."), l);
-    });
+    .filter((l) => pathFilter(l.path.join("."), l));
 
   const handleSelect = (label) => {
     onSelectLabel({

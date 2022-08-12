@@ -95,6 +95,7 @@ const Query = graphql`
     }
   }
 `;
+let d;
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);
@@ -107,19 +108,17 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = fos.useStateUpdate();
 
   useEffect(() => {
+    console.log(router?.state?.state?.view);
     update(() => {
       return {
-        colorscale:
-          router.state && router.state.colorscale
-            ? router.state.colorscale
-            : undefined,
-        config:
-          router.state && router.state.config
-            ? (toCamelCase(router.state.config) as fos.State.Config)
-            : undefined,
+        colorscale: router?.state?.colorscale
+          ? router.state.colorscale
+          : undefined,
+        config: router?.state?.config
+          ? (toCamelCase(router.state.config) as fos.State.Config)
+          : undefined,
         dataset: fos.transformDataset(dataset),
-        state:
-          router.state && router.state.state ? router?.state.state || {} : {},
+        state: router?.state?.state ? router.state.state || {} : {},
       };
     });
   }, [dataset]);

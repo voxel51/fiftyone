@@ -1,16 +1,14 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
-import { paginateGroupPaginationFragment } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   defaultGroupSlice,
-  groupPaginationFragment,
   hasPinnedSlice,
+  pinnedSlice,
   sidebarOverride,
 } from "@fiftyone/state";
 import { Checkbox } from "@material-ui/core";
 import React, { useRef } from "react";
-import { usePaginationFragment } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
@@ -63,6 +61,7 @@ export const SampleBar: React.FC<{
 export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
+  const overrideSlice = useRecoilValue(pinnedSlice);
   const override = useRecoilValue(sidebarOverride);
   const defaultSlice = useRecoilValue(defaultGroupSlice);
   const hasPinned = useRecoilValue(hasPinnedSlice);
@@ -88,7 +87,7 @@ export const GroupBar: React.FC<{
             }}
           >
             <Pin />
-            {override ? override.slice : defaultSlice} is pinned
+            {override ? overrideSlice : defaultSlice} is pinned
           </div>
         )}
       </div>

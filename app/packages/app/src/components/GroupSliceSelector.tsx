@@ -1,5 +1,5 @@
 import { Selector } from "@fiftyone/components";
-import { groupSlice, groupSlices } from "@fiftyone/state";
+import { defaultGroupSlice, groupSlice, groupSlices } from "@fiftyone/state";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 
@@ -9,6 +9,7 @@ const Slice: React.FC<{ value: string; className: string }> = ({ value }) => {
 
 const GroupSlice: React.FC = () => {
   const [slice, setSlice] = useRecoilState(groupSlice);
+  const defaultSlice = useRecoilValue(defaultGroupSlice);
 
   return (
     <Selector
@@ -24,7 +25,7 @@ const GroupSlice: React.FC = () => {
         );
         return { values, total: values.length };
       }}
-      value={slice}
+      value={slice || defaultSlice}
     />
   );
 };

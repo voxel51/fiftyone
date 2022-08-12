@@ -110,6 +110,7 @@ interface BaseOptions {
   skeletons: { [key: string]: KeypointSkeleton };
   showSkeletons: boolean;
   pointFilter: (path: string, point: Point) => boolean;
+  thumbnailTitle?: (sample: any) => string;
 }
 
 export type BoundingBox = [number, number, number, number];
