@@ -617,8 +617,14 @@ class SampleCollection(object):
         if not keys:
             return None, None
 
-        field = None
         resolved_keys = []
+
+        if self._is_group_field(path):
+            if len(keys) < 3:
+                return path, None
+
+            resolved_keys.extend(keys[:2])
+            keys = keys[2:]
 
         if self._contains_videos() and keys[0] == "frames":
             schema = self.get_frame_field_schema(
@@ -629,6 +635,8 @@ class SampleCollection(object):
             resolved_keys.append("frames")
         else:
             schema = self.get_field_schema()
+
+        field = None
 
         for idx, field_name in enumerate(keys):
             field_name = _handle_id_field(
@@ -817,6 +825,7 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()
@@ -1320,6 +1329,12 @@ class SampleCollection(object):
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         if isinstance(values, dict):
             if key_field is None:
                 raise ValueError(
@@ -1414,6 +1429,7 @@ class SampleCollection(object):
             )
 
     def _expand_schema_from_values(self, field_name, values):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
@@ -1661,6 +1677,12 @@ class SampleCollection(object):
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -3247,8 +3269,9 @@ class SampleCollection(object):
                 one label after filtering (True) or include all samples (False)
             trajectories (False): whether to match entire object trajectories
                 for which the object matches the given filter on at least one
-                frame. Only applicable to video datasets and frame-level label
-                fields whose objects have their ``index`` attributes populated
+                frame. Only applicable to datasets that contain videos and
+                frame-level label fields whose objects have their ``index``
+                attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4533,11 +4556,67 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def select_groups(self, group_ids, ordered=False):
+        """Selects the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Select some specific groups by ID
+            #
+
+            group_ids = dataset.take(10).values("group.id")
+
+            view = dataset.select_groups(group_ids)
+
+            assert set(view.values("group.id")) == set(group_ids)
+
+            view = dataset.select_groups(group_ids, ordered=True)
+
+            assert view.values("group.id") == group_ids
+
+        Args:
+            groups_ids: the groups to select. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+            ordered (False): whether to sort the groups in the returned view to
+                match the order of the provided IDs
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectGroups(group_ids, ordered=ordered)
+        )
+
+    @view_stage
     def select_group_slice(self, slice=None, _allow_mixed=False):
         """Selects the samples in the group collection from the given slice(s).
 
         The returned view is a flattened non-grouped view containing only the
         slice(s) of interest.
+
+        .. note::
+
+            This stage performs a ``$lookup`` that pulls the requested slice(s)
+            for each sample in the input collection from the source dataset.
+            As a result, this stage always emits *unfiltered samples*.
 
         Examples::
 
@@ -7112,11 +7191,12 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
-                to video datasets when a ``frame_labels_dir`` is provided
+                to datasets that contain videos when a ``frame_labels_dir`` is
+                provided
 
         Returns:
             a JSON dict
@@ -7222,8 +7302,8 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -7266,8 +7346,8 @@ class SampleCollection(object):
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets when
-                ``include_frames`` is True
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
@@ -7509,9 +7589,10 @@ class SampleCollection(object):
                 than the source dataset's media type
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
-                video datasets
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
             group_slices (None): a list of group slices to attach immediately
@@ -7552,9 +7633,10 @@ class SampleCollection(object):
                 than the source dataset's media type
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
-                video datasets
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the colection
             group_slices (None): a list of group slices to attach immediately
@@ -7712,7 +7794,17 @@ class SampleCollection(object):
             or field_name == self._FRAMES_PREFIX[:-1]
         )
 
-    def _is_groups_field(self, field_name):
+    def _handle_group_field(self, field_name):
+        is_group_field = self._is_group_field(field_name)
+        if is_group_field:
+            try:
+                field_name = field_name.split(".", 2)[2]
+            except IndexError:
+                field_name = ""
+
+        return field_name, is_group_field
+
+    def _is_group_field(self, field_name):
         return (self.media_type == fom.GROUP) and (
             field_name.startswith(self._GROUPS_PREFIX)
             or field_name == self._GROUPS_PREFIX[:-1]
@@ -7830,10 +7922,12 @@ class SampleCollection(object):
         return fields_map
 
     def _handle_db_field(self, field_name, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return db_fields_map.get(field_name, field_name)
 
     def _handle_db_fields(self, field_names, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(f, f) for f in field_names]
 
@@ -7885,6 +7979,7 @@ class SampleCollection(object):
         )
 
     def _get_root_field_type(self, field_name, include_private=False):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         if is_frame_field:
@@ -7905,6 +8000,7 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()

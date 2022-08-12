@@ -136,6 +136,48 @@ class GroupTests(unittest.TestCase):
         dataset.rename_sample_field("still_group_field", "group_field")
 
     @drop_datasets
+    def test_delete_samples(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        self.assertEqual(len(view), 6)
+
+        sample = view.shuffle(seed=51).first()
+
+        dataset.delete_samples(sample.id)
+        self.assertEqual(len(view), 5)
+
+        dataset.delete_groups(sample.group_field.id)
+        self.assertEqual(len(view), 3)
+
+        group = next(iter(dataset.iter_groups()))
+
+        dataset.delete_groups(group)
+
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
+    def test_keep(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        self.assertEqual(len(view), 6)
+
+        dataset.limit(1).keep()
+
+        self.assertEqual(len(view), 3)
+
+        dataset.select_group_slice("ego").keep()
+        sample = view.first()
+
+        self.assertEqual(len(view), 1)
+        self.assertEqual(sample.group_field.name, "ego")
+
+        dataset.clear()
+
+        self.assertEqual(len(view), 0)
+
+    @drop_datasets
     def test_slice_operations(self):
         dataset = _make_group_dataset()
 
@@ -271,6 +313,61 @@ class GroupTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             view = dataset.select_group_slice()
+
+    @drop_datasets
+    def test_attached_groups(self):
+        dataset = _make_group_dataset()
+
+        detections = [
+            fo.Detections(detections=[fo.Detection(label="left")]),
+            fo.Detections(detections=[fo.Detection(label="ego")]),
+            fo.Detections(detections=[fo.Detection(label="right")]),
+            fo.Detections(detections=[fo.Detection(label="LEFT")]),
+            fo.Detections(detections=[fo.Detection(label="EGO")]),
+            fo.Detections(detections=[fo.Detection(label="RIGHT")]),
+        ]
+
+        view = dataset.select_group_slice(_allow_mixed=True)
+        view.set_values("ground_truth", detections)
+
+        dataset.group_slice = "left"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["left", "LEFT"],
+        )
+
+        dataset.group_slice = "right"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["right", "RIGHT"],
+        )
+
+        dataset.group_slice = "ego"
+        self.assertListEqual(
+            dataset.values("ground_truth.detections.label", unwind=True),
+            ["ego", "EGO"],
+        )
+
+        field = dataset.get_field("field")
+        self.assertIsInstance(field, fo.IntField)
+
+        field = dataset.get_field("groups.left.field")
+        self.assertIsInstance(field, fo.IntField)
+
+        field = dataset.get_field("ground_truth.detections.label")
+        self.assertIsInstance(field, fo.StringField)
+
+        field = dataset.get_field("groups.right.ground_truth.detections.label")
+        self.assertIsInstance(field, fo.StringField)
+
+        # Verify that `groups.left.ground_truth` is correctly recognized as a
+        # Detections field
+        view = dataset.filter_labels(
+            "groups.left.ground_truth",
+            F("label") == F("label").upper(),
+        )
+
+        self.assertEqual(len(view), 1)
 
     @drop_datasets
     def test_aggregations(self):

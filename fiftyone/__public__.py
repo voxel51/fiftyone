@@ -161,6 +161,7 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
     SelectGroupSlice,
     SelectLabels,
     SetField,
