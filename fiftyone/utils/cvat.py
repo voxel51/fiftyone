@@ -3118,27 +3118,6 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 class CVATBackend(foua.AnnotationBackend):
     """Class for interacting with the CVAT annotation backend."""
 
-    def __init__(self, *args, **kwargs):
-        self._api = None
-        super().__init__(*args, **kwargs)
-
-    def __enter__(self):
-        self.get_api().__enter__()
-        return self
-
-    def __exit__(self, *args):
-        if self._api is not None:
-            self._api.__exit__(*args)
-
-    def get_api(self):
-        if self._api is None:
-            self._api = self.connect_to_api()
-
-        return self._api
-
-    def use_api(self, api):
-        self._api = api
-
     @property
     def supported_label_types(self):
         return [
@@ -3206,7 +3185,7 @@ class CVATBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return CVATAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -3261,16 +3240,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self.frame_id_map = frame_id_map
         self.labels_task_map = labels_task_map
 
-    def __enter__(self):
-        self._backend.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        self._backend.__exit__(*args)
-
-    def use_api(self, api):
-        self._backend.use_api(api)
-
     def load_credentials(
         self, url=None, username=None, password=None, headers=None
     ):
@@ -3287,14 +3256,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
         self._load_config_parameters(
             url=url, username=username, password=password, headers=headers
         )
-
-    def connect_to_api(self):
-        """Returns an API instance connected to the CVAT server.
-
-        Returns:
-            a :class:`CVATAnnotationAPI`
-        """
-        return self._backend.get_api()
 
     def launch_editor(self):
         """Launches the CVAT editor and loads the first task for this
@@ -3648,6 +3609,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session = requests.Session()
 
         if self._headers:
+            # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
         self._server_version = 2
