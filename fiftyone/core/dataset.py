@@ -2421,8 +2421,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def delete_views(self):
         """Deletes all saved views from this dataset."""
-        for name in self.list_views():
-            self.delete_view(name)
+        for view_doc in self._doc.views:
+            view_doc.delete()
+
+        self._doc.views = []
+        self._doc.save()
 
     def _get_view_doc(self, name, pop=False):
         idx = None
@@ -2472,8 +2475,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "Saved view with name '%s' already exists" % dup_name
                     )
 
-                _view_doc = self._get_view_doc(dup_name, pop=True)
-                _view_doc.delete()
+                self.delete_view(dup_name)
 
         return url_name
 
