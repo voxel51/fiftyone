@@ -108,7 +108,6 @@ export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const update = fos.useStateUpdate();
 
   useEffect(() => {
-    console.log(router?.state?.state?.view);
     update(() => {
       return {
         colorscale: router?.state?.colorscale

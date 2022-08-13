@@ -40,7 +40,6 @@ def get_view(
     count_label_tags=False,
     only_matches=True,
     sample_filter: t.Optional[SampleFilter] = None,
-    group_id: t.Optional[str] = None,
     sort: t.Optional[bool] = False,
 ) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
