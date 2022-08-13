@@ -1511,13 +1511,33 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset.save_view("test", view)
 
+        last_loaded_at1 = dataset._doc.views[0].last_loaded_at
+        last_modified_at1 = dataset._doc.views[0].last_modified_at
+
         self.assertTrue(dataset.has_views)
         self.assertTrue(dataset.has_view("test"))
         self.assertListEqual(dataset.list_views(), ["test"])
 
+        self.assertIsNone(last_loaded_at1)
+        self.assertIsNotNone(last_modified_at1)
+
         also_view = dataset.load_view("test")
+        last_loaded_at2 = dataset._doc.views[0].last_loaded_at
 
         self.assertEqual(view, also_view)
+        self.assertIsNotNone(last_loaded_at2)
+
+        info = dataset.get_view_info("test")
+        info["name"] = "new-name"
+
+        dataset.update_view_info("test", info)
+        last_modified_at2 = dataset._doc.views[0].last_modified_at
+
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+        self.assertFalse(dataset.has_view("test"))
+        self.assertTrue(dataset.has_view("new-name"))
+
+        dataset.update_view_info("new-name", {"name": "test"})
 
         #
         # Verify that saved views are included in clones
@@ -1569,6 +1589,53 @@ class DatasetExtrasTests(unittest.TestCase):
         dataset2.delete()
 
         self.assertEqual(len(list(db.views.find({"_id": view_id}))), 0)
+
+    def test_saved_views_for_app(self):
+        dataset = self.dataset
+
+        names = ["my-view1", "my_view2", "My  %&#  View3!"]
+        url_names = ["my-view1", "my_view2", "My-View3"]
+
+        for idx, name in enumerate(names, 1):
+            dataset.save_view(name, dataset.limit(idx))
+
+        # Can't use duplicate name when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my-view1", dataset.limit(1))
+
+        # Can't use duplicate URL name when saving a view
+        with self.assertRaises(ValueError):
+            dataset.save_view("my   view1", dataset.limit(1))
+
+        # Can't rename a view to an existing name
+        with self.assertRaises(ValueError):
+            dataset.update_view_info("my-view1", {"name": "my_view2"})
+
+        # Can't rename a view to an existing URL name
+        with self.assertRaises(ValueError):
+            dataset.update_view_info("my-view1", {"name": "my_view2!"})
+
+        view_docs = dataset._ordered_views()
+
+        self.assertListEqual([v.name for v in view_docs], names)
+        self.assertListEqual([v.url_name for v in view_docs], url_names)
+        self.assertListEqual([v.index for v in view_docs], [0, 1, 2])
+
+        dataset._reorder_views([2, 1, 0])
+
+        view_docs = dataset._ordered_views()
+
+        self.assertListEqual(
+            [v.name for v in view_docs],
+            list(reversed(names)),
+        )
+        self.assertListEqual([v.index for v in view_docs], [0, 1, 2])
+
+        dataset.delete_view("my_view2")
+
+        view_docs = dataset._ordered_views()
+
+        self.assertListEqual([v.index for v in view_docs], [0, 2])
 
     def test_runs(self):
         dataset = self.dataset

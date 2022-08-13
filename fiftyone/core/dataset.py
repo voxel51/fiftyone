@@ -2295,14 +2295,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset is not self:
             raise ValueError("Cannot save view into a different dataset")
 
-        if self.has_view(name):
-            if not overwrite:
-                raise ValueError(
-                    "Saved view with name '%s' already exists" % name
-                )
-
-            _view_doc = self._get_view_doc(name, pop=True)
-            _view_doc.delete()
+        url_name = self._validate_view_name(name, overwrite=overwrite)
 
         index = max([v.index or 0 for v in self._doc.views], default=-1) + 1
         now = datetime.utcnow()
@@ -2310,7 +2303,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = foo.ViewDocument(
             dataset_id=self._doc.id,
             name=name,
-            url_name=fou.to_url_name(name),
+            url_name=url_name,
             description=description,
             color=color,
             view_stages=[
@@ -2372,11 +2365,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         edited = False
         for key, value in info.items():
             if value != view_doc[key]:
-                view_doc[key] = value
-
-                edited = True
                 if key == "name":
-                    view_doc.url_name = fou.to_url_name(value)
+                    url_name = self._validate_view_name(value, skip=view_doc)
+                    view_doc.url_name = url_name
+
+                view_doc[key] = value
+                edited = True
 
         if edited:
             view_doc.last_modified_at = datetime.utcnow()
@@ -2462,6 +2456,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for view_doc in self._doc.views:
             view_doc.index = index_map[view_doc.index]
             view_doc.save()
+
+    def _validate_view_name(self, name, skip=None, overwrite=False):
+        url_name = fou.to_url_name(name)
+
+        for view_doc in self._doc.views:
+            if view_doc is skip:
+                continue
+
+            if name == view_doc.name or url_name == view_doc.url_name:
+                dup_name = view_doc.name
+
+                if not overwrite:
+                    raise ValueError(
+                        "Saved view with name '%s' already exists" % dup_name
+                    )
+
+                _view_doc = self._get_view_doc(dup_name, pop=True)
+                _view_doc.delete()
+
+        return url_name
 
     def clone(self, name=None):
         """Creates a clone of the dataset containing deep copies of all samples
