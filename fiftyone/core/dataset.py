@@ -2297,7 +2297,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         url_name = self._validate_view_name(name, overwrite=overwrite)
 
-        index = max([v.index or 0 for v in self._doc.views], default=-1) + 1
         now = datetime.utcnow()
 
         view_doc = foo.ViewDocument(
@@ -2310,7 +2309,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 json_util.dumps(s)
                 for s in view._serialize(include_uuids=False)
             ],
-            index=index,
             created_at=now,
             last_modified_at=now,
         )
@@ -2443,22 +2441,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.views[idx]
 
     def _ordered_views(self):
-        return sorted(self._doc.views, key=lambda v: v.index or 0)
+        return self._doc.views
 
     def _reorder_views(self, new_order):
-        old_indexes = set(v.index for v in self._doc.views)
-        new_indexes = set(new_order)
-        if old_indexes != new_indexes:
-            raise ValueError(
-                "New indexes %s don't match old indexes %s"
-                % (new_indexes, old_indexes)
-            )
+        if sorted(new_order) != list(range(len(self._doc.views))):
+            raise ValueError("Invalid ordering %s" % list(new_order))
 
-        index_map = {old: new for new, old in enumerate(new_order)}
-
-        for view_doc in self._doc.views:
-            view_doc.index = index_map[view_doc.index]
-            view_doc.save()
+        self._doc.views = [self._doc.views[i] for i in new_order]
+        self._doc.save()
 
     def _validate_view_name(self, name, skip=None, overwrite=False):
         url_name = fou.to_url_name(name)

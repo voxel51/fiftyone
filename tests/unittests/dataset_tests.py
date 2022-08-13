@@ -1619,7 +1619,10 @@ class DatasetExtrasTests(unittest.TestCase):
 
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.url_name for v in view_docs], url_names)
-        self.assertListEqual([v.index for v in view_docs], [0, 1, 2])
+
+        # Wrong list of indexes
+        with self.assertRaises(ValueError):
+            dataset._reorder_views([3, 2, 1, 0])
 
         dataset._reorder_views([2, 1, 0])
 
@@ -1629,13 +1632,16 @@ class DatasetExtrasTests(unittest.TestCase):
             [v.name for v in view_docs],
             list(reversed(names)),
         )
-        self.assertListEqual([v.index for v in view_docs], [0, 1, 2])
 
         dataset.delete_view("my_view2")
 
         view_docs = dataset._ordered_views()
 
-        self.assertListEqual([v.index for v in view_docs], [0, 2])
+        self.assertListEqual([v.name for v in view_docs], [names[2], names[0]])
+
+        dataset.delete_views()
+
+        self.assertListEqual(dataset._ordered_views(), [])
 
     def test_runs(self):
         dataset = self.dataset
