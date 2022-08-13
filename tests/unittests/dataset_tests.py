@@ -1615,7 +1615,7 @@ class DatasetExtrasTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.update_view_info("my-view1", {"name": "my_view2!"})
 
-        view_docs = dataset._ordered_views()
+        view_docs = dataset._views()
 
         self.assertListEqual([v.name for v in view_docs], names)
         self.assertListEqual([v.url_name for v in view_docs], url_names)
@@ -1626,22 +1626,21 @@ class DatasetExtrasTests(unittest.TestCase):
 
         dataset._reorder_views([2, 1, 0])
 
-        view_docs = dataset._ordered_views()
-
         self.assertListEqual(
-            [v.name for v in view_docs],
+            [v.name for v in dataset._views()],
             list(reversed(names)),
         )
 
         dataset.delete_view("my_view2")
 
-        view_docs = dataset._ordered_views()
-
-        self.assertListEqual([v.name for v in view_docs], [names[2], names[0]])
+        self.assertListEqual(
+            [v.name for v in dataset._views()],
+            [names[2], names[0]],
+        )
 
         dataset.delete_views()
 
-        self.assertListEqual(dataset._ordered_views(), [])
+        self.assertListEqual(dataset._views(), [])
 
     def test_runs(self):
         dataset = self.dataset

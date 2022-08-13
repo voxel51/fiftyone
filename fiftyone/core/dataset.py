@@ -2440,7 +2440,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._doc.views[idx]
 
-    def _ordered_views(self):
+    def _views(self):
         return self._doc.views
 
     def _reorder_views(self, new_order):
