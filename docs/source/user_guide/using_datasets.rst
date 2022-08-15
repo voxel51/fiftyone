@@ -245,8 +245,7 @@ is visualized in the :ref:`FiftyOne App <fiftyone-app>`.
     print(dataset.app_config)
 
     # Store some dataset-specific settings
-    dataset.app_config.color_by = "value"
-    dataset.app_config.plugins["map"]["clustering"] = True
+    dataset.app_config.plugins["map"] = {"clustering": False}
     dataset.save()  # must save after edits
 
 .. note::
