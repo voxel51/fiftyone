@@ -5,9 +5,9 @@ import {
   paginateGroup_query$key,
 } from "@fiftyone/relay";
 import { VariablesOf } from "react-relay";
-import { atom, selector } from "recoil";
+import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
-import { dataset, modal } from "./atoms";
+import { dataset, modal as modalAtom, sidebarOverride } from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
@@ -58,6 +58,27 @@ export const pinnedSlice = selector<string | null>({
   },
 });
 
+export const currentSlice = selectorFamily<string | null, boolean>({
+  key: "currentSlice",
+  get:
+    (modal) =>
+    ({ get }) => {
+      if (!get(isGroup)) return null;
+
+      if (modal) {
+        if (get(sidebarOverride)) {
+          return get(pinnedSlice);
+        }
+
+        const { sample } = get(modalAtom);
+
+        return sample[get(groupField)].name;
+      }
+
+      return get(groupSlice) || get(defaultGroupSlice);
+    },
+});
+
 export const hasPinnedSlice = selector<boolean>({
   key: "hasPinnedSlice",
   get: ({ get }) => Boolean(get(pinnedSlice)),
@@ -77,7 +98,7 @@ export const groupQuery = graphQLSelector<
   mapResponse: (response) => response,
   query: paginateGroup,
   variables: ({ get }) => {
-    const sample = get(modal).sample;
+    const sample = get(modalAtom).sample;
 
     const group = get(groupField);
 
