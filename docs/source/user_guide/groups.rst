@@ -1043,10 +1043,6 @@ supports:
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
-    | C            | Controls       | Toggle controls               |
-    +--------------+----------------+-------------------------------+
-    | ?            | Display help   | Display this help window      |
-    +--------------+----------------+-------------------------------+
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
@@ -1065,7 +1061,7 @@ onto a fixed colormap, which is scaled so that the full colormap is matched to
 the observed dynamic range of `r` values for each sample.
 
 Similarly, when coloring by height, the `z` value of each point is mapped to
-the full, fixed colormap using the same strategy.
+the full colormap using the same strategy.
 
 .. note::
 
