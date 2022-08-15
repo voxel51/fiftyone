@@ -393,6 +393,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def app_config(self):
+        """Dataset-specific settings that customize how this dataset is
+        visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # View the dataset's current App config
+            print(dataset.app_config)
+
+            # Store some dataset-specific settings
+            dataset.app_config.plugins["map"] = {"clustering": False}
+            dataset.save()  # must save after edits
+        """
         return self._doc.app_config
 
     @app_config.setter
