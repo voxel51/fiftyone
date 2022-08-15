@@ -586,9 +586,9 @@ Here's how a typical PCD file is structured:
 
 .. note::
 
-    When working with modalities such as LIDAR, intensity data should be
-    encoded using `rgb` values in the
-    `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
+    When working with modalities such as LIDAR, intensity data is assumed to be
+    encoded in the `r` channel of the `rgb` field of the
+    `PCD files <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
 
 As usual, point cloud samples may contain any type and number of custom fields,
 including certain visualizable |Label| types as described below.
@@ -1041,7 +1041,7 @@ supports:
     +--------------+----------------+-------------------------------+
     | T            | Top-down       | Reset camera to top-down view |
     +--------------+----------------+-------------------------------+
-    | P            | Ego-view       | Reset the camera to ego view  |
+    | E            | Ego-view       | Reset the camera to ego view  |
     +--------------+----------------+-------------------------------+
     | C            | Controls       | Toggle controls               |
     +--------------+----------------+-------------------------------+
@@ -1056,7 +1056,16 @@ controls:
 -   Use the palette icon to choose whether the point cloud is colored by
     `intensity`, `height`, or no coloring
 -   Click the `T` to reset the camera to top-down view
--   Click the `P` to reset the camera to ego-view
+-   Click the `E` to reset the camera to ego-view
+
+When coloring by intensity, the color of each point is computed by mapping the
+`r` channel of the `rgb` field of the
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+onto a fixed colormap, which is scaled so that the full colormap is matched to
+the observed dynamic range of `r` values for each sample.
+
+Similarly, when coloring by height, the `z` value of each point is mapped to
+the full, fixed colormap using the same strategy.
 
 .. note::
 
@@ -1081,30 +1090,35 @@ shown below under the `plugins.point-clouds` key of your
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
-                // The default camera position in 3D space
-                "defaultCameraPosition": {
-                    "x": 0,
-                    "y": 0,
-                    "z": 100
-                },
+                // The initial camera position in 3D space
+                "defaultCameraPosition": {"x": 0, "y": 0, "z": 0},
 
-                // A list of fields in which PCD data is available
-                "filepathFields": ["filepath"],
-
-                // Transformation between reference and PCD coordinates
+                // Transformation from PCD -> reference coordinates
                 "pointCloud": {
-                    "rotation": [0, 0, 90],
-                    "minZ": -2.1
+                    // A rotation to apply to the PCD's coordinates
+                    "rotation": [0, 0, 0],
+
+                    // Don't render points below this z value
+                    "minZ": null
                 },
 
-                // Transformation between reference and Label coordinates
+                // Transformation from Label -> reference coorindates
                 "overlay": {
-                    "rotation": [-90, 0, 0],
-                    "itemRotation": [0, 90, 0]
+                    // A rotation to apply to the Label's coordinates
+                    "rotation": [0, 0, 0],
+
+                    // A rotation to apply to each object's local coordinates
+                    "itemRotation": [0, 0, 0]
                 }
             }
         }
     }
+
+.. note::
+
+    All `rotations <https://threejs.org/docs/#api/en/core/Object3D.rotation>`_
+    above are expressed using
+    `Euler angles <https://en.wikipedia.org/wiki/Euler_angles>`_, in degrees.
 
 You can also store dataset-specific plugin settings by storing any subset of
 the above values on a :ref:`dataset's App config <custom-app-config>`:
