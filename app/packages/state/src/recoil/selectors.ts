@@ -320,7 +320,7 @@ export const sidebarSampleId = selector({
     const override = get(atoms.sidebarOverride);
     const modal = get(atoms.modal);
 
-    return override ? override.id : modal.sample._id;
+    return override ? override : modal.sample._id;
   },
 });
 

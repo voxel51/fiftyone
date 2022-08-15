@@ -21,7 +21,12 @@ import * as filterAtoms from "./filters";
 import * as selectors from "./selectors";
 import * as schemaAtoms from "./schema";
 import * as viewAtoms from "./view";
-import { defaultGroupSlice, groupSlice, pinnedSlice } from "./groups";
+import {
+  currentSlice,
+  defaultGroupSlice,
+  groupSlice,
+  pinnedSlice,
+} from "./groups";
 
 type DateTimeBound = { datetime: number } | null;
 
@@ -160,7 +165,7 @@ export const aggregations = selectorFamily<
         {
           filters,
           sample_ids: modal ? get(selectors.sidebarSampleId) : null,
-          slice: modal && get(atoms.sidebarOverride) ? get(pinnedSlice) : null,
+          slice: get(currentSlice(modal)),
           dataset,
           view: get(viewAtoms.view),
           hidden_labels: hiddenLabels,
