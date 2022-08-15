@@ -360,7 +360,7 @@ class GroupTests(unittest.TestCase):
         field = dataset.get_field("groups.right.ground_truth.detections.label")
         self.assertIsInstance(field, fo.StringField)
 
-        # Verify that `groups.left.ground_truth` is correctly recognized as a
+        # Verifies that `groups.left.ground_truth` is correctly recognized as a
         # Detections field
         view = dataset.filter_labels(
             "groups.left.ground_truth",
