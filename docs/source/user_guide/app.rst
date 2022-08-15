@@ -441,6 +441,126 @@ uniqueness values will be displayed under the `Scalars` tab.
     :alt: app-stats
     :align: center
 
+.. _app-map-tab:
+
+Map tab
+_______
+
+When you load a dataset in the App that contains a |GeoLocation| field with
+:attr:`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can
+open the `Map` tab to visualize a scatterplot of the location data:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    You must configure a
+    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
+    in order to use the Map UI. See below for instructions.
+
+    FiftyOne uses the Mapbox GL JS API,
+    `which is free <https://www.mapbox.com/pricing/#maps>`_ up to 50,000 map
+    loads each month.
+
+.. image:: /images/app/app-map.gif
+    :alt: app-map
+    :align: center
+
+You can lasso points in the map to show only the corresponding samples in the
+grid view below. Confirm the selection by either double-clicking the last
+vertex or pressing `ENTER`:
+
+.. image:: /images/app/app-map-selection.gif
+    :alt: app-map-selection
+    :align: center
+
+The map UI also provides a number of additional controls:
+
+-   Use the menu in the upper-left corner to choose between the available
+    map types
+-   Press the `locate` icon to reset the map's viewport to a tight crop of the
+    current view's location data
+-   Press the `x` icon to clear the current selection in the map
+
+.. image:: /images/app/app-map-controls.gif
+    :alt: app-map-controls
+    :align: center
+
+The map UI can be configured by including any subset of the settings shown
+below under the `plugins.map` key of your
+:ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    // The default values are shown below
+    {
+        "plugins": {
+            "map": {
+                // Your mapbox token. This is required
+                "mapboxAccessToken": "XXXXXXXX",
+
+                // Whether to enable clustering
+                "clustering": true,
+
+                // Never use clustering beyond this zoom level
+                // https://docs.mapbox.com/help/glossary/zoom-level
+                "clusterMaxZoom": 11,
+
+                // Controls the look and feel of clusters
+                "clusters": {
+                    "paint": {
+                        "circle-color": "rgb(244, 113, 6)",
+                        "circle-opacity": 0.7,
+
+                        // Step expressions can be used
+                        // https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step
+                        // 20px circles when point count is less than 10
+                        // 30px circles when point count is between 10 and 25
+                        // 40px circles when point count is greater than or equal to 25
+                        "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40]
+                    }
+                },
+
+                // Controls the look and feel of individual scatter points
+                "pointPaint": {
+                    "circle-color": "rgb(244, 113, 6)",
+                    "circle-opacity": 0.7,
+                    "circle-radius": 4
+                }
+            }
+        }
+    }
+
+If you prefer, you can provide your Mapbox token by setting the `MAPBOX_TOKEN`
+environment variable:
+
+.. code-block:: shell
+
+    export MAPBOX_TOKEN=XXXXXXXX
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Disable clustering for this dataset
+    dataset.app_config.plugins["map"] = {"clustering": False}
+    dataset.save()
+
+.. note::
+
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
 .. _app-select-samples:
 
 Selecting samples

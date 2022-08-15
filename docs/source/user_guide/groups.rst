@@ -1068,32 +1068,68 @@ controls:
 Configuring the 3D visualizer
 -----------------------------
 
-The 3D visualizer can be configured by including any of the setting(s) shown
-below in your :ref:`App config <configuring-fiftyone-app>`:
+The 3D visualizer can be configured by including any subset of the settings
+shown below under the `plugins.point-clouds` key of your
+:ref:`App config <configuring-fiftyone-app>`:
 
 .. code-block:: json
 
+    // The default values are shown below
     {
         "plugins": {
             "point-clouds": {
+                // Whether to show the 3D visualizer
                 "enabled": true,
+
+                // The default camera position in 3D space
                 "defaultCameraPosition": {
                     "x": 0,
                     "y": 0,
                     "z": 100
                 },
+
+                // A list of fields in which PCD data is available
                 "filepathFields": ["filepath"],
+
+                // Transformation between reference and PCD coordinates
                 "pointCloud": {
                     "rotation": [0, 0, 90],
                     "minZ": -2.1
                 },
+
+                // Transformation between reference and Label coordinates
                 "overlay": {
                     "rotation": [-90, 0, 0],
                     "itemRotation": [0, 90, 0]
                 }
-            },
+            }
         }
     }
+
+You can also store dataset-specific plugin settings by storing any subset of
+the above values on a :ref:`dataset's App config <custom-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    dataset.app_config.plugins["point-clouds"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+        "pointCloud": {
+            "rotation": [0, 0, 90],
+            "minZ": -2.1
+        },
+        "overlay": {
+            "rotation": [-90, 0, 0],
+            "itemRotation": [0, 90, 0]
+        }
+    }
+    dataset.save()
+
+.. note::
+
+    Dataset-specific plugin settings will override any settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _groups-exporting:
 
