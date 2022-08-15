@@ -527,10 +527,147 @@ dataset:
 
     dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
 
+.. image:: /images/dataset_zoo/kitti-multiview-train.jpg
+   :alt: kitti-multiview-train
+   :align: center
+
+.. _groups-point-clouds:
+
+Point cloud slices
+__________________
+
+Grouped datasets may contain one or more point cloud slices, which can be
+visualized in the App's :ref:`3D visualizer <3d-visualizer>`.
+
+.. _point-cloud-samples:
+
+Point cloud samples
+-------------------
+
+Any |Sample| whose `filepath` is a
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+with extension `.pcd` is recognized as a point cloud sample:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/point-cloud.pcd")
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'point-cloud',
+        'filepath': '/path/to/point-cloud.pcd',
+        'tags': [],
+        'metadata': None,
+    }>
+
+Here's how a typical PCD file is structured:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import open3d as o3d
+
+    points = [(x1, y1, z1), (x2, y2, z2), ...]
+    colors = [(r1, g1, b1), (r2, g2, b2), ...]
+    filepath = "/path/for/point-cloud.pcd"
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
+    pcd.colors = o3d.utility.Vector3dVector(np.asarray(colors))
+
+    o3d.io.write_point_cloud(filepath, pcd)
+
+.. note::
+
+    When working with modalities such as LIDAR, intensity data should be
+    encoded using `rgb` values in the
+    `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
+
+As usual, point cloud samples may contain any type and number of custom fields,
+including certain visualizable |Label| types as described below.
+
+.. _3d-detections:
+
+3D Detections
+-------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
+detections represented as |Detection| instances with their `label`, `location`,
+`dimensions`, and `rotation` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "vehicle"
+
+    # Object center location ``(x, y, z)`` in camera coordinates
+    location = [0.47, 1.49, 69.44]
+
+    # Object dimensions ``[height, width, length]`` in object coordinates
+    dimensions = [2.85, 2.63, 12.34]
+
+    # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
+    rotation = [0, -1.56, 0]
+
+    # A 3D object detection
+    detection = fo.Detection(
+        label=label,
+        location=location,
+        dimensions=dimensions,
+        rotation=rotation,
+    )
+
+.. _3d-polylines:
+
+3D Polylines
+------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
+represented as |Polyline| instances with their `label`, `points3d`, `closed`,
+and `filled` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "lane"
+
+    # A list of lists of ``(x, y, z)`` points in camera coordinates describing
+    # the vertices of each shape in the polyline
+    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+
+    # Whether the shapes are closed, i.e., and edge should be drawn from the
+    # last vertex to the first vertex of each shape
+    closed = False
+
+    # Whether the polyline represents polygons, i.e., shapes that should be
+    # filled when rendering them
+    filled = False
+
+    # A set of semantically related 3D polylines or polygons.
+    polyline = fo.Polyline(
+        label=label,
+        points3d=points3d,
+        closed=closed,
+        filled=filled,
+    )
+
 .. _groups-views:
 
-Views into grouped datasets
-___________________________
+Grouped views
+_____________
 
 You have the entire :ref:`dataset view language <using-views>` at your disposal
 to sort, slice, and search your grouped datasets!
