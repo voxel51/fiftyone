@@ -432,6 +432,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def group_field(self):
         """The group field of the dataset, or None if the dataset is not
         grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_field)
+            # group
         """
         return self._doc.group_field
 
@@ -439,6 +449,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def group_slice(self):
         """The current group slice of the dataset, or None if the dataset is
         not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_slices)
+            # ['left', 'right', 'pcd']
+
+            print(dataset.group_slice)
+            # left
+
+            # Change the current group slice
+            dataset.group_slice = "right"
+
+            print(dataset.group_slice)
+            # right
         """
         return self._group_slice
 
@@ -459,6 +488,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def group_slices(self):
         """The list of group slices of the dataset, or None if the dataset is
         not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_slices)
+            # ['left', 'right', 'pcd']
         """
         if self.media_type != fom.GROUP:
             return None
@@ -469,6 +508,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def group_media_types(self):
         """A dict mapping group slices to media types, or None if the dataset
         is not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.group_media_types)
+            # {'left': 'image', 'right': 'image', 'pcd': 'point-cloud'}
         """
         if self.media_type != fom.GROUP:
             return None
@@ -479,6 +528,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def default_group_slice(self):
         """The default group slice of the dataset, or None if the dataset is
         not grouped.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            print(dataset.default_group_slice)
+            # left
+
+            # Change the default group slice
+            dataset.default_group_slice = "right"
+
+            print(dataset.default_group_slice)
+            # right
         """
         if self.media_type != fom.GROUP:
             return None

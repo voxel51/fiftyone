@@ -5,9 +5,9 @@ Grouped datasets
 
 .. default-role:: code
 
-FiftyOne supports the creation of **grouped datasets**, which contain samples
-of possibly different modalities (image, video, or point cloud) that are
-organized into groups of related samples.
+FiftyOne supports the creation of **grouped datasets**, which contain multiple
+slices of samples of possibly different modalities (image, video, or point
+cloud) that are organized into groups.
 
 Grouped datasets can be used, for example, to represent multiview scenes, where
 data for multiple perspectives of the same scene can be stored, visualized, and
@@ -62,20 +62,22 @@ Creating grouped datasets
 
 To create a grouped dataset, simply use
 :meth:`add_group_field() <fiftyone.core.dataset.Dataset.add_group_field>` to
-declare a |GroupField| on your dataset before you add samples to it:
+declare a |Group| field on your dataset before you add samples to it:
 
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset()
+    dataset = fo.Dataset("groups-overview")
     dataset.add_group_field("group", default="center")
 
 The optional `default` parameter specifies the slice of samples that will be
-returned via the API or visualized in the App's grid view by default.
+returned via the API or visualized in the App's grid view by default. If you
+don't specify a default, one will be inferred from the first sample you add to
+the dataset.
 
 .. note::
 
-    Datasets may only contain one |GroupField|.
+    Datasets may contain only one |Group| field.
 
 .. _groups-adding-samples:
 
@@ -85,9 +87,8 @@ Adding samples
 To populate a grouped dataset with samples, create a single |Group| instance
 for each group of samples and use
 :meth:`Group.element() <fiftyone.core.groups.Group.element>` to generate values
-for the `group_field` of each |Sample| object in the group based on their
-slice's `name`. The |Sample| objects can then simply be added to the dataset as
-usual:
+for the group field of each |Sample| object in the group based on their slice's
+`name`. The |Sample| objects can then simply be added to the dataset as usual:
 
 .. code-block:: python
     :linenos:
@@ -105,7 +106,7 @@ usual:
 
 .. code-block:: text
 
-    Name:        2022.08.08.09.19.06
+    Name:        groups-overview
     Media type:  group
     Group slice: center
     Num groups:  66
@@ -120,8 +121,8 @@ usual:
 
 .. note::
 
-    Every sample in a grouped dataset must have it's `group_field` populated
-    with a `Group` element.
+    Every sample in a grouped dataset must have its group field populated with
+    a |Group| element.
 
 .. _groups-dataset-properties:
 
@@ -137,7 +138,7 @@ Grouped datasets have a `media_type` of `"group"`:
     # group
 
 The :meth:`group_field <fiftyone.core.dataset.Dataset.group_field>` property
-contains the name of the |GroupField| storing the dataset's group membership
+contains the name of the |Group| field storing the dataset's group membership
 information:
 
 .. code-block:: python
@@ -235,6 +236,10 @@ You can reset the active group slice to the default value by setting
     # Resets to `default_group_slice`
     dataset.group_slice = None
 
+You can also change the default group slice at any time by setting the
+:meth:`default_group_slice <fiftyone.core.dataset.Dataset.default_group_slice>`
+property.
+
 .. _groups-adding-fields:
 
 Adding fields
@@ -261,7 +266,7 @@ dataset.
 
 Note that all slices of a grouped dataset share the same schema, and hence
 any fields you add to samples from a particular slice will be implicitly
-declared on all samples from that slice *and* all other slices:
+declared on all samples from that slice and all other slices:
 
 .. code-block:: python
     :linenos:
@@ -270,7 +275,7 @@ declared on all samples from that slice *and* all other slices:
 
 .. code-block:: text
 
-    Name:        2022.08.08.09.19.06
+    Name:        groups-overview
     Media type:  group
     Group slice: center
     Num groups:  66
@@ -290,7 +295,7 @@ declared on all samples from that slice *and* all other slices:
     Like ungrouped datasets, any fields in a grouped dataset's schema that have
     not been explicitly set on a |Sample| in the dataset will be `None`.
 
-Like ungrouped datasets, you can use methods like
+You can use methods like
 :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
 :meth:`rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
 :meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`,
@@ -303,8 +308,8 @@ perform batch edits to the fields across *all slices* of a grouped dataset.
 Accessing samples
 -----------------
 
-Like ungrouped datasets, you can access a sample from any slice of grouped
-dataset via its ID or filepath:
+You can access a sample from any slice of grouped dataset via its ID or
+filepath:
 
 .. code-block:: python
     :linenos:
@@ -312,9 +317,8 @@ dataset via its ID or filepath:
     # Grab a random sample across all slices
     sample = dataset.select_group_slice().shuffle().first()
 
-    also_sample = dataset[sample_id]
-
-    assert also_sample is sample
+    # Directly lookup same sample by ID
+    also_sample = dataset[sample.id]
 
 In addition, you can also use
 :meth:`get_group() <fiftyone.core.dataset.Dataset.get_group>` to retrieve a
@@ -330,6 +334,34 @@ dict containing all samples in a group with a given ID:
     group = dataset.get_group(group_id)
     print(group)
 
+.. code-block:: text
+
+    {
+        'left': <Sample: {
+            'id': '62f810ba59e644568f229dac',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/001227.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'left'}>,
+        }>,
+        'center': <Sample: {
+            'id': '62f810ba59e644568f229dad',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/004172.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'center'}>,
+        }>,
+        'right': <Sample: {
+            'id': '62f810ba59e644568f229dae',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/000594.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'right'}>,
+        }>,
+    }
 .. _groups-deleting-samples:
 
 Deleting samples
@@ -388,7 +420,7 @@ dataset's :ref:`active slice <groups-dataset-properties>`:
     <Sample: {
         'id': '62f10dbb68f4ed13eba7c5e7',
         'media_type': 'image',
-        'filepath': '/Users/Brian/fiftyone/quickstart/data/001394.jpg',
+        'filepath': '~/fiftyone/quickstart/data/001394.jpg',
         'tags': BaseList([]),
         'metadata': None,
         'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
@@ -418,7 +450,7 @@ over dicts containing all samples in each group:
         'left': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e6',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/002538.jpg',
+            'filepath': '~/fiftyone/quickstart/data/002538.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'left'}>,
@@ -426,7 +458,7 @@ over dicts containing all samples in each group:
         'center': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e7',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/001394.jpg',
+            'filepath': '~/fiftyone/quickstart/data/001394.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
@@ -434,7 +466,7 @@ over dicts containing all samples in each group:
         'right': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e8',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/000020.jpg',
+            'filepath': '~/fiftyone/quickstart/data/000020.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'right'}>,
@@ -443,15 +475,15 @@ over dicts containing all samples in each group:
 
 .. _groups-example-datasets:
 
-Example grouped datasets
-________________________
+Example datasets
+________________
 
 The :ref:`FiftyOne Dataset Zoo <dataset-zoo>` contains grouped datasets that
 you can use out-of-the-box to test drive FiftyOne's group-related features.
 
 The fastest way to get started is by loading the
 :ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset, which
-consists of 200 scenes (groups) from the train split of the KITTI dataset, each
+consists of 200 scenes from the train split of the KITTI dataset, each
 containing left camera, right camera, point cloud, and 2D/3D object annotation
 data:
 
@@ -495,10 +527,147 @@ dataset:
 
     dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
 
+.. image:: /images/dataset_zoo/kitti-multiview-train.jpg
+   :alt: kitti-multiview-train
+   :align: center
+
+.. _groups-point-clouds:
+
+Point cloud slices
+__________________
+
+Grouped datasets may contain one or more point cloud slices, which can be
+visualized in the App's :ref:`3D visualizer <3d-visualizer>`.
+
+.. _point-cloud-samples:
+
+Point cloud samples
+-------------------
+
+Any |Sample| whose `filepath` is a
+`PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+with extension `.pcd` is recognized as a point cloud sample:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/point-cloud.pcd")
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'point-cloud',
+        'filepath': '/path/to/point-cloud.pcd',
+        'tags': [],
+        'metadata': None,
+    }>
+
+Here's how a typical PCD file is structured:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import open3d as o3d
+
+    points = [(x1, y1, z1), (x2, y2, z2), ...]
+    colors = [(r1, g1, b1), (r2, g2, b2), ...]
+    filepath = "/path/for/point-cloud.pcd"
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(np.asarray(points))
+    pcd.colors = o3d.utility.Vector3dVector(np.asarray(colors))
+
+    o3d.io.write_point_cloud(filepath, pcd)
+
+.. note::
+
+    When working with modalities such as LIDAR, intensity data should be
+    encoded using `rgb` values in the
+    `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_.
+
+As usual, point cloud samples may contain any type and number of custom fields,
+including certain visualizable |Label| types as described below.
+
+.. _3d-detections:
+
+3D Detections
+-------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D object
+detections represented as |Detection| instances with their `label`, `location`,
+`dimensions`, and `rotation` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "vehicle"
+
+    # Object center location ``(x, y, z)`` in camera coordinates
+    location = [0.47, 1.49, 69.44]
+
+    # Object dimensions ``[height, width, length]`` in object coordinates
+    dimensions = [2.85, 2.63, 12.34]
+
+    # Object rotation around ``[x, y, z]`` camera axes, in ``[-pi, pi]``
+    rotation = [0, -1.56, 0]
+
+    # A 3D object detection
+    detection = fo.Detection(
+        label=label,
+        location=location,
+        dimensions=dimensions,
+        rotation=rotation,
+    )
+
+.. _3d-polylines:
+
+3D Polylines
+------------
+
+The App's :ref:`3D visualizer <3d-visualizer>` supports rendering 3D polylines
+represented as |Polyline| instances with their `label`, `points3d`, `closed`,
+and `filled` attributes populated as shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Object label
+    label = "lane"
+
+    # A list of lists of ``(x, y, z)`` points in camera coordinates describing
+    # the vertices of each shape in the polyline
+    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+
+    # Whether the shapes are closed, i.e., and edge should be drawn from the
+    # last vertex to the first vertex of each shape
+    closed = False
+
+    # Whether the polyline represents polygons, i.e., shapes that should be
+    # filled when rendering them
+    filled = False
+
+    # A set of semantically related 3D polylines or polygons.
+    polyline = fo.Polyline(
+        label=label,
+        points3d=points3d,
+        closed=closed,
+        filled=filled,
+    )
+
 .. _groups-views:
 
-Views into grouped datasets
-___________________________
+Grouped views
+_____________
 
 You have the entire :ref:`dataset view language <using-views>` at your disposal
 to sort, slice, and search your grouped datasets!
@@ -520,7 +689,7 @@ You can perform simple operations like shuffling and limiting grouped datasets:
 
 .. code-block:: text
 
-    Dataset:     2022.08.08.09.19.06
+    Dataset:     groups-overview
     Media type:  group
     Group slice: center
     Num groups:  10
@@ -577,18 +746,25 @@ of grouped datasets:
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
+    import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
+    _dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    print(dataset.group_slice)
+    # left
+
+    # Filters based on the content in the 'left' slice
     view = (
-        dataset
-        .match_tags("validation")
-        .exists("predictions")
-        .filter_labels("predictions", F("confidence") > 0.9)
+        _dataset
+        .match_tags("train")
+        .filter_labels("ground_truth", F("label") == "Pedestrian")
     )
 
-Remember that, by default, as per when :ref:`iterating over <groups-iteration>`
-grouped datasets, any filtering operations will only be applied to the
-:ref:`active slice <groups-dataset-properties>` of grouped datasets.
+Remember that, just as when :ref:`iterating over <groups-iteration>` grouped
+datasets, any filtering operations will only be applied to the
+:ref:`active slice <groups-dataset-properties>`.
 
 However, you can write views that reference specific slice(s) of a grouped
 collection via the special `"groups.<slice>.field.name"` syntax:
@@ -655,7 +831,7 @@ images from the grouped dataset:
 
 .. code-block:: text
 
-    Dataset:     2022.08.08.09.19.06
+    Dataset:     groups-overview
     Media type:  image
     Num samples: 108
     Sample fields:
@@ -678,7 +854,7 @@ images:
 
 .. code-block:: text
 
-    Dataset:     2022.08.09.01.04.34
+    Dataset:     groups-overview
     Media type:  image
     Num samples: 216
     Sample fields:
@@ -706,16 +882,15 @@ the fact that their data is sourced from a grouped dataset!
 
 .. _groups-aggregations:
 
-Aggregations on grouped datasets
-________________________________
+Grouped aggregations
+____________________
 
 You can use the entire :ref:`aggregations framework <using-aggregations>` to
-efficiently compute statistics on grouoped datasets, just like you do with
-ungrouped datasets.
+efficiently compute statistics on grouoped datasets.
 
-Remember that, as when :ref:`iterating over <groups-iteration>` or
+Remember that, just as when :ref:`iterating over <groups-iteration>` or
 :ref:`writing views <groups-views>` into grouped datasets, aggregations will
-only include samples from the :ref:`active slice <dataset-group-properties>`:
+only include samples from the :ref:`active slice <groups-dataset-properties>`:
 
 .. code-block:: python
     :linenos:
@@ -786,6 +961,140 @@ slices, you can :ref:`select them <groups-selecting-slices>`!
     print(view3.count())  # 400
     print(view3.count("ground_truth.detections"))  # 2876
 
+.. _groups-app:
+
+Groups in the App
+_________________
+
+When you load a grouped dataset or view in :ref:`the App <fiftyone-app>`,
+you'll see the samples from the collection's
+:ref:`default group slice <groups-dataset-properties>` in the grid view by
+default.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    session = fo.launch_app(dataset)
+
+You can use the selector shown below to change which slice you are viewing:
+
+.. image:: /images/groups/groups-grid-view.gif
+   :alt: groups-grid-view
+   :align: center
+
+.. note::
+
+    The grid view currently supports only image or video slices (not point
+    clouds).
+
+When you open the expanded modal with a grouped dataset or view loaded in the
+App, you'll have access to all samples in the current group.
+
+If the group contains image/video slices, the lefthand side of the modal will
+contain a scrollable carousel that you can use to choose which sample to load
+in the maximized image/video visualizer below.
+
+If the group contains a point cloud slice, the righthand side of the modal will
+contain a 3D visualizer.
+
+.. image:: /images/groups/groups-modal.gif
+   :alt: groups-modal
+   :align: center
+
+.. note::
+
+    The filters sidebar shows statistics for **only** the group slice that
+    currently has focus in the modal, which is denoted by the `pin icon` in the
+    upper-left corner of the modal.
+
+.. _3d-visualizer:
+
+Using the 3D visualizer
+-----------------------
+
+The 3D visualizer allows you to interactively visualize point cloud samples
+along with any associated 3D detections/polylines data:
+
+.. image:: /images/groups/groups-point-cloud-controls.gif
+   :alt: groups-point-cloud-controls
+   :align: center
+
+The table below summarizes the mouse/keyboard controls that the 3D visualizer
+supports:
+
+.. table::
+    :widths: 30 30 40
+
+    +--------------+----------------+-------------------------------+
+    | Input        | Action         | Description                   |
+    +==============+================+===============================+
+    | Wheel        | Zoom           | Zoom in and out               |
+    +--------------+----------------+-------------------------------+
+    | Drag         | Rotate         | Rotate the camera             |
+    +--------------+----------------+-------------------------------+
+    | Shift + drag | Translate      | Translate the camera          |
+    +--------------+----------------+-------------------------------+
+    | T            | Top-down       | Reset camera to top-down view |
+    +--------------+----------------+-------------------------------+
+    | P            | Ego-view       | Reset the camera to ego view  |
+    +--------------+----------------+-------------------------------+
+    | C            | Controls       | Toggle controls               |
+    +--------------+----------------+-------------------------------+
+    | ?            | Display help   | Display this help window      |
+    +--------------+----------------+-------------------------------+
+    | ESC          | Escape context | Escape the current context    |
+    +--------------+----------------+-------------------------------+
+
+In addition, the HUD at the bottom of the 3D visualizer provides the following
+controls:
+
+-   Use the palette icon to choose whether the point cloud is colored by
+    `intensity`, `height`, or no coloring
+-   Click the `T` to reset the camera to top-down view
+-   Click the `P` to reset the camera to ego-view
+
+.. note::
+
+    The 3D visualizer does not currently support groups with multiple point
+    cloud slices.
+
+.. _3d-visualizer-config:
+
+Configuring the 3D visualizer
+-----------------------------
+
+The 3D visualizer can be configured by including any of the setting(s) shown
+below in your :ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    {
+        "plugins": {
+            "point-clouds": {
+                "enabled": true,
+                "defaultCameraPosition": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 100
+                },
+                "filepathFields": ["filepath"],
+                "pointCloud": {
+                    "rotation": [0, 0, 90],
+                    "minZ": -2.1
+                },
+                "overlay": {
+                    "rotation": [-90, 0, 0],
+                    "itemRotation": [0, 90, 0]
+                }
+            },
+        }
+    }
+
 .. _groups-exporting:
 
 Exporting groups
@@ -809,7 +1118,7 @@ use :ref:`FiftyOneDataset format <FiftyOneDataset-export>`:
         dataset_type=fo.types.FiftyOneDataset,
     )
 
-You can also :ref:`select specific slice(s) <groups-select-slices>` and then
+You can also :ref:`select specific slice(s) <groups-selecting-slices>` and then
 export the resulting ungrouped collection in
 :ref:`all the usual ways <exporting-datasets>`:
 
