@@ -446,8 +446,10 @@ uniqueness values will be displayed under the `Scalars` tab.
 Map tab
 _______
 
-When you load a dataset or view in the App that contains a |GeoLocation| field,
-you can open the `Map` tab to visualize the location data:
+When you load a dataset in the App that contains a |GeoLocation| field, with
+`point <fiftyone.core.labels.GeoLocation.point>` data populated, you can open
+the `Map` tab to visualize a scatterplot of the current dataset or view's
+location data:
 
 .. code-block:: python
     :linenos:
@@ -459,26 +461,27 @@ you can open the `Map` tab to visualize the location data:
 
     session = fo.launch_app(dataset)
 
+.. note::
+
+    You must configure a
+    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
+    in order to use the Map UI. See below for details.
+
 .. image:: /images/app/app-map.gif
     :alt: app-map
     :align: center
 
-.. note::
-
-    You must provide a
-    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
-    in order to use the Map UI. See below for details.
-
-You can lasso points in the map to show the corresponding samples in the grid
-view below:
+You can lasso points in the map to show only the corresponding samples in the
+grid view below. Confirm the selection by either double-clicking the last
+vertex or pressing `ENTER`:
 
 .. image:: /images/app/app-map-selection.gif
     :alt: app-map-selection
     :align: center
 
-The map UI provides a number of controls:
+The map UI also provides a number of additional controls:
 
--   Use the menu in the upper-right corner to choose between the available
+-   Use the menu in the upper-left corner to choose between the available
     map types
 -   Press the `crop` icon to reset the map's viewport to a tight crop of the
     current view's location data
