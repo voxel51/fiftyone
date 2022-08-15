@@ -441,6 +441,80 @@ uniqueness values will be displayed under the `Scalars` tab.
     :alt: app-stats
     :align: center
 
+.. _app-map-tab:
+
+Map tab
+_______
+
+When you load a dataset or view in the App that contains a |GeoLocation| field,
+you can open the `Map` tab to visualize the location data:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-geo")
+
+    session = fo.launch_app(dataset)
+
+.. image:: /images/app/app-map.gif
+    :alt: app-map
+    :align: center
+
+.. note::
+
+    You must provide a
+    `Mapbox access token <https://docs.mapbox.com/help/getting-started/access-tokens>`_
+    in order to use the Map UI. See below for details.
+
+You can lasso points in the map to show the corresponding samples in the grid
+view below:
+
+.. image:: /images/app/app-map-selection.gif
+    :alt: app-map-selection
+    :align: center
+
+The map UI provides a number of controls:
+
+-   Use the menu in the upper-right corner to choose between the available
+    map types
+-   Press the `crop` icon to reset the map's viewport to a tight crop of the
+    current view's location data
+-   Press the `x` icon to clear the current selection in the map
+
+.. image:: /images/app/app-map-controls.gif
+    :alt: app-map-controls
+    :align: center
+
+The map UI can be configured by including any of the setting(s) shown below in
+your :ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    {
+        "plugins": {
+            "map": {
+                "mapboxAccessToken": "XXXXXXXX",
+                "clustering": true,
+                "clusterMaxZoom": 11,
+                "clusters": {
+                    "paint": {
+                        "circle-color": "rgb(244, 113, 6)",
+                        "circle-opacity": 0.7,
+                        "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 25, 40]
+                    }
+                },
+                "pointPaint": {
+                    "circle-color": "rgb(244, 113, 6)",
+                    "circle-opacity": 0.7,
+                    "circle-radius": 4
+                }
+            }
+        }
+    }
+
 .. _app-select-samples:
 
 Selecting samples
