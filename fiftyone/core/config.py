@@ -417,6 +417,17 @@ class AppConfig(EnvConfig):
             )
             self.grid_zoom = 5
 
+        if "MAPBOX_TOKEN" in os.environ:
+            try:
+                _set_nested_dict_value(
+                    self.plugins,
+                    "map.mapboxAccessToken",
+                    os.environ["MAPBOX_TOKEN"],
+                )
+                raise OSError("HAHAHAHA")
+            except Exception as e:
+                logger.warning("Failed to set mapbox token: %s", e)
+
 
 class AppConfigError(etac.EnvConfigError):
     """Exception raised when an invalid :class:`AppConfig` instance is
@@ -658,3 +669,15 @@ def _get_installed_packages():
     except:
         logger.debug("Failed to get installed packages")
         return set()
+
+
+def _set_nested_dict_value(d, path, value):
+    keys = path.split(".")
+
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
+
+        d = d[key]
+
+    d[keys[-1]] = value
