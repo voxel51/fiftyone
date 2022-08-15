@@ -224,6 +224,38 @@ Datasets can also store more specific types of ancillary information such as
     the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
     in-place to save the changes to the database.
 
+.. _custom-app-config:
+
+Custom App config
+-----------------
+
+All |Dataset| instances have an
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
+you can use to store dataset-specific settings that customize how the dataset
+is visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Store some dataset-specific settings
+    dataset.app_config.color_by = "value"
+    dataset.app_config.plugins["map"]["clustering"] = True
+    dataset.save()  # must save after edits
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
+
 .. _storing-classes:
 
 Storing class lists
