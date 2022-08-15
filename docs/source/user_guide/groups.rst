@@ -961,6 +961,140 @@ slices, you can :ref:`select them <groups-selecting-slices>`!
     print(view3.count())  # 400
     print(view3.count("ground_truth.detections"))  # 2876
 
+.. _groups-app:
+
+Groups in the App
+_________________
+
+When you load a grouped dataset or view in :ref:`the App <fiftyone-app>`,
+you'll see the samples from the collection's
+:ref:`default group slice <groups-dataset-properties>` in the grid view by
+default.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    session = fo.launch_app(dataset)
+
+You can use the selector shown below to change which slice you are viewing:
+
+.. image:: /images/groups/groups-grid-view.gif
+   :alt: groups-grid-view
+   :align: center
+
+.. note::
+
+    The grid view currently supports only image or video slices (not point
+    clouds).
+
+When you open the expanded modal with a grouped dataset or view loaded in the
+App, you'll have access to all samples in the current group.
+
+If the group contains image/video slices, the lefthand side of the modal will
+contain a scrollable carousel that you can use to choose which sample to load
+in the maximized image/video visualizer below.
+
+If the group contains a point cloud slice, the righthand side of the modal will
+contain a 3D visualizer.
+
+.. image:: /images/groups/groups-modal.gif
+   :alt: groups-modal
+   :align: center
+
+.. note::
+
+    The filters sidebar shows statistics for **only** the group slice that
+    currently has focus in the modal, which is denoted by the `pin icon` in the
+    upper-left corner of the modal.
+
+.. _3d-visualizer:
+
+Using the 3D visualizer
+-----------------------
+
+The 3D visualizer allows you to interactively visualize point cloud samples
+along with any associated 3D detections/polylines data:
+
+.. image:: /images/groups/groups-point-cloud-controls.gif
+   :alt: groups-point-cloud-controls
+   :align: center
+
+The table below summarizes the mouse/keyboard controls that the 3D visualizer
+supports:
+
+.. table::
+    :widths: 30 30 40
+
+    +--------------+----------------+-------------------------------+
+    | Input        | Action         | Description                   |
+    +==============+================+===============================+
+    | Wheel        | Zoom           | Zoom in and out               |
+    +--------------+----------------+-------------------------------+
+    | Drag         | Rotate         | Rotate the camera             |
+    +--------------+----------------+-------------------------------+
+    | Shift + drag | Translate      | Translate the camera          |
+    +--------------+----------------+-------------------------------+
+    | T            | Top-down       | Reset camera to top-down view |
+    +--------------+----------------+-------------------------------+
+    | P            | Ego-view       | Reset the camera to ego view  |
+    +--------------+----------------+-------------------------------+
+    | C            | Controls       | Toggle controls               |
+    +--------------+----------------+-------------------------------+
+    | ?            | Display help   | Display this help window      |
+    +--------------+----------------+-------------------------------+
+    | ESC          | Escape context | Escape the current context    |
+    +--------------+----------------+-------------------------------+
+
+In addition, the HUD at the bottom of the 3D visualizer provides the following
+controls:
+
+-   Use the palette icon to choose whether the point cloud is colored by
+    `intensity`, `height`, or no coloring
+-   Click the `T` to reset the camera to top-down view
+-   Click the `P` to reset the camera to ego-view
+
+.. note::
+
+    The 3D visualizer does not currently support groups with multiple point
+    cloud slices.
+
+.. _3d-visualizer-config:
+
+Configuring the 3D visualizer
+-----------------------------
+
+The 3D visualizer can be configured by including any of the setting(s) shown
+below in your :ref:`App config <configuring-fiftyone-app>`:
+
+.. code-block:: json
+
+    {
+        "plugins": {
+            "point-clouds": {
+                "enabled": true,
+                "defaultCameraPosition": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 100
+                },
+                "filepathFields": ["filepath"],
+                "pointCloud": {
+                    "rotation": [0, 0, 90],
+                    "minZ": -2.1
+                },
+                "overlay": {
+                    "rotation": [-90, 0, 0],
+                    "itemRotation": [0, 90, 0]
+                }
+            },
+        }
+    }
+
 .. _groups-exporting:
 
 Exporting groups
