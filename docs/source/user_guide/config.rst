@@ -577,6 +577,8 @@ The FiftyOne App can be configured in the ways described below:
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations.                                                         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -626,7 +628,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -670,7 +673,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -716,7 +720,7 @@ via the following pattern:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_attributes = False
 

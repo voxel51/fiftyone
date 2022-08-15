@@ -5,9 +5,9 @@ Grouped datasets
 
 .. default-role:: code
 
-FiftyOne supports the creation of **grouped datasets**, which contain samples
-of possibly different modalities (image, video, or point cloud) that are
-organized into groups of related samples.
+FiftyOne supports the creation of **grouped datasets**, which contain multiple
+slices of samples of possibly different modalities (image, video, or point
+cloud) that are organized into groups.
 
 Grouped datasets can be used, for example, to represent multiview scenes, where
 data for multiple perspectives of the same scene can be stored, visualized, and
@@ -62,20 +62,22 @@ Creating grouped datasets
 
 To create a grouped dataset, simply use
 :meth:`add_group_field() <fiftyone.core.dataset.Dataset.add_group_field>` to
-declare a |GroupField| on your dataset before you add samples to it:
+declare a |Group| field on your dataset before you add samples to it:
 
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset()
+    dataset = fo.Dataset("groups-overview")
     dataset.add_group_field("group", default="center")
 
 The optional `default` parameter specifies the slice of samples that will be
-returned via the API or visualized in the App's grid view by default.
+returned via the API or visualized in the App's grid view by default. If you
+don't specify a default, one will be inferred from the first sample you add to
+the dataset.
 
 .. note::
 
-    Datasets may only contain one |GroupField|.
+    Datasets may contain only one |Group| field.
 
 .. _groups-adding-samples:
 
@@ -85,9 +87,8 @@ Adding samples
 To populate a grouped dataset with samples, create a single |Group| instance
 for each group of samples and use
 :meth:`Group.element() <fiftyone.core.groups.Group.element>` to generate values
-for the `group_field` of each |Sample| object in the group based on their
-slice's `name`. The |Sample| objects can then simply be added to the dataset as
-usual:
+for the group field of each |Sample| object in the group based on their slice's
+`name`. The |Sample| objects can then simply be added to the dataset as usual:
 
 .. code-block:: python
     :linenos:
@@ -105,7 +106,7 @@ usual:
 
 .. code-block:: text
 
-    Name:        2022.08.08.09.19.06
+    Name:        groups-overview
     Media type:  group
     Group slice: center
     Num groups:  66
@@ -120,8 +121,8 @@ usual:
 
 .. note::
 
-    Every sample in a grouped dataset must have it's `group_field` populated
-    with a `Group` element.
+    Every sample in a grouped dataset must have its group field populated with
+    a |Group| element.
 
 .. _groups-dataset-properties:
 
@@ -137,7 +138,7 @@ Grouped datasets have a `media_type` of `"group"`:
     # group
 
 The :meth:`group_field <fiftyone.core.dataset.Dataset.group_field>` property
-contains the name of the |GroupField| storing the dataset's group membership
+contains the name of the |Group| field storing the dataset's group membership
 information:
 
 .. code-block:: python
@@ -235,6 +236,10 @@ You can reset the active group slice to the default value by setting
     # Resets to `default_group_slice`
     dataset.group_slice = None
 
+You can also change the default group slice at any time by setting the
+:meth:`default_group_slice <fiftyone.core.dataset.Dataset.default_group_slice>`
+property.
+
 .. _groups-adding-fields:
 
 Adding fields
@@ -261,7 +266,7 @@ dataset.
 
 Note that all slices of a grouped dataset share the same schema, and hence
 any fields you add to samples from a particular slice will be implicitly
-declared on all samples from that slice *and* all other slices:
+declared on all samples from that slice and all other slices:
 
 .. code-block:: python
     :linenos:
@@ -270,7 +275,7 @@ declared on all samples from that slice *and* all other slices:
 
 .. code-block:: text
 
-    Name:        2022.08.08.09.19.06
+    Name:        groups-overview
     Media type:  group
     Group slice: center
     Num groups:  66
@@ -290,7 +295,7 @@ declared on all samples from that slice *and* all other slices:
     Like ungrouped datasets, any fields in a grouped dataset's schema that have
     not been explicitly set on a |Sample| in the dataset will be `None`.
 
-Like ungrouped datasets, you can use methods like
+You can use methods like
 :meth:`clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`,
 :meth:`rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`,
 :meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`,
@@ -303,8 +308,8 @@ perform batch edits to the fields across *all slices* of a grouped dataset.
 Accessing samples
 -----------------
 
-Like ungrouped datasets, you can access a sample from any slice of grouped
-dataset via its ID or filepath:
+You can access a sample from any slice of grouped dataset via its ID or
+filepath:
 
 .. code-block:: python
     :linenos:
@@ -312,9 +317,8 @@ dataset via its ID or filepath:
     # Grab a random sample across all slices
     sample = dataset.select_group_slice().shuffle().first()
 
-    also_sample = dataset[sample_id]
-
-    assert also_sample is sample
+    # Directly lookup same sample by ID
+    also_sample = dataset[sample.id]
 
 In addition, you can also use
 :meth:`get_group() <fiftyone.core.dataset.Dataset.get_group>` to retrieve a
@@ -330,6 +334,34 @@ dict containing all samples in a group with a given ID:
     group = dataset.get_group(group_id)
     print(group)
 
+.. code-block:: text
+
+    {
+        'left': <Sample: {
+            'id': '62f810ba59e644568f229dac',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/001227.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'left'}>,
+        }>,
+        'center': <Sample: {
+            'id': '62f810ba59e644568f229dad',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/004172.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'center'}>,
+        }>,
+        'right': <Sample: {
+            'id': '62f810ba59e644568f229dae',
+            'media_type': 'image',
+            'filepath': '~/fiftyone/quickstart/data/000594.jpg',
+            'tags': BaseList([]),
+            'metadata': None,
+            'group': <Group: {'id': '62f810ba59e644568f229c62', 'name': 'right'}>,
+        }>,
+    }
 .. _groups-deleting-samples:
 
 Deleting samples
@@ -388,7 +420,7 @@ dataset's :ref:`active slice <groups-dataset-properties>`:
     <Sample: {
         'id': '62f10dbb68f4ed13eba7c5e7',
         'media_type': 'image',
-        'filepath': '/Users/Brian/fiftyone/quickstart/data/001394.jpg',
+        'filepath': '~/fiftyone/quickstart/data/001394.jpg',
         'tags': BaseList([]),
         'metadata': None,
         'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
@@ -418,7 +450,7 @@ over dicts containing all samples in each group:
         'left': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e6',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/002538.jpg',
+            'filepath': '~/fiftyone/quickstart/data/002538.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'left'}>,
@@ -426,7 +458,7 @@ over dicts containing all samples in each group:
         'center': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e7',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/001394.jpg',
+            'filepath': '~/fiftyone/quickstart/data/001394.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'center'}>,
@@ -434,7 +466,7 @@ over dicts containing all samples in each group:
         'right': <Sample: {
             'id': '62f10dbb68f4ed13eba7c5e8',
             'media_type': 'image',
-            'filepath': '/Users/Brian/fiftyone/quickstart/data/000020.jpg',
+            'filepath': '~/fiftyone/quickstart/data/000020.jpg',
             'tags': BaseList([]),
             'metadata': None,
             'group': <Group: {'id': '62f10dbb68f4ed13eba7c4a0', 'name': 'right'}>,
@@ -443,15 +475,15 @@ over dicts containing all samples in each group:
 
 .. _groups-example-datasets:
 
-Example grouped datasets
-________________________
+Example datasets
+________________
 
 The :ref:`FiftyOne Dataset Zoo <dataset-zoo>` contains grouped datasets that
 you can use out-of-the-box to test drive FiftyOne's group-related features.
 
 The fastest way to get started is by loading the
 :ref:`quickstart-groups <dataset-zoo-quickstart-groups>` dataset, which
-consists of 200 scenes (groups) from the train split of the KITTI dataset, each
+consists of 200 scenes from the train split of the KITTI dataset, each
 containing left camera, right camera, point cloud, and 2D/3D object annotation
 data:
 
@@ -520,7 +552,7 @@ You can perform simple operations like shuffling and limiting grouped datasets:
 
 .. code-block:: text
 
-    Dataset:     2022.08.08.09.19.06
+    Dataset:     groups-overview
     Media type:  group
     Group slice: center
     Num groups:  10
@@ -577,18 +609,25 @@ of grouped datasets:
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
+    import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
+    _dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    print(dataset.group_slice)
+    # left
+
+    # Filters based on the content in the 'left' slice
     view = (
-        dataset
-        .match_tags("validation")
-        .exists("predictions")
-        .filter_labels("predictions", F("confidence") > 0.9)
+        _dataset
+        .match_tags("train")
+        .filter_labels("ground_truth", F("label") == "Pedestrian")
     )
 
-Remember that, by default, as per when :ref:`iterating over <groups-iteration>`
-grouped datasets, any filtering operations will only be applied to the
-:ref:`active slice <groups-dataset-properties>` of grouped datasets.
+Remember that, just as when :ref:`iterating over <groups-iteration>` grouped
+datasets, any filtering operations will only be applied to the
+:ref:`active slice <groups-dataset-properties>`.
 
 However, you can write views that reference specific slice(s) of a grouped
 collection via the special `"groups.<slice>.field.name"` syntax:
@@ -655,7 +694,7 @@ images from the grouped dataset:
 
 .. code-block:: text
 
-    Dataset:     2022.08.08.09.19.06
+    Dataset:     groups-overview
     Media type:  image
     Num samples: 108
     Sample fields:
@@ -678,7 +717,7 @@ images:
 
 .. code-block:: text
 
-    Dataset:     2022.08.09.01.04.34
+    Dataset:     groups-overview
     Media type:  image
     Num samples: 216
     Sample fields:
@@ -706,16 +745,15 @@ the fact that their data is sourced from a grouped dataset!
 
 .. _groups-aggregations:
 
-Aggregations on grouped datasets
-________________________________
+Grouped aggregations
+____________________
 
 You can use the entire :ref:`aggregations framework <using-aggregations>` to
-efficiently compute statistics on grouoped datasets, just like you do with
-ungrouped datasets.
+efficiently compute statistics on grouoped datasets.
 
-Remember that, as when :ref:`iterating over <groups-iteration>` or
+Remember that, just as when :ref:`iterating over <groups-iteration>` or
 :ref:`writing views <groups-views>` into grouped datasets, aggregations will
-only include samples from the :ref:`active slice <dataset-group-properties>`:
+only include samples from the :ref:`active slice <groups-dataset-properties>`:
 
 .. code-block:: python
     :linenos:
@@ -809,7 +847,7 @@ use :ref:`FiftyOneDataset format <FiftyOneDataset-export>`:
         dataset_type=fo.types.FiftyOneDataset,
     )
 
-You can also :ref:`select specific slice(s) <groups-select-slices>` and then
+You can also :ref:`select specific slice(s) <groups-selecting-slices>` and then
 export the resulting ungrouped collection in
 :ref:`all the usual ways <exporting-datasets>`:
 
