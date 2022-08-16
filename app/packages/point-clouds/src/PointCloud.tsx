@@ -38,8 +38,12 @@ function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   React.useEffect(() => {
     onLoad(geo);
     const colorAttribute = geo.getAttribute("color");
-    colorMinMaxRef.current =
-      computeMinMaxForColorBufferAttribute(colorAttribute);
+    if (colorAttribute) {
+      colorMinMaxRef.current =
+        computeMinMaxForColorBufferAttribute(colorAttribute);
+    } else {
+      colorMinMaxRef.current = { min: 0, max: 1 };
+    }
   }, [geo, points]);
   const gradients = [
     [0.0, "rgb(165,0,38)"],
