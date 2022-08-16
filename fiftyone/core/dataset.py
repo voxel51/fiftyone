@@ -5461,7 +5461,7 @@ def _create_dataset(
         persistent=persistent,
         sample_fields=sample_fields,
         frame_fields=frame_fields,
-        app_config=DatasetAppConfig.default(),
+        app_config=DatasetAppConfig(),
     )
     dataset_doc.save()
 
@@ -5641,7 +5641,7 @@ def _load_dataset(name, virtual=False):
             ]
 
     if dataset_doc.app_config is None:
-        dataset_doc.app_config = DatasetAppConfig.default()
+        dataset_doc.app_config = DatasetAppConfig()
 
     dataset_doc.save()
 
