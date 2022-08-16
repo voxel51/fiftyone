@@ -79,6 +79,7 @@ async def paginate_samples(
     )
 
     media = view.media_type
+    has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
         has_video_slice = any(
