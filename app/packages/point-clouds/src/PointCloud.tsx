@@ -315,19 +315,25 @@ export function PointCloud({ sampleOverride: sample }) {
     _.get(settings, "overlay.itemRotation", [0, 0, 0])
   );
   const [hovering, setHovering] = useState(false);
-  const setActiion = recoil.useSetRecoilState(pcState.currentAction);
+  const setAction = recoil.useSetRecoilState(pcState.currentAction);
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
   const clear = useCallback(() => {
+    if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
     setHovering(false);
-    setActiion(null);
+    setAction(null);
   }, []);
   const update = useCallback(() => {
     !hovering && setHovering(true);
     timeout.current && clearTimeout(timeout.current);
     timeout.current = setTimeout(clear, 3000);
+
+    return () => {
+      timeout.current && clearTimeout(timeout.current);
+    };
   }, [clear, hovering]);
+  const hoveringRef = useRef(false);
 
   return (
     <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
@@ -368,8 +374,11 @@ export function PointCloud({ sampleOverride: sample }) {
         />
         <axesHelper />
       </Canvas>
-      {hovering && (
-        <ActionBarContainer>
+      {(hoveringRef.current || hovering) && (
+        <ActionBarContainer
+          onMouseEnter={() => (hoveringRef.current = true)}
+          onMouseLeave={() => (hoveringRef.current = false)}
+        >
           <ActionsBar>
             <ChooseColorSpace />
             <SetViewButton

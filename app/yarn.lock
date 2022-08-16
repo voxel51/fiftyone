@@ -4491,7 +4491,7 @@ __metadata:
     "@babel/preset-typescript": ^7.9.0
     "@babel/register": ^7.9.0
     cross-env: ^7.0.3
-    electron: ^18.2.3
+    electron: 18.2.3
     electron-builder: ^23.0.3
     electron-devtools-installer: ^3.2.0
     typescript: ^4.7.4
@@ -6372,7 +6372,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^18.2.3":
+"electron@npm:18.2.3":
   version: 18.2.3
   resolution: "electron@npm:18.2.3"
   dependencies:

@@ -1,6 +1,6 @@
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
-import React, { useRef } from "react";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { SampleBar } from "./Bars";
 import { modal, useClearModal } from "@fiftyone/state";
 import Looker from "./Looker";
@@ -21,14 +21,37 @@ const Sample: React.FC = () => {
   } = data;
   const clearModal = useClearModal();
 
-  const options = fos.useLookerOptions(true);
+  const [hovering, setHovering] = useState(false);
+
+  const timeout: MutableRefObject<number | null> = useRef<number>(null);
+  const clear = useCallback(() => {
+    if (hoveringRef.current) return;
+    timeout.current && clearTimeout(timeout.current);
+    setHovering(false);
+  }, []);
+  const update = useCallback(() => {
+    !hovering && setHovering(true);
+    timeout.current && clearTimeout(timeout.current);
+    timeout.current = setTimeout(clear, 3000);
+
+    return () => {
+      timeout.current && clearTimeout(timeout.current);
+    };
+  }, [clear, hovering]);
+  const hoveringRef = useRef(false);
 
   return (
-    <>
+    <div
+      style={{ width: "100%", height: "100%", position: "relative" }}
+      onMouseEnter={update}
+      onMouseMove={update}
+      onMouseLeave={clear}
+    >
       <SampleBar
         sampleId={_id}
         lookerRef={lookerRef}
-        visible={options.showControls}
+        visible={hovering}
+        hoveringRef={hoveringRef}
       />
       <Looker
         key={_id}
@@ -41,7 +64,7 @@ const Sample: React.FC = () => {
             : undefined
         }
       />
-    </>
+    </div>
   );
 };
 

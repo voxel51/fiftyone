@@ -10,6 +10,7 @@ import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import {
   groupField,
+  groupId,
   hasPinnedSlice,
   modal,
   pinnedSlice,
@@ -53,6 +54,7 @@ const GroupSample: React.FC<
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
   const clear = useCallback(() => {
+    if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
     setHovering(false);
   }, []);
@@ -60,7 +62,12 @@ const GroupSample: React.FC<
     !hovering && setHovering(true);
     timeout.current && clearTimeout(timeout.current);
     timeout.current = setTimeout(clear, 3000);
+
+    return () => {
+      timeout.current && clearTimeout(timeout.current);
+    };
   }, [clear, hovering]);
+  const hoveringRef = useRef(false);
   return (
     <div
       className={
@@ -73,7 +80,12 @@ const GroupSample: React.FC<
     >
       {children}
       {hovering && (
-        <GroupSampleBar sampleId={sampleId} pinned={pinned} slice={slice} />
+        <GroupSampleBar
+          hoveringRef={hoveringRef}
+          sampleId={sampleId}
+          pinned={pinned}
+          slice={slice}
+        />
       )}
     </div>
   );
@@ -150,7 +162,11 @@ const withVisualizerPlugin = <
     const PluginComponent = pluginIsActive && plugin.component;
 
     return pluginIsActive ? (
-      <PluginComponent api={pluginAPI} sampleOverride={sample.sample} />
+      <PluginComponent
+        key={sample.sample._id}
+        api={pluginAPI}
+        sampleOverride={sample.sample}
+      />
     ) : (
       <Component {...props} />
     );
@@ -194,6 +210,7 @@ const DualView: React.FC = () => {
   const theme = useTheme();
 
   const [width, setWidth] = React.useState(1000);
+  const key = useRecoilValue(groupId);
 
   return (
     <div className={groupContainer}>
@@ -224,7 +241,7 @@ const DualView: React.FC = () => {
             flexDirection: "column",
           }}
         >
-          <GroupList />
+          <GroupList key={key} />
 
           <MainSample lookerRef={lookerRef} />
         </Resizable>
@@ -239,6 +256,7 @@ const DualView: React.FC = () => {
 
 const Group: React.FC = () => {
   const hasPinned = useRecoilValue(hasPinnedSlice);
+  const key = useRecoilValue(groupId);
 
   return (
     <>
@@ -248,7 +266,7 @@ const Group: React.FC = () => {
         </Suspense>
       ) : (
         <>
-          <GroupList /> <Sample />
+          <GroupList key={key} /> <Sample />
         </>
       )}
     </>

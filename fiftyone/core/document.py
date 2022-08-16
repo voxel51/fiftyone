@@ -113,7 +113,7 @@ class _Document(object):
 
     @property
     def field_names(self):
-        """An ordered tuple of the names of the fields of this document."""
+        """An ordered tuple of the public field names of this document."""
         return self._doc.field_names
 
     @property
@@ -213,8 +213,8 @@ class _Document(object):
         self._doc.clear_field(field_name)
 
     def iter_fields(self, include_id=False):
-        """Returns an iterator over the ``(name, value)`` pairs of the fields
-        of the document.
+        """Returns an iterator over the ``(name, value)`` pairs of the public
+        fields of the document.
 
         Args:
             include_id (False): whether to include the ``id`` field
@@ -308,22 +308,11 @@ class _Document(object):
                 field_type = type(curr_value)
 
                 if issubclass(field_type, list):
-                    if value is not None:
-                        curr_value.extend(
-                            v for v in value if v not in curr_value
-                        )
-
+                    _merge_lists(curr_value, value, overwrite=overwrite)
                     continue
 
                 if field_type in fol._LABEL_LIST_FIELDS:
-                    if value is not None:
-                        list_field = field_type._LABEL_LIST_FIELD
-                        _merge_labels(
-                            curr_value[list_field],
-                            value[list_field],
-                            overwrite=overwrite,
-                        )
-
+                    _merge_labels(curr_value, value, overwrite=overwrite)
                     continue
 
             if (
@@ -774,7 +763,23 @@ class DocumentView(_Document):
             self._DOCUMENT_CLS._reload_instance(self)
 
 
-def _merge_labels(labels, new_labels, overwrite=True):
+def _merge_lists(dst, src, overwrite=True):
+    if src is None:
+        return
+
+    dst.extend(v for v in src if v not in dst)
+
+
+def _merge_labels(dst, src, overwrite=True):
+    if src is None:
+        return
+
+    label_type = type(dst)
+    list_field = label_type._LABEL_LIST_FIELD
+
+    labels = dst[list_field]
+    new_labels = src[list_field]
+
     if overwrite:
         existing_ids = {l.id: idx for idx, l in enumerate(labels)}
         for l in new_labels:

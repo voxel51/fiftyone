@@ -49,6 +49,8 @@ def get_view(
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
+            elif view.media_type == fom.GROUP:
+                view.group_slice = view.default_group_slice
 
             if sample_filter.group.id:
                 view = get_group(view, sample_filter.group.id)

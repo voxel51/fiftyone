@@ -79,12 +79,16 @@ async def paginate_samples(
     )
 
     media = view.media_type
+    has_video_slice = False
     if media == fom.GROUP:
         media = view.group_media_types[view.group_slice]
+        has_video_slice = any(
+            [slice == fom.VIDEO for slice in view.group_media_types.values()]
+        )
 
     media_type = MEDIA_TYPES[media]
 
-    if media_type == fom.VIDEO:
+    if media == fom.VIDEO or has_video_slice:
         if isinstance(view, focl.ClipsView):
             expr = F("frame_number") == F("$support")[0]
         else:

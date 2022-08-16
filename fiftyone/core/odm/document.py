@@ -35,6 +35,11 @@ class SerializableDocument(object):
 
         return self.to_dict() == other.to_dict()
 
+    @property
+    def field_names(self):
+        """An ordered tuple of the public fields of this document."""
+        raise NotImplementedError("Subclass must implement `field_names`")
+
     def fancy_repr(
         self,
         class_name=None,
@@ -124,6 +129,16 @@ class SerializableDocument(object):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
+    def iter_fields(self):
+        """Returns an iterator over the ``(name, value)`` pairs of the
+        public fields of the document.
+
+        Returns:
+            an iterator that emits ``(name, value)`` tuples
+        """
+        for field_name in self.field_names:
+            yield field_name, self.get_field(field_name)
+
     def _get_field_names(self, include_private=False, use_db_fields=False):
         """Returns an ordered tuple of field names of this document.
 
@@ -152,6 +167,58 @@ class SerializableDocument(object):
             a :class:`SerializableDocument`
         """
         return deepcopy(self)
+
+    def merge(self, doc, merge_lists=True, merge_dicts=True, overwrite=True):
+        """Merges the contents of the given document into this document.
+
+        Args:
+            doc: a :class:`SerializableDocument` of same type as this document
+            merge_lists (True): whether to merge the elements of top-level list
+                fields rather than treating the list as a single value
+            merge_dicts (True): whether to recursively merge the contents of
+                top-level dict fields rather than treating the dict as a single
+                value
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields
+        """
+        if not isinstance(doc, type(self)):
+            raise ValueError(
+                "Cannot merge %s into %s" % (type(doc), type(self))
+            )
+
+        if not overwrite:
+            existing_field_names = set(self.field_names)
+
+        for field, value in doc.iter_fields():
+            try:
+                curr_value = self.get_field(field)
+            except AttributeError:
+                curr_value = None
+
+            if (
+                merge_lists
+                and isinstance(curr_value, list)
+                and isinstance(value, list)
+            ):
+                _merge_lists(curr_value, value, overwrite=overwrite)
+                continue
+
+            if (
+                merge_dicts
+                and isinstance(curr_value, dict)
+                and isinstance(value, dict)
+            ):
+                _merge_dicts(curr_value, value, overwrite=overwrite)
+                continue
+
+            if (
+                not overwrite
+                and field in existing_field_names
+                and curr_value is not None
+            ):
+                continue
+
+            self.set_field(field, value, create=True)
 
     def to_dict(self, extended=False):
         """Serializes this document to a BSON/JSON dictionary.
@@ -225,6 +292,10 @@ class MongoEngineBaseDocument(SerializableDocument):
             if f not in ("_cls", "_id", "id")
         }
         return self.__class__(**kwargs)
+
+    @property
+    def field_names(self):
+        return self._get_field_names(include_private=False)
 
     def has_field(self, field_name):
         # pylint: disable=no-member
@@ -571,3 +642,19 @@ class Document(BaseDocument, mongoengine.Document):
             updated_existing = None
 
         return updated_existing
+
+
+def _merge_lists(dst, src, overwrite=False):
+    dst.extend(v for v in src if v not in dst)
+
+
+def _merge_dicts(dst, src, overwrite=False):
+    for k, v in src.items():
+        if k not in dst:
+            dst[k] = v
+        else:
+            c = dst[k]
+            if isinstance(c, dict) and isinstance(v, dict):
+                _merge_dicts(c, v, overwrite=overwrite)
+            elif overwrite or dst.get(k, None) is None:
+                dst[k] = v
