@@ -204,7 +204,7 @@ function Polyline({
   return lines;
 }
 
-function CameraSetup({ cameraRef, settings }) {
+function CameraSetup({ cameraRef, controlsRef, settings }) {
   const camera = useThree((state) => state.camera);
 
   React.useLayoutEffect(() => {
@@ -221,7 +221,14 @@ function CameraSetup({ cameraRef, settings }) {
     camera.updateProjectionMatrix();
     cameraRef.current = camera;
   }, [camera]);
-  return <OrbitControls makeDefault autoRotateSpeed={2.5} zoomSpeed={0.5} />;
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      autoRotateSpeed={2.5}
+      zoomSpeed={0.5}
+    />
+  );
 }
 
 export function getFilepathField(sample, fields) {
@@ -262,6 +269,7 @@ export function PointCloud({ sampleOverride: sample }) {
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
   const cameraRef = React.useRef();
+  const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
   const [pointCloudBounds, setPointCloudBounds] = React.useState();
 
@@ -281,7 +289,11 @@ export function PointCloud({ sampleOverride: sample }) {
 
   function onChangeView(view) {
     const camera = cameraRef.current as any;
+    const controls = controlsRef.current as any;
     if (camera) {
+      if (controls) {
+        controls.target.set(0, 0, 0);
+      }
       switch (view) {
         case "top":
           if (settings.defaultCameraPosition) {
@@ -301,6 +313,7 @@ export function PointCloud({ sampleOverride: sample }) {
           camera.position.set(0, -10, 1);
           break;
       }
+      controls.update();
       camera.updateProjectionMatrix();
     }
   }
@@ -338,7 +351,11 @@ export function PointCloud({ sampleOverride: sample }) {
   return (
     <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas>
-        <CameraSetup cameraRef={cameraRef} settings={settings} />
+        <CameraSetup
+          controlsRef={controlsRef}
+          cameraRef={cameraRef}
+          settings={settings}
+        />
         <mesh rotation={overlayRotation}>
           {overlays
             .filter((o) => o._cls === "Detection")
