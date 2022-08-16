@@ -231,8 +231,9 @@ Custom App config
 
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
-you can use to store dataset-specific settings that customize how the dataset
-is visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+contains a |DatasetAppConfig| you can use to store dataset-specific settings
+that customize how the dataset is visualized in the
+:ref:`FiftyOne App <fiftyone-app>`.
 
 .. code-block:: python
     :linenos:
