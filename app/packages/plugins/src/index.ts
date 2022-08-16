@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useEffect, useState } from "react";
+import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { getFetchFunction } from "@fiftyone/utilities";
 import * as recoil from "recoil";
@@ -119,12 +119,16 @@ export function usePlugin(
 }
 
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  return usePlugin(type).filter((p) => {
-    if (typeof p.activator === "function") {
-      return p.activator(ctx);
-    }
-    return false;
-  });
+  return useMemo(
+    () =>
+      usePlugin(type).filter((p) => {
+        if (typeof p.activator === "function") {
+          return p.activator(ctx);
+        }
+        return false;
+      }),
+    [ctx]
+  );
 }
 
 export enum PluginComponentType {

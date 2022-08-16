@@ -1,15 +1,10 @@
 import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
-import { State } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
 import Map from "./Map";
 
 export { default as Map } from "./Map";
 
-registerComponent<{
-  dataset: State.Dataset;
-  filters: State.Filters;
-  view: State.Stage[];
-}>({
+registerComponent({
   name: "Map",
   label: "Map",
   component: Map,

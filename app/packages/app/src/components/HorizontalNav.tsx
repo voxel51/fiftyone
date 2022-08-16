@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { capitalize } from "@material-ui/core";
 import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import {
-  DefaultValue,
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-} from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { PillButton } from "./utils";
@@ -14,10 +9,8 @@ import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
-import { Map } from "@fiftyone/map";
 
 import * as fos from "@fiftyone/state";
-import { fieldSchema, fullSchema, State } from "@fiftyone/state";
 
 export type Props = {};
 
@@ -107,7 +100,7 @@ const HorizontalNav = ({}: Props) => {
   const elementNames = useRecoilValue(fos.elementNames);
 
   const schema = useRecoilValue(
-    fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE, filtered: true })
   );
   const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
   const pluginPlotLabels = pluginPlots.map((p) => p.label);
@@ -189,6 +182,7 @@ const HorizontalNav = ({}: Props) => {
           onResizeStop={(e, direction, ref, d) => {
             setOpenedHeight(height + d.height);
           }}
+          key={"EHHE"}
         >
           <ActivePlot
             key={activePlot}
@@ -217,12 +211,7 @@ function ActivePlot({
 
   if (isDistPlot) return <Distributions key={active} group={active} />;
   if (plugin) {
-    const pluginProps = {
-      dataset: useRecoilValue(fos.dataset),
-      view: useRecoilValue(fos.view),
-      filters: useRecoilValue(fos.filters),
-    };
-    return <plugin.component {...pluginProps} />;
+    return <plugin.component key={active} />;
   }
 
   return null;
