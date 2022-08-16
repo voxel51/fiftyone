@@ -40,7 +40,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm.dataset import DatasetAppConfigDocument
+from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -247,11 +247,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         self._doc = doc
-        if self._doc.app_config == None:
-            self._doc.app_config = DatasetAppConfigDocument(
-                grid_media_field="filepath", media_fields=["filepath"]
-            )
-
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
@@ -390,14 +385,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # The `metadata` field of group datasets always stays as the
             # generic `Metadata` type because slices may have different types
             self._doc.save()
-
-    @property
-    def app_config(self):
-        return self._doc.app_config
-
-    @app_config.setter
-    def app_config(self, config):
-        self._doc.app_config = config
 
     def _update_metadata_field(self, media_type):
         idx = None
@@ -677,6 +664,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def info(self, info):
         self._doc.info = info
         self._doc.save()
+
+    @property
+    def app_config(self):
+        """Dataset-specific settings that customize how this dataset is
+        visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # View the dataset's current App config
+            print(dataset.app_config)
+
+            # Store some dataset-specific settings
+            dataset.app_config.plugins["map"] = {"clustering": False}
+            dataset.save()  # must save after edits
+        """
+        return self._doc.app_config
+
+    @app_config.setter
+    def app_config(self, config):
+        self._doc.app_config = config
 
     @property
     def classes(self):
@@ -5450,6 +5461,7 @@ def _create_dataset(
         persistent=persistent,
         sample_fields=sample_fields,
         frame_fields=frame_fields,
+        app_config=DatasetAppConfig.default(),
     )
     dataset_doc.save()
 
@@ -5627,6 +5639,9 @@ def _load_dataset(name, virtual=False):
                 SampleFieldDocument.from_field(f)
                 for f in frame_doc_cls._fields.values()
             ]
+
+    if dataset_doc.app_config is None:
+        dataset_doc.app_config = DatasetAppConfig.default()
 
     dataset_doc.save()
 

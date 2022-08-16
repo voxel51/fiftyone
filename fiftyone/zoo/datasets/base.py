@@ -2197,6 +2197,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
     def supported_splits(self):
         return ("train", "test")
 
+    @property
+    def supports_partial_downloads(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -2655,7 +2659,7 @@ class QuickstartGroupsDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        516.5 MB
+        516.3 MB
     """
 
     _GDRIVE_ID = "1df8JucJwjHTkl3MgOJdH477vcv4McNCa"

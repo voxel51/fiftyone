@@ -312,7 +312,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
 
 class SidebarGroupDocument(EmbeddedDocument):
-    """Description of a Sidebar Group in the App."""
+    """Description of a sidebar group in the App."""
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
@@ -360,11 +360,21 @@ class KeypointSkeleton(EmbeddedDocument):
     edges = ListField(ListField(IntField()))
 
 
-class DatasetAppConfigDocument(EmbeddedDocument):
+class DatasetAppConfig(EmbeddedDocument):
+    """Dataset-specific settings that customize how a dataset is visualized in
+    the App.
+    """
 
     grid_media_field = StringField()
     media_fields = ListField(StringField())
     plugins = DictField()
+
+    def is_custom(self):
+        return self != self.default()
+
+    @classmethod
+    def default(cls):
+        return cls(grid_media_field="filepath", media_fields=["filepath"])
 
 
 class DatasetDocument(Document):
@@ -405,4 +415,4 @@ class DatasetDocument(Document):
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
-    app_config = EmbeddedDocumentField(document_type=DatasetAppConfigDocument)
+    app_config = EmbeddedDocumentField(document_type=DatasetAppConfig)
