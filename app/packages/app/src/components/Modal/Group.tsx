@@ -162,7 +162,11 @@ const withVisualizerPlugin = <
     const PluginComponent = pluginIsActive && plugin.component;
 
     return pluginIsActive ? (
-      <PluginComponent api={pluginAPI} sampleOverride={sample.sample} />
+      <PluginComponent
+        key={sample.sample._id}
+        api={pluginAPI}
+        sampleOverride={sample.sample}
+      />
     ) : (
       <Component {...props} />
     );
