@@ -1010,9 +1010,15 @@ class DatasetView(foc.SampleCollection):
 
         # Insert frame lookup pipeline if needed
         if _attach_frames_idx is not None:
+            attach_frames = True
+
+            # @todo use this optimization
+            # There's an issue with poster frame lookups for videos in the App
+            """
             attach_frames = None  # special syntax: frames already attached
             _pipeline = self._dataset._attach_frames_pipeline()
             _pipelines.insert(_attach_frames_idx, _pipeline)
+            """
 
         # Insert group lookup pipline if needed
         if _attach_groups_idx is not None:
