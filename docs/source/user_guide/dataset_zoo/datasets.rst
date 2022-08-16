@@ -3077,7 +3077,7 @@ annotation data.
 **Details**
 
 -   Dataset name: ``quickstart-groups``
--   Dataset size: 516.5 MB
+-   Dataset size: 516.3 MB
 -   Tags: ``image, point-cloud, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
