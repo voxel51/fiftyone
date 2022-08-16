@@ -9,11 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  PreloadedQuery,
-  usePaginationFragment,
-  usePreloadedQuery,
-} from "react-relay";
+import { usePaginationFragment } from "react-relay";
 import {
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
@@ -25,7 +21,7 @@ import { v4 as uuid } from "uuid";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import { groupPaginationFragment, groupQuery } from "@fiftyone/state";
+import { groupPaginationFragment } from "@fiftyone/state";
 
 const process = (
   next: MutableRefObject<number>,
@@ -33,30 +29,43 @@ const process = (
   zoom: boolean,
   edges: foq.paginateGroup_query$data["samples"]["edges"]
 ) =>
-  edges.map(({ node }) => {
-    if (node.__typename === "%other") {
-      throw new Error("invalid response");
+  edges.reduce((acc, { node }) => {
+    if (
+      node.__typename === "ImageSample" ||
+      node.__typename === "VideoSample"
+    ) {
+      let data: any = {
+        sample: node.sample,
+        dimensions: [node.width, node.height],
+      };
+
+      if (node.__typename === "VideoSample") {
+        data = {
+          ...data,
+          frameRate: node.frameRate,
+          frameNumber: node.sample.frame_number,
+        };
+      }
+
+      store.samples.set(node.sample._id, data);
+      store.indices.set(next.current, node.sample._id);
+      next.current++;
+
+      const aspectRatio = node.width / node.height;
+
+      return [
+        ...acc,
+        {
+          aspectRatio: zoom
+            ? zoomAspectRatio(node.sample as any, aspectRatio)
+            : aspectRatio,
+          id: (node.sample as any)._id as string,
+        },
+      ];
     }
-    const data = {
-      sample: node.sample,
-      dimensions: [node.width, node.height],
-      frameRate: node.frameRate,
-      frameNumber: node.sample.frame_number,
-    };
 
-    store.samples.set(node.sample._id, data);
-    store.indices.set(next.current, node.sample._id);
-    next.current++;
-
-    const aspectRatio = node.width / node.height;
-
-    return {
-      aspectRatio: zoom
-        ? zoomAspectRatio(node.sample as any, aspectRatio)
-        : aspectRatio,
-      id: (node.sample as any)._id as string,
-    };
-  });
+    return acc;
+  }, []);
 
 const Column: React.FC = () => {
   const [id] = useState(() => uuid());

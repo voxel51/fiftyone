@@ -89,6 +89,13 @@ export const groupField = selector<string>({
   get: ({ get }) => get(dataset).groupField,
 });
 
+export const groupId = selector<string>({
+  key: "groupId",
+  get: ({ get }) => {
+    return get(modalAtom).sample[get(groupField)]._id;
+  },
+});
+
 export const groupQuery = graphQLSelector<
   VariablesOf<paginateGroupQuery>,
   ResponseFrom<paginateGroupQuery>

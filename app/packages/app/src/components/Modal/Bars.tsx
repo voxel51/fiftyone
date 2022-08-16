@@ -1,14 +1,9 @@
 import { Bar, useTheme } from "@fiftyone/components";
 import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  defaultGroupSlice,
-  hasPinnedSlice,
-  pinnedSlice,
-  sidebarOverride,
-} from "@fiftyone/state";
+import { currentSlice, hasPinnedSlice } from "@fiftyone/state";
 import { Checkbox } from "@material-ui/core";
-import React, { useRef } from "react";
+import React, { MutableRefObject, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { ModalActionsRow } from "../Actions";
 import Pin from "./Pin";
@@ -17,8 +12,9 @@ const SelectableBar: React.FC<
   React.PropsWithChildren<{
     sampleId: string;
     style?: Omit<React.CSSProperties, "cursor">;
+    hoveringRef?: MutableRefObject<boolean>;
   }>
-> = ({ sampleId, children, style = {} }) => {
+> = ({ hoveringRef, sampleId, children, style = {} }) => {
   const headerRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const select = fos.useSelectSample();
@@ -26,6 +22,8 @@ const SelectableBar: React.FC<
 
   return (
     <Bar
+      onMouseEnter={() => hoveringRef && (hoveringRef.current = true)}
+      onMouseLeave={() => hoveringRef && (hoveringRef.current = false)}
       ref={headerRef}
       onClick={(event) =>
         event.target === headerRef.current && select(sampleId)
@@ -50,9 +48,10 @@ export const SampleBar: React.FC<{
   sampleId: string;
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
   visible?: boolean;
-}> = ({ lookerRef, sampleId, visible }) => {
+  hoveringRef: MutableRefObject<boolean>;
+}> = ({ hoveringRef, lookerRef, sampleId, visible }) => {
   return visible ? (
-    <SelectableBar sampleId={sampleId}>
+    <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
       <ModalActionsRow lookerRef={lookerRef} />
     </SelectableBar>
   ) : null;
@@ -61,9 +60,7 @@ export const SampleBar: React.FC<{
 export const GroupBar: React.FC<{
   lookerRef: React.MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
-  const overrideSlice = useRecoilValue(pinnedSlice);
-  const override = useRecoilValue(sidebarOverride);
-  const defaultSlice = useRecoilValue(defaultGroupSlice);
+  const slice = useRecoilValue(currentSlice(true));
   const hasPinned = useRecoilValue(hasPinnedSlice);
   return (
     <Bar
@@ -87,7 +84,7 @@ export const GroupBar: React.FC<{
             }}
           >
             <Pin />
-            {override ? overrideSlice : defaultSlice} is pinned
+            {slice} is pinned
           </div>
         )}
       </div>
@@ -100,9 +97,10 @@ export const GroupSampleBar: React.FC<{
   pinned: boolean;
   sampleId: string;
   slice: string;
-}> = ({ pinned, sampleId, slice }) => {
+  hoveringRef: MutableRefObject<boolean>;
+}> = ({ hoveringRef, pinned, sampleId, slice }) => {
   return (
-    <SelectableBar sampleId={sampleId}>
+    <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
       {pinned && (
         <div
           style={{

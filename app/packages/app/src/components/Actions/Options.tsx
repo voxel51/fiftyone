@@ -77,12 +77,12 @@ const Keypoints = ({ modal }) => {
     <>
       <Checkbox
         name={"Multicolor keypoints"}
-        value={points}
+        value={Boolean(points)}
         setValue={(value) => setPoints(value)}
       />
       <Checkbox
         name={"Show keypoint skeletons"}
-        value={shown}
+        value={Boolean(shown)}
         setValue={(value) => setShown(value)}
       />
     </>
@@ -158,16 +158,6 @@ const ImageFilter = ({ modal, filter }: { modal: boolean; filter: string }) => {
   );
 };
 
-const ImageFilters = ({ modal }) => {
-  return (
-    <>
-      {Object.keys(fos.IMAGE_FILTERS).map((filter) => (
-        <ImageFilter modal={modal} filter={filter} key={filter} />
-      ))}
-    </>
-  );
-};
-
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     fos.sortFilterResults(modal)
@@ -221,15 +211,15 @@ const Patches = ({ modal }) => {
 };
 
 const MediaFields = ({ modal }) => {
-  const dataset = useRecoilValue(atoms.dataset)
-  const {gridMediaField} = dataset.appConfig
+  const dataset = useRecoilValue(fos.dataset);
+  const { gridMediaField } = dataset.appConfig;
   const [selectedField, setSelectedField] =
-    useRecoilState<State.MediaFieldSelection>(atoms.selectedMediaField);
-  const { appConfig } = useRecoilValue(atoms.dataset);
+    useRecoilState<fos.State.MediaFieldSelection>(fos.selectedMediaField);
+  const { appConfig } = useRecoilValue(fos.dataset);
   const selectedFieldName = modal
     ? selectedField.modal || selectedField.grid
     : selectedField.grid || gridMediaField;
-    
+
   const fields = appConfig?.mediaFields || [];
 
   if (fields.length <= 1) return null;
@@ -239,9 +229,9 @@ const MediaFields = ({ modal }) => {
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
 
       <TabOption
-        active={selectedFieldName || 'filepath'}
+        active={selectedFieldName || "filepath"}
         rows={true}
-        options={fields.map((value: Field) => {
+        options={fields.map((value) => {
           return {
             text: value,
             title: `View Media with "${selectedFieldName}"`,
