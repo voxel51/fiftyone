@@ -31,9 +31,16 @@ THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
 const deg2rad = (degrees) => degrees * (Math.PI / 180);
 
-function PointCloudMesh({ minZ, colorBy, points, rotation }) {
+function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
+  const colorMinMaxRef = React.useRef();
   const geo = points.geometry;
   geo.computeBoundingBox();
+  React.useEffect(() => {
+    onLoad(geo);
+    const colorAttribute = geo.getAttribute("color");
+    colorMinMaxRef.current =
+      computeMinMaxForColorBufferAttribute(colorAttribute);
+  }, [geo, points]);
   const gradients = [
     [0.0, "rgb(165,0,38)"],
     [0.111, "rgb(215,48,39)"],
@@ -66,7 +73,10 @@ function PointCloudMesh({ minZ, colorBy, points, rotation }) {
       );
       break;
     case "intensity":
-      material = <ShadeByIntensity gradients={gradients} />;
+      if (colorMinMaxRef.current)
+        material = (
+          <ShadeByIntensity {...colorMinMaxRef.current} gradients={gradients} />
+        );
       break;
   }
 
@@ -194,7 +204,7 @@ function Polyline({
   return lines;
 }
 
-function CameraSetup({ cameraRef, settings }) {
+function CameraSetup({ cameraRef, controlsRef, settings }) {
   const camera = useThree((state) => state.camera);
 
   React.useLayoutEffect(() => {
@@ -211,7 +221,14 @@ function CameraSetup({ cameraRef, settings }) {
     camera.updateProjectionMatrix();
     cameraRef.current = camera;
   }, [camera]);
-  return <OrbitControls makeDefault autoRotateSpeed={2.5} zoomSpeed={0.5} />;
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      autoRotateSpeed={2.5}
+      zoomSpeed={0.5}
+    />
+  );
 }
 
 export function getFilepathField(sample, fields) {
@@ -252,7 +269,9 @@ export function PointCloud({ sampleOverride: sample }) {
   const labelAlpha = recoil.useRecoilValue(fos.alpha(modal));
   const onSelectLabel = fos.useOnSelectLabel();
   const cameraRef = React.useRef();
+  const controlsRef = React.useRef();
   const getColor = recoil.useRecoilValue(fos.colorMap(true));
+  const [pointCloudBounds, setPointCloudBounds] = React.useState();
 
   const overlays = load3dOverlays(sample, selectedLabels)
     .map((l) => {
@@ -270,7 +289,11 @@ export function PointCloud({ sampleOverride: sample }) {
 
   function onChangeView(view) {
     const camera = cameraRef.current as any;
+    const controls = controlsRef.current as any;
     if (camera) {
+      if (controls) {
+        controls.target.set(0, 0, 0);
+      }
       switch (view) {
         case "top":
           if (settings.defaultCameraPosition) {
@@ -280,13 +303,17 @@ export function PointCloud({ sampleOverride: sample }) {
               settings.defaultCameraPosition.z
             );
           } else {
-            camera.position.set(0, 0, 20);
+            const maxZ = pointCloudBounds ? pointCloudBounds.max.z : null;
+            if (maxZ !== null) {
+              camera.position.set(0, 0, 20 * maxZ);
+            }
           }
           break;
         case "pov":
           camera.position.set(0, -10, 1);
           break;
       }
+      controls.update();
       camera.updateProjectionMatrix();
     }
   }
@@ -324,7 +351,11 @@ export function PointCloud({ sampleOverride: sample }) {
   return (
     <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
       <Canvas>
-        <CameraSetup cameraRef={cameraRef} settings={settings} />
+        <CameraSetup
+          controlsRef={controlsRef}
+          cameraRef={cameraRef}
+          settings={settings}
+        />
         <mesh rotation={overlayRotation}>
           {overlays
             .filter((o) => o._cls === "Detection")
@@ -354,6 +385,9 @@ export function PointCloud({ sampleOverride: sample }) {
           colorBy={colorBy}
           points={points}
           rotation={pcRotation}
+          onLoad={(geo) => {
+            setPointCloudBounds(geo.boundingBox);
+          }}
         />
         <axesHelper />
       </Canvas>
@@ -373,8 +407,8 @@ export function PointCloud({ sampleOverride: sample }) {
             <SetViewButton
               onChangeView={onChangeView}
               view={"pov"}
-              label={"P"}
-              hint="POV"
+              label={"E"}
+              hint="Ego View"
             />
           </ActionsBar>
         </ActionBarContainer>
@@ -472,7 +506,7 @@ const ViewButton = styled.div`
 function SetViewButton({ onChangeView, view, label, hint }) {
   return (
     <ActionItem onClick={() => onChangeView(view)}>
-      <ViewButton>{label}</ViewButton>
+      <ViewButton title={hint}>{label}</ViewButton>
     </ActionItem>
   );
 }
@@ -581,4 +615,16 @@ function toFlatVectorArray(listOfLists) {
     }
   }
   return vectors;
+}
+
+function computeMinMaxForColorBufferAttribute(colorAttribute) {
+  let minX = 0;
+  let maxX = 0;
+  for (let i = 0; i < colorAttribute.count; i++) {
+    const x = colorAttribute.getX(i);
+    minX = Math.min(x, minX);
+    maxX = Math.max(x, maxX);
+  }
+
+  return { min: minX, max: maxX };
 }

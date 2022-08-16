@@ -47,7 +47,7 @@ export function ShadeByZ({ gradients, minZ, maxZ }) {
     <shaderMaterial
       {...{
         uniforms: {
-          minZ: { value: minZ }, // geo.boundingBox.min.z
+          minZ: { value: minZ },
           maxZ: { value: maxZ },
           gradientMap: { value: gradientMap },
         },
@@ -113,15 +113,15 @@ var intensityFragment = `
     gl_FragColor = vec4(col, 1.);
   }
 `;
-export function ShadeByIntensity({ gradients }) {
+export function ShadeByIntensity({ min, max, gradients }) {
   const gradientMap = useGradientMap(gradients);
 
   return (
     <shaderMaterial
       {...{
         uniforms: {
-          min: { value: 0 }, // geo.boundingBox.min.z
-          max: { value: 1 },
+          min: { value: min }, // geo.boundingBox.min.z
+          max: { value: max },
           gradientMap: { value: gradientMap },
         },
         vertexShader: intensityVertex,
