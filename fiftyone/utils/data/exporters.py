@@ -1565,8 +1565,8 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         info = dict(sample_collection.info)
 
-        # Package classes and mask targets into `info`, since the import API
-        # only supports checking for `info`
+        # Package extras into `info`, since the import API only supports
+        # checking for `info`...
 
         if sample_collection.classes:
             info["classes"] = sample_collection.classes
@@ -1589,6 +1589,11 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info[
                 "default_skeleton"
             ] = sample_collection._serialize_default_skeleton()
+
+        if sample_collection.app_config.is_custom():
+            info["app_config"] = sample_collection.app_config.to_dict(
+                extended=True
+            )
 
         self._metadata["info"] = info
 

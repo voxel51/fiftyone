@@ -232,6 +232,14 @@ class DatasetView(foc.SampleCollection):
         self._root_dataset.info = info
 
     @property
+    def app_config(self):
+        return self._root_dataset.app_config
+
+    @app_config.setter
+    def app_config(self, config):
+        self._root_dataset.app_config = config
+
+    @property
     def classes(self):
         return self._root_dataset.classes
 

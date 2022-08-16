@@ -20,6 +20,8 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     therefore are not stored in their own collection in the database.
     """
 
+    pass
+
 
 class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
