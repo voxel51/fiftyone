@@ -390,8 +390,8 @@ export function PointCloud({ sampleOverride: sample }) {
             <SetViewButton
               onChangeView={onChangeView}
               view={"pov"}
-              label={"P"}
-              hint="POV"
+              label={"E"}
+              hint="Ego View"
             />
           </ActionsBar>
         </ActionBarContainer>
@@ -489,7 +489,7 @@ const ViewButton = styled.div`
 function SetViewButton({ onChangeView, view, label, hint }) {
   return (
     <ActionItem onClick={() => onChangeView(view)}>
-      <ViewButton>{label}</ViewButton>
+      <ViewButton title={hint}>{label}</ViewButton>
     </ActionItem>
   );
 }
