@@ -332,7 +332,8 @@ export function Looker3d({ sampleOverride: sample }) {
   const [hovering, setHovering] = useState(false);
   const setAction = recoil.useSetRecoilState(pcState.currentAction);
 
-  const timeout: MutableRefObject<number | null> = useRef<number>(null);
+  const timeout: MutableRefObject<NodeJS.Timeout | null> =
+    useRef<NodeJS.Timeout>(null);
   const clear = useCallback(() => {
     if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
@@ -352,7 +353,7 @@ export function Looker3d({ sampleOverride: sample }) {
 
   return (
     <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
-      <Canvas>
+      <Canvas onClick={() => clear()}>
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
@@ -524,7 +525,10 @@ function ChooseColorSpace() {
       <ActionItem>
         <ColorLensIcon
           onClick={(e) => {
-            setAction("colorBy");
+            const targetAction = "colorBy";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
             e.stopPropagation();
             e.preventDefault();
             return false;
