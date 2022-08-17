@@ -3,10 +3,8 @@ import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
-import { paginateGroupQuery } from "@fiftyone/relay";
-import { PreloadedQuery } from "react-relay";
 
-interface AppSample extends Sample {
+export interface AppSample extends Sample {
   _id: string;
   support?: [number, number];
 }

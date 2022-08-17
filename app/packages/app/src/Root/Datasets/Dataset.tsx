@@ -92,6 +92,11 @@ const Query = graphql`
       }
       version
       viewCls
+      appConfig {
+        mediaFields
+        gridMediaField
+        plugins
+      }
     }
   }
 `;

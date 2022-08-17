@@ -3,7 +3,9 @@ import { dataset } from "./atoms";
 
 const defaultMediaField = selector<string>({
   key: "defaultMediaField",
-  get: ({ get }) => get(dataset).appConfig.gridMediaField,
+  get: ({ get }) => {
+    return get(dataset)?.appConfig?.gridMediaField;
+  },
 });
 
 export const selectedMediaField = atomFamily<string, boolean>({
