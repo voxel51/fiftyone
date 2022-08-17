@@ -25,8 +25,9 @@ import { useRouter } from "@fiftyone/state";
 import { EventsContext } from "@fiftyone/state";
 import { getDatasetName } from "@fiftyone/state";
 
+// built in plugins
 import "@fiftyone/map";
-import "@fiftyone/point-clouds";
+import "@fiftyone/looker-3d";
 
 enum AppReadyState {
   CONNECTING = 0,

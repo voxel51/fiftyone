@@ -1,4 +1,4 @@
-import { PointCloud, getFilepathField } from "./PointCloud";
+import { Looker3d, getFilepathField } from "./Looker3d";
 import {
   registerComponent,
   PluginComponentType,
@@ -6,8 +6,8 @@ import {
 } from "@fiftyone/plugins";
 
 registerComponent({
-  name: "PointCloud",
-  component: PointCloud,
+  name: "Looker3d",
+  component: Looker3d,
   type: PluginComponentType.Visualizer,
   activator: ({ sample, pinned }) => {
     if (!sample) return false;

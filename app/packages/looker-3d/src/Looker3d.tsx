@@ -38,8 +38,12 @@ function PointCloudMesh({ minZ, colorBy, points, rotation, onLoad }) {
   React.useEffect(() => {
     onLoad(geo);
     const colorAttribute = geo.getAttribute("color");
-    colorMinMaxRef.current =
-      computeMinMaxForColorBufferAttribute(colorAttribute);
+    if (colorAttribute) {
+      colorMinMaxRef.current =
+        computeMinMaxForColorBufferAttribute(colorAttribute);
+    } else {
+      colorMinMaxRef.current = { min: 0, max: 1 };
+    }
   }, [geo, points]);
   const gradients = [
     [0.0, "rgb(165,0,38)"],
@@ -254,7 +258,7 @@ export const usePathFilter = (): Partial => {
   return fn.current;
 };
 
-export function PointCloud({ sampleOverride: sample }) {
+export function Looker3d({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
@@ -328,7 +332,8 @@ export function PointCloud({ sampleOverride: sample }) {
   const [hovering, setHovering] = useState(false);
   const setAction = recoil.useSetRecoilState(pcState.currentAction);
 
-  const timeout: MutableRefObject<number | null> = useRef<number>(null);
+  const timeout: MutableRefObject<NodeJS.Timeout | null> =
+    useRef<NodeJS.Timeout>(null);
   const clear = useCallback(() => {
     if (hoveringRef.current) return;
     timeout.current && clearTimeout(timeout.current);
@@ -348,7 +353,7 @@ export function PointCloud({ sampleOverride: sample }) {
 
   return (
     <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
-      <Canvas>
+      <Canvas onClick={() => clear()}>
         <CameraSetup
           controlsRef={controlsRef}
           cameraRef={cameraRef}
@@ -520,7 +525,10 @@ function ChooseColorSpace() {
       <ActionItem>
         <ColorLensIcon
           onClick={(e) => {
-            setAction("colorBy");
+            const targetAction = "colorBy";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
             e.stopPropagation();
             e.preventDefault();
             return false;

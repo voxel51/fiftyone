@@ -51,7 +51,7 @@ Below is an example `settings.json` file.
 
 ```json
 {
-  "point-clouds": {
+  "3d": {
     "enabled": true,
     "defaultCameraPosition": { "x": 0, "y": 0, "z": 20 }
   }
