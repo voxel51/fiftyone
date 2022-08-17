@@ -1,5 +1,5 @@
 {
-    "name": "@fiftyone/point-clouds",
+    "name": "@fiftyone/looker-3d",
     "version": "0.0.0",
     "scripts": {
         "dev": "vite",
@@ -10,7 +10,7 @@
     "files": [
         "dist"
     ],
-    "main": "src/PointCloudPlugin.tsx",
+    "main": "src/Looker3dPlugin.tsx",
     "dependencies": {
         "@emotion/react": "^11.9.3",
         "@emotion/styled": "^11.9.3",

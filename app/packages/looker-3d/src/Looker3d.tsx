@@ -258,7 +258,7 @@ export const usePathFilter = (): Partial => {
   return fn.current;
 };
 
-export function PointCloud({ sampleOverride: sample }) {
+export function Looker3d({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
