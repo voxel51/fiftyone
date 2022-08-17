@@ -1,5 +1,6 @@
 import { useRelayEnvironment } from "react-relay";
 import { RecoilState, useRecoilCallback } from "recoil";
+import { selectedMediaField } from "../recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
@@ -41,6 +42,7 @@ export default () => {
             sidebarAtoms.sidebarVisible(false),
           ],
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
+          [selectedMediaField(true), selectedMediaField(false)],
         ];
 
         const results = await Promise.all(

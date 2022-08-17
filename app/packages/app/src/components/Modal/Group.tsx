@@ -211,6 +211,7 @@ const DualView: React.FC = () => {
 
   const [width, setWidth] = React.useState(1000);
   const key = useRecoilValue(groupId);
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   return (
     <div className={groupContainer}>
@@ -241,7 +242,7 @@ const DualView: React.FC = () => {
             flexDirection: "column",
           }}
         >
-          <GroupList key={key} />
+          <GroupList key={`${key}-${mediaField}`} />
 
           <MainSample lookerRef={lookerRef} />
         </Resizable>

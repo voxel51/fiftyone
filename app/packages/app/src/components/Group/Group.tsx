@@ -18,7 +18,7 @@ import {
 import { useErrorHandler } from "react-error-boundary";
 import { v4 as uuid } from "uuid";
 
-import { zoomAspectRatio } from "@fiftyone/looker";
+import { freeVideos, zoomAspectRatio } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
 import { groupPaginationFragment } from "@fiftyone/state";
@@ -87,6 +87,7 @@ const Column: React.FC = () => {
   const opts = fos.useLookerOptions(true);
   const groupField = useRecoilValue(fos.groupField);
   const createLooker = fos.useCreateLooker(
+    true,
     true,
     { ...opts, thumbnailTitle: (sample) => sample[groupField].name },
     true
@@ -179,6 +180,16 @@ const Column: React.FC = () => {
 
     return flashlight;
   });
+
+  useLayoutEffect(() => {
+    if (!flashlight.isAttached()) {
+      return;
+    }
+
+    flashlight.reset();
+
+    freeVideos();
+  }, [useRecoilValue(fos.selectedMediaField(true))]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);

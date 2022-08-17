@@ -7,6 +7,7 @@ import {
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
+import { selectedMediaField } from "../recoil";
 
 import { selectedSamples, SampleData, modal } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
@@ -16,6 +17,7 @@ import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 
 export default <T extends FrameLooker | ImageLooker | VideoLooker>(
+  isModal: boolean,
   thumbnail: boolean,
   options: Omit<ReturnType<T["getDefaultOptions"]>, "selected">,
   highlight: boolean = false
@@ -28,6 +30,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
   const activeId = useRecoilValue(modal)?.sample._id;
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
+  const mediaField = useRecoilValue(selectedMediaField(isModal));
 
   const fieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE, filtered: true })
@@ -67,7 +70,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
         frameNumber: constructor === FrameLooker ? frameNumber : undefined,
         frameRate,
         sampleId: sample._id,
-        src: getSampleSrc(sample.filepath, sample._id, url),
+        src: getSampleSrc(sample[mediaField], sample._id, url),
         support: isClip ? sample.support : undefined,
         thumbnail,
         dataset,
@@ -86,7 +89,7 @@ export default <T extends FrameLooker | ImageLooker | VideoLooker>(
 
       return looker;
     },
-    [isClip, isFrame, isPatch, options, thumbnail, activeId]
+    [isClip, isFrame, isPatch, options, thumbnail, activeId, mediaField]
   );
   const createLookerRef = useRef<(data: SampleData) => T>(create);
 

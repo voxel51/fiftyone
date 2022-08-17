@@ -199,11 +199,6 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const selectedMediaField = atom<State.MediaFieldSelection>({
-  key: "selectedMediaField",
-  default: { grid: null, modal: null },
-});
-
 export const sidebarOverride = atom<string>({
   key: "sidebarOverride",
   default: null,

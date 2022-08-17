@@ -350,3 +350,10 @@ export const extendedStages = selector({
     };
   },
 });
+
+export const mediaFields = selector<string[]>({
+  key: "string",
+  get: ({ get }) => {
+    return get(atoms.dataset)?.appConfig?.mediaFields || [];
+  },
+});

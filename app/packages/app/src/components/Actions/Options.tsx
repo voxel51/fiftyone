@@ -211,38 +211,27 @@ const Patches = ({ modal }) => {
 };
 
 const MediaFields = ({ modal }) => {
-  const dataset = useRecoilValue(fos.dataset);
-  const { gridMediaField } = dataset.appConfig;
-  const [selectedField, setSelectedField] =
-    useRecoilState<fos.State.MediaFieldSelection>(fos.selectedMediaField);
-  const { appConfig } = useRecoilValue(fos.dataset);
-  const selectedFieldName = modal
-    ? selectedField.modal || selectedField.grid
-    : selectedField.grid || gridMediaField;
+  const [selectedMediaField, setSelectedMediaField] = useRecoilState(
+    fos.selectedMediaField(modal)
+  );
 
-  const fields = appConfig?.mediaFields || [];
+  const mediaFields = useRecoilValue(fos.mediaFields);
 
-  if (fields.length <= 1) return null;
+  if (mediaFields.length <= 1) return null;
 
   return (
     <>
       <PopoutSectionTitle>Media Field</PopoutSectionTitle>
 
       <TabOption
-        active={selectedFieldName || "filepath"}
+        active={selectedMediaField}
         rows={true}
-        options={fields.map((value) => {
+        options={mediaFields.map((value) => {
           return {
             text: value,
-            title: `View Media with "${selectedFieldName}"`,
+            title: `View Media with "${selectedMediaField}"`,
             onClick: () => {
-              selectedFieldName !== value &&
-                setSelectedField((current) => {
-                  if (modal) {
-                    return { ...current, modal: value };
-                  }
-                  return { modal: null, grid: value };
-                });
+              selectedMediaField !== value && setSelectedMediaField(value);
             },
           };
         })}

@@ -18,6 +18,7 @@ import {
   stateSubscription,
   useRefresh,
   useReset,
+  useClearModal,
 } from "@fiftyone/state";
 import { usePlugins } from "@fiftyone/plugins";
 import { useRouter } from "@fiftyone/state";
@@ -55,6 +56,7 @@ const App: React.FC = ({}) => {
   const contextRef = useRef(context);
   contextRef.current = context;
   const reset = useReset();
+  const clearModal = useClearModal();
 
   useEffect(() => {
     readyState === AppReadyState.CLOSED && reset();
@@ -131,6 +133,7 @@ const App: React.FC = ({}) => {
           }
         },
         onclose: () => {
+          clearModal();
           setReadyState(AppReadyState.CLOSED);
         },
       },

@@ -24,6 +24,7 @@ export namespace State {
     showTooltip: boolean;
     timezone: string | null;
     useFrameNumber: boolean;
+    mediaFields: string[];
   }
 
   export interface ID {
@@ -154,10 +155,5 @@ export namespace State {
     selectedLabels: SelectedLabel[];
     view: Stage[];
     viewCls: string | null;
-  }
-
-  export interface MediaFieldSelection {
-    grid?: string;
-    modal?: string;
   }
 }

@@ -16,10 +16,6 @@ export default () => {
         set(fos.selectedLabels, {});
         set(fos.hiddenLabels, {});
         set(fos.modal, null);
-        set(fos.selectedMediaField, (current: any) => ({
-          ...current,
-          modal: null,
-        }));
       },
     []
   );

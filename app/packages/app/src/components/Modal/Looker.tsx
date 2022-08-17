@@ -1,4 +1,10 @@
-import React, { useState, useRef, MutableRefObject, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  MutableRefObject,
+  useEffect,
+  useMemo,
+} from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilCallback } from "recoil";
@@ -377,12 +383,15 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const theme = useTheme();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
-  const createLooker = fos.useCreateLooker(false, {
+  const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
     hasNext: Boolean(onNext),
     hasPrevious: Boolean(onPrevious),
   });
-  const [looker] = useState(() => createLooker.current(sampleData));
+  const looker = React.useMemo(
+    () => createLooker.current(sampleData),
+    [useRecoilValue(fos.selectedMediaField(true)), createLooker, sampleData]
+  );
 
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
@@ -415,7 +424,7 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
 
   useEffect(() => {
     looker.attach(id);
-  }, [id]);
+  }, [looker, id]);
 
   useEventHandler(looker, "clear", useClearSelectedLabels());
 

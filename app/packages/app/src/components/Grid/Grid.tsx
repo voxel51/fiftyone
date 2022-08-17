@@ -23,7 +23,7 @@ const Grid: React.FC<{}> = () => {
   const initialized = useRef(false);
   const deferred = deferrer(initialized);
   const lookerOptions = fos.useLookerOptions(false);
-  const createLooker = fos.useCreateLooker(true, lookerOptions);
+  const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const selected = useRecoilValue(fos.selectedSamples);
   const [next, pager] = usePage(false, store);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
@@ -127,6 +127,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.refresher),
       fos.tagging,
       useRecoilValue(fos.extendedStages),
+      useRecoilValue(fos.selectedMediaField(false)),
     ]
   );
 
