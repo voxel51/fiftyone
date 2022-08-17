@@ -1,7 +1,7 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
-import { State, useSetExtendedSelection } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
 import React from "react";
@@ -14,11 +14,10 @@ import contains from "@turf/boolean-contains";
 import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
 import { Loading } from "@fiftyone/components";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import {
   activeField,
   defaultSettings,
-  hasSelection,
   mapStyle,
   MAP_STYLES,
   Settings,
@@ -28,38 +27,42 @@ import { usePluginSettings } from "@fiftyone/plugins";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
-const computeBounds = (coordinates: [number, number][]) =>
-  coordinates.reduce(
-    (bounds, latLng) => bounds.extend(latLng),
+const computeBounds = (
+  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
+) =>
+  data.features.reduce(
+    (bounds, { geometry: { coordinates } }) =>
+      bounds.extend(coordinates as [number, number]),
     new LngLatBounds()
   );
 
-const fitBounds = (map: MapRef, coordinates: [number, number][]) => {
-  map.fitBounds(computeBounds(coordinates), fitBoundsOptions);
+const fitBounds = (
+  map: MapRef,
+  data: GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>
+) => {
+  map.fitBounds(computeBounds(data), fitBoundsOptions);
 };
 
-const createSourceData = (
-  coordinates: [number, number][],
-  samples: string[]
-): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
+const createSourceData = (samples: {
+  [key: string]: [number, number];
+}): GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }> => {
   return {
     type: "FeatureCollection",
-    features: coordinates.map((point, index) => ({
+    features: Object.entries(samples).map(([id, coordinates]) => ({
       type: "Feature",
-      properties: { id: samples[index] },
-      geometry: { type: "Point", coordinates: point },
+      properties: { id },
+      geometry: { type: "Point", coordinates },
     })),
   };
 };
 
-const Plot: React.FC<{
-  dataset: State.Dataset;
-  filters: State.Filters;
-  view: State.Stage[];
-}> = ({ dataset, filters, view }) => {
+const Plot: React.FC<{}> = () => {
   const theme = foc.useTheme();
+  const dataset = useRecoilValue(fos.dataset);
+  const view = useRecoilValue(fos.view);
+  const filters = useRecoilValue(fos.filters);
 
-  let { loading, coordinates, samples } = useGeoLocations({
+  let { loading, samples } = useGeoLocations({
     dataset,
     filters,
     view,
@@ -71,14 +74,9 @@ const Plot: React.FC<{
   );
 
   const style = useRecoilValue(mapStyle);
-  const [selectionData, setSelectionData] =
-    React.useState<GeoJSON.FeatureCollection<GeoJSON.Point, { id: string }>>();
+  const [selection, setSelection] = useRecoilState(fos.extendedSelection);
 
-  React.useLayoutEffect(() => {
-    setSelectionData(undefined);
-  }, [dataset, filters, view]);
-
-  const mapRef = React.useRef<MapRef>();
+  const mapRef = React.useRef<MapRef>(null);
   const onResize = React.useMemo(
     () =>
       debounce(
@@ -96,12 +94,19 @@ const Plot: React.FC<{
     onResize,
   });
 
-  const bounds = React.useMemo(() => computeBounds(coordinates), [coordinates]);
-
-  const selection = useRecoilValue(hasSelection);
   const data = React.useMemo(() => {
-    return createSourceData(coordinates, samples);
-  }, [coordinates, samples, selection]);
+    let source = samples;
+
+    if (selection) {
+      source = selection.reduce((acc, cur) => {
+        acc[cur] = samples[cur];
+        return acc;
+      }, {});
+    }
+    return createSourceData(source);
+  }, [samples, selection]);
+
+  const bounds = React.useMemo(() => computeBounds(data), [samples]);
 
   const [draw] = React.useState(
     () =>
@@ -112,7 +117,8 @@ const Plot: React.FC<{
   );
 
   const onLoad = React.useCallback(() => {
-    const map = mapRef.current.getMap();
+    const map = mapRef.current?.getMap();
+    if (!map) return;
     map.on("click", "cluster", (event) => {
       event.preventDefault();
       const features = map.queryRenderedFeatures(event.point, {
@@ -120,13 +126,13 @@ const Plot: React.FC<{
       });
       draw.changeMode("simple_select");
 
-      const clusterId = features[0].properties.cluster_id;
+      const clusterId = features[0].properties?.cluster_id;
       const source = map.getSource("points") as GeoJSONSource;
       source.getClusterExpansionZoom(clusterId, (error, zoom) => {
         if (error) return;
 
         const point = features[0].geometry as GeoJSON.Point;
-        mapRef.current.easeTo({
+        mapRef.current?.easeTo({
           center: point.coordinates as [number, number],
           zoom: zoom,
         });
@@ -144,23 +150,23 @@ const Plot: React.FC<{
     map.on("dragend", crosshair);
   }, []);
 
-  const setSelection = useSetExtendedSelection();
+  const length = React.useMemo(() => Object.keys(samples).length, [samples]);
 
   React.useEffect(() => {
-    mapRef.current && fitBounds(mapRef.current, coordinates);
-  }, [coordinates]);
+    mapRef.current && fitBounds(mapRef.current, data);
+  }, [data]);
 
   if (!settings.mapboxAccessToken) {
     return <Loading>No Mapbox token provided</Loading>;
   }
 
-  if (!coordinates.length && !loading) {
+  if (!Object.keys(samples).length && !loading) {
     return <Loading>No data</Loading>;
   }
 
   return (
     <div className={container} ref={ref}>
-      {loading && !coordinates.length ? (
+      {loading && !length ? (
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
       ) : (
         <Map
@@ -172,7 +178,8 @@ const Plot: React.FC<{
             fitBoundsOptions,
           }}
           onStyleData={() => {
-            mapRef.current.getCanvas().style.cursor = "crosshair";
+            mapRef.current &&
+              (mapRef.current.getCanvas().style.cursor = "crosshair");
           }}
           mapboxAccessToken={settings.mapboxAccessToken}
           onLoad={onLoad}
@@ -187,7 +194,7 @@ const Plot: React.FC<{
           <Source
             id="points"
             type="geojson"
-            data={selectionData || data}
+            data={data}
             cluster={settings.clustering}
             clusterMaxZoom={settings.clusterMaxZoom}
           >
@@ -240,21 +247,15 @@ const Plot: React.FC<{
                 features: [polygon],
               } = event;
               const selected = new Set<string>();
-              const newCoordinates = [];
-              const newSamples = [];
-              const selection = selectionData || data;
 
-              for (let index = 0; index < selection.features.length; index++) {
+              for (let index = 0; index < data.features.length; index++) {
                 if (
                   contains(
                     polygon as GeoJSON.Feature<GeoJSON.Polygon>,
-                    selection.features[index]
+                    data.features[index]
                   )
                 ) {
                   selected.add(data.features[index].properties.id);
-                  newCoordinates.push(
-                    selection.features[index].geometry.coordinates
-                  );
                 }
               }
 
@@ -262,29 +263,18 @@ const Plot: React.FC<{
                 return;
               }
 
-              const source = mapRef.current.getSource("points");
-              if (source.type === "geojson") {
-                setSelectionData(createSourceData(newCoordinates, newSamples));
-              }
-
               setSelection([...selected]);
-              fitBounds(mapRef.current, newCoordinates);
             }}
           />
         </Map>
       )}
 
       <Options
-        fitData={() => fitBounds(mapRef.current, coordinates)}
+        fitData={() => mapRef.current && fitBounds(mapRef.current, data)}
         fitSelectionData={() =>
-          fitBounds(
-            mapRef.current,
-            (selectionData || data).features.map(
-              ({ geometry: { coordinates } }) => coordinates as [number, number]
-            )
-          )
+          mapRef.current && fitBounds(mapRef.current, data)
         }
-        clearSelectionData={() => setSelectionData(undefined)}
+        clearSelectionData={() => setSelection(null)}
       />
     </div>
   );

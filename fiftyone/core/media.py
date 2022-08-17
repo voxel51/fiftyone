@@ -58,4 +58,4 @@ class SelectGroupSliceError(ValueError):
             "process"
         ) % supported_media_types
 
-        super().__init__(supported_media_types)
+        super().__init__(message)

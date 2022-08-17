@@ -259,9 +259,7 @@ export const usePathFilter = (): Partial => {
 };
 
 export function PointCloud({ sampleOverride: sample }) {
-  // NOTE: "pcd_filepath" should come from a plugin setting
-  // instead of being hardcoded
-  const settings = fop.usePluginSettings("point-clouds");
+  const settings = fop.usePluginSettings("3d");
 
   const modal = true;
   const filepathFieldName = getFilepathField(sample, settings.filepathFields);

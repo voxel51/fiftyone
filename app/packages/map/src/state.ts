@@ -3,6 +3,7 @@ import { atom, selector } from "recoil";
 
 export interface Settings {
   clustering?: boolean;
+  clusterMaxZoom?: number;
   clusters?: {
     textPaint: mapboxgl.SymbolPaint;
     paint: mapboxgl.CirclePaint;

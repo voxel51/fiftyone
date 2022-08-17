@@ -1,4 +1,6 @@
 import * as foa from "@fiftyone/aggregations";
+import * as fos from "@fiftyone/state";
+import { Stage } from "@fiftyone/utilities";
 import React from "react";
 
 const useGeoLocations = ({
@@ -6,10 +8,16 @@ const useGeoLocations = ({
   dataset,
   filters,
   view,
+}: {
+  path: string;
+  dataset: fos.State.Dataset;
+  view: Stage[];
+  filters: fos.State.Filters;
 }): {
   loading: boolean;
-  coordinates: [number, number][];
-  samples: string[];
+  samples: {
+    [key: string]: [number, number];
+  };
 } => {
   const [aggregate, points, loading] = foa.useAggregation({
     dataset,
@@ -31,15 +39,18 @@ const useGeoLocations = ({
     );
   }, [dataset, filters, view, path]);
 
-  const coordinates = React.useMemo(
-    () => (points && points.length ? points[1] : []),
-    [points]
-  );
-
   return {
     loading,
-    samples: points ? points[0] : [],
-    coordinates,
+    samples: React.useMemo(
+      () =>
+        points
+          ? points[0].reduce((acc, id, i) => {
+              acc[id] = points[1][i];
+              return acc;
+            }, {})
+          : {},
+      [points]
+    ),
   };
 };
 
