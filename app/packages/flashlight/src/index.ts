@@ -129,6 +129,7 @@ export default class Flashlight<K> {
     this.container.replaceWith(newContainer);
     this.container = newContainer;
     this.state = this.getEmptyState(this.config);
+
     this.showPixels();
 
     const { width, height } = getDims(
@@ -519,7 +520,7 @@ export default class Flashlight<K> {
   }
 
   private getEmptyState(config: FlashlightConfig<K>): State<K> {
-    return {
+    const state = {
       currentRequestKey: config.initialRequestKey,
       containerHeight: null,
       width: null,
@@ -537,8 +538,8 @@ export default class Flashlight<K> {
         rowAspectRatioThreshold: 5,
         ...config.options,
       },
-      clean: new Set(),
-      shownSections: new Set(),
+      clean: new Set<number>(),
+      shownSections: new Set<number>(),
       onItemClick: config.onItemClick,
       onItemResize: config.onItemResize,
       onResize: config.onResize,
@@ -547,6 +548,13 @@ export default class Flashlight<K> {
       resized: null,
       resizing: false,
     };
+
+    if (typeof this.state?.options?.rowAspectRatioThreshold === "number") {
+      state.options.rowAspectRatioThreshold =
+        this.state.options.rowAspectRatioThreshold;
+    }
+
+    return state;
   }
 
   private getOnItemClick(): (id: string) => void | null {

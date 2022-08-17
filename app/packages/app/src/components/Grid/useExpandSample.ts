@@ -5,6 +5,7 @@ import * as fos from "@fiftyone/state";
 
 export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
   const expandSample = fos.useExpandSample();
+  const setSample = fos.useSetExpandedSample();
   const clear = fos.useClearModal();
 
   return useCallback<
@@ -34,12 +35,9 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         }
 
         promise.then((id) => {
-          id ? expand(index, store.samples.get(id)) : clear();
+          id ? setSample(store.samples.get(id), { index, getIndex }) : clear();
         });
       };
-
-      const expand = (index: number, sample?: fos.SampleData) =>
-        sample && expandSample(sample, { index, getIndex });
 
       const sample = store.samples.get(sampleId);
 
@@ -47,7 +45,7 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         throw new Error("sample not found");
       }
 
-      expand(clickedIndex, sample);
+      expandSample(sample, { index: clickedIndex, getIndex });
     },
     [store]
   );
