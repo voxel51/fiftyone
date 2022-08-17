@@ -821,7 +821,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
     dataset = fo.Dataset()
     dataset.add_group_field(group_field, default="left")
 
-    dataset.app_config.plugins["point-clouds"] = {
+    dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
         "pointCloud": {
             "rotation": [0, 0, 90],

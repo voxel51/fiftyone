@@ -11,7 +11,7 @@ registerComponent({
   type: PluginComponentType.Visualizer,
   activator: ({ sample, pinned }) => {
     if (!sample) return false;
-    const settings = usePluginSettings("point-clouds");
+    const settings = usePluginSettings("3d");
     const field = getFilepathField(sample, settings.filepathFields);
 
     return field !== null;
