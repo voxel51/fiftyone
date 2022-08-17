@@ -69,6 +69,7 @@ export const GroupBar: React.FC<{
         top: "unset",
         left: "unset",
         borderBottom: `1px solid var(--background-dark-border)`,
+        zIndex: 10000,
       }}
     >
       <div>
