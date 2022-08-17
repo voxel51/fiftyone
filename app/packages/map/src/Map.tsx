@@ -1,20 +1,23 @@
 import { container } from "./Map.module.css";
 
 import * as foc from "@fiftyone/components";
+import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
-import React from "react";
-import { debounce } from "lodash";
-import Map, { Layer, MapRef, Source } from "react-map-gl";
-import useResizeObserver from "use-resize-observer";
-import "mapbox-gl/dist/mapbox-gl.css";
 import contains from "@turf/boolean-contains";
+import { debounce } from "lodash";
+import mapbox, { GeoJSONSource, LngLatBounds } from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import React from "react";
+import { useErrorHandler } from "react-error-boundary";
+import Map, { Layer, MapRef, Source } from "react-map-gl";
+
+import { useRecoilState, useRecoilValue } from "recoil";
+import useResizeObserver from "use-resize-observer";
 
 import useGeoLocations from "./useGeoLocations";
 import DrawControl from "./Draw";
-import { Loading } from "@fiftyone/components";
-import { useRecoilState, useRecoilValue } from "recoil";
+
 import {
   activeField,
   defaultSettings,
@@ -23,7 +26,6 @@ import {
   Settings,
 } from "./state";
 import Options from "./Options";
-import { usePluginSettings } from "@fiftyone/plugins";
 
 const fitBoundsOptions = { animate: false, padding: 30 };
 
@@ -61,6 +63,7 @@ const Plot: React.FC<{}> = () => {
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
   const filters = useRecoilValue(fos.filters);
+  const handleError = useErrorHandler();
 
   let { loading, samples } = useGeoLocations({
     dataset,
@@ -157,11 +160,11 @@ const Plot: React.FC<{}> = () => {
   }, [data]);
 
   if (!settings.mapboxAccessToken) {
-    return <Loading>No Mapbox token provided</Loading>;
+    return <foc.Loading>No Mapbox token provided</foc.Loading>;
   }
 
   if (!Object.keys(samples).length && !loading) {
-    return <Loading>No data</Loading>;
+    return <foc.Loading>No data</foc.Loading>;
   }
 
   return (
@@ -170,6 +173,7 @@ const Plot: React.FC<{}> = () => {
         <foc.Loading style={{ opacity: 0.5 }}>Pixelating...</foc.Loading>
       ) : (
         <Map
+          onError={({ error }) => handleError(error)}
           ref={mapRef}
           mapLib={mapbox}
           mapStyle={`mapbox://styles/mapbox/${MAP_STYLES[style]}`}
