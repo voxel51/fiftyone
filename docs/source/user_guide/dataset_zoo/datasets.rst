@@ -2569,7 +2569,7 @@ object development kit on the KITTI homepage.
 
         fiftyone app launch kitti-multiview-train
 
-.. image:: /images/dataset_zoo/kitti-multiview-train.jpg
+.. image:: /images/dataset_zoo/kitti-multiview-train.png
    :alt: kitti-multiview-train
    :align: center
 
@@ -3077,7 +3077,7 @@ annotation data.
 **Details**
 
 -   Dataset name: ``quickstart-groups``
--   Dataset size: 516.5 MB
+-   Dataset size: 516.3 MB
 -   Tags: ``image, point-cloud, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3107,7 +3107,7 @@ annotation data.
 
         fiftyone app launch quickstart-groups
 
-.. image:: /images/dataset_zoo/quickstart-groups.jpg
+.. image:: /images/dataset_zoo/quickstart-groups.png
    :alt: quickstart-groups
    :align: center
 

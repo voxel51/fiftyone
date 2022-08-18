@@ -62,6 +62,7 @@
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
 .. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+.. |DatasetAppConfig| replace:: :class:`DatasetAppConfig <fiftyone.core.odm.dataset.DatasetAppConfig>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`

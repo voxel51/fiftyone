@@ -25,6 +25,7 @@ class Tagging(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         filters = data.get("filters", None)
+        extended = data.get("extended", None)
         dataset = data.get("dataset", None)
         stages = data.get("view", None)
         sample_ids = data.get("sample_ids", None)
@@ -33,7 +34,9 @@ class Tagging(HTTPEndpoint):
         active_label_fields = data.get("active_label_fields", [])
         hidden_labels = data.get("hidden_labels", None)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, extended_stages=extended
+        )
 
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)

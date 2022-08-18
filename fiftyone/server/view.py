@@ -5,7 +5,10 @@ FiftyOne Server view
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from numpy import full
+from tokenize import group
+import typing as t
+from bson import ObjectId
+
 import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F, VALUE
 import fiftyone.core.fields as fof
@@ -15,46 +18,57 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.filters import SampleFilter
 from fiftyone.server.utils import iter_label_fields
 
 
 _LABEL_TAGS = "_label_tags"
 
 
+def get_group(sample_collection, group_id):
+    id_field = sample_collection.group_field + "._id"
+    return sample_collection.mongo(
+        [{"$match": {"$expr": {"$eq": ["$" + id_field, ObjectId(group_id)]}}}]
+    )
+
+
 def get_view(
-    dataset_name,
+    dataset_name: str,
     stages=None,
     filters=None,
+    extended_stages=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
-):
-    """Get the view from request paramters
-
-    Args:
-        dataset_names: the dataset name
-        stages (None): an optional list of serialized
-            :class:`fiftyone.core.stages.ViewStage`s
-        filters (None): an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
-        similarity (None): sort by similarity paramters
-    """
+    sample_filter: t.Optional[SampleFilter] = None,
+    sort: t.Optional[bool] = False,
+) -> fov.DatasetView:
     view = fod.load_dataset(dataset_name)
     view.reload()
+
+    if sample_filter is not None:
+        if sample_filter.group:
+            if sample_filter.group.slice:
+                view.group_slice = sample_filter.group.slice
+            elif view.media_type == fom.GROUP:
+                view.group_slice = view.default_group_slice
+
+            if sample_filter.group.id:
+                view = get_group(view, sample_filter.group.id)
+
+        elif sample_filter.id:
+            view = fov.make_optimized_select_view(view, sample_filter.id)
 
     if stages:
         view = fov.DatasetView._build(view, stages)
 
-    if filters or similarity or count_label_tags:
+    if filters or extended_stages or count_label_tags:
         view = get_extended_view(
             view,
             filters,
             count_label_tags=count_label_tags,
             only_matches=only_matches,
-            similarity=similarity,
+            extended_stages=extended_stages,
+            sort=sort,
         )
 
     return view
@@ -65,7 +79,8 @@ def get_extended_view(
     filters=None,
     count_label_tags=False,
     only_matches=True,
-    similarity=None,
+    extended_stages=None,
+    sort=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -76,7 +91,8 @@ def get_extended_view(
             with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
-        similarity (None): sort by similarity paramters
+        extended_stages (None): extended view stages
+        sort (False): wheter to include sort extended stages
     """
     cleanup_fields = set()
     filtered_labels = set()
@@ -105,13 +121,23 @@ def get_extended_view(
         for stage in stages:
             view = view.add_stage(stage)
 
-    if similarity:
-        view = view.sort_by_similarity(**similarity)
+    if extended_stages:
+        view = extend_view(view, extended_stages, sort)
 
     if count_label_tags:
         view = _add_labels_tags_counts(view, filtered_labels, label_tags)
         if cleanup_fields:
             view = view.mongo([{"$unset": field} for field in cleanup_fields])
+
+    return view
+
+
+def extend_view(view, extended_stages, sort):
+    for cls, d in extended_stages.items():
+        kwargs = [[k, v] for k, v in d.items()]
+        stage = fosg.ViewStage._from_dict({"_cls": cls, "kwargs": kwargs})
+        if sort or not isinstance(stage, (fosg.SortBySimilarity, fosg.SortBy)):
+            view = view.add_stage(stage)
 
     return view
 

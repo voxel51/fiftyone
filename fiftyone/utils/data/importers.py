@@ -618,6 +618,21 @@ def parse_dataset_info(dataset, info, overwrite=True):
                 default_skeleton
             )
 
+    app_config = info.pop("app_config", None)
+
+    if app_config is not None:
+        try:
+            app_config = foo.DatasetAppConfig.from_dict(
+                app_config,
+                extended=True,
+            )
+        except Exception as e:
+            app_config = None
+            logger.warning("Failed to parse app_config: %s", e)
+
+    if app_config is not None:
+        dataset.app_config.merge(app_config, overwrite=overwrite)
+
     if overwrite:
         dataset.info.update(info)
     else:

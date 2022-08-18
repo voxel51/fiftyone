@@ -15,9 +15,9 @@ import { lookerCopyJSON, lookerJSONPanel } from "./json.module.css";
 import closeIcon from "../../icons/close.svg";
 import clipboardIcon from "../../icons/clipboard.svg";
 
-export class JSONPanelElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class JSONPanelElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private json?: boolean;
   getEvents(): Events<State> {
     return {

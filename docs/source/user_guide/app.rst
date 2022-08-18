@@ -1022,7 +1022,7 @@ below shows the basic pattern for customizing the App on a one-off basis:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_label = True
 

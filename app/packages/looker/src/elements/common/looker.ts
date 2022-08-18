@@ -6,13 +6,14 @@ import { SELECTION_TEXT } from "../../constants";
 import { BaseState, Control, ControlEventKeyType } from "../../state";
 import { BaseElement, Events } from "../base";
 
-import { looker, lookerError } from "./looker.module.css";
+import { looker, lookerError, lookerHighlight } from "./looker.module.css";
 
 export class LookerElement<State extends BaseState> extends BaseElement<
   State,
   HTMLDivElement
 > {
   private selection: boolean;
+  private highlight: boolean;
 
   getEvents(): Events<State> {
     return {
@@ -78,10 +79,17 @@ export class LookerElement<State extends BaseState> extends BaseElement<
     hovering,
     error,
     config: { thumbnail },
-    options: { inSelectionMode },
+    options: { highlight, inSelectionMode },
   }: Readonly<State>) {
     if (!thumbnail && hovering && this.element !== document.activeElement) {
       this.element.focus();
+    }
+
+    if (highlight !== this.highlight) {
+      this.highlight = highlight;
+      highlight
+        ? this.element.classList.add(lookerHighlight)
+        : this.element.classList.remove(lookerHighlight);
     }
 
     if (error && !thumbnail) {

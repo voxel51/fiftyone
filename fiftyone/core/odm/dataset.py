@@ -13,6 +13,7 @@ from mongoengine.fields import StringField as MongoStringField
 
 from fiftyone.core.fields import (
     Field,
+    ArrayField,
     BooleanField,
     ClassesField,
     DateTimeField,
@@ -311,7 +312,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
 
 class SidebarGroupDocument(EmbeddedDocument):
-    """Description of a Sidebar Group in the App."""
+    """Description of a sidebar group in the App."""
 
     name = StringField(required=True)
     paths = ListField(StringField(), default=[])
@@ -359,6 +360,39 @@ class KeypointSkeleton(EmbeddedDocument):
     edges = ListField(ListField(IntField()))
 
 
+class DatasetAppConfig(EmbeddedDocument):
+    """Dataset-specific settings that customize how a dataset is visualized in
+    the App.
+
+    Args:
+        grid_media_field ("filepath"): the sample field from which to serve
+            media in the App's grid view
+        media_fields (["filepath"]): the list of sample fields that contain
+            media and should be available to choose from the App's settings
+            menu
+        plugins ({}): an optional dict mapping plugin names to plugin
+            configuration dicts. Builtin plugins include:
+
+            -   ``"map"``: See the :ref:`map plugin docs <app-map-tab>` for
+                supported options
+            -   ``"point-cloud"``: See the
+                :ref:`3D visualizer docs <3d-visualizer-config>` for supported
+                options
+    """
+
+    grid_media_field = StringField(default="filepath")
+    media_fields = ListField(StringField(), default=["filepath"])
+    plugins = DictField()
+
+    def is_custom(self):
+        """Determines whether this app config differs from the default one.
+
+        Returns:
+            True/False
+        """
+        return self != self.__class__()
+
+
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
@@ -396,4 +430,10 @@ class DatasetDocument(Document):
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+    )
+    app_config = EmbeddedDocumentField(
+        document_type=DatasetAppConfig,
+        default=lambda: DatasetAppConfig(
+            grid_media_field="filepath", media_fields=["filepath"]
+        ),
     )

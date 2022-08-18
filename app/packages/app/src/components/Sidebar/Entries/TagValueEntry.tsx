@@ -4,8 +4,8 @@ import { useSpring } from "@react-spring/core";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
-import * as colorAtoms from "../../../recoil/color";
 import { NameAndCountContainer } from "../../utils";
+import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
 
@@ -14,7 +14,7 @@ const TagValueEntry = ({ path, tag }: { path: string; tag: string }) => {
   const { backgroundColor } = useSpring({
     backgroundColor: theme.backgroundLight,
   });
-  const color = useRecoilValue(colorAtoms.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
 
   return (
     <RegularEntry

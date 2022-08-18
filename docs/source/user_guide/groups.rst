@@ -527,7 +527,7 @@ dataset:
 
     dataset = foz.load_zoo_dataset("kitti-multiview", split="train")
 
-.. image:: /images/dataset_zoo/kitti-multiview-train.jpg
+.. image:: /images/dataset_zoo/kitti-multiview-train.png
    :alt: kitti-multiview-train
    :align: center
 
@@ -1074,7 +1074,7 @@ Configuring the 3D visualizer
 -----------------------------
 
 The 3D visualizer can be configured by including any subset of the settings
-shown below under the `plugins.point-clouds` key of your
+shown below under the `plugins.3d` key of your
 :ref:`App config <configuring-fiftyone-app>`:
 
 .. code-block:: json
@@ -1082,7 +1082,7 @@ shown below under the `plugins.point-clouds` key of your
     // The default values are shown below
     {
         "plugins": {
-            "point-clouds": {
+            "3d": {
                 // Whether to show the 3D visualizer
                 "enabled": true,
 
@@ -1091,7 +1091,7 @@ shown below under the `plugins.point-clouds` key of your
 
                 // Transformation from PCD -> reference coordinates
                 "pointCloud": {
-                    // A rotation to apply to the PCD's coordinates
+                    // A rotation to apply to the PCD's coordinate system
                     "rotation": [0, 0, 0],
 
                     // Don't render points below this z value
@@ -1100,7 +1100,7 @@ shown below under the `plugins.point-clouds` key of your
 
                 // Transformation from Label -> reference coorindates
                 "overlay": {
-                    // A rotation to apply to the Label's coordinates
+                    // A rotation to apply to the Label's coordinate system
                     "rotation": [0, 0, 0],
 
                     // A rotation to apply to each object's local coordinates
@@ -1123,7 +1123,7 @@ the above values on a :ref:`dataset's App config <custom-app-config>`:
     :linenos:
 
     # Configure the 3D visualuzer for a dataset's PCD/Label data
-    dataset.app_config.plugins["point-clouds"] = {
+    dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
         "pointCloud": {
             "rotation": [0, 0, 90],

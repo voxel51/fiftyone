@@ -26,12 +26,21 @@
     hsla(210, 11%, 11%, 0) 0%,
     hsl(210, 11%, 11%) 100%
   );
+  display: flex;
+  justify-content: space-between;
+  color: var(--font);
+  font-weight: bold;
+  font-size: 1.2rem;
 }
 
 .lookerThumbnailSelector.showSelector {
-  display: block;
+  display: flex;
   opacity: 1;
   visibility: visible;
+}
+
+.lookerThumbnailSelector:last-child {
+  padding-right: 1rem;
 }
 
 .lookerThumbnailSelector span {

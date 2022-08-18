@@ -13,7 +13,7 @@ import {
   useTheme,
 } from "@fiftyone/components";
 import { useRecoilValue } from "recoil";
-import { isNotebook } from "../recoil/selectors";
+import { isNotebook } from "@fiftyone/state";
 
 const SectionTitle = styled.div`
   font-size: 2rem;

@@ -821,6 +821,18 @@ def _prepare_kitti_split(split_dir, overwrite=False):
     dataset = fo.Dataset()
     dataset.add_group_field(group_field, default="left")
 
+    dataset.app_config.plugins["3d"] = {
+        "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
+        "pointCloud": {
+            "rotation": [0, 0, 90],
+        },
+        "overlay": {
+            "rotation": [-90, 0, 0],
+            "itemRotation": [0, 90, 0],
+        },
+    }
+    dataset.save()
+
     labels_dir = os.path.join(split_dir, "labels")
     left_images_dir = os.path.join(split_dir, "left")
     right_images_dir = os.path.join(split_dir, "right")

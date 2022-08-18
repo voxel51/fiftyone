@@ -32,9 +32,12 @@ class Tag(HTTPEndpoint):
         hidden_labels = data.get("hidden_labels", None)
         changes = data.get("changes", {})
         modal = data.get("modal", None)
+        extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
 
-        view = fosv.get_view(dataset, stages=stages, filters=filters)
+        view = fosv.get_view(
+            dataset, stages=stages, filters=filters, extended_stages=extended
+        )
 
         sample_ids = set(sample_ids or [])
         if labels:

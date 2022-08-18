@@ -78,9 +78,6 @@ class Aggregation(object):
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self._kwargs() == other._kwargs()
-
     @property
     def field_name(self):
         """The name of the field being computed on, if any."""
@@ -249,15 +246,13 @@ class Aggregation(object):
             an :class:`Aggregation`
         """
         aggregation_cls = etau.get_class(d["_cls"])
-        agg = aggregation_cls(**dict(d["kwargs"]))
+        agg = aggregation_cls(**{k: v for (k, v) in d["kwargs"]})
         agg._uuid = d.get("_uuid", None)
         return agg
 
 
 class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
-
-    pass
 
 
 class Bounds(Aggregation):
@@ -341,8 +336,6 @@ class Bounds(Aggregation):
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
         self._count_nonfinites = _count_nonfinites
-
-        self._field_type = None
 
     def _kwargs(self):
         return super()._kwargs() + [
