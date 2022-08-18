@@ -5715,7 +5715,6 @@ def _merge_samples_python(
     if key_fcn is None:
         id_map = {k: v for k, v in zip(*dataset.values([key_field, "_id"]))}
         key_fcn = lambda sample: sample[key_field]
-
     else:
         id_map = {}
         logger.info("Indexing dataset...")
