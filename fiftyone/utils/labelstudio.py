@@ -18,6 +18,7 @@ from datetime import datetime as dt
 from typing import List
 from packaging import version
 
+from bson import ObjectId
 import numpy as np
 
 import fiftyone as fo
@@ -407,6 +408,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 labelled_tasks, results.uploaded_tasks, return_type
             )
             annotations.update({label_field: {return_type: labels}})
+
         return annotations
 
     def upload_predictions(self, project, tasks, sample_labels, label_type):
@@ -552,19 +554,31 @@ def import_labelstudio_annotation(result: dict):
         raise TypeError(f"type {type(result)} is not understood")
 
     if ls_type == "choices":
-        return _from_choices(result)
+        label = _from_choices(result)
     elif ls_type == "rectanglelabels":
-        return _from_rectanglelabels(result)
+        label = _from_rectanglelabels(result)
     elif ls_type == "polygonlabels":
-        return _from_polygonlabels(result)
+        label = _from_polygonlabels(result)
     elif ls_type == "keypointlabels":
-        return _from_keypointlabels(result)
+        label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        return _from_brushlabels(result)
+        label = _from_brushlabels(result)
     elif ls_type == "number":
-        return fol.Regression(value=result["value"]["number"])
+        label = fol.Regression(value=result["value"]["number"])
     else:
         raise ValueError(f"unable to import {ls_type=} from Label Studio")
+
+    try:
+        label_id = result["id"]
+
+        # Verify that ID is valid
+        ObjectId(label_id)
+
+        label.id = label_id
+    except:
+        pass
+
+    return label
 
 
 def _update_dict(src_dict, update_dict):
@@ -585,18 +599,19 @@ def export_label_to_labelstudio(label, full_result=None):
     """
     # TODO model version and model score
     if _check_type(label, fol.Classification, fol.Classifications):
-        result_value, ls_type = _to_classification(label)
+        result_value, ls_type, ids = _to_classification(label)
     elif _check_type(label, fol.Detection, fol.Detections):
-        result_value, ls_type = _to_detection(label)
+        result_value, ls_type, ids = _to_detection(label)
     elif _check_type(label, fol.Polyline, fol.Polylines):
-        result_value, ls_type = _to_polyline(label)
+        result_value, ls_type, ids = _to_polyline(label)
     elif _check_type(label, fol.Keypoint, fol.Keypoints):
-        result_value, ls_type = _to_keypoint(label)
+        result_value, ls_type, ids = _to_keypoint(label)
     elif isinstance(label, fol.Segmentation):
-        result_value, ls_type = _to_segmentation(label)
+        result_value, ls_type, ids = _to_segmentation(label)
     elif isinstance(label, fol.Regression):
         result_value = {"number": label.value}
         ls_type = "number"
+        ids = label.id
     else:
         raise ValueError(f"{type(label)} is not supported")
 
@@ -607,9 +622,10 @@ def export_label_to_labelstudio(label, full_result=None):
         return [
             _update_dict(
                 full_result,
-                dict(value=r, type=ls_type, id=_generate_prediction_id()),
+                dict(value=r, type=ls_type, id=i),
+                # dict(value=r, type=ls_type, id=_generate_prediction_id()),
             )
-            for r in result_value
+            for r, i in zip(result_value, ids)
         ]
     else:
         return result_value
@@ -622,19 +638,35 @@ def _generate_prediction_id(n=10):
 def _to_classification(label):
     ls_type = "choices"
     if isinstance(label, list):
-        return {ls_type: [l.label for l in label]}, ls_type
+        return (
+            {ls_type: [l.label for l in label]},
+            ls_type,
+            [l.id for l in label],
+        )
     elif isinstance(label, fol.Classifications):
-        return {ls_type: [l.label for l in label.classifications]}, ls_type
+        return (
+            {ls_type: [l.label for l in label.classifications]},
+            ls_type,
+            [l.id for l in label.classifications],
+        )
     else:
-        return {ls_type: [label.label]}, ls_type
+        return {ls_type: [label.label]}, ls_type, label.id
 
 
 def _to_detection(label):
     ls_type = "rectanglelabels"
     if isinstance(label, list):
-        return [_to_detection(l)[0] for l in label], ls_type
+        return (
+            [_to_detection(l)[0] for l in label],
+            ls_type,
+            [l.id for l in label],
+        )
     elif isinstance(label, fol.Detections):
-        return [_to_detection(l)[0] for l in label.detections], ls_type
+        return (
+            [_to_detection(l)[0] for l in label.detections],
+            ls_type,
+            [l.id for l in label.detections],
+        )
     else:
         box = _denormalize_values(label.bounding_box)
         result = {
@@ -645,29 +677,45 @@ def _to_detection(label):
             "rotation": getattr(label, "rotation", 0),
             "rectanglelabels": [label.label],
         }
-        return result, ls_type
+        return result, ls_type, label.id
 
 
 def _to_polyline(label):
     ls_type = "polygonlabels"
     if isinstance(label, list):
-        return [_to_polyline(l)[0] for l in label], ls_type
+        return (
+            [_to_polyline(l)[0] for l in label],
+            ls_type,
+            [l.id for l in label],
+        )
     elif isinstance(label, fol.Polylines):
-        return [_to_polyline(l)[0] for l in label.polylines], ls_type
+        return (
+            [_to_polyline(l)[0] for l in label.polylines],
+            ls_type,
+            [l.id for l in label.polylines],
+        )
     else:
         result = {
             "points": _denormalize_values(label.points[0]),
             "polygonlabels": [label.label],
         }
-        return result, ls_type
+        return result, ls_type, label.id
 
 
 def _to_keypoint(label):
     ls_type = "keypointlabels"
     if isinstance(label, list):
-        return sum([_to_keypoint(l)[0] for l in label], []), ls_type
+        return (
+            sum([_to_keypoint(l)[0] for l in label], []),
+            ls_type,
+            [l.id for l in label],
+        )
     elif isinstance(label, fol.Keypoints):
-        return sum([_to_keypoint(l)[0] for l in label.keypoints], []), ls_type
+        return (
+            sum([_to_keypoint(l)[0] for l in label.keypoints], []),
+            ls_type,
+            [l.id for l in label.keypoints],
+        )
     else:
         points = _denormalize_values(label.points)
         results = [
@@ -679,7 +727,7 @@ def _to_keypoint(label):
             }
             for p in points
         ]
-        return results, ls_type
+        return results, ls_type, label.id
 
 
 def _to_segmentation(label):
@@ -689,7 +737,7 @@ def _to_segmentation(label):
     )
     rle = brush.mask2rle(label.mask)
     result = {"format": "rle", "rle": rle, "brushlabels": [label.label]}
-    return result, "brushlabels"
+    return result, "brushlabels", label.id
 
 
 def _from_choices(result):
