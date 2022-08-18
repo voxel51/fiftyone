@@ -17,7 +17,7 @@ def up(db, dataset_name):
     _up_runs(db, dataset_dict, "evaluations")
 
     if "views" not in dataset_dict:
-        dataset_dict["views"] = {}
+        dataset_dict["views"] = []
 
     db.datasets.replace_one(match_d, dataset_dict)
 
@@ -30,7 +30,7 @@ def down(db, dataset_name):
     _down_runs(db, dataset_dict, "brain_methods")
     _down_runs(db, dataset_dict, "evaluations")
 
-    views = dataset_dict.pop("views", {})
+    views = dataset_dict.pop("views", [])
 
     _delete_views(dataset_dict, views)
 
@@ -77,4 +77,4 @@ def _delete_views(db, views):
     if not views:
         return
 
-    db.views.delete_many({"_id": {"$in": list(views.values())}})
+    db.views.delete_many({"_id": {"$in": views}})

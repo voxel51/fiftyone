@@ -5,7 +5,9 @@ Dataset view documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import (
+from fiftyone.core.fields import (
+    ColorField,
+    DateTimeField,
     ListField,
     ObjectIdField,
     StringField,
@@ -18,6 +20,14 @@ class ViewDocument(Document):
     """Backing document for dataset views."""
 
     meta = {"collection": "views"}
+    _EDITABLE_FIELDS = ("name", "color", "description")
 
     dataset_id = ObjectIdField()
+    name = StringField()
+    url_name = StringField()
+    description = StringField()
+    color = ColorField()
     view_stages = ListField(StringField())
+    created_at = DateTimeField()
+    last_modified_at = DateTimeField()
+    last_loaded_at = DateTimeField()
