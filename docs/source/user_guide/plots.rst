@@ -362,6 +362,9 @@ contains |GeoLocation| data in its ``location`` field:
     dataset = foz.load_zoo_dataset("quickstart-geo")
     fob.compute_uniqueness(dataset)
 
+    # Index the dataset by visual uniqueness
+    fob.compute_uniqueness(dataset)
+
     # A list of ``[longitude, latitude]`` coordinates
     locations = dataset.values("location.point.coordinates")
 

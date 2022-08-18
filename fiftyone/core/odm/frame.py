@@ -38,7 +38,11 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
     )
 
     def __init__(self, **kwargs):
+        # If we're loading a serialized dict with a sample ID, it will come in
+        # as `sample_id` here
+        sample_id = kwargs.pop("sample_id", None)
+
         self._data = OrderedDict(
-            [("id", None), ("frame_number", None), ("_sample_id", None)]
+            [("id", None), ("frame_number", None), ("_sample_id", sample_id)]
         )
         self._data.update(kwargs)

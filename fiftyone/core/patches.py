@@ -16,7 +16,6 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-from fiftyone.core.odm.mixins import get_field_kwargs
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
@@ -506,15 +505,11 @@ def make_patches_dataset(
 
     dataset.media_type = fom.IMAGE
     dataset._set_metadata(sample_collection.media_type)
-    dataset.add_sample_field(
-        "sample_id", fof.ObjectIdField, db_field="_sample_id"
-    )
+    dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
 
     if is_frame_patches:
-        dataset.add_sample_field(
-            "frame_id", fof.ObjectIdField, db_field="_frame_id"
-        )
+        dataset.add_sample_field("frame_id", fof.ObjectIdField)
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])
@@ -648,15 +643,11 @@ def make_evaluation_patches_dataset(
         sample_collection._dataset._doc.app_sidebar_groups
     )
     dataset.media_type = fom.IMAGE
-    dataset.add_sample_field(
-        "sample_id", fof.ObjectIdField, db_field="_sample_id"
-    )
+    dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
 
     if is_frame_patches:
-        dataset.add_sample_field(
-            "frame_id", fof.ObjectIdField, db_field="_frame_id"
-        )
+        dataset.add_sample_field("frame_id", fof.ObjectIdField)
         dataset.add_sample_field("frame_number", fof.FrameNumberField)
         dataset.create_index("frame_id")
         dataset.create_index([("sample_id", 1), ("frame_number", 1)])

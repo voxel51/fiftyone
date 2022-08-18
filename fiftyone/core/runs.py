@@ -527,29 +527,25 @@ class Run(Configurable):
         #
 
         fields = cls._get_run_fields(samples, key)
-        root_fields = [f for f in fields if "." not in f]
-        _select_fields = root_fields
-        for field in fields:
-            if not any(f.startswith(field) for f in root_fields):
-                _select_fields.append(field)
+        root_fields = samples._get_root_fields(fields)
 
-        view = view.select_fields(_select_fields)
+        view = view.select_fields(root_fields)
 
         #
         # Hide any ancillary info on the same fields
         #
 
-        _exclude_fields = []
+        exclude_fields = []
         for _key in cls.list_runs(samples):
             if _key == key:
                 continue
 
             for field in cls._get_run_fields(samples, _key):
-                if "." in field and field.startswith(root_fields):
-                    _exclude_fields.append(field)
+                if any(field.startswith(r + ".") for r in root_fields):
+                    exclude_fields.append(field)
 
-        if _exclude_fields:
-            view = view.exclude_fields(_exclude_fields)
+        if exclude_fields:
+            view = view.exclude_fields(exclude_fields)
 
         return view
 

@@ -6505,9 +6505,7 @@ class CVATLabel(object):
 
     def _set_id(self, label_id):
         try:
-            # Verify that ID is valid
-            ObjectId(label_id)
-
+            ObjectId(label_id)  # verify that ID is valid
             self.id = label_id
         except:
             pass

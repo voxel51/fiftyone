@@ -30,6 +30,9 @@ class VideoTests(unittest.TestCase):
         frame5 = fo.Frame()
         frame3 = fo.Frame(hello="world")
 
+        self.assertIsNone(frame1.sample_id)
+        self.assertIsNone(frame1._sample_id)
+
         # Intentionally out of order to test sorting
         frames[1] = frame1
         frames[5] = frame5
@@ -70,6 +73,9 @@ class VideoTests(unittest.TestCase):
         self.assertIsNotNone(frame1.id)
         self.assertIsNone(frame3.id)
         self.assertIsNotNone(frame5.id)
+
+        self.assertIsInstance(frame1.sample_id, str)
+        self.assertIsInstance(frame1._sample_id, ObjectId)
 
         self.assertTrue(len(sample.frames), 2)
 
@@ -1260,6 +1266,11 @@ class VideoTests(unittest.TestCase):
             },
         )
 
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.VideoMetadata,
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {"id", "sample_id", "filepath", "support", "metadata", "tags"},
@@ -1605,6 +1616,11 @@ class VideoTests(unittest.TestCase):
             },
         )
 
+        self.assertEqual(
+            view.get_field("metadata").document_type,
+            fo.ImageMetadata,
+        )
+
         self.assertSetEqual(
             set(view.select_fields().get_field_schema().keys()),
             {
@@ -1786,6 +1802,31 @@ class VideoTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             frame["ground_truth"]
+
+    @drop_datasets
+    def test_to_frames_schema(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample.frames[1] = fo.Frame(filepath="image.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        frames = dataset.to_frames()
+        view = frames.select_fields()
+
+        sample = view.first()
+        sample["foo"] = "bar"
+        sample.save()
+
+        self.assertNotIn("foo", view.get_field_schema())
+        self.assertIn("foo", frames.get_field_schema())
+        self.assertIn("foo", dataset.get_frame_field_schema())
+
+        frame = frames.first()
+        self.assertEqual(frame["foo"], "bar")
+
+        frame = dataset.first().frames.first()
+        self.assertEqual(frame["foo"], "bar")
 
     @drop_datasets
     def test_to_frames_sparse(self):
