@@ -20,7 +20,7 @@ FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using Label Studio, all programmatically in Python. All of
 the following label types are supported for image datasets:
 
-- :ref:`Classifications <classification>`
+- :ref:`Classification <classification>`
 - :ref:`Detections <object-detection>`
 - :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polygons and polylines <polylines>`
@@ -390,8 +390,6 @@ details:
 
     -   ``"classification"``: a single classification stored in
         |Classification| fields
-    -   ``"classifications"``: multilabel classifications stored in
-        |Classifications| fields
     -   ``"detections"``: object detections stored in |Detections| fields
     -   ``"instances"``: instance segmentations stored in |Detections| fields
         with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
@@ -405,8 +403,6 @@ details:
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
     -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
         fields
-    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
-        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -456,7 +452,7 @@ each label field:
 
     label_schema = {
         "new_field": {
-            "type": "classifications",
+            "type": "detections",
             "classes": ["class1", "class2"],
         },
         "existing_field": {
@@ -477,7 +473,7 @@ individually:
     anno_key = "..."
 
     label_field = "new_field",
-    label_type = "classifications"
+    label_type = "detections"
     classes = ["class1", "class2"]
 
     dataset.annotate(

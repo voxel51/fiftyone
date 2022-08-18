@@ -81,7 +81,6 @@ class LabelStudioBackend(foua.AnnotationBackend):
     def supported_label_types(self):
         return [
             "classification",
-            "classifications",
             "detection",
             "detections",
             "instance",
@@ -581,10 +580,7 @@ def import_labelstudio_annotation(result: dict):
 
     try:
         label_id = result["id"]
-
-        # Verify that ID is valid
-        ObjectId(label_id)
-
+        ObjectId(label_id)  # verify that ID is valid
         label.id = label_id
     except:
         pass
