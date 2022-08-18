@@ -104,6 +104,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
         return False
 
     @property
+    def supports_video(self):
+        return False
+
+    @property
     def supports_video_sample_fields(self):
         return False
 
