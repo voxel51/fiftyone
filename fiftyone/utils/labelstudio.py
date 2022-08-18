@@ -116,6 +116,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
     def supports_attributes(self):
         return False
 
+    @property
+    def supported_scalar_types(self):
+        return []
+
     def _connect_to_api(self):
         return LabelStudioAnnotationAPI(
             url=self.config.url, api_key=self.config.api_key
