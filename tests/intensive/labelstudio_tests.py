@@ -37,9 +37,15 @@ import fiftyone.core.labels as fol
 
 @pytest.fixture()
 def backend_config():
+    config = fo.annotation_config.backends.get("labelstudio", {})
     return {
-        "url": os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
-        "api_key": os.getenv("FIFTYONE_LABELSTUDIO_API_KEY"),
+        "url": config.get(
+            "url",
+            os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
+        ),
+        "api_key": config.get(
+            "api_key", os.getenv("FIFTYONE_LABELSTUDIO_API_KEY")
+        ),
     }
 
 
