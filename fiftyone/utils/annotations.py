@@ -2204,6 +2204,16 @@ class AnnotationResults(foa.AnnotationResults):
 class AnnotationAPI(object):
     """Base class for APIs that connect to annotation backends."""
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Closes the API session."""
+        pass
+
     def _prompt_username_password(self, backend, username=None, password=None):
         prefix = "FIFTYONE_%s_" % backend.upper()
         logger.info(

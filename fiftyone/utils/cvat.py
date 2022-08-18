@@ -3469,12 +3469,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         self._setup()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        self.close()
-
     @property
     def server_version(self):
         return self._server_version
@@ -3630,7 +3624,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.headers["Referer"] = self.login_url
 
     def close(self):
-        """Closes the API session."""
         self._session.close()
 
     def _login(self, username, password):
