@@ -1591,10 +1591,9 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # entire dataset
 
         if dataset.has_views:
-            self._metadata["views"] = {
-                k: json_util.dumps(v.to_dict())
-                for k, v in dataset._doc.views.items()
-            }
+            self._metadata["views"] = [
+                json_util.dumps(v.to_dict()) for v in dataset._doc.views
+            ]
 
         if dataset.has_annotation_runs:
             self._metadata["annotation_runs"] = {
@@ -1775,9 +1774,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         full_dataset = sample_collection == sample_collection._root_dataset
 
         if full_dataset and dataset.has_views:
-            dataset_dict["views"] = {
-                k: v.to_dict() for k, v in dataset._doc.views.items()
-            }
+            dataset_dict["views"] = [v.to_dict() for v in dataset._doc.views]
 
         if full_dataset and dataset.has_annotation_runs:
             dataset_dict["annotation_runs"] = {

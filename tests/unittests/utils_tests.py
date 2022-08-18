@@ -14,10 +14,53 @@ import numpy as np
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
-import fiftyone.core.uid as fou
+import fiftyone.core.utils as fou
+import fiftyone.core.uid as foui
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
+
+
+class CoreUtilsTests(unittest.TestCase):
+    def test_validate_hex_color(self):
+        # Valid colors
+        fou.validate_hex_color("#FF6D04")
+        fou.validate_hex_color("#ff6d04")
+        fou.validate_hex_color("#000")
+        fou.validate_hex_color("#eee")
+
+        # Invalid colors
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("aaaaaa")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#bcedfg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#ggg")
+
+        with self.assertRaises(ValueError):
+            fou.validate_hex_color("#FFFF")
+
+    def test_to_url_name(self):
+        self.assertEqual(fou.to_url_name("coco_2017"), "coco_2017")
+        self.assertEqual(fou.to_url_name("c+o+c+o 2-0-1-7"), "c-o-c-o-2-0-1-7")
+        self.assertEqual(fou.to_url_name("cat.DOG"), "cat.DOG")
+        self.assertEqual(fou.to_url_name("---z----"), "z")
+        self.assertEqual(
+            fou.to_url_name("Brian's #$&@ [awesome?] dataset!"),
+            "Brians-awesome-dataset",
+        )
+        self.assertEqual(
+            fou.to_url_name("     sPaM     aNd  EgGs    "),
+            "sPaM-aNd-EgGs",
+        )
+
+        with self.assertRaises(ValueError):
+            fou.to_url_name("------")  # too short
+
+        with self.assertRaises(ValueError):
+            fou.to_url_name("a" * 101)  # too long
 
 
 class LabelsTests(unittest.TestCase):
@@ -241,9 +284,9 @@ class UIDTests(unittest.TestCase):
         fo.config.do_not_track = False
         foc.UA_ID = foc.UA_DEV
 
-        fou.log_import_if_allowed(test=True)
+        foui.log_import_if_allowed(test=True)
         time.sleep(2)
-        self.assertTrue(fou._import_logged)
+        self.assertTrue(foui._import_logged)
 
 
 if __name__ == "__main__":

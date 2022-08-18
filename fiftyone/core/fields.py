@@ -7,6 +7,7 @@ Dataset sample fields.
 """
 from datetime import date, datetime
 import numbers
+import re
 
 from bson import ObjectId, SON
 from bson.binary import Binary
@@ -157,6 +158,16 @@ class StringField(mongoengine.fields.StringField, Field):
     """A unicode string field."""
 
     pass
+
+
+class ColorField(StringField):
+    """A string field that holds a hex color string like '#FF6D04'."""
+
+    def validate(self, value):
+        try:
+            fou.validate_hex_color(value)
+        except ValueError as e:
+            self.error(str(e))
 
 
 class ListField(mongoengine.fields.ListField, Field):

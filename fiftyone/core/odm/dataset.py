@@ -388,7 +388,7 @@ class DatasetDocument(Document):
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
-    views = DictField(ReferenceField(ViewDocument))
+    views = ListField(ReferenceField(ViewDocument))
     app_sidebar_groups = ListField(
         EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
     )
