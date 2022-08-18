@@ -324,16 +324,22 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
     @staticmethod
     def _get_matched_labelled_tasks(project, task_ids):
         matched_tasks = project.get_tasks(selected_ids=task_ids)
-        labelled_tasks = list(
-            filter(lambda x: bool(x.get("annotations")), matched_tasks)
-        )
+
+        def task_filter(x):
+            return x["is_labeled"] or bool(x.get("predictions"))
+
+        labelled_tasks = list(filter(task_filter, matched_tasks))
         return labelled_tasks
 
     def _import_annotations(self, tasks, task_id2sample_id, label_type):
         results = {}
         for t in tasks:
             # convert latest annotation results
-            annotations = t.get("annotations", [])
+            if t["is_labeled"]:
+                annotations = t.get("annotations", [])
+            else:
+                annotations = t.get("predictions", [])
+
             latest_annotation = (
                 annotations[-1]
                 if len(annotations) == 0
@@ -350,13 +356,14 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 ]
 
             # add to dict
-            label_ids = (
-                {l.id: l for l in labels}
-                if not isinstance(labels[0], fol.Regression)
-                else labels[0]
-            )
-            sample_id = task_id2sample_id[t["id"]]
-            results[sample_id] = label_ids
+            if labels:
+                label_ids = (
+                    {l.id: l for l in labels}
+                    if not isinstance(labels[0], fol.Regression)
+                    else labels[0]
+                )
+                sample_id = task_id2sample_id[t["id"]]
+                results[sample_id] = label_ids
 
         return results
 
