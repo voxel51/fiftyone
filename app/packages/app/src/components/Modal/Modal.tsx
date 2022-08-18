@@ -45,6 +45,7 @@ const SampleModal = () => {
   const tagText = fos.useTagText(true);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
   const clearModal = fos.useClearModal();
+  const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
   const renderEntry = useCallback(
     (
@@ -109,7 +110,7 @@ const SampleModal = () => {
                 {isFieldPrimitive && (
                   <Entries.PathValue
                     entryKey={key}
-                    key={key}
+                    key={`${key}-${override}`}
                     path={entry.path}
                     trigger={trigger}
                   />

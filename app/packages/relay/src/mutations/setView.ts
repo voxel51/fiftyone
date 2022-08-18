@@ -82,6 +82,11 @@ export default graphql`
           labels
           edges
         }
+        appConfig {
+          gridMediaField
+          mediaFields
+          plugins
+        }
       }
       view
     }

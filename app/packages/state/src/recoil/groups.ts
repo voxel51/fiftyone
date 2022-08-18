@@ -1,13 +1,20 @@
 import {
   paginateGroup,
+  paginateGroupPinnedSampleFragment,
   paginateGroupPinnedSample_query$key,
   paginateGroupQuery,
   paginateGroup_query$key,
 } from "@fiftyone/relay";
-import { VariablesOf } from "react-relay";
+import { readInlineData, VariablesOf } from "react-relay";
 import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
-import { dataset, modal as modalAtom, sidebarOverride } from "./atoms";
+import {
+  AppSample,
+  dataset,
+  modal,
+  modal as modalAtom,
+  sidebarOverride,
+} from "./atoms";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { view } from "./view";
@@ -136,4 +143,17 @@ export const pinnedSliceSampleFragment =
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
   key: "groupPaginationFragment",
   get: ({ get }) => get(groupQuery),
+});
+
+export const activeModalSample = selector<
+  AppSample | paginateGroupPinnedSample_query$key
+>({
+  key: "activeModalSample",
+  get: ({ get }) => {
+    if (get(sidebarOverride)) {
+      return get(pinnedSliceSampleFragment);
+    }
+
+    return get(modal).sample;
+  },
 });

@@ -38,6 +38,7 @@
     "packageManager": "yarn@3.2.1",
     "peerDependencies": {
         "@material-ui/icons": "*",
+        "react-error-boundary": "*",
         "recoil": "*"
     }
 }

@@ -19,6 +19,11 @@ import { NameAndCountContainer } from "../../utils";
 import * as fos from "@fiftyone/state";
 
 import RegularEntry from "./RegularEntry";
+import { useFragment } from "react-relay";
+import {
+  paginateGroupPinnedSampleFragment,
+  paginateGroupPinnedSample_query$key,
+} from "@fiftyone/relay";
 
 const ScalarDiv = styled.div`
   & > div {
@@ -223,8 +228,13 @@ const PathValueEntry = ({
 }) => {
   const keys = path.split(".");
 
+  const pinned = useRecoilValue(fos.sidebarOverride);
   let field = useRecoilValue(fos.field(keys[0]));
-  let { sample: data } = useRecoilValue(fos.modal);
+  let data = useRecoilValue(fos.activeModalSample);
+
+  if (pinned) {
+    data = useFragment(paginateGroupPinnedSampleFragment, data).sample.sample;
+  }
 
   for (let index = 0; index < keys.length; index++) {
     if (!data) {
