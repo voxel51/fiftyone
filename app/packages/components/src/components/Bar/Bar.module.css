@@ -1,0 +1,20 @@
+.bar {
+  position: absolute;
+  top: 0;
+  display: flex;
+  padding: 0.5rem;
+  justify-content: space-between;
+  overflow: visible;
+  width: 100%;
+  z-index: 1000;
+
+  background-image: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0),
+    30%,
+    var(--background-dark)
+  );
+
+  display: flex;
+  justify-content: space-between;
+}

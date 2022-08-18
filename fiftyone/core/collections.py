@@ -72,6 +72,7 @@ class SampleCollection(object):
     """
 
     _FRAMES_PREFIX = "frames."
+    _GROUPS_PREFIX = "groups."
 
     def __str__(self):
         return repr(self)
@@ -143,10 +144,16 @@ class SampleCollection(object):
 
     @property
     def _element_str(self):
+        if self.media_type == fom.GROUP:
+            return "group"
+
         return "sample"
 
     @property
     def _elements_str(self):
+        if self.media_type == fom.GROUP:
+            return "groups"
+
         return "samples"
 
     @property
@@ -160,6 +167,43 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement media_type")
 
     @property
+    def group_field(self):
+        """The group field of the collection, or None if the collection is not
+        grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_field")
+
+    @property
+    def group_slice(self):
+        """The current group slice of the collection, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_slice")
+
+    @property
+    def group_slices(self):
+        """The list of group slices of the collection, or None if the
+        collection is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_slices")
+
+    @property
+    def group_media_types(self):
+        """A dict mapping group slices to media types, or None if the
+        collection is not grouped.
+        """
+        raise NotImplementedError("Subclass must implement group_media_types")
+
+    @property
+    def default_group_slice(self):
+        """The default group slice of the collection, or None if the collection
+        is not grouped.
+        """
+        raise NotImplementedError(
+            "Subclass must implement default_group_slice"
+        )
+
+    @property
     def info(self):
         """The info dict of the underlying dataset.
 
@@ -167,9 +211,12 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement info")
 
-    @info.setter
-    def info(self, info):
-        raise NotImplementedError("Subclass must implement info")
+    @property
+    def app_config(self):
+        """Dataset-specific settings that customize how this collection is
+        visualized in the :ref:`FiftyOne App <fiftyone-app>`.
+        """
+        raise NotImplementedError("Subclass must implement app_config")
 
     @property
     def classes(self):
@@ -179,10 +226,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement classes")
 
-    @classes.setter
-    def classes(self, classes):
-        raise NotImplementedError("Subclass must implement classes")
-
     @property
     def default_classes(self):
         """The default classes of the underlying dataset.
@@ -190,10 +233,6 @@ class SampleCollection(object):
         See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
         information.
         """
-        raise NotImplementedError("Subclass must implement default_classes")
-
-    @default_classes.setter
-    def default_classes(self, classes):
         raise NotImplementedError("Subclass must implement default_classes")
 
     def has_classes(self, field):
@@ -241,10 +280,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement mask_targets")
 
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        raise NotImplementedError("Subclass must implement mask_targets")
-
     @property
     def default_mask_targets(self):
         """The default mask targets of the underlying dataset.
@@ -252,12 +287,6 @@ class SampleCollection(object):
         See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
         information.
         """
-        raise NotImplementedError(
-            "Subclass must implement default_mask_targets"
-        )
-
-    @default_mask_targets.setter
-    def default_mask_targets(self, targets):
         raise NotImplementedError(
             "Subclass must implement default_mask_targets"
         )
@@ -307,10 +336,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement skeletons")
 
-    @skeletons.setter
-    def skeletons(self, skeletons):
-        raise NotImplementedError("Subclass must implement skeletons")
-
     @property
     def default_skeleton(self):
         """The default keypoint skeleton of the underlying dataset.
@@ -318,10 +343,6 @@ class SampleCollection(object):
         See :meth:`fiftyone.core.dataset.Dataset.default_skeleton` for more
         information.
         """
-        raise NotImplementedError("Subclass must implement default_skeleton")
-
-    @default_skeleton.setter
-    def default_skeleton(self, skeleton):
         raise NotImplementedError("Subclass must implement default_skeleton")
 
     def has_skeleton(self, field):
@@ -500,6 +521,54 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def iter_groups(self):
+        """Returns an iterator over the groups in the collection.
+
+        Args:
+            progress (False): whether to render a progress bar tracking the
+                iterator's progress
+
+        Returns:
+            an iterator that emits dicts mapping group slice names to
+            :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` instances, one per group
+        """
+        raise NotImplementedError("Subclass must implement iter_groups()")
+
+    def get_group(self, group_id):
+        """Returns a dict containing the samples for the given group ID.
+
+        Args:
+            group_id: a group ID
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.sample.Sample`
+            or :class:`fiftyone.core.sample.SampleView` instances
+
+        Raises:
+            KeyError: if the group ID is not found
+        """
+        raise NotImplementedError("Subclass must implement get_group()")
+
+    def _get_default_sample_fields(
+        self, include_private=False, use_db_fields=False
+    ):
+        field_names = fosa.get_default_sample_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
+
+        if self.media_type == fom.GROUP:
+            return field_names + (self.group_field,)
+
+        return field_names
+
+    def _get_default_frame_fields(
+        self, include_private=False, use_db_fields=False
+    ):
+        return fofr.get_default_frame_fields(
+            include_private=include_private, use_db_fields=use_db_fields
+        )
+
     def get_field(self, path, include_private=False):
         """Returns the field instance of the provided path, or ``None`` if one
         does not exist.
@@ -512,59 +581,60 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
         """
+        _, field = self._parse_field(path, include_private=include_private)
+        return field
+
+    def _parse_field(self, path, include_private=False):
         keys = path.split(".")
 
         if not keys:
-            return None
+            return None, None
 
+        resolved_keys = []
+
+        if self._is_group_field(path):
+            if len(keys) < 3:
+                return path, None
+
+            resolved_keys.extend(keys[:2])
+            keys = keys[2:]
+
+        if self._contains_videos() and keys[0] == "frames":
+            schema = self.get_frame_field_schema(
+                include_private=include_private
+            )
+
+            keys = keys[1:]
+            resolved_keys.append("frames")
+        else:
             schema = self.get_field_schema()
 
         field = None
-        include_private and _add_mapped_fields_as_private_fields(schema)
 
-        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
+            field_name = _handle_id_field(
+                schema, field_name, include_private=include_private
+            )
 
-            if idx != last and isinstance(field, fof.ListField):
+            field = schema.get(field_name, None)
+
+            if field is None:
+                return None, None
+
+            resolved_keys.append(field.db_field or field.name)
+
+            if idx == len(keys) - 1:
+                continue
+
+            if isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                include_private and _add_mapped_fields_as_private_fields(
-                    schema
-                )
 
-        return field
+        resolved_path = ".".join(resolved_keys)
 
-    def _resolve_field(self, path):
-        keys = path.split(".")
-
-        if not keys:
-            return None
-
-        resolved_keys = []
-        schema = self.get_field_schema()
-
-        _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
-        for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
-
-            resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, fof.Lid):
-                field = field.field
-
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
-
-        return ".".join(resolved_keys)
+        return resolved_path, field
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -593,7 +663,7 @@ class SampleCollection(object):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the collection.
 
-        Only applicable for video collections.
+        Only applicable for collections that contain videos.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -607,7 +677,7 @@ class SampleCollection(object):
 
         Returns:
             a dictionary mapping field names to field types, or ``None`` if
-            the collection is not a video collection
+            the collection does not contain videos
         """
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
@@ -659,7 +729,7 @@ class SampleCollection(object):
         Returns:
             True/False
         """
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return False
 
         return field_name in self.get_frame_field_schema()
@@ -679,7 +749,9 @@ class SampleCollection(object):
         """
         return all([self.get_field(field) is not None for field in fields])
 
-    def validate_field_type(self, field_name, type):
+    def validate_field_type(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
@@ -691,8 +763,15 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        field = self.get_field(field_name)
-        if field is None:
+        field_name, _ = self._handle_group_field(field_name)
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
+
+        if field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
             raise ValueError(
                 f"Field '{field_name}' does not exist on collection '{self.name}'"
             )
@@ -1161,6 +1240,12 @@ class SampleCollection(object):
                 fields encountered to the dataset schema. If False, an error is
                 raised if the root ``field_name`` does not exist
         """
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         if isinstance(values, dict):
             if key_field is None:
                 raise ValueError(
@@ -1179,7 +1264,7 @@ class SampleCollection(object):
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, _, list_fields, _, id_to_str = self._parse_field_name(
+        _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
@@ -1201,8 +1286,6 @@ class SampleCollection(object):
             label_type = field_type.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
-            if is_frame_field:
-                path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
             if path in self._get_filtered_fields():
@@ -1234,19 +1317,30 @@ class SampleCollection(object):
             and isinstance(field_type.field, fof.EmbeddedDocumentField)
             and isinstance(self, fov.DatasetView)
         ):
-            list_fields = sorted(set(list_fields + [field_name]))
+            list_fields = sorted(set(list_fields + [_field_name]))
 
-        self._set_values(
-            field_name,
-            values,
-            list_fields,
-            sample_ids=_sample_ids,
-            frame_ids=_frame_ids,
-            to_mongo=to_mongo,
-            skip_none=skip_none,
-        )
+        if is_frame_field:
+            self._set_frame_values(
+                _field_name,
+                values,
+                list_fields,
+                sample_ids=_sample_ids,
+                frame_ids=_frame_ids,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+            )
+        else:
+            self._set_sample_values(
+                _field_name,
+                values,
+                list_fields,
+                sample_ids=_sample_ids,
+                to_mongo=to_mongo,
+                skip_none=skip_none,
+            )
 
     def _expand_schema_from_values(self, field_name, values):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         root = field_name.split(".", 1)[0]
 
@@ -1494,6 +1588,12 @@ class SampleCollection(object):
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
+        if self._is_group_field(field_name):
+            raise ValueError(
+                "This method does not support setting attached group fields "
+                "(found: '%s')" % field_name
+            )
+
         label_type = self._get_label_field_type(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
@@ -1901,11 +2001,7 @@ class SampleCollection(object):
                 instances
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
-                classes are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.classes` or
-                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels
-                are used
+                the observed ground truth/predicted labels are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
@@ -2007,11 +2103,7 @@ class SampleCollection(object):
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
-                classes are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.classes` or
-                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
-                possible, or else the observed ground truth/predicted labels
-                are used
+                the observed ground truth/predicted labels are used
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
             method (None): a string specifying the evaluation method to use.
@@ -2102,10 +2194,7 @@ class SampleCollection(object):
                 instances
             eval_key (None): a string key to use to refer to this evaluation
             mask_targets (None): a dict mapping mask values to labels. If not
-                provided, mask targets are loaded from
-                :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
-                :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
-                possible, or else the observed pixel values are used
+                provided, the observed pixel values are used
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
             **kwargs: optional keyword arguments for the constructor of the
@@ -3091,8 +3180,9 @@ class SampleCollection(object):
                 one label after filtering (True) or include all samples (False)
             trajectories (False): whether to match entire object trajectories
                 for which the object matches the given filter on at least one
-                frame. Only applicable to video datasets and frame-level label
-                fields whose objects have their ``index`` attributes populated
+                frame. Only applicable to datasets that contain videos and
+                frame-level label fields whose objects have their ``index``
+                attributes populated
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3355,7 +3445,13 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def group_by(self, field_or_expr, sort_expr=None, reverse=False):
+    def group_by(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         """Creates a view that reorganizes the samples in the collection so
         that they are grouped by a specified field or expression.
 
@@ -3389,6 +3485,12 @@ class SampleCollection(object):
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            match_expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines which groups to include in the output view. If
+                provided, this expression will be evaluated on the list of
+                samples in each group
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -3401,7 +3503,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.GroupBy(field_or_expr, sort_expr=sort_expr, reverse=reverse)
+            fos.GroupBy(
+                field_or_expr,
+                match_expr=match_expr,
+                sort_expr=sort_expr,
+                reverse=reverse,
+            )
         )
 
     @view_stage
@@ -4360,6 +4467,137 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def select_groups(self, group_ids, ordered=False):
+        """Selects the groups with the given IDs from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-groups")
+
+            #
+            # Select some specific groups by ID
+            #
+
+            group_ids = dataset.take(10).values("group.id")
+
+            view = dataset.select_groups(group_ids)
+
+            assert set(view.values("group.id")) == set(group_ids)
+
+            view = dataset.select_groups(group_ids, ordered=True)
+
+            assert view.values("group.id") == group_ids
+
+        Args:
+            groups_ids: the groups to select. Can be any of the following:
+
+                -   a group ID
+                -   an iterable of group IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   a group dict returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
+                -   an iterable of group dicts returned by
+                    :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+
+            ordered (False): whether to sort the groups in the returned view to
+                match the order of the provided IDs
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectGroups(group_ids, ordered=ordered)
+        )
+
+    @view_stage
+    def select_group_slice(self, slice=None, _allow_mixed=False):
+        """Selects the samples in the group collection from the given slice(s).
+
+        The returned view is a flattened non-grouped view containing only the
+        slice(s) of interest.
+
+        .. note::
+
+            This stage performs a ``$lookup`` that pulls the requested slice(s)
+            for each sample in the input collection from the source dataset.
+            As a result, this stage always emits *unfiltered samples*.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="center")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1-left.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-center.jpg",
+                        group=group1.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image1-right.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-left.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-center.jpg",
+                        group=group2.element("center"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2-right.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Retrieve the samples from the "center" group slice
+            #
+
+            view = dataset.select_group_slice("center")
+
+            #
+            # Retrieve the samples from the "left" or "right" group slices
+            #
+
+            view = dataset.select_group_slice(["left", "right"])
+
+            #
+            # Retrieve a flattened list of all samples
+            #
+
+            view = dataset.select_group_slice()
+
+        Args:
+            slice (None): a group slice or list of group slices to select. By
+                default, a flattened list of all samples is returned
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.SelectGroupSlice(slice=slice, _allow_mixed=_allow_mixed)
+        )
+
+    @view_stage
     def select_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
@@ -4966,13 +5204,10 @@ class SampleCollection(object):
         populated will be omitted from the returned view.
 
         When ``sample_frames`` is True, this method samples each video in the
-        input collection into a directory of per-frame images with the same
-        basename as the input video with frame numbers/format specified by
-        ``frames_patt``, and stores the resulting frame paths in a ``filepath``
-        field of the input collection.
-
-        For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-        following paths::
+        collection into a directory of per-frame images with filenames
+        specified by ``frames_patt``. By default, each folder of images is
+        written using the same basename as the input video. For example, if
+        ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
             /path/to/video1.mp4
             /path/to/video2.mp4
@@ -4988,6 +5223,33 @@ class SampleCollection(object):
                 000001.jpg
                 000002.jpg
                 ...
+
+        However, you can use the optional ``output_dir`` and ``rel_dir``
+        parameters to customize the location and shape of the sampled frame
+        folders. For example, if ``output_dir = "/tmp"`` and
+        ``rel_dir = "/path/to"``, then videos with the following paths::
+
+            /path/to/folderA/video1.mp4
+            /path/to/folderA/video2.mp4
+            /path/to/folderB/video3.mp4
+            ...
+
+        would be sampled as follows::
+
+            /tmp/folderA/
+                video1/
+                    000001.jpg
+                    000002.jpg
+                    ...
+                video2/
+                    000001.jpg
+                    000002.jpg
+                    ...
+            /tmp/folderB/
+                video3/
+                    000001.jpg
+                    000002.jpg
+                    ...
 
         By default, samples will be generated for every video frame at full
         resolution, but this method provides a variety of parameters that can
@@ -5058,6 +5320,17 @@ class SampleCollection(object):
                 exist in the input collection. This parameter has no effect
                 when ``sample_frames==False`` since frames must always exist in
                 order to have ``filepath`` information use
+            output_dir (None): an optional output directory in which to write
+                the sampled frames. By default, the frames are written in
+                folders with the same basename of each video
+            rel_dir (None): a relative directory to remove from the filepath of
+                each video, if possible. The path is converted to an absolute
+                path (if necessary) via
+                :func:`fiftyone.core.utils.normalize_path`. This argument can
+                be used in conjunction with ``output_dir`` to cause the sampled
+                frames to be written in a nested directory structure within
+                ``output_dir`` matching the shape of the input video's folder
+                structure
             frames_patt (None): a pattern specifying the filename/format to use
                 to write or check or existing sampled frames, e.g.,
                 ``"%%06d.jpg"``. The default value is
@@ -5654,6 +5927,87 @@ class SampleCollection(object):
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
+    def quantiles(self, field_or_expr, quantiles, expr=None, safe=False):
+        """Computes the quantile(s) of the field values of a collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the quantiles of a numeric field
+            #
+
+            quantiles = dataset.quantiles("numeric_field", [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+            #
+            # Compute the quantiles of a numeric list field
+            #
+
+            quantiles = dataset.quantiles("numeric_list_field", [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+            #
+            # Compute the mean of a transformation of a numeric field
+            #
+
+            quantiles = dataset.quantiles(2 * (F("numeric_field") + 1), [0.1, 0.5, 0.9])
+            print(quantiles)  # the quantiles
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            quantiles: the quantile or iterable of quantiles to compute. Each
+                quantile must be a numeric value in ``[0, 1]``
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
+
+        Returns:
+            the quantile or list of quantiles
+        """
+        make = lambda field_or_expr: foa.Quantiles(
+            field_or_expr, quantiles, expr=expr, safe=safe
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
     def std(self, field_or_expr, expr=None, safe=False, sample=False):
         """Computes the standard deviation of the field values of the
         collection.
@@ -5996,6 +6350,15 @@ class SampleCollection(object):
         if label_fields is None:
             label_fields = self._get_label_fields()
 
+        if self.media_type == fom.IMAGE:
+            return foua.draw_labeled_images(
+                self,
+                output_dir,
+                label_fields=label_fields,
+                config=config,
+                **kwargs,
+            )
+
         if self.media_type == fom.VIDEO:
             return foua.draw_labeled_videos(
                 self,
@@ -6005,12 +6368,11 @@ class SampleCollection(object):
                 **kwargs,
             )
 
-        return foua.draw_labeled_images(
-            self,
-            output_dir,
-            label_fields=label_fields,
-            config=config,
-            **kwargs,
+        if self.media_type == fom.GROUP:
+            raise fom.SelectGroupSliceError((fom.IMAGE, fom.VIDEO))
+
+        raise fom.MediaTypeError(
+            "Unsupported media type '%s'" % self.media_type
         )
 
     def export(
@@ -6553,7 +6915,7 @@ class SampleCollection(object):
 
             index_info[key] = info
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             # Frame-level indexes
             fields_map = self._get_db_fields_map(frames=True, reverse=True)
             frame_info = self._dataset._frame_collection.index_information()
@@ -6634,7 +6996,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field = self._resolve_field(field)
+            _field, _ = self._parse_field(field, include_private=True)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
@@ -6704,7 +7066,7 @@ class SampleCollection(object):
 
     def _get_default_indexes(self, frames=False):
         if frames:
-            if self.media_type == fom.VIDEO:
+            if self._contains_videos():
                 return ["id", "_sample_id_1_frame_number_1"]
 
             return []
@@ -6715,7 +7077,14 @@ class SampleCollection(object):
         """Reloads the collection from the database."""
         raise NotImplementedError("Subclass must implement reload()")
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the collection.
 
         Args:
@@ -6726,14 +7095,19 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
-                to video datasets when a ``frame_labels_dir`` is provided
+                to datasets that contain videos when a ``frame_labels_dir`` is
+                provided
 
         Returns:
             a JSON dict
@@ -6741,17 +7115,25 @@ class SampleCollection(object):
         if rel_dir is not None:
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
-        is_video = self.media_type == fom.VIDEO
-        write_frame_labels = is_video and frame_labels_dir is not None
+        contains_videos = self._contains_videos()
+        write_frame_labels = (
+            contains_videos and include_frames and frame_labels_dir is not None
+        )
 
         d = {
             "name": self.name,
+            "version": self._dataset.version,
             "media_type": self.media_type,
-            "num_samples": len(self),
-            "sample_fields": self._serialize_field_schema(),
         }
 
-        if is_video:
+        if self.media_type == fom.GROUP:
+            d["group_field"] = self.group_field
+            d["group_media_types"] = self.group_media_types
+            d["default_group_slice"] = self.default_group_slice
+
+        d["sample_fields"] = self._serialize_field_schema()
+
+        if contains_videos:
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
@@ -6774,12 +7156,20 @@ class SampleCollection(object):
         if self.default_skeleton:
             d["default_skeleton"] = self._serialize_default_skeleton()
 
+        if self.media_type == fom.GROUP:
+            view = self.select_group_slice(_allow_mixed=True)
+        else:
+            view = self
+
         # Serialize samples
         samples = []
-        for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+        for sample in view.iter_samples(progress=True):
+            sd = sample.to_dict(
+                include_frames=include_frames,
+                include_private=include_private,
+            )
 
-            if write_frame_labels:
+            if write_frame_labels and sample.media_type == fom.VIDEO:
                 frames = {"frames": sd.pop("frames", {})}
                 filename = sample.id + ".json"
                 sd["frames"] = filename
@@ -6795,7 +7185,14 @@ class SampleCollection(object):
 
         return d
 
-    def to_json(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_json(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON string representation of the collection.
 
         The samples will be written as a list in a top-level ``samples`` field
@@ -6809,11 +7206,15 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -6822,6 +7223,8 @@ class SampleCollection(object):
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -6831,6 +7234,8 @@ class SampleCollection(object):
         self,
         json_path,
         rel_dir=None,
+        include_private=False,
+        include_frames=False,
         frame_labels_dir=None,
         pretty_print=False,
     ):
@@ -6845,16 +7250,22 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to datasets that
+                contain videos when ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -7016,11 +7427,15 @@ class SampleCollection(object):
     def _build_batch_pipeline(self, aggs_map):
         project = {}
         attach_frames = False
+        group_slices = set()
         for idx, aggregation in aggs_map.items():
             big_field = "value%d" % idx
 
             _pipeline = aggregation.to_mongo(self, big_field=big_field)
             attach_frames |= aggregation._needs_frames(self)
+            _group_slices = aggregation._needs_group_slices(self)
+            if _group_slices:
+                group_slices.update(_group_slices)
 
             try:
                 assert len(_pipeline) == 1
@@ -7032,13 +7447,16 @@ class SampleCollection(object):
                 )
 
         return self._pipeline(
-            pipeline=[{"$project": project}], attach_frames=attach_frames
+            pipeline=[{"$project": project}],
+            attach_frames=attach_frames,
+            group_slices=group_slices,
         )
 
     def _build_big_pipeline(self, aggregation):
         return self._pipeline(
             pipeline=aggregation.to_mongo(self, big_field="values"),
             attach_frames=aggregation._needs_frames(self),
+            group_slices=aggregation._needs_group_slices(self),
         )
 
     def _build_faceted_pipelines(self, aggs_map):
@@ -7047,6 +7465,7 @@ class SampleCollection(object):
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
             )
 
         return pipelines
@@ -7066,21 +7485,40 @@ class SampleCollection(object):
     def _pipeline(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slices=None,
+        groups_only=False,
+        detach_groups=False,
+        manual_group_select=False,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            media_type (None): the media type of the collection, if different
+                than the source dataset's media type
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
+            groups_only (False): whether to generate a pipeline that contains
+                *only* the flattened group documents for the collection
+            detach_groups (False): whether to detach the group documents at the
+                end of the pipeline. Only applicable to grouped collections
+            manual_group_select (False): whether the pipeline has manually
+                handled the initial group selection. Only applicable to grouped
+                collections
 
         Returns:
             the aggregation pipeline
@@ -7090,9 +7528,14 @@ class SampleCollection(object):
     def _aggregate(
         self,
         pipeline=None,
+        media_type=None,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
+        group_slices=None,
+        groups_only=False,
+        detach_groups=False,
+        manual_group_select=False,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
@@ -7100,12 +7543,26 @@ class SampleCollection(object):
         Args:
             pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
                 append to the current pipeline
-            attach_frames (False): whether to attach the frame documents prior
-                to executing the pipeline. Only applicable to video datasets
+            media_type (None): the media type of the collection, if different
+                than the source dataset's media type
+            attach_frames (False): whether to attach the frame documents
+                immediately prior to executing ``pipeline``. Only applicable to
+                datasets that contain videos
             detach_frames (False): whether to detach the frame documents at the
-                end of the pipeline. Only applicable to video datasets
+                end of the pipeline. Only applicable to datasets that contain
+                videos
             frames_only (False): whether to generate a pipeline that contains
-                *only* the frames in the collection
+                *only* the frames in the colection
+            group_slices (None): a list of group slices to attach immediately
+                prior to executing ``pipeline``. Only applicable for grouped
+                collections
+            groups_only (False): whether to generate a pipeline that contains
+                *only* the flattened group documents for the collection
+            detach_groups (False): whether to detach the group documents at the
+                end of the pipeline. Only applicable to grouped collections
+            manual_group_select (False): whether the pipeline has manually
+                handled the initial group selection. Only applicable to grouped
+                collections
 
         Returns:
             the aggregation result dict
@@ -7213,7 +7670,7 @@ class SampleCollection(object):
         if etau.is_str(fields):
             fields = [fields]
 
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return fields, []
 
         return fou.split_frame_fields(fields)
@@ -7246,10 +7703,64 @@ class SampleCollection(object):
         return field_name, is_frame_field
 
     def _is_frame_field(self, field_name):
-        return (self.media_type == fom.VIDEO) and (
+        return self._contains_videos() and (
             field_name.startswith(self._FRAMES_PREFIX)
-            or field_name == "frames"
+            or field_name == self._FRAMES_PREFIX[:-1]
         )
+
+    def _handle_group_field(self, field_name):
+        is_group_field = self._is_group_field(field_name)
+        if is_group_field:
+            try:
+                field_name = field_name.split(".", 2)[2]
+            except IndexError:
+                field_name = ""
+
+        return field_name, is_group_field
+
+    def _is_group_field(self, field_name):
+        return (self.media_type == fom.GROUP) and (
+            field_name.startswith(self._GROUPS_PREFIX)
+            or field_name == self._GROUPS_PREFIX[:-1]
+        )
+
+    def _get_group_slices(self, field_names):
+        if etau.is_str(field_names):
+            field_names = [field_names]
+
+        group_slices = set()
+        for field_name in field_names:
+            if field_name.startswith(self._GROUPS_PREFIX):
+                group_slice = field_name.split(".", 2)[1]
+                group_slices.add(group_slice)
+
+        return list(group_slices)
+
+    def _select_group_slices(self, media_type):
+        slice_names = [
+            slice_name
+            for slice_name, slice_media_type in self.group_media_types.items()
+            if slice_media_type == media_type
+        ]
+        return self.select_group_slice(slice_names)
+
+    def _contains_videos(self, only_active_slice=False):
+        if self.media_type == fom.VIDEO:
+            return True
+
+        if self.media_type == fom.GROUP:
+            if only_active_slice:
+                return (
+                    self.group_media_types.get(self.group_slice, None)
+                    == fom.VIDEO
+                )
+
+            return any(
+                slice_media_type == fom.VIDEO
+                for slice_media_type in self.group_media_types.values()
+            )
+
+        return False
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
@@ -7324,10 +7835,20 @@ class SampleCollection(object):
 
         return fields_map
 
+    def _handle_db_field(self, field_name, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return db_fields_map.get(field_name, field_name)
+
+    def _handle_db_fields(self, field_names, frames=False):
+        # @todo handle "groups.<slice>.field.name", if it becomes necessary
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return [db_fields_map.get(f, f) for f in field_names]
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
-        if self.media_type == fom.VIDEO:
+        if self._contains_videos():
             fields.extend(self._get_frame_label_fields())
 
         return fields
@@ -7340,7 +7861,7 @@ class SampleCollection(object):
         )
 
     def _get_frame_label_fields(self):
-        if self.media_type != fom.VIDEO:
+        if not self._contains_videos():
             return None
 
         return [
@@ -7350,12 +7871,29 @@ class SampleCollection(object):
             ).keys()
         ]
 
+    def _get_root_fields(self, fields):
+        root_fields = set()
+        for field in fields:
+            if self._contains_videos() and field.startswith(
+                self._FRAMES_PREFIX
+            ):
+                # Converts `frames.root[.x.y]` to `frames.root`
+                root = ".".join(field.split(".", 2)[:2])
+            else:
+                # Converts `root[.x.y]` to `root`
+                root = field.split(".", 1)[0]
+
+            root_fields.add(root)
+
+        return list(root_fields)
+
     def _validate_root_field(self, field_name, include_private=False):
         _ = self._get_root_field_type(
             field_name, include_private=include_private
         )
 
     def _get_root_field_type(self, field_name, include_private=False):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         if is_frame_field:
@@ -7376,6 +7914,7 @@ class SampleCollection(object):
         return schema[root]
 
     def _get_label_field_type(self, field_name):
+        field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()
@@ -7577,8 +8116,9 @@ def _get_default_label_fields_for_exporter(
     if label_cls is None:
         if required:
             raise ValueError(
-                "Cannot select a default field when exporter does not provide "
-                "a `label_cls`"
+                "Unable to automatically select an appropriate label field to "
+                "export because the %s does not provide a `label_cls`"
+                % type(dataset_exporter)
             )
 
         return None
@@ -7966,6 +8506,26 @@ def _parse_field_name(
     )
 
 
+def _handle_id_field(schema, field_name, include_private=False):
+    if not include_private and field_name.startswith("_"):
+        return None
+
+    if field_name in schema:
+        return field_name
+
+    if field_name.startswith("_"):
+        _field_name = field_name[1:]
+    else:
+        _field_name = "_" + field_name
+
+    field = schema.get(_field_name, None)
+
+    if isinstance(field, fof.ObjectIdField):
+        return _field_name
+
+    return field_name
+
+
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
         return field_name, False, False
@@ -8295,10 +8855,10 @@ def _handle_existing_dirs(
                 etau.delete_file(_labels_path)
 
 
-def _add_mapped_fields_as_private_fields(schema):
+def _add_db_fields_to_schema(schema):
     additions = {}
     for field in schema.values():
-        if field.db_field:
+        if field.db_field != field.name:
             additions[field.db_field] = field
 
     schema.update(additions)

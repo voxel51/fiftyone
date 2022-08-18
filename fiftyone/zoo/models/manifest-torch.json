@@ -61,7 +61,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
-                    "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet101",
+                    "entrypoint_fcn": "torchvision.models.segmentation.deeplabv3_resnet101",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
@@ -98,7 +98,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
-                    "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet50",
+                    "entrypoint_fcn": "torchvision.models.segmentation.deeplabv3_resnet50",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
@@ -350,7 +350,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
-                    "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet101",
+                    "entrypoint_fcn": "torchvision.models.segmentation.fcn_resnet101",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
@@ -387,7 +387,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
-                    "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet50",
+                    "entrypoint_fcn": "torchvision.models.segmentation.fcn_resnet50",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",

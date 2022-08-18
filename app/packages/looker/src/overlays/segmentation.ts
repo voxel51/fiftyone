@@ -28,7 +28,8 @@ interface SegmentationInfo extends BaseLabel {
 }
 
 export default class SegmentationOverlay<State extends BaseState>
-  implements Overlay<State> {
+  implements Overlay<State>
+{
   readonly field: string;
   private label: SegmentationLabel;
   private targets?: TypedArray;
@@ -74,9 +75,7 @@ export default class SegmentationOverlay<State extends BaseState>
   containsPoint(state: Readonly<State>): CONTAINS {
     const {
       pixelCoordinates: [x, y],
-      config: {
-        dimensions: [w, h],
-      },
+      dimensions: [w, h],
     } = state;
     if (x >= 0 && x <= w && y >= 0 && y <= h && this.getTarget(state)) {
       return CONTAINS.CONTENT;
@@ -188,9 +187,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
   private getMaskCoordinates({
     pixelCoordinates: [x, y],
-    config: {
-      dimensions: [mw, mh],
-    },
+    dimensions: [mw, mh],
   }: Readonly<State>): Coordinates {
     const [h, w] = this.label.mask.data.shape;
     const sx = Math.floor(x * (w / mw));

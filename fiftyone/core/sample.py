@@ -55,9 +55,75 @@ class Sample(Document):
         )
 
     def add_labels(
-        self, labels, label_field, confidence_thresh=None, expand_schema=True
+        self,
+        labels,
+        label_field=None,
+        confidence_thresh=None,
+        expand_schema=True,
     ):
-        if label_field:
+        """Adds the given labels to the sample.
+
+        The provided ``labels`` can be any of the following:
+
+        -   A :class:`fiftyone.core.labels.Label` instance, in which case the
+            labels are directly saved in the specified ``label_field``
+
+        -   A dict mapping keys to :class:`fiftyone.core.labels.Label`
+            instances. In this case, the labels are added as follows::
+
+                for key, value in labels.items():
+                    sample[label_key(key)] = value
+
+        -   A dict mapping frame numbers to :class:`fiftyone.core.labels.Label`
+            instances. In this case, the provided labels are interpreted as
+            frame-level labels that should be added as follows::
+
+                sample.frames.merge(
+                    {
+                        frame_number: {label_field: label}
+                        for frame_number, label in labels.items()
+                    }
+                )
+
+        -   A dict mapping frame numbers to dicts mapping keys to
+            :class:`fiftyone.core.labels.Label` instances. In this case, the
+            provided labels are interpreted as frame-level labels that should
+            be added as follows::
+
+                sample.frames.merge(
+                    {
+                        frame_number: {
+                            label_key(key): value
+                            for key, value in frame_dict.items()
+                        }
+                        for frame_number, frame_dict in labels.items()
+                    }
+                )
+
+        In the above, the ``label_key`` function maps label dict keys to field
+        names, and is defined from ``label_field`` as follows::
+
+            if isinstance(label_field, dict):
+                label_key = lambda k: label_field.get(k, k)
+            elif label_field is not None:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_key = lambda k: k
+
+        Args:
+            labels: a :class:`fiftyone.core.labels.Label` or dict of labels per
+                the description above
+            label_field (None): the sample field, prefix, or dict defining in
+                which field(s) to save the labels
+            confidence_thresh (None): an optional confidence threshold to apply
+                to any applicable labels before saving them
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if any fields are not in the dataset schema
+        """
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
             label_key = lambda k: label_field + "_" + k
         else:
             label_key = lambda k: k
@@ -83,6 +149,11 @@ class Sample(Document):
                     },
                     expand_schema=expand_schema,
                 )
+            elif label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided in order to add labels "
+                    "to a single frame-level field"
+                )
             else:
                 # Single frame-level field
                 self.frames.merge(
@@ -100,10 +171,17 @@ class Sample(Document):
                 expand_schema=expand_schema,
             )
         elif labels is not None:
+            if label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided in order to add labels "
+                    "to a single sample field"
+                )
+
             # Single sample-level field
             self.set_field(label_field, labels, create=expand_schema)
 
-        self.save()
+        if self._in_db:
+            self.save()
 
     def merge(
         self,
@@ -149,12 +227,24 @@ class Sample(Document):
                 expand_schema=expand_schema,
             )
 
-    def to_dict(self, include_frames=False):
-        d = super().to_dict()
+    def to_dict(self, include_frames=False, include_private=False):
+        """Serializes the sample to a JSON dictionary.
+
+        Args:
+            include_frames (False): whether to include the frame labels for
+                video samples
+            include_private (False): whether to include private fields
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict(include_private=include_private)
 
         if self.media_type == fomm.VIDEO:
             if include_frames:
-                d["frames"] = self.frames._to_frames_dict()
+                d["frames"] = self.frames._to_frames_dict(
+                    include_private=include_private
+                )
             else:
                 d.pop("frames", None)
 

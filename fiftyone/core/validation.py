@@ -80,6 +80,9 @@ def validate_image_collection(sample_collection):
     """
     validate_collection(sample_collection)
 
+    if sample_collection.media_type == fom.GROUP:
+        raise fom.SelectGroupSliceError(fom.IMAGE)
+
     if sample_collection.media_type != fom.IMAGE:
         raise ValueError(
             "Expected collection to have media type %s; found %s"
@@ -107,6 +110,9 @@ def validate_video_collection(sample_collection):
         :class:`fiftyone.core.collections.SampleCollection`
     """
     validate_collection(sample_collection)
+
+    if sample_collection.media_type == fom.GROUP:
+        raise fom.SelectGroupSliceError(fom.VIDEO)
 
     if sample_collection.media_type != fom.VIDEO:
         raise ValueError(
@@ -142,7 +148,7 @@ def validate_collection_label_fields(
     if not etau.is_container(allowed_label_types):
         allowed_label_types = [allowed_label_types]
 
-    if sample_collection.media_type == fom.VIDEO:
+    if sample_collection._contains_videos():
         sample_fields, frame_fields = fou.split_frame_fields(field_names)
     else:
         sample_fields = field_names

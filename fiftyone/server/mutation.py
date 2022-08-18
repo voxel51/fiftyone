@@ -19,7 +19,7 @@ import fiftyone.core.view as fov
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.query import Dataset
-from fiftyone.server.scalars import JSONArray
+from fiftyone.server.scalars import BSONArray
 
 
 @gql.input
@@ -32,7 +32,7 @@ class SelectedLabel:
 
 @gql.type
 class ViewResponse:
-    view: JSONArray
+    view: BSONArray
     dataset: Dataset
 
 
@@ -85,7 +85,7 @@ class Mutation:
         self,
         subscription: str,
         session: t.Optional[str],
-        view: JSONArray,
+        view: BSONArray,
         dataset: str,
         info: Info,
     ) -> ViewResponse:

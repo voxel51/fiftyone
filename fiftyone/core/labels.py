@@ -325,7 +325,9 @@ class _HasID(Label):
     """
 
     _id: ObjectId
-    id: str = field(load=str, dump=ObjectId, link="_id")
+    id: str = field(
+        load=str, dump=ObjectId, link="_id", default=lambda: str(ObjectId())
+    )
     tags: t.List[str]
 
 
@@ -379,7 +381,7 @@ class Classifications(_HasLabelList, Label):
     logits: np.ndarray = field(dump=dump_array, load=load_array)
 
 
-class Detection(_HasID, _HasAttributesDict, Label):
+class Detection(_HasAttributesDict, _HasID, Label):
     """An object detection.
 
     Args:
@@ -592,7 +594,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasID, _HasAttributesDict, Label):
+class Polyline(_HasAttributesDict, _HasID, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -849,7 +851,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasID, _HasAttributesDict, Label):
+class Keypoint(_HasAttributesDict, _HasID, Label):
     """A list of keypoints in an image.
 
     Args:

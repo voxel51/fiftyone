@@ -25,7 +25,7 @@ def add_yolo_labels(
     sample_collection,
     label_field,
     labels_path,
-    classes=None,
+    classes,
     include_missing=False,
 ):
     """Adds the given YOLO-formatted labels to the collection.
@@ -55,22 +55,12 @@ def add_yolo_labels(
             -   a directory containing YOLO TXT files whose filenames (less
                 extension) correspond to image filenames in
                 ``sample_collection``, in any order
-        classes (None): the list of class label strings. If not provided, these
-            must be available from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes`
+        classes: the list of class label strings
         include_missing (False): whether to insert empty
             :class:`Detections <fiftyone.core.labels.Detections>` instances for
             any samples in the input collection whose ``label_field`` is
             ``None`` after import
     """
-    if classes is None:
-        classes = sample_collection.get_classes(label_field)
-
-    if not classes:
-        raise ValueError(
-            "You must provide `classes` in order to load YOLO labels"
-        )
-
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
         labels = [load_yolo_annotations(p, classes) for p in labels_path]
@@ -610,9 +600,7 @@ class YOLOv4DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
         image_format (None): the image format to use when writing in-memory
@@ -706,21 +694,6 @@ class YOLOv4DatasetExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-                self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
@@ -821,9 +794,7 @@ class YOLOv5DatasetExporter(
 
             If None, the default value of this parameter will be chosen based
             on the value of the ``data_path`` parameter
-        classes (None): the list of possible class labels. If not provided,
-            this list will be extracted when :meth:`log_collection` is called,
-            if possible
+        classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
         image_format (None): the image format to use when writing in-memory
@@ -905,21 +876,6 @@ class YOLOv5DatasetExporter(
             ignore_exts=True,
         )
         self._media_exporter.setup()
-
-    def log_collection(self, sample_collection):
-        if self.classes is None:
-            if sample_collection.default_classes:
-                self.classes = sample_collection.default_classes
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif sample_collection.classes:
-                self.classes = next(iter(sample_collection.classes.values()))
-                self._parse_classes()
-                self._dynamic_classes = False
-            elif "classes" in sample_collection.info:
-                self.classes = sample_collection.info["classes"]
-                self._parse_classes()
-                self._dynamic_classes = False
 
     def export_sample(self, image_or_path, detections, metadata=None):
         _, uuid = self._media_exporter.export(image_or_path)

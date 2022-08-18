@@ -349,6 +349,13 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_USE_FRAME_NUMBER",
             default=False,
         )
+        self.disable_plugins = self.parse_bool(
+            d,
+            "disable_plugins",
+            env_var="FIFTYONE_APP_DISABLE_PLUGINS",
+            default=False,
+        )
+        self.plugins = d.get("plugins", {})
 
         self._init()
 
@@ -409,6 +416,17 @@ class AppConfig(EnvConfig):
                 "`grid_zoom` must be in [0, 10]; found %d", self.grid_zoom
             )
             self.grid_zoom = 5
+
+        if "MAPBOX_TOKEN" in os.environ:
+            try:
+                _set_nested_dict_value(
+                    self.plugins,
+                    "map.mapboxAccessToken",
+                    os.environ["MAPBOX_TOKEN"],
+                )
+                raise OSError("HAHAHAHA")
+            except Exception as e:
+                logger.warning("Failed to set mapbox token: %s", e)
 
 
 class AppConfigError(etac.EnvConfigError):
@@ -651,3 +669,15 @@ def _get_installed_packages():
     except:
         logger.debug("Failed to get installed packages")
         return set()
+
+
+def _set_nested_dict_value(d, path, value):
+    keys = path.split(".")
+
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
+
+        d = d[key]
+
+    d[keys[-1]] = value

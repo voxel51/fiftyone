@@ -108,6 +108,8 @@ shell and run the command again:
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
 
+.. _dataset-media-type:
+
 Dataset media type
 ------------------
 
@@ -140,6 +142,8 @@ Datasets are homogeneous; they must contain samples of the same media type:
     dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
     # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
 
+.. _dataset-version:
+
 Dataset version
 ---------------
 
@@ -150,6 +154,37 @@ of the dataset.
 If you upgrade your `fiftyone` package and then load a dataset that was created
 with an older version of the package, it will be automatically migrated to the
 new package version (if necessary) the first time you load it.
+
+.. _dataset-tags:
+
+Dataset tags
+------------
+
+All |Dataset| instances have a
+:meth:`tags <fiftyone.core.dataset.Dataset.tags>` property that you can use to
+store an arbitrary list of string tags.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Add some tags
+    dataset.tags = ["test", "projectA"]
+
+    # Edit the tags
+    dataset.tags.pop()
+    dataset.tags.append("projectB")
+    dataset.save()  # must save after edits
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's :meth:`tags <fiftyone.core.dataset.Dataset.tags>` property
+    in-place to save the changes to the database.
 
 .. _storing-info:
 
@@ -186,8 +221,40 @@ Datasets can also store more specific types of ancillary information such as
 
     You must call
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
-    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property to
-    save the changes to the database.
+    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property
+    in-place to save the changes to the database.
+
+.. _custom-app-config:
+
+Custom App config
+-----------------
+
+All |Dataset| instances have an
+:meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
+contains a |DatasetAppConfig| you can use to store dataset-specific settings
+that customize how the dataset is visualized in the
+:ref:`FiftyOne App <fiftyone-app>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # View the dataset's current App config
+    print(dataset.app_config)
+
+    # Store some dataset-specific settings
+    dataset.app_config.plugins["map"] = {"clustering": False}
+    dataset.save()  # must save after edits
+
+.. note::
+
+    Any settings stored in a dataset's
+    :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` will override
+    the corresponding settings from your
+    :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _storing-classes:
 
@@ -245,7 +312,7 @@ require knowledge of the possible classes in a dataset or field(s).
     :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
     the dataset's :meth:`classes <fiftyone.core.dataset.Dataset.classes>` and
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 .. _storing-mask-targets:
 
@@ -308,7 +375,7 @@ require knowledge of the mask targets for a dataset or field(s).
     the dataset's
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
     :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 .. _storing-keypoint-skeletons:
 
@@ -392,7 +459,7 @@ nodes:
     the dataset's
     :meth:`skeletons <fiftyone.core.dataset.Dataset.skeletons>` and
     :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
-    properties to save the changes to the database.
+    properties in-place to save the changes to the database.
 
 Deleting a dataset
 ------------------
@@ -3063,6 +3130,36 @@ which samples to merge:
     then using
     :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>` to
     perform the merge.
+
+.. _cloning-datasets:
+
+Cloning datasets
+________________
+
+You can use :meth:`clone() <fiftyone.core.dataset.Dataset.clone>` to create a
+copy of a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    dataset2 = dataset.clone()
+    dataset2.add_sample_field("new_field", fo.StringField)
+
+    # The source dataset is unaffected
+    assert "new_field" not in dataset.get_field_schema()
+
+Dataset clones contain deep copies of all samples and dataset-level information
+in the source dataset. The source *media files*, however, are not copied.
+
+.. note::
+
+    Did you know? You can also
+    :ref:`clone specific subsets <saving-and-cloning-views>` of your datasets.
 
 .. _batch-updates:
 

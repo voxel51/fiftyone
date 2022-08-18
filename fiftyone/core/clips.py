@@ -146,6 +146,14 @@ class ClipsView(fov.DatasetView):
     def name(self):
         return self.dataset_name + "-clips"
 
+    @property
+    def media_type(self):
+        return fom.VIDEO
+
+    @property
+    def _media_type(self):
+        return fom.VIDEO
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
@@ -437,9 +445,7 @@ def make_clips_dataset(
         sample_collection._dataset._doc.app_sidebar_groups
     )
     dataset.media_type = fom.VIDEO
-    dataset.add_sample_field(
-        "sample_id", fof.ObjectIdField, db_field="_sample_id"
-    )
+    dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
 

@@ -21,6 +21,8 @@
 
 .. |Frame| replace:: :class:`Frame <fiftyone.core.frame.Frame>`
 
+.. |Group| replace:: :class:`Group <fiftyone.core.groups.Group>`
+
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
 .. |BooleanField| replace:: :class:`BooleanField <fiftyone.core.fields.BooleanField>`
 .. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
@@ -32,6 +34,7 @@
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 .. |VectorField| replace:: :class:`VectorField <fiftyone.core.fields.VectorField>`
 .. |ArrayField| replace:: :class:`ArrayField <fiftyone.core.fields.ArrayField>`
+.. |GroupField| replace:: :class:`GroupField <fiftyone.core.fields.GroupField>`
 
 .. |ViewExpression| replace:: :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>`
 .. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
@@ -59,6 +62,7 @@
 .. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
 .. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
+.. |DatasetAppConfig| replace:: :class:`DatasetAppConfig <fiftyone.core.odm.dataset.DatasetAppConfig>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`

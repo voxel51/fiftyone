@@ -23,6 +23,7 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.frame as fofr
+import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
@@ -66,6 +67,9 @@ class ViewStage(object):
 
         kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self._kwargs() == other._kwargs()
 
     @property
     def has_view(self):
@@ -133,6 +137,20 @@ class ViewStage(object):
 
         Returns:
             a list of fields, or ``None`` if no fields have been selected
+        """
+        return None
+
+    def get_media_type(self, sample_collection):
+        """Returns the media type outputted by this stage when applied to the
+        given collection, if and only if it is different from the input type.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            the media type, or ``None`` if the stage does not change the media
         """
         return None
 
@@ -204,12 +222,25 @@ class ViewStage(object):
         """
         return False
 
+    def _needs_group_slices(self, sample_collection):
+        """Whether the stage requires group slice(s) to be attached.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            None, or a list of group slices
+        """
+        return None
+
     def _serialize(self, include_uuid=True):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
         Args:
-            include_uuid (True): whether to include the stage's UUID in the JSON
-                representation
+            include_uuid (True): whether to include the stage's UUID in the
+                JSON representation
 
         Returns:
             a JSON dict
@@ -258,9 +289,8 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.get("_uuid", None)
         stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
-        stage._uuid = uuid
+        stage._uuid = d.get("_uuid", None)
         return stage
 
 
@@ -335,7 +365,9 @@ class Concat(ViewStage):
             {
                 "$unionWith": {
                     "coll": self._view._dataset._sample_collection_name,
-                    "pipeline": self._view._pipeline(detach_frames=True),
+                    "pipeline": self._view._pipeline(
+                        detach_frames=True, detach_groups=True
+                    ),
                 }
             }
         ]
@@ -616,7 +648,7 @@ class ExcludeFields(ViewStage):
         return self._field_names
 
     def get_excluded_fields(self, sample_collection, frames=False):
-        if sample_collection.media_type == fom.VIDEO:
+        if sample_collection._contains_videos(only_active_slice=True):
             fields, frame_fields = fou.split_frame_fields(self.field_names)
             return frame_fields if frames else fields
 
@@ -626,17 +658,26 @@ class ExcludeFields(ViewStage):
         excluded_fields = self.get_excluded_fields(
             sample_collection, frames=False
         )
+        excluded_fields = sample_collection._handle_db_fields(excluded_fields)
 
-        excluded_frame_fields = [
-            sample_collection._FRAMES_PREFIX + f
-            for f in self.get_excluded_fields(sample_collection, frames=True)
-        ]
+        if sample_collection._contains_videos(only_active_slice=True):
+            excluded_frame_fields = self.get_excluded_fields(
+                sample_collection, frames=True
+            )
+            excluded_frame_fields = sample_collection._handle_db_fields(
+                excluded_frame_fields, frames=True
+            )
 
-        if excluded_frame_fields:
-            # Don't project on root `frames` and embedded fields
-            # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
-            excluded_fields = [f for f in excluded_fields if f != "frames"]
-            excluded_fields += excluded_frame_fields
+            excluded_frame_fields = [
+                sample_collection._FRAMES_PREFIX + f
+                for f in excluded_frame_fields
+            ]
+
+            if excluded_frame_fields:
+                # Don't project on root `frames` and embedded fields
+                # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+                excluded_fields = [f for f in excluded_fields if f != "frames"]
+                excluded_fields += excluded_frame_fields
 
         if not excluded_fields:
             return []
@@ -644,9 +685,18 @@ class ExcludeFields(ViewStage):
         return [{"$unset": excluded_fields}]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self.field_names)
 
     def _kwargs(self):
         return [
@@ -672,7 +722,7 @@ class ExcludeFields(ViewStage):
         # Using dataset here allows a field to be excluded multiple times
         sample_collection._dataset.validate_fields_exist(self.field_names)
 
-        if sample_collection.media_type == fom.VIDEO:
+        if sample_collection._contains_videos(only_active_slice=True):
             fields, frame_fields = fou.split_frame_fields(self.field_names)
         else:
             fields = self.field_names
@@ -696,7 +746,7 @@ class ExcludeFields(ViewStage):
                 )
             )
 
-            defaults = [f for f in fields if f in default_frame_fields]
+            defaults = [f for f in frame_fields if f in default_frame_fields]
             if defaults:
                 raise ValueError(
                     "Cannot exclude default frame fields %s" % defaults
@@ -1031,6 +1081,9 @@ class ExcludeLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -1039,6 +1092,19 @@ class ExcludeLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
@@ -1204,7 +1270,16 @@ class Exists(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -1340,7 +1415,16 @@ class FilterField(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -1893,7 +1977,16 @@ class FilterLabels(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return sample_collection._is_frame_field(self._labels_field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._labels_field)
 
     def _kwargs(self):
         return [
@@ -2324,7 +2417,16 @@ class FilterKeypoints(ViewStage):
         return new_field
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -2761,6 +2863,12 @@ class GroupBy(ViewStage):
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
+        match_expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines which groups to include in the output view. If
+            provided, this expression will be evaluated on the list of samples
+            in each group
         sort_expr (None): an optional
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -2770,8 +2878,15 @@ class GroupBy(ViewStage):
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field_or_expr, sort_expr=None, reverse=False):
+    def __init__(
+        self,
+        field_or_expr,
+        match_expr=None,
+        sort_expr=None,
+        reverse=False,
+    ):
         self._field_or_expr = field_or_expr
+        self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._reverse = reverse
 
@@ -2779,6 +2894,11 @@ class GroupBy(ViewStage):
     def field_or_expr(self):
         """The field or expression to group by."""
         return self._field_or_expr
+
+    @property
+    def match_expr(self):
+        """An expression to apply to select groups in the output view."""
+        return self._match_expr
 
     @property
     def sort_expr(self):
@@ -2792,6 +2912,7 @@ class GroupBy(ViewStage):
 
     def to_mongo(self, _):
         field_or_expr = self._get_mongo_field_or_expr()
+        match_expr = self._get_mongo_match_expr()
         sort_expr = self._get_mongo_sort_expr()
 
         if etau.is_str(field_or_expr):
@@ -2802,6 +2923,9 @@ class GroupBy(ViewStage):
         pipeline = [
             {"$group": {"_id": group_expr, "docs": {"$push": "$$ROOT"}}}
         ]
+
+        if match_expr is not None:
+            pipeline.append({"$match": match_expr})
 
         if sort_expr is not None:
             order = -1 if self._reverse else 1
@@ -2820,7 +2944,7 @@ class GroupBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos(only_active_slice=True):
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -2829,6 +2953,17 @@ class GroupBy(ViewStage):
             return sample_collection._is_frame_field(field_or_expr)
 
         return foe.is_frames_expr(field_or_expr)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if etau.is_str(field_or_expr):
+            return sample_collection._get_group_slices(field_or_expr)
+
+        return foe.get_group_slices(field_or_expr)
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewField):
@@ -2839,6 +2974,12 @@ class GroupBy(ViewStage):
 
         return self._field_or_expr
 
+    def _get_mongo_match_expr(self):
+        if isinstance(self._match_expr, foe.ViewExpression):
+            return self._match_expr.to_mongo(prefix="$docs")
+
+        return self._match_expr
+
     def _get_mongo_sort_expr(self):
         if isinstance(self._sort_expr, foe.ViewExpression):
             return self._sort_expr.to_mongo(prefix="$docs")
@@ -2848,6 +2989,7 @@ class GroupBy(ViewStage):
     def _kwargs(self):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
             ["reverse", self._reverse],
         ]
@@ -2859,6 +3001,12 @@ class GroupBy(ViewStage):
                 "name": "field_or_expr",
                 "type": "field|str|json",
                 "placeholder": "field or expression",
+            },
+            {
+                "name": "match_expr",
+                "type": "NoneType|json",
+                "placeholder": "match expression",
+                "default": "None",
             },
             {
                 "name": "sort_expr",
@@ -3057,6 +3205,12 @@ class LimitLabels(ViewStage):
     def _needs_frames(self, sample_collection):
         return self._is_frame_field
 
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
+
     def _kwargs(self):
         return [
             ["field", self._field],
@@ -3188,7 +3342,16 @@ class MapLabels(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
 
     def _kwargs(self):
         return [
@@ -3345,12 +3508,22 @@ class SetField(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos(only_active_slice=True):
             return False
 
         is_frame_field = sample_collection._is_frame_field(self._field)
         is_frame_expr = foe.is_frames_expr(self._get_mongo_expr())
         return is_frame_field or is_frame_expr
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        group_slices = set()
+        group_slices.update(sample_collection._get_group_slices(self._field))
+        group_slices.update(foe.get_group_slices(self._get_mongo_expr()))
+
+        return list(group_slices)
 
     def _kwargs(self):
         return [
@@ -3515,10 +3688,16 @@ class Match(ViewStage):
         return [{"$match": self._get_mongo_expr()}]
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos(only_active_slice=True):
             return False
 
         return foe.is_frames_expr(self._get_mongo_expr())
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return foe.get_group_slices(self._get_mongo_expr())
 
     def _get_mongo_expr(self):
         if not isinstance(self._filter, foe.ViewExpression):
@@ -3539,6 +3718,218 @@ class Match(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "filter", "type": "json", "placeholder": ""}]
+
+
+class SelectGroupSlice(ViewStage):
+    """Selects the samples in a group collection from the given slice(s).
+
+    The returned view is a flattened non-grouped view containing only the
+    slice(s) of interest.
+
+    .. note::
+
+        This stage performs a ``$lookup`` that pulls the requested slice(s) for
+        each sample in the input collection from the source dataset. As a
+        result, this stage always emits *unfiltered samples*.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="center")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1-left.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-center.jpg",
+                    group=group1.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image1-right.jpg",
+                    group=group1.element("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-left.jpg",
+                    group=group2.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-center.jpg",
+                    group=group2.element("center"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2-right.jpg",
+                    group=group2.element("right"),
+                ),
+            ]
+        )
+
+        #
+        # Retrieve the samples from the "center" group slice
+        #
+
+        stage = fo.SelectGroupSlice("center")
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve the samples from the "left" or "right" group slices
+        #
+
+        stage = fo.SelectGroupSlice(["left", "right"])
+        view = dataset.add_stage(stage)
+
+        #
+        # Retrieve a flattened list of all samples
+        #
+
+        stage = fo.SelectGroupSlice()
+        view = dataset.add_stage(stage)
+
+    Args:
+        slice (None): a group slice or list of group slices to select. By
+            default, a flattened list of all samples is returned
+    """
+
+    def __init__(self, slice=None, _allow_mixed=False):
+        self._slice = slice
+        self._allow_mixed = _allow_mixed
+
+    @property
+    def slice(self):
+        """The group slice(s) to select."""
+        return self._slice
+
+    def to_mongo(self, sample_collection):
+        if isinstance(sample_collection, fod.Dataset) or (
+            isinstance(sample_collection, fov.DatasetView)
+            and len(sample_collection._stages) == 0
+        ):
+            return self._make_root_pipeline(sample_collection)
+
+        return self._make_pipeline(sample_collection)
+
+    def _make_root_pipeline(self, sample_collection):
+        group_path = sample_collection.group_field + ".name"
+
+        if etau.is_container(self._slice):
+            return [
+                {
+                    "$match": {
+                        "$expr": {"$in": ["$" + group_path, list(self._slice)]}
+                    }
+                }
+            ]
+
+        if self._slice is not None:
+            return [
+                {"$match": {"$expr": {"$eq": ["$" + group_path, self._slice]}}}
+            ]
+
+        return []
+
+    def _make_pipeline(self, sample_collection):
+        group_field = sample_collection.group_field
+        id_field = group_field + "._id"
+        name_field = group_field + ".name"
+
+        expr = F(id_field) == "$$group_id"
+
+        if etau.is_container(self._slice):
+            expr &= F(name_field).is_in(list(self._slice))
+        elif self._slice is not None:
+            expr &= F(name_field) == self._slice
+
+        return [
+            {"$project": {group_field: True}},
+            {
+                "$lookup": {
+                    "from": sample_collection._dataset._sample_collection_name,
+                    "let": {"group_id": "$" + id_field},
+                    "pipeline": [{"$match": {"$expr": expr.to_mongo()}}],
+                    "as": "groups",
+                }
+            },
+            {"$unwind": "$groups"},
+            {"$replaceRoot": {"newRoot": "$groups"}},
+        ]
+
+    def get_media_type(self, sample_collection):
+        group_field = sample_collection.group_field
+        group_media_types = sample_collection.group_media_types
+
+        # All group slices
+        if self._slice is None:
+            media_types = set(group_media_types.values())
+
+            if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
+                raise ValueError(
+                    "Cannot select all groups when dataset contains multiple "
+                    "media types %s" % media_types
+                )
+
+            return next(iter(group_media_types.values()), None)
+
+        # Multiple group slices
+        if etau.is_container(self._slice):
+            slices = list(self._slice)
+
+            media_types = set()
+            for _slice in slices:
+                if _slice not in group_media_types:
+                    raise ValueError(
+                        "%s has no group slice '%s'"
+                        % (type(sample_collection), _slice)
+                    )
+
+                media_types.add(group_media_types[_slice])
+
+            if len(media_types) > 1:
+                if self._allow_mixed:
+                    return fom.MIXED
+
+                raise ValueError(
+                    "Cannot select slices %s with different media types %s"
+                    % (slices, media_types)
+                )
+
+            return next(iter(media_types))
+
+        # One group slice
+        if self._slice not in group_media_types:
+            raise ValueError(
+                "%s has no group slice '%s'"
+                % (type(sample_collection), self._slice)
+            )
+
+        return group_media_types[self._slice]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+    def _kwargs(self):
+        return [["slice", self._slice]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "slice",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "slice (default=None)",
+                "default": "None",
+            }
+        ]
 
 
 class MatchFrames(ViewStage):
@@ -3916,6 +4307,9 @@ class MatchLabels(ViewStage):
         return self._filter
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -3924,6 +4318,19 @@ class MatchLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         if self._bool:
@@ -4268,8 +4675,18 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         # The pipeline could be anything; always attach frames for videos
-        return sample_collection.media_type == fom.VIDEO
+        return True
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        # The pipeline could by anything; always attach all group slices
+        return list(sample_collection.group_media_types.keys())
 
     def _kwargs(self):
         return [["pipeline", self._pipeline]]
@@ -4559,21 +4976,56 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, sample_collection, frames=False):
-        return self._get_selected_fields(
-            sample_collection, frames=frames, use_db_fields=False
-        )
+        if frames:
+            if not sample_collection._contains_videos(only_active_slice=True):
+                return None
+
+            default_fields = sample_collection._get_default_frame_fields(
+                include_private=True
+            )
+
+            selected_fields = []
+            for field in self.field_names:
+                (
+                    field_name,
+                    is_frame_field,
+                ) = sample_collection._handle_frame_field(field)
+                if is_frame_field:
+                    selected_fields.append(field_name)
+        else:
+            default_fields = sample_collection._get_default_sample_fields(
+                include_private=True
+            )
+
+            if sample_collection._contains_videos(only_active_slice=True):
+                default_fields += ("frames",)
+
+            selected_fields = []
+            for field in self.field_names:
+                if not sample_collection._is_frame_field(field):
+                    selected_fields.append(field)
+
+        return list(set(selected_fields) | set(default_fields))
 
     def to_mongo(self, sample_collection):
-        selected_fields = self._get_selected_fields(
-            sample_collection, frames=False, use_db_fields=True
+        selected_fields = self.get_selected_fields(
+            sample_collection, frames=False
+        )
+        selected_fields = sample_collection._handle_db_fields(
+            selected_fields, frames=False
         )
 
-        if sample_collection.media_type == fom.VIDEO:
+        if sample_collection._contains_videos(only_active_slice=True):
+            selected_frame_fields = self.get_selected_fields(
+                sample_collection, frames=True
+            )
+            selected_frame_fields = sample_collection._handle_db_fields(
+                selected_frame_fields, frames=True
+            )
+
             selected_frame_fields = [
-                sample_collection._FRAMES_PREFIX + field
-                for field in self._get_selected_fields(
-                    sample_collection, frames=True, use_db_fields=True
-                )
+                sample_collection._FRAMES_PREFIX + f
+                for f in selected_frame_fields
             ]
 
             if selected_frame_fields:
@@ -4587,43 +5039,19 @@ class SelectFields(ViewStage):
 
         return [{"$project": {fn: True for fn in selected_fields}}]
 
-    def _get_selected_fields(
-        self, sample_collection, frames=False, use_db_fields=False
-    ):
-        if frames:
-            if sample_collection.media_type != fom.VIDEO:
-                return None
-
-            default_fields = sample_collection._get_default_frame_fields(
-                include_private=True, use_db_fields=use_db_fields
-            )
-
-            selected_fields = []
-            for field in self.field_names:
-                (
-                    field_name,
-                    is_frame_field,
-                ) = sample_collection._handle_frame_field(field)
-                if is_frame_field:
-                    selected_fields.append(field_name)
-        else:
-            default_fields = sample_collection._get_default_sample_fields(
-                include_private=True, use_db_fields=use_db_fields
-            )
-            if sample_collection.media_type == fom.VIDEO:
-                default_fields += ("frames",)
-
-            selected_fields = []
-            for field in self.field_names:
-                if not sample_collection._is_frame_field(field):
-                    selected_fields.append(field)
-
-        return list(set(selected_fields) | set(default_fields))
-
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         return any(
             sample_collection._is_frame_field(f) for f in self.field_names
         )
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self.field_names)
 
     def _kwargs(self):
         return [
@@ -4746,6 +5174,107 @@ class SelectFrames(ViewStage):
 
     def validate(self, sample_collection):
         fova.validate_video_collection(sample_collection)
+
+
+class SelectGroups(ViewStage):
+    """Selects the groups with the given IDs from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-groups")
+
+        #
+        # Select some specific groups by ID
+        #
+
+        group_ids = dataset.take(10).values("group.id")
+
+        stage = fo.SelectGroups(group_ids)
+        view = dataset.add_stage(stage)
+
+        assert set(view.values("group.id")) == set(group_ids)
+
+        stage = fo.SelectGroups(group_ids, ordered=True)
+        view = dataset.add_stage(stage)
+
+        assert view.values("group.id") == group_ids
+
+    Args:
+        groups_ids: the groups to select. Can be any of the following:
+
+            -   a group ID
+            -   an iterable of group IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   a group dict returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
+            -   an iterable of group dicts returned by
+                :meth:`get_group() <fiftyone.core.collections.SampleCollection.get_group>`
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+
+        ordered (False): whether to sort the groups in the returned view to
+            match the order of the provided IDs
+    """
+
+    def __init__(self, group_ids, ordered=False):
+        self._group_ids = _parse_group_ids(group_ids)
+        self._ordered = ordered
+
+    @property
+    def group_ids(self):
+        """The list of group IDs to select."""
+        return self._group_ids
+
+    @property
+    def ordered(self):
+        """Whether to sort the groups in the same order as the IDs."""
+        return self._ordered
+
+    def to_mongo(self, sample_collection):
+        id_path = sample_collection.group_field + "._id"
+        ids = [ObjectId(_id) for _id in self._group_ids]
+
+        if not self._ordered:
+            return [{"$match": {id_path: {"$in": ids}}}]
+
+        return [
+            {
+                "$set": {
+                    "_select_order": {"$indexOfArray": [ids, "$" + id_path]}
+                }
+            },
+            {"$match": {"_select_order": {"$gt": -1}}},
+            {"$sort": {"_select_order": 1}},
+            {"$unset": "_select_order"},
+        ]
+
+    def _kwargs(self):
+        return [["group_ids", self._group_ids], ["ordered", self._ordered]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "group_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,group,ids",
+            },
+            {
+                "name": "ordered",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "ordered (default=False)",
+            },
+        ]
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
 
 
 class SelectLabels(ViewStage):
@@ -4975,6 +5504,9 @@ class SelectLabels(ViewStage):
         ]
 
     def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos(only_active_slice=True):
+            return False
+
         if self._labels is not None:
             fields = self._labels_map.keys()
         elif self._fields is not None:
@@ -4983,6 +5515,19 @@ class SelectLabels(ViewStage):
             fields = sample_collection._get_label_fields()
 
         return any(sample_collection._is_frame_field(f) for f in fields)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        if self._labels is not None:
+            fields = self._labels_map.keys()
+        elif self._fields is not None:
+            fields = self._fields
+        else:
+            fields = sample_collection._get_label_fields()
+
+        return sample_collection._get_group_slices(fields)
 
     def _make_labels_pipeline(self, sample_collection):
         pipeline = []
@@ -5343,7 +5888,7 @@ class SortBy(ViewStage):
         return pipeline
 
     def _needs_frames(self, sample_collection):
-        if sample_collection.media_type != fom.VIDEO:
+        if not sample_collection._contains_videos(only_active_slice=True):
             return False
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -5359,6 +5904,24 @@ class SortBy(ViewStage):
                 needs_frames |= foe.is_frames_expr(expr)
 
         return needs_frames
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if not isinstance(field_or_expr, list):
+            field_or_expr = [(field_or_expr, None)]
+
+        group_slices = set()
+        for expr, _ in field_or_expr:
+            if etau.is_str(expr):
+                group_slices.update(sample_collection._get_group_slices(expr))
+            else:
+                group_slices.update(foe.get_group_slices(expr))
+
+        return list(group_slices)
 
     def _get_mongo_field_or_expr(self):
         return _serialize_sort_expr(self._field_or_expr)
@@ -6158,14 +6721,11 @@ class ToFrames(ViewStage):
     to each frame image. Any frames without a ``filepath`` populated will be
     omitted from the returned view.
 
-    When ``sample_frames`` is True, this method samples each video in the input
-    collection into a directory of per-frame images with the same basename as
-    the input video with frame numbers/format specified by ``frames_patt``, and
-    stores the resulting frame paths in a ``filepath`` field of the input
-    collection.
-
-    For example, if ``frames_patt = "%%06d.jpg"``, then videos with the
-    following paths::
+    When ``sample_frames`` is True, this method samples each video in the
+    collection into a directory of per-frame images with filenames specified by
+    ``frames_patt``. By default, each folder of images is written using the
+    same basename as the input video. For example, if
+    ``frames_patt = "%%06d.jpg"``, then videos with the following paths::
 
         /path/to/video1.mp4
         /path/to/video2.mp4
@@ -6181,6 +6741,33 @@ class ToFrames(ViewStage):
             000001.jpg
             000002.jpg
             ...
+
+    However, you can use the optional ``output_dir`` and ``rel_dir`` parameters
+    to customize the location and shape of the sampled frame folders. For
+    example, if ``output_dir = "/tmp"`` and ``rel_dir = "/path/to"``, then
+    videos with the following paths::
+
+        /path/to/folderA/video1.mp4
+        /path/to/folderA/video2.mp4
+        /path/to/folderB/video3.mp4
+        ...
+
+    would be sampled as follows::
+
+        /tmp/folderA/
+            video1/
+                000001.jpg
+                000002.jpg
+                ...
+            video2/
+                000001.jpg
+                000002.jpg
+                ...
+        /tmp/folderB/
+            video3/
+                000001.jpg
+                000002.jpg
+                ...
 
     By default, samples will be generated for every video frame at full
     resolution, but this method provides a variety of parameters that can be
@@ -6347,6 +6934,43 @@ def _parse_frame_ids(arg):
         return [s.id for s in arg]
 
     return arg
+
+
+def _parse_group_ids(arg):
+    if etau.is_str(arg):
+        return [arg]
+
+    if isinstance(arg, (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(arg)]
+
+    if isinstance(arg, foc.SampleCollection):
+        if arg.media_type != fom.GROUP:
+            raise ValueError("%s is not a grouped collection" % type(arg))
+
+        return arg.values(arg.group_field + ".id")
+
+    arg = list(arg)
+
+    if not arg:
+        return []
+
+    if isinstance(arg[0], (dict, fos.Sample, fos.SampleView)):
+        return [_get_group_id(a) for a in arg]
+
+    return arg
+
+
+def _get_group_id(sample_or_group):
+    if isinstance(sample_or_group, dict):
+        sample = next(iter(sample_or_group.values()))
+    else:
+        sample = sample_or_group
+
+    for field, value in sample.iter_fields():
+        if isinstance(value, fog.Group):
+            return value.id
+
+    raise ValueError("Sample '%s' has no group" % sample.id)
 
 
 def _get_rng(seed):
@@ -6554,6 +7178,8 @@ _STAGES = [
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlice,
     SelectLabels,
     SetField,
     Skip,

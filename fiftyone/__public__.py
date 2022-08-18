@@ -15,12 +15,14 @@ app_config = _foc.load_app_config()
 _fod.establish_db_conn(config)
 
 from .core.aggregations import (
+    Aggregation,
     Bounds,
     Count,
     CountValues,
     Distinct,
     HistogramValues,
     Mean,
+    Quantiles,
     Std,
     Sum,
     Values,
@@ -44,6 +46,7 @@ from .core.expressions import (
     VALUE,
 )
 from .core.frame import Frame
+from .core.groups import Group
 from .core.labels import (
     Label,
     Attribute,
@@ -128,6 +131,8 @@ from .core.stages import (
     SelectBy,
     SelectFields,
     SelectFrames,
+    SelectGroups,
+    SelectGroupSlice,
     SelectLabels,
     SetField,
     Skip,

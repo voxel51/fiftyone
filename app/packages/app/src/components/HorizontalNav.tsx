@@ -1,29 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { capitalize } from "@material-ui/core";
 import { Assessment, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
-
-import * as atoms from "../recoil/atoms";
-import * as viewAtoms from "../recoil/view";
 
 import { PillButton } from "./utils";
 import Distributions from "./Distributions";
 import { useWindowSize } from "../utils/hooks";
 import { Resizable } from "re-resizable";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 
-export type Props = {
-  entries: string[];
-};
+import * as fos from "@fiftyone/state";
+
+export type Props = {};
 
 const Container = styled(Resizable)`
-  padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 `;
 
 const Nav = styled.div`
-  padding: 0 1rem;
+  padding: 1rem 1rem 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -80,38 +80,46 @@ const ToggleMaximize = React.memo(
   }
 );
 
-const HorizontalNav = ({ entries }: Props) => {
+const DISTRIBUTION_PLOTS = [
+  "Sample tags",
+  "Label tags",
+  "Labels",
+  "Other fields",
+];
+
+const HorizontalNav = ({}: Props) => {
   const { height: windowHeight } = useWindowSize();
-  const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
+  const [activePlot, setActivePlot] = useRecoilState(fos.activePlot);
+  const reset = useResetRecoilState(fos.activePlot);
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
   const [maximized, setMaximized] = useState(false);
-  const closedHeight = 64;
+  const closedHeight = 0;
 
   const height = expanded ? openedHeight : closedHeight;
-  const elementNames = useRecoilValue(viewAtoms.elementNames);
+  const elementNames = useRecoilValue(fos.elementNames);
+
+  const schema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE, filtered: true })
+  );
+  const pluginPlots = useActivePlugins(PluginComponentType.Plot, { schema });
+  const pluginPlotLabels = pluginPlots.map((p) => p.label);
+
+  const buttonLabels = [...DISTRIBUTION_PLOTS, ...pluginPlotLabels];
+  const hasPlot = buttonLabels.includes(activePlot);
+
+  useEffect(() => {
+    if (!hasPlot) {
+      reset();
+      setExpanded(false);
+    }
+  }, [hasPlot]);
 
   return (
-    <Container
-      size={{ height: maximized ? windowHeight - 73 : height }}
-      minHeight={closedHeight}
-      enable={{
-        top: false,
-        right: false,
-        bottom: expanded && !maximized,
-        left: false,
-        topRight: false,
-        bottomRight: false,
-        bottomLeft: false,
-        topLeft: false,
-      }}
-      onResizeStop={(e, direction, ref, d) => {
-        setOpenedHeight(height + d.height);
-      }}
-    >
+    <>
       <Nav>
         <PlotsButtons>
-          {entries.map((e) => (
+          {buttonLabels.map((e) => (
             <PlotButton
               key={e}
               className={e === activePlot && expanded ? "active" : ""}
@@ -154,12 +162,59 @@ const HorizontalNav = ({ entries }: Props) => {
           />
         </NavButtons>
       </Nav>
-      {expanded &&
-        entries.map((e) =>
-          e === activePlot ? <Distributions key={activePlot} group={e} /> : null
-        )}
-    </Container>
+      {expanded && (
+        <Container
+          size={{
+            height: maximized ? windowHeight - 73 : height,
+            width: "100%",
+          }}
+          minHeight={closedHeight}
+          enable={{
+            top: false,
+            right: false,
+            bottom: expanded && !maximized,
+            left: false,
+            topRight: false,
+            bottomRight: false,
+            bottomLeft: false,
+            topLeft: false,
+          }}
+          onResizeStop={(e, direction, ref, d) => {
+            setOpenedHeight(height + d.height);
+          }}
+          key={"EHHE"}
+        >
+          <ActivePlot
+            key={activePlot}
+            active={activePlot}
+            pluginPlotLabels={pluginPlotLabels}
+            distributionPlots={DISTRIBUTION_PLOTS}
+            pluginPlots={pluginPlots}
+          />
+        </Container>
+      )}
+    </>
   );
 };
+
+function ActivePlot({
+  active,
+  pluginPlots,
+  pluginPlotLabels,
+  distributionPlots,
+}) {
+  const isPluginPlot = pluginPlotLabels.includes(active);
+  const isDistPlot = distributionPlots.includes(active);
+  const plugin = isPluginPlot
+    ? pluginPlots.find((p) => p.label === active)
+    : null;
+
+  if (isDistPlot) return <Distributions key={active} group={active} />;
+  if (plugin) {
+    return <plugin.component key={active} />;
+  }
+
+  return null;
+}
 
 export default HorizontalNav;

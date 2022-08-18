@@ -27,7 +27,11 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
     return {
       click: ({ event, update, dispatchEvent }) => {
         update({ showOptions: false }, (state, overlays) => {
-          if (state.config.thumbnail || state.disableOverlays) {
+          if (
+            state.config.thumbnail ||
+            state.disableOverlays ||
+            !state.options.showOverlays
+          ) {
             return;
           }
           let moved = false;
@@ -97,7 +101,8 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
         requestAnimationFrame(() => {
           update(
             ({
-              config: { thumbnail, dimensions },
+              config: { thumbnail },
+              dimensions,
               pan: [px, py],
               scale,
               windowBBox: [tlx, tly, width, height],

@@ -10,18 +10,13 @@
   z-index: 20;
   padding-bottom: 0.25rem;
   display: grid;
-  grid-template-columns: 0.5rem max-content max-content max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content max-content max-content 0.5rem;
+  grid-template-columns: 0.5rem max-content max-content max-content max-content 1fr max-content max-content max-content max-content max-content max-content max-content max-content max-content max-content 0.5rem;
   grid-gap: 0.25rem;
   justify-items: center;
   align-items: center;
 
   color: #eee;
 
-  -webkit-transition: opacity 0.5s;
-  -moz-transition: opacity 0.5s;
-  -o-transition: opacity 0.5s;
-  -ms-transition: opacity 0.5s;
-  transition: opacity 0.5s;
   width: 100%;
 
   background-color: hsl(210, 11%, 11%);

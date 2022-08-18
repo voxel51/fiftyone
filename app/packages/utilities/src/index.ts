@@ -1,5 +1,5 @@
 import _ from "lodash";
-
+import mime from "mime";
 import { isElectron } from "./electron";
 
 export { isElectron } from "./electron";
@@ -442,4 +442,12 @@ type Mutable<T> = {
 
 export const clone = <T extends unknown>(data: T): Mutable<T> => {
   return JSON.parse(JSON.stringify(data));
+};
+
+export const getMimeType = (sample: any) => {
+  return (
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.getType(sample.filepath) ||
+    "image/jpg"
+  );
 };

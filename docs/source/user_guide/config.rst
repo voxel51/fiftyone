@@ -64,11 +64,11 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `None`                        | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
+| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `localhost`                   | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
 |                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
-|                               |                                     |                               | IP addresses associated with the name. The default is `None`, which means the App will |
-|                               |                                     |                               | listen on all available interfaces. See :ref:`this page <restricting-app-address>` for |
-|                               |                                     |                               | more information.                                                                      |
+|                               |                                     |                               | IP addresses associated with the name. The default is `localhost`, which means the App |
+|                               |                                     |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
+|                               |                                     |                               | for more information.                                                                  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                 | `FIFTYONE_DESKTOP_APP`              | `False`                       | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                               |                                     |                               | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
@@ -577,6 +577,8 @@ The FiftyOne App can be configured in the ways described below:
 | `use_frame_number`        | `FIFTYONE_APP_USE_FRAME_NUMBER`        | `False`                     | Whether to use the frame number instead of a timestamp in the expanded sample view. Only |
 |                           |                                        |                             | applicable to video samples.                                                             |
 +---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
+| `plugins`                 | N/A                                    | `{}`                        | A dict of plugin configurations.                                                         |
++---------------------------+----------------------------------------+-----------------------------+------------------------------------------------------------------------------------------+
 
 Viewing your App config
 -----------------------
@@ -626,7 +628,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -670,7 +673,8 @@ You can print your App config at any time via the Python library and the CLI:
             "show_label": true,
             "show_skeletons": true,
             "show_tooltip": true,
-            "use_frame_number": false
+            "use_frame_number": false,
+            "plugins": {}
         }
 
         True
@@ -716,7 +720,7 @@ via the following pattern:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom App config
-    app_config = fo.AppConfig()
+    app_config = fo.app_config.copy()
     app_config.show_confidence = False
     app_config.show_attributes = False
 

@@ -325,7 +325,8 @@ to add them to your dataset as follows:
     ]
 
     # Add COCO predictions to `predictions` field of dataset
-    fouc.add_coco_labels(coco_dataset, "predictions", predictions)
+    classes = coco_dataset.default_classes
+    fouc.add_coco_labels(coco_dataset, "predictions", predictions, classes)
 
     # Verify that predictions were added to two images
     print(coco_dataset.count("predictions"))  # 2
