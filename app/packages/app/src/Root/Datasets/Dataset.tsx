@@ -100,7 +100,6 @@ const Query = graphql`
     }
   }
 `;
-let d;
 
 export const Dataset: Route<DatasetQuery> = ({ prepared }) => {
   const { dataset } = usePreloadedQuery(Query, prepared);

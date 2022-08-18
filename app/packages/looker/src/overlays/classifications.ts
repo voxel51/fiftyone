@@ -90,7 +90,7 @@ export class ClassificationsOverlay<
 
   getPointInfo(state: Readonly<State>): PointInfo<Label> {
     const filtered = this.getFilteredAndFlat(state);
-    const [w, h] = state.config.dimensions;
+    const [w, h] = state.dimensions;
 
     let result: PointInfo<Label>;
 

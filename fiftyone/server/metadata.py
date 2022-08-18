@@ -49,8 +49,6 @@ async def get_metadata(
     """
     is_video = media_type == fom.VIDEO
 
-    d = {}
-
     # If sufficient pre-existing metadata exists, use it
     if metadata:
         if is_video:
@@ -59,37 +57,29 @@ async def get_metadata(
             frame_rate = metadata.get("frame_rate", None)
 
             if width and height and frame_rate:
-                d["width"] = width
-                d["height"] = height
-                d["frame_rate"] = frame_rate
-                return d
+                return dict(aspect_ratio=width / height, frame_rate=frame_rate)
+
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
 
             if width and height:
-                d["width"] = width
-                d["height"] = height
-                return d
+                return dict(aspect_ratio=width / height)
 
     try:
         # Retrieve media metadata from disk
-        metadata = await read_metadata(filepath, is_video)
-    except Exception as e:
+        return await read_metadata(filepath, is_video)
+    except Exception as exc:
         # Immediately fail so the user knows they should install FFmpeg
-        if isinstance(e, FFmpegNotFoundException):
-            raise e
+        if isinstance(exc, FFmpegNotFoundException):
+            raise exc
 
         # Something went wrong (ie non-existent file), so we gracefully return
         # some placeholder metadata so the App grid can be rendered
         if is_video:
-            metadata = {"width": 512, "height": 512, "frame_rate": 30}
+            return dict(aspect_ratio=1, frame_rate=30)
         else:
-            metadata = {"width": 512, "height": 512}
-
-    d.update(metadata)
-
-    return d
+            return dict(aspect_ratio=1)
 
 
 async def read_metadata(filepath, is_video):
@@ -104,15 +94,14 @@ async def read_metadata(filepath, is_video):
     """
     if is_video:
         info = await get_stream_info(filepath)
-        return {
-            "width": info.frame_size[0],
-            "height": info.frame_size[1],
-            "frame_rate": info.frame_rate,
-        }
+        return dict(
+            aspect_ratio=info.frame_size[0] / info.frame_size[1],
+            frame_rate=info.frame_rate,
+        )
 
     async with aiofiles.open(filepath, "rb") as f:
         width, height = await get_image_dimensions(f)
-        return {"width": width, "height": height}
+        return dict(aspect_ratio=width / height)
 
 
 class Reader(object):

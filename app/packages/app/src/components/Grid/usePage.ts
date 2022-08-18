@@ -35,7 +35,7 @@ const usePage = (
             const itemData: SampleData[] = results.map((result) => {
               const data: SampleData = {
                 sample: result.sample,
-                dimensions: [result.width, result.height],
+                aspectRatio: result.aspect_ratio,
                 frameRate: result.frame_rate,
                 frameNumber: result.sample.frame_number,
                 url: result.url,
@@ -48,17 +48,14 @@ const usePage = (
               return data;
             });
 
-            const items = itemData.map(
-              ({ sample, dimensions: [width, height] }) => {
-                const aspectRatio = width / height;
-                return {
-                  id: sample._id,
-                  aspectRatio: zoom
-                    ? zoomAspectRatio(sample, aspectRatio)
-                    : aspectRatio,
-                };
-              }
-            );
+            const items = itemData.map(({ sample, aspectRatio }) => {
+              return {
+                id: sample._id,
+                aspectRatio: zoom
+                  ? zoomAspectRatio(sample, aspectRatio)
+                  : aspectRatio,
+              };
+            });
 
             return {
               items,

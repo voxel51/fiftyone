@@ -36,7 +36,7 @@ const process = (
     ) {
       let data: any = {
         sample: node.sample,
-        dimensions: [node.width, node.height],
+        aspectRatio: node.a,
       };
 
       if (node.__typename === "VideoSample") {

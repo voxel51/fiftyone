@@ -30,18 +30,16 @@ export const paginateGroupPaginationFragment = graphql`
         node {
           __typename
           ... on ImageSample {
-            height
+            aspectRatio
             sample
-            width
           }
           ... on PointCloudSample {
             sample
           }
           ... on VideoSample {
+            aspectRatio
             frameRate
-            height
             sample
-            width
           }
         }
       }
@@ -55,18 +53,16 @@ export const paginateGroupPinnedSampleFragment = graphql`
       @required(action: THROW) {
       __typename
       ... on ImageSample {
-        height
+        aspectRatio
         sample
-        width
       }
       ... on PointCloudSample {
         sample
       }
       ... on VideoSample {
+        aspectRatio
         frameRate
-        height
         sample
-        width
       }
     }
   }

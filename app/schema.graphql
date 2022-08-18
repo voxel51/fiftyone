@@ -123,8 +123,7 @@ input GroupElementFilter {
 
 type ImageSample implements Sample {
   sample: JSON!
-  width: Int!
-  height: Int!
+  aspectRatio: Float!
 }
 
 scalar JSON
@@ -270,8 +269,7 @@ type Target {
 
 type VideoSample implements Sample {
   sample: JSON!
-  width: Int!
-  height: Int!
+  aspectRatio: Float!
   frameRate: Float!
 }
 

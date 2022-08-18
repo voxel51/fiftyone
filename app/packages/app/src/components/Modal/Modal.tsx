@@ -47,6 +47,7 @@ const SampleModal = () => {
   const clearModal = fos.useClearModal();
   const override = useRecoilValue(fos.sidebarOverride);
   const disabled = useRecoilValue(fos.disabledPaths);
+
   const renderEntry = useCallback(
     (
       key: string,

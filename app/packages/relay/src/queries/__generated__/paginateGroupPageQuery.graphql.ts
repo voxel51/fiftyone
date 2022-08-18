@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<73c28e1a723e88ec3c68e89ed6a6320c>>
+ * @generated SignedSource<<b4b0b6119bc2f6da2b2e6ac408569541>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -92,7 +92,7 @@ const node: ConcreteRequest = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "height",
+      name: "aspectRatio",
       storageKey: null,
     },
     v3 = {
@@ -100,13 +100,6 @@ const node: ConcreteRequest = (function () {
       args: null,
       kind: "ScalarField",
       name: "sample",
-      storageKey: null,
-    },
-    v4 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "width",
       storageKey: null,
     };
   return {
@@ -178,7 +171,7 @@ const node: ConcreteRequest = (function () {
                     },
                     {
                       kind: "InlineFragment",
-                      selections: [v2 /*: any*/, v3 /*: any*/, v4 /*: any*/],
+                      selections: [v2 /*: any*/, v3 /*: any*/],
                       type: "ImageSample",
                       abstractKey: null,
                     },
@@ -191,6 +184,7 @@ const node: ConcreteRequest = (function () {
                     {
                       kind: "InlineFragment",
                       selections: [
+                        v2 /*: any*/,
                         {
                           alias: null,
                           args: null,
@@ -198,9 +192,7 @@ const node: ConcreteRequest = (function () {
                           name: "frameRate",
                           storageKey: null,
                         },
-                        v2 /*: any*/,
                         v3 /*: any*/,
-                        v4 /*: any*/,
                       ],
                       type: "VideoSample",
                       abstractKey: null,
@@ -251,16 +243,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "8075f5fb4e145ff34f716f9c870c8034",
+      cacheID: "9e63b23baea6c64e43e8bdc56eb9b728",
       id: null,
       metadata: {},
       name: "paginateGroupPageQuery",
       operationKind: "query",
-      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $filter: SampleFilter\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    total\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupPageQuery(\n  $count: Int\n  $cursor: String\n  $dataset: String!\n  $filter: SampleFilter\n  $view: BSONArray!\n) {\n  ...paginateGroup_query\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    total\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          aspectRatio\n          sample\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          aspectRatio\n          frameRate\n          sample\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "08b32b9de7bd07c30e2562e82bd225fe";
+(node as any).hash = "5d0f0fb34624c33ec148745af357c70e";
 
 export default node;

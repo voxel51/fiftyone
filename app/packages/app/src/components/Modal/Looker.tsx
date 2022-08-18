@@ -374,6 +374,7 @@ interface LookerProps {
 
 const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   const [id] = useState(() => uuid());
+
   const sampleData = useRecoilValue(fos.modal);
   if (!sampleData) {
     throw new Error("bad");

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f2c08002d96137b5d90f738f51b9fda5>>
+ * @generated SignedSource<<f628127b11f43a54687541906cd933e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,9 +14,8 @@ export type paginateGroupPinnedSample_query$data = {
   readonly sample:
     | {
         readonly __typename: "ImageSample";
-        readonly height: number;
+        readonly aspectRatio: number;
         readonly sample: object;
-        readonly width: number;
       }
     | {
         readonly __typename: "PointCloudSample";
@@ -24,10 +23,9 @@ export type paginateGroupPinnedSample_query$data = {
       }
     | {
         readonly __typename: "VideoSample";
+        readonly aspectRatio: number;
         readonly frameRate: number;
-        readonly height: number;
         readonly sample: object;
-        readonly width: number;
       }
     | {
         // This will never be '%other', but we need some
@@ -46,7 +44,7 @@ const node: ReaderFragment = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "height",
+      name: "aspectRatio",
       storageKey: null,
     },
     v1 = {
@@ -54,13 +52,6 @@ const node: ReaderFragment = (function () {
       args: null,
       kind: "ScalarField",
       name: "sample",
-      storageKey: null,
-    },
-    v2 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "width",
       storageKey: null,
     };
   return {
@@ -117,7 +108,7 @@ const node: ReaderFragment = (function () {
             },
             {
               kind: "InlineFragment",
-              selections: [v0 /*: any*/, v1 /*: any*/, v2 /*: any*/],
+              selections: [v0 /*: any*/, v1 /*: any*/],
               type: "ImageSample",
               abstractKey: null,
             },
@@ -130,6 +121,7 @@ const node: ReaderFragment = (function () {
             {
               kind: "InlineFragment",
               selections: [
+                v0 /*: any*/,
                 {
                   alias: null,
                   args: null,
@@ -137,9 +129,7 @@ const node: ReaderFragment = (function () {
                   name: "frameRate",
                   storageKey: null,
                 },
-                v0 /*: any*/,
                 v1 /*: any*/,
-                v2 /*: any*/,
               ],
               type: "VideoSample",
               abstractKey: null,
@@ -156,6 +146,6 @@ const node: ReaderFragment = (function () {
   };
 })();
 
-(node as any).hash = "953180e69cc1badfc564250241ef6838";
+(node as any).hash = "5ff580beb470ab9b3a7399cc73d28675";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<31cf5f70501dd1e00221a57c257453c3>>
+ * @generated SignedSource<<28945ea7273ff31a9efc303c8dcc74f7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -100,7 +100,7 @@ const node: ConcreteRequest = (function () {
       alias: null,
       args: null,
       kind: "ScalarField",
-      name: "height",
+      name: "aspectRatio",
       storageKey: null,
     },
     v10 = {
@@ -110,14 +110,7 @@ const node: ConcreteRequest = (function () {
       name: "sample",
       storageKey: null,
     },
-    v11 = {
-      alias: null,
-      args: null,
-      kind: "ScalarField",
-      name: "width",
-      storageKey: null,
-    },
-    v12 = [
+    v11 = [
       {
         alias: null,
         args: null,
@@ -127,7 +120,7 @@ const node: ConcreteRequest = (function () {
       },
       {
         kind: "InlineFragment",
-        selections: [v9 /*: any*/, v10 /*: any*/, v11 /*: any*/],
+        selections: [v9 /*: any*/, v10 /*: any*/],
         type: "ImageSample",
         abstractKey: null,
       },
@@ -140,6 +133,7 @@ const node: ConcreteRequest = (function () {
       {
         kind: "InlineFragment",
         selections: [
+          v9 /*: any*/,
           {
             alias: null,
             args: null,
@@ -147,9 +141,7 @@ const node: ConcreteRequest = (function () {
             name: "frameRate",
             storageKey: null,
           },
-          v9 /*: any*/,
           v10 /*: any*/,
-          v11 /*: any*/,
         ],
         type: "VideoSample",
         abstractKey: null,
@@ -233,7 +225,7 @@ const node: ConcreteRequest = (function () {
                   kind: "LinkedField",
                   name: "node",
                   plural: false,
-                  selections: v12 /*: any*/,
+                  selections: v11 /*: any*/,
                   storageKey: null,
                 },
               ],
@@ -291,18 +283,18 @@ const node: ConcreteRequest = (function () {
           kind: "LinkedField",
           name: "sample",
           plural: false,
-          selections: v12 /*: any*/,
+          selections: v11 /*: any*/,
           storageKey: null,
         },
       ],
     },
     params: {
-      cacheID: "1fe25878ebf1fd27d171ae469ba11e05",
+      cacheID: "3afe2307e88ce327c7cc808fc371a2de",
       id: null,
       metadata: {},
       name: "paginateGroupQuery",
       operationKind: "query",
-      text: "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      height\n      sample\n      width\n    }\n    ... on PointCloudSample {\n      sample\n    }\n    ... on VideoSample {\n      frameRate\n      height\n      sample\n      width\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    total\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          height\n          sample\n          width\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          frameRate\n          height\n          sample\n          width\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query paginateGroupQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $pinnedSampleFilter: SampleFilter!\n) {\n  ...paginateGroup_query\n  ...paginateGroupPinnedSample_query\n}\n\nfragment paginateGroupPinnedSample_query on Query {\n  sample(dataset: $dataset, view: $view, filter: $pinnedSampleFilter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      sample\n    }\n    ... on PointCloudSample {\n      sample\n    }\n    ... on VideoSample {\n      aspectRatio\n      frameRate\n      sample\n    }\n  }\n}\n\nfragment paginateGroup_query on Query {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    total\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          aspectRatio\n          sample\n        }\n        ... on PointCloudSample {\n          sample\n        }\n        ... on VideoSample {\n          aspectRatio\n          frameRate\n          sample\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();

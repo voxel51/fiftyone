@@ -31,8 +31,7 @@ class Sample:
 
 @gql.type
 class ImageSample(Sample):
-    width: int
-    height: int
+    aspect_ratio: float
 
 
 @gql.type
@@ -42,8 +41,7 @@ class PointCloudSample(Sample):
 
 @gql.type
 class VideoSample(Sample):
-    width: int
-    height: int
+    aspect_ratio: float
     frame_rate: float
 
 

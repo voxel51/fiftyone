@@ -270,6 +270,18 @@ export abstract class Looker<
 
         this.previousState = this.state;
         this.state = mergeUpdates(this.state, updates);
+        if (!this.state.loaded) {
+          if (this.state.options.showJSON) {
+            const pre = this.lookerElement.element.querySelectorAll("pre")[0];
+            this.getSample().then((sample) => {
+              pre.innerHTML = highlightJSON(sample, JSON_COLORS);
+            });
+          }
+
+          this.lookerElement.render(this.state, this.sample);
+          return;
+        }
+
         if (
           !this.state.windowBBox ||
           this.state.destroyed ||
@@ -290,6 +302,7 @@ export abstract class Looker<
         this.state.mouseIsOnOverlay =
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
+
         postUpdate && postUpdate(this.state, this.currentOverlays);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
@@ -300,15 +313,10 @@ export abstract class Looker<
             pre.innerHTML = highlightJSON(sample, JSON_COLORS);
           });
         }
-        const ctx = this.ctx;
         this.lookerElement.render(this.state, this.sample);
+        const ctx = this.ctx;
 
-        if (
-          !this.state.loaded ||
-          this.state.destroyed ||
-          this.waiting ||
-          this.state.error
-        ) {
+        if (this.waiting || this.state.error) {
           return;
         }
 
@@ -336,8 +344,8 @@ export abstract class Looker<
           this.getImageSource(),
           0,
           0,
-          this.state.config.dimensions[0],
-          this.state.config.dimensions[1],
+          this.state.dimensions[0],
+          this.state.dimensions[1],
           tlx,
           tly,
           w,
@@ -591,15 +599,19 @@ export abstract class Looker<
   }
 
   protected postProcess(): State {
+    if (!this.state.dimensions) {
+      throw new Error("media not loaded");
+    }
+
     let [tlx, tly, w, h] = this.state.windowBBox;
     this.state.pan = snapBox(
       this.state.scale,
       this.state.pan,
       [w, h],
-      this.state.config.dimensions
+      this.state.dimensions
     );
     this.state.mediaBBox = getFitRect(
-      this.state.config.dimensions,
+      this.state.dimensions,
       this.state.windowBBox
     );
     this.state.transformedWindowBBox = [
@@ -610,7 +622,7 @@ export abstract class Looker<
     ];
 
     this.state.transformedMediaBBox = getFitRect(
-      this.state.config.dimensions,
+      this.state.dimensions,
       this.state.transformedWindowBBox
     );
     this.state.canvasBBox = [
@@ -626,8 +638,8 @@ export abstract class Looker<
         this.state.transformedMediaBBox[3],
     ];
     this.state.pixelCoordinates = [
-      this.state.relativeCoordinates[0] * this.state.config.dimensions[0],
-      this.state.relativeCoordinates[1] * this.state.config.dimensions[1],
+      this.state.relativeCoordinates[0] * this.state.dimensions[0],
+      this.state.relativeCoordinates[1] * this.state.dimensions[1],
     ];
     this.state.fontSize = FONT_SIZE / this.state.scale;
     this.state.pointRadius = POINT_RADIUS / this.state.scale;

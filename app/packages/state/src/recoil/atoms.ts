@@ -11,7 +11,7 @@ export interface AppSample extends Sample {
 
 export interface SampleData {
   sample: AppSample;
-  dimensions: Dimensions;
+  aspectRatio: number;
   frameRate?: number;
   frameNumber?: number;
   url?: string;

@@ -225,7 +225,6 @@ const MediaFields = ({ modal }) => {
 
       <TabOption
         active={selectedMediaField}
-        rows={true}
         options={mediaFields.map((value) => {
           return {
             text: value,
