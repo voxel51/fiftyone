@@ -747,6 +747,7 @@ def _classification_to_detections(label):
                 label=label.label,
                 bounding_box=[0, 0, 1, 1],
                 confidence=label.confidence,
+                **dict(label.iter_attributes()),
             )
         ]
     )

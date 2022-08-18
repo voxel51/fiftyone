@@ -8,6 +8,9 @@ Base plotting definitions.
 import logging
 
 import fiftyone.core.context as foc
+import fiftyone.core.labels as fol
+import fiftyone.core.patches as fop
+import fiftyone.core.video as fov
 
 
 logger = logging.getLogger(__name__)
@@ -997,6 +1000,48 @@ class InteractivePlot(ResponsivePlot):
     @property
     def _selected_ids(self):
         raise NotImplementedError("Subclass must implement _selected_ids")
+
+    @staticmethod
+    def recommend_link_type(label_field=None, samples=None):
+        """Recommends a link type for the given info.
+
+        Args:
+            label_field (None): the label field, if any
+            samples (None): the
+                :class:`fiftyone.core.collections.SampleCollection`, if known
+
+        Returns:
+            a ``(link_type, label_fields, selection_mode, init_fcn)`` tuple
+        """
+        link_type = None
+        label_fields = label_field
+        selection_mode = None
+        init_fcn = None
+
+        if label_field is None:
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            elif isinstance(samples, fop.PatchesView):
+                link_type = "labels"
+                label_fields = samples._label_fields
+            else:
+                link_type = "samples"
+        elif label_field == "frames":
+            if isinstance(samples, fov.FramesView):
+                link_type = "frames"
+            else:
+                link_type = "frames"
+                init_fcn = lambda view: view.to_frames()
+        else:
+            link_type = "labels"
+
+            if samples is not None:
+                label_type = samples._get_label_field_type(label_field)
+                if issubclass(label_type, (fol.Detections, fol.Polylines)):
+                    selection_mode = "patches"
+                    init_fcn = lambda view: view.to_patches(label_field)
+
+        return link_type, label_fields, selection_mode, init_fcn
 
     def register_selection_callback(self, callback):
         """Registers a selection callback for this plot.
