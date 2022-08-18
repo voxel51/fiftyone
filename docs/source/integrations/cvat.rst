@@ -961,7 +961,7 @@ are:
 
 .. note::
 
-    **Pro tip**: if you are editing existing labels and only uploading a subset
+    **Pro tip**: If you are editing existing labels and only uploading a subset
     of their attributes to CVAT,
     :ref:`restricting label deletions <cvat-restricting-edits>` by setting
     `allow_deletions=False` provides a helpful guarantee that no labels will be
@@ -969,7 +969,7 @@ are:
 
 .. note::
 
-    **Pro tip**: when working with annotation schemas that include
+    **Pro tip**: When working with annotation schemas that include
     :ref:`per-class attributes <cvat-label-schema>`, be sure that any class
     label changes that you would reasonably make all share the same attribute
     schemas so that unwanted `label_id` changes are not caused by CVAT.
@@ -2362,6 +2362,42 @@ instance.
 
 The sections below highlight some common actions that you may want to perform.
 
+Using the CVAT API
+------------------
+
+You can use the
+:func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>`
+to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
+instance, which is a wrapper around the
+`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
+that provides convenient methods for performing common actions on your CVAT
+tasks:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.annotations as foua
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "cvat_api"
+
+    view.annotate(anno_key, label_field="ground_truth")
+
+    api = foua.connect_to_api()
+
+    # The context manager is optional and simply ensures that TCP connections
+    # are always closed
+    with api:
+        # Launch CVAT in your browser
+        api.launch_editor(api.base_url)
+
+        # Get info about all tasks currently on the CVAT server
+        response = api.get(api.tasks_url).json()
+
 Viewing task statuses
 ---------------------
 
@@ -2417,38 +2453,26 @@ for that annotation run:
                 Assignee: user1
                 Reviewer: user3
 
-Using the CVAT API
-------------------
+.. note::
 
-You can use the
-:meth:`connect_to_api() <fiftyone.utils.cvat.CVATAnnotationResults.connect_to_api>`
-to retrive a :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>`
-instance, which is a wrapper around the
-`CVAT REST API <https://openvinotoolkit.github.io/cvat/docs/administration/basics/rest_api_guide/>`_
-that provides convenient methods for performing common actions on your CVAT
-tasks.
+    **Pro tip**: If you are iterating over many annotation runs, you can use
+    :func:`connect_to_api() <fiftyone.utils.annotations.connect_to_api>` and
+    :meth:`use_api() <fiftyone.utils.cvat.CVATAnnotationResults.use_api>` as
+    shown below to reuse a single
+    :class:`CVATAnnotationAPI <fiftyone.utils.cvat.CVATAnnotationAPI>` instance
+    and avoid reauthenticating with CVAT for each run:
 
-.. code:: python
-    :linenos:
+    .. code-block:: python
+        :linenos:
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+        import fiftyone.utils.annotations as foua
 
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
+        api = foua.connect_to_api()
 
-    anno_key = "cvat_api"
-
-    view.annotate(anno_key, label_field="ground_truth")
-
-    results = dataset.load_annotation_results(anno_key)
-    api = results.connect_to_api()
-
-    # Launch CVAT in your browser
-    api.launch_editor(api.base_url)
-
-    # Get info about all tasks currently on the CVAT server
-    response = api.get(api.tasks_url).json()
+        for anno_key in dataset.list_annotation_runs():
+            results = dataset.load_annotation_results(anno_key)
+            results.use_api(api)
+            results.print_status()
 
 Deleting tasks
 --------------

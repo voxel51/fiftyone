@@ -33,6 +33,34 @@ import fiftyone.utils.eta as foue
 logger = logging.getLogger(__name__)
 
 
+def connect_to_api(backend=None, **kwargs):
+    """Returns an API instance connected to the annotation backend.
+
+    Some annotation backends may not expose this functionality.
+
+    Args:
+        backend (None): the annotation backend to use. The supported values are
+            ``fiftyone.annotation_config.backends.keys()`` and the default
+            is ``fiftyone.annotation_config.default_backend``
+        **kwargs: keyword arguments for the :class:`AnnotationBackendConfig`
+            subclass of the backend being used
+
+    Returns:
+        an :class:`AnnotationAPI`
+    """
+    if backend is None:
+        backend = fo.annotation_config.default_backend
+
+    config = _parse_config(backend, None, **kwargs)
+    anno_backend = config.build()
+
+    api = anno_backend.connect_to_api()
+    if api is None:
+        raise ValueError("The '%s' backend does not expose an API" % backend)
+
+    return api
+
+
 def annotate(
     samples,
     anno_key,
@@ -1744,6 +1772,21 @@ class AnnotationBackend(foa.AnnotationMethod):
         config: an :class:`AnnotationBackendConfig`
     """
 
+    def __init__(self, *args, **kwargs):
+        self._api = None
+        super().__init__(*args, **kwargs)
+
+    def __enter__(self):
+        api = self.connect_to_api()
+        if api is not None:
+            api.__enter__()
+
+        return self
+
+    def __exit__(self, *args):
+        if self._api is not None:
+            self._api.__exit__(*args)
+
     @property
     def supported_label_types(self):
         """The list of label types supported by the backend.
@@ -1860,6 +1903,40 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement requires_attr_values()"
         )
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        if self._api is None:
+            # pylint: disable=assignment-from-none
+            self._api = self._connect_to_api()
+
+        return self._api
+
+    def _connect_to_api(self):
+        """Returns a new API instance connected to the annotation backend.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return None
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._api = api
 
     def upload_annotations(self, samples, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
@@ -1991,6 +2068,13 @@ class AnnotationResults(foa.AnnotationResults):
         self.id_map = id_map
         self._backend = backend
 
+    def __enter__(self):
+        self._backend.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._backend.__exit__(*args)
+
     @property
     def config(self):
         """The :class:`AnnotationBackendConfig` for these results."""
@@ -2009,6 +2093,27 @@ class AnnotationResults(foa.AnnotationResults):
             **kwargs: subclass-specific credentials
         """
         raise NotImplementedError("subclass must implement load_credentials()")
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return self._backend.connect_to_api()
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._backend.use_api(api)
 
     def launch_editor(self):
         """Launches the annotation backend's editor for these results."""
@@ -2097,7 +2202,17 @@ class AnnotationResults(foa.AnnotationResults):
 
 
 class AnnotationAPI(object):
-    """Base class for APIs that connect to annotation backend."""
+    """Base class for APIs that connect to annotation backends."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Closes the API session."""
+        pass
 
     def _prompt_username_password(self, backend, username=None, password=None):
         prefix = "FIFTYONE_%s_" % backend.upper()
