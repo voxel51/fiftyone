@@ -743,6 +743,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         For video datasets, the ``frames`` keys refer to the frame documents
         stored in the database.
 
+        Note that dataset-level metadata such as annotation runs are not
+        included in this computation.
+
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the dataset

@@ -384,13 +384,16 @@ class SampleCollection(object):
         For video datasets, the ``frames`` keys refer to the frame documents
         stored in the database.
 
+        Note that dataset-level metadata such as annotation runs are not
+        included in this computation.
+
         Args:
             include_media (False): whether to include stats about the size of
                 the raw media in the collection
             compressed (False): whether to return the sizes of collections in
                 their compressed form on disk (True) or the logical
                 uncompressed size of the collections (False). This option is
-                only supported for datasets
+                only supported for datasets (not views)
 
         Returns:
             a stats dict
