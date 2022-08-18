@@ -1,27 +1,10 @@
 """
 Tests for the :mod:`fiftyone.utils.labelstudio` module.
 
-To run these tests:
-    Run Label Studio server
-
-    Copy an Access Token from Label Studio account settings
-    export FIFTYONE_LABELSTUDIO_API_KEY=<TOKEN>
-    pytest tests/intensive/labelstudio_tests.py
-
-    Set label studio server address if needed:
-    export FIFTYONE_LABELSTUDIO_URL=<URL>
-
-
-To review project setup, uploaded tasks and predictions:
-    set a breakpoint before `dataset.load_annotations()` in the
-    `test_annotate_simple` and `test_annotate_with_predictions`
-    and run tests with a debugger. Once the breakpoint is reached,
-    go to a browser and review project.
-
-
 | Copyright 2017-2022, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
+=======
 """
 import os
 import random

@@ -630,7 +630,6 @@ def export_label_to_labelstudio(label, full_result=None):
             _update_dict(
                 full_result,
                 dict(value=r, type=ls_type, id=i),
-                # dict(value=r, type=ls_type, id=_generate_prediction_id()),
             )
             for r, i in zip(result_value, ids)
         ]
