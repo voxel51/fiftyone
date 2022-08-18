@@ -196,7 +196,18 @@ def _plot_confusion_matrix_interactive(
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
 
-    if gt_field and pred_field:
+    if samples is not None and eval_key is not None:
+        if gt_field is None or pred_field is None:
+            eval_info = samples.get_evaluation_info(eval_key)
+            gt_field = eval_info.config.gt_field
+            pred_field = eval_info.config.pred_field
+
+        label_type = samples._get_label_field_type(gt_field)
+        use_patches = issubclass(label_type, (fol.Detections, fol.Polylines))
+    else:
+        use_patches = False
+
+    if gt_field is not None and pred_field is not None:
         label_fields = [gt_field, pred_field]
     else:
         label_fields = None
@@ -211,7 +222,7 @@ def _plot_confusion_matrix_interactive(
     ids = np.flip(ids, axis=0)
     ylabels = np.flip(ylabels)
 
-    if eval_key is not None:
+    if use_patches:
         selection_mode = "patches"
         init_fcn = lambda view: view.to_evaluation_patches(eval_key)
     else:
@@ -941,33 +952,21 @@ def lines(
 
         return figure
 
-    selection_mode = None
-    init_fcn = None
-
-    if link_field is None:
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        elif isinstance(samples, fop.PatchesView):
-            link_type = "labels"
-            link_field = samples._label_fields
-        else:
-            link_type = "samples"
-    elif link_field == "frames":
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        else:
-            link_type = "frames"
-            init_fcn = lambda view: view.to_frames()
-    else:
-        link_type = "labels"
-        selection_mode = "patches"
-        init_fcn = lambda view: view.to_patches(link_field)
+    (
+        link_type,
+        label_fields,
+        selection_mode,
+        init_fcn,
+    ) = InteractiveScatter.recommend_link_type(
+        label_field=link_field,
+        samples=samples,
+    )
 
     return InteractiveScatter(
         figure,
         link_type=link_type,
         init_view=samples,
-        label_fields=link_field,
+        label_fields=label_fields,
         selection_mode=selection_mode,
         init_fcn=init_fcn,
     )
@@ -1195,33 +1194,21 @@ def scatterplot(
 
         return figure
 
-    selection_mode = None
-    init_fcn = None
-
-    if link_field is None:
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        elif isinstance(samples, fop.PatchesView):
-            link_type = "labels"
-            link_field = samples._label_fields
-        else:
-            link_type = "samples"
-    elif link_field == "frames":
-        if isinstance(samples, fov.FramesView):
-            link_type = "frames"
-        else:
-            link_type = "frames"
-            init_fcn = lambda view: view.to_frames()
-    else:
-        link_type = "labels"
-        selection_mode = "patches"
-        init_fcn = lambda view: view.to_patches(link_field)
+    (
+        link_type,
+        label_fields,
+        selection_mode,
+        init_fcn,
+    ) = InteractiveScatter.recommend_link_type(
+        label_field=link_field,
+        samples=samples,
+    )
 
     return InteractiveScatter(
         figure,
         link_type=link_type,
         init_view=samples,
-        label_fields=link_field,
+        label_fields=label_fields,
         selection_mode=selection_mode,
         init_fcn=init_fcn,
     )

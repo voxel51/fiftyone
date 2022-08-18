@@ -117,10 +117,9 @@ def annotate(
             one of the supported methods. For existing label fields, if classes
             are not provided by this argument nor ``label_schema``, the
             observed labels on your dataset are used
-        attributes (True): specifies the label attributes of each label
-            field to include (other than their ``label``, which is always
-            included) in the annotation export. Can be any of the
-            following:
+        attributes (True): specifies the label attributes of each label field
+            to include (other than their ``label``, which is always included)
+            in the annotation export. Can be any of the following:
 
             -   ``True``: export all label attributes
             -   ``False``: don't export any custom label attributes
@@ -128,8 +127,10 @@ def annotate(
             -   a dict mapping attribute names to dicts specifying the details
                 of the attribute field
 
-            If provided, this parameter will apply to all label fields in
-            ``label_schema`` that do not define their attributes
+            If a ``label_schema`` is also provided, this parameter determines
+            which attributes are included for all fields that do not explicitly
+            define their per-field attributes (in addition to any per-class
+            attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
             strings. Only applicable when annotating semantic segmentations
         allow_additions (True): whether to allow new labels to be added. Only
