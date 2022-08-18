@@ -1,4 +1,5 @@
-"""Test Label Studio integration.
+"""
+Tests for the :mod:`fiftyone.utils.labelstudio` module.
 
 To run these tests:
     Run Label Studio server
@@ -16,6 +17,11 @@ To review project setup, uploaded tasks and predictions:
     `test_annotate_simple` and `test_annotate_with_predictions`
     and run tests with a debugger. Once the breakpoint is reached,
     go to a browser and review project.
+
+
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 import os
 import random

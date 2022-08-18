@@ -2,35 +2,9 @@
 Utilities for working with annotations in
 `Label Studio <https://labelstud.io>`_.
 
-Run Label Studio:
-    1. As a python package:
-        pip install label-studio
-        label-studio start
-    2. As a docker image:
-        docker run -d -p 8080:8080 \
-            --name labelstudio \
-            -v /tmp/labelstudio:/data \
-            heartexlabs/label-studio:latest
-
-Set environment variables:
-    export FIFTYONE_LABELSTUDIO_URL=<url>
-    export FIFTYONE_LABELSTUDIO_API_KEY=<access_token>
-
-Annotate:
-    dataset = fo.load_dataset("quickstart")
-    dataset.annotate(<anno_key>, label_field=<field_name>,
-                    label_type=<label_type>,
-                    classes=[list, of, classes],
-                    backend="labelstudio")
-    # Note: a new project will be created with a labelling config
-    # that matches label type and classes.
-    # Note: it might take a while because files have to be
-    # uploaded to the Label Studio server.
-
-Load annotations:
-    dataset.load_annotations(<anno_key>)
-    # Note: this will only load the latest annotation per task
-    # if multiple annotations exist for a task.
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 import itertools
 import json
