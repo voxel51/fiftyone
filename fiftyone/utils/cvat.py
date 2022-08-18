@@ -3185,7 +3185,7 @@ class CVATBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return CVATAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -3197,7 +3197,6 @@ class CVATBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
         results = api.upload_samples(samples, self)
-        api.close()
 
         if launch_editor:
             results.launch_editor()
@@ -3210,8 +3209,6 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(results)
         logger.info("Download complete")
-
-        api.close()
 
         return annotations
 
@@ -3260,14 +3257,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
             url=url, username=username, password=password, headers=headers
         )
 
-    def connect_to_api(self):
-        """Returns an API instance connected to the CVAT server.
-
-        Returns:
-            a :class:`CVATAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
-
     def launch_editor(self):
         """Launches the CVAT editor and loads the first task for this
         annotation run.
@@ -3283,7 +3272,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
         logger.info("Launching editor at '%s'...", editor_url)
         api.launch_editor(url=editor_url)
-        api.close()
 
     def get_status(self):
         """Gets the status of the assigned tasks and jobs.
@@ -3304,9 +3292,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
             task_ids: an iterable of task IDs
         """
         api = self.connect_to_api()
+
         api.delete_tasks(task_ids)
         self._forget_tasks(task_ids)
-        api.close()
 
     def cleanup(self):
         """Deletes all tasks and created projects associated with this run."""
@@ -3321,8 +3309,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
             if projects_to_delete:
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
-
-        api.close()
 
         self.project_ids = []
         self.task_ids = []
@@ -3344,7 +3330,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
     def _get_status(self, log=False):
         api = self.connect_to_api()
-
         status = {}
         for label_field, task_ids in self.labels_task_map.items():
             if log:
@@ -3422,8 +3407,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "last_updated": task_updated,
                     "jobs": jobs_info,
                 }
-
-        api.close()
 
         return status
 
@@ -3620,6 +3603,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session = requests.Session()
 
         if self._headers:
+            # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
         self._server_version = 2
@@ -3640,7 +3624,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.headers["Referer"] = self.login_url
 
     def close(self):
-        """Closes the API session."""
         self._session.close()
 
     def _login(self, username, password):
@@ -3865,6 +3848,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         if self.project_exists(project_id):
             self.delete(self.project_url(project_id))
+            project_name = self.get_project_name(project_id)
+            if project_name is not None:
+                self._project_id_map.pop(project_name, None)
 
     def delete_projects(self, project_ids):
         """Deletes the given projects from the CVAT server.
@@ -4353,10 +4339,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annotations = {}
         deleted_tasks = []
 
-        existing_tasks = set(self.list_tasks())
-
         for task_id in task_ids:
-            if task_id not in existing_tasks:
+            if not self.task_exists(task_id):
                 deleted_tasks.append(task_id)
                 logger.warning(
                     "Skipping task %d, which no longer exists", task_id

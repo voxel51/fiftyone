@@ -617,7 +617,7 @@ Core
   :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
   with run results
 - Added a :class:`Regression <fiftyone.core.labels.Regression>` label type
-- Added a :func:`random_split() <fiftyone.utils.splits.random_split>` method
+- Added a :func:`random_split() <fiftyone.utils.random.random_split>` method
 - Added support for negating
   :meth:`match_labels() <fiftyone.core.collections.SampleCollection.match_labels()>`
   queries
