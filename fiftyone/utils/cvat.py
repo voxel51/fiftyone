@@ -2993,7 +2993,7 @@ class CVATVideoAnnotationWriter(object):
 
 
 class CVATBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for configuring :class:`CVATBackend` instances.
+    """Class for configuring :class:`CVATBackend` instances.
 
     Args:
         name: the name of the backend

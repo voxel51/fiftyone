@@ -1,21 +1,10 @@
-"""Test Label Studio integration.
+"""
+Tests for the :mod:`fiftyone.utils.labelstudio` module.
 
-To run these tests:
-    Run Label Studio server
-
-    Copy an Access Token from Label Studio account settings
-    export FIFTYONE_LABELSTUDIO_API_KEY=<TOKEN>
-    pytest tests/intensive/labelstudio_tests.py
-
-    Set label studio server address if needed:
-    export FIFTYONE_LABELSTUDIO_URL=<URL>
-
-
-To review project setup, uploaded tasks and predictions:
-    set a breakpoint before `dataset.load_annotations()` in the
-    `test_annotate_simple` and `test_annotate_with_predictions`
-    and run tests with a debugger. Once the breakpoint is reached,
-    go to a browser and review project.
+| Copyright 2017-2022, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+=======
 """
 import os
 import random
@@ -31,9 +20,15 @@ import fiftyone.core.labels as fol
 
 @pytest.fixture()
 def backend_config():
+    config = fo.annotation_config.backends.get("labelstudio", {})
     return {
-        "url": os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
-        "api_key": os.getenv("FIFTYONE_LABELSTUDIO_API_KEY"),
+        "url": config.get(
+            "url",
+            os.getenv("FIFTYONE_LABELSTUDIO_URL", "http://localhost:8080"),
+        ),
+        "api_key": config.get(
+            "api_key", os.getenv("FIFTYONE_LABELSTUDIO_API_KEY")
+        ),
     }
 
 
@@ -169,7 +164,7 @@ def label_configs():
 
 def test_labelling_config(label_configs):
     for case in label_configs:
-        generated = fouls.generate_labelling_config(**case["input"])
+        generated = fouls.generate_labeling_config(**case["input"])
         assert generated.strip() == case["output"].strip()
 
 
@@ -329,7 +324,7 @@ def label_mappings():
 
 def test_import_labels(label_mappings):
     for case in label_mappings:
-        label = fouls.import_labelstudio_annotation(case["labelstudio"])
+        label = fouls.import_label_studio_annotation(case["labelstudio"])
         expected = case["fiftyone"]
 
         if isinstance(expected, (list, tuple)):
@@ -341,7 +336,7 @@ def test_import_labels(label_mappings):
 
 def test_export_labels(label_mappings):
     for case in label_mappings:
-        ls_prediction = fouls.export_label_to_labelstudio(case["fiftyone"])
+        ls_prediction = fouls.export_label_to_label_studio(case["fiftyone"])
         expected = case["labelstudio"]
 
         if isinstance(expected, (list, tuple)):
