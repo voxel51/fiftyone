@@ -5,20 +5,19 @@ Label Studio Integration
 
 .. default-role:: code
 
-`Label Studio <https://labelstud.io/>`_ is a sleek and popular open-source data
-labelling tool with a simple and straightforward UI. The integration between
-FiftyOne and Label Studio allows you to easily upload your data directly from
-FiftyOne to Label Studio for labeling.
+`Label Studio <https://labelstud.io/>`_ is a popular open-source data labeling
+tool with a friendly UI. The integration between FiftyOne and Label Studio
+allows you to easily upload your data directly from FiftyOne to Label Studio
+for labeling.
 
-You can get started with Label Studio through a simple pip install to get a local
-server up and running. FiftyOne provides
-:ref:`simple setup <label-studio-setup>` instructions
-that you can use to specify the necessary account credentials and server
-endpoint to use.
+You can get started with Label Studio through a simple pip install to get a
+local server up and running. FiftyOne provides
+:ref:`simple setup instructions <label-studio-setup>` that you can use to
+specify the necessary account credentials and server endpoint to use.
 
 FiftyOne provides an API to create projects, upload data, define label schemas,
-and download annotations using Label Studio, all programmatically in Python. All of
-the following label types are supported for image datasets:
+and download annotations using Label Studio, all programmatically in Python.
+All of the following label types are supported for image datasets:
 
 - :ref:`Classification <classification>`
 - :ref:`Detections <object-detection>`
@@ -54,8 +53,8 @@ datasets is as follows:
    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
    method to merge the annotations back into your FiftyOne dataset
 
-6) If desired, delete the Label Studio tasks and the record of the annotation run
-   from your FiftyOne dataset
+6) If desired, delete the Label Studio tasks and the record of the annotation
+   run from your FiftyOne dataset
 
 |br|
 The example below demonstrates this workflow.
@@ -64,9 +63,9 @@ The example below demonstrates this workflow.
 
     You must start by installing and setting up Label Studio as described in
     :ref:`this section <label-studio-setup>`.
+
     Note that you can also store your credentials to avoid entering them
     manually each time you interact with Label Studio.
-
 
 First, we create the annotation tasks in Label Studio:
 
@@ -215,13 +214,13 @@ or by setting the `default_backend` parameter of your
 Authentication
 --------------
 
-In order to connect to a Label Studio server, you must provide your API key, which
-can be done in a variety of ways.
+In order to connect to a Label Studio server, you must provide your API key,
+which can be done in a variety of ways.
 
 **Environment variables (recommended)**
 
-The recommended way to configure your Label Studio API key is to store it in the
-`FIFTYONE_LABELSTUDIO_API_KEY` environment variable. This is automatically
+The recommended way to configure your Label Studio API key is to store it in
+the `FIFTYONE_LABELSTUDIO_API_KEY` environment variable. This is automatically
 accessed by FiftyOne whenever a connection to Label Studio is made.
 
 .. code-block:: shell
@@ -367,8 +366,8 @@ that you wish to be performed.
 
 The following parameters are supported by all annotation backends:
 
--   **backend** (*None*): the annotation backend to use. Use `"labelstudio"` for
-    the Label Studio backend. The supported values are
+-   **backend** (*None*): the annotation backend to use. Use `"labelstudio"`
+    for the Label Studio backend. The supported values are
     `fiftyone.annotation_config.backends.keys()` and the default is
     `fiftyone.annotation_config.default_backend`
 -   **media_field** (*"filepath"*): the sample field containing the path to the
@@ -377,8 +376,8 @@ The following parameters are supported by all annotation backends:
     editor after uploading the samples
 
 The following parameters allow you to configure the labeling schema to use for
-your annotation tasks. See :ref:`this section <label-studio-label-schema>` for more
-details:
+your annotation tasks. See :ref:`this section <label-studio-label-schema>` for
+more details:
 
 -   **label_schema** (*None*): a dictionary defining the label schema to use.
     If this argument is provided, it takes precedence over `label_field` and
@@ -413,8 +412,6 @@ details:
     by this argument nor `label_schema`, they are parsed from
     :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
--   **attributes** (*True*): attributes are currently not supported by Label
-    Studio
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
     strings. Only applicable when annotating semantic segmentations
 
@@ -431,8 +428,8 @@ can also be provided:
 Label schema
 ------------
 
-The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to
+The `label_schema`, `label_field`, `label_type`, `classes`, and `mask_targets`
+parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
 you to define the annotation schema that you wish to be used.
 
@@ -441,9 +438,9 @@ it may also include existing label field(s), in which case you can add, delete,
 or edit the existing labels on your FiftyOne dataset.
 
 The `label_schema` argument is the most flexible way to define how to construct
-tasks in Label Studio. In its most verbose form, it is a dictionary that defines
-the label type, annotation type, and possible classes for
-each label field:
+tasks in Label Studio. In its most verbose form, it is a dictionary that
+defines the label type, annotation type, and possible classes for each label
+field:
 
 .. code:: python
     :linenos:
@@ -495,7 +492,7 @@ FiftyOne can infer the appropriate values to use:
     lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
     properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list.
+    observed labels on your dataset will be used to construct a classes list
 -   **mask_targets**: if omitted for a semantic segmentation field, the mask
     targets from the
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
@@ -509,8 +506,8 @@ Label attributes
 
 .. warning::
 
-   Unlike other annotation backends, Label Studio does not support annotation
-   of attributes at the moment.
+   The Label Studio integration does not yet support
+   :ref:`annotating label attributes <annotation-label-attributes>`.
 
 .. _label-studio-loading-annotations:
 
@@ -614,14 +611,21 @@ to delete the record of an annotation run from your FiftyOne dataset:
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
     nor will it delete any associated information from the annotation backend.
 
+.. _label-studio-annotating-videos:
+
 Annotating videos
 _________________
 
 .. warning::
 
-   Videos are not currently supported through this annotation backend.
+    The Label Stuio integration does not currently support annotating videos.
+
+.. _label-studio-acknowledgements:
+
+Acknowledgements
+________________
 
 .. note::
 
-   Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_ for
-   contributing a large part of this integration!
+    Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_ for
+    making this integration happen!
