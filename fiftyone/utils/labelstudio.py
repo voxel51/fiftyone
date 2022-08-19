@@ -330,8 +330,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         def task_filter(x):
             return x["is_labeled"] or bool(x.get("predictions"))
 
-        labeled_tasks = list(filter(task_filter, matched_tasks))
-        return labeled_tasks
+        return list(filter(task_filter, matched_tasks))
 
     def _import_annotations(self, tasks, task_map, label_type):
         results = {}
@@ -593,7 +592,7 @@ def import_label_studio_annotation(result):
     elif ls_type == "brushlabels":
         label = _from_brushlabels(result)
     elif ls_type == "number":
-        label = fol.Regression(value=result["value"]["number"])
+        label = _from_number(result)
     else:
         raise ValueError("Unable to import %s from Label Studio" % ls_type)
 
@@ -829,6 +828,10 @@ def _from_brushlabels(result):
         (result["original_height"], result["original_width"], 4)
     )[:, :, 3]
     return fol.Segmentation(label=label_values[0], mask=mask)
+
+
+def _from_number(result):
+    return fol.Regression(value=result["value"]["number"])
 
 
 def _check_type(label, label_type, label_type_multiple):
