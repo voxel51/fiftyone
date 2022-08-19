@@ -62,7 +62,13 @@ Core
   sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
 - Added Plotly v5 support
   `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_
-
+- Added support for dynamic attributes when performing coerced exports
+  `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
+- Added support for writing transformed images/videos to new location/field
+  in the
+  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>`
+  `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
 
 Annotation
 
@@ -73,8 +79,12 @@ Annotation
 - Optimized loading annotations from CVAT and performing operations on
   :class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
   `#1944 <https://github.com/voxel51/fiftyone/pull/1944>`_
-
-
+- Upgraded :class:`AnnotationAPI <fiftyone.utils.annotation.AnnotationAPI>` reuse
+  `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
+- Added improved errors, support for non-submitted tasks, and label ID tracking
+  for merge preexisting annotations to the Label Studio integration
+  (:mod:`fiftyone.utils.labelstudio`)
+  `#2006 <https://github.com/voxel51/fiftyone/pull/2006>`_
 
 .. _release-notes-v0.16.5:
 
