@@ -87,6 +87,10 @@ def extract_clip(
 def reencode_videos(
     sample_collection,
     force_reencode=True,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -94,9 +98,6 @@ def reencode_videos(
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
-
-    The ``filepath`` of the samples are updated to point to the re-encoded
-    videos.
 
     By default, the re-encoding is performed via the following ``ffmpeg``
     command::
@@ -110,13 +111,35 @@ def reencode_videos(
     compression by passing keyword arguments for
     ``eta.core.video.FFmpeg(**kwargs)`` to this function.
 
+    .. note::
+
+        This method will not update the ``metadata`` field of the collection
+        after transforming. You can repopulate the ``metadata` field if needed
+        by calling::
+
+            sample_collection.compute_metadata(overwrite=True)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         force_reencode (True): whether to re-encode videos that are already
             MP4s
+        media_field ("filepath"): the input field containing the video paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed videos. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed videos. If none is provided, the videos are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each video. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original videos after
-            re-encoding
+            re-encoding. This parameter has no effect if the videos are being
+            updated in-place
         skip_failures (False): whether to gracefully continue without raising
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
@@ -129,6 +152,10 @@ def reencode_videos(
         sample_collection,
         reencode=True,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -146,6 +173,10 @@ def transform_videos(
     max_size=None,
     reencode=False,
     force_reencode=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -153,9 +184,6 @@ def transform_videos(
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
-
-    The ``filepath`` of the samples are updated to point to the transformed
-    videos.
 
     In addition to the size and frame rate parameters, if ``reencode == True``,
     the following basic ``ffmpeg`` command structure is used to re-encode the
@@ -195,6 +223,19 @@ def transform_videos(
         reencode (False): whether to re-encode the videos as H.264 MP4s
         force_reencode (False): whether to re-encode videos whose parameters
             already satisfy the specified values
+        media_field ("filepath"): the input field containing the video paths to
+            transform
+        output_field (None): an optional field in which to store the paths to
+            the transformed videos. By default, ``media_field`` is updated
+            in-place
+        output_dir (None): an optional output directory in which to write the
+            transformed videos. If none is provided, the videos are updated
+            in-place
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each video. This
+            argument allows for populating nested subdirectories in
+            ``output_dir`` that match the shape of the input paths
         delete_originals (False): whether to delete the original videos after
             re-encoding
         skip_failures (False): whether to gracefully continue without raising
@@ -215,6 +256,10 @@ def transform_videos(
         max_size=max_size,
         reencode=reencode,
         force_reencode=force_reencode,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
@@ -224,8 +269,6 @@ def transform_videos(
 
 def sample_videos(
     sample_collection,
-    output_dir=None,
-    rel_dir=None,
     frames_patt=None,
     frames=None,
     fps=None,
@@ -236,6 +279,10 @@ def sample_videos(
     original_frame_numbers=True,
     force_sample=False,
     save_filepaths=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
@@ -290,20 +337,9 @@ def sample_videos(
                 000002.jpg
                 ...
 
-
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        output_dir (None): an optional output directory in which to write the
-            sampled frames. By default, the frames are written in folders with
-            the same basename of each video
-        rel_dir (None): a relative directory to remove from the filepath of
-            each video, if possible. The path is converted to an absolute path
-            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
-            argument can be used in conjunction with ``output_dir`` to cause
-            the sampled frames to be written in a nested directory structure
-            within ``output_dir`` matching the shape of the input video's
-            folder structure
         frames_patt (None): a pattern specifying the filename/format to use to
             store the sampled frames, e.g., ``"%%06d.jpg"``. The default value
             is ``fiftyone.config.default_sequence_idx + fiftyone.config.default_image_ext``
@@ -329,8 +365,22 @@ def sample_videos(
             the frames as 1, 2, ... (False)
         force_sample (False): whether to resample videos whose sampled frames
             already exist
-        save_filepaths (False): whether to save the sampled frame paths in a
-            ``filepath`` field of each frame of the input collection
+        save_filepaths (False): whether to save the sampled frame paths in the
+            ``output_field`` field of each frame of the input collection
+        media_field ("filepath"): the input field containing the video paths to
+            sample
+        output_field (None): an optional frame field in which to store the
+            paths to the sampled frames. By default, ``media_field`` is used
+        output_dir (None): an optional output directory in which to write the
+            sampled frames. By default, the frames are written in folders with
+            the same basename of each video
+        rel_dir (None): a relative directory to remove from the filepath of
+            each video, if possible. The path is converted to an absolute path
+            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
+            argument can be used in conjunction with ``output_dir`` to cause
+            the sampled frames to be written in a nested directory structure
+            within ``output_dir`` matching the shape of the input video's
+            folder structure
         delete_originals (False): whether to delete the original videos after
             sampling
         skip_failures (False): whether to gracefully continue without raising
@@ -351,10 +401,12 @@ def sample_videos(
         max_size=max_size,
         sample_frames=True,
         original_frame_numbers=original_frame_numbers,
-        output_dir=output_dir,
-        rel_dir=rel_dir,
         frames_patt=frames_patt,
         force_reencode=force_sample,
+        media_field=media_field,
+        output_field=output_field,
+        output_dir=output_dir,
+        rel_dir=rel_dir,
         save_filepaths=save_filepaths,
         delete_originals=delete_originals,
         skip_failures=skip_failures,
@@ -616,18 +668,25 @@ def _transform_videos(
     min_size=None,
     max_size=None,
     sample_frames=False,
-    output_dir=None,
-    rel_dir=None,
     frames_patt=None,
     original_frame_numbers=True,
     reencode=False,
     force_reencode=False,
     save_filepaths=False,
+    media_field="filepath",
+    output_field=None,
+    output_dir=None,
+    rel_dir=None,
     delete_originals=False,
     skip_failures=False,
     verbose=False,
     **kwargs,
 ):
+    if output_field is None:
+        output_field = media_field
+
+    diff_field = output_field != media_field
+
     if sample_frames:
         reencode = True
         if frames_patt is None:
@@ -635,14 +694,14 @@ def _transform_videos(
                 fo.config.default_sequence_idx + fo.config.default_image_ext
             )
 
-    view = sample_collection.select_fields()
+    view = sample_collection.select_fields(media_field)
 
     if frames is None:
         frames = itertools.repeat(None)
 
     with fou.ProgressBar(total=len(view)) as pb:
         for sample, _frames in pb(zip(view, frames)):
-            inpath = sample.filepath
+            inpath = sample[media_field]
 
             _outpath = _get_outpath(
                 inpath, output_dir=output_dir, rel_dir=rel_dir
@@ -705,26 +764,13 @@ def _transform_videos(
                 for fn in _frames:
                     frame_path = outpath % fn
                     if os.path.isfile(frame_path):
-                        sample.frames[fn]["filepath"] = frame_path
+                        sample.frames[fn][output_field] = frame_path
 
                 sample.save()
 
-            if outpath != inpath and not sample_frames:
-                sample.filepath = outpath
+            if (diff_field or outpath != inpath) and not sample_frames:
+                sample[output_field] = outpath
                 sample.save()
-
-
-def _get_outpath(inpath, output_dir=None, rel_dir=None):
-    if output_dir is None:
-        return inpath
-
-    if rel_dir is not None:
-        rel_dir = fou.normalize_path(rel_dir)
-        filename = os.path.relpath(inpath, rel_dir)
-    else:
-        filename = os.path.basename(inpath)
-
-    return os.path.join(output_dir, filename)
 
 
 def _transform_video(
@@ -908,3 +954,16 @@ def _parse_parameters(
         frames = None
 
     return ofps, osize, frames
+
+
+def _get_outpath(inpath, output_dir=None, rel_dir=None):
+    if output_dir is None:
+        return inpath
+
+    if rel_dir is not None:
+        rel_dir = fou.normalize_path(rel_dir)
+        filename = os.path.relpath(inpath, rel_dir)
+    else:
+        filename = os.path.basename(inpath)
+
+    return os.path.join(output_dir, filename)
