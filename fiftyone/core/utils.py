@@ -1007,6 +1007,8 @@ class UniqueFilenameMaker(object):
             output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
+        ignore_existing (False): whether to ignore existing files in
+            ``output_dir`` for output filename generation purposes
     """
 
     def __init__(
@@ -1015,11 +1017,13 @@ class UniqueFilenameMaker(object):
         rel_dir=None,
         default_ext=None,
         ignore_exts=False,
+        ignore_existing=False,
     ):
         self.output_dir = output_dir
         self.rel_dir = rel_dir
         self.default_ext = default_ext
         self.ignore_exts = ignore_exts
+        self.ignore_existing = ignore_existing
 
         self._filepath_map = {}
         self._filename_counts = defaultdict(int)
@@ -1035,11 +1039,27 @@ class UniqueFilenameMaker(object):
             return
 
         etau.ensure_dir(self.output_dir)
-        filenames = etau.list_files(self.output_dir)
+
+        if self.ignore_existing:
+            return
+
+        abs_paths = self.rel_dir is not None
+        filenames = etau.list_files(self.output_dir, abs_paths=abs_paths)
 
         self._idx = len(filenames)
         for filename in filenames:
             self._filename_counts[filename] += 1
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        return input_path in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
