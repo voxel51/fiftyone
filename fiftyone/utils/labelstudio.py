@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for Label Studio backend configuration.
+    """Class for configuring :class:`LabelStudioBackend` instances.
 
     Args:
         name: the name of the backend
@@ -50,8 +50,8 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
 
     def __init__(
         self,
-        name: str,
-        label_schema: str,
+        name,
+        label_schema,
         media_field="filepath",
         url=None,
         api_key=None,
@@ -75,7 +75,7 @@ class LabelStudioBackendConfig(foua.AnnotationBackendConfig):
 
 
 class LabelStudioBackend(foua.AnnotationBackend):
-    """Base class to connect to Label Studio API and handle annotations."""
+    """Class for interacting with the Label Studio annotation backend."""
 
     @property
     def supported_label_types(self):
@@ -128,7 +128,7 @@ class LabelStudioBackend(foua.AnnotationBackend):
         api = self.connect_to_api()
 
         logger.info("Uploading media to Label Studio...")
-        results = api.upload_tasks(samples, self)
+        results = api.upload_samples(samples, self)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -147,11 +147,10 @@ class LabelStudioBackend(foua.AnnotationBackend):
 
 
 class LabelStudioAnnotationAPI(foua.AnnotationAPI):
-    """A class to upload tasks and predictions to and fetch annotations
-    from Label Studio
+    """A class to upload tasks and predictions to and fetch annotations from
+    Label Studio.
 
     On initialization, the class will check if the server is reachable.
-
     """
 
     def __init__(self, url, api_key):
@@ -177,43 +176,44 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         if not version.parse(server_version) >= version.parse(
             self._min_server_version
         ):
-            raise AssertionError(
-                f"Current Label Studio integration is only compatible with version {self._min_server_version} or above."
+            raise ValueError(
+                "Current Label Studio integration is only compatible with "
+                "version>=%s" % self._min_server_version
             )
 
     def _init_project(self, config, samples):
-        """Create a new project on Label Studio.
+        """Creates a new project on Label Studio.
 
         If project_name is not set in the configs, it will be generated.
         If project_name exists on the server, a timestamp will be added
         to the project name.
 
         Args:
-            config: an instance of LabelStudioBackendConfig
-            samples: a sample collection object
+            config: a :class:`LabelStudioBackendConfig`
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
 
         Returns:
-            a label_studio_sdk.Project object
+            a ``label_studio_sdk.Project``
         """
         project_name = deepcopy(config.project_name)
         label_schema = deepcopy(config.label_schema)
 
         if project_name is None:
             _dataset_name = samples._root_dataset.name.replace(" ", "_")
-            project_name = f"FiftyOne_{_dataset_name.replace(' ', '_')}"
+            project_name = "FiftyOne_%s" % _dataset_name
 
         # if project name take, add timestamp
         projects = self._client.list_projects()
         for one in projects:
             if one.params["title"] == project_name:
                 time_str = str(int(dt.timestamp(dt.now())))
-                project_name += f"_{time_str}"
+                project_name += "_%s" % time_str
                 break
 
         # generate label config
         assert len(label_schema) == 1
         _, label_info = label_schema.popitem()
-        label_config = generate_labelling_config(
+        label_config = generate_labeling_config(
             media=samples.media_type,
             label_type=label_info["type"],
             labels=label_info["classes"],
@@ -225,7 +225,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return project
 
     def _prepare_tasks(self, samples, label_schema, media_field):
-        """Extract sample data and existing labels if any"""
+        """Prepares Label Studio tasks for the given data."""
         samples.compute_metadata()
         tasks = [
             {
@@ -241,7 +241,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
                 predictions[label_field] = {
-                    smp.id: export_label_to_labelstudio(
+                    smp.id: export_label_to_label_studio(
                         smp[label_field],
                         full_result={
                             "from_name": "label",
@@ -260,16 +260,16 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         return tasks, predictions, id_map
 
-    def _import_tasks(self, project, tasks, predictions=None):
-        """Upload files to Label Studio and register them as tasks.
+    def _upload_tasks(self, project, tasks, predictions=None):
+        """Uploads files to Label Studio and registers them as tasks.
 
         Args:
-            project: label studio sdk Project instance
+            project: a ``label_studio_sdk.Project``
             tasks: a list of task dicts
-            predictions: if given, these predictions will be uploaded as well
+            predictions (None): optional predictions to upload
 
         Returns:
-            a dict mapping of task_id to sample_id
+            a dict mapping ``task_id`` to ``sample_id``
         """
         files = [
             (
@@ -325,16 +325,16 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         return uploaded_tasks
 
     @staticmethod
-    def _get_matched_labelled_tasks(project, task_ids):
+    def _get_matched_labeled_tasks(project, task_ids):
         matched_tasks = project.get_tasks(selected_ids=task_ids)
 
         def task_filter(x):
             return x["is_labeled"] or bool(x.get("predictions"))
 
-        labelled_tasks = list(filter(task_filter, matched_tasks))
-        return labelled_tasks
+        labeled_tasks = list(filter(task_filter, matched_tasks))
+        return labeled_tasks
 
-    def _import_annotations(self, tasks, task_id2sample_id, label_type):
+    def _import_annotations(self, tasks, task_map, label_type):
         results = {}
         for t in tasks:
             # convert latest annotation results
@@ -349,12 +349,12 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 else sorted(annotations, key=lambda x: x["updated_at"])[-1]
             )
             if label_type == "keypoints":
-                labels = import_labelstudio_annotation(
+                labels = import_label_studio_annotation(
                     latest_annotation["result"]
                 )
             else:
                 labels = [
-                    import_labelstudio_annotation(r)
+                    import_label_studio_annotation(r)
                     for r in latest_annotation.get("result", [])
                 ]
 
@@ -365,26 +365,39 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                     if not isinstance(labels[0], fol.Regression)
                     else labels[0]
                 )
-                sample_id = task_id2sample_id[t["id"]]
+                sample_id = task_map[t["id"]]
                 results[sample_id] = label_ids
 
         return results
 
-    def _export_to_labelstudio(self, labels, label_type):
+    def _export_to_label_studio(self, labels, label_type):
         if _LABEL_TYPES[label_type]["multiple"] is None:
-            return export_label_to_labelstudio(labels)
-        return [export_label_to_labelstudio(l) for l in labels]
+            return export_label_to_label_studio(labels)
 
-    def upload_tasks(self, samples, backend):
-        """Create a Label Studio project and upload samples"""
+        return [export_label_to_label_studio(l) for l in labels]
+
+    def upload_samples(self, samples, backend):
+        """Uploads the given samples to Label Studio according to the given
+        backend's annotation and server configuration.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            backend: a :class:`LabelStudioBackend` to use to perform the upload
+
+        Returns:
+            a :class:`LabelStudioAnnotationResults`
+        """
         config = backend.config
+
         project = self._init_project(config, samples)
+
         tasks, predictions, id_map = self._prepare_tasks(
             samples,
             config.label_schema,
             config.media_field,
         )
-        uploaded_tasks = self._import_tasks(project, tasks, predictions)
+        uploaded_tasks = self._upload_tasks(project, tasks, predictions)
+
         return LabelStudioAnnotationResults(
             samples,
             config,
@@ -395,40 +408,45 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         )
 
     def download_annotations(self, results):
-        """Import annotations from Label Studio.
+        """Downloads the annotations from the Label Studio server for the given
+        results instance and parses them into the appropriate FiftyOne types.
 
         Args:
-            results: LabelStudioAnnotationResults object
+            results: a :class:`LabelStudioAnnotationResults`
 
         Returns:
-            # Scalar fields
-            results[label_type][sample_id] = scalar
-
-            # Label fields
-            results[label_type][sample_id][label_id] = label
+            the annotations dict
         """
         project = self._client.get_project(results.project_id)
-        labelled_tasks = self._get_matched_labelled_tasks(
+        labeled_tasks = self._get_matched_labeled_tasks(
             project, list(results.uploaded_tasks.keys())
         )
         annotations = {}
         for label_field, label_info in results.config.label_schema.items():
             return_type = foua._RETURN_TYPES_MAP[label_info["type"]]
             labels = self._import_annotations(
-                labelled_tasks, results.uploaded_tasks, return_type
+                labeled_tasks, results.uploaded_tasks, return_type
             )
             annotations.update({label_field: {return_type: labels}})
 
         return annotations
 
     def upload_predictions(self, project, tasks, sample_labels, label_type):
-        """Upload existing labels to Label Studio."""
+        """Uploads the given predictions to an existing Label Studio project.
+
+        Args:
+            project: a ``label_studio_sdk.Project``
+            tasks: a list of task dicts
+            sample_labels: a list or list of lists of
+                :class:`fiftyone.core.labels.Label`instances
+            label_type: the label type string
+        """
         for task, labels in zip(tasks, sample_labels):
-            predictions = self._export_to_labelstudio(labels, label_type)
+            predictions = self._export_to_label_studio(labels, label_type)
             project.create_prediction(task, predictions)
 
     def delete_tasks(self, task_ids):
-        """Delete tasks from Label Studio.
+        """Deletes the given tasks from Label Studio.
 
         Args:
             task_ids: list of task ids
@@ -440,7 +458,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             )
 
     def delete_project(self, project_id):
-        """Delete project from Label Studio.
+        """Deletes the project from Label Studio.
 
         Args:
             project_id: project id
@@ -452,7 +470,10 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
 
 class LabelStudioAnnotationResults(foua.AnnotationResults):
-    """Base class for storing intermediate annotation results"""
+    """Class that stores all relevant information needed to monitor the
+    progress of an annotation run sent to Label Studio and download the
+    results.
+    """
 
     def __init__(
         self, samples, config, id_map, project_id, uploaded_tasks, backend=None
@@ -505,17 +526,16 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         )
 
 
-def generate_labelling_config(media, label_type, labels=None):
-    """
-    Generate a labelling config for a Label Studio project.
+def generate_labeling_config(media, label_type, labels=None):
+    """Generates a labeling config for a Label Studio project.
 
     Args:
-        media: The media type to label.
-        label_type: The type of labels to use.
-        labels: The labels to use.
+        media: The media type to label
+        label_type: The type of labels to use
+        labels (None): the labels to use
 
     Returns:
-        A labelling config.
+        a labeling config
     """
     etree = fou.lazy_import(
         "lxml.etree", callback=lambda: fou.ensure_import("lxml.etree")
@@ -545,14 +565,14 @@ def generate_labelling_config(media, label_type, labels=None):
     return config_str
 
 
-def import_labelstudio_annotation(result: dict):
-    """Import an annotation from Label Studio.
+def import_label_studio_annotation(result):
+    """Imports an annotation from Label Studio.
 
     Args:
-        result: The annotation result from Label Studio.
+        result: the annotation result from Label Studio
 
     Returns:
-        fo.Label instance.
+        a :class:`fiftyone.core.labels.Label`
     """
     # TODO link keypoints by parent id
     # TODO handle multiple classes for segmentation
@@ -561,7 +581,7 @@ def import_labelstudio_annotation(result: dict):
     elif isinstance(result, list):
         ls_type = result[0]["type"]
     else:
-        raise TypeError(f"type {type(result)} is not understood")
+        raise TypeError("Result type %s is not understood" % type(result))
 
     if ls_type == "choices":
         label = _from_choices(result)
@@ -576,7 +596,7 @@ def import_labelstudio_annotation(result: dict):
     elif ls_type == "number":
         label = fol.Regression(value=result["value"]["number"])
     else:
-        raise ValueError(f"unable to import {ls_type=} from Label Studio")
+        raise ValueError("Unable to import %s from Label Studio" % ls_type)
 
     try:
         label_id = result["id"]
@@ -594,15 +614,16 @@ def _update_dict(src_dict, update_dict):
     return new
 
 
-def export_label_to_labelstudio(label, full_result=None):
-    """Export a label to the Label Studio format
+def export_label_to_label_studio(label, full_result=None):
+    """Exports a label to the Label Studio format.
 
     Args:
-        label: fo.Label instance or a list of fo.Label instances.
-        full_result: If not empty, return the full result for Label Studio.
+        label: a :class:`fiftyone.core.labels.Label` or list of
+            :class:`fiftyone.core.labels.Label` instances
+        full_result (None): if non-empty, return the full Label Studio result
 
     Returns:
-        a dictionary or a list with the Label Studio format
+        a dictionary or a list in Label Studio format
     """
     # TODO model version and model score
     if _check_type(label, fol.Classification, fol.Classifications):
@@ -620,12 +641,13 @@ def export_label_to_labelstudio(label, full_result=None):
         ls_type = "number"
         ids = label.id
     else:
-        raise ValueError(f"{type(label)} is not supported")
+        raise ValueError("Label type %s is not supported" % type(label))
 
-    if bool(full_result):
+    if full_result:
         # return full LS result
         if not isinstance(result_value, (list, tuple)):
             result_value = [result_value]
+
         return [
             _update_dict(
                 full_result,
@@ -633,8 +655,8 @@ def export_label_to_labelstudio(label, full_result=None):
             )
             for r, i in zip(result_value, ids)
         ]
-    else:
-        return result_value
+
+    return result_value
 
 
 def _generate_prediction_id(n=10):
@@ -643,97 +665,105 @@ def _generate_prediction_id(n=10):
 
 def _to_classification(label):
     ls_type = "choices"
+
     if isinstance(label, list):
         return (
             {ls_type: [l.label for l in label]},
             ls_type,
             [l.id for l in label],
         )
-    elif isinstance(label, fol.Classifications):
+
+    if isinstance(label, fol.Classifications):
         return (
             {ls_type: [l.label for l in label.classifications]},
             ls_type,
             [l.id for l in label.classifications],
         )
-    else:
-        return {ls_type: [label.label]}, ls_type, label.id
+
+    return {ls_type: [label.label]}, ls_type, label.id
 
 
 def _to_detection(label):
     ls_type = "rectanglelabels"
+
     if isinstance(label, list):
         return (
             [_to_detection(l)[0] for l in label],
             ls_type,
             [l.id for l in label],
         )
-    elif isinstance(label, fol.Detections):
+
+    if isinstance(label, fol.Detections):
         return (
             [_to_detection(l)[0] for l in label.detections],
             ls_type,
             [l.id for l in label.detections],
         )
-    else:
-        box = _denormalize_values(label.bounding_box)
-        result = {
-            "x": box[0],
-            "y": box[1],
-            "width": box[2],
-            "height": box[3],
-            "rotation": getattr(label, "rotation", 0),
-            "rectanglelabels": [label.label],
-        }
-        return result, ls_type, label.id
+
+    box = _denormalize_values(label.bounding_box)
+    result = {
+        "x": box[0],
+        "y": box[1],
+        "width": box[2],
+        "height": box[3],
+        "rotation": getattr(label, "rotation", 0),
+        "rectanglelabels": [label.label],
+    }
+    return result, ls_type, label.id
 
 
 def _to_polyline(label):
     ls_type = "polygonlabels"
+
     if isinstance(label, list):
         return (
             [_to_polyline(l)[0] for l in label],
             ls_type,
             [l.id for l in label],
         )
-    elif isinstance(label, fol.Polylines):
+
+    if isinstance(label, fol.Polylines):
         return (
             [_to_polyline(l)[0] for l in label.polylines],
             ls_type,
             [l.id for l in label.polylines],
         )
-    else:
-        result = {
-            "points": _denormalize_values(label.points[0]),
-            "polygonlabels": [label.label],
-        }
-        return result, ls_type, label.id
+
+    result = {
+        "points": _denormalize_values(label.points[0]),
+        "polygonlabels": [label.label],
+    }
+    return result, ls_type, label.id
 
 
 def _to_keypoint(label):
     ls_type = "keypointlabels"
+
     if isinstance(label, list):
         return (
             sum([_to_keypoint(l)[0] for l in label], []),
             ls_type,
             [l.id for l in label],
         )
-    elif isinstance(label, fol.Keypoints):
+
+    if isinstance(label, fol.Keypoints):
         return (
             sum([_to_keypoint(l)[0] for l in label.keypoints], []),
             ls_type,
             [l.id for l in label.keypoints],
         )
-    else:
-        points = _denormalize_values(label.points)
-        results = [
-            {
-                "x": p[0],
-                "y": p[1],
-                "width": getattr(label, "width", 0.34),
-                "keypointlabels": [label.label],
-            }
-            for p in points
-        ]
-        return results, ls_type, label.id
+
+    points = _denormalize_values(label.points)
+    results = [
+        {
+            "x": p[0],
+            "y": p[1],
+            "width": getattr(label, "width", 0.34),
+            "keypointlabels": [label.label],
+        }
+        for p in points
+    ]
+    return results, ls_type, label.id
 
 
 def _to_segmentation(label):
@@ -750,9 +780,9 @@ def _from_choices(result):
     label_values = result["value"]["choices"]
     if len(label_values) == 1:
         return fol.Classification(label=label_values[0])
-    else:
-        # multi-label classification
-        return [fol.Classification(label=l) for l in label_values]
+
+    # multi-label classification
+    return [fol.Classification(label=l) for l in label_values]
 
 
 def _from_rectanglelabels(result):
@@ -784,6 +814,7 @@ def _from_keypointlabels(result):
         points = [(one["value"]["x"], one["value"]["y"]) for one in group]
         points = _normalize_values(points)
         keypoints.append(fol.Keypoint(label=key, points=points))
+
     return keypoints
 
 
@@ -807,8 +838,8 @@ def _check_type(label, label_type, label_type_multiple):
     return is_singular or is_list_type
 
 
-def _ls_tags_from_type(label_type: str):
-    """Map fiftyone types to labelstudio tags
+def _ls_tags_from_type(label_type):
+    """Maps fiftyone types to Label Studio tags.
 
     Args:
         label_type: label studio type
@@ -822,14 +853,15 @@ def _ls_tags_from_type(label_type: str):
     return x["parent_tag"], x["child_tag"], x.get("tag_kwargs", {})
 
 
-def _label_class_from_tag(label_type: str):
-    """Map Label Studio parent tag to fo.Label"""
+def _label_class_from_tag(label_type):
+    """Maps Label Studio parent tag to fo.Label."""
     reverse = {
         v["parent_tag"].lower(): v["label"] for v in _LABEL_TYPES.values()
     }
     if label_type in reverse:
         return reverse[label_type]
-    raise ValueError(f"Unknown label type: {label_type}")
+
+    raise ValueError("Unknown label type: %s" % label_type)
 
 
 def _tag_from_label(label_cls):
@@ -837,19 +869,20 @@ def _tag_from_label(label_cls):
     if label_cls in _LABEL_TO_TYPE:
         label_type = _LABEL_TO_TYPE[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
+
     if label_cls in foua._RETURN_TYPES_MAP:
         label_type = foua._RETURN_TYPES_MAP[label_cls]
         return _LABEL_TYPES[label_type]["parent_tag"]
-    else:
-        raise ValueError(f"Unsupported label class: {label_cls}")
+
+    raise ValueError("Unsupported label class: %s" % label_cls)
 
 
-def _normalize_values(values: List[float]) -> List[float]:
+def _normalize_values(values):
     values = np.array(values) / 100
     return values.tolist()
 
 
-def _denormalize_values(values: List[float]) -> List[float]:
+def _denormalize_values(values):
     values = np.array(values) * 100
     return values.tolist()
 
@@ -868,7 +901,8 @@ def _get_label_ids(label):
     elif isinstance(label, fol.Keypoints):
         ids = [l.id for l in label.keypoints]
     else:
-        raise ValueError(f"Unsupported label type: {type(label)}")
+        raise ValueError("Unsupported label type: %s" % type(label))
+
     return ids
 
 
