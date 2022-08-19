@@ -5,13 +5,19 @@
   box-shadow: 0 2px 20px var(--background-dark);
   box-sizing: border-box;
   width: auto;
-  overflow: visible;
-  position: absolute;
+  position: relative;
+  overflow: hidden;
+}
+
+.scrollContainer {
+  overflow: auto;
+  max-height: 250px;
+  padding-bottom: 26.5px;
 }
 
 .result {
   display: flex;
-  padding: 0 0.5rem;
+  padding: 0 1rem;
   justify-content: space-between;
   flex: 1;
   min-width: 0;
@@ -23,12 +29,20 @@
   text-decoration: none;
   white-space: nowrap;
   font-size: 1.2rem;
+  min-width: none;
 }
 
 .result.active,
 .result:hover {
   background: var(--background);
   color: var(--font);
+}
+
+.resultComponent {
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 .footer {
@@ -43,4 +57,8 @@
   flex-direction: column;
   text-decoration: none;
   border-top: 1px solid var(--background-dark-border);
+  background: var(--background-dark);
+  position: absolute;
+  bottom: 0;
+  width: 100%;
 }

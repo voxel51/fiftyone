@@ -54,6 +54,7 @@ def import_annotations(
     download_media=False,
     num_workers=None,
     occluded_attr=None,
+    group_id_attr=None,
     backend="cvat",
     **kwargs,
 ):
@@ -117,6 +118,8 @@ def import_annotations(
             media. By default, ``multiprocessing.cpu_count()`` is used
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
+        group_id_attr (None): an optional attribute name in which to store the
+            group id for labels
         backend ("cvat"): the name of the CVAT backend to use
         **kwargs: CVAT authentication credentials to pass to
             :class:`CVATBackendConfig`
@@ -128,7 +131,11 @@ def import_annotations(
         )
 
     config = foua._parse_config(
-        backend, None, occluded_attr=occluded_attr, **kwargs
+        backend,
+        None,
+        occluded_attr=occluded_attr,
+        group_id_attr=group_id_attr,
+        **kwargs,
     )
     anno_backend = config.build()
     api = anno_backend.connect_to_api()
@@ -228,7 +235,9 @@ def import_annotations(
             # CVAT projects share a label schema, so we can download all tasks
             # in one batch
             label_schema = api._get_label_schema(
-                project_id=project_id, occluded_attr=occluded_attr
+                project_id=project_id,
+                occluded_attr=occluded_attr,
+                group_id_attr=group_id_attr,
             )
 
             _download_annotations(
@@ -246,7 +255,9 @@ def import_annotations(
             # each task separately
             for task_id in task_ids:
                 label_schema = api._get_label_schema(
-                    task_id=task_id, occluded_attr=occluded_attr
+                    task_id=task_id,
+                    occluded_attr=occluded_attr,
+                    group_id_attr=group_id_attr,
                 )
 
                 _download_annotations(
@@ -767,6 +778,7 @@ class CVATVideoDatasetImporter(
             labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(labels_path, p)
                 for p in etau.list_files(labels_path, recursive=True)
+                if etau.has_extension(p, ".xml")
             }
         else:
             labels_paths_map = {}
@@ -2981,7 +2993,7 @@ class CVATVideoAnnotationWriter(object):
 
 
 class CVATBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for configuring :class:`CVATBackend` instances.
+    """Class for configuring :class:`CVATBackend` instances.
 
     Args:
         name: the name of the backend
@@ -3023,6 +3035,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         occluded_attr (None): an optional attribute name containing existing
             occluded values and/or in which to store downloaded occluded values
             for all objects in the annotation run
+        group_id_attr (None): an optional attribute name containing existing
+            group ids and/or in which to store downloaded group ids
+            for all objects in the annotation run
         issue_tracker (None): URL(s) of an issue tracker to link to the created
             task(s). This argument can be a list of URLs when annotating videos
             or when using ``task_size`` and generating multiple tasks
@@ -3049,6 +3064,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         project_id=None,
         occluded_attr=None,
+        group_id_attr=None,
         issue_tracker=None,
         **kwargs,
     ):
@@ -3066,6 +3082,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.project_id = project_id
         self.occluded_attr = occluded_attr
+        self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
 
         # store privately so these aren't serialized
@@ -3137,6 +3154,7 @@ class CVATBackend(foua.AnnotationBackend):
             "radio",
             "checkbox",
             "occluded",
+            "group_id",
         ]
 
     @property
@@ -3158,12 +3176,16 @@ class CVATBackend(foua.AnnotationBackend):
 
             return {"type": "checkbox"}
 
+        if isinstance(value, int):
+            if name == "group_id":
+                return {"type": "group_id"}
+
         return {"type": "text"}
 
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return CVATAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -3175,7 +3197,6 @@ class CVATBackend(foua.AnnotationBackend):
     def upload_annotations(self, samples, launch_editor=False):
         api = self.connect_to_api()
         results = api.upload_samples(samples, self)
-        api.close()
 
         if launch_editor:
             results.launch_editor()
@@ -3188,8 +3209,6 @@ class CVATBackend(foua.AnnotationBackend):
         logger.info("Downloading labels from CVAT...")
         annotations = api.download_annotations(results)
         logger.info("Download complete")
-
-        api.close()
 
         return annotations
 
@@ -3238,14 +3257,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
             url=url, username=username, password=password, headers=headers
         )
 
-    def connect_to_api(self):
-        """Returns an API instance connected to the CVAT server.
-
-        Returns:
-            a :class:`CVATAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
-
     def launch_editor(self):
         """Launches the CVAT editor and loads the first task for this
         annotation run.
@@ -3261,7 +3272,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
         logger.info("Launching editor at '%s'...", editor_url)
         api.launch_editor(url=editor_url)
-        api.close()
 
     def get_status(self):
         """Gets the status of the assigned tasks and jobs.
@@ -3282,9 +3292,9 @@ class CVATAnnotationResults(foua.AnnotationResults):
             task_ids: an iterable of task IDs
         """
         api = self.connect_to_api()
+
         api.delete_tasks(task_ids)
         self._forget_tasks(task_ids)
-        api.close()
 
     def cleanup(self):
         """Deletes all tasks and created projects associated with this run."""
@@ -3299,8 +3309,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
             if projects_to_delete:
                 logger.info("Deleting projects...")
                 api.delete_projects(self.project_ids)
-
-        api.close()
 
         self.project_ids = []
         self.task_ids = []
@@ -3322,7 +3330,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
 
     def _get_status(self, log=False):
         api = self.connect_to_api()
-
         status = {}
         for label_field, task_ids in self.labels_task_map.items():
             if log:
@@ -3400,8 +3407,6 @@ class CVATAnnotationResults(foua.AnnotationResults):
                     "last_updated": task_updated,
                     "jobs": jobs_info,
                 }
-
-        api.close()
 
         return status
 
@@ -3491,12 +3496,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def projects_url(self):
         return "%s/projects" % self.base_api_url
 
+    def projects_page_url(self, page_number):
+        return "%s/projects?page=%d" % (self.base_api_url, page_number)
+
     def project_url(self, project_id):
         return "%s/%d" % (self.projects_url, project_id)
 
     @property
     def tasks_url(self):
         return "%s/tasks" % self.base_api_url
+
+    def tasks_page_url(self, page_number):
+        return "%s/tasks?page=%d" % (self.base_api_url, page_number)
 
     def task_url(self, task_id):
         return "%s/%d" % (self.tasks_url, task_id)
@@ -3592,6 +3603,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session = requests.Session()
 
         if self._headers:
+            # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
         self._server_version = 2
@@ -3612,7 +3624,6 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.headers["Referer"] = self.login_url
 
     def close(self):
-        """Closes the API session."""
         self._session.close()
 
     def _login(self, username, password):
@@ -3806,7 +3817,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the list of project IDs
         """
-        return self._get_paginated_results(self.projects_url, value="id")
+        return self._get_paginated_results(
+            self.projects_url, self.projects_page_url, value="id"
+        )
 
     def project_exists(self, project_id):
         """Checks if the given project exists.
@@ -3835,6 +3848,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         if self.project_exists(project_id):
             self.delete(self.project_url(project_id))
+            project_name = self.get_project_name(project_id)
+            if project_name is not None:
+                self._project_id_map.pop(project_name, None)
 
     def delete_projects(self, project_ids):
         """Deletes the given projects from the CVAT server.
@@ -3942,7 +3958,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         Returns:
             the list of task IDs
         """
-        return self._get_paginated_results(self.tasks_url, value="id")
+        return self._get_paginated_results(
+            self.tasks_url, self.tasks_page_url, value="id"
+        )
 
     def task_exists(self, task_id):
         """Checks if the given task exists.
@@ -4106,17 +4124,20 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         occluded_attr = config.occluded_attr
+        group_id_attr = config.group_id_attr
         task_size = config.task_size
         config.job_reviewers = self._parse_reviewers(config.job_reviewers)
         project_name, project_id = self._parse_project_details(
             config.project_name, config.project_id
         )
+        has_ignored_attributes = False
 
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
         # labels should be downloaded into
         if project_id is not None:
             self._ensure_one_field_per_type(label_schema)
+            has_ignored_attributes = self._has_ignored_attributes(label_schema)
 
         id_map = {}
         project_ids = []
@@ -4129,14 +4150,31 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_schema,
             assign_scalar_attrs,
             occluded_attrs,
+            group_id_attrs,
             _,
         ) = self._get_cvat_schema(
-            label_schema, project_id=project_id, occluded_attr=occluded_attr
+            label_schema,
+            project_id=project_id,
+            occluded_attr=occluded_attr,
+            group_id_attr=group_id_attr,
         )
 
         # When adding to an existing project, its label schema is inherited, so
         # we need to store the updated one
-        if project_id is not None or occluded_attr is not None:
+        if (
+            project_id is not None
+            or occluded_attr is not None
+            or group_id_attr is not None
+        ):
+            if project_id is not None and has_ignored_attributes:
+                raise ValueError(
+                    "A project was specified so the 'label_schema', "
+                    "'classes', and 'attributes' arguments are ignored, but "
+                    "they contained either occluded or group id "
+                    "attributes. To use occluded or group id attributes "
+                    "with existing projects, provide the 'occluded_attr' "
+                    "and 'group_id_attr' arguments."
+                )
             config.label_schema = label_schema
 
         num_samples = len(samples)
@@ -4193,6 +4231,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             assign_scalar_attrs,
                             only_keyframes,
                             occluded_attrs,
+                            group_id_attrs,
                         )
 
                     anno_tags.extend(_tags)
@@ -4263,6 +4302,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         """
         label_schema = results.config.label_schema
         occluded_attr = results.config.occluded_attr
+        group_id_attr = results.config.group_id_attr
         id_map = results.id_map
         server_id_map = results.server_id_map
         task_ids = results.task_ids
@@ -4282,9 +4322,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             _,
             assigned_scalar_attrs,
             occluded_attrs,
+            group_id_attrs,
             label_field_classes,
         ) = self._get_cvat_schema(
-            label_schema, project_id=project_id, occluded_attr=occluded_attr
+            label_schema,
+            project_id=project_id,
+            occluded_attr=occluded_attr,
+            group_id_attr=group_id_attr,
         )
 
         labels_task_map_rev = defaultdict(list)
@@ -4295,10 +4339,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         annotations = {}
         deleted_tasks = []
 
-        existing_tasks = set(self.list_tasks())
-
         for task_id in task_ids:
-            if task_id not in existing_tasks:
+            if not self.task_exists(task_id):
                 deleted_tasks.append(task_id)
                 logger.warning(
                     "Skipping task %d, which no longer exists", task_id
@@ -4325,6 +4367,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_type = label_info.get("type", None)
                 scalar_attrs = assigned_scalar_attrs.get(label_field, False)
                 _occluded_attrs = occluded_attrs.get(label_field, {})
+                _group_id_attrs = group_id_attrs.get(label_field, {})
                 _id_map = id_map.get(label_field, {})
 
                 label_field_results = {}
@@ -4382,6 +4425,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ignore_types,
                     assigned_scalar_attrs=scalar_attrs,
                     occluded_attrs=_occluded_attrs,
+                    group_id_attrs=_group_id_attrs,
                 )
                 label_field_results = self._merge_results(
                     label_field_results, shape_results
@@ -4390,6 +4434,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 for track_index, track in enumerate(tracks, 1):
                     label_id = track["label_id"]
                     shapes = track["shapes"]
+                    track_group_id = track.get("group", None)
                     for shape in shapes:
                         shape["label_id"] = label_id
 
@@ -4408,8 +4453,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         ignore_types,
                         assigned_scalar_attrs=scalar_attrs,
                         track_index=track_index,
+                        track_group_id=track_group_id,
                         immutable_attrs=immutable_attrs,
                         occluded_attrs=_occluded_attrs,
+                        group_id_attrs=_group_id_attrs,
                     )
                     label_field_results = self._merge_results(
                         label_field_results, track_shape_results
@@ -4459,10 +4506,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         return attr_id_map, class_map_rev
 
-    def _get_paginated_results(self, url, value=None):
+    def _get_paginated_results(self, base_url, get_page_url, value=None):
         results = []
-        page = url
-        while page is not None:
+        page_number = 1
+        page = base_url
+        while True:
             response = self.get(page).json()
             for result in response["results"]:
                 if value is not None:
@@ -4470,7 +4518,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 else:
                     results.append(result)
 
-            page = response["next"]
+            if not response["next"]:
+                break
+
+            page_number += 1
+            page = get_page_url(page_number)
 
         return results
 
@@ -4527,7 +4579,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return project_name, project_id
 
     def _get_label_schema(
-        self, project_id=None, task_id=None, occluded_attr=None
+        self,
+        project_id=None,
+        task_id=None,
+        occluded_attr=None,
+        group_id_attr=None,
     ):
         label_schema = {None: {"type": "tmp"}}
         self._convert_cvat_schema(
@@ -4535,22 +4591,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             project_id=project_id,
             task_id=task_id,
             occluded_attr=occluded_attr,
+            group_id_attr=group_id_attr,
         )
         label_schema[None].pop("type")
         return label_schema
 
     def _get_cvat_schema(
-        self, label_schema, project_id=None, occluded_attr=None
+        self,
+        label_schema,
+        project_id=None,
+        occluded_attr=None,
+        group_id_attr=None,
     ):
         if project_id is not None:
             return self._convert_cvat_schema(
                 label_schema,
                 project_id=project_id,
                 occluded_attr=occluded_attr,
+                group_id_attr=group_id_attr,
             )
 
         return self._build_cvat_schema(
-            label_schema, occluded_attr=occluded_attr
+            label_schema,
+            occluded_attr=occluded_attr,
+            group_id_attr=group_id_attr,
         )
 
     def _convert_cvat_schema(
@@ -4559,6 +4623,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         project_id=None,
         task_id=None,
         occluded_attr=None,
+        group_id_attr=None,
         update_server=True,
     ):
         if project_id is None and task_id is None:
@@ -4574,6 +4639,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         cvat_schema = {}
         labels_to_update = []
         occluded_attrs = {}
+        group_id_attrs = {}
         assign_scalar_attrs = {}
         classes_and_attrs = []
         for label in labels:
@@ -4605,6 +4671,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if occluded_attr is not None:
                 label_attrs[occluded_attr] = {}
 
+            if group_id_attr is not None:
+                label_attrs[group_id_attr] = {}
+
             classes_and_attrs.append(
                 {
                     "classes": [name],
@@ -4635,6 +4704,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     c: occluded_attr for c in class_names.keys()
                 }
 
+            if group_id_attr is not None:
+                group_id_attrs[label_field] = {
+                    c: group_id_attr for c in class_names.keys()
+                }
+
         if project_id is not None and labels_to_update and update_server:
             self._add_project_label_ids(project_id, list(labels_to_update))
 
@@ -4642,13 +4716,30 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             cvat_schema,
             assign_scalar_attrs,
             occluded_attrs,
+            group_id_attrs,
             label_field_classes,
         )
 
-    def _build_cvat_schema(self, label_schema, occluded_attr=None):
+    def _has_ignored_attributes(self, label_schema):
+        for label_field, label_info in label_schema.items():
+            (
+                _,
+                occluded_attr_name,
+                group_id_attr_name,
+            ) = self._to_cvat_attributes(label_info.get("attributes", {}))
+
+            if occluded_attr_name or group_id_attr_name:
+                return True
+
+        return False
+
+    def _build_cvat_schema(
+        self, label_schema, occluded_attr=None, group_id_attr=None
+    ):
         cvat_schema = {}
         assign_scalar_attrs = {}
         occluded_attrs = defaultdict(dict)
+        group_id_attrs = defaultdict(dict)
         label_field_classes = defaultdict(dict)
 
         _class_label_fields = {}
@@ -4660,12 +4751,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             label_type = label_info.get("type", None)
             is_existing_field = label_info.get("existing_field", False)
             classes = label_info["classes"]
-            attributes, occluded_attr_name = self._to_cvat_attributes(
-                label_info["attributes"]
-            )
+            (
+                attributes,
+                occluded_attr_name,
+                group_id_attr_name,
+            ) = self._to_cvat_attributes(label_info["attributes"])
             if occluded_attr_name is None and occluded_attr is not None:
                 occluded_attr_name = occluded_attr
                 label_schema[label_field]["attributes"][occluded_attr] = {}
+
+            if group_id_attr_name is None and group_id_attr is not None:
+                group_id_attr_name = group_id_attr
+                label_schema[label_field]["attributes"][group_id_attr] = {}
 
             # Must track label IDs for existing label fields
             if is_existing_field and label_type != "scalar":
@@ -4725,6 +4822,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attr_name = occluded_attrs[label_field].pop(name)
                             occluded_attrs[label_field][new_name] = attr_name
 
+                        if name in group_id_attrs[label_field]:
+                            attr_name = group_id_attrs[label_field].pop(name)
+                            group_id_attrs[label_field][new_name] = attr_name
+
                     _field_classes.add(name)
 
                     if name in _duplicate_classes:
@@ -4744,6 +4845,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = occluded_attr_name
 
+                    if group_id_attr_name is not None:
+                        group_id_attrs[label_field][name] = group_id_attr_name
+
             _prev_field_classes |= _field_classes
 
             # Class-specific attributes
@@ -4752,11 +4856,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     continue
 
                 _classes = _class["classes"]
-                _attrs, _occluded_attr_name = self._to_cvat_attributes(
-                    _class["attributes"]
-                )
+                (
+                    _attrs,
+                    _occluded_attr_name,
+                    _group_id_attr_name,
+                ) = self._to_cvat_attributes(_class["attributes"])
                 if _occluded_attr_name is None and occluded_attr is not None:
                     _occluded_attr_name = occluded_attr
+
+                if _group_id_attr_name is None and group_id_attr is not None:
+                    _group_id_attr_name = group_id_attr
 
                 if "label_id" in _attrs:
                     raise ValueError(
@@ -4777,10 +4886,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     if _occluded_attr_name is not None:
                         occluded_attrs[label_field][name] = _occluded_attr_name
 
+                    if _group_id_attr_name is not None:
+                        group_id_attrs[label_field][name] = _group_id_attr_name
+
         return (
             cvat_schema,
             assign_scalar_attrs,
             dict(occluded_attrs),
+            dict(group_id_attrs),
             dict(label_field_classes),
         )
 
@@ -5012,6 +5125,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         assign_scalar_attrs,
         only_keyframes,
         occluded_attrs,
+        group_id_attrs,
     ):
         is_video = samples_batch.media_type == fom.VIDEO
 
@@ -5042,6 +5156,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 load_tracks=True,
                 only_keyframes=only_keyframes,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
         else:
             # Shape annotations
@@ -5051,6 +5166,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_info,
                 cvat_schema,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
         id_map[label_field].update(_id_map)
@@ -5181,8 +5297,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
+        track_group_id=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         results = {}
         prev_type = None
@@ -5219,8 +5337,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ignore_types,
                 assigned_scalar_attrs=assigned_scalar_attrs,
                 track_index=track_index,
+                track_group_id=track_group_id,
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
         # For non-outside tracked objects, the last track goes to the end of
@@ -5246,8 +5366,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     ignore_types,
                     assigned_scalar_attrs=assigned_scalar_attrs,
                     track_index=track_index,
+                    track_group_id=track_group_id,
                     immutable_attrs=immutable_attrs,
                     occluded_attrs=occluded_attrs,
+                    group_id_attrs=group_id_attrs,
                 )
 
         return results
@@ -5268,8 +5390,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         ignore_types,
         assigned_scalar_attrs=False,
         track_index=None,
+        track_group_id=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         frame = anno["frame"]
 
@@ -5309,6 +5433,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 index=track_index,
                 immutable_attrs=immutable_attrs,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
+                group_id=track_group_id,
             )
 
             # Non-keyframe annotations were interpolated from keyframes but
@@ -5485,6 +5611,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def _to_cvat_attributes(self, attributes):
         cvat_attrs = {}
         occluded_attr_name = None
+        group_id_attr_name = None
         for attr_name, info in attributes.items():
             if len(attr_name) > 64:
                 raise ValueError(
@@ -5494,11 +5621,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             cvat_attr = {"name": attr_name, "mutable": True}
             is_occluded = False
+            is_group_id = False
             for attr_key, val in info.items():
                 if attr_key == "type":
+                    # Parse the FiftyOne annotation schema attribute names that
+                    # map to the occluded and is group attributes
                     if val == "occluded":
                         occluded_attr_name = attr_name
                         is_occluded = True
+                    elif val == "group_id":
+                        group_id_attr_name = attr_name
+                        is_group_id = True
                     else:
                         cvat_attr["input_type"] = val
                 elif attr_key == "values":
@@ -5508,10 +5641,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 elif attr_key == "mutable":
                     cvat_attr["mutable"] = bool(val)
 
-            if not is_occluded:
+            if not is_occluded and not is_group_id:
                 cvat_attrs[attr_name] = cvat_attr
 
-        return cvat_attrs, occluded_attr_name
+        return cvat_attrs, occluded_attr_name, group_id_attr_name
 
     def _create_shapes_tags_tracks(
         self,
@@ -5523,6 +5656,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         load_tracks=False,
         only_keyframes=False,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         label_type = label_info["type"]
         classes = label_info["classes"]
@@ -5530,6 +5664,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         if occluded_attrs is not None:
             occluded_attrs = occluded_attrs.get(label_field, None)
+
+        if group_id_attrs is not None:
+            group_id_attrs = group_id_attrs.get(label_field, None)
 
         id_map = {}
         tags_or_shapes = []
@@ -5577,6 +5714,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ):
                     kwargs["load_tracks"] = load_tracks
                     kwargs["occluded_attrs"] = occluded_attrs
+                    kwargs["group_id_attrs"] = group_id_attrs
 
                 if label_type == "scalar":
                     labels = label
@@ -5717,6 +5855,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 _,
                 _remapped_attrs,
                 _,
+                group_id,
             ) = self._parse_label(cn, cvat_schema, label_field)
 
             if class_name is None:
@@ -5727,7 +5866,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             tags.append(
                 {
                     "label_id": class_name,
-                    "group": 0,
+                    "group": group_id,
                     "frame": frame_id,
                     "source": "manual",
                     "attributes": attributes,
@@ -5750,6 +5889,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_id=None,
         load_tracks=False,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         ids = []
         shapes = []
@@ -5763,12 +5903,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
+                group_id,
             ) = self._parse_label(
                 det,
                 cvat_schema,
                 label_field,
                 label_id=label_id,
                 occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
             if class_name is None:
@@ -5791,7 +5933,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "occluded": is_occluded,
                         "points": bbox,
                         "label_id": class_name,
-                        "group": 0,
+                        "group": group_id,
                         "frame": frame_id,
                         "source": "manual",
                         "attributes": attributes,
@@ -5820,7 +5962,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             "z_order": 0,
                             "points": flattened_points,
                             "label_id": class_name,
-                            "group": 0,
+                            "group": group_id,
                             "frame": frame_id,
                             "source": "manual",
                             "attributes": deepcopy(attributes),
@@ -5843,6 +5985,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id,
                     immutable_attrs,
                     keyframe,
+                    group_id=group_id,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -5859,6 +6002,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         ids = []
         shapes = []
@@ -5872,8 +6016,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
+                group_id,
             ) = self._parse_label(
-                kp, cvat_schema, label_field, occluded_attrs=occluded_attrs
+                kp,
+                cvat_schema,
+                label_field,
+                occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
             if class_name is None:
@@ -5888,7 +6037,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "z_order": 0,
                 "points": flattened_points,
                 "label_id": class_name,
-                "group": 0,
+                "group": group_id,
                 "frame": frame_id,
                 "source": "manual",
                 "attributes": attributes,
@@ -5907,6 +6056,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id,
                     immutable_attrs,
                     keyframe,
+                    group_id=group_id,
                 )
             else:
                 shapes.append(shape)
@@ -5923,6 +6073,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_type=None,
         load_tracks=False,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         ids = []
         shapes = []
@@ -5936,8 +6087,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 immutable_attrs,
                 _remapped_attrs,
                 is_occluded,
+                group_id,
             ) = self._parse_label(
-                poly, cvat_schema, label_field, occluded_attrs=occluded_attrs
+                poly,
+                cvat_schema,
+                label_field,
+                occluded_attrs=occluded_attrs,
+                group_id_attrs=group_id_attrs,
             )
 
             if class_name is None:
@@ -5960,7 +6116,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "z_order": 0,
                     "points": flattened_points,
                     "label_id": class_name,
-                    "group": 0,
+                    "group": group_id,
                     "frame": frame_id,
                     "source": "manual",
                     "attributes": deepcopy(attributes),
@@ -5983,6 +6139,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     frame_id,
                     immutable_attrs,
                     keyframe,
+                    group_id=group_id,
                 )
             else:
                 shapes.extend(curr_shapes)
@@ -6021,6 +6178,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_id=None,
         occluded_attrs=None,
+        group_id_attrs=None,
     ):
         # If the class is a duplicate, it will have this name
         dup_class_name = "%s_%s" % (label.label, label_field)
@@ -6030,7 +6188,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         elif dup_class_name in cvat_schema:
             class_name = dup_class_name
         else:
-            return None, None, None, None, None
+            return None, None, None, None, None, None
 
         attr_schema = cvat_schema[class_name]
 
@@ -6070,12 +6228,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     label.get_attribute_value(attr_name, False)
                 )
 
+        group_id = 0
+        if group_id_attrs is not None:
+            attr_name = group_id_attrs.get(class_name, None)
+            if attr_name is not None:
+                group_id = _parse_value(
+                    label.get_attribute_value(attr_name, 0)
+                )
+
         return (
             class_name,
             label_attrs,
             immutable_attrs,
             remapped_attrs,
             is_occluded,
+            group_id,
         )
 
     def _add_shapes_to_tracks(
@@ -6087,6 +6254,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         frame_id,
         immutable_attrs,
         keyframe,
+        group_id=0,
     ):
         if class_name not in tracks:
             tracks[class_name] = {}
@@ -6096,7 +6264,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "label_id": class_name,
                 "shapes": [],
                 "frame": frame_id,
-                "group": 0,
+                "group": group_id,
                 "attributes": immutable_attrs,
             }
 
@@ -6337,9 +6505,7 @@ class CVATLabel(object):
 
     def _set_id(self, label_id):
         try:
-            # Verify that ID is valid
-            ObjectId(label_id)
-
+            ObjectId(label_id)  # verify that ID is valid
             self.id = label_id
         except:
             pass
@@ -6371,6 +6537,10 @@ class CVATShape(CVATLabel):
             from its track
         occluded_attrs (None): a dictonary mapping class names to the
             corresponding attribute linked to the CVAT occlusion widget, if any
+        group_id_attrs (None): a dictonary mapping class names to the
+            corresponding attribute linked to the CVAT group id, if any
+        group_id (None): an optional group id value for this shape when it
+            cannot be parsed from the label dict
     """
 
     def __init__(
@@ -6383,6 +6553,8 @@ class CVATShape(CVATLabel):
         index=None,
         immutable_attrs=None,
         occluded_attrs=None,
+        group_id_attrs=None,
+        group_id=None,
     ):
         super().__init__(
             label_dict,
@@ -6400,10 +6572,25 @@ class CVATShape(CVATLabel):
             self.attributes["rotation"] = label_dict["rotation"]
 
         # Parse occluded attribute, if necessary
-        if occluded_attrs is not None:
-            occluded_attr_name = occluded_attrs.get(self.label, None)
-            if occluded_attr_name:
-                self.attributes[occluded_attr_name] = label_dict["occluded"]
+        self._parse_named_attribute(label_dict, "occluded", occluded_attrs)
+
+        # Parse group id attribute, if necessary
+        self._parse_named_attribute(
+            label_dict, "group", group_id_attrs, default=group_id
+        )
+
+    def _parse_named_attribute(
+        self, label_dict, attr_key, attrs, default=None
+    ):
+        if attrs is not None:
+            attr_name = attrs.get(self.label, None)
+            if attr_name is not None:
+                if attr_key in label_dict:
+                    attr_value = label_dict[attr_key]
+                else:
+                    attr_value = default
+
+                self.attributes[attr_name] = attr_value
 
     def _to_pairs_of_points(self, points):
         reshaped_points = np.reshape(points, (-1, 2))

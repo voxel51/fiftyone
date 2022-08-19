@@ -1,6 +1,10 @@
+from collections import defaultdict
 from copy import deepcopy
 import os
+
 import eta.core.serial as etas
+
+import fiftyone.core.odm.dataset as fod
 
 
 class OpenLABELLabels(object):
@@ -111,18 +115,19 @@ class OpenLABELObject(object):
 
 
 class OpenLABELObjectData(object):
-    def __init__(self, name, val, object_type):
+    def __init__(self, name, val, object_type, as_list=True):
         self._data_dict = {
             "name": name,
             "val": val,
         }
         self.object_type = object_type
+        self.as_list = as_list
 
     def to_dict(self):
-        if self.object_type == "point2d":
-            return {self.object_type: self._data_dict}
+        if self.as_list:
+            return {self.object_type: [self._data_dict]}
 
-        return {self.object_type: [self._data_dict]}
+        return {self.object_type: self._data_dict}
 
     def add_attribute(self, attr, val, as_property=False):
         if not as_property:
@@ -146,6 +151,38 @@ class OpenLABELObjectData(object):
                 attr_tuple[0], attr_tuple[1], as_property=_as_property
             )
 
+    @classmethod
+    def from_dict(cls, d):
+        if d:
+            object_type = list(d.keys())[0]
+            obj_data = cls(None, None, object_type, as_list=False)
+            obj_data._data_dict = d.pop(object_type, {})
+            return obj_data
+        else:
+            return None
+
+
+def _merge_object_datas(object_datas, object_type=None):
+    data_dict = defaultdict(list)
+    if object_type is None and object_datas:
+        object_type = object_datas[0].object_type
+
+    for obj_data in object_datas:
+        obj_data_dict = obj_data.to_dict()[obj_data.object_type]
+        data_dict[object_type].append(obj_data_dict)
+
+    return OpenLABELObjectData.from_dict(dict(data_dict))
+
+
+def _make_skeleton():
+    skeleton = fod.KeypointSkeleton(
+        labels=["point1", "point2", "nanpoint"],
+        edges=[[0, 1], [1, 2]],
+    )
+
+    skeleton_key = "skeleton_key"
+    return skeleton, skeleton_key
+
 
 def _make_image_labels(tmp_dir):
     labels = OpenLABELLabels()
@@ -168,10 +205,26 @@ def _make_image_labels(tmp_dir):
         },
     )
 
-    kp_obj_data = OpenLABELObjectData("2d_point", [10, 20], "point2d")
+    kp_obj_data = OpenLABELObjectData(
+        "2d_point", [10, 20], "point2d", as_list=False
+    )
     kp_obj = OpenLABELObject("keypoints1", "Keypoints")
     kp_obj.add_object_data(kp_obj_data)
     labels.add_object(kp_obj)
+
+    pose_obj_data_2 = OpenLABELObjectData(
+        "pose_point2", [20, 30], "point2d", as_list=False
+    )
+    pose_obj_data_2.add_attribute("skeleton_key", "point2")
+    pose_obj_data_1 = OpenLABELObjectData(
+        "pose_point1", [10, 20], "point2d", as_list=False
+    )
+    pose_obj_data_1.add_attribute("skeleton_key", "point1")
+    pose_obj_datas = [pose_obj_data_2, pose_obj_data_1]
+    pose_obj_data = _merge_object_datas(pose_obj_datas)
+    pose_obj = OpenLABELObject("pose1", "Keypoints")
+    pose_obj.add_object_data(pose_obj_data)
+    labels.add_object(pose_obj)
 
     poly_obj_data = OpenLABELObjectData(
         "poly2d-0",

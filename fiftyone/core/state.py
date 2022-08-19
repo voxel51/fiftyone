@@ -5,6 +5,8 @@ Defines the shared state between the FiftyOne App and backend.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import json_util
+import json
 import logging
 
 import eta.core.serial as etas
@@ -52,7 +54,9 @@ class StateDescription(etas.Serializable):
             if self.dataset is not None:
                 d["dataset"] = self.dataset.name
                 if self.view is not None:
-                    d["view"] = self.view._serialize()
+                    d["view"] = json.loads(
+                        json_util.dumps(self.view._serialize())
+                    )
                     d["view_cls"] = etau.get_class_name(self.view)
 
             d["config"]["timezone"] = fo.config.timezone

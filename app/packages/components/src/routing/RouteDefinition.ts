@@ -11,11 +11,6 @@ export interface RouteBase<
   exact?: boolean;
   component: Resource<Route<T>>;
   children?: RouteBase<T>[];
-  defaultParams: T extends OperationType
-    ? {
-        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
-      }
-    : {};
 }
 
 export interface RouteDefinition<
@@ -39,11 +34,6 @@ export interface RouteOptions<T extends OperationType | undefined> {
         name: string;
         loader: () => Promise<ConcreteRequest>;
       };
-  defaultParams: T extends OperationType
-    ? {
-        [Property in keyof VariablesOf<T>]: () => VariablesOf<T>[Property];
-      }
-    : {};
 }
 
 export const makeRouteDefinitions = <T extends OperationType | undefined>(
@@ -52,18 +42,15 @@ export const makeRouteDefinitions = <T extends OperationType | undefined>(
 ): RouteDefinition<T>[] => {
   const queries = createResourceGroup();
 
-  return children.map(
-    ({ path, exact, children, component, query, defaultParams }) => ({
-      path,
-      exact,
-      children: children
-        ? makeRouteDefinitions(environment, children)
-        : undefined,
-      component: components(component.name, component.loader),
-      query: query ? queries(query.name, query.loader) : undefined,
-      defaultParams,
-    })
-  );
+  return children.map(({ path, exact, children, component, query }) => ({
+    path,
+    exact,
+    children: children
+      ? makeRouteDefinitions(environment, children)
+      : undefined,
+    component: components(component.name, component.loader),
+    query: query ? queries(query.name, query.loader) : undefined,
+  }));
 };
 
 export default RouteDefinition;

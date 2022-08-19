@@ -7,18 +7,11 @@ import logo from "../../images/logo.png";
 
 import style from "./Header.module.css";
 
-interface Props {
+const Header: React.FC<React.PropsWithChildren<{
   onRefresh?: () => void;
   title: string;
   datasetSelectorProps?: SelectorProps<string>;
-}
-
-const Header: React.FC<Props> = ({
-  children,
-  title,
-  onRefresh,
-  datasetSelectorProps,
-}) => {
+}>> = ({ children, title, onRefresh, datasetSelectorProps }) => {
   const [toggle, setToggle] = useState(false);
   const logoProps = useSpring({
     transform: toggle ? `rotate(0turn)` : `rotate(1turn)`,

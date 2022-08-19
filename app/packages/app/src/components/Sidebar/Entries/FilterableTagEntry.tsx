@@ -25,19 +25,23 @@ const tagIsActive = selectorFamily<
   { key: State.TagKey; tag: string; modal: boolean }
 >({
   key: "tagIsActive",
-  get: ({ key, tag, modal }) => ({ get }) =>
-    get(ACTIVE_ATOM[key](modal)).includes(tag),
-  set: ({ key, tag, modal }) => ({ get, set }) => {
-    const atom = ACTIVE_ATOM[key](modal);
-    const current = get(atom);
+  get:
+    ({ key, tag, modal }) =>
+    ({ get }) =>
+      get(ACTIVE_ATOM[key](modal)).includes(tag),
+  set:
+    ({ key, tag, modal }) =>
+    ({ get, set }) => {
+      const atom = ACTIVE_ATOM[key](modal);
+      const current = get(atom);
 
-    set(
-      atom,
-      current.includes(tag)
-        ? current.filter((t) => t !== tag)
-        : [tag, ...current]
-    );
-  },
+      set(
+        atom,
+        current.includes(tag)
+          ? current.filter((t) => t !== tag)
+          : [tag, ...current]
+      );
+    },
 });
 
 type MatchEyeProps = {
@@ -89,15 +93,9 @@ const FilterableTagEntry = ({
   tag,
   tagKey,
 }: {
-  entryKey: string;
   modal: boolean;
   tagKey: State.TagKey;
   tag: string;
-  trigger: (
-    event: React.MouseEvent<HTMLDivElement>,
-    key: string,
-    cb: () => void
-  ) => void;
 }) => {
   const theme = useTheme();
   const [active, setActive] = useRecoilState(

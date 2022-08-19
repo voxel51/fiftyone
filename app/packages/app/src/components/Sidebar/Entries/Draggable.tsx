@@ -3,15 +3,17 @@ import { DragIndicator } from "@material-ui/icons";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
 
-const Draggable: React.FC<React.PropsWithChildren<{
-  color: string;
-  entryKey: string;
-  trigger?: (
-    event: React.MouseEvent<HTMLDivElement>,
-    key: string,
-    cb: () => void
-  ) => void;
-}>> = ({ children, color, entryKey, trigger }) => {
+const Draggable: React.FC<
+  React.PropsWithChildren<{
+    color: string;
+    entryKey: string;
+    trigger?: (
+      event: React.MouseEvent<HTMLDivElement>,
+      key: string,
+      cb: () => void
+    ) => void;
+  }>
+> = ({ children, color, entryKey, trigger }) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -21,7 +23,7 @@ const Draggable: React.FC<React.PropsWithChildren<{
   const style = useSpring({
     width: active ? 20 : 5,
     left: active ? -10 : 0,
-    cursor: dragging ? "grabbing" : "grab",
+    cursor: entryKey && trigger ? (dragging ? "grabbing" : "grab") : "pointer",
   });
 
   return (

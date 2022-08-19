@@ -52,6 +52,7 @@ const SamplesContainer = React.memo(() => {
         case EntryKind.PATH:
           const isTag = entry.path.startsWith("tags.");
           const isLabelTag = entry.path.startsWith("_label_tags.");
+          const isDisabled = disabled.has(entry.path);
 
           return {
             children:
@@ -65,7 +66,7 @@ const SamplesContainer = React.memo(() => {
               ) : (
                 <Entries.FilterablePath
                   entryKey={key}
-                  disabled={disabled.has(entry.path)}
+                  disabled={isDisabled}
                   group={group}
                   key={key}
                   modal={false}
@@ -76,7 +77,7 @@ const SamplesContainer = React.memo(() => {
                   onFocus={() => {
                     controller.set({ zIndex: "1", overflow: "visible" });
                   }}
-                  trigger={trigger}
+                  trigger={isDisabled ? null : trigger}
                 />
               ),
             disabled: isTag || isLabelTag || disabled.has(entry.path),

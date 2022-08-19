@@ -86,8 +86,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "setDatasetMutation",
       operationKind: "mutation",
-      text:
-        "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name)\n}\n",
+      text: "mutation setDatasetMutation(\n  $subscription: String!\n  $session: String\n  $name: String\n) {\n  setDataset(subscription: $subscription, session: $session, name: $name)\n}\n",
     },
   };
 })();

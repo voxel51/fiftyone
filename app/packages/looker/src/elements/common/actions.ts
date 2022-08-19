@@ -6,6 +6,7 @@ import { SCALE_FACTOR } from "../../constants";
 import {
   BaseState,
   Control,
+  ControlEventKeyType,
   ControlMap,
   StateUpdate,
   VideoState,
@@ -139,6 +140,37 @@ export const previous: Control = {
   detail: "Go to the previous sample",
   action: (_, dispatchEvent) => {
     dispatchEvent("previous");
+  },
+};
+
+export const toggleOverlays: Control = {
+  title: "Show/hide overlays",
+  shortcut: "shift",
+  eventKeys: "Shift",
+  eventKeyType: ControlEventKeyType.HOLD,
+  detail: "Toggles visibility of all overlays",
+  action: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: false } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", false);
+          dispatchEvent("tooltip", null);
+        }
+      }
+    );
+  },
+  afterAction: (update, dispatchEvent) => {
+    update(
+      ({ config: { thumbnail } }) =>
+        thumbnail ? {} : { options: { showOverlays: true } },
+      ({ config: { thumbnail }, options: { showOverlays } }) => {
+        if (!thumbnail) {
+          dispatchEvent("showOverlays", true);
+        }
+      }
+    );
   },
 };
 
@@ -398,6 +430,7 @@ export const COMMON = {
   fullscreen,
   json,
   wheel,
+  toggleOverlays,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
@@ -615,16 +648,16 @@ const videoEscape: Control<VideoState> = {
           };
         }
 
+        if (!hasDefaultZoom) {
+          return {
+            setZoom: true,
+          };
+        }
+
         if (frameNumber !== 1) {
           return {
             frameNumber: 1,
             playing: false,
-          };
-        }
-
-        if (!hasDefaultZoom) {
-          return {
-            setZoom: true,
           };
         }
 
@@ -658,9 +691,9 @@ export const VIDEO = {
 
 export const VIDEO_SHORTCUTS = readActions(VIDEO);
 
-export class HelpPanelElement<State extends BaseState> extends BaseElement<
-  State
-> {
+export class HelpPanelElement<
+  State extends BaseState
+> extends BaseElement<State> {
   private showHelp?: boolean;
   protected items?: HTMLDivElement;
 
@@ -774,22 +807,22 @@ export class VideoHelpPanelElement extends HelpPanelElement<VideoState> {
   }
 }
 
-const addItem = <State extends BaseState>(items: HTMLDivElement) => (
-  value: Control<State>
-) => {
-  const shortcut = document.createElement("div");
-  shortcut.classList.add(lookerShortcutValue);
-  shortcut.innerHTML = value.shortcut;
+const addItem =
+  <State extends BaseState>(items: HTMLDivElement) =>
+  (value: Control<State>) => {
+    const shortcut = document.createElement("div");
+    shortcut.classList.add(lookerShortcutValue);
+    shortcut.innerHTML = value.shortcut;
 
-  const title = document.createElement("div");
-  title.classList.add(lookerShortcutTitle);
-  title.innerText = value.title;
+    const title = document.createElement("div");
+    title.classList.add(lookerShortcutTitle);
+    title.innerText = value.title;
 
-  const detail = document.createElement("div");
-  detail.classList.add(lookerShortcutDetail);
-  detail.innerText = value.detail;
+    const detail = document.createElement("div");
+    detail.classList.add(lookerShortcutDetail);
+    detail.innerText = value.detail;
 
-  items.appendChild(shortcut);
-  items.appendChild(title);
-  items.appendChild(detail);
-};
+    items.appendChild(shortcut);
+    items.appendChild(title);
+    items.appendChild(detail);
+  };

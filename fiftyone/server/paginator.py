@@ -15,6 +15,7 @@ from strawberry.arguments import UNSET
 
 import fiftyone.core.odm as foo
 
+from fiftyone.server.constants import LIST_LIMIT
 from fiftyone.server.data import Info, HasCollectionType
 
 
@@ -49,10 +50,11 @@ async def get_items(
     key: str,
     filters: t.List[dict],
     search: str,
-    first: int = 10,
+    first: int = LIST_LIMIT,
     after: t.Optional[Cursor] = UNSET,
 ) -> Connection[HasCollectionType]:
     start = list(filters)
+    first = first or LIST_LIMIT
     if search:
         start += [{"$match": {"name": {"$regex": search}}}]
 
@@ -99,7 +101,7 @@ def get_paginator_resolver(
 ]:
     async def paginate(
         search: t.Optional[str],
-        first: t.Optional[int] = 10,
+        first: t.Optional[int] = LIST_LIMIT,
         after: t.Optional[Cursor] = None,
         info: Info = None,
     ):

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e591c52b44ca1e0ca8ffe952350867f4>>
+ * @generated SignedSource<<9d129ce00cfa7c87015c1bb1c2d43556>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,7 +27,7 @@ export type RootQuery = {
 
 const node: ConcreteRequest = (function () {
   var v0 = {
-      defaultValue: 10,
+      defaultValue: null,
       kind: "LocalArgument",
       name: "count",
     },
@@ -165,6 +165,13 @@ const node: ConcreteRequest = (function () {
               args: null,
               kind: "ScalarField",
               name: "showLabel",
+              storageKey: null,
+            },
+            {
+              alias: null,
+              args: null,
+              kind: "ScalarField",
+              name: "showSkeletons",
               storageKey: null,
             },
             {
@@ -339,17 +346,16 @@ const node: ConcreteRequest = (function () {
       ],
     },
     params: {
-      cacheID: "1fa31f0d30b95bb2356348ab08feb522",
+      cacheID: "026fd219db2bd0ab051a75bf65e6da7d",
       id: null,
       metadata: {},
       name: "RootQuery",
       operationKind: "query",
-      text:
-        'query RootQuery(\n  $search: String = ""\n  $count: Int = 10\n  $cursor: String\n) {\n  ...RootConfig_query\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootConfig_query on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    showConfidence\n    showIndex\n    showLabel\n    showTooltip\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
+      text: 'query RootQuery(\n  $search: String = ""\n  $count: Int\n  $cursor: String\n) {\n  ...RootConfig_query\n  ...RootDatasets_query\n  ...RootGA_query\n  ...RootNav_query\n}\n\nfragment RootConfig_query on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    notebookHeight\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment RootGA_query on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment RootNav_query on Query {\n  teamsSubmission\n}\n',
     },
   };
 })();
 
-(node as any).hash = "9be21f4e0ffa4278e7e92b1c5ef6a0b5";
+(node as any).hash = "ad38dfd0504d23894ee801a4ba0ba91e";
 
 export default node;

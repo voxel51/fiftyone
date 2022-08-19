@@ -92,8 +92,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "setSelectedLabelsMutation",
       operationKind: "mutation",
-      text:
-        "mutation setSelectedLabelsMutation(\n  $subscription: String!\n  $session: String\n  $selectedLabels: [SelectedLabel!]!\n) {\n  setSelectedLabels(subscription: $subscription, session: $session, selectedLabels: $selectedLabels)\n}\n",
+      text: "mutation setSelectedLabelsMutation(\n  $subscription: String!\n  $session: String\n  $selectedLabels: [SelectedLabel!]!\n) {\n  setSelectedLabels(subscription: $subscription, session: $session, selectedLabels: $selectedLabels)\n}\n",
     },
   };
 })();

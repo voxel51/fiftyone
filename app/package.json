@@ -8,11 +8,14 @@
     "scripts": {
         "build": "yarn workspace @fiftyone/app build",
         "dev": "yarn workspace @fiftyone/app dev",
+        "dev:py": "python ../fiftyone/server/main.py",
+        "dev:wpy": "concurrently -k yarn:dev yarn:dev:py",
         "postinstall": "patch-package",
         "start": "yarn workspace @fiftyone/app start",
         "start-desktop": "yarn workspace FiftyOne start-desktop"
     },
     "devDependencies": {
+        "concurrently": "^7.2.1",
         "patch-package": "^6.4.7",
         "typescript": "4.2.4",
         "typescript-plugin-css-modules": "^3.4.0"

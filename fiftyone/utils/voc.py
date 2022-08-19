@@ -190,6 +190,7 @@ class VOCDetectionDatasetImporter(
             labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(labels_path, p)
                 for p in etau.list_files(labels_path, recursive=True)
+                if etau.has_extension(p, ".xml")
             }
         else:
             labels_paths_map = {}

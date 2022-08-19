@@ -14,6 +14,7 @@ import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
+from fiftyone.server.query import serialize_dataset
 import fiftyone.server.view as fosv
 
 
@@ -28,8 +29,10 @@ class Sort(HTTPEndpoint):
         dataset = fod.load_dataset(dataset_name)
         dist_field = similarity.get("dist_field", None)
 
+        changed = False
         if dist_field and not dataset.get_field(dist_field):
             dataset.add_sample_field(dist_field, fof.FloatField)
+            changed = True
 
         fosv.get_view(dataset_name, stages, filters, similarity=similarity)
 
@@ -42,4 +45,9 @@ class Sort(HTTPEndpoint):
         else:
             view = None
 
-        return {"state": state.serialize()}
+        return {
+            "dataset": serialize_dataset(dataset, state.view)
+            if changed
+            else None,
+            "state": state.serialize(),
+        }

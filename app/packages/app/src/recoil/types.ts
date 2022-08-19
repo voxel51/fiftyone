@@ -134,8 +134,6 @@ export namespace State {
   }
 
   export interface Description {
-    colorscale: RGB[];
-    config: Config;
     dataset: string;
     selected: string[];
     selectedLabels: SelectedLabel[];

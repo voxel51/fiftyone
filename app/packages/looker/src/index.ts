@@ -214,8 +214,10 @@ export abstract class Looker<
   }
 
   protected dispatchEvent(eventType: string, detail: any): void {
-    if (detail instanceof ErrorEvent) {
-      this.eventTarget.dispatchEvent(detail);
+    if (detail instanceof Event) {
+      this.eventTarget.dispatchEvent(
+        new detail.constructor(detail.type, detail)
+      );
       return;
     }
 
@@ -1419,9 +1421,15 @@ const mapFields = (value, schema: Schema, ftype: string) => {
   }
 
   const result = {};
-  for (let fieldName in schema) {
-    const { dbField, ftype } = schema[fieldName];
-    const key = dbField || fieldName;
+  for (let fieldName in value) {
+    const field = schema[fieldName];
+    if (!field) {
+      result[fieldName] = value[fieldName];
+      continue;
+    }
+
+    const { dbField, ftype } = field;
+    const key = fieldName === "id" ? "id" : dbField || fieldName;
 
     if (value[key] === undefined) continue;
 
@@ -1499,10 +1507,7 @@ const shouldReloadSample = (
   let reloadSample = false;
   if (next.coloring && current.coloring.seed !== next.coloring.seed) {
     reloadSample = true;
-  } else if (
-    next.coloring &&
-    next.coloring.byLabel !== current.coloring.byLabel
-  ) {
+  } else if (next.coloring && next.coloring.by !== current.coloring.by) {
     reloadSample = true;
   }
 

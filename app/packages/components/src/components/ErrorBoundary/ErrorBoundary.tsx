@@ -1,22 +1,26 @@
-import classnames from "classnames";
-import { Clear, FileCopy } from "@material-ui/icons";
-import React from "react";
-import { useCopyToClipboard } from "react-use";
-
 import { GraphQLError, NotFoundError, ServerError } from "@fiftyone/utilities";
+import { Clear, FileCopy } from "@material-ui/icons";
+import classnames from "classnames";
+import React, { PropsWithChildren, useLayoutEffect } from "react";
+import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
+import { useCopyToClipboard } from "react-use";
+import { useTo } from "../../routing";
 
 import { scrollable } from "../../scrollable.module.css";
 
 import Loading from "../Loading";
 
-import style from "./Error.module.css";
+import style from "./ErrorBoundary.module.css";
 
-interface Props {
-  reset: () => void;
+interface Props extends FallbackProps {
   error: GraphQLError | Error | ServerError;
 }
 
-const ErrorPage: React.FC<Props> = ({ error, reset }) => {
+const Errors: React.FC<Props> = ({ error, resetErrorBoundary }) => {
+  const { to } = useTo({ state: {} });
+  useLayoutEffect(() => {
+    document.getElementById("modal")?.classList.remove("modalon");
+  }, []);
   const [_, copy] = useCopyToClipboard();
 
   if (error instanceof NotFoundError) {
@@ -41,7 +45,13 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
             <div>
               {i === 0 && (
                 <div>
-                  <span title={"Reset"} onClick={reset}>
+                  <span
+                    title={"Reset"}
+                    onClick={() => {
+                      to("/");
+                      resetErrorBoundary();
+                    }}
+                  >
                     <Clear />
                   </span>
                 </div>
@@ -72,4 +82,8 @@ const ErrorPage: React.FC<Props> = ({ error, reset }) => {
   );
 };
 
-export default ErrorPage;
+const ErrorBoundary: React.FC<PropsWithChildren<{}>> = ({ children }) => {
+  return <Boundary FallbackComponent={Errors}>{children}</Boundary>;
+};
+
+export default ErrorBoundary;

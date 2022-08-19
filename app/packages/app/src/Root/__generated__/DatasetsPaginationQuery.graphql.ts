@@ -190,8 +190,7 @@ const node: ConcreteRequest = (function () {
       metadata: {},
       name: "DatasetsPaginationQuery",
       operationKind: "query",
-      text:
-        "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n  $search: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
+      text: "query DatasetsPaginationQuery(\n  $count: Int\n  $cursor: String\n  $search: String\n) {\n  ...RootDatasets_query\n}\n\nfragment RootDatasets_query on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n",
     },
   };
 })();

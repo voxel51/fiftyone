@@ -33,6 +33,34 @@ import fiftyone.utils.eta as foue
 logger = logging.getLogger(__name__)
 
 
+def connect_to_api(backend=None, **kwargs):
+    """Returns an API instance connected to the annotation backend.
+
+    Some annotation backends may not expose this functionality.
+
+    Args:
+        backend (None): the annotation backend to use. The supported values are
+            ``fiftyone.annotation_config.backends.keys()`` and the default
+            is ``fiftyone.annotation_config.default_backend``
+        **kwargs: keyword arguments for the :class:`AnnotationBackendConfig`
+            subclass of the backend being used
+
+    Returns:
+        an :class:`AnnotationAPI`
+    """
+    if backend is None:
+        backend = fo.annotation_config.default_backend
+
+    config = _parse_config(backend, None, **kwargs)
+    anno_backend = config.build()
+
+    api = anno_backend.connect_to_api()
+    if api is None:
+        raise ValueError("The '%s' backend does not expose an API" % backend)
+
+    return api
+
+
 def annotate(
     samples,
     anno_key,
@@ -115,14 +143,11 @@ def annotate(
             ``label_field`` or all fields in ``label_schema`` without classes
             specified. All new label fields must have a class list provided via
             one of the supported methods. For existing label fields, if classes
-            are not provided by this argument nor ``label_schema``, they are
-            parsed from
-            :meth:`fiftyone.core.collections.SampleCollection.get_classes` if
-            possible, or else the observed labels on your dataset are used
-        attributes (True): specifies the label attributes of each label
-            field to include (other than their ``label``, which is always
-            included) in the annotation export. Can be any of the
-            following:
+            are not provided by this argument nor ``label_schema``, the
+            observed labels on your dataset are used
+        attributes (True): specifies the label attributes of each label field
+            to include (other than their ``label``, which is always included)
+            in the annotation export. Can be any of the following:
 
             -   ``True``: export all label attributes
             -   ``False``: don't export any custom label attributes
@@ -130,8 +155,10 @@ def annotate(
             -   a dict mapping attribute names to dicts specifying the details
                 of the attribute field
 
-            If provided, this parameter will apply to all label fields in
-            ``label_schema`` that do not define their attributes
+            If a ``label_schema`` is also provided, this parameter determines
+            which attributes are included for all fields that do not explicitly
+            define their per-field attributes (in addition to any per-class
+            attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
             strings. Only applicable when annotating semantic segmentations
         allow_additions (True): whether to allow new labels to be added. Only
@@ -407,21 +434,29 @@ def _build_label_schema(
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
-        if is_video and not _is_frame_field:
-            if _return_type in _SPATIAL_TYPES:
+        if is_video:
+            if not backend.supports_video:
                 raise ValueError(
-                    "Invalid label field '%s'. Spatial labels of type '%s' "
-                    "being annotated on a video must be stored in a "
-                    "frame-level field, i.e., one that starts with 'frames.'"
-                    % (_label_field, _label_type)
+                    "Backend '%s' does not support annotating videos."
+                    % backend.config.name
                 )
-            elif not backend.supports_video_sample_fields:
-                raise ValueError(
-                    "Invalid label field '%s'. Backend '%s' does not support "
-                    "annotating video fields at a sample-level. Labels must be "
-                    "stored in a frame-level field, i.e., one that starts with "
-                    "'frames.'" % (_label_field, backend.config.name)
-                )
+
+            if not _is_frame_field:
+                if _return_type in _SPATIAL_TYPES:
+                    raise ValueError(
+                        "Invalid label field '%s'. Spatial labels of type "
+                        "'%s' being annotated on a video must be stored in a "
+                        "frame-level field, i.e., one that starts with "
+                        "'frames.'" % (_label_field, _label_type)
+                    )
+                elif not backend.supports_video_sample_fields:
+                    raise ValueError(
+                        "Invalid label field '%s'. Backend '%s' does not "
+                        "support annotating video fields at a sample-level. "
+                        "Labels must be stored in a frame-level field, i.e., "
+                        "one that starts with 'frames.'"
+                        % (_label_field, backend.config.name)
+                    )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -772,10 +807,6 @@ def _get_classes(
             % label_field
         )
 
-    classes = samples.get_classes(label_field)
-    if classes:
-        return classes
-
     _, label_path = samples._get_label_field_path(label_field, "label")
     return sorted(
         set(samples._dataset.distinct(label_path))
@@ -815,12 +846,6 @@ def _get_mask_targets(samples, mask_targets, label_field, label_info):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
-    if mask_targets is None and label_field in samples.mask_targets:
-        mask_targets = samples.mask_targets[label_field]
-
-    if mask_targets is None and samples.default_mask_targets:
-        mask_targets = samples.default_mask_targets
-
     if mask_targets is None:
         mask_targets = {i: str(i) for i in range(1, 256)}
         mask_targets[0] = "background"
@@ -842,6 +867,14 @@ def _get_attributes(
 ):
     if "attributes" in label_info:
         attributes = label_info["attributes"]
+
+    if attributes and not backend.supports_attributes:
+        logger.warning(
+            "The backend '%s' does not support attributes. Provided "
+            "attributes will be ignored.",
+            backend.config.name,
+        )
+        return {}
 
     if attributes in [True, False, None]:
         if label_type == "scalar":
@@ -1016,7 +1049,7 @@ def load_annotations(
             else:
                 logger.warning(
                     "Ignoring string `dest_field=%s` since the label "
-                    "schema contains %d > 1 fields",
+                    "schema contains %d (> 1) fields",
                     dest_field,
                     len(label_schema),
                 )
@@ -1755,6 +1788,21 @@ class AnnotationBackend(foa.AnnotationMethod):
         config: an :class:`AnnotationBackendConfig`
     """
 
+    def __init__(self, *args, **kwargs):
+        self._api = None
+        super().__init__(*args, **kwargs)
+
+    def __enter__(self):
+        api = self.connect_to_api()
+        if api is not None:
+            api.__enter__()
+
+        return self
+
+    def __exit__(self, *args):
+        if self._api is not None:
+            self._api.__exit__(*args)
+
     @property
     def supported_label_types(self):
         """The list of label types supported by the backend.
@@ -1825,6 +1873,18 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
+    def supports_video(self):
+        """Whether this backend supports annotating videos."""
+        return True
+
+    @property
+    def supports_attributes(self):
+        """Whether this backend supports uploading and editing label
+        attributes.
+        """
+        return True
+
+    @property
     def requires_label_schema(self):
         """Whether this backend requires a pre-defined label schema for its
         annotation runs.
@@ -1871,6 +1931,40 @@ class AnnotationBackend(foa.AnnotationMethod):
         raise NotImplementedError(
             "subclass must implement requires_attr_values()"
         )
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        if self._api is None:
+            # pylint: disable=assignment-from-none
+            self._api = self._connect_to_api()
+
+        return self._api
+
+    def _connect_to_api(self):
+        """Returns a new API instance connected to the annotation backend.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return None
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._api = api
 
     def upload_annotations(self, samples, launch_editor=False):
         """Uploads the samples and relevant existing labels from the label
@@ -2002,6 +2096,13 @@ class AnnotationResults(foa.AnnotationResults):
         self.id_map = id_map
         self._backend = backend
 
+    def __enter__(self):
+        self._backend.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._backend.__exit__(*args)
+
     @property
     def config(self):
         """The :class:`AnnotationBackendConfig` for these results."""
@@ -2020,6 +2121,27 @@ class AnnotationResults(foa.AnnotationResults):
             **kwargs: subclass-specific credentials
         """
         raise NotImplementedError("subclass must implement load_credentials()")
+
+    def connect_to_api(self):
+        """Returns an API instance connected to the annotation backend.
+
+        Existing API instances are reused, if available.
+
+        Some annotation backends may not expose this functionality.
+
+        Returns:
+            an :class:`AnnotationAPI`, or ``None`` if the backend does not
+            expose an API
+        """
+        return self._backend.connect_to_api()
+
+    def use_api(self, api):
+        """Registers an API instance to use for subsequent operations.
+
+        Args:
+            api: an :class:`AnnotationAPI`
+        """
+        self._backend.use_api(api)
 
     def launch_editor(self):
         """Launches the annotation backend's editor for these results."""
@@ -2108,7 +2230,17 @@ class AnnotationResults(foa.AnnotationResults):
 
 
 class AnnotationAPI(object):
-    """Base class for APIs that connect to annotation backend."""
+    """Base class for APIs that connect to annotation backends."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def close(self):
+        """Closes the API session."""
+        pass
 
     def _prompt_username_password(self, backend, username=None, password=None):
         prefix = "FIFTYONE_%s_" % backend.upper()

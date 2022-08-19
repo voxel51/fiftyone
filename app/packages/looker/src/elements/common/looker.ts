@@ -3,7 +3,7 @@
  */
 
 import { SELECTION_TEXT } from "../../constants";
-import { BaseState } from "../../state";
+import { BaseState, Control, ControlEventKeyType } from "../../state";
 import { BaseElement, Events } from "../base";
 
 import { looker, lookerError } from "./looker.module.css";
@@ -24,7 +24,30 @@ export class LookerElement<State extends BaseState> extends BaseElement<
         const e = event as KeyboardEvent;
         update(({ SHORTCUTS, error }) => {
           if (!error && e.key in SHORTCUTS) {
-            SHORTCUTS[e.key].action(update, dispatchEvent, e.key, e.shiftKey);
+            const matchedControl = SHORTCUTS[e.key] as Control;
+            matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+          }
+
+          return {};
+        });
+      },
+      keyup: ({ event, update, dispatchEvent }) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+
+        const e = event as KeyboardEvent;
+        update(({ SHORTCUTS, error }) => {
+          if (!error && e.key in SHORTCUTS) {
+            const matchedControl = SHORTCUTS[e.key] as Control;
+            if (matchedControl.eventKeyType === ControlEventKeyType.HOLD) {
+              matchedControl.afterAction(
+                update,
+                dispatchEvent,
+                e.key,
+                e.shiftKey
+              );
+            }
           }
 
           return {};
