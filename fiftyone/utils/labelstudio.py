@@ -6,17 +6,15 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+from datetime import datetime
 import itertools
 import json
 import logging
-import os
+from packaging import version
 import random
 import string
 import webbrowser
-from copy import deepcopy
-from datetime import datetime as dt
-from typing import List
-from packaging import version
 
 from bson import ObjectId
 import numpy as np
@@ -30,6 +28,7 @@ ls = fou.lazy_import(
     "label_studio_sdk",
     callback=lambda: fou.ensure_import("label_studio_sdk>=0.0.13"),
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +205,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         projects = self._client.list_projects()
         for one in projects:
             if one.params["title"] == project_name:
-                time_str = str(int(dt.timestamp(dt.now())))
+                time_str = str(int(datetime.timestamp(datetime.now())))
                 project_name += "_%s" % time_str
                 break
 
