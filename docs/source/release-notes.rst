@@ -20,7 +20,7 @@ App
 - Fixed mask targets rendering in the tooltip
   `#1943 <https://github.com/voxel51/fiftyone/pull/1943>`_,
   `#1949 <https://github.com/voxel51/fiftyone/pull/1949>`_
-- Fixed connecting a classification confusion matrix
+- Fixed classification confusion matrix connections
   `#1967 <https://github.com/voxel51/fiftyone/pull/1967>`_
 
 Core
@@ -36,7 +36,7 @@ Core
  `#1927 <https://github.com/voxel51/fiftyone/pull/1927>`_
 - Fixed a bug that prevented using 
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
-  to set frame-level Label fields
+  to set frame-level label fields
  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed automatic declaration of frame fields when computing embeddings on a
   frame view `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
@@ -44,15 +44,15 @@ Core
   ``ObjectID``s `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed a bug that allowed default frame fields to be excluded
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
-- Fixed :class:`ClipsView <fiftyone.core.clips.ClipsView>` ``metadata`` field
-  to have the correct type,
+- Fixed the :class:`ClipsView <fiftyone.core.clips.ClipsView>` ``metadata``
+  field to have the correct type,
   :class:`VideoMetadata <fiftyone.core.metadata.VideoMetadata>`
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed
   :meth:`load_evaluation_view() <fiftyone.core.dataset.Dataset.load_evaluation_view>`
   when ``select_fields`` is ``True``
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
-- Fixed boolean field parsing when declared on samples
+- Fixed boolean field parsing when declaring fields
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed a bug that caused nested embedded documents to corrupt datasets
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
@@ -67,7 +67,7 @@ Core
 - Added support for writing transformed images/videos to new location/field
   in the
   :func:`transform_images() <fiftyone.utils.image.transform_images>` and
-  :func:`transform_videos() <fiftyone.utils.video.transform_videos>`
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>` functions
   `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
 
 Annotation
@@ -76,13 +76,13 @@ Annotation
   `#1917 <https://github.com/voxel51/fiftyone/pull/1917>`_
 - Fixed uploading to a CVAT project when no label schema is provided
   `#1926 <https://github.com/voxel51/fiftyone/pull/1926>`_
-- Optimized loading annotations from CVAT and performing operations on
+- Optimized loading CVAT annotations and performing operations on
   :class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
   `#1944 <https://github.com/voxel51/fiftyone/pull/1944>`_
-- Upgraded :class:`AnnotationAPI <fiftyone.utils.annotation.AnnotationAPI>` reuse
-  `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
+- Upgraded the :class:`AnnotationAPI <fiftyone.utils.annotation.AnnotationAPI>`
+  interface `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
 - Added improved errors, support for non-submitted tasks, and label ID tracking
-  for merge preexisting annotations to the Label Studio integration
+  for merging preexisting annotations to the Label Studio integration
   (:mod:`fiftyone.utils.labelstudio`)
   `#2006 <https://github.com/voxel51/fiftyone/pull/2006>`_
 
