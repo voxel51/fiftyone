@@ -600,8 +600,11 @@ class Frames(object):
 
         return d
 
-    def _to_frames_dict(self):
-        return {str(fn): frame.to_dict() for fn, frame in self.items()}
+    def _to_frames_dict(self, include_private=False):
+        return {
+            str(fn): frame.to_dict(include_private=include_private)
+            for fn, frame in self.items()
+        }
 
     def _save_deletions(self):
         if self._delete_all:
@@ -915,7 +918,8 @@ class Frame(Document, metaclass=FrameSingleton):
 
     @property
     def _sample_id(self):
-        return ObjectId(self._doc._sample_id)
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None
 
     def save(self):
         """Saves the frame to the database."""
@@ -974,3 +978,12 @@ class FrameView(DocumentView):
     """
 
     _DOCUMENT_CLS = Frame
+
+    @property
+    def sample_id(self):
+        return self._doc._sample_id
+
+    @property
+    def _sample_id(self):
+        _id = self._doc._sample_id
+        return ObjectId(_id) if _id is not None else None

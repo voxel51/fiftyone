@@ -372,6 +372,151 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
+    def stats(self, include_media=False, compressed=False):
+        """Returns stats about the collection on disk.
+
+        The ``samples`` keys refer to the sample documents stored in the
+        database.
+
+        The ``media`` keys refer to the raw media associated with each sample
+        on disk.
+
+        For video datasets, the ``frames`` keys refer to the frame documents
+        stored in the database.
+
+        Note that dataset-level metadata such as annotation runs are not
+        included in this computation.
+
+        Args:
+            include_media (False): whether to include stats about the size of
+                the raw media in the collection
+            compressed (False): whether to return the sizes of collections in
+                their compressed form on disk (True) or the logical
+                uncompressed size of the collections (False). This option is
+                only supported for datasets (not views)
+
+        Returns:
+            a stats dict
+        """
+        if compressed:
+            raise ValueError(
+                "Compressed stats are only available for entire datasets"
+            )
+
+        stats = {}
+
+        samples_bytes = self._get_samples_bytes()
+        stats["samples_count"] = self.count()
+        stats["samples_bytes"] = samples_bytes
+        stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
+        total_bytes = samples_bytes
+
+        if self.media_type == fom.VIDEO:
+            frames_bytes = self._get_frames_bytes()
+            stats["frames_count"] = self.count("frames")
+            stats["frames_bytes"] = frames_bytes
+            stats["frames_size"] = etau.to_human_bytes_str(frames_bytes)
+            total_bytes += frames_bytes
+
+        if include_media:
+            self.compute_metadata()
+            media_bytes = self.sum("metadata.size_bytes")
+            stats["media_bytes"] = media_bytes
+            stats["media_size"] = etau.to_human_bytes_str(media_bytes)
+            total_bytes += media_bytes
+
+        stats["total_bytes"] = total_bytes
+        stats["total_size"] = etau.to_human_bytes_str(total_bytes)
+
+        return stats
+
+    def _get_samples_bytes(self):
+        """Computes the total size of the sample documents in the collection."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            }
+        ]
+
+        results = self._aggregate(pipeline=pipeline)
+
+        try:
+            return next(iter(results))["size_bytes"]
+        except:
+            return 0
+
+    def _get_frames_bytes(self):
+        """Computes the total size of the frame documents in the collection."""
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            },
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+
+        try:
+            return next(iter(results))["size_bytes"]
+        except:
+            return 0
+
+    def _get_per_sample_bytes(self):
+        """Returns a dictionary mapping sample IDs to document sizes (in bytes)
+        for each sample in the collection.
+        """
+        pipeline = [{"$project": {"size_bytes": {"$bsonSize": "$$ROOT"}}}]
+
+        results = self._aggregate(pipeline=pipeline)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
+    def _get_per_frame_bytes(self):
+        """Returns a dictionary mapping frame IDs to document sizes (in bytes)
+        for each frame in the video collection.
+        """
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {"$project": {"size_bytes": {"$bsonSize": "$$ROOT"}}},
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
+    def _get_per_sample_frames_bytes(self):
+        """Returns a dictionary mapping sample IDs to total frame document
+        sizes (in bytes) for each sample in the video collection.
+        """
+        if self.media_type != fom.VIDEO:
+            return None
+
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+            {
+                "$group": {
+                    "_id": "$_sample_id",
+                    "size_bytes": {"$sum": {"$bsonSize": "$$ROOT"}},
+                }
+            },
+        ]
+
+        results = self._aggregate(pipeline=pipeline, attach_frames=True)
+        return {str(r["_id"]): r["size_bytes"] for r in results}
+
     def first(self):
         """Returns the first sample in the collection.
 
@@ -530,70 +675,52 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.fields.Field` instance or ``None``
         """
+        _, field = self._parse_field(path, include_private=include_private)
+        return field
+
+    def _parse_field(self, path, include_private=False):
         keys = path.split(".")
 
         if not keys:
-            return None
+            return None, None
+
+        field = None
+        resolved_keys = []
 
         if self.media_type == fom.VIDEO and keys[0] == "frames":
             schema = self.get_frame_field_schema(
                 include_private=include_private
             )
-            keys = keys[1:]
-        else:
-            schema = self.get_field_schema()
 
-        field = None
-        include_private and _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
-        for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
-
-            if idx != last and isinstance(field, fof.ListField):
-                field = field.field
-
-            if isinstance(field, fof.EmbeddedDocumentField):
-                schema = field.get_field_schema()
-                include_private and _add_mapped_fields_as_private_fields(
-                    schema
-                )
-
-        return field
-
-    def _resolve_field(self, path):
-        keys = path.split(".")
-
-        if not keys:
-            return None
-
-        resolved_keys = []
-        if self.media_type == fom.VIDEO and keys[0] == "frames":
-            schema = self.get_frame_field_schema()
             keys = keys[1:]
             resolved_keys.append("frames")
         else:
             schema = self.get_field_schema()
 
-        _add_mapped_fields_as_private_fields(schema)
-
-        last = len(keys) - 1
         for idx, field_name in enumerate(keys):
-            field = schema.get(field_name, None)
-            if field is None:
-                return None
+            field_name = _handle_id_field(
+                schema, field_name, include_private=include_private
+            )
 
-            resolved_keys.append(field.db_field or field_name)
-            if idx != last and isinstance(field, fof.ListField):
+            field = schema.get(field_name, None)
+
+            if field is None:
+                return None, None
+
+            resolved_keys.append(field.db_field or field.name)
+
+            if idx == len(keys) - 1:
+                continue
+
+            if isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField):
                 schema = field.get_field_schema()
-                _add_mapped_fields_as_private_fields(schema)
 
-        return ".".join(resolved_keys)
+        resolved_path = ".".join(resolved_keys)
+
+        return resolved_path, field
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1278,7 +1405,7 @@ class SampleCollection(object):
         if expand_schema and self.get_field(field_name) is None:
             self._expand_schema_from_values(field_name, values)
 
-        field_name, _, list_fields, _, id_to_str = self._parse_field_name(
+        _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
             field_name, omit_terminal_lists=True, allow_missing=_allow_missing
         )
 
@@ -1300,8 +1427,6 @@ class SampleCollection(object):
             label_type = field_type.document_type
             list_field = label_type._LABEL_LIST_FIELD
             path = field_name + "." + list_field
-            if is_frame_field:
-                path = self._FRAMES_PREFIX + path
 
             # pylint: disable=no-member
             if path in self._get_filtered_fields():
@@ -1333,11 +1458,11 @@ class SampleCollection(object):
             and isinstance(field_type.field, fof.EmbeddedDocumentField)
             and isinstance(self, fov.DatasetView)
         ):
-            list_fields = sorted(set(list_fields + [field_name]))
+            list_fields = sorted(set(list_fields + [_field_name]))
 
         if is_frame_field:
             self._set_frame_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -1347,7 +1472,7 @@ class SampleCollection(object):
             )
         else:
             self._set_sample_values(
-                field_name,
+                _field_name,
                 values,
                 list_fields,
                 sample_ids=_sample_ids,
@@ -6529,8 +6654,10 @@ class SampleCollection(object):
                 -   a dict mapping attribute names to dicts specifying the
                     ``type``, ``values``, and ``default`` for each attribute
 
-                If provided, this parameter will apply to all label fields in
-                ``label_schema`` that do not define their attributes
+                If a ``label_schema`` is also provided, this parameter
+                determines which attributes are included for all fields that do
+                not explicitly define their per-field attributes (in addition
+                to any per-class attributes)
             mask_targets (None): a dict mapping pixel values to semantic label
                 strings. Only applicable when annotating semantic segmentations
             allow_additions (True): whether to allow new labels to be added.
@@ -6848,7 +6975,7 @@ class SampleCollection(object):
         index_spec = []
         for field, option in input_spec:
             self._validate_root_field(field, include_private=True)
-            _field = self._resolve_field(field)
+            _field, _ = self._parse_field(field, include_private=True)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
             index_spec.append((_field, option))
@@ -6929,7 +7056,14 @@ class SampleCollection(object):
         """Reloads the collection from the database."""
         raise NotImplementedError("Subclass must implement reload()")
 
-    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_dict(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON dictionary representation of the collection.
 
         Args:
@@ -6940,11 +7074,15 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render frame labels JSON in human
                 readable format with newlines and indentations. Only applicable
                 to video datasets when a ``frame_labels_dir`` is provided
@@ -6956,10 +7094,13 @@ class SampleCollection(object):
             rel_dir = fou.normalize_path(rel_dir) + os.path.sep
 
         is_video = self.media_type == fom.VIDEO
-        write_frame_labels = is_video and frame_labels_dir is not None
+        write_frame_labels = (
+            is_video and include_frames and frame_labels_dir is not None
+        )
 
         d = {
             "name": self.name,
+            "version": self._dataset.version,
             "media_type": self.media_type,
             "num_samples": len(self),
             "sample_fields": self._serialize_field_schema(),
@@ -6991,7 +7132,10 @@ class SampleCollection(object):
         # Serialize samples
         samples = []
         for sample in self.iter_samples(progress=True):
-            sd = sample.to_dict(include_frames=True)
+            sd = sample.to_dict(
+                include_frames=include_frames,
+                include_private=include_private,
+            )
 
             if write_frame_labels:
                 frames = {"frames": sd.pop("frames", {})}
@@ -7009,7 +7153,14 @@ class SampleCollection(object):
 
         return d
 
-    def to_json(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
+    def to_json(
+        self,
+        rel_dir=None,
+        include_private=False,
+        include_frames=False,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Returns a JSON string representation of the collection.
 
         The samples will be written as a list in a top-level ``samples`` field
@@ -7023,11 +7174,15 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -7036,6 +7191,8 @@ class SampleCollection(object):
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -7045,6 +7202,8 @@ class SampleCollection(object):
         self,
         json_path,
         rel_dir=None,
+        include_private=False,
+        include_frames=False,
         frame_labels_dir=None,
         pretty_print=False,
     ):
@@ -7059,16 +7218,22 @@ class SampleCollection(object):
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            include_private (False): whether to include private fields
+            include_frames (False): whether to include the frame labels for
+                video samples
             frame_labels_dir (None): a directory in which to write per-sample
                 JSON files containing the frame labels for video samples. If
                 omitted, frame labels will be included directly in the returned
                 JSON dict (which can be quite quite large for video datasets
-                containing many frames). Only applicable to video datasets
+                containing many frames). Only applicable to video datasets when
+                ``include_frames`` is True
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
         d = self.to_dict(
             rel_dir=rel_dir,
+            include_private=include_private,
+            include_frames=include_frames,
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
@@ -7535,6 +7700,14 @@ class SampleCollection(object):
 
         return fields_map
 
+    def _handle_db_field(self, field_name, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return db_fields_map.get(field_name, field_name)
+
+    def _handle_db_fields(self, field_names, frames=False):
+        db_fields_map = self._get_db_fields_map(frames=frames)
+        return [db_fields_map.get(f, f) for f in field_names]
+
     def _get_label_fields(self):
         fields = self._get_sample_label_fields()
 
@@ -7560,6 +7733,22 @@ class SampleCollection(object):
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             ).keys()
         ]
+
+    def _get_root_fields(self, fields):
+        root_fields = set()
+        for field in fields:
+            if self.media_type == fom.VIDEO and field.startswith(
+                self._FRAMES_PREFIX
+            ):
+                # Converts `frames.root[.x.y]` to `frames.root`
+                root = ".".join(field.split(".", 2)[:2])
+            else:
+                # Converts `root[.x.y]` to `root`
+                root = field.split(".", 1)[0]
+
+            root_fields.add(root)
+
+        return list(root_fields)
 
     def _validate_root_field(self, field_name, include_private=False):
         _ = self._get_root_field_type(
@@ -7788,8 +7977,9 @@ def _get_default_label_fields_for_exporter(
     if label_cls is None:
         if required:
             raise ValueError(
-                "Cannot select a default field when exporter does not provide "
-                "a `label_cls`"
+                "Unable to automatically select an appropriate label field to "
+                "export because the %s does not provide a `label_cls`"
+                % type(dataset_exporter)
             )
 
         return None
@@ -8177,6 +8367,26 @@ def _parse_field_name(
     )
 
 
+def _handle_id_field(schema, field_name, include_private=False):
+    if not include_private and field_name.startswith("_"):
+        return None
+
+    if field_name in schema:
+        return field_name
+
+    if field_name.startswith("_"):
+        _field_name = field_name[1:]
+    else:
+        _field_name = "_" + field_name
+
+    field = schema.get(_field_name, None)
+
+    if isinstance(field, fof.ObjectIdField):
+        return _field_name
+
+    return field_name
+
+
 def _handle_id_fields(sample_collection, field_name):
     if not field_name:
         return field_name, False, False
@@ -8506,10 +8716,10 @@ def _handle_existing_dirs(
                 etau.delete_file(_labels_path)
 
 
-def _add_mapped_fields_as_private_fields(schema):
+def _add_db_fields_to_schema(schema):
     additions = {}
     for field in schema.values():
-        if field.db_field:
+        if field.db_field != field.name:
             additions[field.db_field] = field
 
     schema.update(additions)

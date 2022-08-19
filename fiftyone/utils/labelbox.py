@@ -155,7 +155,7 @@ class LabelboxBackend(foua.AnnotationBackend):
     def requires_attr_values(self, attr_type):
         return attr_type != "text"
 
-    def connect_to_api(self):
+    def _connect_to_api(self):
         return LabelboxAnnotationAPI(
             self.config.name,
             self.config.url,
@@ -1259,14 +1259,6 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
             api_key (None): the Labelbox API key
         """
         self._load_config_parameters(url=url, api_key=api_key)
-
-    def connect_to_api(self):
-        """Returns an API instance connected to the Labelbox server.
-
-        Returns:
-            a :class:`LabelboxAnnotationAPI`
-        """
-        return self._backend.connect_to_api()
 
     def launch_editor(self):
         """Launches the Labelbox editor and loads the project for this

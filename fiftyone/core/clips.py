@@ -438,9 +438,7 @@ def make_clips_dataset(
         sample_collection._dataset._doc.app_sidebar_groups
     )
     dataset.media_type = fom.VIDEO
-    dataset.add_sample_field(
-        "sample_id", fof.ObjectIdField, db_field="_sample_id"
-    )
+    dataset.add_sample_field("sample_id", fof.ObjectIdField)
     dataset.create_index("sample_id")
     dataset.add_sample_field("support", fof.FrameSupportField)
 
