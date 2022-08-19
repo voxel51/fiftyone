@@ -864,7 +864,6 @@ def _get_attributes(
     label_type,
     classes=None,
 ):
-
     if "attributes" in label_info:
         attributes = label_info["attributes"]
 
@@ -1880,8 +1879,7 @@ class AnnotationBackend(foa.AnnotationMethod):
     @property
     def supports_attributes(self):
         """Whether this backend supports uploading and editing label
-        attributes. By default, all backends support attributes, but can
-        overwrite this property to ignore attributes.
+        attributes.
         """
         return True
 
