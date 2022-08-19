@@ -164,7 +164,7 @@ def label_configs():
 
 def test_labelling_config(label_configs):
     for case in label_configs:
-        generated = fouls.generate_labelling_config(**case["input"])
+        generated = fouls.generate_labeling_config(**case["input"])
         assert generated.strip() == case["output"].strip()
 
 
@@ -324,7 +324,7 @@ def label_mappings():
 
 def test_import_labels(label_mappings):
     for case in label_mappings:
-        label = fouls.import_labelstudio_annotation(case["labelstudio"])
+        label = fouls.import_label_studio_annotation(case["labelstudio"])
         expected = case["fiftyone"]
 
         if isinstance(expected, (list, tuple)):
@@ -336,7 +336,7 @@ def test_import_labels(label_mappings):
 
 def test_export_labels(label_mappings):
     for case in label_mappings:
-        ls_prediction = fouls.export_label_to_labelstudio(case["fiftyone"])
+        ls_prediction = fouls.export_label_to_label_studio(case["fiftyone"])
         expected = case["labelstudio"]
 
         if isinstance(expected, (list, tuple)):
