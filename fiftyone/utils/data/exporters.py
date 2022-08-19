@@ -647,14 +647,20 @@ def _make_label_coercion_functions(
         if label_field is None:
             continue
 
-        field_type = sample_collection.get_field(
-            f"{'frames.' if frames else ''}{label_field}"
-        )
-
-        if isinstance(field_type, fof.EmbeddedDocumentField):
-            label_type = field_type.document_type
+        if frames:
+            field_path = sample_collection._FRAMES_PREFIX + label_field
         else:
-            label_type = type(field_type)
+            field_path = label_field
+
+        field = sample_collection.get_field(field_path)
+
+        if field is None:
+            continue
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            label_type = field.document_type
+        else:
+            label_type = type(field)
 
         # Natively supported types
         if any(issubclass(label_type, t) for t in export_types):
@@ -741,6 +747,7 @@ def _classification_to_detections(label):
                 label=label.label,
                 bounding_box=[0, 0, 1, 1],
                 confidence=label.confidence,
+                **dict(label.iter_attributes()),
             )
         ]
     )
@@ -1621,7 +1628,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if out_filepath is None:
             out_filepath = sample.filepath
 
-        sd = sample.to_dict()
+        sd = sample.to_dict(include_private=True)
         sd["filepath"] = out_filepath
 
         if self.relative_filepaths:

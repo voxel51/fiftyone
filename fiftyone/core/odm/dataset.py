@@ -21,6 +21,7 @@ from fiftyone.core.fields import (
     EmbeddedDocumentListField,
     IntField,
     ListField,
+    ObjectIdField,
     ReferenceField,
     StringField,
     TargetsField,
@@ -77,7 +78,10 @@ def create_field(
         a :class:`fiftyone.core.fields.Field` instance
     """
     if db_field is None:
-        db_field = name
+        if issubclass(ftype, ObjectIdField) and not name.startswith("_"):
+            db_field = "_" + name
+        else:
+            db_field = name
 
     # All user-defined fields are nullable
     kwargs = dict(null=True, db_field=db_field)
@@ -101,7 +105,6 @@ def create_field(
                         fields=fields or [],
                         parent=parent,
                     )
-
                 else:
                     subfield = subfield()
 

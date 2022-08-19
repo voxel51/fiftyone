@@ -48,7 +48,7 @@ INSTALL_REQUIRES = [
     "packaging",
     "pandas",
     "Pillow>=6.2",
-    "plotly>=4.14,<5",
+    "plotly>=4.14",
     "pprintpp",
     "psutil",
     "pymongo>=3.11,<4",

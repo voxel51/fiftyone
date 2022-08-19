@@ -431,6 +431,10 @@ class AnnotationConfig(EnvConfig):
             "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
             "url": "https://labelbox.com",
         },
+        "labelstudio": {
+            "config_cls": "fiftyone.utils.labelstudio.LabelStudioBackendConfig",
+            "url": "https://labelstud.io",
+        },
     }
 
     def __init__(self, d=None):
