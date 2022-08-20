@@ -192,8 +192,8 @@ file containing COCO-formatted labels to work with:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    # Give the dataset a classes list so it can be exported + imported
-    dataset.default_classes = dataset.distinct("ground_truth.detections.label")
+    # Classes list
+    classes = dataset.distinct("ground_truth.detections.label")
 
     # The directory in which the dataset's images are stored
     IMAGES_DIR = os.path.dirname(dataset.first().filepath)
@@ -203,6 +203,7 @@ file containing COCO-formatted labels to work with:
         dataset_type=fo.types.COCODetectionDataset,
         label_field="ground_truth",
         labels_path="/tmp/coco.json",
+        classes=classes,
     )
 
 Now we have a ``/tmp/coco.json`` file on disk containing COCO labels
@@ -268,7 +269,6 @@ dataset:
         data_path=IMAGES_DIR,
         labels_path="/tmp/coco.json",
         include_id=True,
-        label_field="",
     )
 
     # Verify that the class list for our dataset was imported

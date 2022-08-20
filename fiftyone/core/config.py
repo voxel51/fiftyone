@@ -175,6 +175,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DESKTOP_APP",
             default=False,
         )
+        self.logging_level = self.parse_string(
+            d,
+            "logging_level",
+            env_var="FIFTYONE_LOGGING_LEVEL",
+            default="INFO",
+        )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
             d,
@@ -448,6 +454,10 @@ class AnnotationConfig(EnvConfig):
         "labelbox": {
             "config_cls": "fiftyone.utils.labelbox.LabelboxBackendConfig",
             "url": "https://labelbox.com",
+        },
+        "labelstudio": {
+            "config_cls": "fiftyone.utils.labelstudio.LabelStudioBackendConfig",
+            "url": "https://labelstud.io",
         },
     }
 
