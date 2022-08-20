@@ -500,15 +500,15 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         super().save()
 
     def _deferred_save(self):
-        """Saves the sample to the database."""
         if not self._in_db:
             raise ValueError(
                 "Cannot save a sample that has not been added to a dataset"
             )
 
-        frame_ops = []
         if self.media_type == fomm.VIDEO:
             frame_ops = self.frames._deferred_save()
+        else:
+            frame_ops = None
 
         sample_op = self._doc._deferred_save()
 
@@ -695,11 +695,10 @@ class SampleView(_SampleMixin, DocumentView):
         super().save()
 
     def _deferred_save(self):
-        """Saves the sample view to the database."""
-
-        frame_ops = []
         if self.media_type == fomm.VIDEO:
             frame_ops = self.frames._deferred_save()
+        else:
+            frame_ops = None
 
         sample_op = self._doc._deferred_save()
 

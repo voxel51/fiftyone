@@ -654,14 +654,19 @@ class Document(BaseDocument, mongoengine.Document):
             sets, unsets = self._delta()
 
             update_doc = {}
+
             if sets:
                 update_doc["$set"] = sets
+
             if unsets:
                 update_doc["$unset"] = unsets
+
             if update_doc:
                 save_op = pymongo.UpdateOne(
                     {"_id": object_id}, update_doc, upsert=True
                 )
+            else:
+                save_op = None
 
         # Make sure we store the PK on this document now that it's saved
         id_field = self._meta["id_field"]

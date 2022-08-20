@@ -436,7 +436,6 @@ class Frames(object):
         self._save_replacements()
 
     def _deferred_save(self):
-        """Saves all frames for the sample to the database."""
         if not self._in_db:
             raise ValueError(
                 "Cannot save frames of a sample that has not been added to "
@@ -663,8 +662,6 @@ class Frames(object):
             return ops
 
     def _save_replacements(self, include_singletons=True, deferred=False):
-        ops = []
-
         if include_singletons:
             #
             # Since frames are singletons, the user will expect changes to any
@@ -686,9 +683,11 @@ class Frames(object):
             replacements = self._replacements
 
         if not replacements:
-            return [] if deferred else None
+            return
 
+        ops = []
         new_dicts = {}
+
         for frame_number, frame in replacements.items():
             d = self._make_dict(frame)
             if not frame._in_db:
@@ -879,15 +878,18 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
-    def _save_replacements(self):
+    def _save_replacements(self, deferred=False):
         if not self._replacements:
             return
 
         if self._contains_all_fields:
-            super()._save_replacements(include_singletons=False)
-            return
+            return super()._save_replacements(
+                include_singletons=False,
+                deferred=deferred,
+            )
 
         ops = []
+
         for frame_number, frame in self._replacements.items():
             doc = self._make_dict(frame)
 
@@ -918,8 +920,13 @@ class FramesView(Frames):
                 )
             )
 
-        self._frame_collection.bulk_write(ops, ordered=False)
+        if not deferred:
+            self._frame_collection.bulk_write(ops, ordered=False)
+
         self._replacements.clear()
+
+        if deferred:
+            return ops
 
 
 class Frame(Document, metaclass=FrameSingleton):
