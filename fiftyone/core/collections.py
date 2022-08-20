@@ -749,6 +749,44 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def save_context(self, batch_size=1):
+        """Returns a context that can be used to save samples from this
+        collection according to a configurable batching strategy.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample["num_objects"] = len(sample.ground_truth.detections)
+                sample.save()
+
+            # Save in batches of 10
+            with dataset.save_context(batch_size=10) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample["num_objects"] = len(sample.ground_truth.detections)
+                    context.save(sample)
+
+            # Save every 0.5 seconds
+            with dataset.save_context(batch_size=0.5) as context:
+                for sample in dataset.iter_samples(progress=True):
+                    sample["num_objects"] = len(sample.ground_truth.detections)
+                    context.save(sample)
+
+        Args:
+            batch_size (1): the batching strategy to use. Can either be an
+                integer specifying the number of samples to save in a batch, or
+                a float number of seconds between batched saves
+
+        Returns:
+            a :class:`SaveContext`
+        """
+        return SaveContext(self, batch_size=batch_size)
+
     def _get_default_sample_fields(
         self, include_private=False, use_db_fields=False
     ):
