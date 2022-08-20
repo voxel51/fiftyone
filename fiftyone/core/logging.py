@@ -21,15 +21,16 @@ def init_logging():
     The logging level is set to ``fo.config.logging_level``.
     """
     global handler
+
     if handler is None:
         handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
 
-    handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-    logging.getLogger("fiftyone").addHandler(handler)
-    logging.getLogger("eta").addHandler(handler)
+        for logger in _get_loggers():
+            logger.addHandler(handler)
 
     level = _parse_logging_level()
-    handler.setLevel(level)
+    set_logging_level(level)
 
 
 def get_logging_level():
@@ -38,7 +39,7 @@ def get_logging_level():
     Returns:
         a ``logging`` level, such as ``logging.INFO``
     """
-    return handler.level
+    return _get_loggers()[0].level
 
 
 def set_logging_level(level):
@@ -47,7 +48,15 @@ def set_logging_level(level):
     Args:
         level: a ``logging`` level, such as ``logging.INFO``
     """
-    handler.setLevel(level)
+    for logger in _get_loggers():
+        logger.setLevel(level)
+
+
+def _get_loggers():
+    return [
+        logging.getLogger("fiftyone"),
+        logging.getLogger("eta"),
+    ]
 
 
 def _parse_logging_level():
