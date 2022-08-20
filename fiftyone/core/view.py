@@ -292,7 +292,7 @@ class DatasetView(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
         if autosave and batch_size is None:
-            batch_size = 0.5
+            batch_size = 0.2
 
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()

@@ -107,18 +107,20 @@ class SaveContext(object):
             number of seconds between batched saves
     """
 
-    def __init__(self, sample_collection, batch_size=1):
+    def __init__(self, sample_collection, batch_size=0.2):
         self.sample_collection = sample_collection
         self.batch_size = batch_size
 
         self._samples = []
-        self._sample_collection = sample_collection._dataset._sample_collection
-        self._frame_collection = sample_collection._dataset._frame_collection
-        self._dynamic = not isinstance(batch_size, numbers.Integral)
+        self._dataset = sample_collection._dataset
+        self._sample_coll = sample_collection._dataset._sample_collection
+        self._frame_coll = sample_collection._dataset._frame_collection
+
+        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
         self._last_time = None
 
     def __enter__(self):
-        if self._dynamic:
+        if self._dynamic_batches:
             self._last_time = timeit.default_timer()
 
         return self
@@ -133,13 +135,18 @@ class SaveContext(object):
             sample: a :class:`fiftyone.core.sample.Sample` or
                 :class:`fiftyone.core.sample.SampleView`
         """
+        if sample._dataset is not self._dataset:
+            raise ValueError(
+                "Dataset context '%s' cannot save sample from dataset '%s'"
+                % (self._dataset.name, sample._dataset.name)
+            )
+
         self._samples.append(sample)
 
-        if self._dynamic:
-            current_time = timeit.default_timer()
-            if current_time - self._last_time >= self.batch_size:
-                self._last_time = current_time
+        if self._dynamic_batches:
+            if timeit.default_timer() - self._last_time >= self.batch_size:
                 self._save_batch()
+                self._last_time = timeit.default_timer()
         elif len(self._samples) >= self.batch_size:
             self._save_batch()
 
@@ -156,10 +163,10 @@ class SaveContext(object):
                 frame_ops.extend(_frame_ops)
 
         if sample_ops:
-            foo.bulk_write(sample_ops, self._sample_collection, ordered=False)
+            foo.bulk_write(sample_ops, self._sample_coll, ordered=False)
 
         if frame_ops:
-            foo.bulk_write(frame_ops, self._frame_collection, ordered=False)
+            foo.bulk_write(frame_ops, self._frame_coll, ordered=False)
 
         self._samples.clear()
 

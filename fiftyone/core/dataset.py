@@ -1404,7 +1404,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         if autosave and batch_size is None:
-            batch_size = 0.5
+            batch_size = 0.2
 
         pipeline = self._pipeline(detach_frames=True)
 
