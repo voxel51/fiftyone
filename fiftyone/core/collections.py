@@ -9,9 +9,11 @@ from collections import defaultdict
 import fnmatch
 import itertools
 import logging
+import numbers
 import os
 import random
 import string
+import timeit
 import warnings
 
 from bson import ObjectId
@@ -69,49 +71,97 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
-class _AutosaveSample:
-    def __init__(self, batch, sample):
-        self._batch = batch
-        self._sample = sample
+class SaveContext(object):
+    """Context that saves samples from a collection according to a configurable
+    batching strategy.
 
-    def __enter__(self):
-        return self
+    Examples::
 
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self._batch.save_sample(self._sample)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
 
+        dataset = foz.load_zoo_dataset("quickstart")
 
-class _AutosaveSampleBatch:
-    def __init__(self, sample_collection, frame_collection, batch_size=None):
-        self._sample_collection = sample_collection
-        self._frame_collection = frame_collection
-        self._batch_size = batch_size or 3
+        # No save context
+        for sample in dataset.iter_samples(progress=True):
+            sample["num_objects"] = len(sample.ground_truth.detections)
+            sample.save()
+
+        # Save in batches of 10
+        with fo.SaveContext(dataset, batch_size=10) as context:
+            for sample in dataset.iter_samples(progress=True):
+                sample["num_objects"] = len(sample.ground_truth.detections)
+                context.save(sample)
+
+        # Save every 0.5 seconds
+        with fo.SaveContext(dataset, batch_size=0.5) as context:
+            for sample in dataset.iter_samples(progress=True):
+                sample["num_objects"] = len(sample.ground_truth.detections)
+                context.save(sample)
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size (1): the batching strategy to use. Can either be an integer
+            specifying the number of samples to save in a batch, or a float
+            number of seconds between batched saves
+    """
+
+    def __init__(self, sample_collection, batch_size=1):
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+
         self._samples = []
-
-    def save_sample(self, sample):
-        self._samples.append(sample)
-        if len(self._samples) >= self._batch_size:
-            self._save_samples()
-
-    def _save_samples(self):
-        if not self._samples:
-            return
-
-        sample_ops, frame_ops = [], []
-        for sample in self._samples:
-            sample_op, sample_frame_ops = sample._deferred_save()
-            sample_ops.append(sample_op)
-            frame_ops.extend(sample_frame_ops)
-
-        foo.bulk_write(sample_ops, self._sample_collection, ordered=False)
-        foo.bulk_write(frame_ops, self._frame_collection, ordered=False)
-        self._samples.clear()
+        self._sample_collection = sample_collection._dataset._sample_collection
+        self._frame_collection = sample_collection._dataset._frame_collection
+        self._dynamic = not isinstance(batch_size, numbers.Integral)
+        self._last_time = None
 
     def __enter__(self):
+        if self._dynamic:
+            self._last_time = timeit.default_timer()
+
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self._save_samples()
+    def __exit__(self, *args):
+        self._save_batch()
+
+    def save(self, sample):
+        """Registers the sample for saving in the next batch.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+        """
+        self._samples.append(sample)
+
+        if self._dynamic:
+            current_time = timeit.default_timer()
+            if current_time - self._last_time >= self.batch_size:
+                self._last_time = current_time
+                self._save_batch()
+        elif len(self._samples) >= self.batch_size:
+            self._save_batch()
+
+    def _save_batch(self):
+        sample_ops = []
+        frame_ops = []
+        for sample in self._samples:
+            _sample_op, _frame_ops = sample._deferred_save()
+
+            if _sample_op is not None:
+                sample_ops.append(_sample_op)
+
+            if _frame_ops:
+                frame_ops.extend(_frame_ops)
+
+        if sample_ops:
+            foo.bulk_write(sample_ops, self._sample_collection, ordered=False)
+
+        if frame_ops:
+            foo.bulk_write(frame_ops, self._frame_collection, ordered=False)
+
+        self._samples.clear()
 
 
 class SampleCollection(object):
@@ -681,12 +731,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement view()")
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the collection.
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` or
