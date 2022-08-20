@@ -49,6 +49,9 @@ class ClipView(fos.SampleView):
         super().save()
         self._view._sync_source_sample(self)
 
+    def _deferred_save(self):
+        raise NotImplementedError("Clips views do not support save contexts")
+
 
 class ClipsView(fov.DatasetView):
     """A :class:`fiftyone.core.view.DatasetView` of clips from a video

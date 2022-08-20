@@ -58,6 +58,9 @@ class FrameView(fos.SampleView):
         super().save()
         self._view._sync_source_sample(self)
 
+    def _deferred_save(self):
+        raise NotImplementedError("Frames views do not support save contexts")
+
 
 class FramesView(fov.DatasetView):
     """A :class:`fiftyone.core.view.DatasetView` of frames from a video

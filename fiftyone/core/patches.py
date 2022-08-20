@@ -41,6 +41,9 @@ class _PatchView(fos.SampleView):
         super().save()
         self._view._sync_source_sample(self)
 
+    def _deferred_save(self):
+        raise NotImplementedError("Patches views do not support save contexts")
+
 
 class PatchView(_PatchView):
     """A patch in a :class:`PatchesView`.
