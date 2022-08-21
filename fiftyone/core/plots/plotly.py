@@ -1881,7 +1881,7 @@ def _check_plotly_jupyter_environment():
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
     #
-    fou.ensure_package("ipywidgets>=7.5")
+    fou.ensure_package("ipywidgets>=7.5,<8")
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
