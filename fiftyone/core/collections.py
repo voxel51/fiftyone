@@ -96,6 +96,7 @@ class SaveContext(object):
         self._last_time = None
         self._sample_ops = []
         self._frame_ops = []
+        self._reload_parents = []
 
     def __enter__(self):
         if self._dynamic_batches:
@@ -120,7 +121,9 @@ class SaveContext(object):
                 % (self._dataset.name, sample._dataset.name)
             )
 
-        sample_op, frame_ops = sample._deferred_save()
+        sample_op, frame_ops = sample._save(deferred=True)
+        updated = sample_op is not None or frame_ops
+
         self._curr_batch_size += 1
 
         if sample_op is not None:
@@ -128,6 +131,9 @@ class SaveContext(object):
 
         if frame_ops:
             self._frame_ops.extend(frame_ops)
+
+        if updated and isinstance(sample, fosa.SampleView):
+            self._reload_parents.append(sample)
 
         if self._dynamic_batches:
             if timeit.default_timer() - self._last_time >= self.batch_size:
@@ -146,6 +152,12 @@ class SaveContext(object):
         if self._frame_ops:
             foo.bulk_write(self._frame_ops, self._frame_coll, ordered=False)
             self._frame_ops.clear()
+
+        if self._reload_parents:
+            for sample in self._reload_parents:
+                sample._reload_parents()
+
+            self._reload_parents.clear()
 
 
 class SampleCollection(object):
