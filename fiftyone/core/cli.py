@@ -2509,7 +2509,7 @@ class MigrateCommand(Command):
         # Print information about the current revisions of all datasets
         fiftyone migrate --info
 
-        # Migrate the database and all datasets to the current package version
+        # Migrate the database and all datasets to the current client version
         fiftyone migrate --all
 
         # Migrate to a specific revision
