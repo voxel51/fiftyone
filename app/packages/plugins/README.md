@@ -141,7 +141,7 @@ Below are introductory examples to the fiftyone plugin api.
 
 ### Hello World
 
-A simple hello world plugin, that renders "hello world" in place of the `SampleModalContent` main content area, would look like this:
+A simple hello world plugin, that renders "hello world" in place of the plots main content area, would look like this:
 
 ```jsx
 import { registerComponent, PluginComponentTypes } from "@fiftyone/plugins";
@@ -152,7 +152,7 @@ function HelloWorld() {
 
 registerComponent({
   copmponent: HelloWorld,
-  type: PluginComponentTypes.SampleModalContent,
+  type: PluginComponentTypes.Plot,
 });
 ```
 
