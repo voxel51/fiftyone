@@ -454,7 +454,7 @@ class Frames(object):
         Frame._sync_docs_for_sample(
             self._frame_collection_name,
             self._sample.id,
-            self._get_frame_numbers(),
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
             hard=hard,
         )
 
@@ -926,7 +926,7 @@ class FramesView(Frames):
         Frame._sync_docs_for_sample(
             self._frame_collection_name,
             self._sample.id,
-            self._get_frame_numbers(),
+            self._get_frame_numbers,  # pass fcn so it can be lazily called
         )
 
 

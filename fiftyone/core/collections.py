@@ -91,12 +91,13 @@ class SaveContext(object):
         self._sample_coll = sample_collection._dataset._sample_collection
         self._frame_coll = sample_collection._dataset._frame_collection
 
-        self._curr_batch_size = None
-        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
-        self._last_time = None
         self._sample_ops = []
         self._frame_ops = []
         self._reload_parents = []
+
+        self._curr_batch_size = None
+        self._dynamic_batches = not isinstance(batch_size, numbers.Integral)
+        self._last_time = None
 
     def __enter__(self):
         if self._dynamic_batches:
