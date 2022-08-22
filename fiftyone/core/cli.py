@@ -2590,7 +2590,8 @@ class MigrateCommand(Command):
 
 
 def _print_migration_table(db_ver, dataset_vers):
-    print("FiftyOne version: %s" % foc.VERSION)
+    print("Client version: %s" % foc.VERSION)
+    print("Compatible database versions: %s" % foc.COMPATIBLE_VERSIONS)
     print("Database version: %s" % db_ver)
 
     if dataset_vers:

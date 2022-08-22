@@ -8,6 +8,7 @@ FiftyOne migrations runner.
 import bisect
 import logging
 import os
+from packaging.requirements import Requirement
 from packaging.version import Version as V
 
 import eta.core.serial as etas
@@ -65,14 +66,15 @@ def migrate_all(destination=None, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
 
+    If no ``destination`` is provided, the database and each dataset will only
+    be migrated if their current versions are not compatible with the client's
+    version.
+
     Args:
         destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+            ``fiftyone`` client version is used
         verbose (False): whether to log incremental migrations that are run
     """
-    if destination is None:
-        destination = foc.VERSION
-
     migrate_database_if_necessary(destination=destination, verbose=verbose)
 
     for name in fo.list_datasets():
@@ -82,24 +84,28 @@ def migrate_all(destination=None, verbose=False):
 
 
 def migrate_database_if_necessary(destination=None, verbose=False):
-    """Migrates the database to the current revision of the ``fiftyone``
-    package, if necessary.
+    """Migrates the database to the specified revision, if necessary.
+
+    If no ``destination`` is provided, the database will only be migrated if
+    its current version is not compatible with the client's version.
 
     Args:
         destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+            ``fiftyone`` client version is used
         verbose (False): whether to log incremental migrations that are run
     """
     if _migrations_disabled():
         return
 
+    config = foo.get_db_config()
+    head = config.version
+
     use_client_version = destination is None
+
     if use_client_version:
         destination = foc.VERSION
-
-    config = foo.get_db_config()
-
-    head = config.version
+        if _is_compatible_version(destination):
+            return
 
     if head == destination:
         return
@@ -107,10 +113,16 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if not fo.config.database_admin:
         if use_client_version:
             raise EnvironmentError(
-                "Cannot connect to database v%s with client v%s when database_admin=%s. "
+                "Cannot connect to database v%s with client v%s "
+                "(compatibility v%s) when database_admin=%s. "
                 "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
                 "for more information"
-                % (head, destination, fo.config.database_admin)
+                % (
+                    head,
+                    destination,
+                    foc.COMPATIBLE_VERSIONS,
+                    fo.config.database_admin,
+                )
             )
         else:
             raise EnvironmentError(
@@ -121,7 +133,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             )
 
     if _database_exists():
-        runner = MigrationRunner(head=head, destination=destination)
+        runner = MigrationRunner(head, destination)
         if runner.has_admin_revisions:
             logger.info("Migrating database to v%s", destination)
             runner.run_admin(verbose=verbose)
@@ -137,11 +149,15 @@ def needs_migration(name=None, head=None, destination=None):
     To use this method, specify either the ``name`` of an existing dataset or
     provide the ``head`` revision of the dataset.
 
+    If no ``destination`` is provided, a dataset will always be deemed to
+    require no migration if its current version if compatible with the client's
+    version.
+
     Args:
         name (None): the name of the dataset
         head (None): the current revision of the dataset
-        destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+        destination (None): the destination revision. By default, the current
+            database version is used
 
     Returns:
         True/False
@@ -153,12 +169,15 @@ def needs_migration(name=None, head=None, destination=None):
         head = "0.0"
 
     if destination is None:
-        destination = foc.VERSION
+        if _is_compatible_version(head):
+            return False
+
+        destination = get_database_revision()
 
     if head == destination:
         return False
 
-    runner = MigrationRunner(head=head, destination=destination)
+    runner = MigrationRunner(head, destination)
     return runner.has_revisions
 
 
@@ -166,36 +185,51 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     """Migrates the dataset from its current revision to the specified
     destination revision.
 
+    If no ``destination`` is provided, the dataset will only be migrated if
+    its current version is not compatible with the client's version.
+
     Args:
         name: the name of the dataset
-        destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+        destination (None): the destination revision. By default, the current
+            database version is used
         verbose (False): whether to log incremental migrations that are run
     """
     if _migrations_disabled():
         return
 
-    if destination is None:
-        destination = foc.VERSION
-
     head = get_dataset_revision(name)
+    db_version = get_database_revision()
 
     if head is None:
         head = "0.0"
 
+    if Version(head) > Version(foc.VERSION):
+        if not _is_compatible_version(head):
+            raise EnvironmentError(
+                "Cannot access dataset '%s' with v%s from client v%s "
+                "(compatibility %s)"
+                % (name, head, foc.VERSION, foc.COMPATIBLE_VERSIONS)
+            )
+
+    if destination is None:
+        if _is_compatible_version(head):
+            return
+
+        destination = db_version
+
     if head == destination:
         return
 
-    if not fo.config.database_admin and destination != foc.VERSION:
+    if not fo.config.database_admin and destination != db_version:
         raise EnvironmentError(
             "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
             "be migrated to the current revision (v%s) when database_admin=%s."
             "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
             "for more information"
-            % (name, head, destination, foc.VERSION, fo.config.database_admin)
+            % (name, head, destination, db_version, fo.config.database_admin)
         )
 
-    runner = MigrationRunner(head=head, destination=destination)
+    runner = MigrationRunner(head, destination)
     if runner.has_revisions:
         logger.info("Migrating dataset '%s' to v%s", name, destination)
         runner.run(name, verbose=verbose)
@@ -214,23 +248,17 @@ class MigrationRunner(object):
     """Class for running FiftyOne migrations.
 
     Args:
-        head (None): the current revision
-        destination (None): the destination revision
+        head: the current revision
+        destination: the destination revision
     """
 
     def __init__(
         self,
-        head=None,
-        destination=None,
+        head,
+        destination,
         _revisions=None,
         _admin_revisions=None,
     ):
-        if head is None:
-            head = foc.VERSION
-
-        if destination is None:
-            destination = foc.VERSION
-
         pkg_ver = Version(foc.VERSION)
         head_ver = Version(head)
         dest_ver = Version(destination)
@@ -344,6 +372,11 @@ class DatabaseConfig(etas.Serializable):
 def _database_exists():
     client = foo.get_db_client()
     return fo.config.database_name in client.list_database_names()
+
+
+def _is_compatible_version(version):
+    req = Requirement("fiftyone" + foc.COMPATIBLE_VERSIONS)
+    return req.specifier.contains(version)
 
 
 def _get_revisions_to_run(head, dest, revisions):
