@@ -658,21 +658,9 @@ class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       const { message, stack } = this.state.error;
 
-      return <Loading>{formatErrorString(this.state.error)}</Loading>;
+      return <Loading>{this.state.error}</Loading>;
     }
 
     return this.props.children;
   }
-}
-
-function formatErrorString(str) {
-  let result = [];
-  const parts = str.split(" ");
-  for (let part of parts) {
-    if (part.trim() && part.length > 100) {
-      part = `${part.substr(0, 5)}...${part.substr(-20)}`;
-    }
-    result.push(part);
-  }
-  return str; //result.join(' ')
 }
