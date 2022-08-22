@@ -78,12 +78,15 @@ class SaveContext(object):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        batch_size (0.2): the batching strategy to use. Can either be an
+        batch_size (None): the batching strategy to use. Can either be an
             integer specifying the number of samples to save in a batch, or a
             float number of seconds between batched saves
     """
 
-    def __init__(self, sample_collection, batch_size=0.2):
+    def __init__(self, sample_collection, batch_size=None):
+        if batch_size is None:
+            batch_size = 0.2
+
         self.sample_collection = sample_collection
         self.batch_size = batch_size
 
@@ -731,6 +734,36 @@ class SampleCollection(object):
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the collection.
 
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
+
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
@@ -746,7 +779,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def save_context(self, batch_size=0.2):
+    def save_context(self, batch_size=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
 
@@ -765,7 +798,7 @@ class SampleCollection(object):
 
             # No save context
             for sample in dataset.iter_samples(progress=True):
-                sample.ground_truth.label = label()
+                sample.ground_truth.label = make_label()
                 sample.save()
 
             # Save in batches of 10
@@ -781,7 +814,7 @@ class SampleCollection(object):
                     context.save(sample)
 
         Args:
-            batch_size (0.2): the batching strategy to use. Can either be an
+            batch_size (None): the batching strategy to use. Can either be an
                 integer specifying the number of samples to save in a batch, or
                 a float number of seconds between batched saves
 

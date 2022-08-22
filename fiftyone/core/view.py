@@ -279,6 +279,37 @@ class DatasetView(foc.SampleCollection):
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
 
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+            view = dataset.shuffle().limit(5000)
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in view.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
+
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
@@ -291,9 +322,6 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        if autosave and batch_size is None:
-            batch_size = 0.2
-
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 

@@ -524,7 +524,7 @@ class Document(BaseDocument, mongoengine.Document):
     meta = {"abstract": True}
 
     def save(self, validate=True, clean=True, **kwargs):
-        """Save the document to the database.
+        """Saves the document to the database.
 
         If the document already exists, it will be updated, otherwise it will
         be created.
