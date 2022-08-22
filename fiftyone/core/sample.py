@@ -693,12 +693,6 @@ class SampleView(_SampleMixin, DocumentView):
 
         return sample_op, frame_ops
 
-    def _reload_parents(self):
-        if self.media_type == fomm.VIDEO:
-            self.frames._reload_parents()
-
-        super()._reload_parents()
-
 
 def _apply_confidence_thresh(label, confidence_thresh):
     if _is_frames_dict(label):
