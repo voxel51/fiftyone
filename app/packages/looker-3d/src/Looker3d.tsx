@@ -6,6 +6,7 @@ import React, {
   Fragment,
   MutableRefObject,
   useCallback,
+  Suspense,
 } from "react";
 import {
   Canvas,
@@ -24,7 +25,7 @@ import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import { ShadeByIntensity, ShadeByZ } from "./shaders";
 import _ from "lodash";
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import { Loading, PopoutSectionTitle, TabOption } from "@fiftyone/components";
 import { colorMap } from "@fiftyone/state";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
@@ -258,7 +259,15 @@ export const usePathFilter = (): Partial => {
   return fn.current;
 };
 
-export function Looker3d({ sampleOverride: sample }) {
+export function Looker3d(props) {
+  return (
+    <ErrorBoundary set={() => alert("error")}>
+      <Looker3dCore {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function Looker3dCore({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
@@ -384,15 +393,17 @@ export function Looker3d({ sampleOverride: sample }) {
               onClick={() => handleSelect(label)}
             />
           ))}
-        <PointCloudMesh
-          minZ={minZ}
-          colorBy={colorBy}
-          points={points}
-          rotation={pcRotation}
-          onLoad={(geo) => {
-            setPointCloudBounds(geo.boundingBox);
-          }}
-        />
+        <Suspense>
+          <PointCloudMesh
+            minZ={minZ}
+            colorBy={colorBy}
+            points={points}
+            rotation={pcRotation}
+            onLoad={(geo) => {
+              setPointCloudBounds(geo.boundingBox);
+            }}
+          />
+        </Suspense>
         <axesHelper />
       </Canvas>
       {(hoveringRef.current || hovering) && (
@@ -634,4 +645,34 @@ function computeMinMaxForColorBufferAttribute(colorAttribute) {
   }
 
   return { min: minX, max: maxX };
+}
+
+class ErrorBoundary extends React.Component<
+  { set: React.Dispatch<any> },
+  { error: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError = (error) => ({ hasError: true, error });
+  componentDidCatch(error: any) {}
+  render() {
+    if (this.state.hasError) {
+      const { message, stack } = this.state.error;
+
+      return <Loading>{formatErrorString(this.state.error)}</Loading>;
+    }
+
+    return this.props.children;
+  }
+}
+
+function formatErrorString(str) {
+  let result = [];
+  const parts = str.split(" ");
+  for (let part of parts) {
+    if (part.trim() && part.length > 100) {
+      part = `${part.substr(0, 5)}...${part.substr(-20)}`;
+    }
+    result.push(part);
+  }
+  return str; //result.join(' ')
 }

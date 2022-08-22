@@ -137,12 +137,21 @@ export enum PluginComponentType {
 }
 
 type PluginActivator = (props: any) => boolean;
+type PluginSettingsValidator = (
+  settings: any,
+  assert: (
+    target: string,
+    assertion: (value: any) => boolean,
+    message: string
+  ) => void
+) => void;
 interface PluginComponentRegistration<T extends {} = {}> {
   name: string;
   label?: string;
   component: FunctionComponent<T>;
   type: PluginComponentType;
   activator: PluginActivator;
+  validateSettings?: PluginSettingsValidator;
 }
 
 const DEFAULT_ACTIVATOR = () => true;
