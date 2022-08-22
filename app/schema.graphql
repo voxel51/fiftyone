@@ -54,7 +54,6 @@ type Dataset {
   frameFields: [SampleField!]!
   brainMethods: [BrainRun!]!
   evaluations: [EvaluationRun!]!
-  appSidebarGroups: [SidebarGroup!]
   version: String
   viewCls: String
   defaultSkeleton: KeypointSkeleton
@@ -66,6 +65,7 @@ type DatasetAppConfig {
   gridMediaField: String!
   mediaFields: [String!]!
   plugins: JSON
+  sidebarGroups: [SidebarGroup!]
 }
 
 type DatasetStrConnection {

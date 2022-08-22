@@ -184,7 +184,7 @@ const DEFAULT_VIDEO_GROUPS = [
 ];
 
 export const resolveGroups = (dataset: State.Dataset): State.SidebarGroups => {
-  let source = dataset.appSidebarGroups;
+  let source = dataset?.appConfig?.sidebarGroups;
 
   if (!source) {
     source = dataset.frameFields.length

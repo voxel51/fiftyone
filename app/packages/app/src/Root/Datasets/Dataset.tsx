@@ -41,10 +41,6 @@ const Query = graphql`
         path
         dbField
       }
-      appSidebarGroups {
-        name
-        paths
-      }
       maskTargets {
         name
         targets {
@@ -96,6 +92,10 @@ const Query = graphql`
         mediaFields
         gridMediaField
         plugins
+        sidebarGroups {
+          name
+          paths
+        }
       }
     }
   }

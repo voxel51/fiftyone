@@ -81,6 +81,7 @@ export namespace State {
     gridMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
+    sidebarGroups?: { name: string; paths: string[] }[];
   }
   export interface Dataset {
     id: string;
@@ -97,7 +98,6 @@ export namespace State {
     name: string;
     sampleFields: StrictField[];
     version: string;
-    appSidebarGroups?: { name: string; paths: string[] }[];
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton: KeypointSkeleton;
     groupMediaTypes?: {

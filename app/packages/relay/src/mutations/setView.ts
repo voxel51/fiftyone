@@ -31,10 +31,6 @@ export default graphql`
           path
           dbField
         }
-        appSidebarGroups {
-          name
-          paths
-        }
         maskTargets {
           name
           targets {
@@ -86,6 +82,10 @@ export default graphql`
           gridMediaField
           mediaFields
           plugins
+          sidebarGroups {
+            name
+            paths
+          }
         }
       }
       view

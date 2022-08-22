@@ -21,7 +21,12 @@ def up(db, dataset_name):
         dataset_dict["default_group_slice"] = None
 
     if "app_config" not in dataset_dict:
-        dataset_dict["app_config"] = None
+        dataset_dict["app_config"] = {}
+
+    if "app_sidebar_groups" in dataset_dict:
+        dataset_dict["app_config"]["sidebar_groups"] = dataset_dict.pop(
+            "app_sidebar_groups"
+        )
 
     db.datasets.replace_one(match_d, dataset_dict)
 
@@ -39,6 +44,11 @@ def down(db, dataset_name):
             "Cannot migrate dataset '%s' below v0.17.0 because groups were "
             "not supported before this release" % dataset_name
         )
+
+    if "app_config" in dataset_dict:
+        config = dataset_dict["app_config"]
+        if "sidebar_groups" in config:
+            dataset_dict["app_sidebar_groups"] = config.pop("sidebar_groups")
 
     dataset_dict.pop("app_config", None)
 

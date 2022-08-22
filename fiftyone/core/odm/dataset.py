@@ -383,6 +383,9 @@ class DatasetAppConfig(EmbeddedDocument):
     grid_media_field = StringField(default="filepath")
     media_fields = ListField(StringField(), default=["filepath"])
     plugins = DictField()
+    sidebar_groups = ListField(
+        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
+    )
 
     def is_custom(self):
         """Determines whether this app config differs from the default one.
@@ -428,12 +431,12 @@ class DatasetDocument(Document):
     )
     brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
     evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
-    app_sidebar_groups = ListField(
-        EmbeddedDocumentField(document_type=SidebarGroupDocument), default=None
-    )
+
     app_config = EmbeddedDocumentField(
         document_type=DatasetAppConfig,
         default=lambda: DatasetAppConfig(
-            grid_media_field="filepath", media_fields=["filepath"]
+            grid_media_field="filepath",
+            media_fields=["filepath"],
+            sidebar_groups=None,
         ),
     )

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8023d4bc126da0a1685f558e7a4844cf>>
+ * @generated SignedSource<<1934d53ed4052922f1bb5ef47073c04c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,11 +28,11 @@ export type setViewMutation$data = {
         readonly gridMediaField: string;
         readonly mediaFields: ReadonlyArray<string>;
         readonly plugins: object | null;
+        readonly sidebarGroups: ReadonlyArray<{
+          readonly name: string;
+          readonly paths: ReadonlyArray<string>;
+        }> | null;
       } | null;
-      readonly appSidebarGroups: ReadonlyArray<{
-        readonly name: string;
-        readonly paths: ReadonlyArray<string>;
-      }> | null;
       readonly brainMethods: ReadonlyArray<{
         readonly config: {
           readonly cls: string;
@@ -312,25 +312,6 @@ const node: ConcreteRequest = (function () {
               {
                 alias: null,
                 args: null,
-                concreteType: "SidebarGroup",
-                kind: "LinkedField",
-                name: "appSidebarGroups",
-                plural: true,
-                selections: [
-                  v4 /*: any*/,
-                  {
-                    alias: null,
-                    args: null,
-                    kind: "ScalarField",
-                    name: "paths",
-                    storageKey: null,
-                  },
-                ],
-                storageKey: null,
-              },
-              {
-                alias: null,
-                args: null,
                 concreteType: "NamedTargets",
                 kind: "LinkedField",
                 name: "maskTargets",
@@ -520,6 +501,25 @@ const node: ConcreteRequest = (function () {
                     name: "plugins",
                     storageKey: null,
                   },
+                  {
+                    alias: null,
+                    args: null,
+                    concreteType: "SidebarGroup",
+                    kind: "LinkedField",
+                    name: "sidebarGroups",
+                    plural: true,
+                    selections: [
+                      v4 /*: any*/,
+                      {
+                        alias: null,
+                        args: null,
+                        kind: "ScalarField",
+                        name: "paths",
+                        storageKey: null,
+                      },
+                    ],
+                    storageKey: null,
+                  },
                 ],
                 storageKey: null,
               },
@@ -565,16 +565,16 @@ const node: ConcreteRequest = (function () {
       selections: v14 /*: any*/,
     },
     params: {
-      cacheID: "a69ac7714d9db2e07cafde19a9bf5d75",
+      cacheID: "d3de8bc89b949c9751b00128c1bceb0b",
       id: null,
       metadata: {},
       name: "setViewMutation",
       operationKind: "mutation",
-      text: "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      appSidebarGroups {\n        name\n        paths\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n      }\n    }\n    view\n  }\n}\n",
+      text: "mutation setViewMutation(\n  $subscription: String!\n  $session: String\n  $view: BSONArray!\n  $dataset: String!\n) {\n  setView(subscription: $subscription, session: $session, view: $view, dataset: $dataset) {\n    dataset {\n      id\n      name\n      mediaType\n      sampleFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      frameFields {\n        ftype\n        subfield\n        embeddedDocType\n        path\n        dbField\n      }\n      maskTargets {\n        name\n        targets {\n          target\n          value\n        }\n      }\n      defaultMaskTargets {\n        target\n        value\n      }\n      evaluations {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          predField\n          gtField\n        }\n      }\n      brainMethods {\n        key\n        version\n        timestamp\n        viewStages\n        config {\n          cls\n          embeddingsField\n          method\n          patchesField\n        }\n      }\n      lastLoadedAt\n      createdAt\n      version\n      viewCls\n      skeletons {\n        name\n        labels\n        edges\n      }\n      defaultSkeleton {\n        labels\n        edges\n      }\n      appConfig {\n        gridMediaField\n        mediaFields\n        plugins\n        sidebarGroups {\n          name\n          paths\n        }\n      }\n    }\n    view\n  }\n}\n",
     },
   };
 })();
 
-(node as any).hash = "a7270b1369c50533e3135750085f8b1a";
+(node as any).hash = "f3b2e1c54c233e92fba9cc56c74909ee";
 
 export default node;

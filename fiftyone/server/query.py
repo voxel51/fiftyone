@@ -134,6 +134,7 @@ class DatasetAppConfig:
     grid_media_field: str
     media_fields: t.List[str]
     plugins: t.Optional[JSON]
+    sidebar_groups: t.Optional[t.List[SidebarGroup]]
 
 
 @gql.type
@@ -153,7 +154,6 @@ class Dataset:
     frame_fields: t.List[SampleField]
     brain_methods: t.List[BrainRun]
     evaluations: t.List[EvaluationRun]
-    app_sidebar_groups: t.Optional[t.List[SidebarGroup]]
     version: t.Optional[str]
     view_cls: t.Optional[str]
     default_skeleton: t.Optional[KeypointSkeleton]
