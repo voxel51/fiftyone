@@ -477,7 +477,7 @@ class YOLOv5DatasetImporter(
             )
 
         dataset_path = d.get("path", "")
-        data = os.path.join(dataset_path, d[self.split])
+        data = os.path.normpath(os.path.join(dataset_path, d[self.split]))
         classes = d.get("names", None)
 
         if etau.is_str(data) and data.endswith(".txt"):
