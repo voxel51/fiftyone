@@ -220,11 +220,29 @@ class DatasetTests(unittest.TestCase):
             [fo.Sample(filepath="image%d.jpg" % i) for i in range(50)]
         )
 
-        for sample in dataset:
-            pass
+        for idx, sample in enumerate(dataset):
+            sample["int"] = idx + 1
+            sample.save()
 
-        for sample in dataset.iter_samples(progress=True):
-            pass
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        for idx, sample in enumerate(dataset.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        for idx, sample in enumerate(dataset.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+        with dataset.save_context() as context:
+            for idx, sample in enumerate(dataset):
+                sample["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
 
     @drop_datasets
     def test_date_fields(self):
