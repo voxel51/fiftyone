@@ -3363,7 +3363,7 @@ method to perform batched edits using the pattern below:
 .. code-block:: python
     :linenos:
 
-    # Automatically saves sample edits in efficient batches
+    # Use a context to save sample edits in efficient batches
     with dataset.save_context() as context:
         for sample in dataset.select_fields():
             sample["random"] = random.random()
