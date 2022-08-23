@@ -161,6 +161,7 @@ export default class Flashlight<K> {
     }
 
     const { width, height } = getDims(this.config.horizontal, element);
+
     if (width === 0) {
       return;
     }

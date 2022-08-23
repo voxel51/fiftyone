@@ -15,6 +15,7 @@
   scrollbar-width: none;
   position: relative;
   pointer-events: all;
+  width: 100%;
 }
 
 .lookerPanel::-webkit-scrollbar {

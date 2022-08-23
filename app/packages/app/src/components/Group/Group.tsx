@@ -36,7 +36,7 @@ const process = (
     ) {
       let data: any = {
         sample: node.sample,
-        aspectRatio: node.a,
+        aspectRatio: node.aspectRatio,
       };
 
       if (node.__typename === "VideoSample") {
@@ -51,14 +51,12 @@ const process = (
       store.indices.set(next.current, node.sample._id);
       next.current++;
 
-      const aspectRatio = node.width / node.height;
-
       return [
         ...acc,
         {
           aspectRatio: zoom
-            ? zoomAspectRatio(node.sample as any, aspectRatio)
-            : aspectRatio,
+            ? zoomAspectRatio(node.sample as any, node.aspectRatio)
+            : node.aspectRatio,
           id: (node.sample as any)._id as string,
         },
       ];

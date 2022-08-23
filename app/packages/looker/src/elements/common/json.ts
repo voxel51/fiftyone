@@ -9,9 +9,8 @@ import {
   lookerPanel,
   lookerPanelContainer,
   lookerPanelVerticalContainer,
-  lookerPanelClose,
 } from "./panel.module.css";
-import { lookerCopyJSON, lookerJSONPanel } from "./json.module.css";
+import { lookerCopyJSON, lookerCloseJSON } from "./json.module.css";
 import closeIcon from "../../icons/close.svg";
 import clipboardIcon from "../../icons/clipboard.svg";
 
@@ -39,7 +38,6 @@ export class JSONPanelElement<
     element.classList.add(lookerPanel);
 
     const container = document.createElement("div");
-    container.classList.add(lookerJSONPanel);
     container.classList.add(lookerPanelContainer);
 
     const vContainer = document.createElement("div");
@@ -54,7 +52,7 @@ export class JSONPanelElement<
 
     const close = document.createElement("img");
     close.src = closeIcon;
-    close.classList.add(lookerPanelClose);
+    close.classList.add(lookerCloseJSON);
     close.onclick = () => {
       update({ options: { showJSON: false } });
       dispatchEvent("options", { showJSON: false });

@@ -76,28 +76,31 @@ const fieldFilter = (
 ) => {
   view.forEach(({ _cls, kwargs }) => {
     if (_cls === "fiftyone.core.stages.SelectFields") {
-      const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+      const supplied = kwargs[0][1] || [];
       let names = new Set([...(supplied as []), ...RESERVED_FIELDS]);
-      if (space === State.SPACE.FRAME) {
+      if (space === State.SPACE.FRAME)
         names = new Set(
           Array.from(names).map((n) => n.slice("frames.".length))
         );
-      }
-      Object.keys(fields).forEach((f) => {
-        if (!names.has(f)) {
-          delete fields[f];
-        }
-      });
+
+      Object.keys(fields).forEach(
+        (f) =>
+          !names.has(f) &&
+          fields[f].embeddedDocType !== "fiftyone.core.groups.Group" &&
+          delete fields[f]
+      );
     } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-      const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+      const supplied = kwargs[0][1] || [];
       let names = Array.from(supplied as string[]);
 
-      if (space === State.SPACE.FRAME) {
+      if (space === State.SPACE.FRAME)
         names = names.map((n) => n.slice("frames.".length));
-      }
-      names.forEach((n) => {
-        delete fields[n];
-      });
+
+      names.forEach(
+        (f) =>
+          fields[f].embeddedDocType !== "fiftyone.core.groups.Group" &&
+          delete fields[f]
+      );
     }
   });
 };

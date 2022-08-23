@@ -131,10 +131,11 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 @gql.type
 class DatasetAppConfig:
-    grid_media_field: str
     media_fields: t.List[str]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
+    modal_media_field: t.Optional[str] = gql.field(default="filepath")
+    grid_media_field: t.Optional[str] = "filepath"
 
 
 @gql.type

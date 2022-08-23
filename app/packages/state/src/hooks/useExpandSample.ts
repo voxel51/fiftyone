@@ -42,7 +42,6 @@ export default () => {
             sidebarAtoms.sidebarVisible(false),
           ],
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
-          [selectedMediaField(true), selectedMediaField(false)],
         ];
 
         const results = await Promise.all(

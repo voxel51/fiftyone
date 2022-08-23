@@ -1,11 +1,16 @@
-import { atomFamily, selector } from "recoil";
+import { atomFamily, selectorFamily } from "recoil";
 import { dataset } from "./atoms";
 
-const defaultMediaField = selector<string>({
+const defaultMediaField = selectorFamily<string, boolean>({
   key: "defaultMediaField",
-  get: ({ get }) => {
-    return get(dataset)?.appConfig?.gridMediaField;
-  },
+  get:
+    (modal) =>
+    ({ get }) => {
+      return (
+        get(dataset)?.appConfig[modal ? "modalMediaField" : "gridMediaField"] ||
+        "filepath"
+      );
+    },
 });
 
 export const selectedMediaField = atomFamily<string, boolean>({

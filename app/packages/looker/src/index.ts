@@ -309,9 +309,10 @@ export abstract class Looker<
 
         if (this.state.options.showJSON) {
           const pre = this.lookerElement.element.querySelectorAll("pre")[0];
-          this.getSample().then((sample) => {
-            pre.innerHTML = highlightJSON(sample, JSON_COLORS);
-          });
+          pre &&
+            this.getSample().then((sample) => {
+              pre.innerHTML = highlightJSON(sample, JSON_COLORS);
+            });
         }
         this.lookerElement.render(this.state, this.sample);
         const ctx = this.ctx;

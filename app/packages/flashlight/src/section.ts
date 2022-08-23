@@ -94,6 +94,7 @@ export default class SectionElement implements Section {
               aspectRatio = 1 / aspectRatio;
             }
             const itemWidth = height * aspectRatio;
+
             if (this.horizontal) {
               item.style.width = `${height}px`;
               item.style.height = `${itemWidth}px`;
