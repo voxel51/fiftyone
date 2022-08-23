@@ -276,46 +276,69 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
-    def iter_samples(
-        self, progress=False, autosave=False, autosave_batch_size=10
-    ):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+            view = dataset.shuffle().limit(5000)
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in view.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in view.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
-
-            autosave (False): whether to automatically save :class:`fiftyone.core.sample.SampleView` during iteration
-
-            autosave_batch_size (int, optional): Btachsize of samples for autosaving. Defaults to 10
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-
-        with contextlib.ExitStack() as iter_ctx:
+        with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 
             if progress:
-                pbar = fou.ProgressBar(total=len(self))
-                iter_ctx.enter_context(pbar)
-                samples = pbar(samples)
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
 
             if autosave:
-                autosave_batch = foc._AutosaveSampleBatch(
-                    self._dataset._sample_collection,
-                    self._dataset._frame_collection,
-                    batch_size=autosave_batch_size,
-                )
-                iter_ctx.enter_context(autosave_batch)
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
 
             for sample in samples:
-                with contextlib.ExitStack() as sample_ctx:
-                    if autosave:
-                        sample_ctx.enter_context(
-                            foc._AutosaveSample(autosave_batch, sample)
-                        )
-                    yield sample
+                yield sample
+
+                if autosave:
+                    save_context.save(sample)
 
     def _iter_samples(self):
         sample_cls = self._sample_cls

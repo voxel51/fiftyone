@@ -320,8 +320,15 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
 
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
+
         frame_numbers = set(frame_numbers)
         reset_fns = set()
+
         for frame_number, frame in frames.items():
             if frame_number in frame_numbers:
                 frame.reload(hard=hard)
@@ -418,6 +425,12 @@ class FrameSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
         frames = samples.get(sample_id, {})
+
+        if not frames:
+            return
+
+        if callable(frame_numbers):
+            frame_numbers = frame_numbers()
 
         frame_numbers = set(frame_numbers)
         reset_fns = set()
