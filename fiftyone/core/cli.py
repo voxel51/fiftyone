@@ -27,6 +27,7 @@ import fiftyone.constants as foc
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.utils.data as foud
@@ -2558,7 +2559,7 @@ class MigrateCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.info:
-            db_ver = fom.get_database_revision() or ""
+            config = foo.get_db_config()
 
             if args.dataset_name is not None:
                 for name in args.dataset_name:
@@ -2571,7 +2572,7 @@ class MigrateCommand(Command):
                 for name in fod.list_datasets()
             }
 
-            _print_migration_table(db_ver, dataset_vers)
+            _print_migration_table(config, dataset_vers)
             return
 
         if args.all:
@@ -2589,10 +2590,13 @@ class MigrateCommand(Command):
                 )
 
 
-def _print_migration_table(db_ver, dataset_vers):
+def _print_migration_table(config, dataset_vers):
     print("Client version: %s" % foc.VERSION)
-    print("Compatible database versions: %s" % foc.COMPATIBLE_VERSIONS)
-    print("Database version: %s" % db_ver)
+    print("Min database version: %s" % foc.MIN_DB_VERSION)
+    print("")
+
+    print("Database version: %s" % config.version)
+    print("Min client version: %s" % config.min_client_version)
 
     if dataset_vers:
         print("")

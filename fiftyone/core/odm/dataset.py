@@ -26,7 +26,7 @@ from fiftyone.core.fields import (
     TargetsField,
 )
 
-from .document import Document, DynamicDocument
+from .document import Document
 from .embedded_document import EmbeddedDocument, BaseEmbeddedDocument
 from .runs import RunDocument
 
@@ -359,10 +359,11 @@ class KeypointSkeleton(EmbeddedDocument):
     edges = ListField(ListField(IntField()))
 
 
-class DatasetDocument(DynamicDocument):
+class DatasetDocument(Document):
     """Backing document for datasets."""
 
-    meta = {"collection": "datasets"}
+    # strict=False allows us to ignore fields from future versions
+    meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
     version = StringField(required=True, null=True)

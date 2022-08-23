@@ -8,6 +8,7 @@ Utilities for documents.
 from collections import defaultdict
 from datetime import date, datetime
 import json
+import logging
 import numbers
 import six
 
@@ -25,6 +26,9 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 foed = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_value(value, extended=False):
@@ -98,7 +102,12 @@ def deserialize_value(value):
     if isinstance(value, dict):
         if "_cls" in value:
             # Serialized embedded document
-            _cls = getattr(fo, value["_cls"])
+            try:
+                _cls = getattr(fo, value["_cls"])
+            except AttributeError as e:
+                logger.warning(e)
+                return value
+
             return _cls.from_dict(value)
 
         if "$binary" in value:

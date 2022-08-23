@@ -29,11 +29,14 @@ BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
+# Compatibility versions
+MIN_DB_VERSION = "0.16.1"  # min DB version compatible with this client
+MIN_CLIENT_VERSION = "0.16.3"  # min client version compatible with this DB
+
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = _META["version"]
-COMPATIBLE_VERSIONS = ">=0.16.1,<0.17"  # compatible DB versions
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]

@@ -8,7 +8,6 @@ FiftyOne migrations runner.
 import bisect
 import logging
 import os
-from packaging.requirements import Requirement
 from packaging.version import Version as V
 
 import eta.core.serial as etas
@@ -83,6 +82,27 @@ def migrate_all(destination=None, verbose=False):
         )
 
 
+def is_compatible():
+    """Determines whether this client is compatible with the current database
+    revision.
+
+    Returns:
+        True/False
+    """
+    config = foo.get_db_config()
+    return _is_compatible(config)
+
+
+def _is_compatible(config):
+    if Version(foc.VERSION) < Version(config.min_client_version):
+        return False
+
+    if Version(config.version) < Version(foc.MIN_DB_VERSION):
+        return False
+
+    return True
+
+
 def migrate_database_if_necessary(destination=None, verbose=False):
     """Migrates the database to the specified revision, if necessary.
 
@@ -103,9 +123,10 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     use_client_version = destination is None
 
     if use_client_version:
-        destination = foc.VERSION
-        if _is_compatible_version(destination):
+        if _is_compatible(config):
             return
+
+        destination = foc.VERSION
 
     if head == destination:
         return
@@ -113,16 +134,10 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if not fo.config.database_admin:
         if use_client_version:
             raise EnvironmentError(
-                "Cannot connect to database v%s with client v%s "
-                "(compatibility v%s) when database_admin=%s. "
+                "Cannot connect to database v%s with client v%s when database_admin=%s. "
                 "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
                 "for more information"
-                % (
-                    head,
-                    destination,
-                    foc.COMPATIBLE_VERSIONS,
-                    fo.config.database_admin,
-                )
+                % (head, destination, fo.config.database_admin)
             )
         else:
             raise EnvironmentError(
@@ -138,6 +153,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             logger.info("Migrating database to v%s", destination)
             runner.run_admin(verbose=verbose)
 
+    # @todo need to update `min_client_version`
     config.version = destination
     config.save()
 
@@ -169,10 +185,14 @@ def needs_migration(name=None, head=None, destination=None):
         head = "0.0"
 
     if destination is None:
-        if _is_compatible_version(head):
+        config = foo.get_db_config()
+
+        # @todo this should be validating `head` version, not DB version
+        # This seems to require storing `min_client_version` on each dataset
+        if _is_compatible(config):
             return False
 
-        destination = get_database_revision()
+        destination = config.version
 
     if head == destination:
         return False
@@ -198,21 +218,17 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         return
 
     head = get_dataset_revision(name)
-    db_version = get_database_revision()
+
+    config = foo.get_db_config()
+    db_version = config.version
 
     if head is None:
         head = "0.0"
 
-    if Version(head) > Version(foc.VERSION):
-        if not _is_compatible_version(head):
-            raise EnvironmentError(
-                "Cannot access dataset '%s' with v%s from client v%s "
-                "(compatibility %s)"
-                % (name, head, foc.VERSION, foc.COMPATIBLE_VERSIONS)
-            )
-
     if destination is None:
-        if _is_compatible_version(head):
+        # @todo this should be validating `head` version, not DB version
+        # This seems to require storing `min_client_version` on each dataset
+        if _is_compatible(config):
             return
 
         destination = db_version
@@ -372,11 +388,6 @@ class DatabaseConfig(etas.Serializable):
 def _database_exists():
     client = foo.get_db_client()
     return fo.config.database_name in client.list_database_names()
-
-
-def _is_compatible_version(version):
-    req = Requirement("fiftyone" + foc.COMPATIBLE_VERSIONS)
-    return req.specifier.contains(version)
 
 
 def _get_revisions_to_run(head, dest, revisions):
