@@ -362,7 +362,8 @@ class KeypointSkeleton(EmbeddedDocument):
 class DatasetDocument(Document):
     """Backing document for datasets."""
 
-    meta = {"collection": "datasets"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "datasets", "strict": False}
 
     name = StringField(unique=True, required=True)
     version = StringField(required=True, null=True)
