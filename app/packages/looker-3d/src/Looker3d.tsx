@@ -25,7 +25,12 @@ import * as recoil from "recoil";
 import * as fos from "@fiftyone/state";
 import { ShadeByIntensity, ShadeByZ } from "./shaders";
 import _ from "lodash";
-import { Loading, PopoutSectionTitle, TabOption } from "@fiftyone/components";
+import {
+  JSONPanel,
+  Loading,
+  PopoutSectionTitle,
+  TabOption,
+} from "@fiftyone/components";
 import { colorMap } from "@fiftyone/state";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
@@ -261,13 +266,14 @@ export const usePathFilter = (): Partial => {
 
 export function Looker3d(props) {
   return (
-    <ErrorBoundary set={() => alert("error")}>
+    <ErrorBoundary>
       <Looker3dCore {...props} />
     </ErrorBoundary>
   );
 }
 
 function Looker3dCore({ sampleOverride: sample }) {
+  console.log("rendering....!");
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
@@ -393,17 +399,15 @@ function Looker3dCore({ sampleOverride: sample }) {
               onClick={() => handleSelect(label)}
             />
           ))}
-        <Suspense>
-          <PointCloudMesh
-            minZ={minZ}
-            colorBy={colorBy}
-            points={points}
-            rotation={pcRotation}
-            onLoad={(geo) => {
-              setPointCloudBounds(geo.boundingBox);
-            }}
-          />
-        </Suspense>
+        <PointCloudMesh
+          minZ={minZ}
+          colorBy={colorBy}
+          points={points}
+          rotation={pcRotation}
+          onLoad={(geo) => {
+            setPointCloudBounds(geo.boundingBox);
+          }}
+        />
         <axesHelper />
       </Canvas>
       {(hoveringRef.current || hovering) && (
@@ -425,6 +429,7 @@ function Looker3dCore({ sampleOverride: sample }) {
               label={"E"}
               hint="Ego View"
             />
+            <ViewJSON />
           </ActionsBar>
         </ActionBarContainer>
       )}
@@ -527,7 +532,6 @@ function SetViewButton({ onChangeView, view, label, hint }) {
 }
 
 function ChooseColorSpace() {
-  const [open, setOpen] = useState(false);
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
   );
@@ -581,6 +585,36 @@ function Choice({ label, value }) {
       <input type="radio" checked={selected} />
       {label}
     </div>
+  );
+}
+
+function ViewJSON() {
+  const [currentAction, setAction] = recoil.useRecoilState(
+    pcState.currentAction
+  );
+
+  return (
+    <Fragment>
+      <ActionItem>
+        <ColorLensIcon
+          onClick={(e) => {
+            const targetAction = "json";
+            const nextAction =
+              currentAction === targetAction ? null : targetAction;
+            setAction(nextAction);
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+          }}
+        />
+      </ActionItem>
+      {currentAction === "json" && (
+        <PanelOverlayPortal>
+          <h1>Hello</h1>
+          {/* <JSONPanel json={'{"foo":"bar"}'} /> */}
+        </PanelOverlayPortal>
+      )}
+    </Fragment>
   );
 }
 
@@ -662,5 +696,15 @@ class ErrorBoundary extends React.Component<
     }
 
     return this.props.children;
+  }
+}
+
+class PanelOverlayPortal extends React.Component {
+  constructor(props) {
+    super(props);
+    this.el = document.getElementById("lookerPanelOverlayContainer");
+  }
+  render() {
+    return ReactDOM.createPortal(this.props.children, this.el);
   }
 }
