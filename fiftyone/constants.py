@@ -33,7 +33,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 _META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = _META["version"]
-COMPATIBLE_VERSIONS = ">=0.16.1,<0.17"  # compatible DB versions
+COMPATIBLE_VERSIONS = ">=0.16.1,<0.17"  # compatible versions
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]

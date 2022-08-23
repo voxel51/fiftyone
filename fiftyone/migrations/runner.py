@@ -103,9 +103,10 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     use_client_version = destination is None
 
     if use_client_version:
-        destination = foc.VERSION
-        if _is_compatible_version(destination):
+        if _is_compatible_version(head):
             return
+
+        destination = foc.VERSION
 
     if head == destination:
         return
@@ -203,13 +204,14 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     if head is None:
         head = "0.0"
 
-    if Version(head) > Version(foc.VERSION):
-        if not _is_compatible_version(head):
-            raise EnvironmentError(
-                "Cannot access dataset '%s' with v%s from client v%s "
-                "(compatibility %s)"
-                % (name, head, foc.VERSION, foc.COMPATIBLE_VERSIONS)
-            )
+    if Version(head) > Version(foc.VERSION) and not _is_compatible_version(
+        head
+    ):
+        raise EnvironmentError(
+            "Cannot access dataset '%s' with v%s from client v%s "
+            "(compatibility %s)"
+            % (name, head, foc.VERSION, foc.COMPATIBLE_VERSIONS)
+        )
 
     if destination is None:
         if _is_compatible_version(head):

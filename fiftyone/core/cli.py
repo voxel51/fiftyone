@@ -2591,7 +2591,9 @@ class MigrateCommand(Command):
 
 def _print_migration_table(db_ver, dataset_vers):
     print("Client version: %s" % foc.VERSION)
-    print("Compatible database versions: %s" % foc.COMPATIBLE_VERSIONS)
+    print("Compatible versions: %s" % foc.COMPATIBLE_VERSIONS)
+    print("")
+
     print("Database version: %s" % db_ver)
 
     if dataset_vers:
