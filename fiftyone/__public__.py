@@ -98,6 +98,10 @@ from .core.labels import (
     GeoLocation,
     GeoLocations,
 )
+from .core.logging import (
+    get_logging_level,
+    set_logging_level,
+)
 from .core.metadata import (
     Metadata,
     ImageMetadata,
