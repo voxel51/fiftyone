@@ -76,8 +76,8 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level,    |
-|                               |                                     |                               | such as ``logging.INFO``.                                                              |
+| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
+|                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
 |                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
