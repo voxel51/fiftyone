@@ -12,6 +12,7 @@ import re
 from bson import json_util, ObjectId
 import mongoengine
 import pymongo
+from pymongo import UpdateOne
 
 import eta.core.serial as etas
 
@@ -523,24 +524,31 @@ class Document(BaseDocument, mongoengine.Document):
     meta = {"abstract": True}
 
     def save(self, validate=True, clean=True, **kwargs):
-        """Save the :class:`Document` to the database.
+        """Saves the document to the database.
 
         If the document already exists, it will be updated, otherwise it will
         be created.
 
         Args:
-            validate (True): validates the document
-            clean (True): call the document's clean method; requires
-                ``validate`` to be True
+            validate (True): whether to validate the document
+            clean (True): whether to call the document's ``clean()`` method.
+                Only applicable when ``validate`` is True
 
         Returns:
             self
         """
+        self._save(deferred=False, validate=validate, clean=clean, **kwargs)
+        return self
+
+    def _save(self, deferred=False, validate=True, clean=True, **kwargs):
         # pylint: disable=no-member
         if self._meta.get("abstract"):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document."
             )
+
+        if self._meta.get("auto_create_index", True):
+            self.ensure_indexes()
 
         if validate:
             self.validate(clean=clean)
@@ -548,91 +556,76 @@ class Document(BaseDocument, mongoengine.Document):
         doc_id = self.to_mongo(fields=[self._meta["id_field"]])
         created = "_id" not in doc_id or self._created
 
-        # It might be refreshed by the pre_save_post_validation hook, e.g., for
-        # etag generation
         doc = self.to_mongo()
 
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
+        _id = None
+        op = None
 
         try:
-            # Save a new document or update an existing one
             if created:
                 # Save new document
+                if deferred:
+                    _id = doc.get("_id", None) or ObjectId()
+                    op = UpdateOne({"_id": _id}, doc, upsert=True)
+                else:
+                    collection = self._get_collection()
 
-                # insert_one will provoke UniqueError alongside save does not
-                # therefore, it need to catch and call replace_one.
-                collection = self._get_collection()
+                    if "_id" in doc:
+                        raw_object = collection.find_one_and_replace(
+                            {"_id": doc["_id"]}, doc
+                        )
+                        if raw_object:
+                            _id = doc["_id"]
 
-                object_id = None
-
-                if "_id" in doc:
-                    raw_object = collection.find_one_and_replace(
-                        {"_id": doc["_id"]}, doc
-                    )
-                    if raw_object:
-                        object_id = doc["_id"]
-
-                if not object_id:
-                    object_id = collection.insert_one(doc).inserted_id
+                    if not _id:
+                        _id = collection.insert_one(doc).inserted_id
             else:
                 # Update existing document
-                object_id = doc["_id"]
+                _id = doc["_id"]
                 created = False
 
-                updates, removals = self._delta()
+                updates = {}
+                sets, unsets = self._delta()
 
-                update_doc = {}
+                if sets:
+                    updates["$set"] = sets
+
+                if unsets:
+                    updates["$unset"] = unsets
 
                 if updates:
-                    update_doc["$set"] = updates
-
-                if removals:
-                    update_doc["$unset"] = removals
-
-                if update_doc:
-                    updated_existing = self._update(
-                        object_id, update_doc, **kwargs
-                    )
-
-                    if updated_existing is False:
-                        created = True
-                        # !!! This is bad, means we accidentally created a
-                        # new, potentially corrupted document. See
-                        # https://github.com/MongoEngine/mongoengine/issues/564
-
-        except pymongo.errors.DuplicateKeyError as err:
+                    if deferred:
+                        op = UpdateOne({"_id": _id}, updates, upsert=True)
+                    else:
+                        updated_existing = self._update(_id, updates, **kwargs)
+                        if updated_existing is False:
+                            created = True
+        except pymongo.errors.DuplicateKeyError as e:
             message = "Tried to save duplicate unique keys (%s)"
-            raise mongoengine.NotUniqueError(message % err)
-
-        except pymongo.errors.OperationFailure as err:
+            raise mongoengine.NotUniqueError(message % e)
+        except pymongo.errors.OperationFailure as e:
             message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", str(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
+            if re.match("^E1100[01] duplicate key", str(e)):
                 message = "Tried to save duplicate unique keys (%s)"
-                raise mongoengine.NotUniqueError(message % err)
+                raise mongoengine.NotUniqueError(message % e)
 
-            raise mongoengine.OperationError(message % err)
+            raise mongoengine.OperationError(message % e)
 
         # Make sure we store the PK on this document now that it's saved
         id_field = self._meta["id_field"]
         if created or id_field not in self._meta.get("shard_key", []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
+            self[id_field] = self._fields[id_field].to_python(_id)
 
         self._clear_changed_fields()
         self._created = False
 
-        return self
+        return op
 
-    def _update(self, object_id, update_doc, **kwargs):
-        """Updates an existing document.
-
-        Helper method; should only be used by :meth:`Document.save`.
-        """
+    def _update(self, _id, updates, **kwargs):
+        """Updates an existing document."""
         result = (
             self._get_collection()
-            .update_one({"_id": object_id}, update_doc, upsert=True)
+            .update_one({"_id": _id}, updates, upsert=True)
             .raw_result
         )
 
