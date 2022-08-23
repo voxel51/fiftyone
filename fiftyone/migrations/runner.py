@@ -99,9 +99,9 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     config = foo.get_db_config()
     head = config.version
 
-    use_client_version = destination is None
+    default_destination = destination is None
 
-    if use_client_version:
+    if default_destination:
         if _is_compatible_version(head):
             return
 
@@ -111,18 +111,16 @@ def migrate_database_if_necessary(destination=None, verbose=False):
         return
 
     if not fo.config.database_admin:
-        if use_client_version:
+        if default_destination:
+            if foc.COMPATIBLE_VERSIONS:
+                compat_str = " (compatibility %s)" % foc.COMPATIBLE_VERSIONS
+            else:
+                compat_str = ""
+
             raise EnvironmentError(
-                "Cannot connect to database v%s with client v%s "
-                "(compatibility v%s) when database_admin=%s. "
+                "Cannot connect to database v%s with client v%s%s. "
                 "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-                "for more information"
-                % (
-                    head,
-                    destination,
-                    foc.COMPATIBLE_VERSIONS,
-                    fo.config.database_admin,
-                )
+                "for more information" % (head, destination, compat_str)
             )
         else:
             raise EnvironmentError(
@@ -203,16 +201,9 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     if head is None:
         head = "0.0"
 
-    if Version(head) > Version(foc.VERSION) and not _is_compatible_version(
-        head
-    ):
-        raise EnvironmentError(
-            "Cannot access dataset '%s' with v%s from client v%s "
-            "(compatibility %s)"
-            % (name, head, foc.VERSION, foc.COMPATIBLE_VERSIONS)
-        )
+    default_destination = destination is None
 
-    if destination is None:
+    if default_destination:
         if _is_compatible_version(head):
             return
 
@@ -222,13 +213,24 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         return
 
     if not fo.config.database_admin and destination != db_version:
-        raise EnvironmentError(
-            "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
-            "be migrated to the current revision (v%s) when database_admin=%s."
-            "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
-            "for more information"
-            % (name, head, destination, db_version, fo.config.database_admin)
-        )
+        if default_destination:
+            if foc.COMPATIBLE_VERSIONS:
+                compat_str = " (compatibility %s)" % foc.COMPATIBLE_VERSIONS
+            else:
+                compat_str = ""
+
+            raise EnvironmentError(
+                "Cannot load dataset '%s' from v%s with client v%s%s. "
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information" % (name, head, foc.VERSION, compat_str)
+            )
+        else:
+            raise EnvironmentError(
+                "Cannot migrate dataset '%s' from v%s to v%s when database_admin=%s."
+                "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
+                "for more information"
+                % (name, head, destination, fo.config.database_admin)
+            )
 
     runner = MigrationRunner(head, destination)
     if runner.has_revisions:
@@ -360,7 +362,8 @@ def _database_exists():
 
 
 def _is_compatible_version(version):
-    req = Requirement("fiftyone" + foc.COMPATIBLE_VERSIONS)
+    specifier = foc.COMPATIBLE_VERSIONS or ("==%s" % foc.VERSION)
+    req = Requirement("fiftyone" + specifier)
     return req.specifier.contains(version)
 
 
