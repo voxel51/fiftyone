@@ -11,7 +11,6 @@ import os
 from packaging.requirements import Requirement
 from packaging.version import Version as V
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -353,22 +352,6 @@ class MigrationRunner(object):
 
             fcn = etau.get_function(self.direction, module)
             fcn(client)
-
-
-class DatabaseConfig(etas.Serializable):
-    """Config for the database's state.
-
-    Args:
-        version (None): the ``fiftyone`` package version for which the database
-            is configured
-    """
-
-    def __init__(self, version=None):
-        self.version = version
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls(**d)
 
 
 def _database_exists():
