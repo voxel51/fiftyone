@@ -2192,6 +2192,7 @@ where `dataset.yaml` contains the following information:
 
 .. code-block:: text
 
+    path: <dataset_dir> # optional
     train: ./images/train/
     val: ./images/val/
 
@@ -2205,7 +2206,9 @@ See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
 for a full description of the possible format of `dataset.yaml`. In particular,
 the dataset may contain one or more splits with arbitrary names, as the
 specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`.
+to :class:`fiftyone.utils.yolo.YOLOv5DatasetExporter`. `dataset.yaml` can also
+be located outside of `<dataset_dir>` as long as the optional `path` is set to
+point to `<dataset_dir>`.
 
 The TXT files in `labels/` are space-delimited files where each row corresponds
 to an object in the image of the same name, in one of the following formats:
@@ -2221,7 +2224,9 @@ where `<target>` is the zero-based integer index of the object class label from
 be included only if you pass the optional `include_confidence=True` flag to
 the export.
 
-Unlabeled images have no corresponding TXT file in `labels/`.
+Unlabeled images have no corresponding TXT file in `labels/`. The label file
+path for each image is obtained by replacing `images/` with `labels/` in the
+respective image path.
 
 .. note::
 
