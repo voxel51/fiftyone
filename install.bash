@@ -138,8 +138,6 @@ if [ ${SOURCE_ETA_INSTALL} = true ]; then
         git clone https://github.com/voxel51/eta
     fi
     cd eta
-    git checkout develop
-    git pull
     if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
         pip install -e .
     else
