@@ -13,26 +13,28 @@
 }
 
 .lookerCloseJSON {
-  position: absolute;
-  top: 0;
   right: 0;
-  cursor: pointer;
 }
 
 .lookerCopyJSON {
-  position: absolute;
-  top: 0;
   right: 30px;
-  cursor: pointer;
+}
+
+.lookerCopyJSON,
+.lookerCloseJSON {
   margin: 3px;
   border-radius: 3px;
-
+  cursor: pointer;
+  pointer-events: all;
+  position: absolute;
+  top: 0;
   -webkit-transition: 0.2s ease-in-out;
   -moz-transition: 0.2s ease-in-out;
   -o-transition: 0.2s ease-in-out;
   transition: 0.2s ease-in-out;
 }
 
+.lookerCloseJSON:hover,
 .lookerCopyJSON:hover {
   background-color: rgb(225, 100, 40);
   transform: translate(0, -1px);
