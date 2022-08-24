@@ -1542,6 +1542,12 @@ def to_url_name(name):
     if not etau.is_str(name):
         raise ValueError("Expected string; found %s: %s" % (type(name), name))
 
+    if len(name) > _URL_NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' is too long; length %d > %d"
+            % (name, len(name), _URL_NAME_LENGTH_RANGE[1])
+        )
+
     safe = []
     last = ""
     for c in name:
