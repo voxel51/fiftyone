@@ -33,7 +33,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
-from .document import DynamicDocument
+from .document import Document
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 
@@ -55,17 +55,18 @@ _db_service = None
 # wrong version or type of client.
 #
 # This is currently guaranteed because:
-#   - `DatabaseConfigDocument` is a dynamic document, so any future fields that
-#     are added will not cause an error
+#   - `DatabaseConfigDocument` is declared as non-strict, so any past or future
+#     fields that are not currently defined will not cause an error
 #   - All declared fields are optional and we have promised ourselves that
 #     their type and meaning will never change
 #
 
 
-class DatabaseConfigDocument(DynamicDocument):
+class DatabaseConfigDocument(Document):
     """Backing document for the database config."""
 
-    meta = {"collection": "config"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "config", "strict": False}
 
     version = fof.StringField()
     type = fof.StringField()

@@ -22,6 +22,9 @@ class RunDocument(Document):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"collection": "runs", "strict": False}
 
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
     key = StringField()
     version = StringField()
     timestamp = DateTimeField()
