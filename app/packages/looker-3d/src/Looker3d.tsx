@@ -33,6 +33,7 @@ import {
   jsonIcon,
 } from "@fiftyone/components";
 import { colorMap } from "@fiftyone/state";
+import { removeListener } from "process";
 
 THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
 
@@ -125,6 +126,8 @@ function Cuboid({
   location,
   selected,
   onClick,
+  tooltip,
+  label,
   color,
 }) {
   const [x, y, z] = location;
@@ -153,7 +156,12 @@ function Cuboid({
           />
         </lineSegments>
       </mesh>
-      <mesh onClick={onClick} position={loc} rotation={actualRotation}>
+      <mesh
+        onClick={onClick}
+        {...tooltip.getMeshProps(label)}
+        position={loc}
+        rotation={actualRotation}
+      >
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
           transparent={true}
@@ -165,7 +173,7 @@ function Cuboid({
   );
 }
 
-function Line({ rotation, points, color, opacity, onClick }) {
+function Line({ rotation, points, color, opacity, onClick, tooltip, label }) {
   const geo = React.useMemo(() => {
     const g = new THREE.BufferGeometry().setFromPoints(
       points.map((p) => new THREE.Vector3(...p))
@@ -177,7 +185,7 @@ function Line({ rotation, points, color, opacity, onClick }) {
   }, []);
 
   return (
-    <line onClick={onClick}>
+    <line onClick={onClick} {...tooltip.getMeshProps(label)}>
       <primitive object={geo} attach="geometry" rotation={rotation} />
       <lineBasicMaterial attach="material" color={color} />
     </line>
@@ -193,14 +201,13 @@ function Polyline({
   color,
   selected,
   onClick,
+  tooltip,
 }) {
   if (filled) {
     // filled not yet supported
     return null;
   }
   const rotationVec = new THREE.Vector3(...overlayRotation);
-
-  console.log("polyline points", points3d);
 
   const lines = points3d.map((points) => (
     <Line
@@ -209,6 +216,8 @@ function Polyline({
       opacity={opacity}
       color={selected ? "orange" : color}
       onClick={onClick}
+      tooltip={tooltip}
+      label={label}
     />
   ));
 
@@ -366,9 +375,10 @@ function Looker3dCore({ sampleOverride: sample }) {
     };
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
+  const tooltip = fos.useTooltip();
 
   return (
-    <Container onMouseEnter={update} onMouseMove={update} onMouseLeave={clear}>
+    <Container onPointerOver={update} onMouseMove={update} onPointerOut={clear}>
       <Canvas onClick={() => clear()}>
         <CameraSetup
           controlsRef={controlsRef}
@@ -385,6 +395,8 @@ function Looker3dCore({ sampleOverride: sample }) {
                 opacity={labelAlpha}
                 {...label}
                 onClick={() => handleSelect(label)}
+                label={label}
+                tooltip={tooltip}
               />
             ))}
         </mesh>
@@ -396,7 +408,9 @@ function Looker3dCore({ sampleOverride: sample }) {
               key={key}
               opacity={labelAlpha}
               {...label}
+              label={label}
               onClick={() => handleSelect(label)}
+              tooltip={tooltip}
             />
           ))}
         <PointCloudMesh
@@ -410,31 +424,28 @@ function Looker3dCore({ sampleOverride: sample }) {
         />
         <axesHelper />
       </Canvas>
-      {
-        /*(hoveringRef.current || hovering)*/ true && (
-          <ActionBarContainer
-            onMouseEnter={() => (hoveringRef.current = true)}
-            onMouseLeave={() => (hoveringRef.current = false)}
-          >
-            <ActionsBar>
-              <ChooseColorSpace />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"top"}
-                label={"T"}
-                hint="Top View"
-              />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"pov"}
-                label={"E"}
-                hint="Ego View"
-              />
-              <ViewJSON sample={sample} />
-            </ActionsBar>
-          </ActionBarContainer>
-        )
-      }
+      {(hoveringRef.current || hovering) && (
+        <ActionBarContainer
+          onMouseOver={() => (hoveringRef.current = true)}
+          onMouseOut={() => (hoveringRef.current = false)}
+        >
+          <ActionsBar>
+            <ChooseColorSpace />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"top"}
+              label={"T"}
+              hint="Top View"
+            />
+            <SetViewButton
+              onChangeView={onChangeView}
+              view={"pov"}
+              label={"E"}
+              hint="Ego View"
+            />
+          </ActionsBar>
+        </ActionBarContainer>
+      )}
     </Container>
   );
 }
