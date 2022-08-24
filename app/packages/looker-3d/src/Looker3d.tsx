@@ -443,6 +443,7 @@ function Looker3dCore({ sampleOverride: sample }) {
               label={"E"}
               hint="Ego View"
             />
+            <ViewJSON sample={sample} />
           </ActionsBar>
         </ActionBarContainer>
       )}
