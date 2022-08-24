@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 class LabelboxBackendConfig(foua.AnnotationBackendConfig):
-    """Base class for configuring :class:`LabelboxBackend` instances.
+    """Class for configuring :class:`LabelboxBackend` instances.
 
     Args:
         name: the name of the backend
@@ -493,8 +493,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         backend's annotation and server configuration.
 
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection` to
-                upload to CVAT
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
             backend: a :class:`LabelboxBackend` to use to perform the upload
 
         Returns:
@@ -539,7 +538,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         )
 
     def download_annotations(self, results):
-        """Download the annotations from the Labelbox server for the given
+        """Downloads the annotations from the Labelbox server for the given
         results instance and parses them into the appropriate FiftyOne types.
 
         Args:

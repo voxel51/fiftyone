@@ -6,6 +6,7 @@ FiftyOne datasets.
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 from datetime import datetime
 import fnmatch
@@ -26,7 +27,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
 import fiftyone.constants as focn
@@ -1387,25 +1387,70 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
-    def iter_samples(self, progress=False):
+    def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
+
+        Examples::
+
+            import random as r
+            import string as s
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            def make_label():
+                return "".join(r.choice(s.ascii_letters) for i in range(10))
+
+            # No save context
+            for sample in dataset.iter_samples(progress=True):
+                sample.ground_truth.label = make_label()
+                sample.save()
+
+            # Save in batches of 10
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=10
+            ):
+                sample.ground_truth.label = make_label()
+
+            # Save every 0.5 seconds
+            for sample in dataset.iter_samples(
+                progress=True, autosave=True, batch_size=0.5
+            ):
+                sample.ground_truth.label = make_label()
 
         Args:
             progress (False): whether to render a progress bar tracking the
                 iterator's progress
+            autosave (False): whether to automatically save changes to samples
+                emitted by this iterator
+            batch_size (None): a batch size to use when autosaving samples. Can
+                either be an integer specifying the number of samples to save
+                in a batch, or a float number of seconds between batched saves
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         pipeline = self._pipeline(detach_frames=True)
 
-        if progress:
-            with fou.ProgressBar(total=len(self)) as pb:
-                for sample in pb(self._iter_samples(pipeline)):
-                    yield sample
-        else:
-            for sample in self._iter_samples(pipeline):
+        with contextlib.ExitStack() as exit_context:
+            samples = self._iter_samples(pipeline)
+
+            if progress:
+                pb = fou.ProgressBar(total=len(self))
+                exit_context.enter_context(pb)
+                samples = pb(samples)
+
+            if autosave:
+                save_context = foc.SaveContext(self, batch_size=batch_size)
+                exit_context.enter_context(save_context)
+
+            for sample in samples:
                 yield sample
+
+                if autosave:
+                    save_context.save(sample)
 
     def _iter_samples(self, pipeline):
         index = 0
@@ -4484,26 +4529,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _apply_schema(self, curr_fields, new_fields, add_field_fcn):
         for field_name, field_str in new_fields.items():
-            if field_name in curr_fields:
-                # Ensure that existing field matches the requested field
-                _new_field_str = str(field_str)
-                _curr_field_str = str(curr_fields[field_name])
-                if _new_field_str != _curr_field_str:
-                    raise ValueError(
-                        "Existing field %s=%s does not match new field type %s"
-                        % (field_name, _curr_field_str, _new_field_str)
-                    )
-            else:
-                # Add new field
-                ftype, embedded_doc_type, subfield = fof.parse_field_str(
-                    field_str
-                )
-                add_field_fcn(
-                    field_name,
-                    ftype,
-                    embedded_doc_type=embedded_doc_type,
-                    subfield=subfield,
-                )
+            ftype, embedded_doc_type, subfield = fof.parse_field_str(field_str)
+            add_field_fcn(
+                field_name,
+                ftype,
+                embedded_doc_type=embedded_doc_type,
+                subfield=subfield,
+            )
 
     def _ensure_label_field(self, label_field, label_cls):
         if label_field not in self.get_field_schema():
@@ -5209,7 +5241,7 @@ def _merge_dataset_doc(
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
-        doc = collection_or_doc._dataset._doc
+        doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
         if is_video:
             frame_schema = collection_or_doc.get_frame_field_schema()

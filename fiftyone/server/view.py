@@ -34,10 +34,10 @@ def get_view(
     Args:
         dataset_names: the dataset name
         stages (None): an optional list of serialized
-            :class:`fiftyone.core.stages.ViewStage`s
-        filters (None): an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
+            :class:`fiftyone.core.stages.ViewStage` instances
+        filters (None): an optional ``dict`` of App defined filters
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
         similarity (None): sort by similarity paramters
@@ -71,9 +71,9 @@ def get_extended_view(
 
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
-        filters: an optional `dict` of App defined filters
-        count_label_tags (False): whether to set the hidden `_label_tags` field
-            with counts of tags with respect to all label fields
+        filters: an optional ``dict`` of App defined filters
+        count_label_tags (False): whether to set the hidden ``_label_tags``
+            field with counts of tags with respect to all label fields
         only_matches (True): whether to filter unmatches samples when filtering
             labels
         similarity (None): sort by similarity paramters

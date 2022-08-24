@@ -434,21 +434,29 @@ def _build_label_schema(
         _return_type = _RETURN_TYPES_MAP[_label_type]
         _is_trackable = _is_frame_field and _return_type in _TRACKABLE_TYPES
 
-        if is_video and not _is_frame_field:
-            if _return_type in _SPATIAL_TYPES:
+        if is_video:
+            if not backend.supports_video:
                 raise ValueError(
-                    "Invalid label field '%s'. Spatial labels of type '%s' "
-                    "being annotated on a video must be stored in a "
-                    "frame-level field, i.e., one that starts with 'frames.'"
-                    % (_label_field, _label_type)
+                    "Backend '%s' does not support annotating videos."
+                    % backend.config.name
                 )
-            elif not backend.supports_video_sample_fields:
-                raise ValueError(
-                    "Invalid label field '%s'. Backend '%s' does not support "
-                    "annotating video fields at a sample-level. Labels must be "
-                    "stored in a frame-level field, i.e., one that starts with "
-                    "'frames.'" % (_label_field, backend.config.name)
-                )
+
+            if not _is_frame_field:
+                if _return_type in _SPATIAL_TYPES:
+                    raise ValueError(
+                        "Invalid label field '%s'. Spatial labels of type "
+                        "'%s' being annotated on a video must be stored in a "
+                        "frame-level field, i.e., one that starts with "
+                        "'frames.'" % (_label_field, _label_type)
+                    )
+                elif not backend.supports_video_sample_fields:
+                    raise ValueError(
+                        "Invalid label field '%s'. Backend '%s' does not "
+                        "support annotating video fields at a sample-level. "
+                        "Labels must be stored in a frame-level field, i.e., "
+                        "one that starts with 'frames.'"
+                        % (_label_field, backend.config.name)
+                    )
 
         # We found an existing field with multiple label types, so we must
         # select only the relevant labels
@@ -857,7 +865,6 @@ def _get_attributes(
     label_type,
     classes=None,
 ):
-
     if "attributes" in label_info:
         attributes = label_info["attributes"]
 
@@ -1866,10 +1873,14 @@ class AnnotationBackend(foa.AnnotationMethod):
         )
 
     @property
+    def supports_video(self):
+        """Whether this backend supports annotating videos."""
+        return True
+
+    @property
     def supports_attributes(self):
         """Whether this backend supports uploading and editing label
-        attributes. By default, all backends support attributes, but can
-        overwrite this property to ignore attributes.
+        attributes.
         """
         return True
 
