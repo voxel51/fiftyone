@@ -30,6 +30,7 @@ import {
   Loading,
   PopoutSectionTitle,
   TabOption,
+  jsonIcon,
 } from "@fiftyone/components";
 import { colorMap } from "@fiftyone/state";
 
@@ -273,7 +274,6 @@ export function Looker3d(props) {
 }
 
 function Looker3dCore({ sampleOverride: sample }) {
-  console.log("rendering....!");
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
@@ -410,29 +410,31 @@ function Looker3dCore({ sampleOverride: sample }) {
         />
         <axesHelper />
       </Canvas>
-      {(hoveringRef.current || hovering) && (
-        <ActionBarContainer
-          onMouseEnter={() => (hoveringRef.current = true)}
-          onMouseLeave={() => (hoveringRef.current = false)}
-        >
-          <ActionsBar>
-            <ChooseColorSpace />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"top"}
-              label={"T"}
-              hint="Top View"
-            />
-            <SetViewButton
-              onChangeView={onChangeView}
-              view={"pov"}
-              label={"E"}
-              hint="Ego View"
-            />
-            <ViewJSON />
-          </ActionsBar>
-        </ActionBarContainer>
-      )}
+      {
+        /*(hoveringRef.current || hovering)*/ true && (
+          <ActionBarContainer
+            onMouseEnter={() => (hoveringRef.current = true)}
+            onMouseLeave={() => (hoveringRef.current = false)}
+          >
+            <ActionsBar>
+              <ChooseColorSpace />
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"top"}
+                label={"T"}
+                hint="Top View"
+              />
+              <SetViewButton
+                onChangeView={onChangeView}
+                view={"pov"}
+                label={"E"}
+                hint="Ego View"
+              />
+              <ViewJSON sample={sample} />
+            </ActionsBar>
+          </ActionBarContainer>
+        )
+      }
     </Container>
   );
 }
@@ -588,7 +590,7 @@ function Choice({ label, value }) {
   );
 }
 
-function ViewJSON() {
+function ViewJSON({ sample }) {
   const jsonPanel = fos.useJSONPanel();
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
@@ -597,24 +599,20 @@ function ViewJSON() {
   return (
     <Fragment>
       <ActionItem>
-        <ColorLensIcon
+        <img
+          src={jsonIcon}
           onClick={(e) => {
             const targetAction = "json";
             const nextAction =
               currentAction === targetAction ? null : targetAction;
             setAction(nextAction);
+            jsonPanel.toggle(sample);
             e.stopPropagation();
             e.preventDefault();
             return false;
           }}
         />
       </ActionItem>
-      {jsonPanel.isOpen && (
-        <PanelOverlayPortal>
-          <h1>Hello</h1>
-          {/* <JSONPanel json={'{"foo":"bar"}'} /> */}
-        </PanelOverlayPortal>
-      )}
     </Fragment>
   );
 }
@@ -697,15 +695,5 @@ class ErrorBoundary extends React.Component<
     }
 
     return this.props.children;
-  }
-}
-
-class PanelOverlayPortal extends React.Component {
-  constructor(props) {
-    super(props);
-    this.el = document.getElementById("lookerPanelOverlayContainer");
-  }
-  render() {
-    return ReactDOM.createPortal(this.props.children, this.el);
   }
 }

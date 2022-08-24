@@ -7,7 +7,11 @@ import {
   lookerPanelVerticalContainer,
   lookerPanelClose,
 } from "./panel.module.css";
-import { lookerCopyJSON, lookerJSONPanel } from "./json.module.css";
+import {
+  lookerCopyJSON,
+  lookerCloseJSON,
+  lookerJSONPanel,
+} from "./json.module.css";
 import closeIcon from "../../icons/close.svg";
 import clipboardIcon from "../../icons/clipboard.svg";
 
@@ -15,7 +19,7 @@ function Close({ onClick }) {
   return (
     <img
       src={closeIcon}
-      className={lookerPanelClose}
+      className={lookerCloseJSON}
       title="Close JSON"
       onClick={onClick}
     />
@@ -33,15 +37,15 @@ function Copy({ onClick }) {
   );
 }
 
-export default function JSONPanel({ json }) {
+export default function JSONPanel({ jsonHTML, onClose, onCopy }) {
   return (
     <div className={`${lookerJSONPanel} ${lookerPanelContainer}`}>
       <div className={lookerPanelVerticalContainer}>
         <div className={lookerPanel} onClick={(e) => e.stopPropagation()}>
-          <pre>{json}</pre>
+          {jsonHTML && <pre dangerouslySetInnerHTML={jsonHTML} />}
         </div>
-        <Close />
-        <Copy />
+        <Close onClick={onClose} />
+        <Copy onClick={onCopy} />
       </div>
     </div>
   );
