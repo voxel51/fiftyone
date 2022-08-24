@@ -3,11 +3,11 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-v0.16.5:
+.. _release-notes-v0.16.6:
 
 FiftyOne 0.16.6
 ---------------
-*Released August 19, 2022*
+*Released August 24, 2022*
 
 App
 
