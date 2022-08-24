@@ -262,9 +262,10 @@ export function Looker3d({ sampleOverride: sample }) {
   const settings = fop.usePluginSettings("3d");
 
   const modal = true;
-  const filepathFieldName = getFilepathField(sample, settings.filepathFields);
+  const isModal = true;
+  const mediaField = recoil.useRecoilValue(fos.selectedMediaField(isModal));
   // @ts-ignore
-  const src = fos.getSampleSrc(sample[filepathFieldName]);
+  const src = fos.getSampleSrc(sample[mediaField]);
   const points = useLoader(PCDLoader, src);
   const selectedLabels = recoil.useRecoilValue(fos.selectedLabels);
   const pathFilter = usePathFilter();
