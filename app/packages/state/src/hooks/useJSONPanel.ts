@@ -1,5 +1,5 @@
 import { Sample } from "@fiftyone/looker/src/state";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { atom, useRecoilState } from "recoil";
 import copyToClipboard from "copy-to-clipboard";
 import highlightJSON from "json-format-highlight";
@@ -32,14 +32,26 @@ export default function useJSONPanel() {
     () => ({ __html: highlightJSON(json, JSON_COLORS) }),
     [json]
   );
+  function close() {
+    setState((s) => ({ ...s, isOpen: false }));
+  }
+
+  function handleEscape(e) {
+    if (e.key === "Escape") close();
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      window.addEventListener("keydown", handleEscape);
+    }
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen]);
 
   return {
     open(sample) {
       setState((s) => ({ ...s, sample, isOpen: true }));
     },
-    close() {
-      setState((s) => ({ ...s, isOpen: false }));
-    },
+    close,
     toggle(sample) {
       setState((s) => {
         if (s.isOpen) {
