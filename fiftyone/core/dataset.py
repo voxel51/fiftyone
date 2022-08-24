@@ -78,6 +78,32 @@ def dataset_exists(name):
     return bool(list(conn.datasets.find({"name": name}, {"_id": 1}).limit(1)))
 
 
+def _validate_dataset_name(name, skip=None):
+    """Validates that the given dataset name is available.
+
+    Args:
+        name: a dataset name
+        skip (None): an optional :class:`Dataset` to ignore
+
+    Returns:
+        the URL-name
+
+    Raises:
+        ValueError: if the name is not available
+    """
+    url_name = fou.to_url_name(name)
+
+    query = {"$or": [{"name": name}, {"url_name": url_name}]}
+    if skip is not None:
+        query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
+
+    conn = foo.get_db_conn()
+    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
+        raise ValueError("Dataset name '%s' is not available" % name)
+
+    return url_name
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -403,18 +429,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @name.setter
     def name(self, name):
         _name = self._doc.name
+        _url_name = self._doc.url_name
 
         if name == _name:
             return
 
-        if name in list_datasets():
-            raise ValueError("A dataset with name '%s' already exists" % name)
+        url_name = _validate_dataset_name(name, skip=self)
 
         try:
             self._doc.name = name
+            self._doc.url_name = url_name
             self._doc.save()
         except:
             self._doc.name = _name
+            self._doc.url_name = _url_name
+
             raise
 
         # Update singleton
@@ -4994,14 +5023,7 @@ def _create_dataset(
     _clips=False,
     _src_collection=None,
 ):
-    if dataset_exists(name):
-        raise ValueError(
-            (
-                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
-                "to load an existing dataset"
-            )
-            % name
-        )
+    url_name = _validate_dataset_name(name)
 
     sample_collection_name = _make_sample_collection_name(
         patches=_patches, frames=_frames, clips=_clips
@@ -5031,6 +5053,7 @@ def _create_dataset(
     now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
         name=name,
+        url_name=url_name,
         version=focn.VERSION,
         created_at=now,
         last_loaded_at=now,
@@ -5248,8 +5271,7 @@ def _delete_dataset_doc(dataset_doc):
 
 
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
-    if dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+    url_name = _validate_dataset_name(name)
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -5269,6 +5291,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
+    dataset_doc.url_name = url_name
     dataset_doc.created_at = datetime.utcnow()
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent

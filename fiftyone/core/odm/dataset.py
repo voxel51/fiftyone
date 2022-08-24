@@ -367,6 +367,7 @@ class DatasetDocument(Document):
     meta = {"collection": "datasets"}
 
     name = StringField(unique=True, required=True)
+    url_name = StringField()
     version = StringField(required=True, null=True)
     created_at = DateTimeField()
     last_loaded_at = DateTimeField()
