@@ -71,7 +71,12 @@ def _set_url_name(db, dataset_dict):
 
     if name in existing_names or url_name in existing_url_names:
         old_name = name
-        name = _get_default_dataset_name(existing_names) + "-RENAMED"
+
+        # Make a valid, unique name that resembles the original
+        name = _get_default_dataset_name(existing_names)
+        name = old_name + "-RENAMED-" + name
+        name = name[-_URL_NAME_LENGTH_RANGE[1] :]
+
         url_name = _to_url_name(name)
 
         logger.warning(
