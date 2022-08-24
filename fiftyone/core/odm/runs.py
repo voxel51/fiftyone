@@ -19,7 +19,8 @@ from .document import Document
 class RunDocument(Document):
     """Backing document for dataset runs."""
 
-    meta = {"collection": "runs"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "runs", "strict": False}
 
     key = StringField()
     version = StringField()

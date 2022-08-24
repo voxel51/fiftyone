@@ -19,7 +19,9 @@ from .document import Document
 class ViewDocument(Document):
     """Backing document for dataset views."""
 
-    meta = {"collection": "views"}
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"collection": "views", "strict": False}
+
     _EDITABLE_FIELDS = ("name", "color", "description")
 
     dataset_id = ObjectIdField()
