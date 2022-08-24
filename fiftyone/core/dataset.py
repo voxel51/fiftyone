@@ -86,7 +86,7 @@ def _validate_dataset_name(name, skip=None):
         skip (None): an optional :class:`Dataset` to ignore
 
     Returns:
-        the URL-name
+        the URL name
 
     Raises:
         ValueError: if the name is not available
@@ -518,10 +518,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset = fo.Dataset()
 
             # Store a description on the dataset
-            dataset.description = "A description of the dataset"
-
-            # Edit the description
-            dataset.description = "A new description"
+            dataset.description = "Your description here"
         """
         return self._doc.description
 
