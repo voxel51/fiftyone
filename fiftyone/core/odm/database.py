@@ -68,6 +68,7 @@ class DatabaseConfigDocument(DynamicDocument):
 
     version = fof.StringField()
     type = fof.StringField()
+    min_client_version = fof.StringField()
 
 
 def get_db_config():
@@ -109,6 +110,14 @@ def get_db_config():
         # migration)...
         #
         config.type = foc.CLIENT_TYPE
+        save = True
+
+    if config.min_client_version is None:
+        #
+        # `min_client_version` was added in v0.16.6, and at that time the min
+        # client version was v0.16.3
+        #
+        config.min_client_version = "0.16.3"
         save = True
 
     if save:

@@ -54,7 +54,7 @@ def get_dataset_revision(name):
         the dataset revision string
     """
     conn = foo.get_db_conn()
-    dataset_doc = conn.datasets.find_one({"name": name})
+    dataset_doc = conn.datasets.find_one({"name": name}, {"version": 1})
     if dataset_doc is None:
         raise ValueError("Dataset '%s' not found" % name)
 
@@ -65,14 +65,15 @@ def migrate_all(destination=None, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
 
+    If no ``destination`` is provided, the database and each dataset will only
+    be migrated if their current versions are not compatible with the client's
+    version.
+
     Args:
         destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+            ``fiftyone`` client version is used
         verbose (False): whether to log incremental migrations that are run
     """
-    if destination is None:
-        destination = foc.VERSION
-
     migrate_database_if_necessary(destination=destination, verbose=verbose)
 
     for name in fo.list_datasets():
@@ -81,25 +82,51 @@ def migrate_all(destination=None, verbose=False):
         )
 
 
+def is_compatible():
+    """Determines whether this client is compatible with the current database
+    revision.
+
+    Returns:
+        True/False
+    """
+    config = foo.get_db_config()
+    return _is_compatible(config)
+
+
+def _is_compatible(config):
+    if Version(foc.VERSION) < Version(config.min_client_version):
+        return False
+
+    if Version(config.version) < Version(foc.MIN_DB_VERSION):
+        return False
+
+    return True
+
+
 def migrate_database_if_necessary(destination=None, verbose=False):
-    """Migrates the database to the current revision of the ``fiftyone``
-    package, if necessary.
+    """Migrates the database to the specified revision, if necessary.
+
+    If no ``destination`` is provided, the database will only be migrated if
+    its current version is not compatible with the client's version.
 
     Args:
         destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+            ``fiftyone`` client version is used
         verbose (False): whether to log incremental migrations that are run
     """
     if _migrations_disabled():
         return
 
-    use_client_version = destination is None
-    if use_client_version:
-        destination = foc.VERSION
-
     config = foo.get_db_config()
-
     head = config.version
+
+    use_client_version = destination is None
+
+    if use_client_version:
+        if _is_compatible(config):
+            return
+
+        destination = foc.VERSION
 
     if head == destination:
         return
@@ -121,11 +148,12 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             )
 
     if _database_exists():
-        runner = MigrationRunner(head=head, destination=destination)
+        runner = MigrationRunner(head, destination)
         if runner.has_admin_revisions:
             logger.info("Migrating database to v%s", destination)
             runner.run_admin(verbose=verbose)
 
+    # @todo need to update `min_client_version`
     config.version = destination
     config.save()
 
@@ -137,11 +165,15 @@ def needs_migration(name=None, head=None, destination=None):
     To use this method, specify either the ``name`` of an existing dataset or
     provide the ``head`` revision of the dataset.
 
+    If no ``destination`` is provided, a dataset will always be deemed to
+    require no migration if its current version if compatible with the client's
+    version.
+
     Args:
         name (None): the name of the dataset
         head (None): the current revision of the dataset
-        destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+        destination (None): the destination revision. By default, the current
+            database version is used
 
     Returns:
         True/False
@@ -153,12 +185,19 @@ def needs_migration(name=None, head=None, destination=None):
         head = "0.0"
 
     if destination is None:
-        destination = foc.VERSION
+        config = foo.get_db_config()
+
+        # @todo this should be validating `head` version, not DB version
+        # This seems to require storing `min_client_version` on each dataset
+        if _is_compatible(config):
+            return False
+
+        destination = config.version
 
     if head == destination:
         return False
 
-    runner = MigrationRunner(head=head, destination=destination)
+    runner = MigrationRunner(head, destination)
     return runner.has_revisions
 
 
@@ -166,36 +205,47 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     """Migrates the dataset from its current revision to the specified
     destination revision.
 
+    If no ``destination`` is provided, the dataset will only be migrated if
+    its current version is not compatible with the client's version.
+
     Args:
         name: the name of the dataset
-        destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
+        destination (None): the destination revision. By default, the current
+            database version is used
         verbose (False): whether to log incremental migrations that are run
     """
     if _migrations_disabled():
         return
 
-    if destination is None:
-        destination = foc.VERSION
-
     head = get_dataset_revision(name)
+
+    config = foo.get_db_config()
+    db_version = config.version
 
     if head is None:
         head = "0.0"
 
+    if destination is None:
+        # @todo this should be validating `head` version, not DB version
+        # This seems to require storing `min_client_version` on each dataset
+        if _is_compatible(config):
+            return
+
+        destination = db_version
+
     if head == destination:
         return
 
-    if not fo.config.database_admin and destination != foc.VERSION:
+    if not fo.config.database_admin and destination != db_version:
         raise EnvironmentError(
             "Cannot migrate dataset '%s' from v%s to v%s. Datasets can only "
             "be migrated to the current revision (v%s) when database_admin=%s."
             "See https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations "
             "for more information"
-            % (name, head, destination, foc.VERSION, fo.config.database_admin)
+            % (name, head, destination, db_version, fo.config.database_admin)
         )
 
-    runner = MigrationRunner(head=head, destination=destination)
+    runner = MigrationRunner(head, destination)
     if runner.has_revisions:
         logger.info("Migrating dataset '%s' to v%s", name, destination)
         runner.run(name, verbose=verbose)
@@ -214,23 +264,17 @@ class MigrationRunner(object):
     """Class for running FiftyOne migrations.
 
     Args:
-        head (None): the current revision
-        destination (None): the destination revision
+        head: the current revision
+        destination: the destination revision
     """
 
     def __init__(
         self,
-        head=None,
-        destination=None,
+        head,
+        destination,
         _revisions=None,
         _admin_revisions=None,
     ):
-        if head is None:
-            head = foc.VERSION
-
-        if destination is None:
-            destination = foc.VERSION
-
         pkg_ver = Version(foc.VERSION)
         head_ver = Version(head)
         dest_ver = Version(destination)
