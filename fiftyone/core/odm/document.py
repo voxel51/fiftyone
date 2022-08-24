@@ -385,6 +385,31 @@ class MongoEngineBaseDocument(SerializableDocument):
         # @todo can we optimize this?
         return json.loads(json_util.dumps(d))
 
+    @classmethod
+    def from_dict(cls, d, extended=False):
+        if not extended:
+            try:
+                # Attempt to load the document directly, assuming it is in
+                # extended form
+
+                # pylint: disable=no-member
+                return cls._from_son(d)
+            except Exception:
+                pass
+
+        # Construct any necessary extended JSON components like ObjectIds
+        # @todo can we optimize this?
+        d = json_util.loads(json_util.dumps(d))
+
+        # pylint: disable=no-member
+        return cls._from_son(d)
+
+
+class DynamicMixin(object):
+    """Mixin for :class:`MongoEngineBaseDocument` classes that can have
+    arbitrary dynamic fields added to them.
+    """
+
     def to_mongo(self, *args, **kwargs):
         # pylint: disable=no-member
         d = super().to_mongo(*args, **kwargs)
@@ -413,25 +438,6 @@ class MongoEngineBaseDocument(SerializableDocument):
             d[new] = d.pop(old)
 
         return d
-
-    @classmethod
-    def from_dict(cls, d, extended=False):
-        if not extended:
-            try:
-                # Attempt to load the document directly, assuming it is in
-                # extended form
-
-                # pylint: disable=no-member
-                return cls._from_son(d)
-            except Exception:
-                pass
-
-        # Construct any necessary extended JSON components like ObjectIds
-        # @todo can we optimize this?
-        d = json_util.loads(json_util.dumps(d))
-
-        # pylint: disable=no-member
-        return cls._from_son(d)
 
     @classmethod
     def _from_son(cls, d, *args, **kwargs):
@@ -494,13 +500,16 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
 
-class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
+class DynamicDocument(DynamicMixin, BaseDocument, mongoengine.DynamicDocument):
     """Base class for dynamic documents that are stored in a MongoDB
     collection.
+
     Dynamic documents can have arbitrary fields added to them.
+
     The ID of a document is automatically populated when it is added to the
     database, and the ID of a document is ``None`` if it has not been added to
     the database.
+
     Attributes:
         id: the ID of the document, or ``None`` if it has not been added to the
             database
