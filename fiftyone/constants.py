@@ -37,9 +37,10 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 #   - Editable by this client without causing any database edits that would
 #     break the original client's ability to work with the dataset
 #
-# This setting may be ``None`` if this client has no compatibility
+# This setting may be ``None`` if this client has no compatibility with other
+# versions
 #
-COMPATIBLE_VERSIONS = ">=0.16.3,<0.17"
+COMPATIBLE_VERSIONS = None
 
 # Package metadata
 _META = metadata("fiftyone")
