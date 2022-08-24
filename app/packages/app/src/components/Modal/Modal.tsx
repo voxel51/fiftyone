@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import _ from "lodash";
-import React, { useCallback, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
@@ -9,6 +9,7 @@ import { useRecoilValue } from "recoil";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
 import Sample from "./Sample";
+import { lookerPanelOverlayContainer } from "./Group.module.css";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -184,16 +185,22 @@ const SampleModal = () => {
   const isGroup = useRecoilValue(fos.isGroup);
 
   return ReactDOM.createPortal(
-    <ModalWrapper
-      ref={wrapperRef}
-      onClick={(event) => event.target === wrapperRef.current && clearModal()}
-    >
-      <Container style={{ ...screen, zIndex: 10001 }}>
-        <ContentColumn>{isGroup ? <Group /> : <Sample />}</ContentColumn>
+    <Fragment>
+      <ModalWrapper
+        ref={wrapperRef}
+        onClick={(event) => event.target === wrapperRef.current && clearModal()}
+      >
+        <Container style={{ ...screen, zIndex: 10001 }}>
+          <ContentColumn>{isGroup ? <Group /> : <Sample />}</ContentColumn>
 
-        <Sidebar render={renderEntry} modal={true} />
-      </Container>
-    </ModalWrapper>,
+          <Sidebar render={renderEntry} modal={true} />
+        </Container>
+      </ModalWrapper>
+      <div
+        id="lookerPanelOverlayContainer"
+        className={lookerPanelOverlayContainer}
+      ></div>
+    </Fragment>,
     document.getElementById("modal") as HTMLDivElement
   );
 };

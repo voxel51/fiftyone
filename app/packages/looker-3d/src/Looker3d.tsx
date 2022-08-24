@@ -589,6 +589,7 @@ function Choice({ label, value }) {
 }
 
 function ViewJSON() {
+  const jsonPanel = fos.useJSONPanel();
   const [currentAction, setAction] = recoil.useRecoilState(
     pcState.currentAction
   );
@@ -608,7 +609,7 @@ function ViewJSON() {
           }}
         />
       </ActionItem>
-      {currentAction === "json" && (
+      {jsonPanel.isOpen && (
         <PanelOverlayPortal>
           <h1>Hello</h1>
           {/* <JSONPanel json={'{"foo":"bar"}'} /> */}

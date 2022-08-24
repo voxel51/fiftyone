@@ -35,3 +35,12 @@
 .groupSampleActive {
   border-bottom: 3px solid var(--brand);
 }
+
+.lookerPanelOverlayContainer {
+  display: none;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  border: solid 1px red;
+  z-index: 10001;
+}
