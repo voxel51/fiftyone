@@ -570,6 +570,18 @@ def parse_dataset_info(dataset, info, overwrite=True):
         info: an info dict
         overwrite (True): whether to overwrite existing dataset info fields
     """
+    tags = info.pop("tags", None)
+    if tags is not None:
+        if overwrite:
+            dataset.tags = tags
+        else:
+            _update_no_overwrite(dataset.tags, tags)
+
+    description = info.pop("description", None)
+    if description is not None:
+        if overwrite or not dataset.description:
+            dataset.description = description
+
     classes = info.pop("classes", None)
     if isinstance(classes, dict):
         if overwrite:
@@ -624,7 +636,10 @@ def parse_dataset_info(dataset, info, overwrite=True):
 
 
 def _update_no_overwrite(d, dnew):
-    d.update({k: v for k, v in dnew.items() if k not in d})
+    if isinstance(d, list):
+        d.extend([v for v in dnew if v not in d])
+    else:
+        d.update({k: v for k, v in dnew.items() if k not in d})
 
 
 class ImportPathsMixin(object):

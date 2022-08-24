@@ -168,6 +168,22 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.name
 
     @property
+    def tags(self):
+        return self._root_dataset.tags
+
+    @tags.setter
+    def tags(self, tags):
+        self._root_dataset.tags = tags
+
+    @property
+    def description(self):
+        return self._root_dataset.description
+
+    @description.setter
+    def description(self, description):
+        self._root_dataset.description = description
+
+    @property
     def info(self):
         return self._root_dataset.info
 

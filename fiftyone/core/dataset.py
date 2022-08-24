@@ -450,7 +450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def tags(self):
-        """A list of tags given to the dataset.
+        """A list of tags on the dataset.
 
         Examples::
 
@@ -477,6 +477,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             self._doc.tags = _value
             raise
+
+    @property
+    def description(self):
+        """A string description on the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a description on the dataset
+            dataset.description = "A description of the dataset"
+
+            # Edit the description
+            dataset.description = "A new description"
+        """
+        return self._doc.description
+
+    @description.setter
+    def description(self, description):
+        self._doc.description = description
+        self._doc.save()
 
     @property
     def info(self):

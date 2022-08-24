@@ -375,6 +375,7 @@ class DatasetDocument(Document):
     persistent = BooleanField(default=False)
     media_type = StringField()
     tags = ListField(StringField())
+    description = StringField()
     info = DictField()
     classes = DictField(ClassesField())
     default_classes = ClassesField()

@@ -1566,6 +1566,12 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         # Package classes and mask targets into `info`, since the import API
         # only supports checking for `info`
 
+        if sample_collection.tags:
+            info["tags"] = sample_collection.tags
+
+        if sample_collection.description:
+            info["description"] = sample_collection.description
+
         if sample_collection.classes:
             info["classes"] = sample_collection.classes
 
