@@ -193,18 +193,19 @@ const SampleModal = () => {
         onClick={(event) => event.target === wrapperRef.current && clearModal()}
       >
         <Container style={{ ...screen, zIndex: 10001 }}>
-          <ContentColumn>{isGroup ? <Group /> : <Sample />}</ContentColumn>
-
+          <ContentColumn>
+            {isGroup ? <Group /> : <Sample />}
+            {jsonPanel.isOpen && (
+              <JSONPanel
+                jsonHTML={jsonPanel.jsonHTML}
+                onClose={() => jsonPanel.close()}
+                onCopy={() => jsonPanel.copy()}
+              />
+            )}
+          </ContentColumn>
           <Sidebar render={renderEntry} modal={true} />
         </Container>
       </ModalWrapper>
-      {jsonPanel.isOpen && (
-        <JSONPanel
-          jsonHTML={jsonPanel.jsonHTML}
-          onClose={() => jsonPanel.close()}
-          onCopy={() => jsonPanel.copy()}
-        />
-      )}
     </Fragment>,
     document.getElementById("modal") as HTMLDivElement
   );
