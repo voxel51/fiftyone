@@ -1011,7 +1011,7 @@ def _get_run_ids(conn, dataset_dict):
 
     for runs_field in _RUNS_FIELDS:
         for run_doc_or_id in dataset_dict.get(runs_field, {}).values():
-            # Prior to v0.15.2, run docs were stored directly in `dataset_dict`
+            # Run docs used to be stored directly in `dataset_dict`.
             # Such data could be encountered here because datasets are lazily
             # migrated
             if isinstance(run_doc_or_id, ObjectId):
@@ -1029,9 +1029,9 @@ def _get_result_ids(conn, dataset_dict):
             if isinstance(run_doc_or_id, ObjectId):
                 run_ids.append(run_doc_or_id)
             elif isinstance(run_doc_or_id, dict):
-                # Prior to v0.15.2, run docs were stored directly in
-                # `dataset_dict`. Such data could be encountered here because
-                # datasets are lazily migrated
+                # Run docs used to be stored directly in `dataset_dict`.
+                # Such data could be encountered here because datasets are
+                # lazily migrated
                 result_id = run_doc_or_id.get("results", None)
                 if result_id is not None:
                     result_ids.append(result_id)
