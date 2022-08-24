@@ -29,6 +29,44 @@ class DatasetTests(unittest.TestCase):
         self.assertIsInstance(fo.list_datasets(), list)
 
     @drop_datasets
+    def test_dataset_names(self):
+        dataset = fo.Dataset("test dataset names!?!")
+
+        self.assertEqual(dataset.name, "test dataset names!?!")
+        self.assertEqual(dataset._doc.url_name, "test-dataset-names")
+
+        dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, "test-dataset-names")
+        self.assertEqual(dataset._doc.url_name, "test-dataset-names")
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        # url_name clashes
+        with self.assertRaises(ValueError):
+            fo.Dataset("test dataset names!?!")
+
+        dataset = fo.Dataset()
+        name = dataset.name
+        url_name = dataset._doc.url_name
+
+        # name clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test-dataset-names"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset._doc.url_name, url_name)
+
+        # url_name clashes
+        with self.assertRaises(ValueError):
+            dataset.name = "test dataset names!?!"
+
+        self.assertEqual(dataset.name, name)
+        self.assertEqual(dataset._doc.url_name, url_name)
+
+    @drop_datasets
     def test_delete_dataset(self):
         IGNORED_DATASET_NAMES = fo.list_datasets()
 
@@ -104,6 +142,23 @@ class DatasetTests(unittest.TestCase):
         dataset4 = fo.load_dataset(dataset_name)
 
         self.assertEqual(dataset4.tags, ["cat", "dog", "rabbit"])
+
+    @drop_datasets
+    def test_dataset_description(self):
+        dataset_name = self.test_dataset_description.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertIsNone(dataset.description)
+
+        dataset.description = "Hello, world!"
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset2 = fo.load_dataset(dataset_name)
+
+        self.assertEqual(dataset2.description, "Hello, world!")
 
     @drop_datasets
     def test_dataset_info(self):
