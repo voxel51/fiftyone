@@ -430,8 +430,7 @@ def drop_orphan_collections(dry_run=False):
     _logger = _get_logger(dry_run=dry_run)
 
     colls_in_use = set()
-    for name in list_datasets():
-        dataset_dict = conn.datasets.find_one({"name": name})
+    for dataset_dict in conn.datasets.find({}):
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
         if sample_coll_name:
             colls_in_use.add(sample_coll_name)

@@ -1763,9 +1763,8 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 frames, self._frames_path, key="frames", num_docs=num_frames
             )
 
-        conn = foo.get_db_conn()
         dataset = sample_collection._dataset
-        dataset_dict = conn.datasets.find_one({"name": dataset.name})
+        dataset_dict = dataset._doc.to_dict()
 
         # Exporting runs only makes sense if the entire dataset is being
         # exported, otherwise the view for the run cannot be reconstructed
