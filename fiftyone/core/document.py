@@ -388,12 +388,15 @@ class _Document(object):
 
     def save(self):
         """Saves the document to the database."""
+        self._save()
+
+    def _save(self, deferred=False):
         if not self._in_db:
             raise ValueError(
                 "Cannot save a document that has not been added to a dataset"
             )
 
-        self._doc.save()
+        return self._doc._save(deferred=deferred)
 
     def _parse_fields(self, fields=None, omit_fields=None):
         if fields is None:
@@ -757,8 +760,16 @@ class DocumentView(_Document):
 
     def save(self):
         """Saves the document view to the database."""
-        self._doc.save(filtered_fields=self._filtered_fields)
+        self._save()
+        self._reload_parents()
 
+    def _save(self, deferred=False):
+        return self._doc._save(
+            deferred=deferred,
+            filtered_fields=self._filtered_fields,
+        )
+
+    def _reload_parents(self):
         if issubclass(type(self._DOCUMENT_CLS), DocumentSingleton):
             self._DOCUMENT_CLS._reload_instance(self)
 

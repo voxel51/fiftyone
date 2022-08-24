@@ -436,7 +436,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             project: a ``label_studio_sdk.Project``
             tasks: a list of task dicts
             sample_labels: a list or list of lists of
-                :class:`fiftyone.core.labels.Label`instances
+                :class:`fiftyone.core.labels.Label` instances
             label_type: the label type string
         """
         for task, labels in zip(tasks, sample_labels):

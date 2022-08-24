@@ -262,6 +262,110 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(frame.hi, "there")
 
     @drop_datasets
+    def test_iter_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="video%d.mp4" % i) for i in range(50)]
+        )
+
+        first_sample = dataset.first()
+        first_frame = first_sample.frames[1]
+        first_sample.save()
+
+        for idx, sample in enumerate(dataset):
+            sample["int"] = idx + 1
+            sample.frames[1]["int"] = idx + 1
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
+        self.assertEqual(first_frame.int, 1)
+
+        for idx, sample in enumerate(dataset.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.frames[1]["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+        self.assertEqual(first_frame.int, 2)
+
+        for idx, sample in enumerate(dataset.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+            sample.frames[1]["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+        self.assertEqual(first_frame.int, 3)
+
+        with dataset.save_context() as context:
+            for idx, sample in enumerate(dataset):
+                sample["int"] = idx + 4
+                sample.frames[1]["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
+        self.assertEqual(first_frame.int, 4)
+
+    @drop_datasets
+    def test_iter_samples_view(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="video%d.mp4" % i) for i in range(51)]
+        )
+
+        first_sample = dataset.first()
+        first_frame = first_sample.frames[1]
+        first_sample.save()
+
+        view = dataset.limit(50)
+
+        for idx, sample in enumerate(view):
+            sample["int"] = idx + 1
+            sample.frames[1]["int"] = idx + 1
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (1, 50))
+        self.assertEqual(first_sample.int, 1)
+        self.assertEqual(first_frame.int, 1)
+
+        for idx, sample in enumerate(view.iter_samples(progress=True)):
+            sample["int"] = idx + 2
+            sample.frames[1]["int"] = idx + 2
+            sample.save()
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (2, 51))
+        self.assertEqual(first_sample.int, 2)
+        self.assertEqual(first_frame.int, 2)
+
+        for idx, sample in enumerate(view.iter_samples(autosave=True)):
+            sample["int"] = idx + 3
+            sample.frames[1]["int"] = idx + 3
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (3, 52))
+        self.assertEqual(first_sample.int, 3)
+        self.assertEqual(first_frame.int, 3)
+
+        with view.save_context() as context:
+            for idx, sample in enumerate(view):
+                sample["int"] = idx + 4
+                sample.frames[1]["int"] = idx + 4
+                context.save(sample)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+        self.assertTupleEqual(dataset.bounds("frames.int"), (4, 53))
+        self.assertEqual(first_sample.int, 4)
+        self.assertEqual(first_frame.int, 4)
+
+    @drop_datasets
     def test_modify_video_sample(self):
         dataset = fo.Dataset()
 

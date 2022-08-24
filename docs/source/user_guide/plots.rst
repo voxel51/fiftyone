@@ -145,7 +145,7 @@ below for your environment:
 
     .. code-block:: shell
 
-        pip install "notebook>=5.3" "ipywidgets>=7.5"
+        pip install "notebook>=5.3" "ipywidgets>=7.5,<8"
 
   .. group-tab:: JupyterLab
 
@@ -154,7 +154,7 @@ below for your environment:
 
     .. code-block:: shell
 
-        pip install "jupyterlab>=3" "ipywidgets>=7.6"
+        pip install "jupyterlab>=3" "ipywidgets>=7.6,<8"
 
     If you run into any issues in JupyterLab, especially if you are trying to
     use JupyterLab 2.X rather than 3.0+, you may need to manually install the
