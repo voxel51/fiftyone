@@ -58,9 +58,10 @@ def _set_url_name(db, dataset_dict):
 
     if url_name is None:
         try:
-            url_name = _to_url_name(name)
+            # Give the user a one-time pass if they have a really long dataset
+            # name to have a URL-friendly name that's shorter
+            url_name = _to_url_name(name[: _URL_NAME_LENGTH_RANGE[1]])
         except Exception as e:
-            # Name was too long or contained too many special characters
             old_name = name
             name = _get_default_dataset_name(existing_names)
             url_name = _to_url_name(name)
@@ -70,11 +71,11 @@ def _set_url_name(db, dataset_dict):
 
     if name in existing_names or url_name in existing_url_names:
         old_name = name
-        name = _get_default_dataset_name(existing_names)
+        name = _get_default_dataset_name(existing_names) + "-RENAMED"
         url_name = _to_url_name(name)
 
         logger.warning(
-            "Dataset name '%s' conflicts with another dataset's name"
+            "Dataset name '%s' conflicts with another dataset's name", old_name
         )
         logger.warning("Renaming dataset '%s' to '%s'", old_name, name)
 
@@ -100,6 +101,12 @@ def _sanitize_char(c):
 def _to_url_name(name):
     if not isinstance(name, str):
         raise ValueError("Expected string; found %s: %s" % (type(name), name))
+
+    if len(name) > _URL_NAME_LENGTH_RANGE[1]:
+        raise ValueError(
+            "'%s' is too long; length %d > %d"
+            % (name, len(name), _URL_NAME_LENGTH_RANGE[1])
+        )
 
     safe = []
     last = ""
