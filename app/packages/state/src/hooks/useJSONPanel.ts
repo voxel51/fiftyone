@@ -8,16 +8,17 @@ const jsonPanelSample = atom({
 
 export default function useJSONPanel() {
   const [isOpen, setOpen] = useState(false);
-  const [isOpen, setOpen] = useState(false);
+  const [sample, setSample] = useRecoilState(null);
 
   return {
-    open() {
+    open(sample) {
       setOpen(true);
+      setSample(sample);
     },
     close() {
       setOpen(false);
+      setSample(null);
     },
     isOpen,
-    setSample,
   };
 }

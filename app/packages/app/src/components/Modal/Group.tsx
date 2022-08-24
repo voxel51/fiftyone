@@ -4,7 +4,6 @@ import {
   groupSample,
   groupSampleActive,
   mainGroup,
-  panelOverlayContainer,
 } from "./Group.module.css";
 
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
@@ -252,10 +251,6 @@ const DualView: React.FC = () => {
           <PinnedSample />
         </Suspense>
       </div>
-      <div
-        id="lookerPanelOverlayContainer"
-        className={panelOverlayContainer}
-      ></div>
     </div>
   );
 };
