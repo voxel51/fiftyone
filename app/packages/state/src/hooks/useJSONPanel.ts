@@ -37,6 +37,7 @@ export default function useJSONPanel() {
   }
 
   function handleEscape(e) {
+    console.log("ev", e);
     if (e.key === "Escape") close();
   }
 
