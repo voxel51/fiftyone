@@ -1,5 +1,4 @@
 import { useRecoilValue } from "recoil";
-import * as fos from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { SampleBar } from "./Bars";
 import { modal, useClearModal } from "@fiftyone/state";

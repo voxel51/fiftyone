@@ -1,12 +1,14 @@
 import {
+  mainSample,
+  mainSampleQuery,
   paginateGroup,
   paginateGroupPinnedSampleFragment,
   paginateGroupPinnedSample_query$key,
   paginateGroupQuery,
   paginateGroup_query$key,
 } from "@fiftyone/relay";
-import { readInlineData, VariablesOf } from "react-relay";
-import { atom, selector, selectorFamily } from "recoil";
+import { VariablesOf, readInlineData, graphql } from "react-relay";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import {
   AppSample,
@@ -36,7 +38,7 @@ export const defaultGroupSlice = selector<string>({
   },
 });
 
-export const groupSlice = atom<string>({
+export const groupSlice = atomFamily<string, boolean>({
   key: "groupSlice",
   default: null,
 });
@@ -72,17 +74,11 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal) {
-        if (get(sidebarOverride)) {
-          return get(pinnedSlice);
-        }
-
-        const { sample } = get(modalAtom);
-
-        return sample[get(groupField)].name;
+      if (modal && get(sidebarOverride)) {
+        return get(pinnedSlice);
       }
 
-      return get(groupSlice) || get(defaultGroupSlice);
+      return get(groupSlice(modal)) || get(defaultGroupSlice);
     },
 });
 
@@ -134,11 +130,21 @@ export const groupQuery = graphQLSelector<
   },
 });
 
-export const pinnedSliceSampleFragment =
-  selector<paginateGroupPinnedSample_query$key>({
-    key: "pinnedSliceSampleFragment",
-    get: ({ get }) => get(groupQuery),
-  });
+export const pinnedSliceSample = selector({
+  key: "pinnedSliceSampleFragment",
+  get: ({ get }) => {
+    const data = readInlineData<paginateGroupPinnedSample_query$key>(
+      paginateGroupPinnedSampleFragment,
+      get(groupQuery)
+    ).sample;
+
+    if (data.__typename !== "PointCloudSample") {
+      throw new Error("unsupported pinned sample type");
+    }
+
+    return data.sample;
+  },
+});
 
 export const groupPaginationFragment = selector<paginateGroup_query$key>({
   key: "groupPaginationFragment",
@@ -151,9 +157,46 @@ export const activeModalSample = selector<
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(sidebarOverride)) {
-      return get(pinnedSliceSampleFragment);
+      return get(pinnedSliceSample);
     }
 
-    return get(modal).sample;
+    return get(modal)?.sample;
+  },
+});
+
+const mainSampleQuery = graphQLSelector<
+  VariablesOf<mainSampleQuery>,
+  ResponseFrom<mainSampleQuery>
+>({
+  environment: RelayEnvironmentKey,
+  key: "mainSampleQuery",
+  mapResponse: (response) => response,
+  query: mainSample,
+  variables: ({ get }) => {
+    return {
+      view: get(view),
+      dataset: get(dataset).name,
+      filter: {
+        group: {
+          slice: get(groupSlice(true)),
+          id: get(modal).sample[get(groupField)]._id,
+        },
+      },
+    };
+  },
+});
+
+export const mainGroupSample = selector<AppSample>({
+  key: "mainGroupSample",
+  get: ({ get }) => {
+    const slice = get(groupSlice(true));
+
+    const sample = get(modal).sample;
+
+    if (sample[get(groupField)].name === slice) {
+      return sample;
+    }
+
+    return get(mainSampleQuery).sample.sample as AppSample;
   },
 });

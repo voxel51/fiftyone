@@ -8,7 +8,7 @@ const Slice: React.FC<{ value: string; className: string }> = ({ value }) => {
 };
 
 const GroupSlice: React.FC = () => {
-  const [slice, setSlice] = useRecoilState(groupSlice);
+  const [slice, setSlice] = useRecoilState(groupSlice(false));
   const defaultSlice = useRecoilValue(defaultGroupSlice);
 
   return (

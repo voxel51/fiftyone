@@ -413,9 +413,9 @@ const Looker = ({ lookerRef, onClose, onNext, onPrevious }: LookerProps) => {
   useEventHandler(looker, "fullscreen", useFullscreen());
   useEventHandler(looker, "showOverlays", useShowOverlays());
 
-  onNext && useEventHandler(looker, "next", onNext);
-  onPrevious && useEventHandler(looker, "previous", onPrevious);
-  onClose && useEventHandler(looker, "close", onClose);
+  useEventHandler(looker, "next", onNext);
+  useEventHandler(looker, "previous", onPrevious);
+  useEventHandler(looker, "close", onClose);
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
 

@@ -357,3 +357,8 @@ export const mediaFields = selector<string[]>({
     return get(atoms.dataset)?.appConfig?.mediaFields || [];
   },
 });
+
+export const modalNavigation = selector<atoms.ModalNavigation>({
+  key: "modalNavigation",
+  get: ({ get }) => get(atoms.modal).navigation,
+});

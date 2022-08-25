@@ -1,6 +1,6 @@
 import { atom, atomFamily, useRecoilTransaction_UNSTABLE } from "recoil";
 
-import { Sample, Dimensions, RGB } from "@fiftyone/looker/src/state";
+import { Sample, RGB } from "@fiftyone/looker/src/state";
 
 import { State } from "./types";
 

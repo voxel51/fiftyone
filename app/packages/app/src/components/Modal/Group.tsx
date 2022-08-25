@@ -12,8 +12,10 @@ import {
   groupField,
   groupId,
   hasPinnedSlice,
-  modal,
+  mainGroupSample,
+  modalNavigation,
   pinnedSlice,
+  pinnedSliceSample,
   pinnedSliceSampleFragment,
   sidebarOverride,
   useClearModal,
@@ -27,7 +29,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useFragment } from "react-relay";
+
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import GroupList from "../Group";
 import Sample from "./Sample";
@@ -35,10 +37,7 @@ import classNames from "classnames";
 import { GroupBar, GroupSampleBar } from "./Bars";
 import { VideoLooker } from "@fiftyone/looker";
 import Looker from "./Looker";
-import {
-  paginateGroupPinnedSampleFragment,
-  paginateGroupPinnedSample_query$key,
-} from "@fiftyone/relay";
+import { paginateGroupPinnedSample_query$key } from "@fiftyone/relay";
 import { Resizable } from "re-resizable";
 import { Loading, useTheme } from "@fiftyone/components";
 
@@ -99,16 +98,13 @@ const useSlice = (sample: any): string => {
 const MainSample: React.FC<{
   lookerRef: MutableRefObject<VideoLooker | undefined>;
 }> = ({ lookerRef }) => {
-  const data = useRecoilValue(modal);
+  const sample = useRecoilValue(mainGroupSample);
+  const navigation = useRecoilValue(modalNavigation);
 
-  if (!data) {
-    throw new Error("no data");
-  }
-
-  const { sample, navigation } = data;
   const clearModal = useClearModal();
   const pinned = !useRecoilValue(sidebarOverride);
   const reset = useResetRecoilState(sidebarOverride);
+
   const slice = useSlice(sample);
 
   return (
@@ -139,20 +135,13 @@ const withVisualizerPlugin = <
   Component: React.FC<T>
 ) => {
   return (props: T) => {
-    const { sample } = useFragment(
-      paginateGroupPinnedSampleFragment,
-      props.fragmentRef
-    );
-
-    if (sample.__typename === "%other") {
-      throw new Error("bad sample");
-    }
+    const sample = useRecoilValue(pinnedSliceSample);
     const [plugin] = usePlugin(PluginComponentType.Visualizer);
     const onSelectLabel = useOnSelectLabel();
 
     const pluginAPI = {
       getSampleSrc: fos.getSampleSrc,
-      sample: sample.sample,
+      sample: sample,
       onSelectLabel,
       useState: useRecoilValue,
       state: fos,
@@ -163,9 +152,9 @@ const withVisualizerPlugin = <
 
     return pluginIsActive ? (
       <PluginComponent
-        key={sample.sample._id}
+        key={sample._id}
         api={pluginAPI}
-        sampleOverride={sample.sample}
+        sampleOverride={sample}
       />
     ) : (
       <Component {...props} />
@@ -180,27 +169,19 @@ const PluggableSample: React.FC<{
 });
 
 const PinnedSample: React.FC = () => {
-  const fragmentRef = useRecoilValue(pinnedSliceSampleFragment);
-  const { sample } = useFragment(
-    paginateGroupPinnedSampleFragment,
-    fragmentRef
-  );
+  const sample = useRecoilValue(pinnedSliceSample);
 
   const [pinned, setPinned] = useRecoilState(sidebarOverride);
   const slice = useRecoilValue(pinnedSlice) as string;
 
-  if (sample.__typename === "%other") {
-    throw new Error("bad sample");
-  }
-
   return (
     <GroupSample
-      sampleId={sample.sample._id}
+      sampleId={sample._id}
       pinned={Boolean(pinned)}
-      onClick={() => setPinned(sample.sample._id)}
+      onClick={() => setPinned(sample._id)}
       slice={slice}
     >
-      <PluggableSample fragmentRef={fragmentRef} />
+      <PluggableSample />
     </GroupSample>
   );
 };
@@ -244,7 +225,9 @@ const DualView: React.FC = () => {
         >
           <GroupList key={`${key}-${mediaField}`} />
 
-          <MainSample lookerRef={lookerRef} />
+          <Suspense fallback={<Loading>Pixelating...</Loading>}>
+            <MainSample lookerRef={lookerRef} />
+          </Suspense>
         </Resizable>
 
         <Suspense fallback={<Loading>Pixelating...</Loading>}>

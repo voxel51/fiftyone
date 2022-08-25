@@ -123,7 +123,7 @@ const Grid: React.FC<{}> = () => {
       useRecoilValue(fos.datasetName),
       useRecoilValue(fos.cropToContent(false)),
       fos.filterView(useRecoilValue(fos.view)),
-      useRecoilValue(fos.groupSlice),
+      useRecoilValue(fos.groupSlice(false)),
       useRecoilValue(fos.refresher),
       fos.tagging,
       useRecoilValue(fos.extendedStages),
