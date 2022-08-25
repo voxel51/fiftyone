@@ -542,6 +542,19 @@ deployment:
     pip install --upgrade fiftyone
     fiftyone migrate --all
 
+.. note::
+
+    Newly created datasets will always bear the
+    :meth:`version <fiftyone.core.dataset.Dataset.version>` of the Python
+    client that created them, which may differ from your database's version
+    if you are undergoing a migration.
+
+    If the new client's version is not in the compatibility range for the old
+    clients that are still in use, the old clients will not be able to load
+    the new datasets.
+
+    Therefore, it is recommended to upgrade all clients as soon as possible!
+
 .. _configuring-timezone:
 
 Configuring a timezone
