@@ -189,11 +189,13 @@ const mainSampleQuery = graphQLSelector<
 export const mainGroupSample = selector<AppSample>({
   key: "mainGroupSample",
   get: ({ get }) => {
-    const slice = get(groupSlice(true));
+    const field = get(groupField);
 
     const sample = get(modal).sample;
 
-    if (sample[get(groupField)].name === slice) {
+    if (!field) return sample;
+
+    if (sample[field].name === get(groupSlice(true))) {
       return sample;
     }
 

@@ -314,16 +314,6 @@ export const similarityKeys = selector<{
   },
 });
 
-export const sidebarSampleId = selector({
-  key: "sidebarSampleId",
-  get: ({ get }) => {
-    const override = get(atoms.sidebarOverride);
-    const modal = get(atoms.modal);
-
-    return override ? override : modal.sample._id;
-  },
-});
-
 export const extendedStagesUnsorted = selector({
   key: "extendedStagesUnsorted",
   get: ({ get }) => {
