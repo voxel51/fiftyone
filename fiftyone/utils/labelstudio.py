@@ -226,14 +226,19 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
     def _prepare_tasks(self, samples, label_schema, media_field):
         """Prepares Label Studio tasks for the given data."""
         samples.compute_metadata()
+
+        ids, mime_types, filepaths = samples.values(
+            ["id", "metadata.mime_type", media_field]
+        )
+
         tasks = [
             {
-                "source_id": one.id,
-                one.media_type: one[media_field],
+                "source_id": _id,
                 "media_type": "image",
-                "mime_type": one.metadata.mime_type,
+                "mime_type": _mime_type,
+                "image": _filepath,
             }
-            for one in samples.select_fields(media_field)
+            for _id, _mime_type, _filepath in zip(ids, mime_types, filepaths)
         ]
 
         predictions, id_map = {}, {}
@@ -244,7 +249,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                         smp[label_field],
                         full_result={
                             "from_name": "label",
-                            "to_name": smp.media_type,
+                            "to_name": "image",
                             "original_width": smp.metadata["width"],
                             "original_height": smp.metadata["height"],
                             "image_rotation": getattr(smp, "rotation", 0),
