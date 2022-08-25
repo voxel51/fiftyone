@@ -573,17 +573,23 @@ def import_document(json_path):
         return json_util.loads(f.read())
 
 
-def import_collection(json_path):
+def import_collection(json_path, key="documents"):
     """Imports the collection from JSON on disk.
 
     Args:
         json_path: the path to the collection on disk
+        key ("documents"): the field name under which the documents are stored
 
     Returns:
-        a BSON dict
+        a tuple of
+
+        -   the list of BSON documents
+        -   the number of documents
     """
     with open(json_path, "r") as f:
-        return json_util.loads(f.read())
+        docs = json_util.loads(f.read()).get(key, [])
+
+    return docs, len(docs)
 
 
 def insert_documents(docs, coll, ordered=False):
@@ -593,8 +599,8 @@ def insert_documents(docs, coll, ordered=False):
     already set.
 
     Args:
-        docs: the list of BSON document dicts to insert
-        coll: a pymongo collection instance
+        docs: an iterable of BSON document dicts
+        coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
     """
     try:
@@ -610,7 +616,7 @@ def bulk_write(ops, coll, ordered=False):
 
     Args:
         ops: a list of pymongo operations
-        coll: a pymongo collection instance
+        coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
     """
     try:

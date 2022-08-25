@@ -5,8 +5,8 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import copy
 import inspect
+import itertools
 import logging
 import os
 import random
@@ -831,23 +831,37 @@ class DatasetImporter(object):
         applying the values of the ``shuffle``, ``seed``, and ``max_samples``
         parameters of the importer.
 
+        You may also provide an iterable, in which case the output will also be
+        an iterable, unless the elements must be shuffled, in which case the
+        iterable must be read in-memory into a list and returned as a list.
+
         Args:
-            l: a list
+            l: a list or iterable
 
         Returns:
-            a processed copy of the list
+            a processed copy of the list/iterable
         """
         if self.shuffle:
-            if self.seed is not None:
-                random.seed(self.seed)
-
-            l = copy(l)
-            random.shuffle(l)
+            _random = _get_rng(self.seed)
+            l = list(l).copy()
+            _random.shuffle(l)
 
         if self.max_samples is not None:
-            l = l[: self.max_samples]
+            if isinstance(l, (list, tuple)):
+                l = l[: self.max_samples]
+            else:
+                l = itertools.islice(l, self.max_samples)
 
         return l
+
+
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
 
 
 class BatchDatasetImporter(DatasetImporter):
@@ -1566,7 +1580,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         #
 
         logger.info("Importing samples...")
-        samples = foo.import_collection(self._samples_path).get("samples", [])
+        samples, _ = foo.import_collection(self._samples_path, key="samples")
 
         samples = self._preprocess_list(samples)
 
@@ -1577,17 +1591,21 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
 
-        for sample in samples:
+        def parse_sample(sample):
             filepath = sample["filepath"]
             if not os.path.isabs(filepath):
                 sample["filepath"] = os.path.join(rel_dir, filepath)
 
-        if tags is not None:
-            for sample in samples:
+            if tags is not None:
                 sample["tags"].extend(tags)
+
+            return sample
+
+        samples = list(map(parse_sample, samples))
 
         foo.insert_documents(samples, dataset._sample_collection, ordered=True)
 
+        # @todo return from `insert_documents()` so `samples` can be iterable
         sample_ids = [s["_id"] for s in samples]
 
         #
@@ -1596,7 +1614,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if os.path.isfile(self._frames_path):
             logger.info("Importing frames...")
-            frames = foo.import_collection(self._frames_path).get("frames", [])
+            frames, _ = foo.import_collection(self._frames_path, key="frames")
 
             if self.max_samples is not None:
                 frames = [
