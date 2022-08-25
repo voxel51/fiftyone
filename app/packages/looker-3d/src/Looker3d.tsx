@@ -378,7 +378,7 @@ function Looker3dCore({ sampleOverride: sample }) {
   const tooltip = fos.useTooltip();
 
   return (
-    <Container onPointerOver={update} onMouseMove={update} onPointerOut={clear}>
+    <Container onMouseOver={update} onMouseMove={update} onMouseOut={clear}>
       <Canvas onClick={() => clear()}>
         <CameraSetup
           controlsRef={controlsRef}
