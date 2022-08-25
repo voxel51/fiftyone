@@ -7,24 +7,47 @@ FiftyOne Release Notes
 
 FiftyOne 0.16.6
 ---------------
-*Released August 24, 2022*
+*Released August 25, 2022*
 
 App
 
-- Fixed a bug that caused the App to break when sample tags contained a "."
+- Fixed a bug that caused the App to break when sample tags contained `.`
   `#1924 <https://github.com/voxel51/fiftyone/pull/1924>`_
 - Fixed search results alignment
   `#1930 <https://github.com/voxel51/fiftyone/pull/1930>`_
 - Fixed App refreshes after view changes had occurred from the view bar
   `#1931 <https://github.com/voxel51/fiftyone/pull/1931>`_
 - Fixed mask targets rendering in the tooltip
-  `#1943 <https://github.com/voxel51/fiftyone/pull/1943>`_,
+  `#1943 <https://github.com/voxel51/fiftyone/pull/1943>`_
   `#1949 <https://github.com/voxel51/fiftyone/pull/1949>`_
 - Fixed classification confusion matrix connections
   `#1967 <https://github.com/voxel51/fiftyone/pull/1967>`_
 
 Core
 
+- Added a save context that enables
+  :ref:`efficient batch edits <efficient-batch-edits>` of datasets and views
+  `#1727 <https://github.com/voxel51/fiftyone/pull/1727>`_
+- Added Plotly v5 support
+  `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_
+- Added a :ref:`quantiles aggregation <aggregations-quantiles>`
+  `#1937 <https://github.com/voxel51/fiftyone/pull/1937>`_
+- Added support for writing transformed images/videos to new locations in the
+  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
+  :func:`transform_videos() <fiftyone.utils.video.transform_videos>` functions
+  `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
+- Added support for configuring the
+  :ref:`package-wide logging level <configuring-fiftyone>`
+  `#2009 <https://github.com/voxel51/fiftyone/pull/2009>`_
+- Added more full-featured support for serializing and deserializing datasets,
+  views, and samples via `to_dict()` and `from_dict()`
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+- Added support for dynamic attributes when performing coerced exports
+  `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
+- Introduced the notion of client compatability versions
+  `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
+- Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
+  sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
 - Added support for serializing aggregations
   `#1911 <https://github.com/voxel51/fiftyone/pull/1911>`_
 - Added :func:`weighted_sample() <fiftyone.utils.random.weighted_sample>`
@@ -33,20 +56,22 @@ Core
 - Added an optional ``new_ids=True`` option to
   :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
   that generates new sample/frame IDs when adding the samples
- `#1927 <https://github.com/voxel51/fiftyone/pull/1927>`_
+  `#1927 <https://github.com/voxel51/fiftyone/pull/1927>`_
+- Added support for the `path` variable in `dataset.yaml` of
+  :ref:`YOLOv5 datasets <YOLOv5Dataset-import>`
+  `#1903 <https://github.com/voxel51/fiftyone/issues/1903>`_
 - Fixed a bug that prevented using 
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
   to set frame-level label fields
- `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+  `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed automatic declaration of frame fields when computing embeddings on a
   frame view `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed a regression that caused label ID fields to be returned as
-  ``ObjectID``s `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
+  `ObjectID` `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed a bug that allowed default frame fields to be excluded
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
-- Fixed the :class:`ClipsView <fiftyone.core.clips.ClipsView>` ``metadata``
-  field to have the correct type,
-  :class:`VideoMetadata <fiftyone.core.metadata.VideoMetadata>`
+- :class:`ClipsView <fiftyone.core.clips.ClipsView>` instances will now report
+  their `metadata` type as |VideoMetadata|
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed
   :meth:`load_evaluation_view() <fiftyone.core.dataset.Dataset.load_evaluation_view>`
@@ -58,33 +83,20 @@ Core
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Fixed a bug that prevented assignment of array-valued dynamic attributes
   to labels `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
-- Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
-  sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
-- Added Plotly v5 support
-  `#1981 <https://github.com/voxel51/fiftyone/pull/1981>`_
-- Added support for dynamic attributes when performing coerced exports
-  `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
-- Added support for writing transformed images/videos to new location/field
-  in the
-  :func:`transform_images() <fiftyone.utils.image.transform_images>` and
-  :func:`transform_videos() <fiftyone.utils.video.transform_videos>` functions
-  `#2007 <https://github.com/voxel51/fiftyone/pull/2007>`_
 
 Annotation
 
-- Fixed loading group ids in CVAT video tasks
-  `#1917 <https://github.com/voxel51/fiftyone/pull/1917>`_
-- Fixed uploading to a CVAT project when no label schema is provided
-  `#1926 <https://github.com/voxel51/fiftyone/pull/1926>`_
+- Added a new :ref:`Label Studio integration! <label-studio-integration>`
+  `#1848 <https://github.com/voxel51/fiftyone/pull/1848>`_
 - Optimized loading CVAT annotations and performing operations on
   :class:`CVATAnnotationResults <fiftyone.utils.cvat.CVATAnnotationResults>`
   `#1944 <https://github.com/voxel51/fiftyone/pull/1944>`_
-- Upgraded the :class:`AnnotationAPI <fiftyone.utils.annotation.AnnotationAPI>`
+- Upgraded the :class:`AnnotationAPI <fiftyone.utils.annotations.AnnotationAPI>`
   interface `#1997 <https://github.com/voxel51/fiftyone/pull/1997>`_
-- Added improved errors, support for non-submitted tasks, and label ID tracking
-  for merging preexisting annotations to the Label Studio integration
-  (:mod:`fiftyone.utils.labelstudio`)
-  `#2006 <https://github.com/voxel51/fiftyone/pull/2006>`_
+- Fixed loading group IDs in CVAT video tasks
+  `#1917 <https://github.com/voxel51/fiftyone/pull/1917>`_
+- Fixed uploading to a CVAT project when no label schema is provided
+  `#1926 <https://github.com/voxel51/fiftyone/pull/1926>`_
 
 .. _release-notes-v0.16.5:
 
